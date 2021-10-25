@@ -1,9 +1,12 @@
 // Adapted from https://github.com/andrewrk/libsoundio/tree/a46b0f21c397cd095319f8c9feccf0f1e50e31ba#synopsis
+#include <julia.h>
 #include <soundio/soundio.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+
+JULIA_DEFINE_FAST_TLS();
 
 static const float PI = 3.1415926535f;
 static float seconds_offset = 0.0f;
@@ -43,7 +46,13 @@ static void write_callback(struct SoundIoOutStream *outstream, int frame_count_m
     }
 }
 
+void intHandler(int code) {
+    // TODO how to avoid segfault?
+    jl_atexit_hook(code);
+}
+
 int main(int argc, char **argv) {
+    jl_init();
     int err;
     struct SoundIo *soundio = soundio_create();
     if (!soundio) {
@@ -90,10 +99,18 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    for (;;) { soundio_wait_events(soundio); }
+    signal(SIGINT, intHandler);
+
+    (void)jl_eval_string("println(sqrt(2.0))");
+
+    for (;;) {
+        soundio_wait_events(soundio);
+    }
 
     soundio_outstream_destroy(outstream);
     soundio_device_unref(device);
     soundio_destroy(soundio);
+
+    jl_atexit_hook(0);
     return 0;
 }

@@ -46,13 +46,15 @@ static void write_callback(struct SoundIoOutStream *outstream, int frame_count_m
     }
 }
 
-void intHandler(int code) {
-    // TODO how to avoid segfault?
+void exitHandler(int code) {
+    // TODO fix segfault
     jl_atexit_hook(code);
 }
 
 int main(int argc, char **argv) {
     jl_init();
+    signal(SIGINT, exitHandler);
+
     int err;
     struct SoundIo *soundio = soundio_create();
     if (!soundio) {
@@ -98,8 +100,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, "unable to start device: %s", soundio_strerror(err));
         return 1;
     }
-
-    signal(SIGINT, intHandler);
 
     (void)jl_eval_string("println(sqrt(2.0))");
 

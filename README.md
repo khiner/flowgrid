@@ -1,2 +1,3 @@
-# flowgrid2
-FlowGrid 2
+# FlowGrid
+
+Prototyping the new stack for FlowGrid.

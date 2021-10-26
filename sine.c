@@ -1,6 +1,5 @@
 // Adapted from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_sine.c
 
-#include <julia.h>
 #include <soundio/soundio.h>
 
 #include <stdio.h>
@@ -8,8 +7,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
-
-JULIA_DEFINE_FAST_TLS();
 
 static int usage(char *exe) {
     fprintf(stderr, "Usage: %s [options]\n"
@@ -59,7 +56,6 @@ static void write_callback(struct SoundIoOutStream *outstream, int frame_count_m
     int err;
 
     int frames_left = frame_count_max;
-
     for (;;) {
         int frame_count = frames_left;
         if ((err = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
@@ -67,8 +63,7 @@ static void write_callback(struct SoundIoOutStream *outstream, int frame_count_m
             exit(1);
         }
 
-        if (!frame_count)
-            break;
+        if (!frame_count) break;
 
         const struct SoundIoChannelLayout *layout = &outstream->layout;
 
@@ -104,8 +99,6 @@ static void underflow_callback(struct SoundIoOutStream *outstream) {
 }
 
 int main(int argc, char **argv) {
-    jl_init();
-
     char *exe = argv[0];
     enum SoundIoBackend backend = SoundIoBackendNone;
     char *device_id = NULL;
@@ -258,8 +251,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    (void)jl_eval_string("println(sqrt(2.0))");
-
     for (;;) {
         soundio_flush_events(soundio);
         int c = getc(stdin);
@@ -288,6 +279,5 @@ int main(int argc, char **argv) {
     soundio_device_unref(device);
     soundio_destroy(soundio);
 
-    jl_atexit_hook(0);
     return 0;
 }

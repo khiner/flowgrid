@@ -1,6 +1,6 @@
 [submodule "libsoundio"]
-	path = libsoundio
+	path = lib/libsoundio
 	url = git@github.com:andrewrk/libsoundio.git
 [submodule "imgui"]
-	path = imgui
+	path = lib/imgui
 	url = git@github.com:ocornut/imgui.git

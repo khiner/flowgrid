@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
+set(CMAKE_CXX_STANDARD 20)
 
 project(FlowGrid)
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
-find_package(SoundIO REQUIRED)
-
+add_subdirectory(libsoundio)
 add_executable(FlowGrid "${PROJECT_SOURCE_DIR}/sine.c")
-target_include_directories(FlowGrid SYSTEM PUBLIC ${SOUNDIO_INCLUDE_DIR})
-target_link_libraries(FlowGrid ${SOUNDIO_LIBRARY})
-target_compile_options(FlowGrid PRIVATE -Wall -Wextra)
+
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC libsoundio)
+target_link_libraries(${PROJECT_NAME} PRIVATE libsoundio_shared)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

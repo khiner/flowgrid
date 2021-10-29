@@ -10,6 +10,3 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC lib/libsoundio)
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
-
-# TODO use https://github.com/Pesc0/imgui-cmake as an example
-# TODO brew uninstall SDL (only use the submodule)

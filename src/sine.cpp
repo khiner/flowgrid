@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cstdint>
 #include <cmath>
+#include <thread>
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -129,7 +130,7 @@ SoundIoBackend getSoundIOBackend(Backend backend) {
     }
 }
 
-static int soundMain(SoundConfig config) {
+static int audioMain(SoundConfig config) {
     auto soundIOBackend = getSoundIOBackend(config.backend);
     struct SoundIo *soundio = soundio_create();
     if (!soundio) {
@@ -411,7 +412,9 @@ int imguiMain() {
 }
 
 int main(int, char **) {
-    imguiMain();
     SoundConfig config;
-    return soundMain(config);
+    std::thread audioThread(audioMain, config);
+    imguiMain();
+    audioThread.join(); // pauses until audio thread finishes
+    return 0;
 }

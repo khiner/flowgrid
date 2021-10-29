@@ -46,7 +46,7 @@ static const double PI = 3.14159265358979323846264338328;
 static double seconds_offset = 0.0;
 static volatile bool want_pause = false;
 
-static void write_callback(struct SoundIoOutStream *outstream, int frame_count_min, int frame_count_max) {
+static void write_callback(struct SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
     double float_sample_rate = outstream->sample_rate;
     double seconds_per_frame = 1.0 / float_sample_rate;
     struct SoundIoChannelArea *areas;
@@ -90,7 +90,7 @@ static void write_callback(struct SoundIoOutStream *outstream, int frame_count_m
     soundio_outstream_pause(outstream, want_pause);
 }
 
-static void underflow_callback(struct SoundIoOutStream *outstream) {
+static void underflow_callback(struct SoundIoOutStream *) {
     static int count = 0;
     fprintf(stderr, "underflow %d\n", count++);
 }

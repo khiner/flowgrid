@@ -7,7 +7,18 @@ set(SDL2_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
 add_subdirectory(${SDL2_DIR})
 add_subdirectory(libsoundio)
 
-#=================== IMGUI ===================
+#=================== Lager ===================
+
+add_subdirectory(hana)
+set(zug_BUILD_TESTS OFF)
+set(zug_BUILD_EXAMPLES OFF)
+set(zug_BUILD_DOCS OFF)
+add_subdirectory(zug)
+set(lager_BUILD_TESTS OFF)
+set(lager_BUILD_EXAMPLES OFF)
+add_subdirectory(lager)
+
+#=================== ImGui ===================
 
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 add_library(IMGUI STATIC)

@@ -7,3 +7,12 @@
 [submodule "lib/SDL"]
 	path = lib/SDL
 	url = git@github.com:libsdl-org/SDL.git
+[submodule "lib/lager"]
+	path = lib/lager
+	url = git@github.com:arximboldi/lager.git
+[submodule "lib/hana"]
+	path = lib/hana
+	url = git@github.com:boostorg/hana.git
+[submodule "lib/zug"]
+	path = lib/zug
+	url = git@github.com:arximboldi/zug.git

@@ -16,6 +16,9 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 
+#include <lager/event_loop/sdl.hpp>
+#include <lager/store.hpp>
+
 static void write_sample_s16ne(char *ptr, double sample) {
     auto *buf = (int16_t *) ptr;
     double range = (double) INT16_MAX - (double) INT16_MIN;

@@ -1,7 +1,5 @@
 // Adapted from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_sine.c
 
-#include <soundio/soundio.h>
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -9,12 +7,14 @@
 #include <cmath>
 #include <thread>
 
-#include "imgui.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_impl_opengl3.h"
-//#include "imgui_impl_metal.h"
+#include <soundio/soundio.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_opengl3.h" // TODO metal
+
+#include "state.h"
 
 static void write_sample_s16ne(char *ptr, double sample) {
     auto *buf = (int16_t *) ptr;
@@ -44,7 +44,8 @@ static void (*write_sample)(char *ptr, double sample);
 
 static const double PI = 3.14159265358979323846264338328;
 static double seconds_offset = 0.0;
-static volatile bool want_pause = false;
+
+static State state {};
 
 static void write_callback(struct SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
     double float_sample_rate = outstream->sample_rate;
@@ -64,10 +65,9 @@ static void write_callback(struct SoundIoOutStream *outstream, int /*frame_count
 
         const struct SoundIoChannelLayout *layout = &outstream->layout;
 
-        double pitch = 440.0;
-        double radians_per_second = pitch * 2.0 * PI;
+        double radians_per_second = state.sine_frequency * 2.0 * PI;
         for (int frame = 0; frame < frame_count; frame += 1) {
-            double sample = sin((seconds_offset + frame * seconds_per_frame) * radians_per_second);
+            double sample = state.sine_on ? state.sine_amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
             for (int channel = 0; channel < layout->channel_count; channel += 1) {
                 write_sample(areas[channel].ptr, sample);
                 areas[channel].ptr += areas[channel].step;
@@ -86,8 +86,6 @@ static void write_callback(struct SoundIoOutStream *outstream, int /*frame_count
         if (frames_left <= 0)
             break;
     }
-
-    soundio_outstream_pause(outstream, want_pause);
 }
 
 static void underflow_callback(struct SoundIoOutStream *) {
@@ -190,8 +188,7 @@ static int audioMain(SoundConfig config) {
         return 1;
     }
 
-    outstream->write_callback = write_callback;
-    outstream->underflow_callback = underflow_callback;
+    outstream->write_callback = write_callback;    outstream->underflow_callback = underflow_callback;
     outstream->name = config.stream_name;
     outstream->software_latency = config.latency;
     outstream->sample_rate = config.sample_rate;
@@ -218,13 +215,7 @@ static int audioMain(SoundConfig config) {
         return 1;
     }
 
-    fprintf(stderr, "Software latency: %f\n", outstream->software_latency);
-    fprintf(stderr,
-            "'p\\n' - pause\n"
-            "'u\\n' - unpause\n"
-            "'P\\n' - pause from within callback\n"
-            "'c\\n' - clear buffer\n"
-            "'q\\n' - quit\n");
+    fprintf(stdout, "Software latency: %f\n", outstream->software_latency);
 
     if (outstream->layout_error)
         fprintf(stderr, "unable to set channel layout: %s\n", soundio_strerror(outstream->layout_error));
@@ -234,28 +225,7 @@ static int audioMain(SoundConfig config) {
         return 1;
     }
 
-    for (;;) {
-        soundio_flush_events(soundio);
-        int c = getc(stdin);
-        if (c == 'p') {
-            fprintf(stderr, "pausing result: %s\n",
-                    soundio_strerror(soundio_outstream_pause(outstream, true)));
-        } else if (c == 'P') {
-            want_pause = true;
-        } else if (c == 'u') {
-            want_pause = false;
-            fprintf(stderr, "unpausing result: %s\n",
-                    soundio_strerror(soundio_outstream_pause(outstream, false)));
-        } else if (c == 'c') {
-            fprintf(stderr, "clear buffer result: %s\n",
-                    soundio_strerror(soundio_outstream_clear_buffer(outstream)));
-        } else if (c == 'q') {
-            break;
-        } else if (c == '\r' || c == '\n') {
-            // ignore
-        } else {
-            fprintf(stderr, "Unrecognized command: %c\n", c);
-        }
+    while (state.audio_engine_running) {
     }
 
     soundio_outstream_destroy(outstream);
@@ -265,8 +235,7 @@ static int audioMain(SoundConfig config) {
     return 0;
 }
 
-int imguiMain() {
-    // Setup SDL
+int draw() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -329,11 +298,6 @@ int imguiMain() {
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
 
-    // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
     // Main loop
     bool done = false;
     while (!done) {
@@ -349,55 +313,37 @@ int imguiMain() {
                 done = true;
         }
 
-        // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
+        if (state.show_demo_window)
+            ImGui::ShowDemoWindow(&state.show_demo_window);
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
         {
-            static float f = 0.0f;
-            static int counter = 0;
+            ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
 
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float *) &clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
+            ImGui::Checkbox("Demo Window", &state.show_demo_window);
+            ImGui::ColorEdit3("Background color", (float *) &state.clear_color);
+            if (ImGui::Button("Stop audio engine")) state.audio_engine_running = false;
+            ImGui::Checkbox("Play sine wave", &state.sine_on);
+            ImGui::SliderFloat("Sine frequency", &state.sine_frequency, 40.0f, 4000.0f);
+            ImGui::SliderFloat("Sine amplitude", &state.sine_amplitude, 0.0f, 1.0f);
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
-
-        // 3. Show another simple window.
-        if (show_another_window) {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
             ImGui::End();
         }
 
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int) io.DisplaySize.x, (int) io.DisplaySize.y);
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        auto clear_color = state.clear_color;
+        glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
+
+    state.audio_engine_running = false;
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
@@ -414,7 +360,9 @@ int imguiMain() {
 int main(int, char **) {
     SoundConfig config;
     std::thread audioThread(audioMain, config);
-    imguiMain();
-    audioThread.join(); // pauses until audio thread finishes
+
+    draw();
+
+    audioThread.join();
     return 0;
 }

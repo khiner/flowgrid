@@ -160,8 +160,6 @@ int draw() {
     }
 
     // Cleanup
-    state.audio_engine_running = false;
-
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();

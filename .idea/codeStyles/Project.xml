@@ -2,6 +2,7 @@
   <code_scheme name="Project" version="173">
     <Objective-C>
       <option name="INDENT_NAMESPACE_MEMBERS" value="0" />
+      <option name="KEEP_CASE_EXPRESSIONS_IN_ONE_LINE" value="true" />
     </Objective-C>
     <codeStyleSettings language="CMake">
       <indentOptions>

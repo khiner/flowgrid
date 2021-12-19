@@ -10,12 +10,8 @@ using namespace action;
 State update(State state, Action action) {
     std::visit(
         visitor{
-            [&](set_clear_color a) {
-                state.colors.clear = a.color;
-            },
-            [&](set_audio_engine_running a) {
-                state.audio_engine_running = a.running;
-            }
+            [&](set_clear_color a) { state.colors.clear = a.color; },
+            [&](set_audio_engine_running a) { state.audio_engine_running = a.running; }
         },
         action
     );

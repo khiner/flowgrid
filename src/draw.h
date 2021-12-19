@@ -46,14 +46,14 @@ DrawContext createDrawContext() {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     auto window_flags = (SDL_WindowFlags) (SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
-    DrawContext context;
-    context.window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example",
-                                      SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                      1280, 720,
-                                      window_flags);
-    context.gl_context = SDL_GL_CreateContext(context.window);
+    DrawContext draw_context;
+    draw_context.window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example",
+                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                           1280, 720,
+                                           window_flags);
+    draw_context.gl_context = SDL_GL_CreateContext(draw_context.window);
 
-    return context;
+    return draw_context;
 }
 
 void loadFonts() {
@@ -100,9 +100,7 @@ void clear(Color &c) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-int draw(Context &context) {
-    auto &state = context.state;
-
+int draw() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -110,6 +108,8 @@ int draw(Context &context) {
 
     auto draw_context = createDrawContext();
     setup(draw_context);
+
+    auto &state = context.state;
 
     // Main loop
     bool done = false;

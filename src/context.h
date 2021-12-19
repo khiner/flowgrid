@@ -43,3 +43,5 @@ struct Context {
         std::cout << "Num actions: " << actions.size() << std::endl;
     }
 };
+
+extern Context context;

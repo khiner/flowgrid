@@ -11,6 +11,7 @@
 
 #include "state.h"
 #include "draw.h"
+#include "update.h"
 
 static void write_sample_s16ne(char *ptr, double sample) {
     auto *buf = (int16_t *) ptr;
@@ -41,7 +42,7 @@ static void (*write_sample)(char *ptr, double sample);
 static const double PI = 3.14159265358979323846264338328;
 static double seconds_offset = 0.0;
 
-static State state {};
+static State state{};
 
 static void write_callback(struct SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
     double float_sample_rate = outstream->sample_rate;
@@ -63,7 +64,9 @@ static void write_callback(struct SoundIoOutStream *outstream, int /*frame_count
 
         double radians_per_second = state.sine_frequency * 2.0 * PI;
         for (int frame = 0; frame < frame_count; frame += 1) {
-            double sample = state.sine_on ? state.sine_amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
+            double sample = state.sine_on ? state.sine_amplitude *
+                                            sin((seconds_offset + frame * seconds_per_frame) * radians_per_second)
+                                          : 0.0f;
             for (int channel = 0; channel < layout->channel_count; channel += 1) {
                 write_sample(areas[channel].ptr, sample);
                 areas[channel].ptr += areas[channel].step;
@@ -184,7 +187,8 @@ static int audioMain(SoundConfig config) {
         return 1;
     }
 
-    outstream->write_callback = write_callback;    outstream->underflow_callback = underflow_callback;
+    outstream->write_callback = write_callback;
+    outstream->underflow_callback = underflow_callback;
     outstream->name = config.stream_name;
     outstream->software_latency = config.latency;
     outstream->sample_rate = config.sample_rate;

@@ -1,6 +1,7 @@
 #=================== libsoundio ===================
 
 add_subdirectory(libsoundio)
+target_include_directories(libsoundio_shared PUBLIC libsoundio)
 
 #=================== SDL2 ===================
 

@@ -45,7 +45,6 @@ static double seconds_offset = 0.0;
 Context context{};
 auto &state = context.state;
 
-
 static void write_callback(struct SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
     double float_sample_rate = outstream->sample_rate;
     double seconds_per_frame = 1.0 / float_sample_rate;

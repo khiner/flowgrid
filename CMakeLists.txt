@@ -5,10 +5,11 @@ project(FlowGrid LANGUAGES C CXX)
 
 add_subdirectory("lib")
 
-file(GLOB flowgrid_SRC
-        "src/*.h"
-        "src/*.cpp"
-        )
+file(
+    GLOB flowgrid_SRC
+    "src/*.h"
+    "src/*.cpp"
+)
 
 add_executable(${PROJECT_NAME} ${flowgrid_SRC})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC lib/libsoundio)

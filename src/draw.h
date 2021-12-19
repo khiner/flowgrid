@@ -25,8 +25,6 @@ void newFrame() {
 }
 
 DrawContext createDrawContext() {
-    DrawContext context; // Populated throughout this method.
-
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
@@ -47,6 +45,8 @@ DrawContext createDrawContext() {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     auto window_flags = (SDL_WindowFlags) (SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+
+    DrawContext context;
     context.window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example",
                                       SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       1280, 720,

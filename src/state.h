@@ -60,8 +60,5 @@ struct State {
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
-
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, colors, show_demo_window, audio_engine_running, sine_on, sine_frequency,
-                                   sine_amplitude)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, colors, show_demo_window, audio_engine_running, sine_on, sine_frequency, sine_amplitude)

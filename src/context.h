@@ -1,5 +1,11 @@
 #pragma once
 
+#include <vector>
+#include <iostream>
+
+#include "action.h"
+#include "update.h"
+
 /**
  * TODO:
  *   * move the state "play-head" backward or forward in time by some `int steps`
@@ -16,6 +22,15 @@
   *      However, performance can be bought with more storage by storing more snapshots.
   *      With more snapshots, any position can be accessed more quickly by first skipping to the state snapshot closest to the requested index.
  */
-struct StateSeries {
 
+struct Context {
+    State state{};
+    std::vector<Action> actions;
+
+
+    void dispatch(Action action) {
+        update(state, action);
+        actions.push_back(action);
+        std::cout << "Num actions: " << actions.size() << std::endl;
+    }
 };

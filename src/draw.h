@@ -7,10 +7,13 @@
 #include "imgui_impl_opengl3.h" // TODO metal
 
 #include "state.h"
+#include "action.h"
+#include "update.h"
+#include "context.h"
 
-struct Context {
+struct DrawContext {
     SDL_Window *window = nullptr;
-    SDL_GLContext gl_context {};
+    SDL_GLContext gl_context{};
     const char *glsl_version = "#version 150";
     ImGuiIO io;
 };
@@ -21,8 +24,8 @@ void newFrame() {
     ImGui::NewFrame();
 }
 
-Context createContext() {
-    Context context; // Populated throughout this method.
+DrawContext createDrawContext() {
+    DrawContext context; // Populated throughout this method.
 
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
@@ -44,7 +47,10 @@ Context createContext() {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     auto window_flags = (SDL_WindowFlags) (SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    context.window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    context.window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example",
+                                      SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                      1280, 720,
+                                      window_flags);
     context.gl_context = SDL_GL_CreateContext(context.window);
 
     return context;
@@ -66,8 +72,8 @@ void loadFonts() {
     //IM_ASSERT(font != NULL);
 }
 
-void setup(Context &context) {
-    SDL_GL_MakeCurrent(context.window, context.gl_context);
+void setup(DrawContext &draw_context) {
+    SDL_GL_MakeCurrent(draw_context.window, draw_context.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
@@ -83,8 +89,8 @@ void setup(Context &context) {
     //ImGui::StyleColorsClassic();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(context.window, context.gl_context);
-    ImGui_ImplOpenGL3_Init(context.glsl_version);
+    ImGui_ImplSDL2_InitForOpenGL(draw_context.window, draw_context.gl_context);
+    ImGui_ImplOpenGL3_Init(draw_context.glsl_version);
 
     loadFonts();
 }
@@ -94,14 +100,16 @@ void clear(Color &c) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-int draw(State &state) {
+int draw(Context &context) {
+    auto &state = context.state;
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
 
-    auto context = createContext();
-    setup(context);
+    auto draw_context = createDrawContext();
+    setup(draw_context);
 
     // Main loop
     bool done = false;
@@ -114,8 +122,11 @@ int draw(State &state) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(context.window)))
+            if (event.type == SDL_QUIT ||
+                (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
+                 event.window.windowID == SDL_GetWindowID(draw_context.window))) {
                 done = true;
+            }
         }
 
         newFrame();
@@ -126,22 +137,27 @@ int draw(State &state) {
             ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
 
             ImGui::Checkbox("Demo Window", &state.show_demo_window);
-            ImGui::ColorEdit3("Background color", (float *) &state.colors.clear);
-            if (ImGui::Button("Stop audio engine")) state.audio_engine_running = false;
+            if (ImGui::ColorEdit3("Background color", (float *) &state.colors.clear)) {
+                context.dispatch(action::set_clear_color{state.colors.clear});
+            }
+            if (ImGui::Button("Stop audio engine")) {
+                context.dispatch(action::set_audio_engine_running{false});
+            }
             ImGui::Checkbox("Play sine wave", &state.sine_on);
             ImGui::SliderFloat("Sine frequency", &state.sine_frequency, 40.0f, 4000.0f);
             ImGui::SliderFloat("Sine amplitude", &state.sine_amplitude, 0.0f, 1.0f);
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+                        ImGui::GetIO().Framerate);
 
             ImGui::End();
         }
 
         // Rendering
         ImGui::Render();
-        glViewport(0, 0, (int) context.io.DisplaySize.x, (int) context.io.DisplaySize.y);
+        glViewport(0, 0, (int) draw_context.io.DisplaySize.x, (int) draw_context.io.DisplaySize.y);
         clear(state.colors.clear);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(context.window);
+        SDL_GL_SwapWindow(draw_context.window);
     }
 
     state.audio_engine_running = false;
@@ -151,8 +167,8 @@ int draw(State &state) {
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_GL_DeleteContext(context.gl_context);
-    SDL_DestroyWindow(context.window);
+    SDL_GL_DeleteContext(draw_context.gl_context);
+    SDL_DestroyWindow(draw_context.window);
     SDL_Quit();
 
     return 0;

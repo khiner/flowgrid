@@ -81,25 +81,12 @@ static void write_callback(SoundIoOutStream *outstream, int /*frame_count_min*/,
     }
 }
 
-static void underflow_callback(struct SoundIoOutStream *) {
+static void underflow_callback(SoundIoOutStream *) {
     static int count = 0;
     fprintf(stderr, "underflow %d\n", count++);
 }
 
-enum Backend {
-    none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
-};
-
-struct SoundConfig {
-    bool raw = false;
-    Backend backend = none;
-    char *device_id = nullptr;
-    char *stream_name = nullptr;
-    double latency = 0.0;
-    int sample_rate = 0;
-};
-
-SoundIoBackend getSoundIOBackend(Backend backend) {
+SoundIoBackend getSoundIOBackend(AudioBackend backend) {
     switch (backend) {
         case dummy: return SoundIoBackendDummy;
         case alsa: return SoundIoBackendAlsa;
@@ -115,7 +102,7 @@ SoundIoBackend getSoundIOBackend(Backend backend) {
     }
 }
 
-static int audioMain(SoundConfig config) {
+static int audioMain(AudioConfig config) {
     auto soundIOBackend = getSoundIOBackend(config.backend);
     auto *soundio = soundio_create();
     if (!soundio) {
@@ -222,8 +209,7 @@ static int audioMain(SoundConfig config) {
 }
 
 int main(int, char **) {
-    SoundConfig config;
-    std::thread audio_thread(audioMain, config);
+    std::thread audio_thread(audioMain, state.audio_config);
 
     draw(context);
     audio_thread.join();

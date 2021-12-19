@@ -40,51 +40,8 @@ static void (*write_sample)(char *ptr, double sample);
 static const double PI = 3.14159265358979323846264338328;
 static double seconds_offset = 0.0;
 
-Context context{};
-auto &state = context.state;
-
-static void write_callback(SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-    double float_sample_rate = outstream->sample_rate;
-    double seconds_per_frame = 1.0 / float_sample_rate;
-    struct SoundIoChannelArea *areas;
-    int err;
-
-    int frames_left = frame_count_max;
-    while (true) {
-        int frame_count = frames_left;
-        if ((err = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
-            fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
-            exit(1);
-        }
-
-        if (!frame_count) break;
-
-        const auto *layout = &outstream->layout;
-        double radians_per_second = state.sine_frequency * 2.0 * PI;
-        for (int frame = 0; frame < frame_count; frame += 1) {
-            double sample = state.sine_on ? state.sine_amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
-            for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                write_sample(areas[channel].ptr, sample);
-                areas[channel].ptr += areas[channel].step;
-            }
-        }
-        seconds_offset = fmod(seconds_offset + seconds_per_frame * frame_count, 1.0);
-
-        if ((err = soundio_outstream_end_write(outstream))) {
-            if (err == SoundIoErrorUnderflow) return;
-            fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
-            exit(1);
-        }
-
-        frames_left -= frame_count;
-        if (frames_left <= 0) break;
-    }
-}
-
-static void underflow_callback(SoundIoOutStream *) {
-    static int count = 0;
-    fprintf(stderr, "underflow %d\n", count++);
-}
+static Context context{};
+static auto &state = context.state;
 
 SoundIoBackend getSoundIOBackend(AudioBackend backend) {
     switch (backend) {
@@ -160,8 +117,6 @@ static int audioMain(AudioConfig config) {
         return 1;
     }
 
-    outstream->write_callback = write_callback;
-    outstream->underflow_callback = underflow_callback;
     outstream->name = config.stream_name;
     outstream->software_latency = config.latency;
     outstream->sample_rate = config.sample_rate;
@@ -182,6 +137,48 @@ static int audioMain(AudioConfig config) {
         fprintf(stderr, "No suitable device format available.\n");
         return 1;
     }
+
+    outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
+        double float_sample_rate = outstream->sample_rate;
+        double seconds_per_frame = 1.0 / float_sample_rate;
+        struct SoundIoChannelArea *areas;
+        int err;
+
+        int frames_left = frame_count_max;
+        while (true) {
+            int frame_count = frames_left;
+            if ((err = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
+                fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
+                exit(1);
+            }
+
+            if (!frame_count) break;
+
+            const auto *layout = &outstream->layout;
+            double radians_per_second = state.sine_frequency * 2.0 * PI;
+            for (int frame = 0; frame < frame_count; frame += 1) {
+                double sample = state.sine_on ? state.sine_amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
+                for (int channel = 0; channel < layout->channel_count; channel += 1) {
+                    write_sample(areas[channel].ptr, sample);
+                    areas[channel].ptr += areas[channel].step;
+                }
+            }
+            seconds_offset = fmod(seconds_offset + seconds_per_frame * frame_count, 1.0);
+
+            if ((err = soundio_outstream_end_write(outstream))) {
+                if (err == SoundIoErrorUnderflow) return;
+                fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
+                exit(1);
+            }
+
+            frames_left -= frame_count;
+            if (frames_left <= 0) break;
+        }
+    };
+    outstream->underflow_callback = [](SoundIoOutStream *) {
+        static int count = 0;
+        fprintf(stderr, "underflow %d\n", count++);
+    };
 
     if ((err = soundio_outstream_open(outstream))) {
         fprintf(stderr, "unable to open device: %s", soundio_strerror(err));
@@ -210,7 +207,6 @@ static int audioMain(AudioConfig config) {
 
 int main(int, char **) {
     std::thread audio_thread(audioMain, state.audio_config);
-
     draw(context);
     audio_thread.join();
     return 0;

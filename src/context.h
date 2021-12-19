@@ -2,9 +2,12 @@
 
 #include <vector>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 #include "action.h"
 #include "update.h"
+
+using json = nlohmann::json;
 
 /**
  * TODO:
@@ -29,7 +32,10 @@ struct Context {
 
 
     void dispatch(Action action) {
-        update(state, action);
+        State newState = update(state, action);
+        json newStateJson = newState;
+        std::cout << newStateJson << std::endl;
+
         actions.push_back(action);
         std::cout << "Num actions: " << actions.size() << std::endl;
     }

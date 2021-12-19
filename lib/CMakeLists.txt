@@ -1,3 +1,7 @@
+#=================== libsoundio ===================
+
+add_subdirectory(libsoundio)
+
 #=================== SDL2 ===================
 
 cmake_policy(SET CMP0077 NEW)
@@ -5,7 +9,6 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 set(SDL2_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
 add_subdirectory(${SDL2_DIR})
-add_subdirectory(libsoundio)
 
 #=================== IMGUI ===================
 
@@ -34,3 +37,7 @@ target_include_directories( IMGUI
 find_package(OpenGL REQUIRED)
 target_link_libraries(IMGUI PUBLIC ${OPENGL_LIBRARIES})
 target_link_libraries(IMGUI PUBLIC SDL2main SDL2 ${CMAKE_DL_LIBS})
+
+#=================== json ===================
+
+add_subdirectory(json)

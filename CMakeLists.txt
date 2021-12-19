@@ -12,6 +12,6 @@ file(GLOB flowgrid_SRC
 
 add_executable(${PROJECT_NAME} ${flowgrid_SRC})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC lib/libsoundio)
-target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared)
+target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_json::nlohmann_json)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

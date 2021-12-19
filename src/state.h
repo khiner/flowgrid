@@ -36,9 +36,19 @@ struct Color {
     }
 };
 
+// TODO Different modes, with different states (e.g. AudioTrackMode),
+//  which control the default settings for
+//    * Layout
+//    * Node organization, move-rules
+//    * Automatic connections-rules
+
+struct Colors {
+    Color clear {};
+};
+
 struct State {
+    Colors colors {};
     bool show_demo_window = true;
-    Color clear_color {};
     bool audio_engine_running = true;
     bool sine_on = false;
     float sine_frequency = 440.0f;

@@ -5,13 +5,17 @@ project(FlowGrid LANGUAGES C CXX)
 
 add_subdirectory("lib")
 
-file(
-    GLOB flowgrid_SRC
-    "src/*.h"
-    "src/*.cpp"
-)
+add_executable(
+    ${PROJECT_NAME}
+    src/action.h
+    src/audio.h
+    src/context.h
+    src/draw.h
+    src/state.h
+    src/update.h
+    src/visitor.h
+    src/main.cpp)
 
-add_executable(${PROJECT_NAME} ${flowgrid_SRC})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC lib/libsoundio)
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_json::nlohmann_json)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

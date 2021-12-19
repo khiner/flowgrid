@@ -30,10 +30,13 @@ struct Context {
     State state{};
     std::vector<Action> actions;
 
-
     void dispatch(Action action) {
-        State newState = update(state, action);
-        json newStateJson = newState;
+        // `update` returns a new state, without modifying the given state.
+        // However, `Context.state` is read directly as a reference.
+        // So for now, just assign right back to `Context.state`.
+        state = update(state, action);
+        // TODO save json to file instead of printing.
+        json newStateJson = state;
         std::cout << newStateJson << std::endl;
 
         actions.push_back(action);

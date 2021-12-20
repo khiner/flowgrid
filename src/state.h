@@ -1,11 +1,7 @@
 #pragma once
 
 struct Color {
-    float r, g, b, a;
-
-    Color() { r = g = b = a = 0.0f; }
-    Color(float r, float g, float b) : r(r), g(g), b(b), a(0) {}
-    Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
+    float r = 0, g = 0, b = 0, a = 0;
 
     Color &operator+=(float x) &{
         r += x;
@@ -14,17 +10,17 @@ struct Color {
         return *this;
     }
 
-    Color &operator*=(float x) &{
-        r *= x;
-        g *= x;
-        b *= x;
-        return *this;
-    }
-
     Color &operator+=(Color const &c) &{
         r += c.r;
         g += c.g;
         b += c.b;
+        return *this;
+    }
+
+    Color &operator*=(float x) &{
+        r *= x;
+        g *= x;
+        b *= x;
         return *this;
     }
 

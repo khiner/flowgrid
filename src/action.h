@@ -4,20 +4,26 @@
 #include "state.h"
 
 // An `Action` is an immutable representation of a user interaction event.
-// An `Action` action stores all information needed (for a `Reducer`) to apply the action to a given `State` instance.
+// Each action stores all information needed for `update` to apply it to a given `State` instance.
 
 namespace action {
 
-struct set_clear_color {
-    Color color{};
-};
-
-struct set_audio_engine_running {
-    bool running;
-};
+struct toggle_demo_window {};
+struct toggle_sine_wave {};
+struct set_clear_color { Color color{}; };
+struct set_audio_engine_running { bool running; };
+struct set_sine_frequency { int frequency; };
+struct set_sine_amplitude { float amplitude; };
 
 }
 
 using namespace action;
 
-using Action = std::variant<set_clear_color, set_audio_engine_running>;
+using Action = std::variant<
+    toggle_demo_window,
+    toggle_sine_wave,
+    set_clear_color,
+    set_audio_engine_running,
+    set_sine_frequency,
+    set_sine_amplitude
+>;

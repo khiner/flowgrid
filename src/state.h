@@ -61,17 +61,22 @@ struct AudioConfig {
     int sample_rate = 0;
 };
 
+struct Sine {
+    bool on = false;
+    int frequency = 440;
+    float amplitude = 0.5;
+};
+
 struct State {
     AudioConfig audio_config;
     Colors colors{};
+    Sine sine{};
     bool show_demo_window = true;
     bool audio_engine_running = true;
-    bool sine_on = false;
-    float sine_frequency = 440.0f;
-    float sine_amplitude = 0.5f;
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AudioConfig, raw, backend, latency, sample_rate) // TODO string fields
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, audio_config, colors, show_demo_window, audio_engine_running, sine_on, sine_frequency, sine_amplitude)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Sine, on, frequency, amplitude)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, audio_config, colors, show_demo_window, audio_engine_running, sine);

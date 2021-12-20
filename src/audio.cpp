@@ -152,9 +152,9 @@ int audio() {
             if (!frame_count) break;
 
             const auto *layout = &outstream->layout;
-            double radians_per_second = state.sine_frequency * 2.0 * PI;
+            double radians_per_second = state.sine.frequency * 2.0 * PI;
             for (int frame = 0; frame < frame_count; frame += 1) {
-                double sample = state.sine_on ? state.sine_amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
+                double sample = state.sine.on ? state.sine.amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
                     write_sample(areas[channel].ptr, sample);
                     areas[channel].ptr += areas[channel].step;

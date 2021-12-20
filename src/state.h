@@ -6,9 +6,7 @@ struct Color {
     float r, g, b, a;
 
     Color() { r = g = b = a = 0.0f; }
-
     Color(float r, float g, float b) : r(r), g(g), b(b), a(0) {}
-
     Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
 
     Color &operator+=(float x) &{

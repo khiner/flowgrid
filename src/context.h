@@ -10,21 +10,26 @@
 using json = nlohmann::json;
 
 /**
- * TODO:
- *   * move the state "play-head" backward or forward in time by some `int steps`
- *     - this method steps through each diff one by one
- *   * take full-state snapshots periodically (or explicitly via a method)
- *   * compress (sequentially combine) any contiguous range of the series to a shorter length (down to length 1)
- *     - provide both mutating and non-mutating versions
- *       * mutating permanently destroys intermediate states between the two requested states
- *         - used to limit memory usage, to an optionally-specified hard memory limit
- *         - support two modes: "drop tail", or "drop middle"
- *           * What's more important to you? The full story from beginning to end, or fidelity of the recent past? Some combination?
- *       * non-mutating returns the requested range
- *   Note: A diff-first implementation means random-access is $O(L)$, where $L$ is the length of the state series (the total number of actions).
-  *      However, performance can be bought with more storage by storing more snapshots.
-  *      With more snapshots, any position can be accessed more quickly by first skipping to the state snapshot closest to the requested index.
+  TODO a pub-sub action event queue.
+    See [lager](https://github.com/arximboldi/lager/blob/master/lager/context.hpp), which is very complicated.
+    What we need from `lager::context` is the ability to subscribe to a filtered set of actions.
+    The GOAT: https://github.com/arximboldi/lager/blob/master/lager/context.hpp
+    Basically I want this pattern ^, but want to implement it as needed myself, and fully understand it.
+    Other resources:
+    * https://www.geeksforgeeks.org/sharing-queue-among-three-threads/
+    * https://www.codeproject.com/Articles/1169105/Cplusplus-std-thread-Event-Loop-with-Message-Queu
+  TODO
+    Implement action listeners to:
+    * Print state to stdout
+    * Save JSON state to disk
+    * Insert the action into the main in-memory action storage data structure
+      - Almost definitely a Hash Array Mapped Trie (HAMT).
+        Probably just copy (with MIT copyright notice as required)
+        [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
+        and modify to taste.
+    * Run ImGui side-effects
  */
+
 
 struct Context {
     State state{};
@@ -35,7 +40,6 @@ struct Context {
         // However, `Context.state` is read directly as a reference.
         // So for now, just assign right back to `Context.state`.
         state = update(state, action);
-        // TODO save json to file instead of printing.
         json newStateJson = state;
         std::cout << newStateJson << std::endl;
 

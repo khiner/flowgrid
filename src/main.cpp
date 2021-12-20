@@ -11,7 +11,7 @@ Context context{};
 int main(int, char **) {
     std::thread audio_thread(audio);
     draw();
-    context.state.audio_engine_running = false; // TODO applying actions without tracking (everything else in `Context::dispatch`)
+    context.state.audio.running = false; // TODO applying actions without tracking (everything else in `Context::dispatch`)
     audio_thread.join();
     return 0;
 }

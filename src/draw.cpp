@@ -111,9 +111,9 @@ int draw() {
     // Copy the initial state for use with ImGui components.
     // This ensures we don't modify `context.state` directly, maintaining the contract that only
     // `context` modifies its own state via actions.
-    auto state = c.state;
+    auto s = c.state;
     // Some extra annoying state for tracking things that ImGui won't tell us about.
-    bool show_demo_window = state.show_demo_window;
+    bool show_demo_window = s.windows.demo.show;
 
     // Main loop
     bool done = false;
@@ -135,21 +135,21 @@ int draw() {
 
         newFrame();
 
-        if (state.show_demo_window) ImGui::ShowDemoWindow(&state.show_demo_window);
-        if (state.show_demo_window != show_demo_window) {
-            show_demo_window = state.show_demo_window;
+        if (s.windows.demo.show) ImGui::ShowDemoWindow(&s.windows.demo.show);
+        if (s.windows.demo.show != show_demo_window) {
+            show_demo_window = s.windows.demo.show;
             c.dispatch(toggle_demo_window{});
         }
 
         {
             ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
 
-            ImGui::Checkbox("Demo Window", &state.show_demo_window);
-            if (ImGui::ColorEdit3("Background color", (float *) &state.colors.clear)) { c.dispatch(set_clear_color{state.colors.clear}); }
+            ImGui::Checkbox("Demo Window", &s.windows.demo.show);
+            if (ImGui::ColorEdit3("Background color", (float *) &s.colors.clear)) { c.dispatch(set_clear_color{s.colors.clear}); }
             if (ImGui::Button("Stop audio engine")) { c.dispatch(set_audio_engine_running{false}); }
-            if (ImGui::Checkbox("Play sine wave", &state.sine.on)) { c.dispatch(toggle_sine_wave{}); }
-            if (ImGui::SliderInt("Sine frequency", &state.sine.frequency, 40.0f, 4000.0f)) { c.dispatch(set_sine_frequency{state.sine.frequency}); }
-            if (ImGui::SliderFloat("Sine amplitude", &state.sine.amplitude, 0.0f, 1.0f)) { c.dispatch(set_sine_amplitude{state.sine.amplitude}); }
+            if (ImGui::Checkbox("Play sine wave", &s.sine.on)) { c.dispatch(toggle_sine_wave{}); }
+            if (ImGui::SliderInt("Sine frequency", &s.sine.frequency, 40.0f, 4000.0f)) { c.dispatch(set_sine_frequency{s.sine.frequency}); }
+            if (ImGui::SliderFloat("Sine amplitude", &s.sine.amplitude, 0.0f, 1.0f)) { c.dispatch(set_sine_amplitude{s.sine.amplitude}); }
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
@@ -159,7 +159,7 @@ int draw() {
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int) draw_context.io.DisplaySize.x, (int) draw_context.io.DisplaySize.y);
-        clear(state.colors.clear);
+        clear(s.colors.clear);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(draw_context.window);
     }

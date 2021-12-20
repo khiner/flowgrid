@@ -56,7 +56,7 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
 
 int audio() {
     auto &state = context.state;
-    auto &config = state.audio_config;
+    auto &config = state.audio;
     auto soundIOBackend = getSoundIOBackend(config.backend);
     auto *soundio = soundio_create();
     if (!soundio) {
@@ -193,7 +193,7 @@ int audio() {
         return 1;
     }
 
-    while (state.audio_engine_running) {}
+    while (state.audio.running) {}
 
     soundio_outstream_destroy(outstream);
     soundio_device_unref(device);

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
-
 struct Color {
     float r, g, b, a;
 
@@ -48,17 +46,27 @@ struct Colors {
     Color clear{};
 };
 
+struct Window {
+    bool show;
+};
+
+struct Windows {
+    Window demo;
+};
+
+
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
 
-struct AudioConfig {
-    bool raw = false;
+struct Audio {
     AudioBackend backend = none;
     char *device_id = nullptr;
     char *stream_name = nullptr;
     double latency = 0.0;
     int sample_rate = 0;
+    bool raw = false;
+    bool running = true;
 };
 
 struct Sine {
@@ -68,15 +76,19 @@ struct Sine {
 };
 
 struct State {
-    AudioConfig audio_config;
-    Colors colors{};
-    Sine sine{};
-    bool show_demo_window = true;
-    bool audio_engine_running = true;
+    Colors colors;
+    Windows windows;
+    Audio audio;
+    Sine sine;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AudioConfig, raw, backend, latency, sample_rate) // TODO string fields
+#include <nlohmann/json.hpp>
+
+// JSON serializers
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, raw, backend, latency, sample_rate) // TODO string fields
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, demo)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Sine, on, frequency, amplitude)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, audio_config, colors, show_demo_window, audio_engine_running, sine);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, colors, windows, audio, sine, audio);

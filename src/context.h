@@ -19,15 +19,17 @@ using json = nlohmann::json;
     * https://www.geeksforgeeks.org/sharing-queue-among-three-threads/
     * https://www.codeproject.com/Articles/1169105/Cplusplus-std-thread-Event-Loop-with-Message-Queu
   TODO
-    Implement action listeners to:
-    * Print state to stdout
-    * Save JSON state to disk
-    * Insert the action into the main in-memory action storage data structure
-      - Almost definitely a Hash Array Mapped Trie (HAMT).
-        Probably just copy (with MIT copyright notice as required)
-        [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
-        and modify to taste.
-    * Run ImGui side-effects
+    - Implement action listeners to:
+        - Print state to stdout
+        - Save JSON state to disk
+        - Insert the action into the main in-memory action storage data structure
+            - Undo should emulate functionality of [Vim's undotree](https://github.com/mbbill/undotree/blob/master/autoload/undotree.vim)
+                - undo-tree in zig? :D
+        - Run ImGui side-effects
+    - Consider the Hash Array Mapped Trie (HAMT) data structure for state, diff, and/or actions (fast keyed access and fast-ish updates,
+      exploiting the state's natural tree structure.
+        - Probably just copy (with MIT copyright notice as required).
+          [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include), and modify to taste.
  */
 
 

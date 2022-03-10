@@ -67,8 +67,8 @@ void loadFonts() {
     //IM_ASSERT(font != NULL);
 }
 
-void setup(DrawContext &draw_context) {
-    SDL_GL_MakeCurrent(draw_context.window, draw_context.gl_context);
+void setup(DrawContext &dc) {
+    SDL_GL_MakeCurrent(dc.window, dc.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
@@ -84,18 +84,54 @@ void setup(DrawContext &draw_context) {
     //ImGui::StyleColorsClassic();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(draw_context.window, draw_context.gl_context);
-    ImGui_ImplOpenGL3_Init(draw_context.glsl_version);
+    ImGui_ImplSDL2_InitForOpenGL(dc.window, dc.gl_context);
+    ImGui_ImplOpenGL3_Init(dc.glsl_version);
 
     loadFonts();
 }
 
-void clear(Color &c) {
-    glClearColor(c.r, c.g, c.b, c.a);
-    glClear(GL_COLOR_BUFFER_BIT);
+void teardown(DrawContext &dc) {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
+    SDL_GL_DeleteContext(dc.gl_context);
+    SDL_DestroyWindow(dc.window);
+    SDL_Quit();
 }
 
 using namespace action;
+
+auto &c = context; // For convenience
+
+void drawFrame(State &s) {
+    if (s.windows.demo.show) ImGui::ShowDemoWindow(&s.windows.demo.show);
+
+    {
+        ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
+
+        if (ImGui::Checkbox("Demo Window", &s.windows.demo.show)) { c.dispatch(toggle_demo_window{}); }
+        if (ImGui::ColorEdit3("Background color", (float *) &s.colors.clear)) { c.dispatch(set_clear_color{s.colors.clear}); }
+        if (ImGui::Button("Stop audio engine")) { c.dispatch(set_audio_engine_running{false}); }
+        if (ImGui::Checkbox("Play sine wave", &s.sine.on)) { c.dispatch(toggle_sine_wave{}); }
+        if (ImGui::SliderInt("Sine frequency", &s.sine.frequency, 40.0f, 4000.0f)) { c.dispatch(set_sine_frequency{s.sine.frequency}); }
+        if (ImGui::SliderFloat("Sine amplitude", &s.sine.amplitude, 0.0f, 1.0f)) { c.dispatch(set_sine_amplitude{s.sine.amplitude}); }
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+        ImGui::End();
+    }
+}
+
+void render(DrawContext &dc, Color &clear_color) {
+    ImGui::Render();
+    glViewport(0, 0, (int) dc.io.DisplaySize.x, (int) dc.io.DisplaySize.y);
+    glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    SDL_GL_SwapWindow(dc.window);
+}
+
 
 int draw() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
@@ -103,17 +139,13 @@ int draw() {
         return -1;
     }
 
-    auto draw_context = createDrawContext();
-    setup(draw_context);
+    auto dc = createDrawContext();
+    setup(dc);
 
-    auto &c = context; // For convenience
-
-    // Copy the initial state for use with ImGui components.
+    // Copy the initial state for every draw, for use with ImGui components.
     // This ensures we don't modify `context.state` directly, maintaining the contract that only
     // `context` modifies its own state via actions.
     auto s = c.state;
-    // Some extra annoying state for tracking things that ImGui won't tell us about.
-    bool show_demo_window = s.windows.demo.show;
 
     // Main loop
     bool done = false;
@@ -128,50 +160,17 @@ int draw() {
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT ||
                 (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                 event.window.windowID == SDL_GetWindowID(draw_context.window))) {
+                 event.window.windowID == SDL_GetWindowID(dc.window))) {
                 done = true;
             }
         }
 
         newFrame();
-
-        if (s.windows.demo.show) ImGui::ShowDemoWindow(&s.windows.demo.show);
-        if (s.windows.demo.show != show_demo_window) {
-            show_demo_window = s.windows.demo.show;
-            c.dispatch(toggle_demo_window{});
-        }
-
-        {
-            ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
-
-            ImGui::Checkbox("Demo Window", &s.windows.demo.show);
-            if (ImGui::ColorEdit3("Background color", (float *) &s.colors.clear)) { c.dispatch(set_clear_color{s.colors.clear}); }
-            if (ImGui::Button("Stop audio engine")) { c.dispatch(set_audio_engine_running{false}); }
-            if (ImGui::Checkbox("Play sine wave", &s.sine.on)) { c.dispatch(toggle_sine_wave{}); }
-            if (ImGui::SliderInt("Sine frequency", &s.sine.frequency, 40.0f, 4000.0f)) { c.dispatch(set_sine_frequency{s.sine.frequency}); }
-            if (ImGui::SliderFloat("Sine amplitude", &s.sine.amplitude, 0.0f, 1.0f)) { c.dispatch(set_sine_amplitude{s.sine.amplitude}); }
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-            ImGui::End();
-        }
-
-        // Rendering
-        ImGui::Render();
-        glViewport(0, 0, (int) draw_context.io.DisplaySize.x, (int) draw_context.io.DisplaySize.y);
-        clear(s.colors.clear);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(draw_context.window);
+        drawFrame(s);
+        render(dc, s.colors.clear);
     }
 
-    // Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
-
-    SDL_GL_DeleteContext(draw_context.gl_context);
-    SDL_DestroyWindow(draw_context.window);
-    SDL_Quit();
+    teardown(dc);
 
     return 0;
 }

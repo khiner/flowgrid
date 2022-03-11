@@ -7,7 +7,7 @@
 #include <cmath>
 #include <soundio/soundio.h>
 
-#include "context.h"
+#include "audio.h"
 
 static void write_sample_s16ne(char *ptr, double sample) {
     auto *buf = (int16_t *) ptr;
@@ -54,9 +54,8 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
     }
 }
 
-int audio() {
-    auto &state = context.state;
-    auto &config = state.audio;
+int audio(State &s) {
+    auto &config = s.audio;
     auto soundIOBackend = getSoundIOBackend(config.backend);
     auto *soundio = soundio_create();
     if (!soundio) {
@@ -135,7 +134,9 @@ int audio() {
         return 1;
     }
 
+    outstream->userdata = reinterpret_cast<void *>(&s);
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
+        auto s = reinterpret_cast<State &>(outstream->userdata);
         double float_sample_rate = outstream->sample_rate;
         double seconds_per_frame = 1.0 / float_sample_rate;
         struct SoundIoChannelArea *areas;
@@ -152,9 +153,9 @@ int audio() {
             if (!frame_count) break;
 
             const auto *layout = &outstream->layout;
-            double radians_per_second = state.sine.frequency * 2.0 * PI;
+            double radians_per_second = s.sine.frequency * 2.0 * PI;
             for (int frame = 0; frame < frame_count; frame += 1) {
-                double sample = state.sine.on ? state.sine.amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
+                double sample = s.sine.on ? s.sine.amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
                     write_sample(areas[channel].ptr, sample);
                     areas[channel].ptr += areas[channel].step;
@@ -193,7 +194,7 @@ int audio() {
         return 1;
     }
 
-    while (state.audio.running) {}
+    while (s.audio.running) {}
 
     soundio_outstream_destroy(outstream);
     soundio_device_unref(device);

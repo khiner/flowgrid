@@ -6,12 +6,11 @@
 #include "audio.h"
 #include "draw.h"
 
-Context context{};
-
 int main(int, char **) {
-    std::thread audio_thread(audio);
-    draw();
-    context.state.audio.running = false; // TODO applying actions without tracking (everything else in `Context::dispatch`)
+    Context c{};
+    std::thread audio_thread(audio, std::ref(c.state));
+    draw(c, c.state);
+    c.state.audio.running = false;
     audio_thread.join();
     return 0;
 }

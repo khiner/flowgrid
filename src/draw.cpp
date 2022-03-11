@@ -4,7 +4,7 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 
-#include "context.h"
+#include "draw.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -102,9 +102,7 @@ void teardown(DrawContext &dc) {
 
 using namespace action;
 
-auto &c = context; // For convenience
-
-void drawFrame(State &s) {
+void drawFrame(Context &c, State &s) {
     if (s.windows.demo.show) ImGui::ShowDemoWindow(&s.windows.demo.show);
 
     {
@@ -133,7 +131,7 @@ void render(DrawContext &dc, Color &clear_color) {
 }
 
 
-int draw() {
+int draw(Context &c, State s) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -141,11 +139,6 @@ int draw() {
 
     auto dc = createDrawContext();
     setup(dc);
-
-    // Copy the initial state for every draw, for use with ImGui components.
-    // This ensures we don't modify `context.state` directly, maintaining the contract that only
-    // `context` modifies its own state via actions.
-    auto s = c.state;
 
     // Main loop
     bool done = false;
@@ -166,7 +159,7 @@ int draw() {
         }
 
         newFrame();
-        drawFrame(s);
+        drawFrame(c, s);
         render(dc, s.colors.clear);
     }
 

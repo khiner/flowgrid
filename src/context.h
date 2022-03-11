@@ -10,25 +10,16 @@
 using json = nlohmann::json;
 
 /**
-  TODO a pub-sub action event queue.
-    See [lager](https://github.com/arximboldi/lager/blob/master/lager/context.hpp), which is very complicated.
-    What we need from `lager::context` is the ability to subscribe to a filtered set of actions.
-    The GOAT: https://github.com/arximboldi/lager/blob/master/lager/context.hpp
-    Basically I want this pattern ^, but want to implement it as needed myself, and fully understand it.
-    Other resources:
-    * https://www.geeksforgeeks.org/sharing-queue-among-three-threads/
-    * https://www.codeproject.com/Articles/1169105/Cplusplus-std-thread-Event-Loop-with-Message-Queu
   TODO
-    - Implement action listeners to:
+    - Implement Views to:
         - Print state to stdout
         - Save JSON state to disk
         - Insert the action into the main in-memory action storage data structure
             - Undo should emulate functionality of [Vim's undotree](https://github.com/mbbill/undotree/blob/master/autoload/undotree.vim)
-                - undo-tree in zig? :D
         - Run ImGui side-effects
     - Consider the Hash Array Mapped Trie (HAMT) data structure for state, diff, and/or actions (fast keyed access and fast-ish updates,
       exploiting the state's natural tree structure.
-        - Probably just copy (with MIT copyright notice as required).
+        - Probably just copy (with MIT copyright notice as required)
           [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include), and modify to taste.
  */
 
@@ -39,8 +30,6 @@ struct Context {
 
     void dispatch(Action action) {
         // `update` returns a new state, without modifying the given state.
-        // However, `Context.state` is read directly as a reference.
-        // So for now, just assign right back to `Context.state`.
         state = update(state, action);
         json newStateJson = state;
         std::cout << newStateJson << std::endl;
@@ -49,5 +38,3 @@ struct Context {
         std::cout << "Num actions: " << actions.size() << std::endl;
     }
 };
-
-extern Context context;

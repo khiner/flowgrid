@@ -1,3 +1,5 @@
 #pragma once
 
-int audio();
+#include "state.h"
+
+int audio(State &s);

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <vector>
 #include <iostream>
 #include <nlohmann/json.hpp>
 
 #include "action.h"
 #include "update.h"
+#include "action_tree.h"
 
 using json = nlohmann::json;
 
@@ -18,35 +18,17 @@ using json = nlohmann::json;
     Other resources:
     * https://www.geeksforgeeks.org/sharing-queue-among-three-threads/
     * https://www.codeproject.com/Articles/1169105/Cplusplus-std-thread-Event-Loop-with-Message-Queu
-  TODO
-    - Implement action listeners to:
-        - Print state to stdout
-        - Save JSON state to disk
-        - Insert the action into the main in-memory action storage data structure
-            - Undo should emulate functionality of [Vim's undotree](https://github.com/mbbill/undotree/blob/master/autoload/undotree.vim)
-                - undo-tree in zig? :D
-        - Run ImGui side-effects
-    - Consider the Hash Array Mapped Trie (HAMT) data structure for state, diff, and/or actions (fast keyed access and fast-ish updates,
-      exploiting the state's natural tree structure.
-        - Probably just copy (with MIT copyright notice as required).
-          [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include), and modify to taste.
  */
-
 
 struct Context {
     State state{};
-    std::vector<Action> actions;
+    ActionTree actions;
 
     void dispatch(Action action) {
-        // `update` returns a new state, without modifying the given state.
-        // However, `Context.state` is read directly as a reference.
-        // So for now, just assign right back to `Context.state`.
         state = update(state, action);
         json newStateJson = state;
         std::cout << newStateJson << std::endl;
-
-        actions.push_back(action);
-        std::cout << "Num actions: " << actions.size() << std::endl;
+        actions.on_action(action);
     }
 };
 

@@ -10,3 +10,6 @@
 [submodule "lib/json"]
 	path = lib/json
 	url = git@github.com:nlohmann/json.git
+[submodule "lib/faust"]
+	path = lib/faust
+	url = git@github.com:grame-cncm/faust.git

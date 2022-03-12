@@ -11,7 +11,7 @@ namespace action {
 struct toggle_demo_window {};
 struct toggle_sine_wave {};
 struct set_clear_color { Color color{}; };
-struct set_audio_engine_running { bool running; };
+struct set_audio_thread_running { bool running; };
 struct set_sine_frequency { int frequency; };
 struct set_sine_amplitude { float amplitude; };
 
@@ -23,7 +23,7 @@ using Action = std::variant<
     toggle_demo_window,
     toggle_sine_wave,
     set_clear_color,
-    set_audio_engine_running,
+    set_audio_thread_running,
     set_sine_frequency,
     set_sine_amplitude
 >;

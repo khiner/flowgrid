@@ -81,7 +81,7 @@ struct State {
 #include <nlohmann/json.hpp>
 
 // JSON serializers
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, raw, backend, latency, sample_rate) // TODO string fields
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, backend, latency, sample_rate, raw, running) // TODO string fields
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show)

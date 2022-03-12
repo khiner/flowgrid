@@ -102,9 +102,7 @@ void teardown(DrawContext &dc) {
 
 using namespace action;
 
-auto &c = context; // For convenience
-
-void drawFrame(State &s) {
+void drawFrame(Context &c, State &s) {
     if (s.windows.demo.show) ImGui::ShowDemoWindow(&s.windows.demo.show);
 
     {
@@ -112,7 +110,7 @@ void drawFrame(State &s) {
 
         if (ImGui::Checkbox("Demo Window", &s.windows.demo.show)) { c.dispatch(toggle_demo_window{}); }
         if (ImGui::ColorEdit3("Background color", (float *) &s.colors.clear)) { c.dispatch(set_clear_color{s.colors.clear}); }
-        if (ImGui::Button("Stop audio engine")) { c.dispatch(set_audio_engine_running{false}); }
+        if (ImGui::Button("Stop audio thread")) { c.dispatch(set_audio_thread_running{false}); }
         if (ImGui::Checkbox("Play sine wave", &s.sine.on)) { c.dispatch(toggle_sine_wave{}); }
         if (ImGui::SliderInt("Sine frequency", &s.sine.frequency, 40.0f, 4000.0f)) { c.dispatch(set_sine_frequency{s.sine.frequency}); }
         if (ImGui::SliderFloat("Sine amplitude", &s.sine.amplitude, 0.0f, 1.0f)) { c.dispatch(set_sine_amplitude{s.sine.amplitude}); }
@@ -133,7 +131,7 @@ void render(DrawContext &dc, Color &clear_color) {
 }
 
 
-int draw() {
+int draw(Context &c, State s) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -141,11 +139,6 @@ int draw() {
 
     auto dc = createDrawContext();
     setup(dc);
-
-    // Copy the initial state for every draw, for use with ImGui components.
-    // This ensures we don't modify `context.state` directly, maintaining the contract that only
-    // `context` modifies its own state via actions.
-    auto s = c.state;
 
     // Main loop
     bool done = false;
@@ -166,11 +159,12 @@ int draw() {
         }
 
         newFrame();
-        drawFrame(s);
+        drawFrame(c, s);
         render(dc, s.colors.clear);
     }
 
     teardown(dc);
+    c.dispatch(set_audio_thread_running{false});
 
     return 0;
 }

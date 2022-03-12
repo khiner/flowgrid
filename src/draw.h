@@ -1,3 +1,5 @@
 #pragma once
 
-int draw();
+#include "context.h"
+
+int draw(Context &, State);

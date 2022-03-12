@@ -1,13 +1,10 @@
 #pragma once
 
 #include <iostream>
-#include <nlohmann/json.hpp>
 
-#include "action.h"
 #include "update.h"
 #include "action_tree.h"
-
-using json = nlohmann::json;
+#include "state_renderers/render_json.h"
 
 /**
   TODO a pub-sub action event queue.
@@ -26,8 +23,7 @@ struct Context {
 
     void dispatch(Action action) {
         state = update(state, action);
-        json newStateJson = state;
-        std::cout << newStateJson << std::endl;
+        std::cout << render_json(state) << std::endl;
         actions.on_action(action);
     }
 };

@@ -60,7 +60,7 @@ struct Audio {
     char *device_id = nullptr;
     char *stream_name = nullptr;
     double latency = 0.0;
-    int sample_rate = 0;
+    int sample_rate = 48000;
     bool raw = false;
     bool running = true;
 };

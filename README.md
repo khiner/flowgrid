@@ -22,6 +22,7 @@ Currently:
 ### Mac
 
 ```shell
+$ git submodule update --recursive --remote
 $ brew install pkgconfig llvm
 $ brew link llvm --force # I needed this to put the `llvm-config` executable in my PATH
 ```

@@ -1,11 +1,14 @@
 // Adapted from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_sine.c
 
+#include <numbers>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
 #include <cmath>
 #include <soundio/soundio.h>
+#include "faust/dsp/llvm-dsp.h"
+//#include "generator/libfaust.h" // For the C++ backend
 
 #include "context.h"
 
@@ -35,7 +38,6 @@ static void write_sample_float64ne(char *ptr, double sample) {
 
 static void (*write_sample)(char *ptr, double sample);
 
-static const double PI = 3.14159265358979323846264338328;
 static double seconds_offset = 0.0;
 
 SoundIoBackend getSoundIOBackend(AudioBackend backend) {
@@ -54,17 +56,34 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
     }
 }
 
-int audio() {
+int audio(const std::string &faust_libraries_path) {
     auto &s = context.state;
-    auto &config = s.audio;
-    auto soundIOBackend = getSoundIOBackend(config.backend);
+
+    // Faust initialization
+    int faust_argc = 0;
+    const char **faust_argv = new const char *[8];
+    faust_argv[faust_argc++] = "-I";
+    faust_argv[faust_argc++] = &faust_libraries_path[0]; // convert to char*
+//    argv[argc++] = "-vec";
+//    argv[argc++] = "-vs";
+//    argv[argc++] = "128";
+//    argv[argc++] = "-dfs";
+    const int optimize = -1;
+
+    const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
+    std::string faust_error_msg = "Encountered an error during Faust DSP factory creation";
+    auto *faust_dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, faust_argc, faust_argv, "", faust_error_msg, optimize);
+    auto *faust_dsp = faust_dsp_factory->createDSPInstance();
+    faust_dsp->init(context.state.audio.sample_rate);
+
+    auto soundIOBackend = getSoundIOBackend(s.audio.backend);
     auto *soundio = soundio_create();
     if (!soundio) {
         fprintf(stderr, "out of memory\n");
         return 1;
     }
 
-    int err = (config.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, soundIOBackend);
+    int err = (s.audio.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, soundIOBackend);
     if (err) {
         fprintf(stderr, "Unable to connect to backend: %s\n", soundio_strerror(err));
         return 1;
@@ -75,11 +94,11 @@ int audio() {
     soundio_flush_events(soundio);
 
     int selected_device_index = -1;
-    if (config.device_id) {
+    if (s.audio.device_id) {
         int device_count = soundio_output_device_count(soundio);
         for (int i = 0; i < device_count; i += 1) {
             auto *device = soundio_get_output_device(soundio, i);
-            bool select_this_one = strcmp(device->id, config.device_id) == 0 && device->is_raw == config.raw;
+            bool select_this_one = strcmp(device->id, s.audio.device_id) == 0 && device->is_raw == s.audio.raw;
             soundio_device_unref(device);
             if (select_this_one) {
                 selected_device_index = i;
@@ -114,9 +133,9 @@ int audio() {
         return 1;
     }
 
-    outstream->name = config.stream_name;
-    outstream->software_latency = config.latency;
-    outstream->sample_rate = config.sample_rate;
+    outstream->name = s.audio.stream_name;
+    outstream->software_latency = s.audio.latency;
+    outstream->sample_rate = s.audio.sample_rate;
 
     if (soundio_device_supports_format(device, SoundIoFormatFloat32NE)) {
         outstream->format = SoundIoFormatFloat32NE;
@@ -135,6 +154,7 @@ int audio() {
         return 1;
     }
 
+    outstream->userdata = faust_dsp;
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
         double float_sample_rate = outstream->sample_rate;
         double seconds_per_frame = 1.0 / float_sample_rate;
@@ -152,7 +172,7 @@ int audio() {
             if (!frame_count) break;
 
             const auto *layout = &outstream->layout;
-            double radians_per_second = s.sine.frequency * 2.0 * PI;
+            double radians_per_second = s.sine.frequency * 2.0 * std::numbers::pi;
             for (int frame = 0; frame < frame_count; frame += 1) {
                 double sample = s.sine.on ? s.sine.amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
@@ -160,6 +180,9 @@ int audio() {
                     areas[channel].ptr += areas[channel].step;
                 }
             }
+//            dsp *faust_dsp = reinterpret_cast<dsp *>(outstream->userdata);
+//            faust_dsp->compute(frame_count, nullptr, (FAUSTFLOAT **) areas[0].ptr); // TODO need to create these 2d float IO buffers
+
             seconds_offset = fmod(seconds_offset + seconds_per_frame * frame_count, 1.0);
 
             if ((err = soundio_outstream_end_write(outstream))) {
@@ -195,6 +218,11 @@ int audio() {
 
     while (s.audio.running) {}
 
+    // Faust cleanup
+    delete faust_dsp;
+    deleteDSPFactory(faust_dsp_factory);
+
+    // SoundIO cleanup
     soundio_outstream_destroy(outstream);
     soundio_device_unref(device);
     soundio_destroy(soundio);

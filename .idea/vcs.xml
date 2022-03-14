@@ -4,6 +4,9 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/SDL" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/faust" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/faust/architecture/android/app/oboe" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/faust/architecture/smartKeyboard/android/app/oboe" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/faust/libraries" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/imgui" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/json" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/libsoundio" vcs="Git" />

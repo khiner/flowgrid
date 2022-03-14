@@ -1,3 +1,3 @@
 #pragma once
 
-int audio();
+int audio(const std::string &faust_libraries_path);

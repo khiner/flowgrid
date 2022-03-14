@@ -56,6 +56,13 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
     }
 }
 
+struct FaustData {
+    int num_frames;
+    dsp *llvm_dsp;
+    FAUSTFLOAT **input_samples;
+    FAUSTFLOAT **output_samples;
+};
+
 int audio(const std::string &faust_libraries_path) {
     auto &s = context.state;
 
@@ -69,7 +76,6 @@ int audio(const std::string &faust_libraries_path) {
 //    argv[argc++] = "128";
 //    argv[argc++] = "-dfs";
     const int optimize = -1;
-
     const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
     std::string faust_error_msg = "Encountered an error during Faust DSP factory creation";
     auto *faust_dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, faust_argc, faust_argv, "", faust_error_msg, optimize);
@@ -154,7 +160,17 @@ int audio(const std::string &faust_libraries_path) {
         return 1;
     }
 
-    outstream->userdata = faust_dsp;
+    const int expected_frame_count_max = 512; // TODO how can we get this outside of the write callback?
+    const int num_input_channels = faust_dsp->getNumInputs();
+    const int num_output_channels = faust_dsp->getNumOutputs();
+    FAUSTFLOAT *input_samples[num_input_channels];
+    FAUSTFLOAT *output_samples[num_output_channels];
+    for (int i = 0; i < num_input_channels; i++) { input_samples[i] = new FAUSTFLOAT[expected_frame_count_max]; }
+    for (int i = 0; i < num_output_channels; i++) { output_samples[i] = new FAUSTFLOAT[expected_frame_count_max]; }
+
+    FaustData faust_data{expected_frame_count_max, faust_dsp, input_samples, output_samples};
+    outstream->userdata = &faust_data;
+
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
         double float_sample_rate = outstream->sample_rate;
         double seconds_per_frame = 1.0 / float_sample_rate;
@@ -171,17 +187,18 @@ int audio(const std::string &faust_libraries_path) {
 
             if (!frame_count) break;
 
+            auto *faust_data = reinterpret_cast<FaustData *>(outstream->userdata);
+            faust_data->llvm_dsp->compute(frame_count, faust_data->input_samples, faust_data->output_samples);
+
             const auto *layout = &outstream->layout;
-            double radians_per_second = s.sine.frequency * 2.0 * std::numbers::pi;
             for (int frame = 0; frame < frame_count; frame += 1) {
-                double sample = s.sine.on ? s.sine.amplitude * sin((seconds_offset + frame * seconds_per_frame) * radians_per_second) : 0.0f;
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    write_sample(areas[channel].ptr, sample);
+                    if (frame < faust_data->num_frames && channel < faust_data->llvm_dsp->getNumOutputs()) {
+                        write_sample(areas[channel].ptr, faust_data->output_samples[channel][frame]);
+                    }
                     areas[channel].ptr += areas[channel].step;
                 }
             }
-//            dsp *faust_dsp = reinterpret_cast<dsp *>(outstream->userdata);
-//            faust_dsp->compute(frame_count, nullptr, (FAUSTFLOAT **) areas[0].ptr); // TODO need to create these 2d float IO buffers
 
             seconds_offset = fmod(seconds_offset + seconds_per_frame * frame_count, 1.0);
 
@@ -219,6 +236,9 @@ int audio(const std::string &faust_libraries_path) {
     while (s.audio.running) {}
 
     // Faust cleanup
+    for (int i = 0; i < num_input_channels; i++) { delete[] input_samples[i]; }
+    for (int i = 0; i < num_output_channels; i++) { delete[] output_samples[i]; }
+
     delete faust_dsp;
     deleteDSPFactory(faust_dsp_factory);
 

@@ -1,10 +1,20 @@
-// Adapted from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_sine.c
+// Adapted from:
+//   * https://github.com/andrewrk/libsoundio/blob/master/example/sio_sine.c and
+//   * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
 #include <soundio/soundio.h>
 #include "faust/dsp/llvm-dsp.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
 #include "context.h"
+
+static int prioritized_sample_rates[] = {
+    48000,
+    44100,
+    96000,
+    24000,
+    0,
+};
 
 static enum SoundIoFormat prioritized_formats[] = {
     SoundIoFormatFloat32NE,
@@ -74,22 +84,6 @@ static void (*write_sample)(char *ptr, double sample); // Determined at runtime 
 int audio(const std::string &faust_libraries_path) {
     auto &s = context.state;
 
-    // Faust initialization
-    int faust_argc = 0;
-    const char **faust_argv = new const char *[8];
-    faust_argv[faust_argc++] = "-I";
-    faust_argv[faust_argc++] = &faust_libraries_path[0]; // convert to char*
-    // Consider additional args: "-vec", "-vs", "128", "-dfs"
-
-    const int optimize = -1;
-    const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
-    std::string faust_error_msg;
-    auto *faust_dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, faust_argc, faust_argv, "", faust_error_msg, optimize);
-    if (!faust_error_msg.empty()) throw std::runtime_error("[Faust]: " + faust_error_msg);
-
-    auto *faust_dsp = faust_dsp_factory->createDSPInstance();
-    faust_dsp->init(context.state.audio.sample_rate);
-
     auto *soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
@@ -122,16 +116,28 @@ int audio(const std::string &faust_libraries_path) {
 
     struct SoundIoDevice *out_device = soundio_get_output_device(soundio, out_device_index);
     if (!out_device) throw std::runtime_error("Could not get output device: out of memory");
-
-    std::cout << "Output device: " << out_device->name << std::endl;
-
     if (out_device->probe_error) throw std::runtime_error(std::string("Cannot probe device: ") + soundio_strerror(out_device->probe_error));
 
     auto *outstream = soundio_outstream_create(out_device);
     if (!outstream) throw std::runtime_error("Out of memory");
 
+    std::cout << "Output device: " << out_device->name << std::endl;
     outstream->software_latency = s.audio.latency;
-    outstream->sample_rate = s.audio.sample_rate;
+
+    int default_sample_rate = s.audio.sample_rate;
+    int *sample_rate = &default_sample_rate;
+    if (*sample_rate != 0) {
+        if (!soundio_device_supports_sample_rate(out_device, *sample_rate)) {
+            throw std::runtime_error("Output audio device does not support the provided sample rate of " + std::to_string(default_sample_rate));
+        }
+    } else {
+        for (sample_rate = prioritized_sample_rates; *sample_rate; sample_rate += 1) {
+            if (soundio_device_supports_sample_rate(out_device, *sample_rate)) break;
+        }
+        if (!*sample_rate) throw std::runtime_error("Output audio device does not support any of the sample rates in `prioritized_sample_wrates`.");
+    }
+
+    outstream->sample_rate = *sample_rate;
 
     enum SoundIoFormat *format;
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format += 1) {
@@ -140,6 +146,22 @@ int audio(const std::string &faust_libraries_path) {
     if (*format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
 
     write_sample = write_sample_for_format(*format);
+
+    // Faust initialization
+    int faust_argc = 0;
+    const char **faust_argv = new const char *[8];
+    faust_argv[faust_argc++] = "-I";
+    faust_argv[faust_argc++] = &faust_libraries_path[0]; // convert to char*
+    // Consider additional args: "-vec", "-vs", "128", "-dfs"
+
+    const int optimize = -1;
+    const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
+    std::string faust_error_msg;
+    auto *faust_dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, faust_argc, faust_argv, "", faust_error_msg, optimize);
+    if (!faust_error_msg.empty()) throw std::runtime_error("[Faust]: " + faust_error_msg);
+
+    auto *faust_dsp = faust_dsp_factory->createDSPInstance();
+    faust_dsp->init(outstream->sample_rate);
 
     const int num_input_channels = faust_dsp->getNumInputs();
     const int num_output_channels = faust_dsp->getNumOutputs();

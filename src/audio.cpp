@@ -1,6 +1,5 @@
 // Adapted from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_sine.c
 
-#include <numbers>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -100,11 +99,11 @@ int audio(const std::string &faust_libraries_path) {
     soundio_flush_events(soundio);
 
     int selected_device_index = -1;
-    if (s.audio.device_id) {
+    if (s.audio.out_device_id) {
         int device_count = soundio_output_device_count(soundio);
         for (int i = 0; i < device_count; i += 1) {
             auto *device = soundio_get_output_device(soundio, i);
-            bool select_this_one = strcmp(device->id, s.audio.device_id) == 0 && device->is_raw == s.audio.raw;
+            bool select_this_one = strcmp(device->id, s.audio.out_device_id) == 0 && device->is_raw == s.audio.raw;
             soundio_device_unref(device);
             if (select_this_one) {
                 selected_device_index = i;
@@ -187,14 +186,14 @@ int audio(const std::string &faust_libraries_path) {
 
             if (!frame_count) break;
 
-            auto *faust_data = reinterpret_cast<FaustData *>(outstream->userdata);
+            const auto *faust_data = reinterpret_cast<FaustData *>(outstream->userdata);
             faust_data->llvm_dsp->compute(frame_count, faust_data->input_samples, faust_data->output_samples);
 
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame += 1) {
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    if (frame < faust_data->num_frames && channel < faust_data->llvm_dsp->getNumOutputs()) {
-                        write_sample(areas[channel].ptr, faust_data->output_samples[channel][frame]);
+                    if (faust_data->num_frames && channel < faust_data->llvm_dsp->getNumOutputs()) {
+                        write_sample(areas[channel].ptr, s.audio.muted ? 0.0 : faust_data->output_samples[channel][frame]);
                     }
                     areas[channel].ptr += areas[channel].step;
                 }
@@ -212,6 +211,7 @@ int audio(const std::string &faust_libraries_path) {
             if (frames_left <= 0) break;
         }
     };
+
     outstream->underflow_callback = [](SoundIoOutStream *) {
         static int count = 0;
         fprintf(stderr, "underflow %d\n", count++);

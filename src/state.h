@@ -57,23 +57,17 @@ enum AudioBackend {
 
 struct Audio {
     AudioBackend backend = none;
-    char *device_id = nullptr;
+    char *out_device_id = nullptr;
     char *stream_name = nullptr;
     double latency = 0.0;
     int sample_rate = 48000;
     bool raw = false;
     bool running = true;
-};
-
-struct Sine {
-    bool on = false;
-    int frequency = 440;
-    float amplitude = 0.5;
+    bool muted = true;
 };
 
 struct State {
     Colors colors;
     Windows windows;
     Audio audio;
-    Sine sine;
 };

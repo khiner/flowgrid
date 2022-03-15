@@ -111,9 +111,7 @@ void drawFrame(Context &c, State &s) {
         if (ImGui::Checkbox("Demo Window", &s.windows.demo.show)) { c.dispatch(toggle_demo_window{}); }
         if (ImGui::ColorEdit3("Background color", (float *) &s.colors.clear)) { c.dispatch(set_clear_color{s.colors.clear}); }
         if (ImGui::Button("Stop audio thread")) { c.dispatch(set_audio_thread_running{false}); }
-        if (ImGui::Checkbox("Play sine wave", &s.sine.on)) { c.dispatch(toggle_sine_wave{}); }
-        if (ImGui::SliderInt("Sine frequency", &s.sine.frequency, 40.0f, 4000.0f)) { c.dispatch(set_sine_frequency{s.sine.frequency}); }
-        if (ImGui::SliderFloat("Sine amplitude", &s.sine.amplitude, 0.0f, 1.0f)) { c.dispatch(set_sine_amplitude{s.sine.amplitude}); }
+        if (ImGui::Checkbox("Mute audio", &s.audio.muted)) { c.dispatch(toggle_audio_muted{}); }
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 

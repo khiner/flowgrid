@@ -174,8 +174,8 @@ int audio(const std::string &faust_libraries_path) {
     outstream->userdata = &faust_data;
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-        struct SoundIoChannelArea *areas;
-        int err;
+        static struct SoundIoChannelArea *areas;
+        static int err;
 
         int frames_left = frame_count_max;
         while (true) {

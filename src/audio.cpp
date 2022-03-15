@@ -28,8 +28,12 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
     }
 }
 
+// Used to initialize the static Faust buffer.
+// This is the highest value I've seen in practice, with a sample rate of 96kHz.
+// If it needs bumping up, bump away!
+static const int MAX_EXPECTED_FRAME_COUNT = 2048;
+
 struct FaustData {
-    int num_frames;
     dsp *llvm_dsp;
     FAUSTFLOAT **input_samples;
     FAUSTFLOAT **output_samples;
@@ -137,17 +141,14 @@ int audio(const std::string &faust_libraries_path) {
 
     write_sample = write_sample_for_format(*format);
 
-    // TODO how can we get this outside of the write callback?
-    //   (Maybe just make it as big as than the max possible?)
-    const int expected_frame_count_max = 512;
     const int num_input_channels = faust_dsp->getNumInputs();
     const int num_output_channels = faust_dsp->getNumOutputs();
     FAUSTFLOAT *input_samples[num_input_channels];
     FAUSTFLOAT *output_samples[num_output_channels];
-    for (int i = 0; i < num_input_channels; i++) { input_samples[i] = new FAUSTFLOAT[expected_frame_count_max]; }
-    for (int i = 0; i < num_output_channels; i++) { output_samples[i] = new FAUSTFLOAT[expected_frame_count_max]; }
+    for (int i = 0; i < num_input_channels; i++) { input_samples[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
+    for (int i = 0; i < num_output_channels; i++) { output_samples[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
 
-    FaustData faust_data{expected_frame_count_max, faust_dsp, input_samples, output_samples};
+    FaustData faust_data{faust_dsp, input_samples, output_samples};
     outstream->userdata = &faust_data;
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
@@ -158,10 +159,16 @@ int audio(const std::string &faust_libraries_path) {
         while (true) {
             int frame_count = frames_left;
             if ((err = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
-                throw std::runtime_error(std::string("Unrecoverable stream error: ") + soundio_strerror(err));
+                std::cerr << "Unrecoverable stream error: " << soundio_strerror(err) << std::endl;
+                exit(1);
             }
-
             if (!frame_count) break;
+            if (frame_count > MAX_EXPECTED_FRAME_COUNT) {
+                std::cerr << "The static buffer size of " << MAX_EXPECTED_FRAME_COUNT
+                          << " is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
+                          << "(Increase `MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
+                exit(1);
+            }
 
             const auto *faust_data = reinterpret_cast<FaustData *>(outstream->userdata);
             faust_data->llvm_dsp->compute(frame_count, faust_data->input_samples, faust_data->output_samples);
@@ -169,7 +176,7 @@ int audio(const std::string &faust_libraries_path) {
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame += 1) {
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    if (faust_data->num_frames && channel < faust_data->llvm_dsp->getNumOutputs()) {
+                    if (channel < faust_data->llvm_dsp->getNumOutputs()) {
                         write_sample(areas[channel].ptr, s.audio.muted ? 0.0 : faust_data->output_samples[channel][frame]);
                     }
                     areas[channel].ptr += areas[channel].step;
@@ -178,7 +185,8 @@ int audio(const std::string &faust_libraries_path) {
 
             if ((err = soundio_outstream_end_write(outstream))) {
                 if (err == SoundIoErrorUnderflow) return;
-                throw std::runtime_error(std::string("Unrecoverable stream error: ") + soundio_strerror(err));
+                std::cerr << "Unrecoverable stream error: " << soundio_strerror(err) << std::endl;
+                exit(1);
             }
 
             frames_left -= frame_count;

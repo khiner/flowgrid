@@ -57,11 +57,11 @@ enum AudioBackend {
 
 struct Audio {
     AudioBackend backend = none;
+    char *in_device_id = nullptr;
     char *out_device_id = nullptr;
-    char *stream_name = nullptr;
     double latency = 0.0;
     int sample_rate = 48000;
-    bool raw = false;
+    bool out_raw = false;
     bool running = true;
     bool muted = true;
 };

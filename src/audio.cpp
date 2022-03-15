@@ -14,32 +14,6 @@ static enum SoundIoFormat prioritized_formats[] = {
     SoundIoFormatInvalid,
 };
 
-static void write_sample_s16ne(char *ptr, double sample) {
-    auto *buf = (int16_t *) ptr;
-    double range = (double) INT16_MAX - (double) INT16_MIN;
-    double val = sample * range / 2.0;
-    *buf = (int16_t) val;
-}
-
-static void write_sample_s32ne(char *ptr, double sample) {
-    auto *buf = (int32_t *) ptr;
-    double range = (double) INT32_MAX - (double) INT32_MIN;
-    double val = sample * range / 2.0;
-    *buf = (int32_t) val;
-}
-
-static void write_sample_float32ne(char *ptr, double sample) {
-    auto *buf = (float *) ptr;
-    *buf = (float) sample;
-}
-
-static void write_sample_float64ne(char *ptr, double sample) {
-    auto *buf = (double *) ptr;
-    *buf = sample;
-}
-
-static void (*write_sample)(char *ptr, double sample);
-
 SoundIoBackend getSoundIOBackend(AudioBackend backend) {
     switch (backend) {
         case dummy: return SoundIoBackendDummy;
@@ -61,6 +35,26 @@ struct FaustData {
     FAUSTFLOAT **output_samples;
 };
 
+static void write_sample_s16ne(char *ptr, double sample) {
+    auto *buf = (int16_t *) ptr;
+    *buf = (int16_t) (sample * ((double) INT16_MAX - (double) INT16_MIN) / 2.0);
+}
+
+static void write_sample_s32ne(char *ptr, double sample) {
+    auto *buf = (int32_t *) ptr;
+    *buf = (int32_t) (sample * ((double) INT32_MAX - (double) INT32_MIN) / 2.0);
+}
+
+static void write_sample_float32ne(char *ptr, double sample) {
+    auto *buf = (float *) ptr;
+    *buf = (float) sample;
+}
+
+static void write_sample_float64ne(char *ptr, double sample) {
+    auto *buf = (double *) ptr;
+    *buf = sample;
+}
+
 auto write_sample_for_format(const SoundIoFormat format) {
     switch (format) {
         case SoundIoFormatFloat32NE: return write_sample_float32ne;
@@ -71,6 +65,8 @@ auto write_sample_for_format(const SoundIoFormat format) {
     }
 }
 
+static void (*write_sample)(char *ptr, double sample); // Determined at runtime below.
+
 int audio(const std::string &faust_libraries_path) {
     auto &s = context.state;
 
@@ -79,14 +75,14 @@ int audio(const std::string &faust_libraries_path) {
     const char **faust_argv = new const char *[8];
     faust_argv[faust_argc++] = "-I";
     faust_argv[faust_argc++] = &faust_libraries_path[0]; // convert to char*
-//    argv[argc++] = "-vec";
-//    argv[argc++] = "-vs";
-//    argv[argc++] = "128";
-//    argv[argc++] = "-dfs";
+    // Consider additional args: "-vec", "-vs", "128", "-dfs"
+
     const int optimize = -1;
     const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
-    std::string faust_error_msg = "Encountered an error during Faust DSP factory creation";
+    std::string faust_error_msg;
     auto *faust_dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, faust_argc, faust_argv, "", faust_error_msg, optimize);
+    if (!faust_error_msg.empty()) throw std::runtime_error("[Faust]: " + faust_error_msg);
+
     auto *faust_dsp = faust_dsp_factory->createDSPInstance();
     faust_dsp->init(context.state.audio.sample_rate);
 

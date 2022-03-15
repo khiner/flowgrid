@@ -1,15 +1,10 @@
 // Adapted from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_sine.c
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <cstdint>
 #include <soundio/soundio.h>
 #include "faust/dsp/llvm-dsp.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
 #include "context.h"
-
 
 static enum SoundIoFormat prioritized_formats[] = {
     SoundIoFormatFloat32NE,
@@ -43,8 +38,6 @@ static void write_sample_float64ne(char *ptr, double sample) {
     *buf = sample;
 }
 
-static void invalid_write_sample(char *, double) {}
-
 static void (*write_sample)(char *ptr, double sample);
 
 SoundIoBackend getSoundIOBackend(AudioBackend backend) {
@@ -56,9 +49,7 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
         case coreaudio: return SoundIoBackendCoreAudio;
         case wasapi: return SoundIoBackendWasapi;
         case none:
-        default:
-            // XXX Will print a number for `backend`, not a name, I believe.
-            fprintf(stderr, "Invalid backend: %u. Defaulting to SoundIoBackendNone\n", backend);
+        default:std::cerr << "Invalid backend: " << backend << ". Defaulting to `SoundIoBackendNone`." << std::endl;
             return SoundIoBackendNone;
     }
 }
@@ -76,7 +67,7 @@ auto write_sample_for_format(const SoundIoFormat format) {
         case SoundIoFormatFloat64NE: return write_sample_float64ne;
         case SoundIoFormatS32NE: return write_sample_s32ne;
         case SoundIoFormatS16NE: return write_sample_s16ne;
-        default: return invalid_write_sample;
+        default: throw std::runtime_error(std::string("No `write_sample` function defined for format"));
     }
 }
 
@@ -99,29 +90,20 @@ int audio(const std::string &faust_libraries_path) {
     auto *faust_dsp = faust_dsp_factory->createDSPInstance();
     faust_dsp->init(context.state.audio.sample_rate);
 
-    auto soundIOBackend = getSoundIOBackend(s.audio.backend);
     auto *soundio = soundio_create();
-    if (!soundio) {
-        fprintf(stderr, "out of memory\n");
-        return 1;
-    }
+    if (!soundio) throw std::runtime_error("Out of memory");
 
-    int err = (s.audio.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, soundIOBackend);
-    if (err) {
-        fprintf(stderr, "Unable to connect to backend: %s\n", soundio_strerror(err));
-        return 1;
-    }
+    int err = (s.audio.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(s.audio.backend));
+    if (err) throw std::runtime_error(std::string("Unable to connect to backend: ") + soundio_strerror(err));
 
-    fprintf(stderr, "Backend: %s\n", soundio_backend_name(soundio->current_backend));
+    std::cout << "Backend: " << soundio_backend_name(soundio->current_backend) << std::endl;
 
     soundio_flush_events(soundio);
 
     // Output device setup
     int default_out_device_index = soundio_default_output_device_index(soundio);
-    if (default_out_device_index < 0) {
-        fprintf(stderr, "No output device found");
-        return 1;
-    }
+    if (default_out_device_index < 0) throw std::runtime_error("No output device found");
+
     int out_device_index = default_out_device_index;
     if (s.audio.out_device_id) {
         bool found = false;
@@ -135,30 +117,18 @@ int audio(const std::string &faust_libraries_path) {
             }
             soundio_device_unref(device);
         }
-        if (!found) {
-            fprintf(stderr, "Invalid output device id: %s", s.audio.out_device_id);
-            return 1;
-        }
+        if (!found) throw std::runtime_error(std::string("Invalid output device id: ") + s.audio.out_device_id);
     }
 
     struct SoundIoDevice *out_device = soundio_get_output_device(soundio, out_device_index);
-    if (!out_device) {
-        fprintf(stderr, "Could not get output device: out of memory");
-        return 1;
-    }
+    if (!out_device) throw std::runtime_error("Could not get output device: out of memory");
 
-    fprintf(stderr, "Output device: %s\n", out_device->name);
+    std::cout << "Output device: " << out_device->name << std::endl;
 
-    if (out_device->probe_error) {
-        fprintf(stderr, "Cannot probe device: %s\n", soundio_strerror(out_device->probe_error));
-        return 1;
-    }
+    if (out_device->probe_error) throw std::runtime_error(std::string("Cannot probe device: ") + soundio_strerror(out_device->probe_error));
 
     auto *outstream = soundio_outstream_create(out_device);
-    if (!outstream) {
-        fprintf(stderr, "Out of memory\n");
-        return 1;
-    }
+    if (!outstream) throw std::runtime_error("Out of memory");
 
     outstream->software_latency = s.audio.latency;
     outstream->sample_rate = s.audio.sample_rate;
@@ -167,16 +137,9 @@ int audio(const std::string &faust_libraries_path) {
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format += 1) {
         if (soundio_device_supports_format(out_device, *format)) break;
     }
-    if (*format == SoundIoFormatInvalid) {
-        fprintf(stderr, "No suitable device format available.\n");
-        return 1;
-    }
+    if (*format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
 
     write_sample = write_sample_for_format(*format);
-    if (write_sample == nullptr) {
-        fprintf(stderr, "No `write_sample` function defined for format\n");
-        return 1;
-    }
 
     // TODO how can we get this outside of the write callback?
     //   (Maybe just make it as big as than the max possible?)
@@ -199,8 +162,7 @@ int audio(const std::string &faust_libraries_path) {
         while (true) {
             int frame_count = frames_left;
             if ((err = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
-                fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
-                exit(1);
+                throw std::runtime_error(std::string("Unrecoverable stream error: ") + soundio_strerror(err));
             }
 
             if (!frame_count) break;
@@ -220,8 +182,7 @@ int audio(const std::string &faust_libraries_path) {
 
             if ((err = soundio_outstream_end_write(outstream))) {
                 if (err == SoundIoErrorUnderflow) return;
-                fprintf(stderr, "unrecoverable stream error: %s\n", soundio_strerror(err));
-                exit(1);
+                throw std::runtime_error(std::string("Unrecoverable stream error: ") + soundio_strerror(err));
             }
 
             frames_left -= frame_count;
@@ -230,24 +191,22 @@ int audio(const std::string &faust_libraries_path) {
     };
 
     outstream->underflow_callback = [](SoundIoOutStream *) {
-        static int count = 0;
-        fprintf(stderr, "underflow %d\n", count++);
+        static int underflow_count = 0;
+        std::cerr << "Underflow #" << underflow_count++ << std::endl;
     };
 
     if ((err = soundio_outstream_open(outstream))) {
-        fprintf(stderr, "unable to open device: %s", soundio_strerror(err));
-        return 1;
+        throw std::runtime_error(std::string("Unable to open device: ") + soundio_strerror(err));
     }
 
-    fprintf(stdout, "Software latency: %f\n", outstream->software_latency);
+    std::cout << "Software latency: " << outstream->software_latency << std::endl;
 
     if (outstream->layout_error) {
-        fprintf(stderr, "unable to set channel layout: %s\n", soundio_strerror(outstream->layout_error));
+        std::cerr << "Unable to set channel layout: " << soundio_strerror(outstream->layout_error);
     }
 
     if ((err = soundio_outstream_start(outstream))) {
-        fprintf(stderr, "unable to start device: %s\n", soundio_strerror(err));
-        return 1;
+        throw std::runtime_error(std::string("Unable to start device: ") + soundio_strerror(err));
     }
 
     while (s.audio.running) {}

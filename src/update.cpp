@@ -5,6 +5,7 @@
 using namespace action;
 
 // Using the same basic pattern as [`lager`](https://sinusoid.es/lager/architecture.html#reducer).
+// TODO Only copy the state to edit when updates need to happen atomically across linked members for logical consistency.
 State update(State s, Action action) {
     std::visit(
         visitor{

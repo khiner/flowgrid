@@ -6,17 +6,8 @@
 #include "action_tree.h"
 #include "state_renderers/render_json.h"
 
-/**
-  TODO a pub-sub action event queue.
-    See [lager](https://github.com/arximboldi/lager/blob/master/lager/context.hpp), which is very complicated.
-    What we need from `lager::context` is the ability to subscribe to a filtered set of actions.
-    The GOAT: https://github.com/arximboldi/lager/blob/master/lager/context.hpp
-    Basically I want this pattern ^, but want to implement it as needed myself, and fully understand it.
-    Other resources:
-    * https://www.geeksforgeeks.org/sharing-queue-among-three-threads/
-    * https://www.codeproject.com/Articles/1169105/Cplusplus-std-thread-Event-Loop-with-Message-Queu
- */
-
+// TODO use https://github.com/cameron314/concurrentqueue for a pub-sub action event queue.
+// TODO Enforce read-only direct access to state: https://stackoverflow.com/a/45996145/780425
 struct Context {
     State state{};
     ActionTree actions;

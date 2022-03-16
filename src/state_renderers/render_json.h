@@ -13,4 +13,4 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, colors, windows, audio);
 
 using json = nlohmann::json;
 
-json render_json(State &);
+json render_json(const State &);

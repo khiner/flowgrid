@@ -1,5 +1,5 @@
 #include "render_json.h"
 
-json render_json(State &s) {
+json render_json(const State &s) {
     return s;
 }

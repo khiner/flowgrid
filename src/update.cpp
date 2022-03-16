@@ -5,8 +5,9 @@
 using namespace action;
 
 // Using the same basic pattern as [`lager`](https://sinusoid.es/lager/architecture.html#reducer).
-// TODO Only copy the state to edit when updates need to happen atomically across linked members for logical consistency.
-State update(State s, Action action) {
+// When updates need to happen atomically across linked members for logical consistency,
+// make working copies as needed. Otherwise, modify the (single, global) state directly, in-place.
+void update(State &s, Action action) {
     std::visit(
         visitor{
             [&](toggle_demo_window) { s.windows.demo.show = !s.windows.demo.show; },
@@ -16,5 +17,4 @@ State update(State s, Action action) {
         },
         action
     );
-    return s;
 }

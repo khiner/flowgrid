@@ -9,9 +9,11 @@
 using namespace moodycamel;
 
 Context context{};
+Context &c = context; // Convenient shorthand
+const State &state = c.s;
+const State &s = c.s; // Convenient shorthand
 
 int main(int, const char *argv[]) {
-    const State &s = context.state;
     const auto faust_libraries_path = std::string(argv[0]) + "/../../lib/faust/libraries";
     std::thread audio_thread(audio, std::cref(faust_libraries_path));
 

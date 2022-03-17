@@ -82,8 +82,6 @@ auto write_sample_for_format(const SoundIoFormat format) {
 static void (*write_sample)(char *ptr, double sample); // Determined at runtime below.
 
 int audio(const std::string &faust_libraries_path) {
-    static const auto &s = context.state;
-
     auto *soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 

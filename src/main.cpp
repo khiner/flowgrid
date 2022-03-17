@@ -4,6 +4,7 @@
 #include "audio.h"
 #include "draw.h"
 #include "blockingconcurrentqueue.h"
+#include "transformers/bijective/state2json.h"
 
 using namespace moodycamel; // ConcurrentQueue, BlockingConcurrentQueue
 
@@ -22,7 +23,7 @@ int main(int, const char *argv[]) {
             Action a;
             q.wait_dequeue(a);
             c.on_action(a);
-            std::cout << render_json(s) << std::endl;
+            std::cout << state2json(s) << std::endl;
         }
     });
 

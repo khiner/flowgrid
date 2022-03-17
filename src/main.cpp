@@ -5,7 +5,7 @@
 #include "draw.h"
 #include "blockingconcurrentqueue.h"
 
-using namespace moodycamel;
+using namespace moodycamel; // ConcurrentQueue, BlockingConcurrentQueue
 
 Context context{};
 Context &c = context; // Convenient shorthand

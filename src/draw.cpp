@@ -100,8 +100,6 @@ void teardown(DrawContext &dc) {
     SDL_Quit();
 }
 
-using namespace action;
-
 void render(DrawContext &dc, Color &clear_color) {
     ImGui::Render();
     glViewport(0, 0, (int) dc.io.DisplaySize.x, (int) dc.io.DisplaySize.y);

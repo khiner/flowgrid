@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "action.h"
+#include "action_tree.h"
 #include "state_renderers/render_json.h"
 #include "visitor.h"
 
@@ -11,10 +11,16 @@ using namespace action;
 struct Context {
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
+    ActionTree actions;
 
-    void update(Action);
+    void on_action(Action &action) {
+        actions.on_action(action);
+        update(action);
+    }
+
 private:
     State _state{};
+    void update(Action); // State is only updated via `context.on_action(action)`
 };
 
 /**

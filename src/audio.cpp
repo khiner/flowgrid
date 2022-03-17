@@ -3,6 +3,7 @@
 //   * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
 #include <soundio/soundio.h>
+
 #include "faust/dsp/llvm-dsp.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
@@ -39,14 +40,66 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
 }
 
 // Used to initialize the static Faust buffer.
-// This is the highest value I've seen in practice, with a sample rate of 96kHz.
+// This is the highest `max_frame_count` value I've seen coming into the output audio callback,
+// using a sample rate of 96kHz.
 // If it needs bumping up, bump away!
 static const int MAX_EXPECTED_FRAME_COUNT = 2048;
 
-struct FaustData {
-    dsp *llvm_dsp;
-    FAUSTFLOAT **input_samples;
-    FAUSTFLOAT **output_samples;
+struct FaustBuffers {
+    const int num_frames = MAX_EXPECTED_FRAME_COUNT;
+    const int num_input_channels;
+    const int num_output_channels;
+    FAUSTFLOAT **input;
+    FAUSTFLOAT **output;
+
+    FaustBuffers(int num_input_channels, int num_output_channels) :
+        num_input_channels(num_input_channels), num_output_channels(num_output_channels) {
+        input = new FAUSTFLOAT *[num_input_channels];
+        output = new FAUSTFLOAT *[num_output_channels];
+        for (int i = 0; i < num_input_channels; i++) { input[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
+        for (int i = 0; i < num_output_channels; i++) { output[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
+    }
+
+    ~FaustBuffers() {
+        for (int i = 0; i < num_input_channels; i++) { delete[] input[i]; }
+        for (int i = 0; i < num_output_channels; i++) { delete[] output[i]; }
+        delete input;
+        delete output;
+    }
+};
+
+struct FaustLlvmDsp {
+    llvm_dsp_factory *dsp_factory;
+    dsp *dsp;
+
+    explicit FaustLlvmDsp(std::string libraries_path, int sample_rate) {
+        int argc = 0;
+        const char **argv = new const char *[8];
+        argv[argc++] = "-I";
+        argv[argc++] = &libraries_path[0]; // convert to char*
+        // Consider additional args: "-vec", "-vs", "128", "-dfs"
+
+        const int optimize = -1;
+        const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
+        std::string faust_error_msg;
+        dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, argc, argv, "", faust_error_msg, optimize);
+        if (!faust_error_msg.empty()) throw std::runtime_error("[Faust]: " + faust_error_msg);
+
+        dsp = dsp_factory->createDSPInstance();
+        dsp->init(sample_rate);
+    }
+
+    ~FaustLlvmDsp() {
+        delete dsp;
+        deleteDSPFactory(dsp_factory);
+    }
+};
+
+struct SoundIoStreamContext {
+    FaustLlvmDsp dsp;
+    FaustBuffers buffers;
+
+    explicit SoundIoStreamContext(std::string faust_library_path, int sample_rate) : dsp(std::move(faust_library_path), sample_rate), buffers(dsp.dsp->getNumInputs(), dsp.dsp->getNumOutputs()) {}
 };
 
 static void write_sample_s16ne(char *ptr, double sample) {
@@ -145,35 +198,14 @@ int audio(const std::string &faust_libraries_path) {
 
     write_sample = write_sample_for_format(*format);
 
-    // Faust initialization
-    int faust_argc = 0;
-    const char **faust_argv = new const char *[8];
-    faust_argv[faust_argc++] = "-I";
-    faust_argv[faust_argc++] = &faust_libraries_path[0]; // convert to char*
-    // Consider additional args: "-vec", "-vs", "128", "-dfs"
-
-    const int optimize = -1;
-    const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
-    std::string faust_error_msg;
-    auto *faust_dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, faust_argc, faust_argv, "", faust_error_msg, optimize);
-    if (!faust_error_msg.empty()) throw std::runtime_error("[Faust]: " + faust_error_msg);
-
-    auto *faust_dsp = faust_dsp_factory->createDSPInstance();
-    faust_dsp->init(outstream->sample_rate);
-
-    const int num_input_channels = faust_dsp->getNumInputs();
-    const int num_output_channels = faust_dsp->getNumOutputs();
-    FAUSTFLOAT *input_samples[num_input_channels];
-    FAUSTFLOAT *output_samples[num_output_channels];
-    for (int i = 0; i < num_input_channels; i++) { input_samples[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
-    for (int i = 0; i < num_output_channels; i++) { output_samples[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
-
-    FaustData faust_data{faust_dsp, input_samples, output_samples};
-    outstream->userdata = &faust_data;
-
+    SoundIoStreamContext stream_context{faust_libraries_path, outstream->sample_rate};
+    outstream->userdata = &stream_context;
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-        static struct SoundIoChannelArea *areas;
-        static int err;
+        const auto *stream_context = reinterpret_cast<SoundIoStreamContext *>(outstream->userdata);
+        const auto &buffers = stream_context->buffers;
+        const auto &dsp = stream_context->dsp;
+        struct SoundIoChannelArea *areas;
+        int err;
 
         int frames_left = frame_count_max;
         while (true) {
@@ -183,21 +215,20 @@ int audio(const std::string &faust_libraries_path) {
                 exit(1);
             }
             if (!frame_count) break;
-            if (frame_count > MAX_EXPECTED_FRAME_COUNT) {
-                std::cerr << "The static buffer size of " << MAX_EXPECTED_FRAME_COUNT
-                          << " is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
+            if (frame_count > buffers.num_frames) {
+                std::cerr << "The output stream buffer only has " << buffers.num_frames
+                          << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
                           << "(Increase `MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
                 exit(1);
             }
 
-            const auto *faust_data = reinterpret_cast<FaustData *>(outstream->userdata);
-            faust_data->llvm_dsp->compute(frame_count, faust_data->input_samples, faust_data->output_samples);
+            dsp.dsp->compute(frame_count, buffers.input, buffers.output);
 
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame += 1) {
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    if (channel < faust_data->llvm_dsp->getNumOutputs()) {
-                        write_sample(areas[channel].ptr, s.audio.muted ? 0.0 : faust_data->output_samples[channel][frame]);
+                    if (channel < buffers.num_output_channels) {
+                        write_sample(areas[channel].ptr, s.audio.muted ? 0.0 : buffers.output[channel][frame]);
                     }
                     areas[channel].ptr += areas[channel].step;
                 }
@@ -222,25 +253,16 @@ int audio(const std::string &faust_libraries_path) {
     if ((err = soundio_outstream_open(outstream))) {
         throw std::runtime_error(std::string("Unable to open device: ") + soundio_strerror(err));
     }
-
-    std::cout << "Software latency: " << outstream->software_latency << std::endl;
-
     if (outstream->layout_error) {
         std::cerr << "Unable to set channel layout: " << soundio_strerror(outstream->layout_error);
     }
-
     if ((err = soundio_outstream_start(outstream))) {
         throw std::runtime_error(std::string("Unable to start device: ") + soundio_strerror(err));
     }
 
+    std::cout << "Software latency (s): " << outstream->software_latency << std::endl;
+
     while (s.audio.running) {}
-
-    // Faust cleanup
-    for (int i = 0; i < num_input_channels; i++) { delete[] input_samples[i]; }
-    for (int i = 0; i < num_output_channels; i++) { delete[] output_samples[i]; }
-
-    delete faust_dsp;
-    deleteDSPFactory(faust_dsp_factory);
 
     // SoundIO cleanup
     soundio_outstream_destroy(outstream);

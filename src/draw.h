@@ -1,5 +1,8 @@
 #pragma once
 
-#include "context.h"
+#include "blockingconcurrentqueue.h"
+#include "action.h"
 
-int draw(Context &, State);
+using namespace moodycamel;
+
+int draw(BlockingConcurrentQueue<Action> &, State);

@@ -2,21 +2,15 @@
 
 #include <iostream>
 
-#include "update.h"
-#include "action_tree.h"
+#include "action.h"
 #include "state_renderers/render_json.h"
+#include "visitor.h"
 
-// TODO use https://github.com/cameron314/concurrentqueue for a pub-sub action event queue.
+using namespace action;
+
 struct Context {
     const State &state = _state; // Read-only public state
-    ActionTree actions;
-
-    void dispatch(Action action) {
-        update(_state, action);
-        std::cout << render_json(state) << std::endl;
-        actions.on_action(action);
-    }
-
+    void update(Action);
 private:
     State _state{};
 };

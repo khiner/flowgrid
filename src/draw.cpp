@@ -4,7 +4,7 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 
-#include "context.h"
+#include "draw.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -102,23 +102,6 @@ void teardown(DrawContext &dc) {
 
 using namespace action;
 
-void drawFrame(Context &c, State &s) {
-    if (s.windows.demo.show) ImGui::ShowDemoWindow(&s.windows.demo.show);
-
-    {
-        ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
-
-        if (ImGui::Checkbox("Demo Window", &s.windows.demo.show)) { c.dispatch(toggle_demo_window{}); }
-        if (ImGui::ColorEdit3("Background color", (float *) &s.colors.clear)) { c.dispatch(set_clear_color{s.colors.clear}); }
-        if (ImGui::Button("Stop audio thread")) { c.dispatch(set_audio_thread_running{false}); }
-        if (ImGui::Checkbox("Mute audio", &s.audio.muted)) { c.dispatch(toggle_audio_muted{}); }
-
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-        ImGui::End();
-    }
-}
-
 void render(DrawContext &dc, Color &clear_color) {
     ImGui::Render();
     glViewport(0, 0, (int) dc.io.DisplaySize.x, (int) dc.io.DisplaySize.y);
@@ -128,8 +111,24 @@ void render(DrawContext &dc, Color &clear_color) {
     SDL_GL_SwapWindow(dc.window);
 }
 
+void drawFrame(BlockingConcurrentQueue<Action> &q, State &s) {
+    if (s.windows.demo.show) ImGui::ShowDemoWindow(&s.windows.demo.show);
 
-int draw(Context &c, State s) {
+    {
+        ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
+
+        if (ImGui::Checkbox("Demo Window", &s.windows.demo.show)) { q.enqueue(toggle_demo_window{}); }
+        if (ImGui::ColorEdit3("Background color", (float *) &s.colors.clear)) { q.enqueue(set_clear_color{s.colors.clear}); }
+        if (ImGui::Button("Stop audio thread")) { q.enqueue(set_audio_thread_running{false}); }
+        if (ImGui::Checkbox("Mute audio", &s.audio.muted)) { q.enqueue(toggle_audio_muted{}); }
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+        ImGui::End();
+    }
+}
+
+int draw(BlockingConcurrentQueue<Action> &q, State s) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -157,12 +156,11 @@ int draw(Context &c, State s) {
         }
 
         newFrame();
-        drawFrame(c, s);
+        drawFrame(q, s);
         render(dc, s.colors.clear);
     }
 
     teardown(dc);
-    c.dispatch(set_audio_thread_running{false});
 
     return 0;
 }

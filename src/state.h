@@ -50,7 +50,6 @@ struct Windows {
     Window demo{};
 };
 
-
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
@@ -66,8 +65,13 @@ struct Audio {
     bool muted = true;
 };
 
+struct ActionConsumer {
+    bool running = true;
+};
+
 struct State {
     Colors colors;
     Windows windows;
     Audio audio;
+    ActionConsumer action_consumer;
 };

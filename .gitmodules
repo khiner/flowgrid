@@ -14,3 +14,6 @@
 [submodule "lib/faust"]
 	path = lib/faust
 	url = git@github.com:grame-cncm/faust.git
+[submodule "lib/concurrentqueue"]
+	path = lib/concurrentqueue
+	url = git@github.com:cameron314/concurrentqueue.git

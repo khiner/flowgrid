@@ -2,6 +2,7 @@
 //   * https://github.com/andrewrk/libsoundio/blob/master/example/sio_sine.c and
 //   * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
+#include <iostream>
 #include <soundio/soundio.h>
 
 #include "faust/dsp/llvm-dsp.h"

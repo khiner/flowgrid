@@ -1,20 +1,13 @@
 #pragma once
 
-#include <iostream>
-
 #include "action_tree.h"
-#include "visitor.h"
 
 struct Context {
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     ActionTree actions;
 
-    void on_action(Action &action) {
-        actions.on_action(action);
-        update(action);
-    }
-
+    void on_action(Action &);
 private:
     State _state{};
     void update(Action); // State is only updated via `context.on_action(action)`

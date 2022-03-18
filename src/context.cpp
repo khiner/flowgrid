@@ -1,4 +1,14 @@
+#include <iostream>
+
 #include "context.h"
+#include "transformers/bijective/state2json.h"
+#include "visitor.h"
+
+void Context::on_action(Action &action) {
+    update(action);
+    actions.on_action(action);
+    std::cout << state2json(s) << std::endl;
+}
 
 /**
  * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer),

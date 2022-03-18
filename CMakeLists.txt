@@ -8,7 +8,7 @@ add_subdirectory("lib")
 add_executable(
     ${PROJECT_NAME}
     src/action.h src/audio.h src/context.h src/draw.h src/state.h src/visitor.h
-    src/draw.cpp src/audio.cpp src/main.cpp src/action_tree.h src/action_tree.cpp src/transformers/bijective/state2json.cpp src/transformers/bijective/state2json.cpp src/context.cpp)
+    src/draw.cpp src/audio.cpp src/main.cpp src/transformers/bijective/state2json.cpp src/transformers/bijective/state2json.cpp src/context.cpp)
 
 set(FAUST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/faust)
 include_directories(${FAUST_DIR}/architecture)

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "nlohmann/json.hpp"
-#include "action_tree.h"
+#include "state.h"
+#include "action.h"
 
 using namespace nlohmann;
 
@@ -12,7 +13,17 @@ private:
 public:
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
-    ActionTree actions;
+    /**
+     This is a placeholder for the main in-memory data structure for action history.
+     Undo should have similar functionality to [Vim's undotree](https://github.com/mbbill/undotree/blob/master/autoload/undotree.vim)
+       - Consider the Hash Array Mapped Trie (HAMT) data structure for state, diff, and/or actions (fast keyed access and fast-ish updates,
+         exploiting the state's natural tree structure.
+       - Probably just copy (with MIT copyright notice as required)
+         [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
+         and modify to taste.
+    */
+    std::vector<std::pair<Action, json>> actions;
+    int current_action_index = -1;
     json json_state;
 
     Context();

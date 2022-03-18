@@ -6,7 +6,7 @@
 
 using namespace moodycamel; // ConcurrentQueue, BlockingConcurrentQueue
 
-Context context{};
+Context context{}; // NOLINT(cert-err58-cpp)
 Context &c = context; // Convenient shorthand
 const State &state = c.s;
 const State &s = c.s; // Convenient shorthand

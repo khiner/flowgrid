@@ -1,13 +1,15 @@
-#include <iostream>
-
 #include "context.h"
 #include "transformers/bijective/state2json.h"
 #include "visitor.h"
 
+Context::Context() : json_state(state2json(s)) {}
+
 void Context::on_action(Action &action) {
     update(action);
-    actions.on_action(action);
-    std::cout << state2json(s) << std::endl;
+    auto old_json_state = json_state;
+    json_state = state2json(s);
+    auto state_diff = json::diff(json_state, old_json_state);
+    actions.on_action(action, state_diff);
 }
 
 /**

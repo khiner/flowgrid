@@ -1,11 +1,17 @@
 #pragma once
 
+#include "nlohmann/json.hpp"
 #include "action_tree.h"
+
+using namespace nlohmann;
 
 struct Context {
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     ActionTree actions;
+    json json_state;
+
+    Context();
 
     void on_action(Action &);
 private:

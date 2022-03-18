@@ -1,7 +1,10 @@
 #pragma once
 
 #include <vector>
+#include "nlohmann/json.hpp"
 #include "action.h"
+
+using namespace nlohmann;
 
 /**
 This is a placeholder for the main in-memory data structure for action history.
@@ -13,6 +16,6 @@ This is a placeholder for the main in-memory data structure for action history.
     and modify to taste.
 */
 struct ActionTree {
-    void on_action(Action &);
-    std::vector<Action> actions;
+    void on_action(Action &action, const json &diff);
+    std::vector<std::pair<Action, json>> actions;
 };

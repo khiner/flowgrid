@@ -1,5 +1,4 @@
 #include <thread>
-
 #include "context.h"
 #include "audio.h"
 #include "draw.h"

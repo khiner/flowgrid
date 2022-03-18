@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nlohmann/json.hpp"
+
 struct Color {
     float r = 0, g = 0, b = 0, a = 0;
 
@@ -80,3 +82,12 @@ struct State {
     Audio audio;
     ActionConsumer action_consumer;
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw) // TODO string fields
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, demo)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

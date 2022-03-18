@@ -1,4 +1,3 @@
-#include <iostream>
 #include "context.h"
 #include "transformers/bijective/state2json.h"
 #include "visitor.h"

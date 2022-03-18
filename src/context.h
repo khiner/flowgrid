@@ -6,6 +6,10 @@
 using namespace nlohmann;
 
 struct Context {
+private:
+    State _state{};
+    void update(Action); // State is only updated via `context.on_action(action)`
+public:
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     ActionTree actions;
@@ -14,9 +18,6 @@ struct Context {
     Context();
 
     void on_action(Action &);
-private:
-    State _state{};
-    void update(Action); // State is only updated via `context.on_action(action)`
 };
 
 /**

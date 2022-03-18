@@ -24,9 +24,7 @@ int main(int, const char *argv[]) {
         }
     });
 
-    draw(q, s);
-    q.enqueue(set_audio_thread_running{false});
-    q.enqueue(set_action_consumer_running{false});
+    draw(q);
 
     audio_thread.join();
     action_consumer.join();

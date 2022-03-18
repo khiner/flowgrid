@@ -50,6 +50,12 @@ struct Windows {
     Window demo{};
 };
 
+struct UI {
+    bool running = true;
+    Windows windows;
+    Colors colors;
+};
+
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
@@ -58,11 +64,11 @@ struct Audio {
     AudioBackend backend = none;
     char *in_device_id = nullptr;
     char *out_device_id = nullptr;
-    double latency = 0.0;
-    int sample_rate = 48000;
-    bool out_raw = false;
     bool running = true;
     bool muted = true;
+    bool out_raw = false;
+    int sample_rate = 48000;
+    double latency = 0.0;
 };
 
 struct ActionConsumer {
@@ -70,8 +76,7 @@ struct ActionConsumer {
 };
 
 struct State {
-    Colors colors;
-    Windows windows;
+    UI ui;
     Audio audio;
     ActionConsumer action_consumer;
 };

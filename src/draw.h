@@ -5,4 +5,4 @@
 
 using namespace moodycamel;
 
-int draw(BlockingConcurrentQueue<Action> &, State);
+int draw(BlockingConcurrentQueue<Action> &);

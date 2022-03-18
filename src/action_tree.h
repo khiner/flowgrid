@@ -16,6 +16,6 @@ This is a placeholder for the main in-memory data structure for action history.
     and modify to taste.
 */
 struct ActionTree {
-    void on_action(Action &action, const json &diff);
+    void on_action(const Action &action, const json &diff);
     std::vector<std::pair<Action, json>> actions;
 };

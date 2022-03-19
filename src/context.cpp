@@ -8,12 +8,12 @@ Context::Context() : json_state(state2json(_state)) {}
 
 void Context::on_action(Action &action) {
     if (std::holds_alternative<undo>(action)) {
-        if (current_action_index >= 0) {
+        if (can_undo()) {
             const auto &action_to_undo = actions[current_action_index--];
             apply_diff(action_to_undo.reverse_diff);
         }
     } else if (std::holds_alternative<redo>(action)) {
-        if (current_action_index < (int) actions.size() - 1) {
+        if (can_redo()) {
             const auto &action_to_redo = actions[++current_action_index];
             apply_diff(action_to_redo.forward_diff);
         }

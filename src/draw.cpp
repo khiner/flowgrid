@@ -114,8 +114,12 @@ void drawFrame(BlockingConcurrentQueue<Action> &q) {
 
     ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
 
+    ImGui::BeginDisabled(!c.can_undo());
     if (ImGui::Button("Undo")) { q.enqueue(undo{}); }
+    ImGui::EndDisabled();
+    ImGui::BeginDisabled(!c.can_redo());
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
+    ImGui::EndDisabled();
     if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows.demo.show)) { q.enqueue(toggle_demo_window{}); }
     if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     // TODO allow toggling audio & action_consumer on and off repeatedly

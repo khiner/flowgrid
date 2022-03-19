@@ -38,6 +38,12 @@ public:
     Context();
 
     void on_action(Action &);
+    bool can_undo() const {
+        return current_action_index >= 0;
+    }
+    bool can_redo() const {
+        return current_action_index < (int) actions.size() - 1;
+    }
 };
 
 /**

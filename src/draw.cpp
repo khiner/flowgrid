@@ -110,19 +110,18 @@ void render(DrawContext &dc, const Color &clear_color) {
 }
 
 void drawFrame(BlockingConcurrentQueue<Action> &q) {
-    static State s_{}; // Local copy of fresh initialized state to manipulate freely
-    if (s.ui.windows.demo.show) ImGui::ShowDemoWindow(&s_.ui.windows.demo.show);
+    if (s.ui.windows.demo.show) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.show);
 
     ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
 
     if (ImGui::Button("Undo")) { q.enqueue(undo{}); }
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
-    if (ImGui::Checkbox("Demo Window", &s_.ui.windows.demo.show)) { q.enqueue(toggle_demo_window{}); }
-    if (ImGui::ColorEdit3("Background color", (float *) &s_.ui.colors.clear)) { q.enqueue(set_clear_color{s_.ui.colors.clear}); }
+    if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows.demo.show)) { q.enqueue(toggle_demo_window{}); }
+    if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     // TODO allow toggling audio & action_consumer on and off repeatedly
     if (ImGui::Button("Stop audio thread")) { q.enqueue(set_audio_thread_running{false}); }
 //        q.enqueue(set_action_consumer_running{false});
-    if (ImGui::Checkbox("Mute audio", &s_.audio.muted)) { q.enqueue(toggle_audio_muted{}); }
+    if (ImGui::Checkbox("Mute audio", &ui_s.audio.muted)) { q.enqueue(toggle_audio_muted{}); }
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 

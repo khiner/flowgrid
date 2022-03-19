@@ -10,6 +10,7 @@ struct Context {
 private:
     State _state{};
     void update(Action); // State is only updated via `context.on_action(action)`
+    void apply_diff(const json &diff);
 public:
     struct ActionDiff {
         Action action;
@@ -19,6 +20,8 @@ public:
 
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
+    State ui_s{}; // Separate copy of the state that can be modified by the UI directly
+
     /**
      This is a placeholder for the main in-memory data structure for action history.
      Undo should have similar functionality to [Vim's undotree](https://github.com/mbbill/undotree/blob/master/autoload/undotree.vim)
@@ -43,6 +46,7 @@ public:
 */
 extern Context context, &c;
 extern const State &state, &s;
+extern State &ui_s;
 
 /**md
 # Usage

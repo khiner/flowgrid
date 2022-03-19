@@ -8,11 +8,15 @@ Context::Context() : json_state(state2json(_state)) {}
 
 void Context::on_action(Action &action) {
     if (std::holds_alternative<undo>(action)) {
-        const auto &action_to_undo = actions[current_action_index--];
-        _state = json2state(json_state.patch(action_to_undo.reverse_diff));
+        if (current_action_index >= 0) {
+            const auto &action_to_undo = actions[current_action_index--];
+            apply_diff(action_to_undo.reverse_diff);
+        }
     } else if (std::holds_alternative<redo>(action)) {
-        const auto &action_to_redo = actions[++current_action_index];
-        _state = json2state(json_state.patch(action_to_redo.forward_diff));
+        if (current_action_index < (int) actions.size() - 1) {
+            const auto &action_to_redo = actions[++current_action_index];
+            apply_diff(action_to_redo.forward_diff);
+        }
     } else {
         update(action);
         auto old_json_state = json_state;
@@ -56,4 +60,9 @@ void Context::update(Action action) {
         },
         action
     );
+}
+
+void Context::apply_diff(const json &diff) {
+    _state = json2state(json_state.patch(diff));
+    ui_s = _state; // Update the UI-copy of the state to reflect.
 }

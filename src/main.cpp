@@ -10,6 +10,7 @@ Context context{}; // NOLINT(cert-err58-cpp)
 Context &c = context; // Convenient shorthand
 const State &state = c.s;
 const State &s = c.s; // Convenient shorthand
+State &ui_s = c.ui_s;
 
 int main(int, const char *argv[]) {
     const auto faust_libraries_path = std::string(argv[0]) + "/../../lib/faust/libraries";

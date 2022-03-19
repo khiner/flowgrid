@@ -11,6 +11,12 @@ private:
     State _state{};
     void update(Action); // State is only updated via `context.on_action(action)`
 public:
+    struct ActionDiff {
+        Action action;
+        json forward_diff;
+        json reverse_diff;
+    };
+
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     /**
@@ -22,7 +28,7 @@ public:
          [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
          and modify to taste.
     */
-    std::vector<std::pair<Action, json>> actions;
+    std::vector<ActionDiff> actions;
     int current_action_index = -1;
     json json_state;
 

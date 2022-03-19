@@ -1,18 +1,32 @@
 #include <iostream>
 #include "context.h"
 #include "transformers/bijective/state2json.h"
+#include "transformers/bijective/json2state.h"
 #include "visitor.h"
 
 Context::Context() : json_state(state2json(_state)) {}
 
 void Context::on_action(Action &action) {
-    update(action);
-    auto old_json_state = json_state;
-    json_state = state2json(s);
-    auto state_diff = json::diff(old_json_state, json_state);
-    actions.emplace_back(std::make_pair(action, state_diff));
-    current_action_index += 1;
-    std::cout << "Action #" << actions.size() << " diff: " << actions.back().second << std::endl;
+    if (std::holds_alternative<undo>(action)) {
+        const auto &action_to_undo = actions[current_action_index--];
+        _state = json2state(json_state.patch(action_to_undo.reverse_diff));
+    } else if (std::holds_alternative<redo>(action)) {
+        const auto &action_to_redo = actions[++current_action_index];
+        _state = json2state(json_state.patch(action_to_redo.forward_diff));
+    } else {
+        update(action);
+        auto old_json_state = json_state;
+        json_state = state2json(s);
+        actions.emplace_back(ActionDiff{
+            action,
+            json::diff(old_json_state, json_state),
+            json::diff(json_state, old_json_state)
+        });
+        current_action_index += 1;
+        std::cout << "Action #" << actions.size() <<
+                  ":\nforward_diff: " << actions.back().forward_diff <<
+                  "\nreverse_diff: " << actions.back().reverse_diff << std::endl;
+    }
 }
 
 /**

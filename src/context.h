@@ -11,9 +11,9 @@ private:
     State _state{};
     void update(Action); // State is only updated via `context.on_action(action)`
     void apply_diff(const json &diff);
+    void finalize_gesture();
 public:
     struct ActionDiff {
-        Action action;
         json forward_diff;
         json reverse_diff;
     };
@@ -34,16 +34,19 @@ public:
     std::vector<ActionDiff> actions;
     int current_action_index = -1;
     json json_state;
+    bool in_gesture{};
 
     Context();
 
     void on_action(Action &);
-    bool can_undo() const {
-        return current_action_index >= 0;
+
+    void start_gesture() { in_gesture = true; }
+    void end_gesture() {
+        in_gesture = false;
+        finalize_gesture();
     }
-    bool can_redo() const {
-        return current_action_index < (int) actions.size() - 1;
-    }
+    bool can_undo() const { return current_action_index >= 0; }
+    bool can_redo() const { return current_action_index < (int) actions.size() - 1; }
 };
 
 /**

@@ -112,7 +112,7 @@ void render(DrawContext &dc, const Color &clear_color) {
 void drawFrame(BlockingConcurrentQueue<Action> &q) {
     if (s.ui.windows.demo.show) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.show);
 
-    ImGui::Begin("FlowGrid"); // Create a window called "FlowGrid" and append into it.
+    ImGui::Begin("FlowGrid");
 
     ImGui::BeginDisabled(!c.can_undo());
     if (ImGui::Button("Undo")) { q.enqueue(undo{}); }
@@ -121,7 +121,11 @@ void drawFrame(BlockingConcurrentQueue<Action> &q) {
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
     ImGui::EndDisabled();
     if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows.demo.show)) { q.enqueue(toggle_demo_window{}); }
+
     if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
+    if (ImGui::IsItemActivated()) c.start_gesture();
+    if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();
+
     // TODO allow toggling audio & action_consumer on and off repeatedly
     if (ImGui::Button("Stop audio thread")) { q.enqueue(set_audio_thread_running{false}); }
 //        q.enqueue(set_action_consumer_running{false});

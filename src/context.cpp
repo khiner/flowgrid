@@ -8,28 +8,12 @@ Context::Context() : json_state(state2json(_state)) {}
 
 void Context::on_action(Action &action) {
     if (std::holds_alternative<undo>(action)) {
-        if (can_undo()) {
-            const auto &action_to_undo = actions[current_action_index--];
-            apply_diff(action_to_undo.reverse_diff);
-        }
+        if (can_undo()) apply_diff(actions[current_action_index--].reverse_diff);
     } else if (std::holds_alternative<redo>(action)) {
-        if (can_redo()) {
-            const auto &action_to_redo = actions[++current_action_index];
-            apply_diff(action_to_redo.forward_diff);
-        }
+        if (can_redo()) apply_diff(actions[++current_action_index].forward_diff);
     } else {
         update(action);
-        auto old_json_state = json_state;
-        json_state = state2json(s);
-        actions.emplace_back(ActionDiff{
-            action,
-            json::diff(old_json_state, json_state),
-            json::diff(json_state, old_json_state)
-        });
-        current_action_index += 1;
-        std::cout << "Action #" << actions.size() <<
-                  ":\nforward_diff: " << actions.back().forward_diff <<
-                  "\nreverse_diff: " << actions.back().reverse_diff << std::endl;
+        if (!in_gesture) finalize_gesture();
     }
 }
 
@@ -65,4 +49,17 @@ void Context::update(Action action) {
 void Context::apply_diff(const json &diff) {
     _state = json2state(json_state.patch(diff));
     ui_s = _state; // Update the UI-copy of the state to reflect.
+}
+
+void Context::finalize_gesture() {
+    auto old_json_state = json_state;
+    json_state = state2json(s);
+    actions.emplace_back(ActionDiff{
+        json::diff(old_json_state, json_state),
+        json::diff(json_state, old_json_state)
+    });
+    current_action_index += 1;
+    std::cout << "Action #" << actions.size() <<
+              ":\nforward_diff: " << actions.back().forward_diff <<
+              "\nreverse_diff: " << actions.back().reverse_diff << std::endl;
 }

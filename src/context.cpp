@@ -59,12 +59,12 @@ void Context::apply_diff(const json &diff) {
 void Context::finalize_gesture() {
     auto old_json_state = json_state;
     json_state = state2json(s);
-    actions.emplace_back(ActionDiff{
-        json::diff(old_json_state, json_state),
-        json::diff(json_state, old_json_state)
-    });
-    current_action_index += 1;
-    std::cout << "Action #" << actions.size() <<
-              ":\nforward_diff: " << actions.back().forward_diff <<
-              "\nreverse_diff: " << actions.back().reverse_diff << std::endl;
+    auto diff = json::diff(old_json_state, json_state);
+    if (!diff.empty()) {
+        actions.emplace_back(ActionDiff{diff, json::diff(json_state, old_json_state)});
+        current_action_index += 1;
+        std::cout << "Action #" << actions.size() <<
+                  ":\nforward_diff: " << actions.back().forward_diff <<
+                  "\nreverse_diff: " << actions.back().reverse_diff << std::endl;
+    }
 }

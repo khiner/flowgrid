@@ -35,6 +35,7 @@ void Context::update(const Action &action) {
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },
             [&](set_audio_thread_running a) { _s.audio.running = a.running; },
             [&](toggle_audio_running) { _s.audio.running = !s.audio.running; },
+            [&](const set_faust_text &a) { _s.audio.faust_text = a.text; },
             [&](set_action_consumer_running a) { _s.action_consumer.running = a.running; },
             [&](set_ui_running a) { _s.ui.running = a.running; },
             [&](close_application) {

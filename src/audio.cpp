@@ -73,17 +73,16 @@ struct FaustLlvmDsp {
     llvm_dsp_factory *dsp_factory;
     dsp *dsp;
 
-    explicit FaustLlvmDsp(std::string libraries_path, int sample_rate) {
+    explicit FaustLlvmDsp(int sample_rate) {
         int argc = 0;
         const char **argv = new const char *[8];
         argv[argc++] = "-I";
-        argv[argc++] = &libraries_path[0]; // convert to char*
+        argv[argc++] = &config.faust_libraries_path[0]; // convert to char*
         // Consider additional args: "-vec", "-vs", "128", "-dfs"
 
         const int optimize = -1;
-        const std::string faust_code = "import(\"stdfaust.lib\"); process = no.noise;";
         std::string faust_error_msg;
-        dsp_factory = createDSPFactoryFromString("FlowGrid", faust_code, argc, argv, "", faust_error_msg, optimize);
+        dsp_factory = createDSPFactoryFromString("FlowGrid", s.audio.faust_text, argc, argv, "", faust_error_msg, optimize);
         if (!faust_error_msg.empty()) throw std::runtime_error("[Faust]: " + faust_error_msg);
 
         dsp = dsp_factory->createDSPInstance();
@@ -100,7 +99,7 @@ struct SoundIoStreamContext {
     FaustLlvmDsp dsp;
     FaustBuffers buffers;
 
-    explicit SoundIoStreamContext(std::string faust_library_path, int sample_rate) : dsp(std::move(faust_library_path), sample_rate), buffers(dsp.dsp->getNumInputs(), dsp.dsp->getNumOutputs()) {}
+    explicit SoundIoStreamContext(int sample_rate) : dsp(sample_rate), buffers(dsp.dsp->getNumInputs(), dsp.dsp->getNumOutputs()) {}
 };
 
 static void write_sample_s16ne(char *ptr, double sample) {
@@ -199,7 +198,7 @@ int audio() {
 
     write_sample = write_sample_for_format(*format);
 
-    SoundIoStreamContext stream_context{config.faust_libraries_path, outstream->sample_rate};
+    SoundIoStreamContext stream_context{outstream->sample_rate};
     outstream->userdata = &stream_context;
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
         const auto *stream_context = reinterpret_cast<SoundIoStreamContext *>(outstream->userdata);

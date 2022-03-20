@@ -66,6 +66,7 @@ struct Audio {
     AudioBackend backend = none;
     char *in_device_id = nullptr;
     char *out_device_id = nullptr;
+    std::string faust_text{"import(\"stdfaust.lib\"); process = no.noise;\n"};
     bool running = true;
     bool muted = true;
     bool out_raw = false;
@@ -83,7 +84,7 @@ struct State {
     ActionConsumer action_consumer;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw) // TODO string fields
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust_text)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show)

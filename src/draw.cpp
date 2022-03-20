@@ -1,3 +1,4 @@
+#include <iostream>
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include "imgui.h"
@@ -5,6 +6,38 @@
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "draw.h"
 #include "context.h"
+
+
+struct InputTextCallback_UserData {
+    std::string *Str;
+    ImGuiInputTextCallback ChainCallback;
+    void *ChainCallbackUserData;
+};
+
+static int InputTextCallback(ImGuiInputTextCallbackData *data) {
+    auto *user_data = (InputTextCallback_UserData *) data->UserData;
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+        // Resize string callback
+        // If for some reason we refuse the new length (BufTextLen) and/or capacity (BufSize) we need to set them back to what we want.
+        std::string *str = user_data->Str;
+        IM_ASSERT(data->Buf == str->c_str());
+        str->resize(data->BufTextLen);
+        data->Buf = (char *) str->c_str();
+    } else if (user_data->ChainCallback) {
+        // Forward to user callback, if any
+        data->UserData = user_data->ChainCallbackUserData;
+        return user_data->ChainCallback(data);
+    }
+    return 0;
+}
+
+bool InputTextMultiline(const char *label, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
+    IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
+    flags |= ImGuiInputTextFlags_CallbackResize;
+
+    InputTextCallback_UserData cb_user_data{str, callback, user_data};
+    return ImGui::InputTextMultiline(label, (char *) str->c_str(), str->capacity() + 1, ImVec2(0, 0), flags, InputTextCallback, &cb_user_data);
+}
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -130,6 +163,14 @@ void drawFrame(BlockingConcurrentQueue<Action> &q) {
     // TODO allow toggling action_consumer on and off repeatedly
 //        q.enqueue(set_action_consumer_running{false});
     if (ImGui::Checkbox("Mute audio", &ui_s.audio.muted)) { q.enqueue(toggle_audio_muted{}); }
+
+    {
+//        ImGuiInputTextFlags_NoUndoRedo;
+        static auto flags = ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_EnterReturnsTrue;
+        if (InputTextMultiline("##faust_source", &ui_s.audio.faust_text, flags)) {
+            q.enqueue(set_faust_text{ui_s.audio.faust_text});
+        }
+    }
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 

@@ -14,6 +14,7 @@ void Context::on_action(const Action &action) {
     } else {
         update(action);
         if (!in_gesture) finalize_gesture();
+        audio_context.on_action(action); // audio-related side effects
     }
 }
 
@@ -28,21 +29,23 @@ void Context::update(const Action &action) {
     State &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(
         visitor{
-            [&](undo) {},
-            [&](redo) {},
             [&](toggle_demo_window) { _s.ui.windows.demo.show = !s.ui.windows.demo.show; },
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },
             [&](set_audio_thread_running a) { _s.audio.running = a.running; },
             [&](toggle_audio_running) { _s.audio.running = !s.audio.running; },
-            [&](const set_faust_text &a) { _s.audio.faust_text = a.text; },
             [&](set_action_consumer_running a) { _s.action_consumer.running = a.running; },
             [&](set_ui_running a) { _s.ui.running = a.running; },
+            [&](const set_faust_text &a) { _s.audio.faust_text = a.text; },
+            [&](const set_audio_sample_rate &a) { _s.audio.sample_rate = a.sample_rate; },
             [&](close_application) {
                 _s.ui.running = false;
                 _s.audio.running = false;
                 _s.action_consumer.running = false;
-            }
+            },
+            // All actions that don't affect state:
+            [&](undo) {},
+            [&](redo) {},
         },
         action
     );

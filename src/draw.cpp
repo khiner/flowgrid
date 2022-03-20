@@ -7,7 +7,6 @@
 #include "draw.h"
 #include "context.h"
 
-
 struct InputTextCallback_UserData {
     std::string *Str;
     ImGuiInputTextCallback ChainCallback;
@@ -142,7 +141,7 @@ void render(DrawContext &dc, const Color &clear_color) {
     SDL_GL_SwapWindow(dc.window);
 }
 
-void drawFrame(BlockingConcurrentQueue<Action> &q) {
+void draw_frame() {
     if (s.ui.windows.demo.show) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.show);
 
     ImGui::Begin("FlowGrid");
@@ -177,7 +176,7 @@ void drawFrame(BlockingConcurrentQueue<Action> &q) {
     ImGui::End();
 }
 
-int draw(BlockingConcurrentQueue<Action> &q) {
+int draw() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -204,7 +203,7 @@ int draw(BlockingConcurrentQueue<Action> &q) {
         }
 
         newFrame();
-        drawFrame(q);
+        draw_frame();
         render(dc, s.ui.colors.clear);
     }
 

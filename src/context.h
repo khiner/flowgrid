@@ -3,6 +3,8 @@
 #include "nlohmann/json.hpp"
 #include "state.h"
 #include "action.h"
+#include "audio_context.h"
+#include "blockingconcurrentqueue.h"
 
 using namespace nlohmann;
 
@@ -21,6 +23,7 @@ public:
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     State ui_s{}; // Separate copy of the state that can be modified by the UI directly
+    AudioContext audio_context;
 
     /**
      This is a placeholder for the main in-memory data structure for action history.
@@ -56,6 +59,9 @@ public:
 extern Context context, &c;
 extern const State &state, &s;
 extern State &ui_s;
+
+using namespace moodycamel; // ConcurrentQueue, BlockingConcurrentQueue
+extern BlockingConcurrentQueue<Action> q;
 
 /**md
 # Usage

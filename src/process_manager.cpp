@@ -7,11 +7,9 @@ void ProcessManager::on_action(const Action &) {
 }
 
 void ProcessManager::update() {
-    if (!audio_running && s.audio.running) {
-        audio_thread = std::thread(audio);
-        audio_running = true;
-    } else if (audio_running && !s.audio.running) {
-        audio_thread.join();
-        audio_running = false;
+    if (audio_running != s.audio.running) {
+        if (s.audio.running) audio_thread = std::thread(audio);
+        else audio_thread.join();
+        audio_running = s.audio.running;
     }
 }

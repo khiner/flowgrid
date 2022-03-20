@@ -4,11 +4,9 @@
 
 #include <iostream>
 #include <soundio/soundio.h>
-#include "faust/dsp/llvm-dsp.h"
-//#include "generator/libfaust.h" // For the C++ backend
 
-#include "config.h"
 #include "context.h"
+#include "audio_context.h"
 
 static int prioritized_sample_rates[] = {
     48000,
@@ -39,68 +37,6 @@ SoundIoBackend getSoundIOBackend(AudioBackend backend) {
             return SoundIoBackendNone;
     }
 }
-
-// Used to initialize the static Faust buffer.
-// This is the highest `max_frame_count` value I've seen coming into the output audio callback,
-// using a sample rate of 96kHz.
-// If it needs bumping up, bump away!
-static const int MAX_EXPECTED_FRAME_COUNT = 2048;
-
-struct FaustBuffers {
-    const int num_frames = MAX_EXPECTED_FRAME_COUNT;
-    const int num_input_channels;
-    const int num_output_channels;
-    FAUSTFLOAT **input;
-    FAUSTFLOAT **output;
-
-    FaustBuffers(int num_input_channels, int num_output_channels) :
-        num_input_channels(num_input_channels), num_output_channels(num_output_channels) {
-        input = new FAUSTFLOAT *[num_input_channels];
-        output = new FAUSTFLOAT *[num_output_channels];
-        for (int i = 0; i < num_input_channels; i++) { input[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
-        for (int i = 0; i < num_output_channels; i++) { output[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
-    }
-
-    ~FaustBuffers() {
-        for (int i = 0; i < num_input_channels; i++) { delete[] input[i]; }
-        for (int i = 0; i < num_output_channels; i++) { delete[] output[i]; }
-        delete input;
-        delete output;
-    }
-};
-
-struct FaustLlvmDsp {
-    llvm_dsp_factory *dsp_factory;
-    dsp *dsp;
-
-    explicit FaustLlvmDsp(int sample_rate) {
-        int argc = 0;
-        const char **argv = new const char *[8];
-        argv[argc++] = "-I";
-        argv[argc++] = &config.faust_libraries_path[0]; // convert to char*
-        // Consider additional args: "-vec", "-vs", "128", "-dfs"
-
-        const int optimize = -1;
-        std::string faust_error_msg;
-        dsp_factory = createDSPFactoryFromString("FlowGrid", s.audio.faust_text, argc, argv, "", faust_error_msg, optimize);
-        if (!faust_error_msg.empty()) throw std::runtime_error("[Faust]: " + faust_error_msg);
-
-        dsp = dsp_factory->createDSPInstance();
-        dsp->init(sample_rate);
-    }
-
-    ~FaustLlvmDsp() {
-        delete dsp;
-        deleteDSPFactory(dsp_factory);
-    }
-};
-
-struct SoundIoStreamContext {
-    FaustLlvmDsp dsp;
-    FaustBuffers buffers;
-
-    explicit SoundIoStreamContext(int sample_rate) : dsp(sample_rate), buffers(dsp.dsp->getNumInputs(), dsp.dsp->getNumOutputs()) {}
-};
 
 static void write_sample_s16ne(char *ptr, double sample) {
     auto *buf = (int16_t *) ptr;
@@ -179,13 +115,13 @@ int audio() {
     int *sample_rate = &default_sample_rate;
     if (*sample_rate != 0) {
         if (!soundio_device_supports_sample_rate(out_device, *sample_rate)) {
-            throw std::runtime_error("Output audio device does not support the provided sample rate of " + std::to_string(default_sample_rate));
+            throw std::runtime_error("Output audio device does not support the provided sample rate of " + std::to_string(*sample_rate));
         }
     } else {
         for (sample_rate = prioritized_sample_rates; *sample_rate; sample_rate += 1) {
             if (soundio_device_supports_sample_rate(out_device, *sample_rate)) break;
         }
-        if (!*sample_rate) throw std::runtime_error("Output audio device does not support any of the sample rates in `prioritized_sample_wrates`.");
+        if (!*sample_rate) throw std::runtime_error("Output audio device does not support any of the sample rates in `prioritized_sample_rates`.");
     }
 
     outstream->sample_rate = *sample_rate;
@@ -197,13 +133,10 @@ int audio() {
     if (*format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
 
     write_sample = write_sample_for_format(*format);
+    q.enqueue(set_audio_sample_rate{outstream->sample_rate});
 
-    SoundIoStreamContext stream_context{outstream->sample_rate};
-    outstream->userdata = &stream_context;
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-        const auto *stream_context = reinterpret_cast<SoundIoStreamContext *>(outstream->userdata);
-        const auto &buffers = stream_context->buffers;
-        const auto &dsp = stream_context->dsp;
+        static const auto &ac = c.audio_context;
         struct SoundIoChannelArea *areas;
         int err;
 
@@ -215,21 +148,19 @@ int audio() {
                 exit(1);
             }
             if (!frame_count) break;
-            if (frame_count > buffers.num_frames) {
-                std::cerr << "The output stream buffer only has " << buffers.num_frames
+            if (ac.buffers && frame_count > ac.buffers->num_frames) {
+                std::cerr << "The output stream buffer only has " << ac.buffers->num_frames
                           << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
-                          << "(Increase `MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
+                          << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
                 exit(1);
             }
 
-            dsp.dsp->compute(frame_count, buffers.input, buffers.output);
+            ac.compute(frame_count);
 
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame += 1) {
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    if (channel < buffers.num_output_channels) {
-                        write_sample(areas[channel].ptr, s.audio.muted ? 0.0 : buffers.output[channel][frame]);
-                    }
+                    write_sample(areas[channel].ptr, ac.get_sample(channel, frame));
                     areas[channel].ptr += areas[channel].step;
                 }
             }

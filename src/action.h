@@ -20,6 +20,7 @@ struct toggle_audio_running {};
 struct set_action_consumer_running { bool running; };
 struct set_ui_running { bool running; };
 struct set_faust_text { std::string text; };
+struct set_audio_sample_rate { int sample_rate; };
 
 struct close_application {};
 
@@ -40,6 +41,7 @@ using Action = std::variant<
     set_action_consumer_running,
     set_ui_running,
     set_faust_text,
+    set_audio_sample_rate,
 
     close_application
 >;

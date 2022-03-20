@@ -6,7 +6,7 @@
 
 Context::Context() : json_state(state2json(_state)) {}
 
-void Context::on_action(Action &action) {
+void Context::on_action(const Action &action) {
     if (std::holds_alternative<undo>(action)) {
         if (can_undo()) apply_diff(actions[current_action_index--].reverse_diff);
     } else if (std::holds_alternative<redo>(action)) {
@@ -24,7 +24,7 @@ void Context::on_action(Action &action) {
  * When updates need to happen atomically across linked members for logical consistency,
  * make working copies as needed. Otherwise, modify the (single, global) state directly, in-place.
  */
-void Context::update(Action action) {
+void Context::update(const Action &action) {
     State &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(
         visitor{
@@ -34,6 +34,7 @@ void Context::update(Action action) {
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },
             [&](set_audio_thread_running a) { _s.audio.running = a.running; },
+            [&](toggle_audio_running) { _s.audio.running = !s.audio.running; },
             [&](set_action_consumer_running a) { _s.action_consumer.running = a.running; },
             [&](set_ui_running a) { _s.ui.running = a.running; },
             [&](close_application) {

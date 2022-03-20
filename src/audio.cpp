@@ -7,6 +7,7 @@
 #include "faust/dsp/llvm-dsp.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
+#include "config.h"
 #include "context.h"
 
 static int prioritized_sample_rates[] = {
@@ -134,7 +135,7 @@ auto write_sample_for_format(const SoundIoFormat format) {
 
 static void (*write_sample)(char *ptr, double sample); // Determined at runtime below.
 
-int audio(const std::string &faust_libraries_path) {
+int audio() {
     auto *soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
@@ -198,7 +199,7 @@ int audio(const std::string &faust_libraries_path) {
 
     write_sample = write_sample_for_format(*format);
 
-    SoundIoStreamContext stream_context{faust_libraries_path, outstream->sample_rate};
+    SoundIoStreamContext stream_context{config.faust_libraries_path, outstream->sample_rate};
     outstream->userdata = &stream_context;
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
         const auto *stream_context = reinterpret_cast<SoundIoStreamContext *>(outstream->userdata);

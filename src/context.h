@@ -9,7 +9,7 @@ using namespace nlohmann;
 struct Context {
 private:
     State _state{};
-    void update(Action); // State is only updated via `context.on_action(action)`
+    void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(const json &diff);
     void finalize_gesture();
 public:
@@ -38,7 +38,7 @@ public:
 
     Context();
 
-    void on_action(Action &);
+    void on_action(const Action &);
 
     void start_gesture() { in_gesture = true; }
     void end_gesture() {

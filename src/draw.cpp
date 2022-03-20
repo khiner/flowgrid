@@ -126,8 +126,8 @@ void drawFrame(BlockingConcurrentQueue<Action> &q) {
     if (ImGui::IsItemActivated()) c.start_gesture();
     if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();
 
-    // TODO allow toggling audio & action_consumer on and off repeatedly
-    if (ImGui::Button("Stop audio thread")) { q.enqueue(set_audio_thread_running{false}); }
+    if (ImGui::Checkbox("Audio thread running", &ui_s.audio.running)) { q.enqueue(toggle_audio_running{}); }
+    // TODO allow toggling action_consumer on and off repeatedly
 //        q.enqueue(set_action_consumer_running{false});
     if (ImGui::Checkbox("Mute audio", &ui_s.audio.muted)) { q.enqueue(toggle_audio_muted{}); }
 

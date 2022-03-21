@@ -35,17 +35,24 @@ struct AudioContext {
         }
     };
 
-    struct FaustLlvmDsp {
-        llvm_dsp_factory *dsp_factory;
-        dsp *dsp;
+    struct FaustContext {
         const std::string faust_text;
+        int sample_rate;
+        int num_inputs{0}, num_outputs{0};
+        llvm_dsp_factory *dsp_factory;
+        dsp *dsp = nullptr;
+        std::unique_ptr<FaustBuffers> buffers;
 
-        explicit FaustLlvmDsp(int sample_rate, std::string faust_text);
-        ~FaustLlvmDsp();
+        FaustContext(std::string faust_text, int sample_rate);
+        ~FaustContext();
+
+        void compute(int frame_count) const;
+        FAUSTFLOAT get_sample(int channel, int frame) const;
+
+        void update();
     };
 
-    std::unique_ptr<FaustLlvmDsp> dsp;
-    std::unique_ptr<FaustBuffers> buffers;
+    std::unique_ptr<FaustContext> faust;
 
     AudioContext() = default;
     void on_action(const Action &);

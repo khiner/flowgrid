@@ -148,13 +148,6 @@ int audio() {
                 exit(1);
             }
             if (!frame_count) break;
-            if (ac.buffers && frame_count > ac.buffers->num_frames) {
-                std::cerr << "The output stream buffer only has " << ac.buffers->num_frames
-                          << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
-                          << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
-                exit(1);
-            }
-
             ac.compute(frame_count);
 
             const auto *layout = &outstream->layout;

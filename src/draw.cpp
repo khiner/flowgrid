@@ -169,6 +169,9 @@ void draw_frame() {
         if (InputTextMultiline("##faust_source", &ui_s.audio.faust.code, flags)) {
             q.enqueue(set_faust_text{ui_s.audio.faust.code});
         }
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+        if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
+        ImGui::PopStyleColor();
     }
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);

@@ -36,7 +36,7 @@ void Context::update(const Action &action) {
             [&](toggle_audio_running) { _s.audio.running = !s.audio.running; },
             [&](set_action_consumer_running a) { _s.action_consumer.running = a.running; },
             [&](set_ui_running a) { _s.ui.running = a.running; },
-            [&](const set_faust_text &a) { _s.audio.faust_text = a.text; },
+            [&](const set_faust_text &a) { _s.audio.faust.code = a.text; },
             [&](const set_audio_sample_rate &a) { _s.audio.sample_rate = a.sample_rate; },
             [&](close_application) {
                 _s.ui.running = false;

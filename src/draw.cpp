@@ -166,8 +166,8 @@ void draw_frame() {
     {
 //        ImGuiInputTextFlags_NoUndoRedo;
         static auto flags = ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_EnterReturnsTrue;
-        if (InputTextMultiline("##faust_source", &ui_s.audio.faust_text, flags)) {
-            q.enqueue(set_faust_text{ui_s.audio.faust_text});
+        if (InputTextMultiline("##faust_source", &ui_s.audio.faust.code, flags)) {
+            q.enqueue(set_faust_text{ui_s.audio.faust.code});
         }
     }
 

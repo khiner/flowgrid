@@ -17,8 +17,8 @@ FAUSTFLOAT AudioContext::get_sample(int channel, int frame) const {
 }
 
 void AudioContext::update() {
-    if (!dsp || dsp->dsp->getSampleRate() != s.audio.sample_rate || dsp->faust_text != s.audio.faust_text) {
-        dsp = std::make_unique<FaustLlvmDsp>(s.audio.sample_rate, s.audio.faust_text);
+    if (!dsp || dsp->dsp->getSampleRate() != s.audio.sample_rate || dsp->faust_text != s.audio.faust.code) {
+        dsp = std::make_unique<FaustLlvmDsp>(s.audio.sample_rate, s.audio.faust.code);
         buffers = std::make_unique<FaustBuffers>(dsp->dsp->getNumInputs(), dsp->dsp->getNumOutputs());
     }
 }

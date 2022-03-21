@@ -62,16 +62,22 @@ enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
 
+struct Faust {
+    std::string code{"import(\"stdfaust.lib\"); process = no.noise;\n"};
+    std::string error{};
+};
+
 struct Audio {
     AudioBackend backend = none;
+    Faust faust;
     char *in_device_id = nullptr;
     char *out_device_id = nullptr;
-    std::string faust_text{"import(\"stdfaust.lib\"); process = no.noise;\n"};
     bool running = true;
     bool muted = true;
     bool out_raw = false;
     int sample_rate = 48000;
     double latency = 0.0;
+
 };
 
 struct ActionConsumer {
@@ -84,7 +90,8 @@ struct State {
     ActionConsumer action_consumer;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust_text)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show)

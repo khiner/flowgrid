@@ -52,6 +52,7 @@ add_subdirectory(json)
 # [TD-Faust](https://github.com/DBraun/TD-Faust/blob/965963258b2c68054fc7e376e1fa84ea19ce7af4/FaustLib.cmake#L26-L62).
 # The libfaust usage for TD-Faust is [here](https://github.com/DBraun/TD-Faust/blob/c31cc7d5fd336b663396ed87f7692f82820e7b20/TD-Faust/FaustCHOP.h).
 
+# TODO only if using homebrew? maybe just find a way to remove this, and handle with local run env vars
 set(PKG_CONFIG_EXECUTABLE /opt/homebrew/bin/pkg-config)
 
 set(MSVC_STATIC OFF CACHE STRING "Use static runtimes with MSVC" FORCE)

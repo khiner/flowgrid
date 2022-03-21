@@ -2,20 +2,33 @@
 
 Prototyping the new stack for FlowGrid.
 
-Currently:
+I'm still actively building this. Currently, I'm basically trying to maximally mash together some wonderful libraries (
+see [**Stack**](#stack)):
 
-* `libsoundio` audio loop running on its own thread
-* Simple `imgui` interface to control:
-    - application background color
-    - turning a sine wave on and off
-    - changing sine frequency and amplitude
-    - shutting down audio loop entirely
-    - opening the `imgui` demo window
-* Single global application state object `state` of type `State`
-    - all state transformations happen via `action`s
-    - TODO: undo/redo using state diffs
-* TODO: Faust for audio backend
-    - TODO: faust text editor, recompiling Faust graph every time an 'Apply' button is pressed
+## Features
+
+* Faust live code editor
+    - Currently, a very basic `ImGui::InputTextMultiline`
+* All user actions are put into a full undo stack
+    - An invariant of the application is that its state can always be fully reconstructed from diffs in the undo stack.
+* Toggle audio mute
+* Toggle audio thread running
+* Choose background color
+* Toggle the ImGui demo window
+
+## Stack
+
+### Audio
+
+Faust for DSP, libsoundio for audio backend
+
+### UI/UX
+
+ImGui
+
+### Backend
+
+json, ConcurrentQueue
 
 ## System requirements
 

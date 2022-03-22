@@ -77,28 +77,11 @@ set(WASM_BACKEND OFF CACHE STRING "Include WASM backend" FORCE)
 add_subdirectory(faust/build EXCLUDE_FROM_ALL)
 target_compile_definitions(dynamiclib PUBLIC LLVM_BUILD_UNIVERSAL=1)
 
-
 #=================== zep ===================
-
-# Based on this example in the zep documentation:
-# https://github.com/cmaughan/zep_imgui/blob/main/demo/CMakeLists.txt
-
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(FREETYPE_DIR /opt/homebrew/opt/freetype)
-find_package(sdl2 REQUIRED)
-#find_package(Vulkan REQUIRED)
-#find_package(freetype REQUIRED)
+find_package(freetype REQUIRED)
 
-add_definitions(-DZEP_SINGLE_HEADER=1)
-
-# Set this if we are sitting on SDL
-add_definitions(-DZEP_USE_SDL)
-# Set this to get the default file system
-add_definitions(-DZEP_FEATURE_CPP_FILE_SYSTEM)
-
-#configure_file(${CMAKE_BINARY_DIR}/config_app.h)
-
-set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
-set(BUILD_DEMOS OFF CACHE STRING "Make the demo app" FORCE)
+add_definitions(-DZEP_USE_SDL -DBUILD_IMGUI=OFF -DBUILD_TESTS=OFF -DBUILD_DEMOS=OFF -DBUILD_EXTENSIONS=OFF)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)

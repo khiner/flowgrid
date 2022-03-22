@@ -14,15 +14,10 @@ set(FAUST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/faust)
 include_directories(${FAUST_DIR}/architecture)
 include_directories(${FAUST_DIR}/compiler)
 include_directories(${FAUST_DIR}/compiler/utils)
-add_dependencies(${PROJECT_NAME} dynamiclib)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/concurrentqueue)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/zep/include)
 
-set(CONCURRENTQUEUE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/concurrentqueue)
-set(ZEP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/zep)
-include_directories(${CONCURRENTQUEUE_DIR})
-include_directories(${ZEP_DIR}/include)
-#include_directories(${ZEP_DIR}/src)
-
-# dynamiclib is faust. TODO export it with a 'faust' name
+# `dynamiclib` is faust. TODO export it with a 'faust' name
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_json::nlohmann_json dynamiclib Zep::Zep)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

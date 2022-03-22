@@ -1,3 +1,7 @@
+/**
+ * Based on https://github.com/cmaughan/zep_imgui/blob/main/demo/src/editor.cpp
+ */
+
 #include "editor.h"
 #include "config.h"
 #include <functional>

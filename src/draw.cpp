@@ -6,6 +6,7 @@
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "draw.h"
 #include "context.h"
+#include "editor.h"
 
 struct InputTextCallback_UserData {
     std::string *Str;
@@ -141,7 +142,20 @@ void render(DrawContext &dc, const Color &clear_color) {
     SDL_GL_SwapWindow(dc.window);
 }
 
+bool z_init = false;
+
 void draw_frame() {
+    if (!z_init) {
+        // Called once the fonts/device is guaranteed setup
+        zep_init(Zep::NVec2f(1.0f, 1.0f));
+        zep_load(Zep::ZepPath(config.app_root) / "src" / "main.cpp");
+        z_init = true;
+    }
+
+    zep_update(); // Required for CTRL+P and flashing cursor.
+    static auto zep_size = Zep::NVec2i(640, 480);
+    zep_show(zep_size);
+
     if (s.ui.windows.demo.show) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.show);
 
     ImGui::Begin("FlowGrid");
@@ -210,6 +224,7 @@ int draw() {
         render(dc, s.ui.colors.clear);
     }
 
+    zep_destroy();
     teardown(dc);
 
     return 0;

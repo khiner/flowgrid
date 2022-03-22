@@ -20,11 +20,13 @@ see [**Stack**](#stack)):
 
 ### Audio
 
-Faust for DSP, libsoundio for audio backend
+* Faust for DSP
+* libsoundio for audio backend
 
 ### UI/UX
 
-ImGui
+* ImGui for UI
+* [zep](https://github.com/Rezonality/zep) for Faust code editing
 
 ### Backend
 
@@ -36,7 +38,7 @@ json, ConcurrentQueue
 
 ```shell
 $ git submodule update --recursive --remote
-$ brew install pkgconfig llvm
+$ brew install pkgconfig llvm freetype
 $ brew link llvm --force # I needed this to put the `llvm-config` executable in my PATH
 ```
 

@@ -13,7 +13,8 @@ State &ui_s = c.ui_s; // Convenient shorthand
 BlockingConcurrentQueue<Action> q{}; // NOLINT(cert-err58-cpp,cppcoreguidelines-interfaces-global-init)
 
 int main(int, const char *argv[]) {
-    config.faust_libraries_path = std::string(argv[0]) + "/../../lib/faust/libraries";
+    config.app_root = std::string(argv[0]);
+    config.faust_libraries_path = config.app_root + "/../../lib/faust/libraries";
 
     ProcessManager pm;
     std::thread action_consumer([&]() {

@@ -10,12 +10,12 @@ add_executable(
     src/action.h src/audio.h src/context.h src/draw.h src/state.h src/visitor.h
     src/draw.cpp src/audio.cpp src/main.cpp src/transformers/bijective/state2json.cpp src/transformers/bijective/state2json.cpp src/context.cpp src/transformers/bijective/json2state.cpp src/transformers/bijective/json2state.h src/process_manager.cpp src/process_manager.h src/config.h src/audio_context.cpp src/audio_context.h src/editor.cpp src/editor.h)
 
-set(FAUST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/faust)
+set(FAUST_DIR lib/faust)
 include_directories(${FAUST_DIR}/architecture)
 include_directories(${FAUST_DIR}/compiler)
 include_directories(${FAUST_DIR}/compiler/utils)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/concurrentqueue)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/zep/include)
+include_directories(lib/concurrentqueue)
+include_directories(lib/zep/include)
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_json::nlohmann_json dynamiclib Zep::Zep)

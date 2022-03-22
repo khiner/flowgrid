@@ -81,7 +81,11 @@ target_compile_definitions(dynamiclib PUBLIC LLVM_BUILD_UNIVERSAL=1)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(FREETYPE_DIR /opt/homebrew/opt/freetype)
-find_package(freetype REQUIRED)
+find_package(Freetype REQUIRED)
 
-add_definitions(-DZEP_USE_SDL -DBUILD_IMGUI=OFF -DBUILD_TESTS=OFF -DBUILD_DEMOS=OFF -DBUILD_EXTENSIONS=OFF)
+set(BUILD_QT OFF CACHE STRING "Make Qt Library" FORCE)
+set(BUILD_IMGUI OFF CACHE STRING "Make Imgui Library" FORCE)
+set(BUILD_DEMOS OFF CACHE STRING "Make the demo app" FORCE)
+set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
+set(BUILD_EXTENSIONS OFF CACHE STRING "Make the extension library (required for demo)" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)

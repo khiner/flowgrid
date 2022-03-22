@@ -5,15 +5,11 @@ project(FlowGrid LANGUAGES C CXX)
 
 add_subdirectory("lib")
 
-add_executable(
-    ${PROJECT_NAME}
-    src/action.h src/audio.h src/context.h src/draw.h src/state.h src/visitor.h
-    src/draw.cpp src/audio.cpp src/main.cpp src/transformers/bijective/state2json.cpp src/transformers/bijective/state2json.cpp src/context.cpp src/transformers/bijective/json2state.cpp src/transformers/bijective/json2state.h src/process_manager.cpp src/process_manager.h src/config.h src/audio_context.cpp src/audio_context.h src/editor.cpp src/editor.h)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.h src/*.cpp)
+add_executable(${PROJECT_NAME} ${SOURCES})
 
-set(FAUST_DIR lib/faust)
-include_directories(${FAUST_DIR}/architecture)
-include_directories(${FAUST_DIR}/compiler)
-include_directories(${FAUST_DIR}/compiler/utils)
+include_directories(lib/faust/architecture)
+include_directories(lib/faust/compiler)
 include_directories(lib/concurrentqueue)
 include_directories(lib/zep/include)
 

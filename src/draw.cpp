@@ -6,7 +6,7 @@
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "draw.h"
 #include "context.h"
-#include "editor.h"
+#include "editor/faust_editor.h"
 
 struct InputTextCallback_UserData {
     std::string *Str;
@@ -153,8 +153,7 @@ void draw_frame() {
     }
 
     zep_update(); // Required for CTRL+P and flashing cursor.
-    static auto zep_size = Zep::NVec2i(640, 480);
-    zep_show(zep_size);
+    zep_show();
 
     if (s.ui.windows.demo.show) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.show);
 

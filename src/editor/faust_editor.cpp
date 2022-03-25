@@ -2,9 +2,10 @@
  * Based on https://github.com/cmaughan/zep_imgui/blob/main/demo/src/editor.cpp
  */
 
-#include "editor.h"
-#include "config.h"
+#include "faust_editor.h"
+#include "../config.h"
 #include <filesystem>
+#include "../context.h"
 
 namespace fs = std::filesystem;
 
@@ -65,10 +66,17 @@ void zep_load(const Zep::ZepPath &file) {
     auto pBuffer = spZep->GetEditor().InitWithFileOrDir(file);
 }
 
-void zep_show(const Zep::NVec2i &displaySize) {
-    bool show = true;
-    ImGui::SetNextWindowSize(ImVec2(displaySize.x, displaySize.y), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Zep", &show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar)) {
+void zep_show() {
+    auto &editor_state = ui_s.ui.windows.faust_editor;
+    auto &dimensions = editor_state.dimensions;
+    auto &show = editor_state.show;
+    if (show != s.ui.windows.faust_editor.show) {
+        q.enqueue(toggle_faust_editor_window{});
+    }
+    if (!show) return;
+
+    ImGui::SetNextWindowSize(dimensions.size, ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Faust", &show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar)) {
         ImGui::End();
         return;
     }

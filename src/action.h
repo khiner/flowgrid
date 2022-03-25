@@ -11,7 +11,10 @@ namespace action {
 struct undo {};
 struct redo {};
 
+// TODO `toggle_window{ string name }`
 struct toggle_demo_window {};
+struct toggle_faust_editor_window {};
+
 struct toggle_audio_muted {};
 struct set_clear_color { Color color{}; };
 
@@ -33,6 +36,7 @@ using Action = std::variant<
     redo,
 
     toggle_demo_window,
+    toggle_faust_editor_window,
     toggle_audio_muted,
     set_clear_color,
 

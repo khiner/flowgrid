@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nlohmann/json.hpp"
+#include "imgui.h"
 
 struct Color {
     float r = 0, g = 0, b = 0, a = 0;
@@ -44,12 +45,19 @@ struct Colors {
     Color clear{};
 };
 
+struct Dimensions {
+    ImVec2 position;
+    ImVec2 size;
+};
+
 struct Window {
     bool show;
+    Dimensions dimensions;
 };
 
 struct Windows {
-    Window demo{};
+    Window demo;
+    Window faust_editor{true, {ImVec2(0, 0), {ImVec2(640, 480)}}};
 };
 
 struct UI {
@@ -90,12 +98,17 @@ struct State {
     ActionConsumer action_consumer;
 };
 
+// External types
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
+
+// Internal types
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, demo)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show, dimensions)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, demo, faust_editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

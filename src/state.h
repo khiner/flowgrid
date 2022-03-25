@@ -51,13 +51,13 @@ struct Dimensions {
 };
 
 struct Window {
-    bool show;
-    Dimensions dimensions;
+    Dimensions dimensions{ImVec2(0, 0), ImVec2(200, 100)};
+    bool visible{true}, open{true};
 };
 
 struct Windows {
     Window demo;
-    Window faust_editor{true, {ImVec2(0, 0), {ImVec2(640, 480)}}};
+    Window faust_editor{{ImVec2(0, 0), ImVec2(640, 480)}};
 };
 
 struct UI {
@@ -107,7 +107,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, samp
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, show, dimensions)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, visible, open, dimensions)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, demo, faust_editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)

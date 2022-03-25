@@ -30,8 +30,9 @@ void Context::update(const Action &action) {
     std::visit(
         visitor{
             // TODO _s.ui.windows[a.name].show
-            [&](toggle_demo_window) { _s.ui.windows.demo.show = !s.ui.windows.demo.show; },
-            [&](toggle_faust_editor_window) { _s.ui.windows.faust_editor.show = !s.ui.windows.faust_editor.show; },
+            [&](toggle_demo_window) { _s.ui.windows.demo.visible = !s.ui.windows.demo.visible; },
+            [&](toggle_faust_editor_window) { _s.ui.windows.faust_editor.visible = !s.ui.windows.faust_editor.visible; },
+            [&](toggle_faust_editor_open) { _s.ui.windows.faust_editor.open = !s.ui.windows.faust_editor.open; },
 
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },

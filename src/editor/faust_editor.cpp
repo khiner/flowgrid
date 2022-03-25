@@ -67,16 +67,14 @@ void zep_load(const Zep::ZepPath &file) {
 }
 
 void zep_show() {
-    auto &editor_state = ui_s.ui.windows.faust_editor;
-    auto &dimensions = editor_state.dimensions;
-    auto &show = editor_state.show;
-    if (show != s.ui.windows.faust_editor.show) {
-        q.enqueue(toggle_faust_editor_window{});
-    }
-    if (!show) return;
+    auto &m_s = ui_s.ui.windows.faust_editor;
+    ImGui::SetNextWindowCollapsed(!s.ui.windows.faust_editor.open);
+    ImGui::SetNextWindowSize(m_s.dimensions.size, ImGuiCond_FirstUseEver);
 
-    ImGui::SetNextWindowSize(dimensions.size, ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Faust", &show, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar)) {
+    // TODO cannot undo a collapse after closing and undoing a close
+    bool open = ImGui::Begin("Faust", &m_s.visible, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar);
+    if (open != s.ui.windows.faust_editor.open) q.enqueue(toggle_faust_editor_open{});
+    if (!s.ui.windows.faust_editor.open) {
         ImGui::End();
         return;
     }

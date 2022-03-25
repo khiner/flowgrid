@@ -145,17 +145,22 @@ void render(DrawContext &dc, const Color &clear_color) {
 bool z_init = false;
 
 void draw_frame() {
-    if (!z_init) {
-        // Called once the fonts/device is guaranteed setup
-        zep_init(Zep::NVec2f(1.0f, 1.0f));
-        zep_load(Zep::ZepPath(config.app_root) / "src" / "main.cpp");
-        z_init = true;
+    if (s.ui.windows.demo.visible) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.visible);
+    if (ui_s.ui.windows.faust_editor.visible != s.ui.windows.faust_editor.visible) q.enqueue(toggle_faust_editor_window{});
+
+    if (ui_s.ui.windows.faust_editor.visible) {
+        if (!z_init) {
+            // Called once after the fonts are initialized
+            zep_init(Zep::NVec2f(1.0f, 1.0f));
+            zep_load(Zep::ZepPath(config.app_root) / "src" / "main.cpp");
+            z_init = true;
+        }
+
+        zep_update(); // Required for CTRL+P and flashing cursor.
+        zep_show();
     }
 
-    zep_update(); // Required for CTRL+P and flashing cursor.
-    zep_show();
-
-    if (s.ui.windows.demo.show) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.show);
+    ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.visible);
 
     ImGui::Begin("FlowGrid");
 
@@ -165,7 +170,7 @@ void draw_frame() {
     ImGui::BeginDisabled(!c.can_redo());
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
     ImGui::EndDisabled();
-    if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows.demo.show)) { q.enqueue(toggle_demo_window{}); }
+    if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows.demo.visible)) { q.enqueue(toggle_demo_window{}); }
 
     if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     if (ImGui::IsItemActivated()) c.start_gesture();

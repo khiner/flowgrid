@@ -6,7 +6,8 @@
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "draw.h"
 #include "context.h"
-#include "editor/faust_editor.h"
+#include "windows/faust_editor.h"
+#include "windows/show_window.h"
 
 struct InputTextCallback_UserData {
     std::string *Str;
@@ -46,13 +47,13 @@ struct DrawContext {
     ImGuiIO io;
 };
 
-void newFrame() {
+void new_frame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 }
 
-DrawContext createDrawContext() {
+DrawContext create_draw_context() {
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
@@ -84,7 +85,7 @@ DrawContext createDrawContext() {
     return draw_context;
 }
 
-void loadFonts() {
+void load_fonts() {
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
@@ -120,7 +121,7 @@ void setup(DrawContext &dc) {
     ImGui_ImplSDL2_InitForOpenGL(dc.window, dc.gl_context);
     ImGui_ImplOpenGL3_Init(dc.glsl_version);
 
-    loadFonts();
+    load_fonts();
 }
 
 void teardown(DrawContext &dc) {
@@ -142,10 +143,23 @@ void render(DrawContext &dc, const Color &clear_color) {
     SDL_GL_SwapWindow(dc.window);
 }
 
+FaustEditor faust_editor{};
+
+// Usually this state management happens in `show_window`, but the demo window doesn't expose
+// all its window state handling like we do with internal windows.
+// Thus, only the demo window's visibility state is part of the undo stack
+// (whereas with internal windows, other things like the collapsed state are considered undoable events).
+void draw_demo_window() {
+    static const std::string demo_window_name{"Demo"};
+    const auto &w = s.ui.windows.at(demo_window_name);
+    auto &mutable_w = ui_s.ui.windows[demo_window_name];
+    if (mutable_w.visible != w.visible) q.enqueue(toggle_window{demo_window_name});
+    if (w.visible) ImGui::ShowDemoWindow(&mutable_w.visible);
+}
+
 void draw_frame() {
-    if (s.ui.windows.at("Demo").visible) ImGui::ShowDemoWindow(&ui_s.ui.windows["Demo"].visible);
-    ImGui::ShowDemoWindow(&ui_s.ui.windows["Demo"].visible);
-    zep_show("Faust");
+    draw_demo_window();
+    show_window("Faust", faust_editor);
 
     ImGui::Begin("FlowGrid");
 
@@ -188,7 +202,7 @@ int draw() {
         return -1;
     }
 
-    auto dc = createDrawContext();
+    auto dc = create_draw_context();
     setup(dc);
 
     // Main loop
@@ -208,12 +222,12 @@ int draw() {
             }
         }
 
-        newFrame();
+        new_frame();
         draw_frame();
         render(dc, s.ui.colors.clear);
     }
 
-    zep_destroy();
+    faust_editor.destroy();
     teardown(dc);
 
     return 0;

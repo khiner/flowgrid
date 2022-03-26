@@ -56,7 +56,8 @@ void Context::update(const Action &action) {
 }
 
 void Context::apply_diff(const json &diff) {
-    _state = json2state(json_state.patch(diff));
+    json_state = json_state.patch(diff);
+    _state = json2state(json_state);
     ui_s = _state; // Update the UI-copy of the state to reflect.
 }
 
@@ -65,8 +66,9 @@ void Context::finalize_gesture() {
     json_state = state2json(s);
     auto diff = json::diff(old_json_state, json_state);
     if (!diff.empty()) {
+        while (int(actions.size()) > current_action_index + 1) actions.pop_back();
         actions.emplace_back(ActionDiff{diff, json::diff(json_state, old_json_state)});
-        current_action_index += 1;
+        current_action_index = int(actions.size()) - 1;
         std::cout << "Action #" << actions.size() <<
                   ":\nforward_diff: " << actions.back().forward_diff <<
                   "\nreverse_diff: " << actions.back().reverse_diff << std::endl;

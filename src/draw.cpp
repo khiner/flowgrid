@@ -142,25 +142,10 @@ void render(DrawContext &dc, const Color &clear_color) {
     SDL_GL_SwapWindow(dc.window);
 }
 
-bool z_init = false;
-
 void draw_frame() {
     if (s.ui.windows.demo.visible) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.visible);
-    if (ui_s.ui.windows.faust_editor.visible != s.ui.windows.faust_editor.visible) q.enqueue(toggle_faust_editor_window{});
-
-    if (ui_s.ui.windows.faust_editor.visible) {
-        if (!z_init) {
-            // Called once after the fonts are initialized
-            zep_init(Zep::NVec2f(1.0f, 1.0f));
-            zep_load(Zep::ZepPath(config.app_root) / "src" / "main.cpp");
-            z_init = true;
-        }
-
-        zep_update(); // Required for CTRL+P and flashing cursor.
-        zep_show();
-    }
-
     ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.visible);
+    zep_show();
 
     ImGui::Begin("FlowGrid");
 

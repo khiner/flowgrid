@@ -143,9 +143,9 @@ void render(DrawContext &dc, const Color &clear_color) {
 }
 
 void draw_frame() {
-    if (s.ui.windows.demo.visible) ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.visible);
-    ImGui::ShowDemoWindow(&ui_s.ui.windows.demo.visible);
-    zep_show();
+    if (s.ui.windows.at("Demo").visible) ImGui::ShowDemoWindow(&ui_s.ui.windows["Demo"].visible);
+    ImGui::ShowDemoWindow(&ui_s.ui.windows["Demo"].visible);
+    zep_show("Faust");
 
     ImGui::Begin("FlowGrid");
 
@@ -155,7 +155,7 @@ void draw_frame() {
     ImGui::BeginDisabled(!c.can_redo());
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
     ImGui::EndDisabled();
-    if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows.demo.visible)) { q.enqueue(toggle_demo_window{}); }
+    if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows["Demo"].visible)) { q.enqueue(toggle_window{"Demo"}); }
 
     if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     if (ImGui::IsItemActivated()) c.start_gesture();

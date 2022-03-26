@@ -2,9 +2,9 @@
  * Based on https://github.com/cmaughan/zep_imgui/blob/main/demo/src/editor.cpp
  */
 
+#include <filesystem>
 #include "faust_editor.h"
 #include "../config.h"
-#include <filesystem>
 #include "../context.h"
 
 namespace fs = std::filesystem;
@@ -15,7 +15,6 @@ struct ZepWrapper : public Zep::IZepComponent {
     ZepWrapper(const fs::path &root_path, const Zep::NVec2f &pixelScale, std::function<void(std::shared_ptr<Zep::ZepMessage>)> fnCommandCB)
         : zepEditor(Zep::ZepPath(root_path.string()), pixelScale), Callback(std::move(fnCommandCB)) {
         zepEditor.RegisterCallback(this);
-
     }
 
     Zep::ZepEditor &GetEditor() const override {
@@ -63,9 +62,9 @@ void zep_load(const Zep::ZepPath &file) {
 
 bool z_init = false;
 
-void zep_show() {
-    if (ui_s.ui.windows.faust_editor.visible != s.ui.windows.faust_editor.visible) q.enqueue(toggle_faust_editor_window{});
-    if (!s.ui.windows.faust_editor.visible) return;
+void zep_show(const std::string &window_name) {
+    if (ui_s.ui.windows[window_name].visible != s.ui.windows.at(window_name).visible) q.enqueue(toggle_window{window_name});
+    if (!s.ui.windows.at(window_name).visible) return;
 
     if (!z_init) {
         // Called once after the fonts are initialized
@@ -74,17 +73,17 @@ void zep_show() {
         z_init = true;
     }
 
-    spZep->GetEditor().RefreshRequired(); // Required for CTRL+P and flashing cursor.
+    ImGui::SetNextWindowCollapsed(!s.ui.windows.at(window_name).open);
+    ImGui::SetNextWindowSize(s.ui.windows.at(window_name).dimensions.size, ImGuiCond_FirstUseEver);
 
-    ImGui::SetNextWindowCollapsed(!s.ui.windows.faust_editor.open);
-    ImGui::SetNextWindowSize(s.ui.windows.faust_editor.dimensions.size, ImGuiCond_FirstUseEver);
-
-    bool open = ImGui::Begin("Faust", &ui_s.ui.windows.faust_editor.visible, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar);
-    if (open != s.ui.windows.faust_editor.open) q.enqueue(toggle_faust_editor_open{});
-    if (!s.ui.windows.faust_editor.open) {
+    bool open = ImGui::Begin(window_name.c_str(), &ui_s.ui.windows[window_name].visible, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar);
+    if (open != s.ui.windows.at(window_name).open) q.enqueue(toggle_window_open{window_name});
+    if (!s.ui.windows.at(window_name).open) {
         ImGui::End();
         return;
     }
+
+    spZep->GetEditor().RefreshRequired(); // Required for CTRL+P and flashing cursor.
 
     auto min = ImGui::GetCursorScreenPos();
     auto max = ImGui::GetContentRegionAvail();

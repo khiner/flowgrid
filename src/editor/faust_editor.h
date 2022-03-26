@@ -2,7 +2,5 @@
 
 #include "zep.h"
 
-void zep_init(const Zep::NVec2f &pixelScale);
-void zep_show();
+void zep_show(const std::string &window_name);
 void zep_destroy();
-void zep_load(const Zep::ZepPath &file);

@@ -55,14 +55,12 @@ struct Window {
     bool visible{true}, open{true};
 };
 
-struct Windows {
-    Window demo;
-    Window faust_editor{{ImVec2(0, 0), ImVec2(640, 480)}};
-};
-
 struct UI {
     bool running = true;
-    Windows windows;
+    std::map<std::string, Window> windows{
+        {"Demo",  {}},
+        {"Faust", {{ImVec2(0, 0), ImVec2(640, 480)}}},
+    };
     Colors colors;
 };
 
@@ -108,7 +106,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, visible, open, dimensions)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, demo, faust_editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

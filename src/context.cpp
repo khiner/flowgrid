@@ -29,10 +29,8 @@ void Context::update(const Action &action) {
     State &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(
         visitor{
-            // TODO _s.ui.windows[a.name].show
-            [&](toggle_demo_window) { _s.ui.windows.demo.visible = !s.ui.windows.demo.visible; },
-            [&](toggle_faust_editor_window) { _s.ui.windows.faust_editor.visible = !s.ui.windows.faust_editor.visible; },
-            [&](toggle_faust_editor_open) { _s.ui.windows.faust_editor.open = !s.ui.windows.faust_editor.open; },
+            [&](toggle_window a) { _s.ui.windows[a.name].visible = !s.ui.windows.at(a.name).visible; },
+            [&](toggle_window_open a) { _s.ui.windows[a.name].open = !s.ui.windows.at(a.name).open; },
 
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },

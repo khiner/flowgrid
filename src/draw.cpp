@@ -110,6 +110,7 @@ void setup(DrawContext &dc) {
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     (void) io;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -157,12 +158,41 @@ void draw_demo_window() {
     if (w.visible) ImGui::ShowDemoWindow(&mutable_w.visible);
 }
 
+bool open = true;
+
 void draw_frame() {
+    // Adapted from `imgui_demo::ShowExampleAppDockSpace`
+    const ImGuiViewport *viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
+    // because it would be confusing to have two docking targets within each others.
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+    window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+    window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+    // Important: note that we proceed even if Begin() returns false (aka window is collapsed).
+    // This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
+    // all active windows docked into it will lose their parent and become undocked.
+    // We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
+    // any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+    ImGui::Begin("FlowGrid", &open, window_flags);
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleVar(2);
+
+    auto &io = ImGui::GetIO();
+    auto dockspace_id = ImGui::GetID("MyDockSpace");
+    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), 0);
+
     draw_demo_window();
     show_window("Faust", faust_editor);
 
-    ImGui::Begin("FlowGrid");
-
+    ImGui::Begin("Controls");
     ImGui::BeginDisabled(!c.can_undo());
     if (ImGui::Button("Undo")) { q.enqueue(undo{}); }
     ImGui::EndDisabled();
@@ -192,6 +222,7 @@ void draw_frame() {
     }
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
 
     ImGui::End();
 }

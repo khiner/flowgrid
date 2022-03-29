@@ -77,9 +77,9 @@ DrawContext create_draw_context() {
 
     DrawContext draw_context;
     draw_context.window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example",
-                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                           1280, 720,
-                                           window_flags);
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        1280, 720,
+        window_flags);
     draw_context.gl_context = SDL_GL_CreateContext(draw_context.window);
 
     return draw_context;
@@ -160,24 +160,23 @@ void draw_demo_window() {
 
 bool open = true;
 
+// TODO see https://github.com/ocornut/imgui/issues/4033 for an example in getting INI settings into memory
+//  and using them to store multiple layouts
+// TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
+//  for how to programmatically set up a default layout
+
 void draw_frame() {
     // Adapted from `imgui_demo::ShowExampleAppDockSpace`
+    // More docking info at https://github.com/ocornut/imgui/issues/2109
     const ImGuiViewport *viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
     ImGui::SetNextWindowViewport(viewport->ID);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-    // because it would be confusing to have two docking targets within each others.
-    ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-    window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-    window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-    // Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-    // This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
-    // all active windows docked into it will lose their parent and become undocked.
-    // We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
-    // any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
     ImGui::Begin("FlowGrid", &open, window_flags);
@@ -185,9 +184,17 @@ void draw_frame() {
     ImGui::PopStyleVar();
     ImGui::PopStyleVar(2);
 
-    auto &io = ImGui::GetIO();
     auto dockspace_id = ImGui::GetID("MyDockSpace");
     ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), 0);
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Options")) {
+            bool opt_placeholder;
+            ImGui::MenuItem("Placeholder", nullptr, &opt_placeholder);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
 
     draw_demo_window();
     show_window("Faust", faust_editor);
@@ -248,7 +255,7 @@ int draw() {
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT ||
                 (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                 event.window.windowID == SDL_GetWindowID(dc.window))) {
+                    event.window.windowID == SDL_GetWindowID(dc.window))) {
                 q.enqueue(close_application{});
             }
         }

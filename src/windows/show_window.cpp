@@ -11,7 +11,7 @@ void show_window(const std::string &name, Drawable &drawable) {
 //    ImGui::SetNextWindowPos(w.dimensions.position, ImGuiCond_Appearing);
 //    ImGui::SetNextWindowSize(w.dimensions.size, ImGuiCond_Appearing);
 
-    bool open = ImGui::Begin(name.c_str(), &mutable_w.visible, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar);
+    bool open = ImGui::Begin(name.c_str(), &mutable_w.visible);
     if (open != w.open) q.enqueue(toggle_window_open{name});
     if (!w.open) {
         ImGui::End();

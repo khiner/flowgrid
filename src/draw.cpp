@@ -168,24 +168,20 @@ bool open = true;
 void draw_frame() {
     // Adapted from `imgui_demo::ShowExampleAppDockSpace`
     // More docking info at https://github.com/ocornut/imgui/issues/2109
-    const ImGuiViewport *viewport = ImGui::GetMainViewport();
+    const auto *viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
     ImGui::SetNextWindowViewport(viewport->ID);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
-        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-    ImGui::Begin("FlowGrid", &open, window_flags);
-
-    ImGui::PopStyleVar();
-    ImGui::PopStyleVar(2);
+    ImGui::Begin("FlowGrid", &open, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+    ImGui::PopStyleVar(3);
 
     auto dockspace_id = ImGui::GetID("MyDockSpace");
-    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), 0);
+    ImGui::DockSpace(dockspace_id);
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Options")) {

@@ -62,6 +62,7 @@ struct UI {
         {"Faust", {{ImVec2(0, 0), ImVec2(640, 480)}}},
     };
     Colors colors;
+    std::string ini_settings;
 };
 
 enum AudioBackend {
@@ -106,6 +107,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, visible, open, dimensions)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors, ini_settings)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

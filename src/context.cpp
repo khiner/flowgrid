@@ -29,8 +29,10 @@ void Context::update(const Action &action) {
     State &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(
         visitor{
-            [&](toggle_window a) { _s.ui.windows[a.name].visible = !s.ui.windows.at(a.name).visible; },
-            [&](toggle_window_open a) { _s.ui.windows[a.name].open = !s.ui.windows.at(a.name).open; },
+            // TODO https://github.com/leutloff/diff-match-patch-cpp-stl for only storing ini state text-diffs?
+            [&](const set_ini_settings &a) { _s.ui.ini_settings = a.settings; },
+            [&](const toggle_window &a) { _s.ui.windows[a.name].visible = !s.ui.windows.at(a.name).visible; },
+            [&](const toggle_window_open &a) { _s.ui.windows[a.name].open = !s.ui.windows.at(a.name).open; },
 
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },
@@ -57,6 +59,11 @@ void Context::apply_diff(const json &diff) {
     json_state = json_state.patch(diff);
     _state = json2state(json_state);
     ui_s = _state; // Update the UI-copy of the state to reflect.
+    for (auto &diff_item: diff) {
+        if (diff_item["path"] == "/ui/ini_settings") {
+            new_ini_state = true;
+        }
+    }
 }
 
 void Context::finalize_gesture() {

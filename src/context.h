@@ -61,6 +61,11 @@ public:
     int current_action_index = -1;
     json json_state;
     bool in_gesture{};
+    // Set after an undo/redo that includes an ini_settings change.
+    // It's the UI's responsibility to set this to `false` after applying the new state.
+    // (It's done this way to avoid an expensive settings-load & long string comparison between
+    // the state's `ini_settings` and ImGui's on every frame.)
+    bool new_ini_state{};
 
     Context();
 

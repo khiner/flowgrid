@@ -11,6 +11,7 @@ namespace action {
 struct undo {};
 struct redo {};
 
+struct set_ini_settings { std::string settings; };
 struct toggle_window { std::string name; };
 struct toggle_window_open { std::string name; };
 
@@ -34,6 +35,7 @@ using Action = std::variant<
     undo,
     redo,
 
+    set_ini_settings,
     toggle_window,
     toggle_window_open,
 

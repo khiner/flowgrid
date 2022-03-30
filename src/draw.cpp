@@ -8,6 +8,7 @@
 #include "context.h"
 #include "windows/faust_editor.h"
 #include "windows/show_window.h"
+#include "imgui_internal.h"
 
 struct InputTextCallback_UserData {
     std::string *Str;
@@ -108,8 +109,16 @@ void setup(DrawContext &dc) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    (void) io;
+    auto &io = ImGui::GetIO();
+    // Disable ImGui's .ini file saving. We handle this manually.
+    io.IniFilename = nullptr;
+    // However, since the default ImGui behavior is to write to disk (to the .ini file) when the ini state is marked dirty,
+    // it buffers marking dirty (`g.IO.WantSaveIniSettings = true`) with a `io.IniSavingRate` timer (which is 5s by default).
+    // We want this to be a very small value, since we want to create actions for the undo stack as soon after a user action
+    // as possible.
+    // TODO closing windows or changing their dockspace should be independent actions, but resize events can get rolled into
+    //  the next action?
+    io.IniSavingRate = 0.25;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -162,6 +171,8 @@ bool open = true;
 
 // TODO see https://github.com/ocornut/imgui/issues/4033 for an example in getting INI settings into memory
 //  and using them to store multiple layouts
+//  also see https://github.com/ocornut/imgui/issues/4294#issuecomment-874720489 for how to manage
+//  layout saving/loading manually
 // TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
 //  for how to programmatically set up a default layout
 
@@ -182,6 +193,23 @@ void draw_frame() {
 
     auto dockspace_id = ImGui::GetID("MyDockSpace");
     ImGui::DockSpace(dockspace_id);
+
+    // TODO not working. https://github.com/ocornut/imgui/issues/2414 might be a good example
+//    if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+//        ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
+//        ImGui::DockBuilderAddNode(dockspace_id, 0); // Add empty node
+//        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
+//
+//        ImGuiID dock_main_id = dockspace_id; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
+//        ImGuiID dock_id_prop = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, nullptr, &dock_main_id);
+//        ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.20f, nullptr, &dock_main_id);
+//
+//        ImGui::DockBuilderDockWindow("Log", dock_id_bottom);
+//        ImGui::DockBuilderDockWindow("Properties", dock_id_prop);
+//        ImGui::DockBuilderDockWindow("Mesh", dock_id_prop);
+//        ImGui::DockBuilderDockWindow("Extra", dock_id_prop);
+//        ImGui::DockBuilderFinish(dockspace_id);
+//    }
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Options")) {
@@ -239,6 +267,10 @@ int draw() {
     auto dc = create_draw_context();
     setup(dc);
 
+    if (!s.ui.ini_settings.empty()) {
+        ImGui::LoadIniSettingsFromMemory(s.ui.ini_settings.c_str(), s.ui.ini_settings.size());
+    }
+
     // Main loop
     while (s.ui.running) {
         // Poll and handle events (inputs, window resize, etc.)
@@ -256,9 +288,22 @@ int draw() {
             }
         }
 
+        if (c.new_ini_state) {
+            ImGui::LoadIniSettingsFromMemory(s.ui.ini_settings.c_str(), s.ui.ini_settings.size());
+            c.new_ini_state = false;
+        }
+
         new_frame();
         draw_frame();
         render(dc, s.ui.colors.clear);
+
+        auto &io = ImGui::GetIO();
+        if (io.WantSaveIniSettings) {
+            size_t settings_size = 0;
+            const char *settings = ImGui::SaveIniSettingsToMemory(&settings_size);
+            q.enqueue(set_ini_settings{settings});
+            io.WantSaveIniSettings = false;
+        }
     }
 
     faust_editor.destroy();

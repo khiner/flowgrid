@@ -51,15 +51,14 @@ struct Dimensions {
 };
 
 struct Window {
-    Dimensions dimensions{ImVec2(0, 0), ImVec2(200, 100)};
-    bool visible{true}, open{true};
+    bool visible{true};
 };
 
 struct UI {
     bool running = true;
     std::map<std::string, Window> windows{
         {"Demo",  {}},
-        {"Faust", {{ImVec2(0, 0), ImVec2(640, 480)}}},
+        {"Faust", {}},
     };
     Colors colors;
     std::string ini_settings;
@@ -106,7 +105,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, samp
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, visible, open, dimensions)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, visible)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors, ini_settings)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

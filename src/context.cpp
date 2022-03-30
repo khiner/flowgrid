@@ -32,7 +32,6 @@ void Context::update(const Action &action) {
             // TODO https://github.com/leutloff/diff-match-patch-cpp-stl for only storing ini state text-diffs?
             [&](const set_ini_settings &a) { _s.ui.ini_settings = a.settings; },
             [&](const toggle_window &a) { _s.ui.windows[a.name].visible = !s.ui.windows.at(a.name).visible; },
-            [&](const toggle_window_open &a) { _s.ui.windows[a.name].open = !s.ui.windows.at(a.name).open; },
 
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },

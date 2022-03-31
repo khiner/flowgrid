@@ -18,3 +18,6 @@
 [submodule "lib/concurrentqueue"]
 	path = lib/concurrentqueue
 	url = git@github.com:cameron314/concurrentqueue.git
+[submodule "lib/diff-match-patch-cpp-stl"]
+	path = lib/diff-match-patch-cpp-stl
+	url = git@github.com:leutloff/diff-match-patch-cpp-stl.git

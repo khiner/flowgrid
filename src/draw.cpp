@@ -118,7 +118,7 @@ void setup(DrawContext &dc) {
     // as possible.
     // TODO closing windows or changing their dockspace should be independent actions, but resize events can get rolled into
     //  the next action?
-    io.IniSavingRate = 0.25;
+    io.IniSavingRate = 0.1;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -267,8 +267,8 @@ int draw() {
     auto dc = create_draw_context();
     setup(dc);
 
-    if (!s.ui.ini_settings.empty()) {
-        ImGui::LoadIniSettingsFromMemory(s.ui.ini_settings.c_str(), s.ui.ini_settings.size());
+    if (!c.ini_settings.empty()) {
+        ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
     }
 
     // Main loop
@@ -288,20 +288,29 @@ int draw() {
             }
         }
 
-        if (c.new_ini_state) {
-            ImGui::LoadIniSettingsFromMemory(s.ui.ini_settings.c_str(), s.ui.ini_settings.size());
-            c.new_ini_state = false;
+        auto &io = ImGui::GetIO();
+        if (c.has_new_ini_settings) {
+            ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
+            c.has_new_ini_settings = false;
         }
 
         new_frame();
         draw_frame();
         render(dc, s.ui.colors.clear);
 
-        auto &io = ImGui::GetIO();
+        static bool initial_save = true;
         if (io.WantSaveIniSettings) {
             size_t settings_size = 0;
             const char *settings = ImGui::SaveIniSettingsToMemory(&settings_size);
-            q.enqueue(set_ini_settings{settings});
+            if (initial_save) {
+                // The first save that ImGui triggers will have the initial loaded state.
+                // TODO Once we can guarantee that initial state is loaded from either a saved or default project file,
+                //  this should no longer be needed.
+                c.ini_settings = c.prev_ini_settings = settings;
+                initial_save = false;
+            } else {
+                q.enqueue(set_ini_settings{settings});
+            }
             io.WantSaveIniSettings = false;
         }
     }

@@ -12,6 +12,7 @@ include_directories(lib/faust/architecture)
 include_directories(lib/faust/compiler)
 include_directories(lib/concurrentqueue)
 include_directories(lib/zep/include)
+include_directories(lib/diff-match-patch-cpp-stl)
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_json::nlohmann_json dynamiclib Zep::Zep)

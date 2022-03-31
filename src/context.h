@@ -5,13 +5,23 @@
 #include "action.h"
 #include "audio_context.h"
 #include "blockingconcurrentqueue.h"
+#include "diff_match_patch.h"
 
-using namespace nlohmann;
+using namespace nlohmann; // json
+
+struct ActionDiff {
+    json json_diff;
+    std::string ini_diff; // string-encoded `diff_match_patch::Patches`
+};
+struct ActionDiffs {
+    ActionDiff forward;
+    ActionDiff reverse;
+};
 
 struct Context {
 private:
     void update(const Action &); // State is only updated via `context.on_action(action)`
-    void apply_diff(const json &diff);
+    void apply_diff(const ActionDiff &diff);
     void finalize_gesture();
 public:
 /**md
@@ -37,16 +47,21 @@ public:
  * Also, we don't want error messages to pollute the undo tree.
  */
     State _state{};
-
-    struct ActionDiff {
-        json forward_diff;
-        json reverse_diff;
-    };
+    diff_match_patch<std::string> dmp;
 
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     State ui_s{}; // Separate copy of the state that can be modified by the UI directly
+    std::string ini_settings; // ImGui's ini settings (for UI state) are stored separately
+    // Actions change the source-of-truth `ini_settings` in-place.
+    // When a gesture is finalized into an undo event, a patch is computed between the previous and current settings.
+    std::string prev_ini_settings;
     AudioContext audio_context;
+    // Set after an undo/redo that includes an ini_settings change.
+    // It's the UI's responsibility to set this to `false` after applying the new state.
+    // (It's done this way to avoid an expensive settings-load & long string comparison between
+    // ours and ImGui's ini settings on every frame.)
+    bool has_new_ini_settings{};
 
     /**
      This is a placeholder for the main in-memory data structure for action history.
@@ -57,15 +72,10 @@ public:
          [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
          and modify to taste.
     */
-    std::vector<ActionDiff> actions;
+    std::vector<ActionDiffs> actions;
     int current_action_index = -1;
     json json_state;
     bool in_gesture{};
-    // Set after an undo/redo that includes an ini_settings change.
-    // It's the UI's responsibility to set this to `false` after applying the new state.
-    // (It's done this way to avoid an expensive settings-load & long string comparison between
-    // the state's `ini_settings` and ImGui's on every frame.)
-    bool new_ini_state{};
 
     Context();
 

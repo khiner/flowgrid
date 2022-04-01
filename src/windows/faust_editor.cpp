@@ -28,7 +28,7 @@ void FaustEditor::zep_load(const Zep::ZepPath &file) {
     auto pBuffer = spZep->GetEditor().InitWithFileOrDir(file);
 }
 
-void FaustEditor::show() {
+void FaustEditor::draw() {
     if (!initialized) {
         // Called once after the fonts are initialized
         zep_init(Zep::NVec2f(1.0f, 1.0f));

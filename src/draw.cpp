@@ -9,37 +9,7 @@
 #include "windows/faust_editor.h"
 #include "windows/show_window.h"
 #include "imgui_internal.h"
-
-struct InputTextCallback_UserData {
-    std::string *Str;
-    ImGuiInputTextCallback ChainCallback;
-    void *ChainCallbackUserData;
-};
-
-static int InputTextCallback(ImGuiInputTextCallbackData *data) {
-    auto *user_data = (InputTextCallback_UserData *) data->UserData;
-    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-        // Resize string callback
-        // If for some reason we refuse the new length (BufTextLen) and/or capacity (BufSize) we need to set them back to what we want.
-        std::string *str = user_data->Str;
-        IM_ASSERT(data->Buf == str->c_str());
-        str->resize(data->BufTextLen);
-        data->Buf = (char *) str->c_str();
-    } else if (user_data->ChainCallback) {
-        // Forward to user callback, if any
-        data->UserData = user_data->ChainCallbackUserData;
-        return user_data->ChainCallback(data);
-    }
-    return 0;
-}
-
-bool InputTextMultiline(const char *label, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
-    IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
-    flags |= ImGuiInputTextFlags_CallbackResize;
-
-    InputTextCallback_UserData cb_user_data{str, callback, user_data};
-    return ImGui::InputTextMultiline(label, (char *) str->c_str(), str->capacity() + 1, ImVec2(0, 0), flags, InputTextCallback, &cb_user_data);
-}
+#include "windows/controls.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -154,13 +124,14 @@ void render(DrawContext &dc, const Color &clear_color) {
 }
 
 FaustEditor faust_editor{};
+Controls controls{};
 
 // Usually this state management happens in `show_window`, but the demo window doesn't expose
 // all its window state handling like we do with internal windows.
 // Thus, only the demo window's visibility state is part of the undo stack
 // (whereas with internal windows, other things like the collapsed state are considered undoable events).
 void draw_demo_window() {
-    static const std::string demo_window_name{"Demo"};
+    static const std::string demo_window_name{"Dear ImGui Demo"};
     const auto &w = s.ui.windows.at(demo_window_name);
     auto &mutable_w = ui_s.ui.windows[demo_window_name];
     if (mutable_w.visible != w.visible) q.enqueue(toggle_window{demo_window_name});
@@ -169,10 +140,6 @@ void draw_demo_window() {
 
 bool open = true;
 
-// TODO see https://github.com/ocornut/imgui/issues/4033 for an example in getting INI settings into memory
-//  and using them to store multiple layouts
-//  also see https://github.com/ocornut/imgui/issues/4294#issuecomment-874720489 for how to manage
-//  layout saving/loading manually
 // TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
 //  for how to programmatically set up a default layout
 
@@ -191,25 +158,24 @@ void draw_frame() {
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
     ImGui::PopStyleVar(3);
 
-    auto dockspace_id = ImGui::GetID("MyDockSpace");
-    ImGui::DockSpace(dockspace_id);
+    auto dockspace_id = ImGui::GetID("DockSpace");
+    if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+        ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
+        ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace); // Add empty node
+        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
 
-    // TODO not working. https://github.com/ocornut/imgui/issues/2414 might be a good example
-//    if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
-//        ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
-//        ImGui::DockBuilderAddNode(dockspace_id, 0); // Add empty node
-//        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
-//
-//        ImGuiID dock_main_id = dockspace_id; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
-//        ImGuiID dock_id_prop = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, nullptr, &dock_main_id);
-//        ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.20f, nullptr, &dock_main_id);
-//
-//        ImGui::DockBuilderDockWindow("Log", dock_id_bottom);
-//        ImGui::DockBuilderDockWindow("Properties", dock_id_prop);
-//        ImGui::DockBuilderDockWindow("Mesh", dock_id_prop);
-//        ImGui::DockBuilderDockWindow("Extra", dock_id_prop);
-//        ImGui::DockBuilderFinish(dockspace_id);
-//    }
+        auto dock_main_id = dockspace_id; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
+        auto dock_id_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.35f, nullptr, &dock_main_id);
+        auto dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.5f, nullptr, &dock_main_id);
+
+        ImGui::DockBuilderDockWindow("Controls", dock_id_left);
+        ImGui::DockBuilderDockWindow("Faust", dock_main_id);
+        ImGui::DockBuilderDockWindow("Dear ImGui Demo", dock_id_bottom);
+
+        ImGui::DockBuilderFinish(dockspace_id);
+    }
+
+    ImGui::DockSpace(dockspace_id);
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Options")) {
@@ -221,39 +187,8 @@ void draw_frame() {
     }
 
     draw_demo_window();
-    show_window("Faust", faust_editor);
-
-    ImGui::Begin("Controls");
-    ImGui::BeginDisabled(!c.can_undo());
-    if (ImGui::Button("Undo")) { q.enqueue(undo{}); }
-    ImGui::EndDisabled();
-    ImGui::BeginDisabled(!c.can_redo());
-    if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
-    ImGui::EndDisabled();
-    if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows["Demo"].visible)) { q.enqueue(toggle_window{"Demo"}); }
-
-    if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
-    if (ImGui::IsItemActivated()) c.start_gesture();
-    if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();
-
-    if (ImGui::Checkbox("Audio thread running", &ui_s.audio.running)) { q.enqueue(toggle_audio_running{}); }
-    // TODO allow toggling action_consumer on and off repeatedly
-//        q.enqueue(set_action_consumer_running{false});
-    if (ImGui::Checkbox("Mute audio", &ui_s.audio.muted)) { q.enqueue(toggle_audio_muted{}); }
-
-    {
-//        ImGuiInputTextFlags_NoUndoRedo;
-        static auto flags = ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_EnterReturnsTrue;
-        if (InputTextMultiline("##faust_source", &ui_s.audio.faust.code, flags)) {
-            q.enqueue(set_faust_text{ui_s.audio.faust.code});
-        }
-        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-        if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
-        ImGui::PopStyleColor();
-    }
-
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::End();
+    draw_window("Faust", faust_editor);
+    draw_window("Controls", controls);
 
     ImGui::End();
 }

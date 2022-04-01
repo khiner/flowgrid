@@ -2,12 +2,12 @@
 
 #include <filesystem>
 #include "zep.h"
-#include "../drawable.h"
+#include "drawable.h"
 
 namespace fs = std::filesystem;
 
 struct FaustEditor : public Drawable {
-    void show() override;
+    void draw() override;
     void destroy() override;
 
 private:

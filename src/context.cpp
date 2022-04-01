@@ -85,6 +85,7 @@ void Context::finalize_gesture() {
     if (!json_diff.empty() || !ini_settings_patches.empty()) {
         while (int(actions.size()) > current_action_index + 1) actions.pop_back();
 
+        // TODO put diff/patch/text fns in `transformers/bijective`
         auto ini_settings_diff = diff_match_patch<std::string>::patch_toText(ini_settings_patches);
         auto ini_settings_reverse_diff = diff_match_patch<std::string>::patch_toText(dmp.patch_make(ini_settings, old_ini_settings));
         actions.emplace_back(ActionDiffs{

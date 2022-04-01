@@ -30,7 +30,7 @@ see [**Stack**](#stack)):
 
 ### Backend
 
-json, ConcurrentQueue
+json, ConcurrentQueue, diff-match-patch-cpp-stl
 
 ## System requirements
 
@@ -45,3 +45,5 @@ $ brew link llvm --force # I needed this to put the `llvm-config` executable in 
 TODO: Will probably want to build llvm locally as a submodule, and point to it.
 See [TD-Faust](https://github.com/DBraun/TD-Faust/blob/02f35e4343370559c779468413c32179f55c6552/build_macos.sh#L5-L31)
 as an example.
+
+TODO https://github.com/wolfpld/tracy

@@ -13,5 +13,6 @@ void draw_window(const std::string &name, Drawable &drawable) {
     }
 
     drawable.draw();
+
     ImGui::End();
 }

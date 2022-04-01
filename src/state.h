@@ -2,6 +2,7 @@
 
 #include "nlohmann/json.hpp"
 #include "imgui.h"
+#include "windows/window_names.h"
 
 struct Color {
     float r = 0, g = 0, b = 0, a = 0;
@@ -57,10 +58,10 @@ struct Window {
 struct UI {
     bool running = true;
     std::map<std::string, Window> windows{
-        {"Controls",                    {}},
-        {"Dear ImGui Demo",             {}},
-        {"Dear ImGui Metrics/Debugger", {}},
-        {"Faust",                       {}},
+        {WindowNames::controls,      {}},
+        {WindowNames::imgui_demo,    {}},
+        {WindowNames::imgui_metrics, {}},
+        {WindowNames::faust_editor,  {}},
     };
     Colors colors;
 };

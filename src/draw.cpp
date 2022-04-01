@@ -175,10 +175,10 @@ void draw_frame() {
         auto dock_id_bottom_left = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.5f, nullptr, &dock_id_left);
         auto dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.5f, nullptr, &dock_main_id);
 
-        ImGui::DockBuilderDockWindow("Controls", dock_id_left);
-        ImGui::DockBuilderDockWindow("Dear ImGui Metrics/Debugger", dock_id_bottom_left);
-        ImGui::DockBuilderDockWindow("Faust", dock_main_id);
-        ImGui::DockBuilderDockWindow("Dear ImGui Demo", dock_id_bottom);
+        ImGui::DockBuilderDockWindow(WindowNames::controls.c_str(), dock_id_left);
+        ImGui::DockBuilderDockWindow(WindowNames::imgui_metrics.c_str(), dock_id_bottom_left);
+        ImGui::DockBuilderDockWindow(WindowNames::faust_editor.c_str(), dock_main_id);
+        ImGui::DockBuilderDockWindow(WindowNames::imgui_demo.c_str(), dock_id_bottom);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -194,10 +194,10 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_demo_window("Dear ImGui Demo");
-    draw_metrics_window("Dear ImGui Metrics/Debugger");
-    draw_window("Faust", faust_editor);
-    draw_window("Controls", controls);
+    draw_demo_window(WindowNames::imgui_demo);
+    draw_metrics_window(WindowNames::imgui_metrics);
+    draw_window(WindowNames::faust_editor, faust_editor);
+    draw_window(WindowNames::controls, controls);
 
     ImGui::End();
 }

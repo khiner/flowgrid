@@ -32,15 +32,19 @@ bool InputTextMultiline(const char *label, std::string *str, ImGuiInputTextFlags
     return ImGui::InputTextMultiline(label, (char *) str->c_str(), str->capacity() + 1, ImVec2(0, 0), flags, InputTextCallback, &cb_user_data);
 }
 
+void window_toggle(const std::string &name) {
+    if (ImGui::Checkbox(name.c_str(), &ui_s.ui.windows[name].visible)) { q.enqueue(toggle_window{name}); }
+}
+
 void Controls::draw() {
-    ImGui::Begin("Controls");
     ImGui::BeginDisabled(!c.can_undo());
     if (ImGui::Button("Undo")) { q.enqueue(undo{}); }
     ImGui::EndDisabled();
     ImGui::BeginDisabled(!c.can_redo());
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
     ImGui::EndDisabled();
-    if (ImGui::Checkbox("Demo Window", &ui_s.ui.windows["Demo"].visible)) { q.enqueue(toggle_window{"Demo"}); }
+    window_toggle(WindowNames::imgui_demo);
+    window_toggle(WindowNames::imgui_metrics);
 
     if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     if (ImGui::IsItemActivated()) c.start_gesture();
@@ -61,6 +65,4 @@ void Controls::draw() {
         if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
         ImGui::PopStyleColor();
     }
-
-    ImGui::End();
 }

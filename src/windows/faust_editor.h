@@ -13,6 +13,7 @@ struct FaustEditor : public Drawable {
 private:
     void zep_init(const Zep::NVec2f &pixelScale);
     void zep_load(const Zep::ZepPath &file);
+    void zep_draw();
 
     struct ZepWrapper : public Zep::IZepComponent {
         ZepWrapper(const fs::path &root_path, const Zep::NVec2f &pixelScale, std::function<void(std::shared_ptr<Zep::ZepMessage>)> fnCommandCB)

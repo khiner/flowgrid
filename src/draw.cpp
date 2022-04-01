@@ -196,7 +196,7 @@ void draw_frame() {
 
     draw_demo_window(WindowNames::imgui_demo);
     draw_metrics_window(WindowNames::imgui_metrics);
-    draw_window(WindowNames::faust_editor, faust_editor);
+    draw_window(WindowNames::faust_editor, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(WindowNames::controls, controls);
 
     ImGui::End();

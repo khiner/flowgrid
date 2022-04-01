@@ -3,4 +3,4 @@
 #include "../state.h"
 #include "drawable.h"
 
-void draw_window(const std::string &name, Drawable &drawable);
+void draw_window(const std::string &name, Drawable &drawable, ImGuiWindowFlags flags = 0);

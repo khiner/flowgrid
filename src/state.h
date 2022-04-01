@@ -71,6 +71,7 @@ enum AudioBackend {
 };
 
 struct Faust {
+    bool simple_text_editor;
     std::string code{"import(\"stdfaust.lib\"); process = no.noise;\n"};
     std::string error{};
 };
@@ -102,7 +103,7 @@ struct State {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 
 // Internal types
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, simple_text_editor, code, error)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)

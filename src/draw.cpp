@@ -130,12 +130,18 @@ Controls controls{};
 // all its window state handling like we do with internal windows.
 // Thus, only the demo window's visibility state is part of the undo stack
 // (whereas with internal windows, other things like the collapsed state are considered undoable events).
-void draw_demo_window() {
-    static const std::string demo_window_name{"Dear ImGui Demo"};
-    const auto &w = s.ui.windows.at(demo_window_name);
-    auto &mutable_w = ui_s.ui.windows[demo_window_name];
-    if (mutable_w.visible != w.visible) q.enqueue(toggle_window{demo_window_name});
+void draw_demo_window(const std::string &window_name) {
+    const auto &w = s.ui.windows.at(window_name);
+    auto &mutable_w = ui_s.ui.windows[window_name];
+    if (mutable_w.visible != w.visible) q.enqueue(toggle_window{window_name});
     if (w.visible) ImGui::ShowDemoWindow(&mutable_w.visible);
+}
+
+void draw_metrics_window(const std::string &window_name) {
+    const auto &w = s.ui.windows.at(window_name);
+    auto &mutable_w = ui_s.ui.windows[window_name];
+    if (mutable_w.visible != w.visible) q.enqueue(toggle_window{window_name});
+    if (w.visible) ImGui::ShowMetricsWindow(&mutable_w.visible);
 }
 
 bool open = true;
@@ -166,9 +172,11 @@ void draw_frame() {
 
         auto dock_main_id = dockspace_id; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
         auto dock_id_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.35f, nullptr, &dock_main_id);
+        auto dock_id_bottom_left = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.5f, nullptr, &dock_id_left);
         auto dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.5f, nullptr, &dock_main_id);
 
         ImGui::DockBuilderDockWindow("Controls", dock_id_left);
+        ImGui::DockBuilderDockWindow("Dear ImGui Metrics/Debugger", dock_id_bottom_left);
         ImGui::DockBuilderDockWindow("Faust", dock_main_id);
         ImGui::DockBuilderDockWindow("Dear ImGui Demo", dock_id_bottom);
 
@@ -186,7 +194,8 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_demo_window();
+    draw_demo_window("Dear ImGui Demo");
+    draw_metrics_window("Dear ImGui Metrics/Debugger");
     draw_window("Faust", faust_editor);
     draw_window("Controls", controls);
 

@@ -57,9 +57,10 @@ struct Window {
 struct UI {
     bool running = true;
     std::map<std::string, Window> windows{
-        {"Controls",        {}},
-        {"Dear ImGui Demo", {}},
-        {"Faust",           {}},
+        {"Controls",                    {}},
+        {"Dear ImGui Demo",             {}},
+        {"Dear ImGui Metrics/Debugger", {}},
+        {"Faust",                       {}},
     };
     Colors colors;
 };

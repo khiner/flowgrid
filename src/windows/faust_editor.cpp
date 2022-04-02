@@ -91,7 +91,7 @@ void imgui_draw() {
     ImGui::PopStyleColor();
 }
 
-void FaustEditor::draw() {
+void FaustEditor::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Options")) {
             if (ImGui::MenuItem("Simple text editor", nullptr, &ui_s.audio.faust.simple_text_editor)) { q.enqueue(toggle_faust_simple_text_editor{}); }

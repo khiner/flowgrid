@@ -10,6 +10,8 @@
 #include "windows/show_window.h"
 #include "imgui_internal.h"
 #include "windows/controls.h"
+#include "windows/imgui_demo.h"
+#include "windows/imgui_metrics.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -125,24 +127,8 @@ void render(DrawContext &dc, const Color &clear_color) {
 
 FaustEditor faust_editor{};
 Controls controls{};
-
-// Usually this state management happens in `show_window`, but the demo window doesn't expose
-// all its window state handling like we do with internal windows.
-// Thus, only the demo window's visibility state is part of the undo stack
-// (whereas with internal windows, other things like the collapsed state are considered undoable events).
-void draw_demo_window(const std::string &window_name) {
-    const auto &w = s.ui.windows.at(window_name);
-    auto &mutable_w = ui_s.ui.windows[window_name];
-    if (mutable_w.visible != w.visible) q.enqueue(toggle_window{window_name});
-    if (w.visible) ImGui::ShowDemoWindow(&mutable_w.visible);
-}
-
-void draw_metrics_window(const std::string &window_name) {
-    const auto &w = s.ui.windows.at(window_name);
-    auto &mutable_w = ui_s.ui.windows[window_name];
-    if (mutable_w.visible != w.visible) q.enqueue(toggle_window{window_name});
-    if (w.visible) ImGui::ShowMetricsWindow(&mutable_w.visible);
-}
+ImGuiDemo imgui_demo{};
+ImGuiMetrics imgui_metrics{};
 
 bool open = true;
 
@@ -194,8 +180,8 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_demo_window(WindowNames::imgui_demo);
-    draw_metrics_window(WindowNames::imgui_metrics);
+    draw_window(WindowNames::imgui_demo, imgui_demo);
+    draw_window(WindowNames::imgui_metrics, imgui_metrics, ImGuiWindowFlags_None, false);
     draw_window(WindowNames::faust_editor, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(WindowNames::controls, controls);
 

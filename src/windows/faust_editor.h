@@ -7,7 +7,7 @@
 namespace fs = std::filesystem;
 
 struct FaustEditor : public Drawable {
-    void draw() override;
+    void draw(Window &) override;
     void destroy() override;
 
 private:

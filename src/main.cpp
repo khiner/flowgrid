@@ -5,12 +5,12 @@
 #include "process_manager.h"
 
 Config config{};
-Context context{}; // NOLINT(cert-err58-cpp)
+Context context{};
 Context &c = context; // Convenient shorthand
 const State &state = c.s;
 const State &s = c.s; // Convenient shorthand
 State &ui_s = c.ui_s; // Convenient shorthand
-BlockingConcurrentQueue<Action> q{}; // NOLINT(cert-err58-cpp,cppcoreguidelines-interfaces-global-init)
+BlockingConcurrentQueue<Action> q{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
 int main(int, const char *argv[]) {
     config.app_root = std::string(argv[0]);

@@ -5,7 +5,7 @@ void window_toggle(const std::string &name) {
     if (ImGui::Checkbox(name.c_str(), &ui_s.ui.windows[name].visible)) { q.enqueue(toggle_window{name}); }
 }
 
-void Controls::draw() {
+void Controls::draw(Window &) {
     ImGui::BeginDisabled(!c.can_undo());
     if (ImGui::Button("Undo")) { q.enqueue(undo{}); }
     ImGui::EndDisabled();

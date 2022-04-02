@@ -4,7 +4,7 @@
 	branch = kAudioObjectPropertyElementMain
 [submodule "imgui"]
 	path = lib/imgui
-	url = git@github.com:ocornut/imgui.git
+	url = git@github.com:khiner/imgui.git
 	branch = docking
 [submodule "lib/SDL"]
 	path = lib/SDL

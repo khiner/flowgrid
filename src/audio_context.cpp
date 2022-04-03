@@ -1,10 +1,32 @@
-#include <iostream>
 #include "audio_context.h"
-#include "context.h"
 
+#include <iostream>
+#include "faust/dsp/llvm-dsp.h"
+//#include "generator/libfaust.h" // For the C++ backend
+#include "context.h"
 #include <utility>
 
-void AudioContext::FaustContext::compute(int frame_count) const {
+struct FaustContext {
+    const std::string faust_text;
+    int sample_rate;
+    int num_inputs{0}, num_outputs{0};
+    llvm_dsp_factory *dsp_factory;
+    dsp *dsp = nullptr;
+    std::unique_ptr<AudioContext::FaustBuffers> buffers;
+
+    FaustContext(std::string faust_text, int sample_rate);
+    ~FaustContext();
+
+    void compute(int frame_count) const;
+    FAUSTFLOAT
+    get_sample(int channel, int frame) const;
+
+    void update();
+};
+
+std::unique_ptr<FaustContext> faust;
+
+void FaustContext::compute(int frame_count) const {
     if (buffers) {
         if (frame_count > buffers->num_frames) {
             std::cerr << "The output stream buffer only has " << buffers->num_frames
@@ -17,15 +39,16 @@ void AudioContext::FaustContext::compute(int frame_count) const {
     // TODO log warning
 }
 
-FAUSTFLOAT AudioContext::FaustContext::get_sample(int channel, int frame) const {
+FAUSTFLOAT
+FaustContext::get_sample(int channel, int frame) const {
     if (!buffers || !dsp) return 0;
     return buffers->output[std::min(channel, buffers->num_output_channels - 1)][frame];
 }
 
-void AudioContext::FaustContext::update() {
+void FaustContext::update() {
     num_inputs = dsp ? dsp->getNumInputs() : 0;
     num_outputs = dsp ? dsp->getNumOutputs() : 0;
-    buffers = std::make_unique<FaustBuffers>(num_inputs, num_outputs);
+    buffers = std::make_unique<AudioContext::FaustBuffers>(num_inputs, num_outputs);
 }
 
 
@@ -33,11 +56,12 @@ void AudioContext::on_action(const Action &) {
     update();
 }
 
-void AudioContext::compute(int frame_count) const {
+void AudioContext::compute(int frame_count) {
     if (faust) faust->compute(frame_count);
 }
 
-FAUSTFLOAT AudioContext::get_sample(int channel, int frame) const {
+FAUSTFLOAT
+AudioContext::get_sample(int channel, int frame) {
     return !faust || s.audio.muted ? 0 : faust->get_sample(channel, frame);
 }
 
@@ -47,7 +71,7 @@ void AudioContext::update() {
     }
 }
 
-AudioContext::FaustContext::FaustContext(std::string faust_text, int sample_rate)
+FaustContext::FaustContext(std::string faust_text, int sample_rate)
     : faust_text(std::move(faust_text)), sample_rate(sample_rate) {
     int argc = 0;
     const char **argv = new const char *[8];
@@ -64,7 +88,7 @@ AudioContext::FaustContext::FaustContext(std::string faust_text, int sample_rate
     update();
 }
 
-AudioContext::FaustContext::~FaustContext() {
+FaustContext::~FaustContext() {
     if (dsp) {
         delete dsp;
         dsp = nullptr;

@@ -182,7 +182,7 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_window(w.imgui_demo.name, imgui_demo);
+    draw_window(w.imgui_demo.name, imgui_demo, ImGuiFocusedFlags_None, false);
     draw_window(w.imgui_metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
     draw_window(w.faust_editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.controls.name, controls);

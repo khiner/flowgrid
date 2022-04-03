@@ -134,6 +134,10 @@ bool open = true;
 // TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
 //  for how to programmatically set up a default layout
 
+void dock_window(const Window &w, ImGuiID node_id) {
+    ImGui::DockBuilderDockWindow(w.name.c_str(), node_id);
+}
+
 void draw_frame() {
     // Adapted from `imgui_demo::ShowExampleAppDockSpace`
     // More docking info at https://github.com/ocornut/imgui/issues/2109
@@ -150,8 +154,6 @@ void draw_frame() {
     ImGui::PopStyleVar(3);
 
     const Windows &w = s.ui.windows;
-    Windows &_w = ui_s.ui.windows;
-
     auto dockspace_id = ImGui::GetID("DockSpace");
     if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
         ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
@@ -164,11 +166,16 @@ void draw_frame() {
         auto bottom_id = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.5f, nullptr, &main_id);
         auto bottom_right_id = ImGui::DockBuilderSplitNode(bottom_id, ImGuiDir_Right, 0.4f, nullptr, &bottom_id);
 
-        ImGui::DockBuilderDockWindow(_w.controls.name.c_str(), left_id);
-        ImGui::DockBuilderDockWindow(_w.faust.editor.name.c_str(), main_id);
-        ImGui::DockBuilderDockWindow(_w.imgui.metrics.name.c_str(), bottom_left_id);
-        ImGui::DockBuilderDockWindow(_w.imgui.style_editor.name.c_str(), bottom_right_id);
-        ImGui::DockBuilderDockWindow(_w.imgui.demo.name.c_str(), bottom_id);
+        // TODO create a single parent "ImGui Windows" window with imgui child windows,
+        //  where the tabs can't be dragged out of the window, and nothing else can be dragged in.
+        //  Checkboxes that currently control imgui window visibility become menu bar checkboxes.
+        //  ImGui windows can, however, be docked _within_ the imgui parent window, and the parent window
+        //  itself can be dragged/docked/closed etc.
+        dock_window(w.controls, left_id);
+        dock_window(w.faust.editor, main_id);
+        dock_window(w.imgui.metrics, bottom_left_id);
+        dock_window(w.imgui.style_editor, bottom_right_id);
+        dock_window(w.imgui.demo, bottom_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }

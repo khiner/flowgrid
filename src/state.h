@@ -56,7 +56,7 @@ struct Window {
 };
 
 struct Windows {
-    struct ImGuiWindows {
+    struct ImGuiWindow : public Window {
         Window demo{"Dear ImGui Demo"};
         Window metrics{"Dear ImGui Metrics/Debugger"};
         Window style_editor{"Dear ImGui Style editor"};
@@ -66,7 +66,7 @@ struct Windows {
     };
 
     Window controls{"Controls"};
-    ImGuiWindows imgui;
+    ImGuiWindow imgui{{"ImGui", true}};
     FaustWindows faust;
 };
 
@@ -126,7 +126,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::ImGuiWindows, demo, metrics, style_editor)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::ImGuiWindow, name, visible, demo, metrics, style_editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::FaustWindows, editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, controls, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors, window_named)

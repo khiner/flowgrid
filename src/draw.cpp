@@ -9,8 +9,7 @@
 #include "windows/show_window.h"
 #include "imgui_internal.h"
 #include "windows/controls.h"
-#include "windows/imgui_demo.h"
-#include "windows/imgui_metrics.h"
+#include "windows/imgui_windows.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -126,8 +125,9 @@ void render(DrawContext &dc, const Color &clear_color) {
 
 FaustEditor faust_editor{};
 Controls controls{};
-ImGuiDemo imgui_demo{};
-ImGuiMetrics imgui_metrics{};
+ImGuiWindows::Demo imgui_demo{};
+ImGuiWindows::Metrics imgui_metrics{};
+ImGuiWindows::StyleEditor imgui_style_editor{};
 
 bool open = true;
 
@@ -158,15 +158,17 @@ void draw_frame() {
         ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace); // Add empty node
         ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
 
-        auto dock_main_id = dockspace_id; // This variable will track the document node, however we are not using it here as we aren't docking anything into it.
-        auto dock_id_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.35f, nullptr, &dock_main_id);
-        auto dock_id_bottom_left = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.5f, nullptr, &dock_id_left);
-        auto dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.5f, nullptr, &dock_main_id);
+        auto main_id = dockspace_id;
+        auto left_id = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Left, 0.35f, nullptr, &main_id);
+        auto bottom_left_id = ImGui::DockBuilderSplitNode(left_id, ImGuiDir_Down, 0.5f, nullptr, &left_id);
+        auto bottom_id = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.5f, nullptr, &main_id);
+        auto bottom_right_id = ImGui::DockBuilderSplitNode(bottom_id, ImGuiDir_Right, 0.4f, nullptr, &bottom_id);
 
-        ImGui::DockBuilderDockWindow(_w.controls.name.c_str(), dock_id_left);
-        ImGui::DockBuilderDockWindow(_w.imgui_metrics.name.c_str(), dock_id_bottom_left);
-        ImGui::DockBuilderDockWindow(_w.faust_editor.name.c_str(), dock_main_id);
-        ImGui::DockBuilderDockWindow(_w.imgui_demo.name.c_str(), dock_id_bottom);
+        ImGui::DockBuilderDockWindow(_w.controls.name.c_str(), left_id);
+        ImGui::DockBuilderDockWindow(_w.faust.editor.name.c_str(), main_id);
+        ImGui::DockBuilderDockWindow(_w.imgui.metrics.name.c_str(), bottom_left_id);
+        ImGui::DockBuilderDockWindow(_w.imgui.style_editor.name.c_str(), bottom_right_id);
+        ImGui::DockBuilderDockWindow(_w.imgui.demo.name.c_str(), bottom_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -182,9 +184,10 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_window(w.imgui_demo.name, imgui_demo, ImGuiFocusedFlags_None, false);
-    draw_window(w.imgui_metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
-    draw_window(w.faust_editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
+    draw_window(w.imgui.demo.name, imgui_demo, ImGuiFocusedFlags_None, false);
+    draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
+    draw_window(w.imgui.style_editor.name, imgui_style_editor, ImGuiWindowFlags_None, true);
+    draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.controls.name, controls);
 
     ImGui::End();

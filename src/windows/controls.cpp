@@ -13,8 +13,9 @@ void Controls::draw(Window &) {
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
     ImGui::EndDisabled();
 
-    window_toggle(ui_s.ui.windows.imgui_demo);
-    window_toggle(ui_s.ui.windows.imgui_metrics);
+    window_toggle(ui_s.ui.windows.imgui.demo);
+    window_toggle(ui_s.ui.windows.imgui.metrics);
+    window_toggle(ui_s.ui.windows.imgui.style_editor);
 
     if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     if (ImGui::IsItemActivated()) c.start_gesture();

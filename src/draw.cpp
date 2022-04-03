@@ -10,6 +10,7 @@
 #include "imgui_internal.h"
 #include "windows/controls.h"
 #include "windows/imgui_windows.h"
+#include "stateful_imgui.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -133,10 +134,6 @@ bool open = true;
 
 // TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
 //  for how to programmatically set up a default layout
-
-void dock_window(const Window &w, ImGuiID node_id) {
-    ImGui::DockBuilderDockWindow(w.name.c_str(), node_id);
-}
 
 void draw_frame() {
     // Adapted from `imgui_demo::ShowExampleAppDockSpace`

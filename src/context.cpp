@@ -21,7 +21,7 @@ void Context::on_action(const Action &action) {
     } else {
         update(action);
         if (!in_gesture) finalize_gesture();
-        audio_context.on_action(action); // audio-related side effects
+        AudioContext::on_action(action); // audio-related side effects
     }
 }
 

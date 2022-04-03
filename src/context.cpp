@@ -37,7 +37,7 @@ void Context::update(const Action &action) {
     std::visit(
         visitor{
             [&](const set_ini_settings &a) { c.ini_settings = a.settings; },
-            [&](const toggle_window &a) { _s.ui.windows[a.name].visible = !s.ui.windows.at(a.name).visible; },
+            [&](const toggle_window &a) { _s.ui.window_named[a.name].visible = !s.ui.window_named.at(a.name).visible; },
 
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_clear_color a) { _s.ui.colors.clear = a.color; },

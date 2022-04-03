@@ -1,8 +1,8 @@
 #include "controls.h"
 #include "../context.h"
 
-void window_toggle(const std::string &name) {
-    if (ImGui::Checkbox(name.c_str(), &ui_s.ui.windows[name].visible)) { q.enqueue(toggle_window{name}); }
+void window_toggle(const Window &w) {
+    if (ImGui::Checkbox(w.name.c_str(), &ui_s.ui.window_named[w.name].visible)) { q.enqueue(toggle_window{w.name}); }
 }
 
 void Controls::draw(Window &) {
@@ -13,8 +13,8 @@ void Controls::draw(Window &) {
     if (ImGui::Button("Redo")) { q.enqueue(redo{}); }
     ImGui::EndDisabled();
 
-    window_toggle(WindowNames::imgui_demo);
-    window_toggle(WindowNames::imgui_metrics);
+    window_toggle(ui_s.ui.windows.imgui_demo);
+    window_toggle(ui_s.ui.windows.imgui_metrics);
 
     if (ImGui::ColorEdit3("Background color", (float *) &ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     if (ImGui::IsItemActivated()) c.start_gesture();

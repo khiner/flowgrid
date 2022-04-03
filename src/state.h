@@ -2,7 +2,6 @@
 
 #include "nlohmann/json.hpp"
 #include "imgui.h"
-#include "windows/window_names.h"
 
 struct Color {
     float r = 0, g = 0, b = 0, a = 0;
@@ -52,16 +51,25 @@ struct Dimensions {
 };
 
 struct Window {
+    std::string name;
     bool visible{true};
+};
+
+struct Windows {
+    Window controls{"Controls"};
+    Window imgui_demo{"Dear ImGui Demo"};
+    Window imgui_metrics{"Dear ImGui Metrics/Debugger"};
+    Window faust_editor{"Faust"};
 };
 
 struct UI {
     bool running = true;
-    std::map<std::string, Window> windows{
-        {WindowNames::controls,      {}},
-        {WindowNames::imgui_demo,    {}},
-        {WindowNames::imgui_metrics, {}},
-        {WindowNames::faust_editor,  {}},
+    Windows windows;
+    std::map<std::string, Window> window_named{
+        {windows.controls.name,      windows.controls},
+        {windows.imgui_demo.name,    windows.imgui_demo},
+        {windows.imgui_metrics.name, windows.imgui_metrics},
+        {windows.faust_editor.name,  windows.faust_editor},
     };
     Colors colors;
 };
@@ -108,7 +116,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, samp
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, visible)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, controls, imgui_demo, imgui_metrics, faust_editor)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors, window_named)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

@@ -1,4 +1,3 @@
-#include <iostream>
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include "imgui.h"
@@ -150,6 +149,9 @@ void draw_frame() {
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
     ImGui::PopStyleVar(3);
 
+    const Windows &w = s.ui.windows;
+    Windows &_w = ui_s.ui.windows;
+
     auto dockspace_id = ImGui::GetID("DockSpace");
     if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
         ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
@@ -161,10 +163,10 @@ void draw_frame() {
         auto dock_id_bottom_left = ImGui::DockBuilderSplitNode(dock_id_left, ImGuiDir_Down, 0.5f, nullptr, &dock_id_left);
         auto dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.5f, nullptr, &dock_main_id);
 
-        ImGui::DockBuilderDockWindow(WindowNames::controls.c_str(), dock_id_left);
-        ImGui::DockBuilderDockWindow(WindowNames::imgui_metrics.c_str(), dock_id_bottom_left);
-        ImGui::DockBuilderDockWindow(WindowNames::faust_editor.c_str(), dock_main_id);
-        ImGui::DockBuilderDockWindow(WindowNames::imgui_demo.c_str(), dock_id_bottom);
+        ImGui::DockBuilderDockWindow(_w.controls.name.c_str(), dock_id_left);
+        ImGui::DockBuilderDockWindow(_w.imgui_metrics.name.c_str(), dock_id_bottom_left);
+        ImGui::DockBuilderDockWindow(_w.faust_editor.name.c_str(), dock_main_id);
+        ImGui::DockBuilderDockWindow(_w.imgui_demo.name.c_str(), dock_id_bottom);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -180,10 +182,10 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_window(WindowNames::imgui_demo, imgui_demo);
-    draw_window(WindowNames::imgui_metrics, imgui_metrics, ImGuiWindowFlags_None, false);
-    draw_window(WindowNames::faust_editor, faust_editor, ImGuiWindowFlags_MenuBar);
-    draw_window(WindowNames::controls, controls);
+    draw_window(w.imgui_demo.name, imgui_demo);
+    draw_window(w.imgui_metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
+    draw_window(w.faust_editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
+    draw_window(w.controls.name, controls);
 
     ImGui::End();
 }

@@ -15,8 +15,26 @@ void gestured() {
     if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();
 }
 
-bool StatefulImGui::ColorEdit3(const char *label, Color &color, ImGuiColorEditFlags flags) {
-    const bool edited = ImGui::ColorEdit3(label, (float *) &color, flags);
+bool StatefulImGui::SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderFloat(label, v, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool StatefulImGui::SliderFloat2(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderFloat2(label, v, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool StatefulImGui::DragFloat(const char *label, float *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool StatefulImGui::ColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flags) {
+    const bool edited = ImGui::ColorEdit4(label, col, flags);
     gestured();
     return edited;
 }

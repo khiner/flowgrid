@@ -3,47 +3,11 @@
 #include "nlohmann/json.hpp"
 #include "imgui.h"
 
-struct Color {
-    float r = 0, g = 0, b = 0, a = 0;
-
-    Color &operator+=(float x) &{
-        r += x;
-        g += x;
-        b += x;
-        return *this;
-    }
-
-    Color &operator+=(Color const &c) &{
-        r += c.r;
-        g += c.g;
-        b += c.b;
-        return *this;
-    }
-
-    Color &operator*=(float x) &{
-        r *= x;
-        g *= x;
-        b *= x;
-        return *this;
-    }
-
-    Color &operator*=(Color const &c) &{
-        r *= c.r;
-        g *= c.g;
-        b *= c.b;
-        return *this;
-    }
-};
-
 // TODO Different modes, with different states (e.g. AudioTrackMode),
 //  which control the default settings for
 //    * Layout
 //    * Node organization, move-rules
 //    * Automatic connections-rules
-
-struct Colors {
-    Color clear{};
-};
 
 struct Dimensions {
     ImVec2 position;
@@ -80,7 +44,7 @@ struct UI {
         {windows.imgui.style_editor.name, windows.imgui.style_editor},
         {windows.faust.editor.name,       windows.faust.editor},
     };
-    Colors colors;
+    ImGuiStyle style;
 };
 
 enum AudioBackend {
@@ -116,19 +80,19 @@ struct State {
     ActionConsumer action_consumer;
 };
 
-// External types
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
-
-// Internal types
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, simple_text_editor, code, error)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Colors, clear)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::ImGuiWindow, name, visible, demo, metrics, style_editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::FaustWindows, editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, controls, imgui, faust)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, colors, window_named)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
+    PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
+    GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,
+    MouseCursorScale, AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, style, window_named)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

@@ -15,7 +15,6 @@ void Controls::draw(Window &) {
     window_toggle(ui_s.ui.windows.imgui.metrics);
     window_toggle(ui_s.ui.windows.imgui.style_editor);
 
-    if (StatefulImGui::ColorEdit3("Background color", ui_s.ui.colors.clear)) { q.enqueue(set_clear_color{ui_s.ui.colors.clear}); }
     if (ImGui::Checkbox("Audio thread running", &ui_s.audio.running)) { q.enqueue(toggle_audio_running{}); }
     if (ImGui::Checkbox("Mute audio", &ui_s.audio.muted)) { q.enqueue(toggle_audio_muted{}); }
 }

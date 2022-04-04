@@ -73,13 +73,13 @@ void load_fonts() {
     //IM_ASSERT(font != NULL);
 }
 
-void setup(DrawContext &dc) {
+ImGuiContext *setup(DrawContext &dc) {
     SDL_GL_MakeCurrent(dc.window, dc.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    auto *imgui_context = ImGui::CreateContext();
     auto &io = ImGui::GetIO();
     // Disable ImGui's .ini file saving. We handle this manually.
     io.IniFilename = nullptr;
@@ -103,6 +103,8 @@ void setup(DrawContext &dc) {
     ImGui_ImplOpenGL3_Init(dc.glsl_version);
 
     load_fonts();
+
+    return imgui_context;
 }
 
 void teardown(DrawContext &dc) {
@@ -115,10 +117,10 @@ void teardown(DrawContext &dc) {
     SDL_Quit();
 }
 
-void render(DrawContext &dc, const Color &clear_color) {
+void render(DrawContext &dc) {
     ImGui::Render();
     glViewport(0, 0, (int) dc.io.DisplaySize.x, (int) dc.io.DisplaySize.y);
-    glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
+//    glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(dc.window);
@@ -205,7 +207,7 @@ int draw() {
     }
 
     auto dc = create_draw_context();
-    setup(dc);
+    auto *imgui_context = setup(dc);
 
     if (!c.ini_settings.empty()) {
         ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
@@ -234,9 +236,11 @@ int draw() {
             c.has_new_ini_settings = false;
         }
 
+        imgui_context->Style = ui_s.ui.style; // Load style
+
         new_frame();
         draw_frame();
-        render(dc, s.ui.colors.clear);
+        render(dc);
 
         static bool initial_save = true;
         if (io.WantSaveIniSettings) {

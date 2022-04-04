@@ -37,15 +37,16 @@ void Context::update(const Action &action) {
     std::visit(
         visitor{
             [&](const set_ini_settings &a) { c.ini_settings = a.settings; },
+            [&](const set_style &a) { _s.ui.style = a.style; },
             [&](const toggle_window &a) { _s.ui.window_named[a.name].visible = !s.ui.window_named.at(a.name).visible; },
 
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
-            [&](set_clear_color a) { _s.ui.colors.clear = a.color; },
             [&](set_audio_thread_running a) { _s.audio.running = a.running; },
             [&](toggle_audio_running) { _s.audio.running = !s.audio.running; },
+            [&](const set_audio_sample_rate &a) { _s.audio.sample_rate = a.sample_rate; },
+
             [&](set_action_consumer_running a) { _s.action_consumer.running = a.running; },
             [&](set_ui_running a) { _s.ui.running = a.running; },
-            [&](const set_audio_sample_rate &a) { _s.audio.sample_rate = a.sample_rate; },
 
             [&](const set_faust_text &a) { _s.audio.faust.code = a.text; },
             [&](toggle_faust_simple_text_editor) { _s.audio.faust.simple_text_editor = !s.audio.faust.simple_text_editor; },
@@ -73,6 +74,7 @@ void Context::apply_diff(const ActionDiff &diff) {
     json_state = json_state.patch(diff.json_diff);
     _state = json2state(json_state);
     ui_s = _state; // Update the UI-copy of the state to reflect.
+
     if (!diff.ini_diff.empty()) has_new_ini_settings = true;
 }
 

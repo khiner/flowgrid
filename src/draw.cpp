@@ -1,17 +1,13 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "draw.h"
 #include "context.h"
-#include "windows/faust_editor.h"
-#include "windows/show_window.h"
-#include "imgui_internal.h"
-#include "windows/controls.h"
-#include "windows/imgui_windows.h"
 #include "stateful_imgui.h"
-#include "windows/style_editor.h"
+#include "window/windows.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -127,9 +123,9 @@ void render(DrawContext &dc) {
     SDL_GL_SwapWindow(dc.window);
 }
 
-FaustEditor faust_editor{};
 Controls controls{};
 StyleEditor imgui_style_editor{};
+FaustEditor faust_editor{};
 ImGuiWindows::Demo imgui_demo{};
 ImGuiWindows::Metrics imgui_metrics{};
 

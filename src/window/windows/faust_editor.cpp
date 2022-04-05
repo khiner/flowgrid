@@ -2,12 +2,12 @@
  * Based on https://github.com/cmaughan/zep_imgui/blob/main/demo/src/editor.cpp
  */
 
-#include "faust_editor.h"
+#include "../windows.h"
 
 #include <filesystem>
 #include "zep.h"
-#include "../config.h"
-#include "../context.h"
+#include "../../config.h"
+#include "../../context.h"
 
 using namespace Zep;
 namespace fs = std::filesystem;

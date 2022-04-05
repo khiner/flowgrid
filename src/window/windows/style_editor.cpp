@@ -1,9 +1,9 @@
-#include "style_editor.h"
+#include "../windows.h"
 
 #include "imgui.h"
-#include "../context.h"
 #include "imgui_internal.h"
-#include "../stateful_imgui.h"
+#include "../../context.h"
+#include "../../stateful_imgui.h"
 
 // From `imgui_demo.cpp`
 // Helper to display a little (?) mark which shows a tooltip when hovered.

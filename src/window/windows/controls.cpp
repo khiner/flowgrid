@@ -1,5 +1,5 @@
-#include "controls.h"
-#include "../context.h"
+#include "../windows.h"
+#include "../../context.h"
 
 void Controls::draw(Window &) {
     ImGui::BeginDisabled(!c.can_undo());

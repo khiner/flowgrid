@@ -3,31 +3,73 @@
  */
 
 #include "faust_editor.h"
+
+#include <filesystem>
+#include "zep.h"
 #include "../config.h"
 #include "../context.h"
 
 using namespace Zep;
+namespace fs = std::filesystem;
 
-// Initialize the editor and watch for changes
-void FaustEditor::zep_init(const Zep::NVec2f &pixelScale) {
-    spZep = std::make_unique<ZepWrapper>(
+struct ZepWrapper : public Zep::IZepComponent {
+    ZepWrapper(const fs::path &root_path, const Zep::NVec2f &pixelScale, std::function<void(std::shared_ptr<Zep::ZepMessage>)> fnCommandCB)
+        : editor(Zep::ZepPath(root_path.string()), pixelScale), Callback(std::move(fnCommandCB)) {
+        editor.RegisterCallback(this);
+    }
+
+    Zep::ZepEditor &GetEditor() const override { return (Zep::ZepEditor &) editor; }
+
+    void Notify(std::shared_ptr<Zep::ZepMessage> message) override { Callback(message); }
+
+    virtual void HandleInput() { editor.HandleInput(); }
+
+    Zep::ZepEditor_ImGui editor;
+    std::function<void(std::shared_ptr<Zep::ZepMessage>)> Callback;
+};
+
+std::unique_ptr<ZepWrapper> zep;
+
+void zep_init() {
+    const Zep::NVec2f pixelScale(1.0f, 1.0f);
+    zep = std::make_unique<ZepWrapper>(
         config.app_root,
         Zep::NVec2f(pixelScale.x, pixelScale.y),
-        [](const std::shared_ptr<ZepMessage> &_) -> void {}
+        [](const std::shared_ptr<ZepMessage> &) -> void {}
     );
 
-    auto &display = spZep->GetEditor().GetDisplay();
+    auto &display = zep->editor.GetDisplay();
     auto pImFont = ImGui::GetIO().Fonts[0].Fonts[0];
     display.SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize)));
     display.SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize)));
     display.SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.5)));
     display.SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.25)));
     display.SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.125)));
+    //    auto pBuffer = zep->editor.InitWithFileOrDir(file);
 }
 
-void FaustEditor::zep_load(const Zep::ZepPath &file) {
-    auto pBuffer = spZep->GetEditor().InitWithFileOrDir(file);
+bool zep_initialized = false;
+
+void zep_draw() {
+    if (!zep_initialized) {
+        // Called once after the fonts are initialized
+        zep_init();
+        zep_initialized = true;
+    }
+
+    zep->GetEditor().RefreshRequired(); // Required for CTRL+P and flashing cursor.
+
+    const auto &pos = ImGui::GetWindowPos();
+    const auto &top_left = ImGui::GetWindowContentRegionMin();
+    const auto &bottom_right = ImGui::GetWindowContentRegionMax();
+    zep->editor.SetDisplayRegion(
+        Zep::NVec2f(top_left.x + pos.x, top_left.y + pos.y),
+        Zep::NVec2f(bottom_right.x + pos.x, bottom_right.y + pos.y)
+    );
+    zep->editor.Display();
+    if (ImGui::IsWindowFocused()) zep->editor.HandleInput();
 }
+
 
 // Simple text editor
 struct InputTextCallback_UserData {
@@ -60,27 +102,8 @@ bool InputTextMultiline(const char *label, std::string *str, ImGuiInputTextFlags
     InputTextCallback_UserData cb_user_data{str, callback, user_data};
     return ImGui::InputTextMultiline(label, (char *) str->c_str(), str->capacity() + 1, ImVec2(0, 0), flags, InputTextCallback, &cb_user_data);
 }
-// End simple text editor
 
-void FaustEditor::zep_draw() {
-    if (!initialized) {
-        // Called once after the fonts are initialized
-        zep_init(Zep::NVec2f(1.0f, 1.0f));
-        zep_load(Zep::ZepPath(config.app_root) / "src" / "main.cpp");
-        initialized = true;
-    }
-
-    spZep->GetEditor().RefreshRequired(); // Required for CTRL+P and flashing cursor.
-
-    const auto &vMin = ImGui::GetWindowContentRegionMin();
-    const auto &vMax = ImGui::GetWindowContentRegionMax();
-    const auto &pos = ImGui::GetWindowPos();
-    spZep->zepEditor.SetDisplayRegion(Zep::NVec2f(vMin.x + pos.x, vMin.y + pos.y), Zep::NVec2f(vMax.x + pos.x, vMax.y + pos.y));
-    spZep->zepEditor.Display();
-    if (ImGui::IsWindowFocused()) spZep->zepEditor.HandleInput();
-}
-
-void imgui_draw() {
+void simple_draw() {
 //        ImGuiInputTextFlags_NoUndoRedo;
     static auto flags = ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_EnterReturnsTrue;
     if (InputTextMultiline("##faust_source", &ui_s.audio.faust.code, flags)) {
@@ -90,6 +113,8 @@ void imgui_draw() {
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();
 }
+// End simple text editor
+
 
 void FaustEditor::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
@@ -100,10 +125,10 @@ void FaustEditor::draw(Window &) {
         ImGui::EndMenuBar();
     }
 
-    if (s.audio.faust.simple_text_editor) imgui_draw();
+    if (s.audio.faust.simple_text_editor) simple_draw();
     else zep_draw();
 }
 
 void FaustEditor::destroy() {
-    spZep.reset();
+    zep.reset();
 }

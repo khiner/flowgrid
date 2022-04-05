@@ -70,6 +70,10 @@ void load_fonts() {
     //IM_ASSERT(font != NULL);
 }
 
+bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
+    return mod == ImGui::GetMergedKeyModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
+}
+
 ImGuiContext *setup(DrawContext &dc) {
     SDL_GL_MakeCurrent(dc.window, dc.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
@@ -78,8 +82,8 @@ ImGuiContext *setup(DrawContext &dc) {
     IMGUI_CHECKVERSION();
     auto *imgui_context = ImGui::CreateContext();
     auto &io = ImGui::GetIO();
-    // Disable ImGui's .ini file saving. We handle this manually.
-    io.IniFilename = nullptr;
+    io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
+
     // However, since the default ImGui behavior is to write to disk (to the .ini file) when the ini state is marked dirty,
     // it buffers marking dirty (`g.IO.WantSaveIniSettings = true`) with a `io.IniSavingRate` timer (which is 5s by default).
     // We want this to be a very small value, since we want to create actions for the undo stack as soon after a user action
@@ -179,13 +183,17 @@ void draw_frame() {
     ImGui::DockSpace(dockspace_id);
 
     if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Undo", "Cmd+z", false, c.can_undo())) { q.enqueue(undo{}); }
+            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.can_redo())) { q.enqueue(redo{}); }
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("Windows")) {
             StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.controls);
             StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.style_editor);
             StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.faust.editor);
             StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.imgui.demo);
             StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.imgui.metrics);
-
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -230,7 +238,6 @@ int draw() {
             }
         }
 
-        auto &io = ImGui::GetIO();
         if (c.has_new_ini_settings) {
             ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
             c.has_new_ini_settings = false;
@@ -238,11 +245,16 @@ int draw() {
 
         imgui_context->Style = ui_s.ui.style; // Load style
 
+        // TODO holding these keys down for super-fast undo/redo is not very stable (lost events?)
+        if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q.enqueue(undo{});
+        else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q.enqueue(redo{});
+
         new_frame();
         draw_frame();
         render(dc);
 
         static bool initial_save = true;
+        auto &io = ImGui::GetIO();
         if (io.WantSaveIniSettings) {
             size_t settings_size = 0;
             const char *settings = ImGui::SaveIniSettingsToMemory(&settings_size);

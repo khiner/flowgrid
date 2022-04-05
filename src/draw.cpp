@@ -11,6 +11,7 @@
 #include "windows/controls.h"
 #include "windows/imgui_windows.h"
 #include "stateful_imgui.h"
+#include "windows/style_editor.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -128,9 +129,9 @@ void render(DrawContext &dc) {
 
 FaustEditor faust_editor{};
 Controls controls{};
+StyleEditor imgui_style_editor{};
 ImGuiWindows::Demo imgui_demo{};
 ImGuiWindows::Metrics imgui_metrics{};
-ImGuiWindows::StyleEditor imgui_style_editor{};
 
 bool open = true;
 
@@ -172,9 +173,8 @@ void draw_frame() {
         //  Waiting to hear back from a question on this [here](https://github.com/ocornut/imgui/issues/5166).
         dock_window(w.controls, upper_left_id);
         dock_window(w.faust.editor, main_id);
-//        dock_window(w.imgui, bottom_id);
+        dock_window(w.style_editor, bottom_id);
         dock_window(w.imgui.metrics, bottom_id);
-        dock_window(w.imgui.style_editor, bottom_id);
         dock_window(w.imgui.demo, bottom_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
@@ -193,7 +193,7 @@ void draw_frame() {
 
     draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
-    draw_window(w.imgui.style_editor.name, imgui_style_editor, ImGuiWindowFlags_None, true);
+    draw_window(w.style_editor.name, imgui_style_editor, ImGuiWindowFlags_None, true);
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.controls.name, controls);
 

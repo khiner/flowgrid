@@ -20,17 +20,17 @@ struct Window {
 };
 
 struct Windows {
-    struct ImGuiWindow : public Window {
+    struct ImGuiWindows {
         Window demo{"Dear ImGui Demo"};
         Window metrics{"Dear ImGui Metrics/Debugger"};
-        Window style_editor{"Dear ImGui Style editor"};
     };
     struct FaustWindows {
         Window editor{"Faust"};
     };
 
     Window controls{"Controls"};
-    ImGuiWindow imgui{{"ImGui", true}};
+    Window style_editor{"Style editor"};
+    ImGuiWindows imgui{};
     FaustWindows faust;
 };
 
@@ -38,11 +38,11 @@ struct UI {
     bool running = true;
     Windows windows;
     std::map<std::string, Window> window_named{
-        {windows.controls.name,           windows.controls},
-        {windows.imgui.demo.name,         windows.imgui.demo},
-        {windows.imgui.metrics.name,      windows.imgui.metrics},
-        {windows.imgui.style_editor.name, windows.imgui.style_editor},
-        {windows.faust.editor.name,       windows.faust.editor},
+        {windows.controls.name,      windows.controls},
+        {windows.style_editor.name,  windows.style_editor},
+        {windows.imgui.demo.name,    windows.imgui.demo},
+        {windows.imgui.metrics.name, windows.imgui.metrics},
+        {windows.faust.editor.name,  windows.faust.editor},
     };
     ImGuiStyle style;
 };
@@ -86,9 +86,9 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::ImGuiWindow, name, visible, demo, metrics, style_editor)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::ImGuiWindows, demo, metrics)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::FaustWindows, editor)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, controls, imgui, faust)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, controls, style_editor, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,

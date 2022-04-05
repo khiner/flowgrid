@@ -6,13 +6,13 @@ void dock_window(const Window &w, ImGuiID node_id) {
     ImGui::DockBuilderDockWindow(w.name.c_str(), node_id);
 }
 
-void window_toggle(const Window &w) {
-    if (ImGui::Checkbox(w.name.c_str(), &ui_s.ui.window_named[w.name].visible)) { q.enqueue(toggle_window{w.name}); }
-}
-
 void gestured() {
     if (ImGui::IsItemActivated()) c.start_gesture();
     if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();
+}
+
+bool StatefulImGui::WindowToggleMenuItem(const Window &w) {
+    if (ImGui::MenuItem(w.name.c_str(), nullptr, &ui_s.ui.window_named[w.name].visible)) { q.enqueue(toggle_window{w.name}); }
 }
 
 bool StatefulImGui::SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {

@@ -183,9 +183,13 @@ void draw_frame() {
     ImGui::DockSpace(dockspace_id);
 
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Options")) {
-            bool opt_placeholder;
-            ImGui::MenuItem("Placeholder", nullptr, &opt_placeholder);
+        if (ImGui::BeginMenu("Windows")) {
+            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.controls);
+            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.style_editor);
+            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.faust.editor);
+            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.imgui.demo);
+            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.imgui.metrics);
+
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();

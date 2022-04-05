@@ -33,8 +33,19 @@ void zep_init() {
     zep = std::make_unique<ZepWrapper>(
         config.app_root,
         Zep::NVec2f(pixelScale.x, pixelScale.y),
-        [](const std::shared_ptr<ZepMessage> &) -> void {
-//            std::cout << message->str << std::endl;
+        [](const std::shared_ptr<ZepMessage> &message) -> void {
+            if (message->messageId == Msg::Buffer) {
+                auto buffer_message = std::static_pointer_cast<BufferMessage>(message);
+                switch (buffer_message->type) {
+                    case BufferMessageType::TextChanged:
+                    case BufferMessageType::TextDeleted:
+                    case BufferMessageType::TextAdded: q.enqueue(set_faust_text{buffer_message->pBuffer->GetWorkingBuffer().string()});
+                        break;
+                    case BufferMessageType::PreBufferChange:
+                    case BufferMessageType::Loaded:
+                    case BufferMessageType::MarkersChanged: break;
+                }
+            }
         }
     );
 
@@ -45,10 +56,13 @@ void zep_init() {
     display.SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.5)));
     display.SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.25)));
     display.SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.125)));
-    //    auto pBuffer = zep->editor.InitWithFileOrDir(file);
+    zep->editor.InitWithText("Faust", ui_s.audio.faust.code);
 }
 
 bool zep_initialized = false;
+
+NVec2f topLeft;
+NVec2f bottomRight;
 
 void zep_draw() {
     if (!zep_initialized) {
@@ -62,12 +76,14 @@ void zep_draw() {
     const auto &pos = ImGui::GetWindowPos();
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
-    zep->editor.SetDisplayRegion(
-        Zep::NVec2f(top_left.x + pos.x, top_left.y + pos.y),
-        Zep::NVec2f(bottom_right.x + pos.x, bottom_right.y + pos.y)
-    );
+    const auto height = 200;
+    topLeft = Zep::NVec2f(top_left.x + pos.x, top_left.y + pos.y);
+    bottomRight = Zep::NVec2f(bottom_right.x + pos.x, top_left.y + pos.y + height);
+    zep->editor.SetDisplayRegion(topLeft, bottomRight);
     zep->editor.Display();
     if (ImGui::IsWindowFocused()) zep->editor.HandleInput();
+    // TODO this is not the usual immediate-mode case. Only set text if an undo/redo has changed the text
+//    if (false) zep->editor.GetBuffers()[0]->SetText(ui_s.audio.faust.code);
 }
 
 
@@ -91,12 +107,9 @@ void simple_draw() {
     static auto flags = ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize;
     std::string *str = &ui_s.audio.faust.code;
     InputTextCallback_UserData cb_user_data{str};
-    if (ImGui::InputTextMultiline("##faust_source", (char *) str->c_str(), str->capacity() + 1, ImVec2(0, 0), flags, InputTextCallback, &cb_user_data)) {
+    if (ImGui::InputTextMultiline("##faust_source", (char *) str->c_str(), str->capacity() + 1, ImVec2(0, 200), flags, InputTextCallback, &cb_user_data)) {
         q.enqueue(set_faust_text{ui_s.audio.faust.code});
     }
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-    if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
-    ImGui::PopStyleColor();
 }
 // End simple text editor
 
@@ -112,6 +125,10 @@ void FaustEditor::draw(Window &) {
 
     if (s.audio.faust.simple_text_editor) simple_draw();
     else zep_draw();
+    ImGui::SetCursorPosY(bottomRight.y);
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+    if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
+    ImGui::PopStyleColor();
 }
 
 void FaustEditor::destroy() {

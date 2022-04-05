@@ -128,9 +128,7 @@ void render(DrawContext &dc) {
 
 FaustEditor faust_editor{};
 Controls controls{};
-ImGuiWindows::Demo imgui_demo{};
-ImGuiWindows::Metrics imgui_metrics{};
-ImGuiWindows::StyleEditor imgui_style_editor{};
+ImGuiWindows imgui_window{};
 
 bool open = true;
 
@@ -172,10 +170,7 @@ void draw_frame() {
         //  Waiting to hear back from a question on this [here](https://github.com/ocornut/imgui/issues/5166).
         dock_window(w.controls, upper_left_id);
         dock_window(w.faust.editor, main_id);
-//        dock_window(w.imgui, bottom_id);
-        dock_window(w.imgui.metrics, bottom_id);
-        dock_window(w.imgui.style_editor, bottom_id);
-        dock_window(w.imgui.demo, bottom_id);
+        dock_window(w.imgui, bottom_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -191,9 +186,13 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
-    draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
-    draw_window(w.imgui.style_editor.name, imgui_style_editor, ImGuiWindowFlags_None, true);
+    ImGuiWindowClass imgui_window_class;
+    imgui_window_class.DockingAllowUnclassed = false;
+    imgui_window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingOverMe |
+        ImGuiDockNodeFlags_NoDockingOverOther | ImGuiDockNodeFlags_NoDockingSplitOther;
+    ImGui::SetNextWindowClass(&imgui_window_class);
+    draw_window(w.imgui.name, imgui_window);
+
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.controls.name, controls);
 

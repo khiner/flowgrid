@@ -39,6 +39,7 @@ struct UI {
     Windows windows;
     std::map<std::string, Window> window_named{
         {windows.controls.name,           windows.controls},
+        {windows.imgui.name,              windows.imgui},
         {windows.imgui.demo.name,         windows.imgui.demo},
         {windows.imgui.metrics.name,      windows.imgui.metrics},
         {windows.imgui.style_editor.name, windows.imgui.style_editor},

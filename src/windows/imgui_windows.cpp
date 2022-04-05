@@ -3,6 +3,24 @@
 #include "../context.h"
 #include "imgui_internal.h"
 #include "../stateful_imgui.h"
+#include "show_window.h"
+
+void ImGuiWindows::draw(Window &) {
+    auto dockspace_id = ImGui::GetID("ImGui Dockspace");
+    const auto &iw = ui_s.ui.windows.imgui;
+
+    if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+        dock_window(iw.metrics, dockspace_id);
+        dock_window(iw.style_editor, dockspace_id);
+        dock_window(iw.demo, dockspace_id);
+        ImGui::DockBuilderFinish(dockspace_id);
+    }
+
+    ImGui::DockSpace(dockspace_id);
+    draw_window(iw.demo.name, demo, ImGuiWindowFlags_None, false);
+    draw_window(iw.metrics.name, metrics, ImGuiWindowFlags_None, false);
+    draw_window(iw.style_editor.name, style_editor, ImGuiWindowFlags_None, true);
+}
 
 void ImGuiWindows::Metrics::draw(Window &window) {
     ImGui::ShowMetricsWindow(&window.visible);

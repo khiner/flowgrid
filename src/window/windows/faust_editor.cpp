@@ -71,8 +71,6 @@ void zep_draw() {
         zep_initialized = true;
     }
 
-    zep->GetEditor().RefreshRequired(); // Required for CTRL+P and flashing cursor.
-
     const auto &pos = ImGui::GetWindowPos();
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
@@ -82,7 +80,11 @@ void zep_draw() {
     zep->editor.SetDisplayRegion(topLeft, bottomRight);
     zep->editor.Display();
     if (ImGui::IsWindowFocused()) zep->editor.HandleInput();
+    else zep->editor.ResetCursorTimer();
+
     // TODO this is not the usual immediate-mode case. Only set text if an undo/redo has changed the text
+    //  Really what I want is for an application undo/redo containing code text changes to do exactly what
+    //  zep does for undo/redo internally.
 //    if (false) zep->editor.GetBuffers()[0]->SetText(ui_s.audio.faust.code);
 }
 

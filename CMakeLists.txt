@@ -18,3 +18,5 @@ include_directories(lib/diff-match-patch-cpp-stl)
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_json::nlohmann_json dynamiclib Zep::Zep)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
+
+add_definitions(-DZEP_USE_SDL) # Needed for ctrl key to work with Zep

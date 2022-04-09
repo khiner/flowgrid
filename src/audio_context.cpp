@@ -4,7 +4,6 @@
 #include "faust/dsp/llvm-dsp.h"
 //#include "generator/libfaust.h" // For the C++ backend
 #include "context.h"
-#include <utility>
 
 struct FaustContext {
     const std::string faust_text;

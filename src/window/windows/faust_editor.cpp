@@ -1,7 +1,3 @@
-/**
- * Based on https://github.com/cmaughan/zep_imgui/blob/main/demo/src/editor.cpp
- */
-
 #include "../windows.h"
 
 #include <filesystem>
@@ -13,14 +9,14 @@ using namespace Zep;
 namespace fs = std::filesystem;
 
 struct ZepWrapper : public Zep::IZepComponent {
-    ZepWrapper(const fs::path &root_path, const Zep::NVec2f &pixel_scale, std::function<void(std::shared_ptr<Zep::ZepMessage>)> callback)
-        : editor(Zep::ZepPath(root_path.string()), pixel_scale), callback(std::move(callback)) {
+    ZepWrapper(const fs::path &root_path, std::function<void(std::shared_ptr<Zep::ZepMessage>)> callback)
+        : editor(Zep::ZepPath(root_path.string())), callback(std::move(callback)) {
         editor.RegisterCallback(this);
     }
 
     Zep::ZepEditor &GetEditor() const override { return (Zep::ZepEditor &) editor; }
 
-    void Notify(std::shared_ptr<Zep::ZepMessage> message) override { callback(message); }
+    void Notify(const std::shared_ptr<Zep::ZepMessage> &message) override { callback(message); }
 
     Zep::ZepEditor_ImGui editor;
     std::function<void(std::shared_ptr<Zep::ZepMessage>)> callback;
@@ -29,10 +25,8 @@ struct ZepWrapper : public Zep::IZepComponent {
 std::unique_ptr<ZepWrapper> zep;
 
 void zep_init() {
-    const Zep::NVec2f pixelScale(1.0f, 1.0f);
     zep = std::make_unique<ZepWrapper>(
         config.app_root,
-        Zep::NVec2f(pixelScale.x, pixelScale.y),
         [](const std::shared_ptr<ZepMessage> &message) -> void {
             if (message->messageId == Msg::Buffer) {
                 auto buffer_message = std::static_pointer_cast<BufferMessage>(message);

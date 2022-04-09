@@ -53,6 +53,7 @@ void zep_init() {
     display.SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.25)));
     display.SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.125)));
     zep->editor.InitWithText("Faust", ui_s.audio.faust.code);
+//    zep->editor.InitWithFileOrDir("...");
 }
 
 bool zep_initialized = false;
@@ -130,8 +131,6 @@ void FaustEditor::draw(Window &) {
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                auto filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-
                 auto pBuffer = zep->editor.GetFileBuffer(filePathName);
                 zep->editor.GetActiveTabWindow()->GetActiveWindow()->SetBuffer(pBuffer);
             }

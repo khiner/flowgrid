@@ -80,7 +80,7 @@ FaustContext::FaustContext(std::string faust_text, int sample_rate)
 
     const int optimize = -1;
     dsp_factory = createDSPFactoryFromString("FlowGrid", this->faust_text, argc, argv, "", c._state.audio.faust.error, optimize);
-    if (c._state.audio.faust.error.empty()) {
+    if (dsp_factory && c._state.audio.faust.error.empty()) {
         dsp = dsp_factory->createDSPInstance();
         dsp->init(sample_rate);
     }

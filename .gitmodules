@@ -25,3 +25,7 @@
 [submodule "lib/diff-match-patch-cpp-stl"]
 	path = lib/diff-match-patch-cpp-stl
 	url = git@github.com:leutloff/diff-match-patch-cpp-stl.git
+[submodule "lib/ImGuiFileDialog"]
+	path = lib/ImGuiFileDialog
+	url = git@github.com:aiekick/ImGuiFileDialog.git
+	branch = Lib_Only

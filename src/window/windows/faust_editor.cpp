@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include "zep.h"
+#include "ImGuiFileDialog.h"
 #include "../../config.h"
 #include "../../context.h"
 
@@ -110,14 +111,70 @@ void simple_draw() {
 }
 // End simple text editor
 
-
 void FaustEditor::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Open")) {
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp", ".");
+            }
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Options")) {
             if (ImGui::MenuItem("Simple text editor", nullptr, &ui_s.audio.faust.simple_text_editor)) { q.enqueue(toggle_faust_simple_text_editor{}); }
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
+
+        if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                auto filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+
+                auto pBuffer = zep->editor.GetFileBuffer(filePathName);
+                zep->editor.GetActiveTabWindow()->GetActiveWindow()->SetBuffer(pBuffer);
+            }
+
+            ImGuiFileDialog::Instance()->Close();
+        }
+
+//        if (ImGui::BeginMenu("Settings")) {
+//            if (ImGui::BeginMenu("Editor Mode")) {
+//                bool enabledVim = strcmp(buffer.GetMode()->Name(), Zep::ZepMode_Vim::StaticName()) == 0;
+//                bool enabledNormal = !enabledVim;
+//                if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
+//                    zep.GetEditor().SetGlobalMode(Zep::ZepMode_Vim::StaticName());
+//                } else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal)) {
+//                    zep.GetEditor().SetGlobalMode(Zep::ZepMode_Standard::StaticName());
+//                }
+//                ImGui::EndMenu();
+//            }
+//
+//            if (ImGui::BeginMenu("Theme")) {
+//                bool enabledDark = zep.GetEditor().GetTheme().GetThemeType() == ThemeType::Dark ? true : false;
+//                bool enabledLight = !enabledDark;
+//
+//                if (ImGui::MenuItem("Dark", "", &enabledDark)) {
+//                    zep.GetEditor().GetTheme().SetThemeType(ThemeType::Dark);
+//                } else if (ImGui::MenuItem("Light", "", &enabledLight)) {
+//                    zep.GetEditor().GetTheme().SetThemeType(ThemeType::Light);
+//                }
+//                ImGui::EndMenu();
+//            }
+//            ImGui::EndMenu();
+//        }
+//
+//        if (ImGui::BeginMenu("Window")) {
+//            auto pTabWindow = zep.GetEditor().GetActiveTabWindow();
+//            if (ImGui::MenuItem("Horizontal Split")) {
+//                pTabWindow->AddWindow(&pTabWindow->GetActiveWindow()->GetBuffer(), pTabWindow->GetActiveWindow(), RegionLayoutType::VBox);
+//            } else if (ImGui::MenuItem("Vertical Split")) {
+//                pTabWindow->AddWindow(&pTabWindow->GetActiveWindow()->GetBuffer(), pTabWindow->GetActiveWindow(), RegionLayoutType::HBox);
+//            }
+//            ImGui::EndMenu();
+//        }
+//
     }
 
     if (s.audio.faust.simple_text_editor) simple_draw();

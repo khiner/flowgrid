@@ -49,7 +49,6 @@ void Context::update(const Action &action) {
             [&](set_ui_running a) { _s.ui.running = a.running; },
 
             [&](const set_faust_text &a) { _s.audio.faust.code = a.text; },
-            [&](toggle_faust_simple_text_editor) { _s.audio.faust.simple_text_editor = !s.audio.faust.simple_text_editor; },
 
             [&](close_application) {
                 _s.ui.running = false;
@@ -78,6 +77,11 @@ void Context::apply_diff(const ActionDiff &diff) {
     if (!diff.ini_diff.empty()) has_new_ini_settings = true;
 }
 
+// TODO Implement
+//  ```cpp
+//  std::pair<Diffs, Diffs> {forward_diff, reverse_diff} = json::diff_with_inverse(old_state_json, new_state_json);
+//  ```
+//  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
 void Context::finalize_gesture() {
     auto old_json_state = json_state;
     json_state = state2json(s);

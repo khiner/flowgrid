@@ -85,47 +85,55 @@ void zep_draw() {
 //    if (false) zep->editor.GetBuffers()[0]->SetText(ui_s.audio.faust.code);
 }
 
-
-// Simple text editor
-struct InputTextCallback_UserData {
-    std::string *Str;
-};
-
-static int InputTextCallback(ImGuiInputTextCallbackData *data) {
-    auto *user_data = (InputTextCallback_UserData *) data->UserData;
-    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-        std::string *str = user_data->Str;
-        str->resize(data->BufTextLen);
-        data->Buf = (char *) str->c_str();
-    }
-    return 0;
-}
-
-void simple_draw() {
-//        ImGuiInputTextFlags_NoUndoRedo;
-    static auto flags = ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize;
-    std::string *str = &ui_s.audio.faust.code;
-    InputTextCallback_UserData cb_user_data{str};
-    if (ImGui::InputTextMultiline("##faust_source", (char *) str->c_str(), str->capacity() + 1, ImVec2(0, 200), flags, InputTextCallback, &cb_user_data)) {
-        q.enqueue(set_faust_text{ui_s.audio.faust.code});
-    }
-}
-// End simple text editor
-
+// TODO add mouse selection https://github.com/Rezonality/zep/issues/56
+// TODO standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
+//  (and right navigation should move from the end)
 void FaustEditor::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) {
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp", ".");
             }
-
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Options")) {
-            if (ImGui::MenuItem("Simple text editor", nullptr, &ui_s.audio.faust.simple_text_editor)) { q.enqueue(toggle_faust_simple_text_editor{}); }
+        if (ImGui::BeginMenu("Settings")) {
+            if (ImGui::BeginMenu("Editor Mode")) {
+                const auto &buffer = zep->editor.GetActiveTabWindow()->GetActiveWindow()->GetBuffer();
+                bool enabledVim = strcmp(buffer.GetMode()->Name(), Zep::ZepMode_Vim::StaticName()) == 0;
+                bool enabledNormal = !enabledVim;
+                if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
+                    zep->editor.SetGlobalMode(Zep::ZepMode_Vim::StaticName());
+                } else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal)) {
+                    zep->editor.SetGlobalMode(Zep::ZepMode_Standard::StaticName());
+                }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Theme")) {
+                bool enabledDark = zep->editor.GetTheme().GetThemeType() == ThemeType::Dark ? true : false;
+                bool enabledLight = !enabledDark;
+
+                if (ImGui::MenuItem("Dark", "", &enabledDark)) {
+                    zep->editor.GetTheme().SetThemeType(ThemeType::Dark);
+                } else if (ImGui::MenuItem("Light", "", &enabledLight)) {
+                    zep->editor.GetTheme().SetThemeType(ThemeType::Light);
+                }
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
+
+        if (ImGui::BeginMenu("Window")) {
+            auto *tabWindow = zep->editor.GetActiveTabWindow();
+            if (ImGui::MenuItem("Horizontal Split")) {
+                tabWindow->AddWindow(&tabWindow->GetActiveWindow()->GetBuffer(), tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
+            } else if (ImGui::MenuItem("Vertical Split")) {
+                tabWindow->AddWindow(&tabWindow->GetActiveWindow()->GetBuffer(), tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
+            }
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMenuBar();
 
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
@@ -137,47 +145,9 @@ void FaustEditor::draw(Window &) {
 
             ImGuiFileDialog::Instance()->Close();
         }
-
-//        if (ImGui::BeginMenu("Settings")) {
-//            if (ImGui::BeginMenu("Editor Mode")) {
-//                bool enabledVim = strcmp(buffer.GetMode()->Name(), Zep::ZepMode_Vim::StaticName()) == 0;
-//                bool enabledNormal = !enabledVim;
-//                if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
-//                    zep.GetEditor().SetGlobalMode(Zep::ZepMode_Vim::StaticName());
-//                } else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal)) {
-//                    zep.GetEditor().SetGlobalMode(Zep::ZepMode_Standard::StaticName());
-//                }
-//                ImGui::EndMenu();
-//            }
-//
-//            if (ImGui::BeginMenu("Theme")) {
-//                bool enabledDark = zep.GetEditor().GetTheme().GetThemeType() == ThemeType::Dark ? true : false;
-//                bool enabledLight = !enabledDark;
-//
-//                if (ImGui::MenuItem("Dark", "", &enabledDark)) {
-//                    zep.GetEditor().GetTheme().SetThemeType(ThemeType::Dark);
-//                } else if (ImGui::MenuItem("Light", "", &enabledLight)) {
-//                    zep.GetEditor().GetTheme().SetThemeType(ThemeType::Light);
-//                }
-//                ImGui::EndMenu();
-//            }
-//            ImGui::EndMenu();
-//        }
-//
-//        if (ImGui::BeginMenu("Window")) {
-//            auto pTabWindow = zep.GetEditor().GetActiveTabWindow();
-//            if (ImGui::MenuItem("Horizontal Split")) {
-//                pTabWindow->AddWindow(&pTabWindow->GetActiveWindow()->GetBuffer(), pTabWindow->GetActiveWindow(), RegionLayoutType::VBox);
-//            } else if (ImGui::MenuItem("Vertical Split")) {
-//                pTabWindow->AddWindow(&pTabWindow->GetActiveWindow()->GetBuffer(), pTabWindow->GetActiveWindow(), RegionLayoutType::HBox);
-//            }
-//            ImGui::EndMenu();
-//        }
-//
     }
 
-    if (s.audio.faust.simple_text_editor) simple_draw();
-    else zep_draw();
+    zep_draw();
     ImGui::SetCursorPosY(bottomRight.y);
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());

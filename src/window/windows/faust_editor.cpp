@@ -54,9 +54,6 @@ void zep_init() {
 
 bool zep_initialized = false;
 
-NVec2f topLeft;
-NVec2f bottomRight;
-
 void zep_draw() {
     if (!zep_initialized) {
         // Called once after the fonts are initialized
@@ -68,9 +65,10 @@ void zep_draw() {
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
     const auto height = 200;
-    topLeft = Zep::NVec2f(top_left.x + pos.x, top_left.y + pos.y);
-    bottomRight = Zep::NVec2f(bottom_right.x + pos.x, top_left.y + pos.y + height);
-    zep->editor.SetDisplayRegion(topLeft, bottomRight);
+    zep->editor.SetDisplayRegion({
+        {top_left.x + pos.x,     top_left.y + pos.y},
+        {bottom_right.x + pos.x, top_left.y + pos.y + height}
+    });
     zep->editor.Display();
     if (ImGui::IsWindowFocused()) zep->editor.HandleInput();
     else zep->editor.ResetCursorTimer();
@@ -144,7 +142,7 @@ void FaustEditor::draw(Window &) {
     }
 
     zep_draw();
-    ImGui::SetCursorPosY(bottomRight.y);
+    ImGui::SetCursorPosY(zep->editor.editorRegion->rect.Bottom());
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();

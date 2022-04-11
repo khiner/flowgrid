@@ -10,12 +10,27 @@ using namespace Zep;
 namespace fs = std::filesystem;
 
 struct ZepWrapper : public Zep::IZepComponent {
-    ZepWrapper(const fs::path &root_path, std::function<void(std::shared_ptr<Zep::ZepMessage>)> callback)
-        : editor(Zep::ZepPath(root_path.string())), callback(std::move(callback)) {
+    explicit ZepWrapper(const fs::path &root_path) : editor(Zep::ZepPath(root_path.string())) {
         editor.RegisterCallback(this);
     }
 
-    void Notify(const std::shared_ptr<Zep::ZepMessage> &message) override { callback(message); }
+    ~ZepWrapper() { editor.UnRegisterCallback(this); }
+
+    void Notify(const std::shared_ptr<Zep::ZepMessage> &message) override {
+        if (message->messageId == Msg::Buffer) {
+            auto buffer_message = std::static_pointer_cast<BufferMessage>(message);
+            switch (buffer_message->type) {
+                case BufferMessageType::TextChanged:
+                case BufferMessageType::TextDeleted:
+                    // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
+                case BufferMessageType::TextAdded: q.enqueue(set_faust_text{buffer_message->pBuffer->GetWorkingBuffer().string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                    break;
+                case BufferMessageType::PreBufferChange:
+                case BufferMessageType::Loaded:
+                case BufferMessageType::MarkersChanged: break;
+            }
+        }
+    }
 
     Zep::ZepEditor_ImGui editor;
     std::function<void(std::shared_ptr<Zep::ZepMessage>)> callback;
@@ -24,24 +39,7 @@ struct ZepWrapper : public Zep::IZepComponent {
 std::unique_ptr<ZepWrapper> zep;
 
 void zep_init() {
-    zep = std::make_unique<ZepWrapper>(
-        config.app_root,
-        [](const std::shared_ptr<ZepMessage> &message) -> void {
-            if (message->messageId == Msg::Buffer) {
-                auto buffer_message = std::static_pointer_cast<BufferMessage>(message);
-                switch (buffer_message->type) {
-                    case BufferMessageType::TextChanged:
-                    case BufferMessageType::TextDeleted:
-                        // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                    case BufferMessageType::TextAdded: q.enqueue(set_faust_text{buffer_message->pBuffer->GetWorkingBuffer().string().c_str()}); // NOLINT(readability-redundant-string-cstr)
-                        break;
-                    case BufferMessageType::PreBufferChange:
-                    case BufferMessageType::Loaded:
-                    case BufferMessageType::MarkersChanged: break;
-                }
-            }
-        }
-    );
+    zep = std::make_unique<ZepWrapper>(config.app_root);
 
     auto *display = zep->editor.display;
     auto pImFont = ImGui::GetIO().Fonts[0].Fonts[0];

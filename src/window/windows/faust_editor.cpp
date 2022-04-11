@@ -15,8 +15,6 @@ struct ZepWrapper : public Zep::IZepComponent {
         editor.RegisterCallback(this);
     }
 
-    Zep::ZepEditor &GetEditor() const override { return (Zep::ZepEditor &) editor; }
-
     void Notify(const std::shared_ptr<Zep::ZepMessage> &message) override { callback(message); }
 
     Zep::ZepEditor_ImGui editor;
@@ -45,13 +43,13 @@ void zep_init() {
         }
     );
 
-    auto &display = zep->editor.GetDisplay();
+    auto *display = zep->editor.display;
     auto pImFont = ImGui::GetIO().Fonts[0].Fonts[0];
-    display.SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize)));
-    display.SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize)));
-    display.SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.5)));
-    display.SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.25)));
-    display.SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(display, pImFont, int(pImFont->FontSize * 1.125)));
+    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize)));
+    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize)));
+    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.5)));
+    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.25)));
+    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.125)));
     zep->editor.InitWithText("Faust", ui_s.audio.faust.code);
 //    zep->editor.InitWithFileOrDir("...");
 }
@@ -82,7 +80,7 @@ void zep_draw() {
     // TODO this is not the usual immediate-mode case. Only set text if an undo/redo has changed the text
     //  Really what I want is for an application undo/redo containing code text changes to do exactly what
     //  zep does for undo/redo internally.
-//    if (false) zep->editor.GetBuffers()[0]->SetText(ui_s.audio.faust.code);
+//    if (false) zep->editor.buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
 // TODO add mouse selection https://github.com/Rezonality/zep/issues/56
@@ -111,13 +109,13 @@ void FaustEditor::draw(Window &) {
             }
 
             if (ImGui::BeginMenu("Theme")) {
-                bool enabledDark = zep->editor.GetTheme().GetThemeType() == ThemeType::Dark ? true : false;
+                bool enabledDark = zep->editor.theme->GetThemeType() == ThemeType::Dark ? true : false;
                 bool enabledLight = !enabledDark;
 
                 if (ImGui::MenuItem("Dark", "", &enabledDark)) {
-                    zep->editor.GetTheme().SetThemeType(ThemeType::Dark);
+                    zep->editor.theme->SetThemeType(ThemeType::Dark);
                 } else if (ImGui::MenuItem("Light", "", &enabledLight)) {
-                    zep->editor.GetTheme().SetThemeType(ThemeType::Light);
+                    zep->editor.theme->SetThemeType(ThemeType::Light);
                 }
                 ImGui::EndMenu();
             }

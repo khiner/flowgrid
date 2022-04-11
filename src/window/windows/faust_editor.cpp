@@ -23,7 +23,7 @@ struct ZepWrapper : public Zep::IZepComponent {
                 case BufferMessageType::TextChanged:
                 case BufferMessageType::TextDeleted:
                     // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                case BufferMessageType::TextAdded: q.enqueue(set_faust_text{buffer_message->pBuffer->GetWorkingBuffer().string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                case BufferMessageType::TextAdded: q.enqueue(set_faust_text{buffer_message->pBuffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     break;
                 case BufferMessageType::PreBufferChange:
                 case BufferMessageType::Loaded:
@@ -79,6 +79,7 @@ void zep_draw() {
 //    if (false) zep->editor.buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
+// TODO two-finger mouse pad scrolling
 // TODO add mouse selection https://github.com/Rezonality/zep/issues/56
 // TODO standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
 //  (and right navigation should move from the end)
@@ -93,8 +94,8 @@ void FaustEditor::draw(Window &) {
 
         if (ImGui::BeginMenu("Settings")) {
             if (ImGui::BeginMenu("Editor Mode")) {
-                const auto &buffer = zep->editor.GetActiveTabWindow()->GetActiveWindow()->GetBuffer();
-                bool enabledVim = strcmp(buffer.GetMode()->Name(), Zep::ZepMode_Vim::StaticName()) == 0;
+                const auto *buffer = zep->editor.activeTabWindow->GetActiveWindow()->buffer;
+                bool enabledVim = strcmp(buffer->GetMode()->Name(), Zep::ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
                 if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
                     zep->editor.SetGlobalMode(Zep::ZepMode_Vim::StaticName());
@@ -119,11 +120,11 @@ void FaustEditor::draw(Window &) {
         }
 
         if (ImGui::BeginMenu("Window")) {
-            auto *tabWindow = zep->editor.GetActiveTabWindow();
+            auto *tabWindow = zep->editor.activeTabWindow;
             if (ImGui::MenuItem("Horizontal Split")) {
-                tabWindow->AddWindow(&tabWindow->GetActiveWindow()->GetBuffer(), tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
+                tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
             } else if (ImGui::MenuItem("Vertical Split")) {
-                tabWindow->AddWindow(&tabWindow->GetActiveWindow()->GetBuffer(), tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
+                tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
             }
             ImGui::EndMenu();
         }
@@ -134,7 +135,7 @@ void FaustEditor::draw(Window &) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 auto pBuffer = zep->editor.GetFileBuffer(filePathName);
-                zep->editor.GetActiveTabWindow()->GetActiveWindow()->SetBuffer(pBuffer);
+                zep->editor.activeTabWindow->GetActiveWindow()->SetBuffer(pBuffer);
             }
 
             ImGuiFileDialog::Instance()->Close();

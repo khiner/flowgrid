@@ -5,18 +5,24 @@
 #include "ImGuiFileDialog.h"
 #include "../../config.h"
 #include "../../context.h"
+#include "zep/regress.h"
 
 using namespace Zep;
-namespace fs = std::filesystem;
 
-struct ZepWrapper : public Zep::IZepComponent {
-    explicit ZepWrapper(const fs::path &root_path) : editor(Zep::ZepPath(root_path.string())) {
+struct ZepWrapper : public IZepComponent, public IZepReplProvider {
+    explicit ZepWrapper(const std::filesystem::path &root_path) : editor(ZepPath(root_path.string())) {
         editor.RegisterCallback(this);
+
+        ZepRegressExCommand::Register(editor);
+
+        // Repl
+        ZepReplExCommand::Register(editor, this);
+        ZepReplEvaluateOuterCommand::Register(editor, this);
+        ZepReplEvaluateInnerCommand::Register(editor, this);
+        ZepReplEvaluateCommand::Register(editor, this);
     }
 
-    ~ZepWrapper() { editor.UnRegisterCallback(this); }
-
-    void Notify(const std::shared_ptr<Zep::ZepMessage> &message) override {
+    void Notify(const std::shared_ptr<ZepMessage> &message) override {
         if (message->messageId == Msg::Buffer) {
             auto buffer_message = std::static_pointer_cast<BufferMessage>(message);
             switch (buffer_message->type) {
@@ -32,8 +38,69 @@ struct ZepWrapper : public Zep::IZepComponent {
         }
     }
 
-    Zep::ZepEditor_ImGui editor;
-    std::function<void(std::shared_ptr<Zep::ZepMessage>)> callback;
+
+    std::string ReplParse(ZepBuffer &buffer, const GlyphIterator &cursorOffset, ReplParseType type) override {
+        ZEP_UNUSED(cursorOffset);
+        ZEP_UNUSED(type);
+
+        GlyphRange range = type == ReplParseType::OuterExpression ?
+                           buffer.GetExpression(ExpressionType::Outer, cursorOffset, {'('}, {')'}) :
+                           type == ReplParseType::SubExpression ?
+                           buffer.GetExpression(ExpressionType::Inner, cursorOffset, {'('}, {')'}) :
+                           GlyphRange(buffer.Begin(), buffer.End());
+
+        if (range.first >= range.second) return "<No Expression>";
+
+        // Flash the evaluated expression
+        FlashType flashType = FlashType::Flash;
+        float time = 1.0f;
+        buffer.BeginFlash(time, flashType, range);
+
+//        const auto &text = buffer.workingBuffer;
+//        auto eval = std::string(text.begin() + range.first.index, text.begin() + range.second.index);
+//        auto ret = chibi_repl(scheme, NULL, eval);
+//        ret = RTrim(ret);
+//
+//        editor.SetCommandText(ret);
+//        return ret;
+
+        return "";
+    }
+
+    std::string ReplParse(const std::string &str) override {
+//        auto ret = chibi_repl(scheme, NULL, str);
+//        ret = RTrim(ret);
+//        return ret;
+        return str;
+    }
+
+    bool ReplIsFormComplete(const std::string &str, int &indent) override {
+        int count = 0;
+        for (auto &ch: str) {
+            if (ch == '(') count++;
+            if (ch == ')') count--;
+        }
+
+        if (count < 0) {
+            indent = -1;
+            return false;
+        }
+
+        if (count == 0) return true;
+
+        int count2 = 0;
+        indent = 1;
+        for (auto &ch: str) {
+            if (ch == '(') count2++;
+            if (ch == ')') count2--;
+            if (count2 == count) break;
+            indent++;
+        }
+        return false;
+    }
+
+    ZepEditor_ImGui editor;
+    std::function<void(std::shared_ptr<ZepMessage>)> callback;
 };
 
 std::unique_ptr<ZepWrapper> zep;
@@ -95,12 +162,12 @@ void FaustEditor::draw(Window &) {
         if (ImGui::BeginMenu("Settings")) {
             if (ImGui::BeginMenu("Editor Mode")) {
                 const auto *buffer = zep->editor.activeTabWindow->GetActiveWindow()->buffer;
-                bool enabledVim = strcmp(buffer->GetMode()->Name(), Zep::ZepMode_Vim::StaticName()) == 0;
+                bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
                 if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
-                    zep->editor.SetGlobalMode(Zep::ZepMode_Vim::StaticName());
+                    zep->editor.SetGlobalMode(ZepMode_Vim::StaticName());
                 } else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal)) {
-                    zep->editor.SetGlobalMode(Zep::ZepMode_Standard::StaticName());
+                    zep->editor.SetGlobalMode(ZepMode_Standard::StaticName());
                 }
                 ImGui::EndMenu();
             }

@@ -1,6 +1,5 @@
 #include "../windows.h"
 
-#include <filesystem>
 #include "zep.h"
 #include "ImGuiFileDialog.h"
 #include "../../config.h"
@@ -9,10 +8,8 @@
 
 using namespace Zep;
 
-struct ZepWrapper : public IZepComponent, public IZepReplProvider {
-    explicit ZepWrapper(const std::filesystem::path &root_path) : editor(ZepPath(root_path.string())) {
-        editor.RegisterCallback(this);
-
+struct ZepWrapper : public ZepComponent, public IZepReplProvider {
+    explicit ZepWrapper(ZepEditor_ImGui &editor) : ZepComponent(editor) {
         ZepRegressExCommand::Register(editor);
 
         // Repl
@@ -61,7 +58,7 @@ struct ZepWrapper : public IZepComponent, public IZepReplProvider {
 //        auto ret = chibi_repl(scheme, NULL, eval);
 //        ret = RTrim(ret);
 //
-//        editor.SetCommandText(ret);
+//        editor->SetCommandText(ret);
 //        return ret;
 
         return "";
@@ -99,24 +96,25 @@ struct ZepWrapper : public IZepComponent, public IZepReplProvider {
         return false;
     }
 
-    ZepEditor_ImGui editor;
     std::function<void(std::shared_ptr<ZepMessage>)> callback;
 };
 
 std::unique_ptr<ZepWrapper> zep;
+std::unique_ptr<ZepEditor_ImGui> editor;
 
 void zep_init() {
-    zep = std::make_unique<ZepWrapper>(config.app_root);
+    editor = std::make_unique<ZepEditor_ImGui>(ZepPath(config.app_root));
+    zep = std::make_unique<ZepWrapper>(*editor);
 
-    auto *display = zep->editor.display;
+    auto *display = editor->display;
     auto pImFont = ImGui::GetIO().Fonts[0].Fonts[0];
     display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize)));
     display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize)));
     display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.5)));
     display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.25)));
     display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.125)));
-    zep->editor.InitWithText("default.dsp", ui_s.audio.faust.code);
-//    zep->editor.InitWithFileOrDir("...");
+    editor->InitWithText("default.dsp", ui_s.audio.faust.code);
+//    editor->InitWithFileOrDir("...");
 }
 
 bool zep_initialized = false;
@@ -132,18 +130,18 @@ void zep_draw() {
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
     const auto height = 200;
-    zep->editor.SetDisplayRegion({
+    editor->SetDisplayRegion({
         {top_left.x + pos.x,     top_left.y + pos.y},
         {bottom_right.x + pos.x, top_left.y + pos.y + height}
     });
-    zep->editor.Display();
-    if (ImGui::IsWindowFocused()) zep->editor.HandleInput();
-    else zep->editor.ResetCursorTimer();
+    editor->Display();
+    if (ImGui::IsWindowFocused()) editor->HandleInput();
+    else editor->ResetCursorTimer();
 
     // TODO this is not the usual immediate-mode case. Only set text if an undo/redo has changed the text
     //  Really what I want is for an application undo/redo containing code text changes to do exactly what
     //  zep does for undo/redo internally.
-//    if (false) zep->editor.buffers[0]->SetText(ui_s.audio.faust.code);
+//    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
 // TODO two-finger mouse pad scrolling
@@ -161,25 +159,25 @@ void FaustEditor::draw(Window &) {
 
         if (ImGui::BeginMenu("Settings")) {
             if (ImGui::BeginMenu("Editor Mode")) {
-                const auto *buffer = zep->editor.activeTabWindow->GetActiveWindow()->buffer;
+                const auto *buffer = editor->activeTabWindow->GetActiveWindow()->buffer;
                 bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
                 if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
-                    zep->editor.SetGlobalMode(ZepMode_Vim::StaticName());
+                    editor->SetGlobalMode(ZepMode_Vim::StaticName());
                 } else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal)) {
-                    zep->editor.SetGlobalMode(ZepMode_Standard::StaticName());
+                    editor->SetGlobalMode(ZepMode_Standard::StaticName());
                 }
                 ImGui::EndMenu();
             }
 
             if (ImGui::BeginMenu("Theme")) {
-                bool enabledDark = zep->editor.theme->GetThemeType() == ThemeType::Dark ? true : false;
+                bool enabledDark = editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
                 bool enabledLight = !enabledDark;
 
                 if (ImGui::MenuItem("Dark", "", &enabledDark)) {
-                    zep->editor.theme->SetThemeType(ThemeType::Dark);
+                    editor->theme->SetThemeType(ThemeType::Dark);
                 } else if (ImGui::MenuItem("Light", "", &enabledLight)) {
-                    zep->editor.theme->SetThemeType(ThemeType::Light);
+                    editor->theme->SetThemeType(ThemeType::Light);
                 }
                 ImGui::EndMenu();
             }
@@ -187,7 +185,7 @@ void FaustEditor::draw(Window &) {
         }
 
         if (ImGui::BeginMenu("Window")) {
-            auto *tabWindow = zep->editor.activeTabWindow;
+            auto *tabWindow = editor->activeTabWindow;
             if (ImGui::MenuItem("Horizontal Split")) {
                 tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
             } else if (ImGui::MenuItem("Vertical Split")) {
@@ -201,8 +199,8 @@ void FaustEditor::draw(Window &) {
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                auto pBuffer = zep->editor.GetFileBuffer(filePathName);
-                zep->editor.activeTabWindow->GetActiveWindow()->SetBuffer(pBuffer);
+                auto pBuffer = editor->GetFileBuffer(filePathName);
+                editor->activeTabWindow->GetActiveWindow()->SetBuffer(pBuffer);
             }
 
             ImGuiFileDialog::Instance()->Close();
@@ -210,12 +208,13 @@ void FaustEditor::draw(Window &) {
     }
 
     zep_draw();
-    ImGui::SetCursorPosY(zep->editor.editorRegion->rect.Bottom());
+    ImGui::SetCursorPosY(editor->editorRegion->rect.Bottom());
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();
 }
 
 void FaustEditor::destroy() {
+    editor.reset();
     zep.reset();
 }

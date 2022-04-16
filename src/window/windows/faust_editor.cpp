@@ -133,6 +133,10 @@ void zep_draw() {
         {top_left.x + pos.x,     top_left.y + pos.y},
         {bottom_right.x + pos.x, top_left.y + pos.y + height}
     });
+
+    // TODO Save battery by skipping display if not required.
+    editor->RefreshRequired(); // Required for CTRL+P TODO shouldn't be the case
+
     editor->Display();
     if (ImGui::IsWindowFocused()) editor->HandleInput();
     else editor->ResetCursorTimer();

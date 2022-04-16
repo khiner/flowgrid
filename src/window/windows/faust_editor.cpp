@@ -134,9 +134,7 @@ void zep_draw() {
         {bottom_right.x + pos.x, top_left.y + pos.y + height}
     });
 
-    // TODO Save battery by skipping display if not required.
-    editor->RefreshRequired(); // Required for CTRL+P TODO shouldn't be the case
-
+    //    editor->RefreshRequired(); // TODO Save battery by skipping display if not required.
     editor->Display();
     if (ImGui::IsWindowFocused()) editor->HandleInput();
     else editor->ResetCursorTimer();
@@ -147,10 +145,13 @@ void zep_draw() {
 //    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
-// TODO two-finger mouse pad scrolling
-// TODO add mouse selection https://github.com/Rezonality/zep/issues/56
-// TODO standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
-//  (and right navigation should move from the end)
+/*
+ * TODO
+ *   Two-finger mouse pad scrolling
+ *   Add mouse selection https://github.com/Rezonality/zep/issues/56
+ *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
+ *     (and right navigation should move from the end)
+ */
 void FaustEditor::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {

@@ -87,3 +87,7 @@ set(BUILD_IMGUI OFF CACHE STRING "Make Imgui Library" FORCE)
 set(BUILD_DEMOS OFF CACHE STRING "Make the demo app" FORCE)
 set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
+
+#=================== tracy ===================
+option(TRACY_ENABLE "" ON)
+add_subdirectory(tracy) # target: TracyClient or alias Tracy::TracyClient

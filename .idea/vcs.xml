@@ -11,6 +11,7 @@
     <mapping directory="$PROJECT_DIR$/lib/imgui" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/json" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/libsoundio" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/tracy" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/lib/zep" vcs="Git" />
   </component>
 </project>

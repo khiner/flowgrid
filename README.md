@@ -46,4 +46,13 @@ TODO: Will probably want to build llvm locally as a submodule, and point to it.
 See [TD-Faust](https://github.com/DBraun/TD-Faust/blob/02f35e4343370559c779468413c32179f55c6552/build_macos.sh#L5-L31)
 as an example.
 
-TODO https://github.com/wolfpld/tracy
+### Tracy
+
+To build and run the [Tracy](https://github.com/wolfpld/tracy) profiler,
+
+```shell
+$ brew install gtk+3 glfw capstone
+$ cd lib/tracy/profiler/build/unix
+$ make release
+$ ./Tracy-release
+```

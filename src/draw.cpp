@@ -1,5 +1,6 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
+#include <Tracy.hpp>
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_impl_sdl.h"
@@ -139,6 +140,8 @@ bool open = true;
 //  for how to programmatically set up a default layout
 
 void draw_frame() {
+    ZoneScoped
+
     // Adapted from `imgui_demo::ShowExampleAppDockSpace`
     // More docking info at https://github.com/ocornut/imgui/issues/2109
     const auto *viewport = ImGui::GetMainViewport();
@@ -269,6 +272,8 @@ int draw() {
             }
             io.WantSaveIniSettings = false;
         }
+
+        FrameMark
     }
 
     faust_editor.destroy();

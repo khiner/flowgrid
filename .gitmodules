@@ -29,3 +29,6 @@
 	path = lib/ImGuiFileDialog
 	url = git@github.com:aiekick/ImGuiFileDialog.git
 	branch = Lib_Only
+[submodule "lib/tracy"]
+	path = lib/tracy
+	url = git@github.com:wolfpld/tracy.git

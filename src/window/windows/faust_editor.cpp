@@ -114,7 +114,6 @@ void zep_init() {
     display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.25)));
     display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.125)));
     editor->InitWithText("default.dsp", ui_s.audio.faust.code);
-//    editor->InitWithFileOrDir("...");
 }
 
 bool zep_initialized = false;
@@ -215,6 +214,5 @@ void FaustEditor::draw(Window &) {
 }
 
 void FaustEditor::destroy() {
-    editor.reset();
     zep.reset();
 }

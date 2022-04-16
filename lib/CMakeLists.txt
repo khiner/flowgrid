@@ -89,5 +89,4 @@ set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
 
 #=================== tracy ===================
-option(TRACY_ENABLE "" ON)
 add_subdirectory(tracy) # target: TracyClient or alias Tracy::TracyClient

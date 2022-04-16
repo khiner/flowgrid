@@ -48,6 +48,8 @@ as an example.
 
 ### Tracy
 
+To enable tracing, set `TRACY_ENABLE` to `ON` in the main project `CMakeLists.txt`.
+
 To build and run the [Tracy](https://github.com/wolfpld/tracy) profiler,
 
 ```shell

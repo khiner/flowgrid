@@ -3,6 +3,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(FlowGrid LANGUAGES C CXX)
 
+set(TRACY_ENABLE OFF CACHE STRING "Enable profiling" FORCE) # TODO debug/release builds
 add_subdirectory("lib")
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.h src/*.cpp lib/ImGuiFileDialog/ImGuiFileDialog.cpp)

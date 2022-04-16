@@ -233,8 +233,8 @@ void StyleEditor::draw(Window &) {
             ImGui::SameLine();
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
-            changed |= StatefulImGui::DragFloat("Global Alpha", &style.Alpha, 0.005f, 0.20f, 1.0f,
-                "%.2f"); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
+            // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
+            changed |= StatefulImGui::DragFloat("Global Alpha", &style.Alpha, 0.005f, 0.20f, 1.0f, "%.2f");
             changed |= StatefulImGui::DragFloat("Disabled Alpha", &style.DisabledAlpha, 0.005f, 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
             HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");

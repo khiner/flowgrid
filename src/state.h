@@ -51,9 +51,14 @@ enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
 
+struct Editor {
+    std::string file_name;
+};
+
 struct Faust {
     std::string code{"import(\"stdfaust.lib\"); process = no.noise;\n"};
     std::string error{};
+    Editor editor{"default.dsp"};
 };
 
 struct Audio {
@@ -79,7 +84,8 @@ struct State {
     ActionConsumer action_consumer;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Editor, file_name)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, editor, error)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)

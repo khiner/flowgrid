@@ -26,7 +26,12 @@ struct ZepWrapper : public ZepComponent, public IZepReplProvider {
                 case BufferMessageType::TextChanged:
                 case BufferMessageType::TextDeleted:
                     // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                case BufferMessageType::TextAdded: q.enqueue(set_faust_text{buffer_message->pBuffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                case BufferMessageType::TextAdded: {
+                    auto *buffer = buffer_message->buffer;
+                    if (buffer->name == s.audio.faust.editor.file_name) {
+                        q.enqueue(set_faust_text{buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                    }
+                }
                     break;
                 case BufferMessageType::PreBufferChange:
                 case BufferMessageType::Loaded:
@@ -113,7 +118,7 @@ void zep_init() {
     display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.5)));
     display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.25)));
     display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.125)));
-    editor->InitWithText("default.dsp", ui_s.audio.faust.code);
+    editor->InitWithText(s.audio.faust.editor.file_name, ui_s.audio.faust.code);
 }
 
 bool zep_initialized = false;

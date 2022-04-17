@@ -112,12 +112,12 @@ void zep_init() {
     zep = std::make_unique<ZepWrapper>(*editor);
 
     auto *display = editor->display;
-    auto pImFont = ImGui::GetIO().Fonts[0].Fonts[0];
-    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize)));
-    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize)));
-    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.5)));
-    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.25)));
-    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, pImFont, int(pImFont->FontSize * 1.125)));
+    auto imFont = ImGui::GetIO().Fonts[0].Fonts[0];
+    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize)));
+    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize)));
+    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize * 1.5)));
+    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize * 1.25)));
+    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize * 1.125)));
     editor->InitWithText(s.audio.faust.editor.file_name, ui_s.audio.faust.code);
 }
 
@@ -208,8 +208,8 @@ void FaustEditor::draw(Window &) {
         if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                auto pBuffer = editor->GetFileBuffer(filePathName);
-                editor->activeTabWindow->GetActiveWindow()->SetBuffer(pBuffer);
+                auto buffer = editor->GetFileBuffer(filePathName);
+                editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
             }
 
             ImGuiFileDialog::Instance()->Close();

@@ -84,7 +84,6 @@ set(FREETYPE_DIR /opt/homebrew/opt/freetype)
 find_package(Freetype REQUIRED)
 
 set(BUILD_IMGUI OFF CACHE STRING "Make Imgui Library" FORCE)
-set(BUILD_DEMOS OFF CACHE STRING "Make the demo app" FORCE)
 set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
 

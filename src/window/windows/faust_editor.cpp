@@ -1,10 +1,10 @@
 #include "../windows.h"
 
 #include "zep.h"
+#include "zep/regress.h"
 #include "ImGuiFileDialog.h"
 #include "../../config.h"
 #include "../../context.h"
-#include "zep/regress.h"
 
 using namespace Zep;
 
@@ -54,7 +54,7 @@ struct ZepWrapper : public ZepComponent, public IZepReplProvider {
         if (range.first >= range.second) return "<No Expression>";
 
         // Flash the evaluated expression
-        FlashType flashType = FlashType::Flash;
+        auto flashType = FlashType::Flash;
         float time = 1.0f;
         buffer.BeginFlash(time, flashType, range);
 

@@ -1,11 +1,15 @@
 #include "../windows.h"
-
-#include "zep.h"
-
-#include "ImGuiFileDialog.h"
 #include "../../config.h"
 #include "../../context.h"
+
+#include "ImGuiFileDialog.h"
+
+#include "zep/editor.h"
 #include "zep/regress.h"
+#include "zep/mode_repl.h"
+#include "zep/mode_standard.h"
+#include "zep/mode_vim.h"
+#include "zep/tab_window.h"
 
 using namespace Zep;
 

@@ -309,11 +309,11 @@ struct ZepConsole : Zep::IZepComponent {
         buf[IM_ARRAYSIZE(buf) - 1] = 0;
         va_end(args);
 
-        auto pBuffer = zepEditor.GetMRUBuffer();
+        auto *buffer = zepEditor.buffers.front().get();
 
         Zep::ChangeRecord changeRecord;
-        pBuffer->Insert(pBuffer->End(), buf, changeRecord);
-        pBuffer->Insert(pBuffer->End(), "\n", changeRecord);
+        buffer->Insert(buffer->End(), buf, changeRecord);
+        buffer->Insert(buffer->End(), "\n", changeRecord);
 
         pendingScroll = true;
     }

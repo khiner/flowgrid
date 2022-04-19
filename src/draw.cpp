@@ -131,6 +131,7 @@ void render(DrawContext &dc) {
 Controls controls{};
 StyleEditor imgui_style_editor{};
 FaustEditor faust_editor{};
+FaustLog faust_log{};
 ImGuiWindows::Demo imgui_demo{};
 ImGuiWindows::Metrics imgui_metrics{};
 
@@ -156,26 +157,27 @@ void draw_frame() {
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
     ImGui::PopStyleVar(3);
 
-    const Windows &w = s.ui.windows;
+    const auto &w = s.ui.windows;
     auto dockspace_id = ImGui::GetID("DockSpace");
     if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
         ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
         ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace); // Add empty node
         ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
 
-        auto main_id = dockspace_id;
-        auto bottom_id = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Down, 0.5f, nullptr, &main_id);
-        auto upper_left_id = ImGui::DockBuilderSplitNode(main_id, ImGuiDir_Left, 0.35f, nullptr, &main_id);
+        auto faust_window_id = dockspace_id;
+        auto bottom_id = ImGui::DockBuilderSplitNode(faust_window_id, ImGuiDir_Down, 0.5f, nullptr, &faust_window_id);
+        auto upper_left_id = ImGui::DockBuilderSplitNode(faust_window_id, ImGuiDir_Left, 0.35f, nullptr, &faust_window_id);
+        auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_window_id, ImGuiDir_Down, 0.2f, nullptr, &faust_window_id);
 
         // TODO create a single parent "ImGui Windows" window with imgui child windows,
         //  where the tabs can't be dragged out of the window, and nothing else can be dragged in.
         //  Checkboxes that currently control imgui window visibility become menu bar checkboxes.
         //  ImGui windows can, however, be docked _within_ the imgui parent window, and the parent window
         //  itself can be dragged/docked/closed etc.
-        //  The `DockFamily` API doesn't seem to exist anymore, but sounds like it would acheive this.
-        //  Waiting to hear back from a question on this [here](https://github.com/ocornut/imgui/issues/5166).
+        //  See `ImGuiWindowClass`.
         dock_window(w.controls, upper_left_id);
-        dock_window(w.faust.editor, main_id);
+        dock_window(w.faust.editor, faust_window_id);
+        dock_window(w.faust.log, faust_log_window_id);
         dock_window(w.style_editor, bottom_id);
         dock_window(w.imgui.metrics, bottom_id);
         dock_window(w.imgui.demo, bottom_id);
@@ -206,6 +208,7 @@ void draw_frame() {
     draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
     draw_window(w.style_editor.name, imgui_style_editor, ImGuiWindowFlags_None, true);
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
+    draw_window(w.faust.log.name, faust_log, ImGuiWindowFlags_None);
     draw_window(w.controls.name, controls);
 
     ImGui::End();

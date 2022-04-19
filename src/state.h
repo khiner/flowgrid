@@ -25,7 +25,8 @@ struct Windows {
         Window metrics{"Dear ImGui Metrics/Debugger"};
     };
     struct FaustWindows {
-        Window editor{"Faust"};
+        Window editor{"Faust Editor"};
+        Window log{"Faust Log"};
     };
 
     Window controls{"Controls"};
@@ -43,6 +44,7 @@ struct UI {
         {windows.imgui.demo.name,    windows.imgui.demo},
         {windows.imgui.metrics.name, windows.imgui.metrics},
         {windows.faust.editor.name,  windows.faust.editor},
+        {windows.faust.log.name,     windows.faust.log},
     };
     ImGuiStyle style;
 };
@@ -92,7 +94,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::ImGuiWindows, demo, metrics)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::FaustWindows, editor)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::FaustWindows, editor, log)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, controls, style_editor, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,

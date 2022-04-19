@@ -47,14 +47,14 @@ struct ZepFont_ImGui : public ZepFont {
         this->pixelHeight = pixelHeight;
     }
 
-    NVec2f GetTextSize(const uint8_t *pBegin, const uint8_t *pEnd = nullptr) const override {
+    NVec2f GetTextSize(const uint8_t *pBegin, const uint8_t *pEnd) const override {
         // This is the code from ImGui internals; we can't call GetTextSize, because it doesn't return the correct 'advance' formula, which we
         // need as we draw one character at a time...
-        ImVec2 text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, (const char *) pBegin, (const char *) pEnd, NULL);
+        ImVec2 text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, (const char *) pBegin, (const char *) pEnd, nullptr);
         if (text_size.x == 0.0) {
             // Make invalid characters a default fixed_size
             const char chDefault = 'A';
-            text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, &chDefault, (&chDefault + 1), NULL);
+            text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, &chDefault, (&chDefault + 1), nullptr);
         }
 
         return toNVec2f(text_size);
@@ -62,6 +62,10 @@ struct ZepFont_ImGui : public ZepFont {
 
     ImFont *font;
 };
+
+static ImU32 GetStyleModulatedColor(const NVec4f &color) {
+    return ToPackedABGR(NVec4f(color.x, color.y, color.z, color.w * ImGui::GetStyle().Alpha));
+}
 
 struct ZepDisplay_ImGui : public ZepDisplay {
     ZepDisplay_ImGui() : ZepDisplay() {}
@@ -73,10 +77,10 @@ struct ZepDisplay_ImGui : public ZepDisplay {
             text_end = text_begin + strlen((const char *) text_begin);
         }
         const auto modulatedColor = GetStyleModulatedColor(col);
-        if (m_clipRect.Width() == 0) {
+        if (clipRect.Width() == 0) {
             drawList->AddText(imFont, float(font.pixelHeight), toImVec2(pos), modulatedColor, (const char *) text_begin, (const char *) text_end);
         } else {
-            drawList->PushClipRect(toImVec2(m_clipRect.topLeftPx), toImVec2(m_clipRect.bottomRightPx));
+            drawList->PushClipRect(toImVec2(clipRect.topLeftPx), toImVec2(clipRect.bottomRightPx));
             drawList->AddText(imFont, float(font.pixelHeight), toImVec2(pos), modulatedColor, (const char *) text_begin, (const char *) text_end);
             drawList->PopClipRect();
         }
@@ -87,10 +91,10 @@ struct ZepDisplay_ImGui : public ZepDisplay {
         const auto modulatedColor = GetStyleModulatedColor(color);
 
         // Background rect for numbers
-        if (m_clipRect.Width() == 0) {
+        if (clipRect.Width() == 0) {
             drawList->AddLine(toImVec2(start), toImVec2(end), modulatedColor, width);
         } else {
-            drawList->PushClipRect(toImVec2(m_clipRect.topLeftPx), toImVec2(m_clipRect.bottomRightPx));
+            drawList->PushClipRect(toImVec2(clipRect.topLeftPx), toImVec2(clipRect.bottomRightPx));
             drawList->AddLine(toImVec2(start), toImVec2(end), modulatedColor, width);
             drawList->PopClipRect();
         }
@@ -100,16 +104,16 @@ struct ZepDisplay_ImGui : public ZepDisplay {
         ImDrawList *drawList = ImGui::GetWindowDrawList();
         const auto modulatedColor = GetStyleModulatedColor(color);
         // Background rect for numbers
-        if (m_clipRect.Width() == 0) {
+        if (clipRect.Width() == 0) {
             drawList->AddRectFilled(toImVec2(rc.topLeftPx), toImVec2(rc.bottomRightPx), modulatedColor);
         } else {
-            drawList->PushClipRect(toImVec2(m_clipRect.topLeftPx), toImVec2(m_clipRect.bottomRightPx));
+            drawList->PushClipRect(toImVec2(clipRect.topLeftPx), toImVec2(clipRect.bottomRightPx));
             drawList->AddRectFilled(toImVec2(rc.topLeftPx), toImVec2(rc.bottomRightPx), modulatedColor);
             drawList->PopClipRect();
         }
     }
 
-    void SetClipRect(const NRectf &rc) override { m_clipRect = rc; }
+    void SetClipRect(const NRectf &rc) override { clipRect = rc; }
 
     ZepFont &GetFont(ZepTextType type) override {
         if (fonts[(int) type] == nullptr) {
@@ -118,13 +122,8 @@ struct ZepDisplay_ImGui : public ZepDisplay {
         return *fonts[(int) type];
     }
 
-private:
-    static ImU32 GetStyleModulatedColor(const NVec4f &color) {
-        return ToPackedABGR(NVec4f(color.x, color.y, color.z, color.w * ImGui::GetStyle().Alpha));
-    }
-
-    NRectf m_clipRect;
-}; // namespace Zep
+    NRectf clipRect;
+};
 
 struct ZepEditor_ImGui : public ZepEditor {
     explicit ZepEditor_ImGui(const ZepPath &root, uint32_t flags = 0, ZepFileSystem *pFileSystem = nullptr)
@@ -394,10 +393,9 @@ void zep_draw() {
     const auto &pos = ImGui::GetWindowPos();
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
-    const auto height = 200;
     editor->SetDisplayRegion({
         {top_left.x + pos.x,     top_left.y + pos.y},
-        {bottom_right.x + pos.x, top_left.y + pos.y + height}
+        {bottom_right.x + pos.x, bottom_right.y + pos.y}
     });
 
     //    editor->RefreshRequired(); // TODO Save battery by skipping display if not required.
@@ -411,8 +409,11 @@ void zep_draw() {
 //    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
+static const std::string openFileDialogKey = "ChooseFileDlgKey";
+
 /*
  * TODO
+ *   Implement `w` forward-word navigation for Vim mode
  *   Two-finger mouse pad scrolling
  *   Add mouse selection https://github.com/Rezonality/zep/issues/56
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
@@ -422,7 +423,7 @@ void FaustEditor::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) {
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".cpp,.h,.hpp", ".");
+                ImGuiFileDialog::Instance()->OpenDialog(openFileDialogKey, "Choose File", ".cpp,.h,.hpp", ".");
             }
             ImGui::EndMenu();
         }
@@ -466,7 +467,7 @@ void FaustEditor::draw(Window &) {
 
         ImGui::EndMenuBar();
 
-        if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+        if (ImGuiFileDialog::Instance()->Display(openFileDialogKey)) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 auto buffer = editor->GetFileBuffer(filePathName);
@@ -478,12 +479,14 @@ void FaustEditor::draw(Window &) {
     }
 
     zep_draw();
-    ImGui::SetCursorPosY(editor->editorRegion->rect.Bottom());
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-    if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
-    ImGui::PopStyleColor();
 }
 
 void FaustEditor::destroy() {
     zep.reset();
+}
+
+void FaustLog::draw(Window &) {
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+    if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
+    ImGui::PopStyleColor();
 }

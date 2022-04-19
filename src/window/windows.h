@@ -15,6 +15,10 @@ struct FaustEditor : public Drawable {
     void destroy() override;
 };
 
+struct FaustLog : public Drawable {
+    void draw(Window &) override;
+};
+
 namespace ImGuiWindows {
 struct Metrics : public Drawable { void draw(Window &) override; };
 struct Demo : public Drawable { void draw(Window &) override; };

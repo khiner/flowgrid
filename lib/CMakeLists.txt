@@ -57,14 +57,14 @@ set(PKG_CONFIG_EXECUTABLE /opt/homebrew/bin/pkg-config)
 
 set(MSVC_STATIC OFF CACHE STRING "Use static runtimes with MSVC" FORCE)
 set(INCLUDE_STATIC OFF CACHE STRING "Include static library" FORCE)
-set(INCLUDE_EXECUTABLE ON CACHE STRING "Include runtime executable" FORCE)
+set(INCLUDE_EXECUTABLE OFF CACHE STRING "Include runtime executable" FORCE)
 set(INCLUDE_DYNAMIC ON CACHE STRING "Include dynamic library" FORCE)
 set(INCLUDE_OSC OFF CACHE STRING "Include Faust OSC library" FORCE)
 set(INCLUDE_HTTP OFF CACHE STRING "Include Faust HTTPD library" FORCE)
 
 set(ASMJS_BACKEND OFF CACHE STRING "Include ASMJS backend" FORCE)
 set(C_BACKEND OFF CACHE STRING "Include C backend" FORCE)
-set(CPP_BACKEND DYNAMIC CACHE STRING "Include CPP backend" FORCE)
+set(CPP_BACKEND OFF CACHE STRING "Include CPP backend" FORCE)
 set(FIR_BACKEND OFF CACHE STRING "Include FIR backend" FORCE)
 set(INTERP_BACKEND OFF CACHE STRING "Include INTERPRETER backend" FORCE)
 set(JAVA_BACKEND OFF CACHE STRING "Include JAVA backend" FORCE)
@@ -83,9 +83,9 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(FREETYPE_DIR /opt/homebrew/opt/freetype)
 find_package(Freetype REQUIRED)
 
-set(BUILD_IMGUI OFF CACHE STRING "Make Imgui Library" FORCE)
 set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
 
 #=================== tracy ===================
-add_subdirectory(tracy) # target: TracyClient or alias Tracy::TracyClient
+
+add_subdirectory(tracy)

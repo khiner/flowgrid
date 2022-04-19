@@ -88,7 +88,7 @@ struct Faust {
                      ");\n"
                      "\n"
                      "process = no.noise : pitchshifter;\n"};
-// process = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1); // TODO pm not working
+//    std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1);"}; // TODO pm not working
 // same with process = dm.freeverb_demo; and all `dm`
     std::string error{};
     Editor editor{"default.dsp"};

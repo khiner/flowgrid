@@ -19,7 +19,9 @@ struct Window {
     bool visible{true};
 };
 
-struct Windows {
+// `WindowsBase` contains only data members.
+// Derived fields and convenience methods are in `Windows`
+struct WindowsBase {
     struct ImGuiWindows {
         Window demo{"Dear ImGui Demo"};
         Window metrics{"Dear ImGui Metrics/Debugger"};
@@ -33,27 +35,33 @@ struct Windows {
     Window style_editor{"Style editor"};
     ImGuiWindows imgui{};
     FaustWindows faust;
+};
+
+struct Windows : public WindowsBase {
+    Windows() = default;
+    // Don't copy/assign references!
+    Windows(const Windows &other) : WindowsBase(other) {}
+    Windows &operator=(const Windows &other) {
+        WindowsBase::operator=(other);
+        return *this;
+    }
 
     Window &named(const std::string &name) {
-        for (auto &window: all()) {
+        for (auto &window: all) {
             if (name == window.get().name) return window;
         }
         throw std::invalid_argument(name);
     }
 
     const Window &named(const std::string &name) const {
-        for (auto &window: all_const()) {
+        for (auto &window: all_const) {
             if (name == window.get().name) return window;
         }
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all() {
-        return {controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
-    }
-    std::vector<std::reference_wrapper<const Window>> all_const() const {
-        return {controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
-    }
+    std::vector<std::reference_wrapper<Window>> all{controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
 };
 
 struct UI {
@@ -106,9 +114,9 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::ImGuiWindows, demo, metrics)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows::FaustWindows, editor, log)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Windows, controls, style_editor, imgui, faust)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, style_editor, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,

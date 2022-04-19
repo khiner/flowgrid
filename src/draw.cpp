@@ -194,7 +194,7 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
-            for (const auto &window: s.ui.windows.all_const()) {
+            for (const auto &window: s.ui.windows.all_const) {
                 StatefulImGui::WindowToggleMenuItem(window.get().name);
             }
             ImGui::EndMenu();

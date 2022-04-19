@@ -194,11 +194,9 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
-            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.controls);
-            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.style_editor);
-            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.faust.editor);
-            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.imgui.demo);
-            StatefulImGui::WindowToggleMenuItem(ui_s.ui.windows.imgui.metrics);
+            for (const auto &[_, window]: s.ui.window_named) {
+                StatefulImGui::WindowToggleMenuItem(window);
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();

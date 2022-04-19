@@ -2,8 +2,8 @@
 #include "context.h"
 #include "imgui_internal.h"
 
-void dock_window(const Window &w, ImGuiID node_id) {
-    ImGui::DockBuilderDockWindow(w.name.c_str(), node_id);
+void dock_window(const std::string &name, ImGuiID node_id) {
+    ImGui::DockBuilderDockWindow(name.c_str(), node_id);
 }
 
 void gestured() {
@@ -11,8 +11,10 @@ void gestured() {
     if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();
 }
 
-bool StatefulImGui::WindowToggleMenuItem(const Window &w) {
-    if (ImGui::MenuItem(w.name.c_str(), nullptr, &ui_s.ui.window_named[w.name].visible)) { q.enqueue(toggle_window{w.name}); }
+bool StatefulImGui::WindowToggleMenuItem(const std::string &name) {
+    const bool edited = ImGui::MenuItem(name.c_str(), nullptr, &ui_s.ui.windows.named(name).visible);
+    if (edited) q.enqueue(toggle_window{name});
+    return edited;
 }
 
 bool StatefulImGui::SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {

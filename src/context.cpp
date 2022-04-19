@@ -38,7 +38,7 @@ void Context::update(const Action &action) {
         visitor{
             [&](const set_ini_settings &a) { c.ini_settings = a.settings; },
             [&](const set_style &a) { _s.ui.style = a.style; },
-            [&](const toggle_window &a) { _s.ui.window_named[a.name].visible = !s.ui.window_named.at(a.name).visible; },
+            [&](const toggle_window &a) { _s.ui.windows.named(a.name).visible = !s.ui.windows.named(a.name).visible; },
 
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
             [&](set_audio_thread_running a) { _s.audio.running = a.running; },
@@ -64,7 +64,7 @@ void Context::update(const Action &action) {
 }
 
 void Context::apply_diff(const ActionDiff &diff) {
-    const auto[new_ini_settings, successes] = dmp.patch_apply(dmp.patch_fromText(diff.ini_diff), ini_settings);
+    const auto [new_ini_settings, successes] = dmp.patch_apply(dmp.patch_fromText(diff.ini_diff), ini_settings);
     if (!std::all_of(successes.begin(), successes.end(), [](bool v) { return v; })) {
         throw std::runtime_error("Some ini-settings patches were not successfully applied.\nSettings:\n\t" +
             ini_settings + "\nPatch:\n\t" + diff.ini_diff + "\nResult:\n\t" + new_ini_settings);

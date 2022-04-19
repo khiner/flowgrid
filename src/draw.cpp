@@ -175,12 +175,12 @@ void draw_frame() {
         //  ImGui windows can, however, be docked _within_ the imgui parent window, and the parent window
         //  itself can be dragged/docked/closed etc.
         //  See `ImGuiWindowClass`.
-        dock_window(w.controls, upper_left_id);
-        dock_window(w.faust.editor, faust_window_id);
-        dock_window(w.faust.log, faust_log_window_id);
-        dock_window(w.style_editor, bottom_id);
-        dock_window(w.imgui.metrics, bottom_id);
-        dock_window(w.imgui.demo, bottom_id);
+        dock_window(w.controls.name, upper_left_id);
+        dock_window(w.faust.editor.name, faust_window_id);
+        dock_window(w.faust.log.name, faust_log_window_id);
+        dock_window(w.style_editor.name, bottom_id);
+        dock_window(w.imgui.metrics.name, bottom_id);
+        dock_window(w.imgui.demo.name, bottom_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -194,8 +194,8 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
-            for (const auto &[_, window]: s.ui.window_named) {
-                StatefulImGui::WindowToggleMenuItem(window);
+            for (const auto &window: s.ui.windows.all_const()) {
+                StatefulImGui::WindowToggleMenuItem(window.get().name);
             }
             ImGui::EndMenu();
         }

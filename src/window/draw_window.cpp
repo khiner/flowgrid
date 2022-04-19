@@ -2,8 +2,8 @@
 #include "../context.h"
 
 void draw_window(const std::string &name, Drawable &drawable, ImGuiWindowFlags flags, bool wrap_draw_in_window) {
-    const auto &w = s.ui.window_named.at(name);
-    auto &_w = ui_s.ui.window_named[name];
+    const auto &w = s.ui.windows.named(name);
+    auto &_w = ui_s.ui.windows.named(name);
     if (w.visible != _w.visible) q.enqueue(toggle_window{_w.name});
     if (!_w.visible) return;
 

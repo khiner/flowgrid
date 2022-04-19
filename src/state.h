@@ -33,19 +33,32 @@ struct Windows {
     Window style_editor{"Style editor"};
     ImGuiWindows imgui{};
     FaustWindows faust;
+
+    Window &named(const std::string &name) {
+        for (auto &window: all()) {
+            if (name == window.get().name) return window;
+        }
+        throw std::invalid_argument(name);
+    }
+
+    const Window &named(const std::string &name) const {
+        for (auto &window: all_const()) {
+            if (name == window.get().name) return window;
+        }
+        throw std::invalid_argument(name);
+    }
+
+    std::vector<std::reference_wrapper<Window>> all() {
+        return {controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
+    }
+    std::vector<std::reference_wrapper<const Window>> all_const() const {
+        return {controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
+    }
 };
 
 struct UI {
     bool running = true;
     Windows windows;
-    std::map<std::string, Window> window_named{
-        {windows.controls.name,      windows.controls},
-        {windows.style_editor.name,  windows.style_editor},
-        {windows.imgui.demo.name,    windows.imgui.demo},
-        {windows.imgui.metrics.name, windows.imgui.metrics},
-        {windows.faust.editor.name,  windows.faust.editor},
-        {windows.faust.log.name,     windows.faust.log},
-    };
     ImGuiStyle style;
 };
 
@@ -101,6 +114,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPaddi
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,
     MouseCursorScale, AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, style, window_named)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, style)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

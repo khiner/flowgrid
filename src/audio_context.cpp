@@ -17,8 +17,7 @@ struct FaustContext {
     ~FaustContext();
 
     void compute(int frame_count) const;
-    FAUSTFLOAT
-    get_sample(int channel, int frame) const;
+    FAUSTFLOAT get_sample(int channel, int frame) const;
 
     void update();
 };
@@ -38,8 +37,7 @@ void FaustContext::compute(int frame_count) const {
     // TODO log warning
 }
 
-FAUSTFLOAT
-FaustContext::get_sample(int channel, int frame) const {
+FAUSTFLOAT FaustContext::get_sample(int channel, int frame) const {
     if (!buffers || !dsp) return 0;
     return buffers->output[std::min(channel, buffers->num_output_channels - 1)][frame];
 }
@@ -59,8 +57,7 @@ void AudioContext::compute(int frame_count) {
     if (faust) faust->compute(frame_count);
 }
 
-FAUSTFLOAT
-AudioContext::get_sample(int channel, int frame) {
+FAUSTFLOAT AudioContext::get_sample(int channel, int frame) {
     return !faust || s.audio.muted ? 0 : faust->get_sample(channel, frame);
 }
 
@@ -78,8 +75,11 @@ FaustContext::FaustContext(std::string faust_text, int sample_rate)
     argv[argc++] = &config.faust_libraries_path[0]; // convert to char*
     // Consider additional args: "-vec", "-vs", "128", "-dfs"
 
-    const int optimize = -1;
-    dsp_factory = createDSPFactoryFromString("FlowGrid", this->faust_text, argc, argv, "", c._state.audio.faust.error, optimize);
+    const int optimize_level = -1;
+    dsp_factory = createDSPFactoryFromString("FlowGrid", this->faust_text, argc, argv, "", c._state.audio.faust.error, optimize_level);
+
+    for (int i = 0; i < argc; i++) argv[i] = nullptr;
+
     if (dsp_factory && c._state.audio.faust.error.empty()) {
         dsp = dsp_factory->createDSPInstance();
         dsp->init(sample_rate);

@@ -79,17 +79,16 @@ struct Editor {
 };
 
 struct Faust {
-    std::string code{"import(\"stdfaust.lib\");\n\n"
-                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
-                     "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
-                     "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
-                     "    hslider(\"shift (semitones) \", 0, -24, +24, 0.1)\n"
-                     "  )\n"
-                     ");\n"
-                     "\n"
-                     "process = no.noise : pitchshifter;\n"};
-//    std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1);"}; // TODO pm not working
-// same with process = dm.freeverb_demo; and all `dm`
+//    std::string code{"import(\"stdfaust.lib\");\n\n"
+//                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
+//                     "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
+//                     "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
+//                     "    hslider(\"shift (semitones) \", 0, -24, +24, 0.1)\n"
+//                     "  )\n"
+//                     ");\n"
+//                     "\n"
+//                     "process = no.noise : pitchshifter;\n"};
+    std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"}; // TODO pm not working
     std::string error{};
     Editor editor{"default.dsp"};
 };

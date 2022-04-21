@@ -31,8 +31,8 @@ struct FaustBuffers {
     ~FaustBuffers() {
         for (int i = 0; i < num_input_channels; i++) { delete[] input[i]; }
         for (int i = 0; i < num_output_channels; i++) { delete[] output[i]; }
-        delete input;
-        delete output;
+        delete[] input;
+        delete[] output;
     }
 };
 
@@ -154,6 +154,7 @@ void Context::update(const Action &action) {
                 if (faust->dsp) {
                     JSONUI json_ui;
                     faust->dsp->buildUserInterface(&json_ui);
+//                    faust->dsp->metadata(&json_ui); // version/author/licence/etc
                     _s.audio.faust.json = json_ui.JSON(true);
                 } else {
                     _s.audio.faust.json = "";

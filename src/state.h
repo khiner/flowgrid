@@ -64,7 +64,7 @@ struct Windows : public WindowsBase {
     std::vector<std::reference_wrapper<const Window>> all_const{controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
 };
 
-struct UiState {
+struct UiState { // Avoid name-clash with faust's `UI` class
     bool running = true;
     Windows windows;
     ImGuiStyle style;

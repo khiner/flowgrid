@@ -64,7 +64,7 @@ struct Windows : public WindowsBase {
     std::vector<std::reference_wrapper<const Window>> all_const{controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
 };
 
-struct UI {
+struct UiState {
     bool running = true;
     Windows windows;
     ImGuiStyle style;
@@ -88,7 +88,8 @@ struct Faust {
 //                     ");\n"
 //                     "\n"
 //                     "process = no.noise : pitchshifter;\n"};
-    std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"}; // TODO pm not working
+    std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+    std::string json{}; // Gets populated on successful dsp compilation.
     std::string error{};
     Editor editor{"default.dsp"};
 };
@@ -111,13 +112,13 @@ struct ActionConsumer {
 };
 
 struct State {
-    UI ui;
+    UiState ui;
     Audio audio;
     ActionConsumer action_consumer;
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Editor, file_name)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, editor, error)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error, json, editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
@@ -130,7 +131,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPaddi
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,
     MouseCursorScale, AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UI, running, windows, style)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UiState, running, windows, style)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

@@ -6,7 +6,6 @@
 #include <soundio/soundio.h>
 
 #include "context.h"
-#include "audio_context.h"
 
 static int prioritized_sample_rates[] = {
     48000,
@@ -136,7 +135,6 @@ int audio() {
     q.enqueue(set_audio_sample_rate{outstream->sample_rate});
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-        static const auto &ac = c.audio_context;
         struct SoundIoChannelArea *areas;
         int err;
 
@@ -148,12 +146,12 @@ int audio() {
                 exit(1);
             }
             if (!frame_count) break;
-            ac.compute(frame_count);
+            c.compute_frames(frame_count);
 
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame += 1) {
                 for (int channel = 0; channel < layout->channel_count; channel += 1) {
-                    write_sample(areas[channel].ptr, ac.get_sample(channel, frame));
+                    write_sample(areas[channel].ptr, c.get_sample(channel, frame));
                     areas[channel].ptr += areas[channel].step;
                 }
             }

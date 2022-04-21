@@ -1,5 +1,4 @@
 #include "../windows.h"
-#include "../../config.h"
 #include "../../context.h"
 
 #include "ImGuiFileDialog.h"
@@ -268,6 +267,8 @@ struct ZepEditor_ImGui : public ZepEditor {
     }
 };
 
+bool zep_initialized = false;
+
 struct ZepWrapper : public ZepComponent, public IZepReplProvider {
     explicit ZepWrapper(ZepEditor_ImGui &editor) : ZepComponent(editor) {
         ZepRegressExCommand::Register(editor);
@@ -287,9 +288,9 @@ struct ZepWrapper : public ZepComponent, public IZepReplProvider {
                 case BufferMessageType::TextDeleted:
                 case BufferMessageType::TextAdded: {
                     auto *buffer = buffer_message->buffer;
-                    if (buffer->name == s.audio.faust.editor.file_name) {
+                    if (zep_initialized && buffer->name == s.audio.faust.editor.file_name) {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                        q.enqueue(set_faust_text{buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                        q.enqueue(set_faust_code{buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
                 }
                     break;
@@ -380,8 +381,6 @@ void zep_init() {
     display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize * 1.125)));
     editor->InitWithText(s.audio.faust.editor.file_name, ui_s.audio.faust.code);
 }
-
-bool zep_initialized = false;
 
 void zep_draw() {
     if (!zep_initialized) {

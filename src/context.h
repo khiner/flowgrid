@@ -3,7 +3,6 @@
 #include "nlohmann/json.hpp"
 #include "state.h"
 #include "action.h"
-#include "audio_context.h"
 #include "blockingconcurrentqueue.h"
 #include "diff_match_patch.h"
 
@@ -17,6 +16,13 @@ struct ActionDiffs {
     ActionDiff forward;
     ActionDiff reverse;
 };
+
+struct Config {
+    std::string app_root;
+    std::string faust_libraries_path{};
+};
+
+extern Config config; // Initialized in `main.cpp`
 
 struct Context {
 private:
@@ -56,7 +62,6 @@ public:
     // Actions change the source-of-truth `ini_settings` in-place.
     // When a gesture is finalized into an undo event, a patch is computed between the previous and current settings.
     std::string prev_ini_settings;
-    AudioContext audio_context;
     // Set after an undo/redo that includes an ini_settings change.
     // It's the UI's responsibility to set this to `false` after applying the new state.
     // (It's done this way to avoid an expensive settings-load & long string comparison between
@@ -88,6 +93,15 @@ public:
     }
     bool can_undo() const { return current_action_index >= 0; }
     bool can_redo() const { return current_action_index < (int) actions.size() - 1; }
+
+    void clear_undo() {
+        current_action_index = -1;
+        actions.clear();
+    }
+
+    // Audio
+    void compute_frames(int frame_count) const;
+    float get_sample(int channel, int frame) const;
 };
 
 /**

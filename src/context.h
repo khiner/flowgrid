@@ -84,6 +84,7 @@ public:
     bool in_gesture{};
 
     Context();
+    ~Context() = default;
 
     void on_action(const Action &);
 

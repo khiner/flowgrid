@@ -16,7 +16,7 @@ $ brew install pkgconfig llvm freetype
 $ brew link llvm --force
 ```
 
-TODO: Will probably want to build llvm locally as a submodule, and point to it.
+TODO: Will probably want to eventually build llvm locally as a submodule, and point to it.
 See [TD-Faust](https://github.com/DBraun/TD-Faust/blob/02f35e4343370559c779468413c32179f55c6552/build_macos.sh#L5-L31)
 as an example.
 
@@ -54,6 +54,36 @@ $ brew install gtk+3 glfw capstone freetype
 $ cd lib/tracy/profiler/build/unix
 $ make release
 $ ./Tracy-release
+```
+
+### Updating submodules
+
+#### Non-forked submodules
+
+Most submodules are not forked.
+Here is my process for updating to the tip of all the submodule branches:
+
+```shell
+$ git submodule update --remote
+$ git add .
+$ git cm -m "Bump libs"
+```
+
+#### Forked submodules
+
+The following modules are forks, along with the upstream branch the fork is based on:
+
+* `imgui:docking`
+* `libsoundio:master`
+* `zep:master`
+
+I like to keep my changes rebased on top of the original repo branches.
+Here's my process:
+
+```shell
+$ git pull --rebase upstream {branch} # `upstream` points to the original repo. See list above for the tracked branch
+$ ... # Resolve any conflicts & test
+$ git push --force
 ```
 
 ## License

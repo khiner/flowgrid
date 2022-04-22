@@ -72,7 +72,7 @@ void load_fonts() {
 }
 
 bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
-    return mod == ImGui::GetMergedKeyModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
+    return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
 
 ImGuiContext *setup(DrawContext &dc) {

@@ -218,6 +218,8 @@ void draw_frame() {
     ImGui::End();
 }
 
+bool closed_this_frame = false;
+
 int draw() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         printf("Error: %s\n", SDL_GetError());
@@ -245,7 +247,18 @@ int draw() {
                 (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
                     event.window.windowID == SDL_GetWindowID(dc.window))) {
                 q.enqueue(close_application{});
+                closed_this_frame = true;
             }
+        }
+
+        // If the user close the application via the window-close button _this frame_ (or by other means since the previous
+        // check above), bail immediately.
+        // (Like all other actions, the `close_application` action is enqueued and handled in the main event loop thread.
+        // However, we don't want to render another frame after enqueueing a close action, since resources can be deallocated
+        // at any point thereafter.)
+        if (closed_this_frame || !s.ui.running) {
+            FrameMark;
+            break;
         }
 
         if (c.has_new_ini_settings) {

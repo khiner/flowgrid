@@ -18,13 +18,13 @@ int main(int, const char *argv[]) {
     c.on_action(set_faust_code{s.audio.faust.code}); // Virtual action to trigger faust dsp generation
     c.clear_undo(); // Make sure we don't start with any undo state (should only be the above virtual action on the stack).
 
-    ProcessManager pm;
+    ProcessManager process_manager;
     std::thread action_consumer([&]() {
         while (s.action_consumer.running) {
             Action a;
             q.wait_dequeue(a);
             c.on_action(a);
-            pm.on_action(a);
+            process_manager.on_action(a);
         }
     });
 

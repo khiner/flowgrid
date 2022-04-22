@@ -209,11 +209,11 @@ void draw_frame() {
 
     draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
-    draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None, true);
+    draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None);
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.faust.log.name, faust_log, ImGuiWindowFlags_None);
     draw_window(w.controls.name, controls);
-    draw_window(w.state_viewer.name, state_viewer);
+    draw_window(w.state_viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
 
     ImGui::End();
 }

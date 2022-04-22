@@ -30,8 +30,17 @@ struct WindowsBase {
         Window editor{"Faust Editor"};
         Window log{"Faust Log"};
     };
+    struct StateViewerWindow : public Window {
+        struct Settings {
+            enum LabelMode { annotated, raw };
 
-    Window state_viewer{"State viewer"};
+            LabelMode label_mode{annotated};
+        };
+
+        Settings settings{};
+    };
+
+    StateViewerWindow state_viewer{{"State viewer"}};
     Window controls{"Controls"};
     Window style_editor{"Style editor"};
     ImGuiWindows imgui{};
@@ -128,6 +137,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateViewerWindow::Settings, label_mode)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateViewerWindow, settings)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state_viewer, style_editor, imgui, faust)

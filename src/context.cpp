@@ -137,6 +137,8 @@ void Context::update(const Action &action) {
             [&](const set_style &a) { _s.ui.style = a.style; },
             [&](const toggle_window &a) { _s.ui.windows.named(a.name).visible = !s.ui.windows.named(a.name).visible; },
 
+            [&](const set_state_viewer_label_mode &a) { _s.ui.windows.state_viewer.settings.label_mode = a.label_mode; },
+
             [&](set_ui_running a) { _s.ui.running = a.running; },
 
             [&](close_application) {

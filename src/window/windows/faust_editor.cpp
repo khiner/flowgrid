@@ -422,13 +422,13 @@ void FaustEditor::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) {
-                ImGuiFileDialog::Instance()->OpenDialog(openFileDialogKey, "Choose File", ".cpp,.h,.hpp", ".");
+                ImGuiFileDialog::Instance()->OpenDialog(openFileDialogKey, "Choose file", ".cpp,.h,.hpp", ".");
             }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Settings")) {
-            if (ImGui::BeginMenu("Editor Mode")) {
+            if (ImGui::BeginMenu("Editor mode")) {
                 const auto *buffer = editor->activeTabWindow->GetActiveWindow()->buffer;
                 bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
@@ -456,9 +456,9 @@ void FaustEditor::draw(Window &) {
 
         if (ImGui::BeginMenu("Window")) {
             auto *tabWindow = editor->activeTabWindow;
-            if (ImGui::MenuItem("Horizontal Split")) {
+            if (ImGui::MenuItem("Horizontal split")) {
                 tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
-            } else if (ImGui::MenuItem("Vertical Split")) {
+            } else if (ImGui::MenuItem("Vertical split")) {
                 tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
             }
             ImGui::EndMenu();

@@ -16,6 +16,8 @@ struct set_style { ImGuiStyle style; };
 
 struct toggle_window { std::string name; };
 
+struct set_state_viewer_label_mode { Windows::StateViewerWindow::Settings::LabelMode label_mode; };
+
 struct toggle_audio_muted {};
 struct set_audio_thread_running { bool running; };
 struct toggle_audio_running {};
@@ -39,6 +41,8 @@ using Action = std::variant<
     set_style,
 
     toggle_window,
+
+    set_state_viewer_label_mode,
 
     toggle_audio_muted,
     set_audio_thread_running,

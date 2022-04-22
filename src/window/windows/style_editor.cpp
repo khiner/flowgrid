@@ -1,23 +1,10 @@
 #include "../windows.h"
 
-#include "imgui.h"
-#include "imgui_internal.h"
+#include "../../imgui_helpers.h"
 #include "../../context.h"
 #include "../../stateful_imgui.h"
 
-// From `imgui_demo.cpp`
-// Helper to display a little (?) mark which shows a tooltip when hovered.
-// In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.md)
-static void HelpMarker(const char *desc) {
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
-}
+#include "imgui_internal.h"
 
 // From `imgui_demo.cpp`
 bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {

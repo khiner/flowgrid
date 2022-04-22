@@ -89,9 +89,12 @@ struct Faust {
 //                     "\n"
 //                     "process = no.noise : pitchshifter;\n"};
     std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
-    std::string json{}; // Gets populated on successful dsp compilation.
     std::string error{};
     Editor editor{"default.dsp"};
+
+    // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
+    // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
+
 };
 
 struct Audio {
@@ -118,7 +121,7 @@ struct State {
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Editor, file_name)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error, json, editor)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error, editor)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)

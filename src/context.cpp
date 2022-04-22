@@ -5,7 +5,7 @@
 #include "visitor.h"
 
 #include "faust/dsp/llvm-dsp.h"
-#include "faust/gui/JSONUI.h"
+#include "stateful_faust_ui.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
 // Used to initialize the static Faust buffer.
@@ -17,8 +17,8 @@ struct FaustBuffers {
     const int num_frames = MAX_EXPECTED_FRAME_COUNT;
     const int num_input_channels;
     const int num_output_channels;
-    float **input{};
-    float **output{};
+    float **input;
+    float **output;
 
     FaustBuffers(int num_input_channels, int num_output_channels) :
         num_input_channels(num_input_channels), num_output_channels(num_output_channels) {
@@ -152,12 +152,12 @@ void Context::update(const Action &action) {
 
                 faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.sample_rate, _s.audio.faust.error);
                 if (faust->dsp) {
-                    JSONUI json_ui;
-                    faust->dsp->buildUserInterface(&json_ui);
-//                    faust->dsp->metadata(&json_ui); // version/author/licence/etc
-                    _s.audio.faust.json = json_ui.JSON(true);
+                    StatefulFaustUI faust_ui;
+                    faust->dsp->buildUserInterface(&faust_ui);
+//                    faust->dsp->metadata(&faust_ui); // version/author/licence/etc
+//                    _s.audio.faust.json = faust_ui.
                 } else {
-                    _s.audio.faust.json = "";
+//                    _s.audio.faust.json = "";
                 }
             },
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },

@@ -31,6 +31,7 @@ struct WindowsBase {
         Window log{"Faust Log"};
     };
 
+    Window state_viewer{"State viewer"};
     Window controls{"Controls"};
     Window style_editor{"Style editor"};
     ImGuiWindows imgui{};
@@ -60,8 +61,8 @@ struct Windows : public WindowsBase {
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all{controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
-    std::vector<std::reference_wrapper<const Window>> all_const{controls, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<Window>> all{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
@@ -129,7 +130,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, style_editor, imgui, faust)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state_viewer, style_editor, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,

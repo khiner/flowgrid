@@ -80,6 +80,8 @@ public:
     std::vector<ActionDiffs> actions;
     int current_action_index = -1;
     json json_state;
+    std::string json_state_formatted;
+
     bool in_gesture{};
 
     Context();

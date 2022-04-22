@@ -181,6 +181,7 @@ void Context::apply_diff(const ActionDiff &diff) {
     }
     ini_settings = prev_ini_settings = new_ini_settings;
     json_state = json_state.patch(diff.json_diff);
+    json_state_formatted = json_state.dump(4);
     _state = json2state(json_state);
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
@@ -195,6 +196,7 @@ void Context::apply_diff(const ActionDiff &diff) {
 void Context::finalize_gesture() {
     auto old_json_state = json_state;
     json_state = state2json(s);
+    json_state_formatted = json_state.dump(4);
     auto json_diff = json::diff(old_json_state, json_state);
 
     auto old_ini_settings = prev_ini_settings;

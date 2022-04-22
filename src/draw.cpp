@@ -129,7 +129,8 @@ void render(DrawContext &dc) {
 }
 
 Controls controls{};
-StyleEditor imgui_style_editor{};
+StyleEditor style_editor{};
+StateViewer state_viewer{};
 FaustEditor faust_editor{};
 FaustLog faust_log{};
 ImGuiWindows::Demo imgui_demo{};
@@ -164,10 +165,11 @@ void draw_frame() {
         ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace); // Add empty node
         ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
 
-        auto faust_window_id = dockspace_id;
-        auto bottom_id = ImGui::DockBuilderSplitNode(faust_window_id, ImGuiDir_Down, 0.5f, nullptr, &faust_window_id);
-        auto upper_left_id = ImGui::DockBuilderSplitNode(faust_window_id, ImGuiDir_Left, 0.35f, nullptr, &faust_window_id);
-        auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_window_id, ImGuiDir_Down, 0.2f, nullptr, &faust_window_id);
+        auto faust_editor_id = dockspace_id;
+        auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.35f, nullptr, &faust_editor_id);
+        auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
+        auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
+        auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
         // TODO create a single parent "ImGui Windows" window with imgui child windows,
         //  where the tabs can't be dragged out of the window, and nothing else can be dragged in.
@@ -175,12 +177,15 @@ void draw_frame() {
         //  ImGui windows can, however, be docked _within_ the imgui parent window, and the parent window
         //  itself can be dragged/docked/closed etc.
         //  See `ImGuiWindowClass`.
-        dock_window(w.controls.name, upper_left_id);
-        dock_window(w.faust.editor.name, faust_window_id);
+        dock_window(w.controls.name, controls_id);
+        dock_window(w.state_viewer.name, state_viewer_id);
+
+        dock_window(w.faust.editor.name, faust_editor_id);
         dock_window(w.faust.log.name, faust_log_window_id);
-        dock_window(w.style_editor.name, bottom_id);
-        dock_window(w.imgui.metrics.name, bottom_id);
-        dock_window(w.imgui.demo.name, bottom_id);
+
+        dock_window(w.style_editor.name, imgui_windows_id);
+        dock_window(w.imgui.metrics.name, imgui_windows_id);
+        dock_window(w.imgui.demo.name, imgui_windows_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -204,10 +209,11 @@ void draw_frame() {
 
     draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
-    draw_window(w.style_editor.name, imgui_style_editor, ImGuiWindowFlags_None, true);
+    draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None, true);
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.faust.log.name, faust_log, ImGuiWindowFlags_None);
     draw_window(w.controls.name, controls);
+    draw_window(w.state_viewer.name, state_viewer);
 
     ImGui::End();
 }

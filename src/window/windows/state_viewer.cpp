@@ -19,10 +19,7 @@ static void add_json_value_node(const std::string &key, json &value) {
             ImGui::TreePop();
         }
     } else {
-        std::string text = key + " : " + value.dump();
-        if (ImGui::TreeNode(text.c_str())) {
-            ImGui::TreePop();
-        }
+        ImGui::Text("%s : %s", key.c_str(), value.dump().c_str());
     }
 }
 

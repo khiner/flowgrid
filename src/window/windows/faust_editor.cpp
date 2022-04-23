@@ -37,8 +37,8 @@ inline NVec2f toNVec2f(const ImVec2 &im) { return {im.x, im.y}; }
 inline ImVec2 toImVec2(const NVec2f &im) { return {im.x, im.y}; }
 
 struct ZepFont_ImGui : public ZepFont {
-    ZepFont_ImGui(ZepDisplay &display, ImFont *pFont, int pixelHeight) : ZepFont(display), font(pFont) {
-        SetPixelHeight(pixelHeight);
+    ZepFont_ImGui(ZepDisplay &display, ImFont *font, float heightRatio) : ZepFont(display), font(font) {
+        SetPixelHeight(int(font->FontSize * heightRatio));
     }
 
     void SetPixelHeight(int pixelHeight) override {
@@ -46,10 +46,10 @@ struct ZepFont_ImGui : public ZepFont {
         this->pixelHeight = pixelHeight;
     }
 
-    NVec2f GetTextSize(const uint8_t *pBegin, const uint8_t *pEnd) const override {
+    NVec2f GetTextSize(const uint8_t *begin, const uint8_t *end) const override {
         // This is the code from ImGui internals; we can't call GetTextSize, because it doesn't return the correct 'advance' formula, which we
         // need as we draw one character at a time...
-        ImVec2 text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, (const char *) pBegin, (const char *) pEnd, nullptr);
+        ImVec2 text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, (const char *) begin, (const char *) end, nullptr);
         if (text_size.x == 0.0) {
             // Make invalid characters a default fixed_size
             const char chDefault = 'A';
@@ -71,7 +71,7 @@ struct ZepDisplay_ImGui : public ZepDisplay {
 
     void DrawChars(ZepFont &font, const NVec2f &pos, const NVec4f &col, const uint8_t *text_begin, const uint8_t *text_end) const override {
         auto imFont = dynamic_cast<ZepFont_ImGui &>(font).font;
-        ImDrawList *drawList = ImGui::GetWindowDrawList();
+        auto *drawList = ImGui::GetWindowDrawList();
         if (text_end == nullptr) {
             text_end = text_begin + strlen((const char *) text_begin);
         }
@@ -86,7 +86,7 @@ struct ZepDisplay_ImGui : public ZepDisplay {
     }
 
     void DrawLine(const NVec2f &start, const NVec2f &end, const NVec4f &color, float width) const override {
-        ImDrawList *drawList = ImGui::GetWindowDrawList();
+        auto *drawList = ImGui::GetWindowDrawList();
         const auto modulatedColor = GetStyleModulatedColor(color);
 
         // Background rect for numbers
@@ -100,7 +100,7 @@ struct ZepDisplay_ImGui : public ZepDisplay {
     }
 
     void DrawRectFilled(const NRectf &rc, const NVec4f &color) const override {
-        ImDrawList *drawList = ImGui::GetWindowDrawList();
+        auto *drawList = ImGui::GetWindowDrawList();
         const auto modulatedColor = GetStyleModulatedColor(color);
         // Background rect for numbers
         if (clipRect.Width() == 0) {
@@ -373,12 +373,11 @@ void zep_init() {
     zep = std::make_unique<ZepWrapper>(*editor);
 
     auto *display = editor->display;
-    auto imFont = ImGui::GetIO().Fonts[0].Fonts[0];
-    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize)));
-    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize)));
-    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize * 1.5)));
-    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize * 1.25)));
-    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, imFont, int(imFont->FontSize * 1.125)));
+    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.0));
+    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.0));
+    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.5));
+    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.25));
+    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.125));
     editor->InitWithText(s.audio.faust.editor.file_name, ui_s.audio.faust.code);
 }
 

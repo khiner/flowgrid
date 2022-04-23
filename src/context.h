@@ -121,6 +121,9 @@ public:
     int current_action_index = -1;
     json json_state;
 
+    ImFont *defaultFont;
+    ImFont *fixedWidthFont;
+
     bool in_gesture{};
 
     Context();

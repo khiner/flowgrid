@@ -8,14 +8,18 @@
 
 using namespace nlohmann; // json
 
+using SystemTime = std::chrono::time_point<std::chrono::system_clock>;
+
 struct ActionDiff {
     json json_diff;
     std::string ini_diff; // string-encoded `diff_match_patch::Patches`
 };
+
+// One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct ActionDiffs {
     ActionDiff forward;
     ActionDiff reverse;
-    std::chrono::time_point<std::chrono::system_clock> system_time;
+    SystemTime system_time;
 };
 
 struct Config {
@@ -23,7 +27,9 @@ struct Config {
     std::string faust_libraries_path{};
 };
 
-extern Config config; // Initialized in `main.cpp`
+struct StateStats {
+    std::map<std::string, std::vector<SystemTime>> action_times_for_state_path{};
+};
 
 struct Context {
 private:
@@ -53,6 +59,7 @@ public:
  *
  * Also, we don't want error messages to pollute the undo tree.
  */
+    StateStats state_stats;
     State _state{};
     diff_match_patch<std::string> dmp;
 
@@ -117,6 +124,7 @@ extern State &ui_s;
 
 using namespace moodycamel; // ConcurrentQueue, BlockingConcurrentQueue
 extern BlockingConcurrentQueue<Action> q;
+extern Config config;
 
 /**md
 # Usage

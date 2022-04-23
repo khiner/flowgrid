@@ -15,7 +15,7 @@
 
 #include "context.h"
 
-typedef unsigned int uint;
+using uint = unsigned int;
 
 struct StatefulFaustUI : public PathBuilder, public Meta, public UI {
     enum ItemType { kButton = 0, kCheckButton, kVSlider, kHSlider, kNumEntry, kHBargraph, kVBargraph };

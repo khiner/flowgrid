@@ -5,6 +5,7 @@
 #include "imgui_internal.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
+#include "implot.h"
 #include "draw.h"
 #include "context.h"
 #include "stateful_imgui.h"
@@ -82,6 +83,8 @@ ImGuiContext *setup(DrawContext &dc) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     auto *imgui_context = ImGui::CreateContext();
+    ImPlot::CreateContext();
+
     auto &io = ImGui::GetIO();
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
 
@@ -113,6 +116,7 @@ void teardown(DrawContext &dc) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
+    ImPlot::DestroyContext();
 
     SDL_GL_DeleteContext(dc.gl_context);
     SDL_DestroyWindow(dc.window);
@@ -135,6 +139,7 @@ FaustEditor faust_editor{};
 FaustLog faust_log{};
 ImGuiWindows::Demo imgui_demo{};
 ImGuiWindows::Metrics imgui_metrics{};
+ImGuiWindows::ImPlotWindows::Demo implot_demo{};
 
 bool open = true;
 
@@ -186,6 +191,7 @@ void draw_frame() {
         dock_window(w.style_editor.name, imgui_windows_id);
         dock_window(w.imgui.metrics.name, imgui_windows_id);
         dock_window(w.imgui.demo.name, imgui_windows_id);
+        dock_window(w.imgui.implot.demo.name, imgui_windows_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -207,9 +213,11 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
-    draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
     draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None);
+    draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
+    draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
+    draw_window(w.imgui.implot.demo.name, implot_demo, ImGuiWindowFlags_None, false);
+
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.faust.log.name, faust_log, ImGuiWindowFlags_None);
     draw_window(w.controls.name, controls);

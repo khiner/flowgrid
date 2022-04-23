@@ -23,8 +23,13 @@ struct Window {
 // Derived fields and convenience methods are in `Windows`
 struct WindowsBase {
     struct ImGuiWindows {
+        struct ImPlotWindows {
+            Window demo{"ImPlot Demo"};
+        };
+
         Window demo{"Dear ImGui Demo"};
         Window metrics{"Dear ImGui Metrics/Debugger"};
+        ImPlotWindows implot{};
     };
     struct FaustWindows {
         Window editor{"Faust Editor"};
@@ -40,9 +45,9 @@ struct WindowsBase {
         Settings settings{};
     };
 
-    StateViewerWindow state_viewer{{"State viewer"}};
+    StateViewerWindow state_viewer{{"State Viewer"}};
     Window controls{"Controls"};
-    Window style_editor{"Style editor"};
+    Window style_editor{"Style Editor"};
     ImGuiWindows imgui{};
     FaustWindows faust;
 };
@@ -70,8 +75,8 @@ struct Windows : public WindowsBase {
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
-    std::vector<std::reference_wrapper<const Window>> all_const{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<Window>> all{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, faust.editor, faust.log};
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
@@ -139,7 +144,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateViewerWindow::Settings, label_mode)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateViewerWindow, name, visible, settings)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows::ImPlotWindows, demo)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics, implot)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state_viewer, style_editor, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,

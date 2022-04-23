@@ -26,6 +26,10 @@ struct FaustLog : public Drawable {
 namespace ImGuiWindows {
 struct Metrics : public Drawable { void draw(Window &) override; };
 struct Demo : public Drawable { void draw(Window &) override; };
+
+struct ImPlotWindows {
+    struct Demo : public Drawable { void draw(Window &) override; };
+};
 };
 
 void draw_window(const std::string &name, Drawable &drawable, ImGuiWindowFlags flags = 0, bool wrap_draw_in_window = true);

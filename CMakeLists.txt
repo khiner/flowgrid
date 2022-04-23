@@ -10,7 +10,9 @@ set(TRACY_ON_DEMAND OFF CACHE STRING "On-demand profiling" FORCE)
 add_subdirectory("lib")
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.h src/*.cpp
-    lib/ImGuiFileDialog/ImGuiFileDialog.cpp lib/implot/implot.h lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_internal.h lib/implot/implot_demo.cpp
+    lib/ImGuiFileDialog/ImGuiFileDialog.cpp
+    lib/implot/implot.h lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_internal.h
+    lib/implot/implot_demo.cpp
     )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

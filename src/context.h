@@ -27,12 +27,13 @@ struct Config {
 };
 
 struct StateStats {
-    std::map<std::string, std::vector<SystemTime>> action_times_for_state_path{};
-
     struct Plottable {
         std::vector<const char *> labels;
         std::vector<ImU64> values;
     };
+
+    std::map<std::string, std::vector<SystemTime>> action_times_for_state_path{};
+    Plottable path_update_frequency_plottable;
 
     static const char *convert(const std::string &str) {
         char *pc = new char[str.size() + 1];
@@ -40,7 +41,14 @@ struct StateStats {
         return pc;
     }
 
-    Plottable path_update_frequency_plottable() {
+    void on_path_action(const std::string &path, SystemTime time) {
+        auto &action_times = action_times_for_state_path[path];
+        action_times.emplace_back(time);
+        path_update_frequency_plottable = create_path_update_frequency_plottable();
+    }
+
+private:
+    Plottable create_path_update_frequency_plottable() {
         std::vector<std::string> paths;
         std::vector<ImU64> values;
         for (const auto &[path, action_times]: action_times_for_state_path) {

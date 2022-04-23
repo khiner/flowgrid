@@ -49,7 +49,7 @@ static void show_path_update_frequency() {
 
     if (ImPlot::BeginPlot("Path update frequency", ImVec2(-1, 400), ImPlotFlags_NoMouseText)) {
         static const char *keys[] = {"Number of updates"};
-        const auto &[labels, values] = c.state_stats.path_update_frequency_plottable();
+        const auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
 
         ImPlot::SetupLegend(ImPlotLocation_South, ImPlotLegendFlags_Outside | ImPlotLegendFlags_Horizontal);
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);

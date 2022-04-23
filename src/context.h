@@ -1,6 +1,5 @@
 #pragma once
 
-#include "nlohmann/json.hpp"
 #include "state.h"
 #include "action.h"
 #include "blockingconcurrentqueue.h"

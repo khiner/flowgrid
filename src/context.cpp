@@ -209,8 +209,9 @@ void Context::finalize_gesture() {
         auto ini_settings_diff = diff_match_patch<std::string>::patch_toText(ini_settings_patches);
         auto ini_settings_reverse_diff = diff_match_patch<std::string>::patch_toText(dmp.patch_make(ini_settings, old_ini_settings));
         actions.emplace_back(ActionDiffs{
-            {json_diff,                              ini_settings_diff},
+            {json_diff, ini_settings_diff},
             {json::diff(json_state, old_json_state), ini_settings_reverse_diff},
+            std::chrono::system_clock::now(),
         });
         current_action_index = int(actions.size()) - 1;
         std::cout << "Action #" << actions.size() << ":\nDiffs:\n" << actions.back() << std::endl;

@@ -15,6 +15,7 @@ struct ActionDiff {
 struct ActionDiffs {
     ActionDiff forward;
     ActionDiff reverse;
+    std::chrono::time_point<std::chrono::system_clock> system_time;
 };
 
 struct Config {

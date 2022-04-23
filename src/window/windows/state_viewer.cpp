@@ -3,6 +3,7 @@
 #include "../../imgui_helpers.h"
 
 using Settings = WindowsBase::StateViewerWindow::Settings;
+using LabelMode = Settings::LabelMode;
 
 bool HighlightedTreeNode(const char *label, bool is_highlighted = false) {
     if (is_highlighted) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 255)); // TODO register a highlight color in style
@@ -13,7 +14,7 @@ bool HighlightedTreeNode(const char *label, bool is_highlighted = false) {
 }
 
 static void add_json_state_value_node(const std::string &key, const json &value, bool is_annotated_key = false) {
-    bool annotate = s.ui.windows.state_viewer.settings.label_mode == Settings::annotated;
+    bool annotate = s.ui.windows.state_viewer.settings.label_mode == LabelMode::annotated;
     //      ImGuiTreeNodeFlags_DefaultOpen or SetNextItemOpen()
     if (value.is_null()) {
         ImGui::Text("null");
@@ -51,10 +52,10 @@ void StateViewer::draw(Window &) {
         if (ImGui::BeginMenu("Settings")) {
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
                 auto label_mode = s.ui.windows.state_viewer.settings.label_mode;
-                if (ImGui::MenuItem("Annotated", nullptr, label_mode == Settings::annotated)) {
-                    q.enqueue(set_state_viewer_label_mode{Settings::LabelMode::annotated});
-                } else if (ImGui::MenuItem("Raw", nullptr, label_mode == Settings::raw)) {
-                    q.enqueue(set_state_viewer_label_mode{Settings::LabelMode::raw});
+                if (ImGui::MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
+                    q.enqueue(set_state_viewer_label_mode{LabelMode::annotated});
+                } else if (ImGui::MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {
+                    q.enqueue(set_state_viewer_label_mode{LabelMode::raw});
                 }
                 ImGui::EndMenu();
             }

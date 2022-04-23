@@ -216,7 +216,8 @@ void Context::finalize_gesture() {
         actions.emplace_back(action_diffs);
         current_action_index = int(actions.size()) - 1;
         for (auto &diff: json_diff) {
-            auto &action_times = state_stats.action_times_for_state_path[diff["path"]];
+            std::string path = diff["path"];
+            auto &action_times = state_stats.action_times_for_state_path[path];
             action_times.emplace_back(action_diffs.system_time);
         }
         std::cout << "Action #" << actions.size() << ":\nDiffs:\n" << actions.back() << std::endl;

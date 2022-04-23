@@ -28,6 +28,31 @@ struct Config {
 
 struct StateStats {
     std::map<std::string, std::vector<SystemTime>> action_times_for_state_path{};
+
+    struct Plottable {
+        std::vector<const char *> labels;
+        std::vector<ImU64> values;
+    };
+
+    static const char *convert(const std::string &str) {
+        char *pc = new char[str.size() + 1];
+        std::strcpy(pc, str.c_str());
+        return pc;
+    }
+
+    Plottable path_update_frequency_plottable() {
+        std::vector<std::string> paths;
+        std::vector<ImU64> values;
+        for (const auto &[path, action_times]: action_times_for_state_path) {
+            paths.push_back(path);
+            values.push_back(action_times.size());
+        }
+
+        std::vector<const char *> labels;
+        std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert);
+
+        return {labels, values};
+    }
 };
 
 struct Context {

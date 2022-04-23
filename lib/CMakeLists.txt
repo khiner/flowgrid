@@ -11,7 +11,7 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(SDL2_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
 add_subdirectory(${SDL2_DIR})
 
-#=================== IMGUI ===================
+#=================== ImGui ===================
 
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 add_library(IMGUI STATIC)

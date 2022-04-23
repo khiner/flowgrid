@@ -32,3 +32,6 @@
 [submodule "lib/tracy"]
 	path = lib/tracy
 	url = git@github.com:wolfpld/tracy.git
+[submodule "lib/implot"]
+	path = lib/implot
+	url = git@github.com:epezent/implot.git

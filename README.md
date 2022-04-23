@@ -30,6 +30,7 @@ as an example.
 ### UI/UX
 
 * [ImGui](https://github.com/ocornut/imgui) for UI
+* [ImPlot](https://github.com/epezent/implot) for plotting
 * [zep](https://github.com/Rezonality/zep) for code/text editing
 
 ### Backend

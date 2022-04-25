@@ -35,11 +35,6 @@ struct StateStats {
     std::map<std::string, std::vector<SystemTime>> action_times_for_state_path{};
     Plottable path_update_frequency_plottable;
 
-    static const char *convert(const std::string &str) {
-        char *pc = new char[str.size() + 1];
-        std::strcpy(pc, str.c_str());
-        return pc;
-    }
 
     void on_path_action(const std::string &path, SystemTime time) {
         auto &action_times = action_times_for_state_path[path];
@@ -48,6 +43,13 @@ struct StateStats {
     }
 
 private:
+    // Convert `std::string` to char array, removing first character of the path, which is a '/'.
+    static const char *convert_path(const std::string &str) {
+        char *pc = new char[str.size()];
+        std::strcpy(pc, std::string{str.begin() + 1, str.end()}.c_str());
+        return pc;
+    }
+
     Plottable create_path_update_frequency_plottable() {
         std::vector<std::string> paths;
         std::vector<ImU64> values;
@@ -57,7 +59,7 @@ private:
         }
 
         std::vector<const char *> labels;
-        std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert);
+        std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert_path);
 
         return {labels, values};
     }

@@ -10,9 +10,10 @@ struct Controls : public Drawable {
     void draw(Window &) override;
 };
 
-struct StateViewer : public Drawable {
-    void draw(Window &) override;
-};
+namespace StateWindows {
+struct StateViewer : public Drawable { void draw(Window &) override; };
+struct StatePathUpdateFrequency : public Drawable { void draw(Window &) override; };
+}
 
 struct FaustEditor : public Drawable {
     void draw(Window &) override;

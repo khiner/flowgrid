@@ -16,7 +16,7 @@ struct set_style { ImGuiStyle style; };
 
 struct toggle_window { std::string name; };
 
-struct set_state_viewer_label_mode { Windows::StateViewerWindow::Settings::LabelMode label_mode; };
+struct set_state_viewer_label_mode { Windows::StateWindows::StateViewerWindow::Settings::LabelMode label_mode; };
 
 struct toggle_audio_muted {};
 struct set_audio_thread_running { bool running; };

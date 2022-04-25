@@ -35,21 +35,25 @@ struct WindowsBase {
         Window editor{"Faust Editor"};
         Window log{"Faust Log"};
     };
-    struct StateViewerWindow : public Window {
-        struct Settings {
-            enum LabelMode { annotated, raw };
+    struct StateWindows {
+        struct StateViewerWindow : public Window {
+            struct Settings {
+                enum LabelMode { annotated, raw };
+                LabelMode label_mode{annotated};
+            };
 
-            LabelMode label_mode{annotated};
+            Settings settings{};
         };
 
-        Settings settings{};
+        StateViewerWindow viewer{{"State Viewer"}};
+        Window path_update_frequency{"Path Update Frequency"};
     };
 
-    StateViewerWindow state_viewer{{"State Viewer"}};
+    StateWindows state{};
     Window controls{"Controls"};
     Window style_editor{"Style Editor"};
     ImGuiWindows imgui{};
-    FaustWindows faust;
+    FaustWindows faust{};
 };
 
 struct Windows : public WindowsBase {
@@ -75,8 +79,8 @@ struct Windows : public WindowsBase {
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, faust.editor, faust.log};
-    std::vector<std::reference_wrapper<const Window>> all_const{controls, state_viewer, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, faust.editor, faust.log};
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
@@ -142,12 +146,12 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateViewerWindow::Settings, label_mode)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateViewerWindow, name, visible, settings)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows::StateViewerWindow::Settings, label_mode)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows, viewer, path_update_frequency)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows::ImPlotWindows, demo)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics, implot)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state_viewer, style_editor, imgui, faust)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state, style_editor, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,

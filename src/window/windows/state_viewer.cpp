@@ -4,7 +4,7 @@
 
 #include "implot.h"
 
-using Settings = WindowsBase::StateViewerWindow::Settings;
+using Settings = WindowsBase::StateWindows::StateViewerWindow::Settings;
 using LabelMode = Settings::LabelMode;
 
 bool HighlightedTreeNode(const char *label, bool is_highlighted = false) {
@@ -16,7 +16,7 @@ bool HighlightedTreeNode(const char *label, bool is_highlighted = false) {
 }
 
 static void show_json_state_value_node(const std::string &key, const json &value, bool is_annotated_key = false) {
-    bool annotate = s.ui.windows.state_viewer.settings.label_mode == LabelMode::annotated;
+    bool annotate = s.ui.windows.state.viewer.settings.label_mode == LabelMode::annotated;
     //      ImGuiTreeNodeFlags_DefaultOpen or SetNextItemOpen()
     if (value.is_null()) {
         ImGui::Text("null");
@@ -44,7 +44,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
     }
 }
 
-static void show_path_update_frequency() {
+void StateWindows::StatePathUpdateFrequency::draw(Window &) {
     if (c.state_stats.action_times_for_state_path.empty()) return;
 
     if (ImPlot::BeginPlot("Path update frequency", ImVec2(-1, 400), ImPlotFlags_NoMouseText)) {
@@ -65,11 +65,11 @@ static const std::string label_help = "The raw JSON state doesn't store keys for
                                       "'Annotated' mode shows (highlighted) labels for such state items.\n"
                                       "'Raw' mode shows the state exactly as it is in the raw JSON state.";
 
-void StateViewer::draw(Window &) {
+void StateWindows::StateViewer::draw(Window &) {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Settings")) {
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
-                auto label_mode = s.ui.windows.state_viewer.settings.label_mode;
+                auto label_mode = s.ui.windows.state.viewer.settings.label_mode;
                 if (ImGui::MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
                     q.enqueue(set_state_viewer_label_mode{LabelMode::annotated});
                 } else if (ImGui::MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {
@@ -83,5 +83,4 @@ void StateViewer::draw(Window &) {
     }
 
     show_json_state_value_node("State", c.json_state);
-    show_path_update_frequency();
 }

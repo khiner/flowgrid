@@ -127,7 +127,8 @@ void render(DrawContext &dc) {
 
 Controls controls{};
 StyleEditor style_editor{};
-StateViewer state_viewer{};
+StateWindows::StateViewer state_viewer{};
+StateWindows::StatePathUpdateFrequency state_path_update_frequency{};
 FaustEditor faust_editor{};
 FaustLog faust_log{};
 ImGuiWindows::Demo imgui_demo{};
@@ -165,17 +166,14 @@ void draw_frame() {
         auto faust_editor_id = dockspace_id;
         auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.35f, nullptr, &faust_editor_id);
         auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
+        auto state_path_update_frequency_id = ImGui::DockBuilderSplitNode(state_viewer_id, ImGuiDir_Down, 0.4f, nullptr, &state_viewer_id);
         auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
-        // TODO create a single parent "ImGui Windows" window with imgui child windows,
-        //  where the tabs can't be dragged out of the window, and nothing else can be dragged in.
-        //  Checkboxes that currently control imgui window visibility become menu bar checkboxes.
-        //  ImGui windows can, however, be docked _within_ the imgui parent window, and the parent window
-        //  itself can be dragged/docked/closed etc.
-        //  See `ImGuiWindowClass`.
         dock_window(w.controls.name, controls_id);
-        dock_window(w.state_viewer.name, state_viewer_id);
+
+        dock_window(w.state.viewer.name, state_viewer_id);
+        dock_window(w.state.path_update_frequency.name, state_path_update_frequency_id);
 
         dock_window(w.faust.editor.name, faust_editor_id);
         dock_window(w.faust.log.name, faust_log_window_id);
@@ -201,7 +199,8 @@ void draw_frame() {
             StatefulImGui::WindowToggleMenuItem(windows.controls.name);
 
             if (ImGui::BeginMenu("State")) {
-                StatefulImGui::WindowToggleMenuItem(windows.state_viewer.name);
+                StatefulImGui::WindowToggleMenuItem(windows.state.viewer.name);
+                StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency.name);
                 StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
                 ImGui::EndMenu();
             }
@@ -221,15 +220,18 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
+    draw_window(w.controls.name, controls);
+
+    draw_window(w.state.viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
+    draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
     draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None);
+
     draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.implot.demo.name, implot_demo, ImGuiWindowFlags_None, false);
 
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.faust.log.name, faust_log, ImGuiWindowFlags_None);
-    draw_window(w.controls.name, controls);
-    draw_window(w.state_viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
 
     ImGui::End();
 }

@@ -197,8 +197,24 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
-            for (const auto &window: s.ui.windows.all_const) {
-                StatefulImGui::WindowToggleMenuItem(window.get().name);
+            const auto &windows = s.ui.windows;
+            StatefulImGui::WindowToggleMenuItem(windows.controls.name);
+
+            if (ImGui::BeginMenu("State")) {
+                StatefulImGui::WindowToggleMenuItem(windows.state_viewer.name);
+                StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("ImGui")) {
+                StatefulImGui::WindowToggleMenuItem(windows.imgui.demo.name);
+                StatefulImGui::WindowToggleMenuItem(windows.imgui.metrics.name);
+                StatefulImGui::WindowToggleMenuItem(windows.imgui.implot.demo.name);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Faust")) {
+                StatefulImGui::WindowToggleMenuItem(windows.faust.editor.name);
+                StatefulImGui::WindowToggleMenuItem(windows.faust.log.name);
+                ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }

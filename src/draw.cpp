@@ -77,6 +77,7 @@ ImGuiContext *setup(DrawContext &dc) {
     IMGUI_CHECKVERSION();
     auto *imgui_context = ImGui::CreateContext();
     ImPlot::CreateContext();
+    // TODO default ImPlot FrameBg color of transparent
 
     auto &io = ImGui::GetIO();
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.

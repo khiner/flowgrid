@@ -45,17 +45,22 @@ static void show_json_state_value_node(const std::string &key, const json &value
 }
 
 void StateWindows::StatePathUpdateFrequency::draw(Window &) {
-    if (c.state_stats.action_times_for_state_path.empty()) return;
+    if (c.state_stats.action_times_for_state_path.empty()) {
+        ImGui::Text("No state updates yet.");
+        return;
+    }
 
-    if (ImPlot::BeginPlot("Path update frequency", ImVec2(-1, 400), ImPlotFlags_NoMouseText)) {
-        static const char *keys[] = {"Number of updates"};
-        const auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
-
-        ImPlot::SetupLegend(ImPlotLocation_South, ImPlotLegendFlags_Outside | ImPlotLegendFlags_Horizontal);
+    const auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
+    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 20.0f + 100.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
-//        ImPlot::SetupAxisTicks(ImAxis_X1, 0, int(labels.size() - 1), int(labels.size()), labels.data(), false);
-        if (labels.size() > 1) ImPlot::SetupAxisTicks(ImAxis_Y1, 0, int(labels.size() - 1), int(labels.size()), labels.data(), false);
-        ImPlot::PlotBarGroupsH(keys, values.data(), 1, int(values.size()), 0.75, 0);
+
+        if (labels.size() == 1) {
+            // Need at least 2 ticks to use `SetupAxisTicks`.
+            ImPlot::SetupAxis(ImAxis_Y1, labels[0], ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoTickLabels);
+        } else {
+            ImPlot::SetupAxisTicks(ImAxis_Y1, 0, int(labels.size() - 1), int(labels.size()), labels.data(), false);
+        }
+        ImPlot::PlotBarsH("Number of updates", values.data(), int(values.size()), 0.75, 0);
         ImPlot::EndPlot();
     }
 }

@@ -34,4 +34,5 @@
 	url = git@github.com:wolfpld/tracy.git
 [submodule "lib/implot"]
 	path = lib/implot
-	url = git@github.com:epezent/implot.git
+	url = git@github.com:khiner/implot.git
+	branch = master

@@ -71,9 +71,11 @@ $ git add .
 
 #### Forked submodules
 
-The following modules are forks, along with the upstream branch the fork is based on:
+The following modules are [forked by me](https://github.com/khiner?tab=repositories&q=&type=fork), along with the
+upstream branch the fork is based on:
 
 * `imgui:docking`
+* `implot:master`
 * `libsoundio:master`
 * `zep:master`
 

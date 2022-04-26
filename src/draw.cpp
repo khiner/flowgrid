@@ -6,6 +6,7 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "implot.h"
+#include "implot_internal.h"
 #include "draw.h"
 #include "context.h"
 #include "stateful_imgui.h"
@@ -69,14 +70,19 @@ bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
     return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
 
-ImGuiContext *setup(DrawContext &dc) {
+struct UiContext {
+    ImGuiContext *imgui_context;
+    ImPlotContext *implot_context;
+};
+
+UiContext setup(DrawContext &dc) {
     SDL_GL_MakeCurrent(dc.window, dc.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     auto *imgui_context = ImGui::CreateContext();
-    ImPlot::CreateContext();
+    auto *implot_context = ImPlot::CreateContext();
     // TODO default ImPlot FrameBg color of transparent
 
     auto &io = ImGui::GetIO();
@@ -103,7 +109,7 @@ ImGuiContext *setup(DrawContext &dc) {
 
     load_fonts();
 
-    return imgui_context;
+    return {imgui_context, implot_context};
 }
 
 void teardown(DrawContext &dc) {
@@ -128,6 +134,7 @@ void render(DrawContext &dc) {
 
 Controls controls{};
 StyleEditor style_editor{};
+ImPlotStyleEditor implot_style_editor{};
 StateWindows::StateViewer state_viewer{};
 StateWindows::StatePathUpdateFrequency state_path_update_frequency{};
 FaustEditor faust_editor{};
@@ -181,6 +188,7 @@ void draw_frame() {
         dock_window(w.faust.log.name, faust_log_window_id);
 
         dock_window(w.style_editor.name, imgui_windows_id);
+        dock_window(w.implot_style_editor.name, imgui_windows_id);
         dock_window(w.imgui.demo.name, imgui_windows_id);
         dock_window(w.imgui.implot.demo.name, imgui_windows_id);
         dock_window(w.imgui.metrics.name, imgui_windows_id);
@@ -205,6 +213,7 @@ void draw_frame() {
                 StatefulImGui::WindowToggleMenuItem(windows.state.viewer.name);
                 StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency.name);
                 StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
+                StatefulImGui::WindowToggleMenuItem(windows.implot_style_editor.name);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("ImGui")) {
@@ -228,6 +237,7 @@ void draw_frame() {
     draw_window(w.state.viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
     draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
     draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None);
+    draw_window(w.implot_style_editor.name, implot_style_editor, ImGuiWindowFlags_None);
 
     draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.implot.demo.name, implot_demo, ImGuiWindowFlags_None, false);
@@ -249,7 +259,7 @@ int draw() {
     }
 
     auto dc = create_draw_context();
-    auto *imgui_context = setup(dc);
+    auto ui_context = setup(dc);
 
     if (!c.ini_settings.empty()) {
         ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
@@ -288,7 +298,9 @@ int draw() {
             c.has_new_ini_settings = false;
         }
 
-        imgui_context->Style = ui_s.ui.style; // Load style
+        // Load style
+        ui_context.imgui_context->Style = ui_s.ui.style;
+        ui_context.implot_context->Style = ui_s.ui.implot_style;
 
         // TODO holding these keys down for super-fast undo/redo is not very stable (lost events?)
         if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q.enqueue(undo{});

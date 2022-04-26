@@ -6,6 +6,10 @@ struct StyleEditor : Drawable {
     void draw(Window &) override;
 };
 
+struct ImPlotStyleEditor : Drawable {
+    void draw(Window &) override;
+};
+
 struct Controls : public Drawable {
     void draw(Window &) override;
 };

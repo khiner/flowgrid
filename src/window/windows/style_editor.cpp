@@ -133,8 +133,8 @@ void StyleEditor::draw(Window &) {
             ImGui::PushItemWidth(-160);
             for (int i = 0; i < ImGuiCol_COUNT; i++) {
                 const char *name = ImGui::GetStyleColorName(i);
-                if (!filter.PassFilter(name))
-                    continue;
+                if (!filter.PassFilter(name)) continue;
+
                 ImGui::PushID(i);
                 changed |= StatefulImGui::ColorEdit4("##color", (float *) &style.Colors[i], ImGuiColorEditFlags_AlphaBar | alpha_flags);
                 ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);

@@ -13,6 +13,7 @@ struct redo {};
 
 struct set_ini_settings { std::string settings; };
 struct set_style { ImGuiStyle style; };
+struct set_implot_style { ImPlotStyle implot_style; };
 
 struct toggle_window { std::string name; };
 
@@ -39,6 +40,7 @@ using Action = std::variant<
 
     set_ini_settings,
     set_style,
+    set_implot_style,
 
     toggle_window,
 

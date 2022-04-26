@@ -135,6 +135,8 @@ void Context::update(const Action &action) {
         visitor{
             [&](const set_ini_settings &a) { c.ini_settings = a.settings; },
             [&](const set_style &a) { _s.ui.style = a.style; },
+            [&](const set_implot_style &a) { _s.ui.implot_style = a.implot_style; },
+
             [&](const toggle_window &a) { _s.ui.windows.named(a.name).visible = !s.ui.windows.named(a.name).visible; },
 
             [&](const set_state_viewer_label_mode &a) { _s.ui.windows.state.viewer.settings.label_mode = a.label_mode; },

@@ -2,12 +2,7 @@
 
 #include "nlohmann/json.hpp"
 #include "imgui.h"
-
-// TODO Different modes, with different states (e.g. AudioTrackMode),
-//  which control the default settings for
-//    * Layout
-//    * Node organization, move-rules
-//    * Automatic connections-rules
+#include "implot.h"
 
 struct Dimensions {
     ImVec2 position;
@@ -53,6 +48,7 @@ struct WindowsBase {
     StateWindows state{};
     Window controls{"Controls"};
     Window style_editor{"Style Editor"};
+    Window implot_style_editor{"ImPlot Style Editor"};
     ImGuiWindows imgui{};
     FaustWindows faust{};
 };
@@ -80,15 +76,17 @@ struct Windows : public WindowsBase {
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, imgui.implot.metrics, faust.editor, faust.log};
-    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, imgui.implot.metrics, faust.editor,
-                                                                faust.log};
+    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, imgui.implot.metrics,
+                                                    faust.editor, faust.log};
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, imgui.implot.metrics,
+                                                                faust.editor, faust.log};
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
     bool running = true;
     Windows windows;
     ImGuiStyle style;
+    ImPlotStyle implot_style;
 };
 
 enum AudioBackend {
@@ -153,11 +151,14 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows, viewer, path_updat
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows::ImPlotWindows, demo, metrics)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics, implot)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state, style_editor, imgui, faust)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state, style_editor, implot_style_editor, imgui, faust)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,
     MouseCursorScale, AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UiState, running, windows, style)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen,
+    MinorTickLen, MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize,
+    PlotMinSize, Colors, Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UiState, running, windows, style, implot_style)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);

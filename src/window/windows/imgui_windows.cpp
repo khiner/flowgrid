@@ -13,3 +13,7 @@ void ImGuiWindows::Demo::draw(Window &window) {
 void ImGuiWindows::ImPlotWindows::Demo::draw(Window &window) {
     ImPlot::ShowDemoWindow(&window.visible);
 }
+
+void ImGuiWindows::ImPlotWindows::Metrics::draw(Window &window) {
+    ImPlot::ShowMetricsWindow(&window.visible);
+}

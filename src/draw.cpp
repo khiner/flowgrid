@@ -135,6 +135,7 @@ FaustLog faust_log{};
 ImGuiWindows::Demo imgui_demo{};
 ImGuiWindows::Metrics imgui_metrics{};
 ImGuiWindows::ImPlotWindows::Demo implot_demo{};
+ImGuiWindows::ImPlotWindows::Metrics implot_metrics{};
 
 bool open = true;
 
@@ -180,9 +181,10 @@ void draw_frame() {
         dock_window(w.faust.log.name, faust_log_window_id);
 
         dock_window(w.style_editor.name, imgui_windows_id);
-        dock_window(w.imgui.metrics.name, imgui_windows_id);
         dock_window(w.imgui.demo.name, imgui_windows_id);
         dock_window(w.imgui.implot.demo.name, imgui_windows_id);
+        dock_window(w.imgui.metrics.name, imgui_windows_id);
+        dock_window(w.imgui.implot.metrics.name, imgui_windows_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -227,9 +229,10 @@ void draw_frame() {
     draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
     draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None);
 
-    draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.implot.demo.name, implot_demo, ImGuiWindowFlags_None, false);
+    draw_window(w.imgui.metrics.name, imgui_metrics, ImGuiWindowFlags_None, false);
+    draw_window(w.imgui.implot.metrics.name, implot_metrics, ImGuiWindowFlags_None, false);
 
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.faust.log.name, faust_log, ImGuiWindowFlags_None);

@@ -30,6 +30,7 @@ struct Demo : public Drawable { void draw(Window &) override; };
 
 struct ImPlotWindows {
     struct Demo : public Drawable { void draw(Window &) override; };
+    struct Metrics : public Drawable { void draw(Window &) override; };
 };
 };
 

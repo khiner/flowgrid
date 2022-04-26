@@ -67,7 +67,6 @@ Here is my process for updating to the tip of all the submodule branches:
 ```shell
 $ git submodule update --remote
 $ git add .
-$ git cm -m "Bump libs"
 ```
 
 #### Forked submodules
@@ -82,6 +81,7 @@ I like to keep my changes rebased on top of the original repo branches.
 Here's my process:
 
 ```shell
+$ cd lib/{library}
 $ git pull --rebase upstream {branch} # `upstream` points to the original repo. See list above for the tracked branch
 $ ... # Resolve any conflicts & test
 $ git push --force

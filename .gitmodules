@@ -1,7 +1,7 @@
 [submodule "libsoundio"]
 	path = lib/libsoundio
 	url = git@github.com:khiner/libsoundio.git
-	branch = kAudioObjectPropertyElementMain
+	branch = master
 [submodule "imgui"]
 	path = lib/imgui
 	url = git@github.com:khiner/imgui.git

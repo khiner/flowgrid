@@ -12,25 +12,6 @@
 
 using namespace Zep;
 
-#define ZEP_KEY_F1 0x3a // Keyboard F1
-#define ZEP_KEY_F2 0x3b // Keyboard F2
-#define ZEP_KEY_F3 0x3c // Keyboard F3
-#define ZEP_KEY_F4 0x3d // Keyboard F4
-#define ZEP_KEY_F5 0x3e // Keyboard F5
-#define ZEP_KEY_F6 0x3f // Keyboard F6
-#define ZEP_KEY_F7 0x40 // Keyboard F7
-#define ZEP_KEY_F8 0x41 // Keyboard F8
-#define ZEP_KEY_F9 0x42 // Keyboard F9
-#define ZEP_KEY_F10 0x43 // Keyboard F10
-#define ZEP_KEY_F11 0x44 // Keyboard F11
-#define ZEP_KEY_F12 0x45 // Keyboard F12
-
-#define ZEP_KEY_1 0x1e // Keyboard 1 and !
-#define ZEP_KEY_2 0x1f // Keyboard 2 and @
-
-#define ZEP_KEY_SPACE 0x2c // Keyboard Spacebar
-
-
 inline NVec2f toNVec2f(const ImVec2 &im) { return {im.x, im.y}; }
 inline ImVec2 toImVec2(const NVec2f &im) { return {im.x, im.y}; }
 
@@ -126,10 +107,9 @@ struct ZepEditor_ImGui : public ZepEditor {
     explicit ZepEditor_ImGui(const ZepPath &root, uint32_t flags = 0, ZepFileSystem *pFileSystem = nullptr)
         : ZepEditor(new ZepDisplay_ImGui(), root, flags, pFileSystem) {}
 
-    bool sendImGuiKeyPressToBuffer(ImGuiKey imGuiKey, uint32_t key, uint32_t mod = 0) {
-        if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(imGuiKey))) {
-            const auto *buffer = activeTabWindow->GetActiveWindow()->buffer;
-            buffer->GetMode()->AddKeyPress(key, mod);
+    bool sendImGuiKeyPressToBuffer(ImGuiKey key, ImGuiKeyModFlags mod = ImGuiKeyModFlags_None) {
+        if (ImGui::IsKeyPressed(key)) {
+            activeTabWindow->GetActiveWindow()->buffer->GetMode()->AddKeyPress(key, mod);
             return true;
         }
         return false;
@@ -146,21 +126,21 @@ struct ZepEditor_ImGui : public ZepEditor {
     void HandleInput() override {
         auto &io = ImGui::GetIO();
         bool handled = false;
-        uint32_t mod = 0;
+        ImGuiKeyModFlags mod = 0;
 
-        static std::map<int, int> MapUSBKeys = {
-            {ZEP_KEY_F1,  ExtKeys::F1},
-            {ZEP_KEY_F2,  ExtKeys::F2},
-            {ZEP_KEY_F3,  ExtKeys::F3},
-            {ZEP_KEY_F4,  ExtKeys::F4},
-            {ZEP_KEY_F5,  ExtKeys::F5},
-            {ZEP_KEY_F6,  ExtKeys::F6},
-            {ZEP_KEY_F7,  ExtKeys::F7},
-            {ZEP_KEY_F8,  ExtKeys::F8},
-            {ZEP_KEY_F9,  ExtKeys::F9},
-            {ZEP_KEY_F10, ExtKeys::F10},
-            {ZEP_KEY_F11, ExtKeys::F11},
-            {ZEP_KEY_F12, ExtKeys::F12}
+        static std::vector<ImGuiKey> F_KEYS = {
+            ImGuiKey_F1,
+            ImGuiKey_F2,
+            ImGuiKey_F3,
+            ImGuiKey_F4,
+            ImGuiKey_F5,
+            ImGuiKey_F6,
+            ImGuiKey_F7,
+            ImGuiKey_F8,
+            ImGuiKey_F9,
+            ImGuiKey_F10,
+            ImGuiKey_F11,
+            ImGuiKey_F12,
         };
 
         if (io.MouseDelta.x != 0 || io.MouseDelta.y != 0) {
@@ -178,26 +158,26 @@ struct ZepEditor_ImGui : public ZepEditor {
         const auto *buffer = activeTabWindow->GetActiveWindow()->buffer;
 
         // Check USB Keys
-        for (auto &usbKey: MapUSBKeys) {
-            if (ImGui::IsKeyPressed(usbKey.first)) {
-                buffer->GetMode()->AddKeyPress(usbKey.second, mod);
+        for (auto &f_key: F_KEYS) {
+            if (ImGui::IsKeyPressed(f_key)) {
+                buffer->GetMode()->AddKeyPress(f_key, mod);
                 return;
             }
         }
 
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_Tab, ExtKeys::TAB)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_Escape, ExtKeys::ESCAPE)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_Enter, ExtKeys::RETURN)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_Delete, ExtKeys::DEL)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_Home, ExtKeys::HOME)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_End, ExtKeys::END)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_Backspace, ExtKeys::BACKSPACE)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_RightArrow, ExtKeys::RIGHT)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_LeftArrow, ExtKeys::LEFT)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_UpArrow, ExtKeys::UP)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_DownArrow, ExtKeys::DOWN)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_PageDown, ExtKeys::PAGEDOWN)) return;
-        if (sendImGuiKeyPressToBuffer(ImGuiKey_PageUp, ExtKeys::PAGEUP)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_Tab, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_Escape, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_Enter, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_Delete, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_Home, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_End, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_Backspace, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_RightArrow, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_LeftArrow, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_UpArrow, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_DownArrow, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_PageDown, mod)) return;
+        if (sendImGuiKeyPressToBuffer(ImGuiKey_PageUp, mod)) return;
 
         if (io.KeyCtrl) {
             if (ImGui::IsKeyPressed(ImGuiKey_1)) {
@@ -207,16 +187,15 @@ struct ZepEditor_ImGui : public ZepEditor {
                 SetGlobalMode(ZepMode_Vim::StaticName());
                 handled = true;
             } else {
-                for (int ch = ImGuiKey_A; ch <= ImGuiKey_Z; ch++) {
-                    if (ImGui::IsKeyPressed(ch)) {
-                        std::cout << "Pressing CTRL+" + std::to_string(ch) << "\n";
-                        buffer->GetMode()->AddKeyPress(ch, mod);
+                for (ImGuiKey key = ImGuiKey_A; key < ImGuiKey_Z; key++) {
+                    if (ImGui::IsKeyPressed(key)) {
+                        buffer->GetMode()->AddKeyPress(key, mod);
                         handled = true;
                     }
                 }
 
                 if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
-                    buffer->GetMode()->AddKeyPress(ZEP_KEY_SPACE, mod);
+                    buffer->GetMode()->AddKeyPress(ImGuiKey_Space, mod);
                     handled = true;
                 }
             }

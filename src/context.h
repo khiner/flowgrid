@@ -109,6 +109,7 @@ public:
     // (It's done this way to avoid an expensive settings-load & long string comparison between
     // ours and ImGui's ini settings on every frame.)
     bool has_new_ini_settings{};
+    bool has_new_implot_style{};
 
     /**
      This is a placeholder for the main in-memory data structure for action history.
@@ -123,8 +124,8 @@ public:
     int current_action_index = -1;
     json json_state;
 
-    ImFont *defaultFont;
-    ImFont *fixedWidthFont;
+    ImFont *defaultFont{};
+    ImFont *fixedWidthFont{};
 
     bool in_gesture{};
 

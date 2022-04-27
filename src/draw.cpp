@@ -297,6 +297,10 @@ int draw() {
             ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
             c.has_new_ini_settings = false;
         }
+        if (c.has_new_implot_style) {
+            ImPlot::BustItemCache();
+            c.has_new_implot_style = false;
+        }
 
         // Load style
         ui_context.imgui_context->Style = ui_s.ui.style;

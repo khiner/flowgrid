@@ -188,6 +188,11 @@ void Context::apply_diff(const ActionDiff &diff) {
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
     if (!diff.ini_diff.empty()) has_new_ini_settings = true;
+    for (auto &d: diff.json_diff) {
+        if (std::string(d["path"]).rfind("/ui/implot_style", 0) == 0) {
+            has_new_implot_style = true;
+        }
+    }
 }
 
 // TODO Implement

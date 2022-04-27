@@ -127,5 +127,6 @@ void ImPlotStyleEditor::draw(Window &) {
         ImPlot::BustItemCache();
         q.enqueue(set_implot_style{style});
     }
+
     changed = false;
 }

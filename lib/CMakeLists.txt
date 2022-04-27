@@ -83,7 +83,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(FREETYPE_DIR /opt/homebrew/opt/freetype)
 find_package(Freetype REQUIRED)
 
-set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
+set(BUILD_TESTS ON CACHE STRING "Make the tests" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
 
 #=================== tracy ===================

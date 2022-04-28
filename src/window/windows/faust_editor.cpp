@@ -202,11 +202,10 @@ struct ZepEditor_ImGui : public ZepEditor {
         }
 
         if (!handled) {
-            for (int n = 0; n < io.InputQueueCharacters.Size && io.InputQueueCharacters[n]; n++) {
-                // Ignore '\r' - sometimes ImGui generates it!
-                if (io.InputQueueCharacters[n] == '\r') continue;
-
-                buffer->GetMode()->AddKeyPress(io.InputQueueCharacters[n], mod);
+            for (ImWchar ch: io.InputQueueCharacters) {
+                if (ch == '\r') continue; // Ignore '\r' - sometimes ImGui generates it!
+                ImGuiKey key = ch + ImGuiKey_A - 'a';
+                buffer->GetMode()->AddKeyPress(key, mod);
             }
         }
     }

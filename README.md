@@ -30,6 +30,7 @@ as an example.
 ### UI/UX
 
 * [ImGui](https://github.com/ocornut/imgui) for UI
+* [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for plotting
 * [ImPlot](https://github.com/epezent/implot) for plotting
 * [zep](https://github.com/Rezonality/zep) for code/text editing
 
@@ -40,9 +41,11 @@ as an example.
 * [diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
   text
 
-### Development
+### Debugging
 
 * [Tracy](https://github.com/wolfpld/tracy) for real-time profiling
+
+## Development
 
 ### Tracing
 

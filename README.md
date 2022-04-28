@@ -10,10 +10,22 @@ Currently, I'm basically trying to maximally mash together some wonderful librar
 
 ### Mac
 
+Prepare your environment:
+
 ```shell
 $ git clone --recursive git@github.com:khiner/flowgrid2.git
-$ brew install pkgconfig llvm freetype
+$ brew install cmake pkgconfig llvm freetype
 $ brew link llvm --force
+```
+
+Build and run the application (or open the project in your IDE of choice and build - I can only speak for CLion
+working):
+
+```shell
+$ cmake -B cmake-build-debug
+$ cmake --build cmake-build-debug --target FlowGrid -- -j 8
+$ cd cmake-build-debug
+$ ./FlowGrid
 ```
 
 TODO: Will probably want to eventually build llvm locally as a submodule, and point to it.
@@ -30,7 +42,7 @@ as an example.
 ### UI/UX
 
 * [ImGui](https://github.com/ocornut/imgui) for UI
-* [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for plotting
+* [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for file selection
 * [ImPlot](https://github.com/epezent/implot) for plotting
 * [zep](https://github.com/Rezonality/zep) for code/text editing
 

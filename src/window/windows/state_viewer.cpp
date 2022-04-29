@@ -47,25 +47,15 @@ static void show_json_state_value_node(const std::string &key, const json &value
 
 void StateWindows::MemoryEditorWindow::draw(Window &) {
     static MemoryEditor memory_editor;
+    static bool first_render{true};
+    if (first_render) {
+        memory_editor.OptShowDataPreview = true;
+        first_render = false;
+    }
 
     void *mem_data{&ui_s};
     size_t mem_size{sizeof(ui_s)};
-    size_t base_display_addr{0x0000};
-
-    MemoryEditor::Sizes sizes;
-    memory_editor.CalcSizes(sizes, mem_size, base_display_addr);
-    ImGui::SetNextWindowSize(ImVec2(sizes.WindowWidth, sizes.WindowWidth * 0.60f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(sizes.WindowWidth, FLT_MAX));
-
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
-        ImGui::OpenPopup("context");
-    }
-
-    memory_editor.DrawContents(mem_data, mem_size, base_display_addr);
-    if (memory_editor.ContentsWidthChanged) {
-        memory_editor.CalcSizes(sizes, mem_size, base_display_addr);
-        ImGui::SetWindowSize(ImVec2(sizes.WindowWidth, ImGui::GetWindowSize().y));
-    }
+    memory_editor.DrawContents(mem_data, mem_size);
 }
 
 void StateWindows::StatePathUpdateFrequency::draw(Window &) {

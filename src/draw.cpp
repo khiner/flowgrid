@@ -136,6 +136,7 @@ Controls controls{};
 StyleEditor style_editor{};
 ImPlotStyleEditor implot_style_editor{};
 StateWindows::StateViewer state_viewer{};
+StateWindows::MemoryEditorWindow state_memory_editor{};
 StateWindows::StatePathUpdateFrequency state_path_update_frequency{};
 FaustEditor faust_editor{};
 FaustLog faust_log{};
@@ -175,13 +176,15 @@ void draw_frame() {
         auto faust_editor_id = dockspace_id;
         auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.35f, nullptr, &faust_editor_id);
         auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
-        auto state_path_update_frequency_id = ImGui::DockBuilderSplitNode(state_viewer_id, ImGuiDir_Down, 0.4f, nullptr, &state_viewer_id);
+        auto state_memory_editor_id = ImGui::DockBuilderSplitNode(state_viewer_id, ImGuiDir_Down, 2.0f / 3.0f, nullptr, &state_viewer_id);
+        auto state_path_update_frequency_id = ImGui::DockBuilderSplitNode(state_memory_editor_id, ImGuiDir_Down, 0.5f, nullptr, &state_memory_editor_id);
         auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
         dock_window(w.controls.name, controls_id);
 
         dock_window(w.state.viewer.name, state_viewer_id);
+        dock_window(w.state.memory_editor.name, state_memory_editor_id);
         dock_window(w.state.path_update_frequency.name, state_path_update_frequency_id);
 
         dock_window(w.faust.editor.name, faust_editor_id);
@@ -211,6 +214,7 @@ void draw_frame() {
 
             if (ImGui::BeginMenu("State")) {
                 StatefulImGui::WindowToggleMenuItem(windows.state.viewer.name);
+                StatefulImGui::WindowToggleMenuItem(windows.state.memory_editor.name);
                 StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency.name);
                 StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
                 StatefulImGui::WindowToggleMenuItem(windows.implot_style_editor.name);
@@ -234,6 +238,7 @@ void draw_frame() {
 
     draw_window(w.controls.name, controls);
 
+    draw_window(w.state.memory_editor.name, state_memory_editor, ImGuiWindowFlags_NoScrollbar);
     draw_window(w.state.viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
     draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
     draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None);

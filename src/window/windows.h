@@ -17,6 +17,7 @@ struct Controls : public Drawable {
 namespace StateWindows {
 struct StateViewer : public Drawable { void draw(Window &) override; };
 struct StatePathUpdateFrequency : public Drawable { void draw(Window &) override; };
+struct MemoryEditorWindow : public Drawable { void draw(Window &) override; }; // Don't clash with `MemoryEditor` struct included from `imgui_memory_editor.h`
 }
 
 struct FaustEditor : public Drawable {

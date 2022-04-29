@@ -42,6 +42,7 @@ struct WindowsBase {
         };
 
         StateViewerWindow viewer{{"State Viewer"}};
+        Window memory_editor{"State Memory Editor"};
         Window path_update_frequency{"Path Update Frequency"};
     };
 
@@ -76,10 +77,11 @@ struct Windows : public WindowsBase {
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, imgui.implot.metrics,
-                                                    faust.editor, faust.log};
-    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo, imgui.implot.metrics,
-                                                                faust.editor, faust.log};
+    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
+                                                    imgui.implot.metrics, faust.editor, faust.log};
+
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
+                                                                imgui.implot.metrics, faust.editor, faust.log};
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
@@ -147,7 +149,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows::StateViewerWindow::Settings, label_mode)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows, viewer, path_update_frequency)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows, viewer, memory_editor, path_update_frequency)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows::ImPlotWindows, demo, metrics)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics, implot)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)

@@ -36,9 +36,6 @@
 	path = lib/implot
 	url = git@github.com:khiner/implot.git
 	branch = master
-[submodule "lib/libgit2"]
-	path = lib/libgit2
-	url = git@github.com:libgit2/libgit2.git
 [submodule "lib/imgui_club"]
 	path = lib/imgui_club
 	url = git@github.com:ocornut/imgui_club.git

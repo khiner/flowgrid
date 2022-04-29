@@ -75,12 +75,15 @@ void StateWindows::StatePathUpdateFrequency::draw(Window &) {
     }
 
     auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
-    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 20.0f + 100.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+    const ImU64 max_value = *std::max_element(values.begin(), values.end());
+
+    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
         // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
         if (labels.size() == 1) labels.emplace_back("");
 
+        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(max_value), int(max_value) + 1, nullptr, false);
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         ImPlot::PlotBarsH("Number of updates", values.data(), int(values.size()), 0.75, 0);
         ImPlot::EndPlot();

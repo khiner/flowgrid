@@ -49,7 +49,6 @@ struct WindowsBase {
     StateWindows state{};
     Window controls{"Controls"};
     Window style_editor{"Style Editor"};
-    Window implot_style_editor{"ImPlot Style Editor"};
     ImGuiWindows imgui{};
     FaustWindows faust{};
 };
@@ -77,10 +76,10 @@ struct Windows : public WindowsBase {
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
+    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
                                                     imgui.implot.metrics, faust.editor, faust.log};
 
-    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, implot_style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
                                                                 imgui.implot.metrics, faust.editor, faust.log};
 };
 
@@ -159,7 +158,7 @@ JSON_TYPE(WindowsBase::StateWindows, viewer, memory_editor, path_update_frequenc
 JSON_TYPE(WindowsBase::ImGuiWindows::ImPlotWindows, demo, metrics)
 JSON_TYPE(WindowsBase::ImGuiWindows, demo, metrics, implot)
 JSON_TYPE(WindowsBase::FaustWindows, editor, log)
-JSON_TYPE(WindowsBase, controls, state, style_editor, implot_style_editor, imgui, faust)
+JSON_TYPE(WindowsBase, controls, state, style_editor, imgui, faust)
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,

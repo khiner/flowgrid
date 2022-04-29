@@ -134,7 +134,6 @@ void render(DrawContext &dc) {
 
 Controls controls{};
 StyleEditor style_editor{};
-ImPlotStyleEditor implot_style_editor{};
 StateWindows::StateViewer state_viewer{};
 StateWindows::MemoryEditorWindow state_memory_editor{};
 StateWindows::StatePathUpdateFrequency state_path_update_frequency{};
@@ -191,7 +190,6 @@ void draw_frame() {
         dock_window(w.faust.log.name, faust_log_window_id);
 
         dock_window(w.style_editor.name, imgui_windows_id);
-        dock_window(w.implot_style_editor.name, imgui_windows_id);
         dock_window(w.imgui.demo.name, imgui_windows_id);
         dock_window(w.imgui.implot.demo.name, imgui_windows_id);
         dock_window(w.imgui.metrics.name, imgui_windows_id);
@@ -217,7 +215,6 @@ void draw_frame() {
                 StatefulImGui::WindowToggleMenuItem(windows.state.memory_editor.name);
                 StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency.name);
                 StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
-                StatefulImGui::WindowToggleMenuItem(windows.implot_style_editor.name);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("ImGui")) {
@@ -242,7 +239,6 @@ void draw_frame() {
     draw_window(w.state.viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
     draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
     draw_window(w.style_editor.name, style_editor, ImGuiWindowFlags_None);
-    draw_window(w.implot_style_editor.name, implot_style_editor, ImGuiWindowFlags_None);
 
     draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
     draw_window(w.imgui.implot.demo.name, implot_demo, ImGuiWindowFlags_None, false);

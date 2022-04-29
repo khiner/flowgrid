@@ -29,29 +29,24 @@ struct Config {
 };
 
 struct StateStats {
-    StateStats() = default;
-
-    StateStats(const std::vector<ActionDiffs> &diffs, const int up_to_index) {
-        for (int i = 0; i < up_to_index; i++) {
-            auto &diff = diffs[i];
-            for (auto &jd: diff.forward.json_diff) {
-                on_path_action(jd["path"], diff.system_time);
-            }
-        }
-    }
-
     struct Plottable {
         std::vector<const char *> labels;
         std::vector<ImU64> values;
     };
 
-    std::map<std::string, std::vector<SystemTime>> action_times_for_state_path{};
+    std::map<std::string, std::vector<SystemTime>> update_times_for_state_path{};
     Plottable path_update_frequency_plottable;
 
 
-    void on_path_action(const std::string &path, SystemTime time) {
-        auto &action_times = action_times_for_state_path[path];
-        action_times.emplace_back(time);
+    void on_path_update(const std::string &path, SystemTime time, Direction direction) {
+        if (direction == Forward) {
+            auto &update_times = update_times_for_state_path[path];
+            update_times.emplace_back(time);
+        } else {
+            auto &update_times = update_times_for_state_path.at(path);
+            update_times.pop_back();
+            if (update_times.empty()) update_times_for_state_path.erase(path);
+        }
         path_update_frequency_plottable = create_path_update_frequency_plottable();
     }
 
@@ -66,7 +61,7 @@ private:
     Plottable create_path_update_frequency_plottable() {
         std::vector<std::string> paths;
         std::vector<ImU64> values;
-        for (const auto &[path, action_times]: action_times_for_state_path) {
+        for (const auto &[path, action_times]: update_times_for_state_path) {
             paths.push_back(path);
             values.push_back(action_times.size());
         }

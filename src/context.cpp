@@ -178,8 +178,8 @@ void Context::update(const Action &action) {
 }
 
 void Context::apply_diff(const int action_index, const Direction direction) {
-    const auto diff = actions[action_index];
-    const auto d = direction == Forward ? diff.forward : diff.reverse;
+    const auto &diff = actions[action_index];
+    const auto &d = direction == Forward ? diff.forward : diff.reverse;
 
     const auto [new_ini_settings, successes] = dmp.patch_apply(dmp.patch_fromText(d.ini_diff), ini_settings);
     if (!std::all_of(successes.begin(), successes.end(), [](bool v) { return v; })) {
@@ -197,8 +197,8 @@ void Context::apply_diff(const int action_index, const Direction direction) {
         if (std::string(jd["path"]).rfind("/ui/implot_style", 0) == 0) {
             has_new_implot_style = true;
         }
+        state_stats.on_path_update(jd["path"], diff.system_time, direction);
     }
-    state_stats = StateStats(actions, action_index);
 }
 
 // TODO Implement
@@ -229,7 +229,7 @@ void Context::finalize_gesture() {
         actions.emplace_back(diffs);
         current_action_index = int(actions.size()) - 1;
         for (auto &diff: json_diff) {
-            state_stats.on_path_action(diff["path"], diffs.system_time);
+            state_stats.on_path_update(diff["path"], diffs.system_time, Forward);
         }
         std::cout << "Action #" << actions.size() << ":\nDiffs:\n" << actions.back() << std::endl;
     }

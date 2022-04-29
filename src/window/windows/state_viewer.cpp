@@ -69,21 +69,19 @@ void StateWindows::MemoryEditorWindow::draw(Window &) {
 }
 
 void StateWindows::StatePathUpdateFrequency::draw(Window &) {
-    if (c.state_stats.action_times_for_state_path.empty()) {
+    if (c.state_stats.update_times_for_state_path.empty()) {
         ImGui::Text("No state updates yet.");
         return;
     }
 
-    const auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
+    auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 20.0f + 100.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
-        if (labels.size() == 1) {
-            // Need at least 2 ticks to use `SetupAxisTicks`.
-            ImPlot::SetupAxis(ImAxis_Y1, labels[0], ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoTickLabels);
-        } else {
-            ImPlot::SetupAxisTicks(ImAxis_Y1, 0, int(labels.size() - 1), int(labels.size()), labels.data(), false);
-        }
+        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
+        if (labels.size() == 1) labels.emplace_back("");
+
+        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         ImPlot::PlotBarsH("Number of updates", values.data(), int(values.size()), 0.75, 0);
         ImPlot::EndPlot();
     }

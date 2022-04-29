@@ -9,6 +9,8 @@ using namespace nlohmann; // json
 
 using SystemTime = std::chrono::time_point<std::chrono::system_clock>;
 
+enum Direction { Forward, Reverse };
+
 struct ActionDiff {
     json json_diff;
     std::string ini_diff; // string-encoded `diff_match_patch::Patches`
@@ -27,6 +29,17 @@ struct Config {
 };
 
 struct StateStats {
+    StateStats() = default;
+
+    StateStats(const std::vector<ActionDiffs> &diffs, const int up_to_index) {
+        for (int i = 0; i < up_to_index; i++) {
+            auto &diff = diffs[i];
+            for (auto &jd: diff.forward.json_diff) {
+                on_path_action(jd["path"], diff.system_time);
+            }
+        }
+    }
+
     struct Plottable {
         std::vector<const char *> labels;
         std::vector<ImU64> values;
@@ -68,7 +81,7 @@ private:
 struct Context {
 private:
     void update(const Action &); // State is only updated via `context.on_action(action)`
-    void apply_diff(const ActionDiff &diff);
+    void apply_diff(int index, Direction direction);
     void finalize_gesture();
 public:
 /**md

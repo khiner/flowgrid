@@ -62,12 +62,13 @@ struct FaustContext {
         num_outputs = dsp ? dsp->getNumOutputs() : 0;
         buffers = std::make_unique<FaustBuffers>(num_inputs, num_outputs);
     }
+
     ~FaustContext() {
-        if (dsp) {
-            delete dsp;
-            dsp = nullptr;
-            deleteDSPFactory(dsp_factory);
-        }
+        if (!dsp) return;
+
+        delete dsp;
+        dsp = nullptr;
+        deleteDSPFactory(dsp_factory);
     }
 
     void compute(int frame_count) const;
@@ -94,7 +95,7 @@ FAUSTFLOAT FaustContext::get_sample(int channel, int frame) const {
     return buffers->output[std::min(channel, buffers->num_output_channels - 1)][frame];
 }
 
-void Context::compute_frames(int frame_count) const {
+void Context::compute_frames(int frame_count) const { // NOLINT(readability-convert-member-functions-to-static)
     if (faust) faust->compute(frame_count);
 }
 
@@ -113,9 +114,9 @@ Context::Context() : json_state(state2json(_state)) {}
 
 void Context::on_action(const Action &action) {
     if (std::holds_alternative<undo>(action)) {
-        if (can_undo()) apply_diff(actions[current_action_index--].reverse);
+        if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);
     } else if (std::holds_alternative<redo>(action)) {
-        if (can_redo()) apply_diff(actions[++current_action_index].forward);
+        if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
     } else {
         update(action);
         if (!in_gesture) finalize_gesture();
@@ -176,23 +177,28 @@ void Context::update(const Action &action) {
     );
 }
 
-void Context::apply_diff(const ActionDiff &diff) {
-    const auto [new_ini_settings, successes] = dmp.patch_apply(dmp.patch_fromText(diff.ini_diff), ini_settings);
+void Context::apply_diff(const int action_index, const Direction direction) {
+    const auto diff = actions[action_index];
+    const auto d = direction == Forward ? diff.forward : diff.reverse;
+
+    const auto [new_ini_settings, successes] = dmp.patch_apply(dmp.patch_fromText(d.ini_diff), ini_settings);
     if (!std::all_of(successes.begin(), successes.end(), [](bool v) { return v; })) {
         throw std::runtime_error("Some ini-settings patches were not successfully applied.\nSettings:\n\t" +
-            ini_settings + "\nPatch:\n\t" + diff.ini_diff + "\nResult:\n\t" + new_ini_settings);
+            ini_settings + "\nPatch:\n\t" + d.ini_diff + "\nResult:\n\t" + new_ini_settings);
     }
     ini_settings = prev_ini_settings = new_ini_settings;
-    json_state = json_state.patch(diff.json_diff);
+    json_state = json_state.patch(d.json_diff);
     _state = json2state(json_state);
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
-    if (!diff.ini_diff.empty()) has_new_ini_settings = true;
-    for (auto &d: diff.json_diff) {
-        if (std::string(d["path"]).rfind("/ui/implot_style", 0) == 0) {
+    if (!d.ini_diff.empty()) has_new_ini_settings = true;
+
+    for (auto &jd: d.json_diff) {
+        if (std::string(jd["path"]).rfind("/ui/implot_style", 0) == 0) {
             has_new_implot_style = true;
         }
     }
+    state_stats = StateStats(actions, action_index);
 }
 
 // TODO Implement
@@ -215,15 +221,15 @@ void Context::finalize_gesture() {
         // TODO put diff/patch/text fns in `transformers/bijective`
         auto ini_settings_diff = diff_match_patch<std::string>::patch_toText(ini_settings_patches);
         auto ini_settings_reverse_diff = diff_match_patch<std::string>::patch_toText(dmp.patch_make(ini_settings, old_ini_settings));
-        const ActionDiffs action_diffs{
+        const ActionDiffs diffs{
             {json_diff, ini_settings_diff},
             {json::diff(json_state, old_json_state), ini_settings_reverse_diff},
             std::chrono::system_clock::now(),
         };
-        actions.emplace_back(action_diffs);
+        actions.emplace_back(diffs);
         current_action_index = int(actions.size()) - 1;
         for (auto &diff: json_diff) {
-            state_stats.on_path_action(diff["path"], action_diffs.system_time);
+            state_stats.on_path_action(diff["path"], diffs.system_time);
         }
         std::cout << "Action #" << actions.size() << ":\nDiffs:\n" << actions.back() << std::endl;
     }

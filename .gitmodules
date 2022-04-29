@@ -36,3 +36,6 @@
 	path = lib/implot
 	url = git@github.com:khiner/implot.git
 	branch = master
+[submodule "lib/libgit2"]
+	path = lib/libgit2
+	url = git@github.com:libgit2/libgit2.git

@@ -89,3 +89,20 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
 #=================== tracy ===================
 
 add_subdirectory(tracy)
+
+#=================== libgit ===================
+
+# Ensure that we do not use deprecated functions internally
+add_definitions(-DGIT_DEPRECATE_HARD)
+
+set(BUILD_SHARED_LIBS OFF CACHE STRING "Build Shared Library (OFF for Static)" FORCE)
+set(BUILD_TESTS OFF CACHE STRING "Build Tests using the Clar suite" FORCE)
+set(BUILD_CLI OFF CACHE STRING "Build the command-line interface" FORCE)
+set(BUILD_EXAMPLES OFF CACHE STRING "Build library usage example apps" FORCE)
+set(BUILD_FUZZERS OFF CACHE STRING "Build the fuzz targets" FORCE)
+
+add_subdirectory(libgit2)
+
+#=================== libgit2cpp ===================
+
+# TODO

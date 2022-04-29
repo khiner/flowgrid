@@ -11,6 +11,7 @@ using SystemTime = std::chrono::time_point<std::chrono::system_clock>;
 
 enum Direction { Forward, Reverse };
 
+// TODO use [libgit2cpp](https://github.com/AndreyG/libgit2cpp) for diffs!
 struct ActionDiff {
     json json_diff;
     std::string ini_diff; // string-encoded `diff_match_patch::Patches`

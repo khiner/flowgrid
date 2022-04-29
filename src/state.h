@@ -141,26 +141,32 @@ struct State {
     ActionConsumer action_consumer;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Editor, file_name)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Faust, code, error, editor)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec2, x, y)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImVec4, w, x, y, z)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Dimensions, position, size)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Window, name, visible)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows::StateViewerWindow::Settings, label_mode)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::StateWindows, viewer, memory_editor, path_update_frequency)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows::ImPlotWindows, demo, metrics)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::ImGuiWindows, demo, metrics, implot)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase::FaustWindows, editor, log)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(WindowsBase, controls, state, style_editor, implot_style_editor, imgui, faust)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
+// An exact copy of `NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE`, but with a shorter name.
+// Note: It's probably a good idea to occasionally check the definition in `nlohmann/json.cpp` for any changes.
+#define JSON_TYPE(Type, ...)  \
+    inline void to_json(nlohmann::json& nlohmann_json_j, const Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(NLOHMANN_JSON_TO, __VA_ARGS__)) } \
+    inline void from_json(const nlohmann::json& nlohmann_json_j, Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(NLOHMANN_JSON_FROM, __VA_ARGS__)) }
+
+JSON_TYPE(Editor, file_name)
+JSON_TYPE(Faust, code, error, editor)
+JSON_TYPE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
+JSON_TYPE(ImVec2, x, y)
+JSON_TYPE(ImVec4, w, x, y, z)
+JSON_TYPE(Dimensions, position, size)
+JSON_TYPE(Window, name, visible)
+JSON_TYPE(WindowsBase::StateWindows::StateViewerWindow::Settings, label_mode)
+JSON_TYPE(WindowsBase::StateWindows, viewer, memory_editor, path_update_frequency)
+JSON_TYPE(WindowsBase::ImGuiWindows::ImPlotWindows, demo, metrics)
+JSON_TYPE(WindowsBase::ImGuiWindows, demo, metrics, implot)
+JSON_TYPE(WindowsBase::FaustWindows, editor, log)
+JSON_TYPE(WindowsBase, controls, state, style_editor, implot_style_editor, imgui, faust)
+JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,
     MouseCursorScale, AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen,
+JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen,
     MinorTickLen, MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize,
     PlotMinSize, Colors, Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UiState, running, windows, style, implot_style)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionConsumer, running)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(State, ui, audio, action_consumer);
+JSON_TYPE(UiState, running, windows, style, implot_style)
+JSON_TYPE(ActionConsumer, running)
+JSON_TYPE(State, ui, audio, action_consumer);

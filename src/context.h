@@ -11,15 +11,15 @@ using SystemTime = std::chrono::time_point<std::chrono::system_clock>;
 
 enum Direction { Forward, Reverse };
 
-struct ActionDiff {
+struct StateDiff {
     json json_diff;
     std::string ini_diff; // string-encoded `diff_match_patch::Patches`
 };
 
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
-struct ActionDiffs {
-    ActionDiff forward;
-    ActionDiff reverse;
+struct BidirectionalStateDiff {
+    StateDiff forward;
+    StateDiff reverse;
     SystemTime system_time;
 };
 
@@ -128,7 +128,7 @@ public:
          [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
          and modify to taste.
     */
-    std::vector<ActionDiffs> actions;
+    std::vector<BidirectionalStateDiff> diffs;
     int current_action_index = -1;
     json json_state;
 
@@ -148,11 +148,11 @@ public:
         finalize_gesture();
     }
     bool can_undo() const { return current_action_index >= 0; }
-    bool can_redo() const { return current_action_index < (int) actions.size() - 1; }
+    bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }
 
     void clear_undo() {
         current_action_index = -1;
-        actions.clear();
+        diffs.clear();
     }
 
     // Audio

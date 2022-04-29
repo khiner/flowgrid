@@ -103,11 +103,11 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || state.audio.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-std::ostream &operator<<(std::ostream &os, const ActionDiff &diff) {
+std::ostream &operator<<(std::ostream &os, const StateDiff &diff) {
     return (os << "\tJSON diff:\n" << diff.json_diff << "\n\tINI diff:\n" << diff.ini_diff);
 }
-std::ostream &operator<<(std::ostream &os, const ActionDiffs &diffs) {
-    return (os << "Forward:\n" << diffs.forward << "\nReverse:\n" << diffs.reverse);
+std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
+    return (os << "Forward:\n" << diff.forward << "\nReverse:\n" << diff.reverse);
 }
 
 Context::Context() : json_state(state2json(_state)) {}
@@ -178,7 +178,7 @@ void Context::update(const Action &action) {
 }
 
 void Context::apply_diff(const int action_index, const Direction direction) {
-    const auto &diff = actions[action_index];
+    const auto &diff = diffs[action_index];
     const auto &d = direction == Forward ? diff.forward : diff.reverse;
 
     const auto [new_ini_settings, successes] = dmp.patch_apply(dmp.patch_fromText(d.ini_diff), ini_settings);
@@ -186,6 +186,7 @@ void Context::apply_diff(const int action_index, const Direction direction) {
         throw std::runtime_error("Some ini-settings patches were not successfully applied.\nSettings:\n\t" +
             ini_settings + "\nPatch:\n\t" + d.ini_diff + "\nResult:\n\t" + new_ini_settings);
     }
+
     ini_settings = prev_ini_settings = new_ini_settings;
     json_state = json_state.patch(d.json_diff);
     _state = json2state(json_state);
@@ -203,7 +204,7 @@ void Context::apply_diff(const int action_index, const Direction direction) {
 
 // TODO Implement
 //  ```cpp
-//  std::pair<Diffs, Diffs> {forward_diff, reverse_diff} = json::diff_with_inverse(old_state_json, new_state_json);
+//  std::pair<Diff, Diff> {forward_diff, reverse_diff} = json::bidirectional_diff(old_state_json, new_state_json);
 //  ```
 //  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
 void Context::finalize_gesture() {
@@ -216,21 +217,20 @@ void Context::finalize_gesture() {
     auto ini_settings_patches = dmp.patch_make(old_ini_settings, ini_settings);
 
     if (!json_diff.empty() || !ini_settings_patches.empty()) {
-        while (int(actions.size()) > current_action_index + 1) actions.pop_back();
+        while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
 
         // TODO put diff/patch/text fns in `transformers/bijective`
         auto ini_settings_diff = diff_match_patch<std::string>::patch_toText(ini_settings_patches);
         auto ini_settings_reverse_diff = diff_match_patch<std::string>::patch_toText(dmp.patch_make(ini_settings, old_ini_settings));
-        const ActionDiffs diffs{
+        const BidirectionalStateDiff diff{
             {json_diff, ini_settings_diff},
             {json::diff(json_state, old_json_state), ini_settings_reverse_diff},
             std::chrono::system_clock::now(),
         };
-        actions.emplace_back(diffs);
-        current_action_index = int(actions.size()) - 1;
-        for (auto &diff: json_diff) {
-            state_stats.on_path_update(diff["path"], diffs.system_time, Forward);
+        diffs.emplace_back(diff);
+        current_action_index = int(diffs.size()) - 1;
+        for (auto &jd: json_diff) {
+            state_stats.on_path_update(jd["path"], diff.system_time, Forward);
         }
-        std::cout << "Action #" << actions.size() << ":\nDiffs:\n" << actions.back() << std::endl;
     }
 }

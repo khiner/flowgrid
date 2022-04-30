@@ -20,11 +20,10 @@ struct WindowsBase {
     struct ImGuiWindows {
         struct ImPlotWindows {
             Window demo{"ImPlot Demo"};
-            Window metrics{"ImPlot Metrics"};
         };
 
         Window demo{"Dear ImGui Demo"};
-        Window metrics{"Dear ImGui Metrics/Debugger"};
+        Window metrics{"Metrics"};
         ImPlotWindows implot{};
     };
     struct FaustWindows {
@@ -77,10 +76,10 @@ struct Windows : public WindowsBase {
     }
 
     std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
-                                                    imgui.implot.metrics, faust.editor, faust.log};
+                                                    faust.editor, faust.log};
 
     std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
-                                                                imgui.implot.metrics, faust.editor, faust.log};
+                                                                faust.editor, faust.log};
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
@@ -155,7 +154,7 @@ JSON_TYPE(Dimensions, position, size)
 JSON_TYPE(Window, name, visible)
 JSON_TYPE(WindowsBase::StateWindows::StateViewerWindow::Settings, label_mode)
 JSON_TYPE(WindowsBase::StateWindows, viewer, memory_editor, path_update_frequency)
-JSON_TYPE(WindowsBase::ImGuiWindows::ImPlotWindows, demo, metrics)
+JSON_TYPE(WindowsBase::ImGuiWindows::ImPlotWindows, demo)
 JSON_TYPE(WindowsBase::ImGuiWindows, demo, metrics, implot)
 JSON_TYPE(WindowsBase::FaustWindows, editor, log)
 JSON_TYPE(WindowsBase, controls, state, style_editor, imgui, faust)

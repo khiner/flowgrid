@@ -364,7 +364,6 @@ void StyleEditor::draw(Window &) {
             if (drawImGui()) q.enqueue(set_style{ui_s.ui.style});
             ImGui::EndTabItem();
         }
-
         if (ImGui::BeginTabItem("ImPlot")) {
             if (drawImPlot()) {
                 ImPlot::BustItemCache();

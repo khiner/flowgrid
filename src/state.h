@@ -18,8 +18,8 @@ struct Window {
 // Derived fields and convenience methods are in `Windows`
 struct WindowsBase {
     struct FaustWindows {
-        Window editor{"Faust Editor"};
-        Window log{"Faust Log"};
+        Window editor{"Faust editor"};
+        Window log{"Faust log"};
     };
     struct StateWindows {
         struct StateViewerWindow : public Window {
@@ -31,14 +31,14 @@ struct WindowsBase {
             Settings settings{};
         };
 
-        StateViewerWindow viewer{{"State Viewer"}};
-        Window memory_editor{"State Memory Editor"};
-        Window path_update_frequency{"Path Update Frequency"};
+        StateViewerWindow viewer{{"State viewer"}};
+        Window memory_editor{"State memory editor"};
+        Window path_update_frequency{"Path update frequency"};
     };
 
     StateWindows state{};
     Window controls{"Controls"};
-    Window style_editor{"Style Editor"};
+    Window style_editor{"Style editor"};
     Window demos{"Demos"};
     Window metrics{"Metrics"};
     FaustWindows faust{};

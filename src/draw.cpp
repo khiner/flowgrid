@@ -210,10 +210,10 @@ void draw_frame() {
                 StatefulImGui::WindowToggleMenuItem(windows.state.viewer.name);
                 StatefulImGui::WindowToggleMenuItem(windows.state.memory_editor.name);
                 StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency.name);
-                StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("ImGui")) {
+            if (ImGui::BeginMenu("ImGui/ImPlot")) {
+                StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
                 StatefulImGui::WindowToggleMenuItem(windows.demos.name);
                 StatefulImGui::WindowToggleMenuItem(windows.metrics.name);
                 ImGui::EndMenu();
@@ -233,8 +233,8 @@ void draw_frame() {
     draw_window(w.state.memory_editor.name, state_memory_editor, ImGuiWindowFlags_NoScrollbar);
     draw_window(w.state.viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
     draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
-    draw_window(w.style_editor.name, style_editor);
 
+    draw_window(w.style_editor.name, style_editor);
     draw_window(w.demos.name, demos, ImGuiWindowFlags_MenuBar);
     draw_window(w.metrics.name, metrics);
 

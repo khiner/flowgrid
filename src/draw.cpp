@@ -139,9 +139,8 @@ StateWindows::MemoryEditorWindow state_memory_editor{};
 StateWindows::StatePathUpdateFrequency state_path_update_frequency{};
 FaustEditor faust_editor{};
 FaustLog faust_log{};
-ImGuiWindows::Demo imgui_demo{};
-ImGuiWindows::Metrics imgui_metrics{};
-ImGuiWindows::ImPlotWindows::Demo implot_demo{};
+Demos demos{};
+Metrics metrics{};
 
 bool open = true;
 
@@ -189,9 +188,8 @@ void draw_frame() {
         dock_window(w.faust.log.name, faust_log_window_id);
 
         dock_window(w.style_editor.name, imgui_windows_id);
-        dock_window(w.imgui.demo.name, imgui_windows_id);
-        dock_window(w.imgui.implot.demo.name, imgui_windows_id);
-        dock_window(w.imgui.metrics.name, imgui_windows_id);
+        dock_window(w.demos.name, imgui_windows_id);
+        dock_window(w.metrics.name, imgui_windows_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -216,9 +214,8 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("ImGui")) {
-                StatefulImGui::WindowToggleMenuItem(windows.imgui.demo.name);
-                StatefulImGui::WindowToggleMenuItem(windows.imgui.metrics.name);
-                StatefulImGui::WindowToggleMenuItem(windows.imgui.implot.demo.name);
+                StatefulImGui::WindowToggleMenuItem(windows.demos.name);
+                StatefulImGui::WindowToggleMenuItem(windows.metrics.name);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Faust")) {
@@ -238,9 +235,8 @@ void draw_frame() {
     draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
     draw_window(w.style_editor.name, style_editor);
 
-    draw_window(w.imgui.demo.name, imgui_demo, ImGuiWindowFlags_None, false);
-    draw_window(w.imgui.implot.demo.name, implot_demo, ImGuiWindowFlags_None, false);
-    draw_window(w.imgui.metrics.name, imgui_metrics);
+    draw_window(w.demos.name, demos, ImGuiWindowFlags_MenuBar);
+    draw_window(w.metrics.name, metrics);
 
     draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
     draw_window(w.faust.log.name, faust_log);

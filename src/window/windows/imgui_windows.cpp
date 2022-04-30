@@ -2,15 +2,21 @@
 #include "imgui.h"
 #include "implot.h"
 
-void ImGuiWindows::Demo::draw(Window &window) {
-    ImGui::ShowDemoWindow(&window.visible);
+void Demos::draw(Window &) {
+    if (ImGui::BeginTabBar("##tabs")) {
+        if (ImGui::BeginTabItem("ImGui")) {
+            ImGui::ShowDemo();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("ImPlot")) {
+            ImPlot::ShowDemo();
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
 }
 
-void ImGuiWindows::ImPlotWindows::Demo::draw(Window &window) {
-    ImPlot::ShowDemoWindow(&window.visible);
-}
-
-void ImGuiWindows::Metrics::draw(Window &) {
+void Metrics::draw(Window &) {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowMetrics();

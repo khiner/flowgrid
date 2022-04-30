@@ -17,15 +17,6 @@ struct Window {
 // `WindowsBase` contains only data members.
 // Derived fields and convenience methods are in `Windows`
 struct WindowsBase {
-    struct ImGuiWindows {
-        struct ImPlotWindows {
-            Window demo{"ImPlot Demo"};
-        };
-
-        Window demo{"Dear ImGui Demo"};
-        Window metrics{"Metrics"};
-        ImPlotWindows implot{};
-    };
     struct FaustWindows {
         Window editor{"Faust Editor"};
         Window log{"Faust Log"};
@@ -48,7 +39,8 @@ struct WindowsBase {
     StateWindows state{};
     Window controls{"Controls"};
     Window style_editor{"Style Editor"};
-    ImGuiWindows imgui{};
+    Window demos{"Demos"};
+    Window metrics{"Metrics"};
     FaustWindows faust{};
 };
 
@@ -75,11 +67,8 @@ struct Windows : public WindowsBase {
         throw std::invalid_argument(name);
     }
 
-    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
-                                                    faust.editor, faust.log};
-
-    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, imgui.demo, imgui.metrics, imgui.implot.demo,
-                                                                faust.editor, faust.log};
+    std::vector<std::reference_wrapper<Window>> all{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, demos, metrics, faust.editor, faust.log};
+    std::vector<std::reference_wrapper<const Window>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, demos, metrics, faust.editor, faust.log};
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
@@ -154,10 +143,8 @@ JSON_TYPE(Dimensions, position, size)
 JSON_TYPE(Window, name, visible)
 JSON_TYPE(WindowsBase::StateWindows::StateViewerWindow::Settings, label_mode)
 JSON_TYPE(WindowsBase::StateWindows, viewer, memory_editor, path_update_frequency)
-JSON_TYPE(WindowsBase::ImGuiWindows::ImPlotWindows, demo)
-JSON_TYPE(WindowsBase::ImGuiWindows, demo, metrics, implot)
 JSON_TYPE(WindowsBase::FaustWindows, editor, log)
-JSON_TYPE(WindowsBase, controls, state, style_editor, imgui, faust)
+JSON_TYPE(WindowsBase, controls, state, style_editor, demos, metrics, faust)
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize,
     PopupRounding, PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding,
     GrabMinSize, GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding,

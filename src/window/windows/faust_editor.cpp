@@ -361,7 +361,7 @@ static const std::string openFileDialogKey = "ChooseFileDlgKey";
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
  *     (and right navigation should move from the end)
  */
-void FaustEditor::draw(Window &) {
+void FaustEditor::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) {
@@ -427,7 +427,7 @@ void FaustEditor::destroy() {
     zep.reset();
 }
 
-void FaustLog::draw(Window &) {
+void FaustLog::draw() {
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();

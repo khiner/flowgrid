@@ -6,6 +6,27 @@ void dock_window(const std::string &name, ImGuiID node_id) {
     ImGui::DockBuilderDockWindow(name.c_str(), node_id);
 }
 
+// TODO move `wrap_draw_in_window` into a new `StatefulImGuiWindowFlags : ImGuiWindowFlags` type
+void draw_window(const std::string &name, Window &window, ImGuiWindowFlags flags, bool wrap_draw_in_window) {
+    const auto &w = s.ui.windows.named(name);
+    auto &_w = ui_s.ui.windows.named(name);
+    if (w.visible != _w.visible) q.enqueue(toggle_window{_w.name});
+    if (!_w.visible) return;
+
+    if (wrap_draw_in_window) {
+        if (!ImGui::Begin(w.name.c_str(), &_w.visible, flags)) {
+            ImGui::End();
+            return;
+        }
+    } else {
+        if (!_w.visible) return;
+    }
+
+    window.draw();
+
+    if (wrap_draw_in_window) ImGui::End();
+}
+
 void gestured() {
     if (ImGui::IsItemActivated()) c.start_gesture();
     if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();

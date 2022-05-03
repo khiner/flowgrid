@@ -2,7 +2,7 @@
 #include "imgui.h"
 #include "implot.h"
 
-void Demos::draw(Window &) {
+void Demos::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowDemo();
@@ -16,7 +16,7 @@ void Demos::draw(Window &) {
     }
 }
 
-void Metrics::draw(Window &) {
+void Metrics::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowMetrics();

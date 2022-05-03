@@ -5,7 +5,7 @@
 #include "implot.h"
 #include "imgui_memory_editor.h"
 
-using Settings = WindowsBase::StateWindows::StateViewerWindow::Settings;
+using Settings = WindowsData::StateWindows::StateViewerWindow::Settings;
 using LabelMode = Settings::LabelMode;
 
 bool HighlightedTreeNode(const char *label, bool is_highlighted = false) {
@@ -45,7 +45,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
     }
 }
 
-void StateWindows::MemoryEditorWindow::draw(Window &) {
+void StateWindows::MemoryEditorWindow::draw() {
     static MemoryEditor memory_editor;
     static bool first_render{true};
     if (first_render) {
@@ -58,7 +58,7 @@ void StateWindows::MemoryEditorWindow::draw(Window &) {
     memory_editor.DrawContents(mem_data, mem_size);
 }
 
-void StateWindows::StatePathUpdateFrequency::draw(Window &) {
+void StateWindows::StatePathUpdateFrequency::draw() {
     if (c.state_stats.update_times_for_state_path.empty()) {
         ImGui::Text("No state updates yet.");
         return;
@@ -85,7 +85,7 @@ static const std::string label_help = "The raw JSON state doesn't store keys for
                                       "'Annotated' mode shows (highlighted) labels for such state items.\n"
                                       "'Raw' mode shows the state exactly as it is in the raw JSON state.";
 
-void StateWindows::StateViewer::draw(Window &) {
+void StateWindows::StateViewer::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Settings")) {
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {

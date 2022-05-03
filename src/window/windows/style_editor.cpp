@@ -358,8 +358,7 @@ bool drawImPlot() {
     return changed;
 }
 
-//    ImGui::ShowStyleEditor(&ui_s.ui.style);
-void StyleEditor::draw(Window &) {
+void StyleEditor::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             if (drawImGui()) q.enqueue(set_imgui_style{ui_s.ui.style.imgui});

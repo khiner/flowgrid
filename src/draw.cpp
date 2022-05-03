@@ -12,27 +12,6 @@
 #include "stateful_imgui.h"
 #include "window/windows/faust_editor.h"
 
-// TODO move `wrap_draw_in_window` into a new `StatefulImGuiWindowFlags : ImGuiWindowFlags` type
-void draw_window(Window &window, ImGuiWindowFlags flags, bool wrap_draw_in_window) {
-    const std::string &name = window.name;
-    const auto &w = s.ui.windows.named(name);
-    if (w.visible != window.visible) q.enqueue(toggle_window{name});
-    if (!window.visible) return;
-
-    if (wrap_draw_in_window) {
-        if (!ImGui::Begin(name.c_str(), &window.visible, flags)) {
-            ImGui::End();
-            return;
-        }
-    } else {
-        if (!window.visible) return;
-    }
-
-    window.draw();
-
-    if (wrap_draw_in_window) ImGui::End();
-}
-
 struct DrawContext {
     SDL_Window *window = nullptr;
     SDL_GLContext gl_context{};
@@ -241,19 +220,7 @@ void draw_frame() {
     }
 
     auto &w = ui_s.ui.windows;
-
-    draw_window(w.controls);
-
-    draw_window(w.state.memory_editor, ImGuiWindowFlags_NoScrollbar);
-    draw_window(w.state.viewer, ImGuiWindowFlags_MenuBar);
-    draw_window(w.state.path_update_frequency, ImGuiWindowFlags_None);
-
-    draw_window(w.style_editor);
-    draw_window(w.demos, ImGuiWindowFlags_MenuBar);
-    draw_window(w.metrics);
-
-    draw_window(w.faust.editor, ImGuiWindowFlags_MenuBar);
-    draw_window(w.faust.log);
+    w.draw();
 
     ImGui::End();
 }

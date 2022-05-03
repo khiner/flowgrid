@@ -133,9 +133,7 @@ struct WindowsData {
     Faust faust{};
 };
 
-void draw_window(Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None, bool wrap_draw_in_window = true);
-
-struct Windows : public WindowsData {
+struct Windows : public WindowsData, Drawable {
     Windows() = default;
     // Don't copy/assign references!
     explicit Windows(const WindowsData &other) : WindowsData(other) {}
@@ -144,6 +142,8 @@ struct Windows : public WindowsData {
         WindowsData::operator=(other);
         return *this;
     }
+
+    void draw() override;
 
     WindowData &named(const std::string &name) {
         for (auto &window: all) {
@@ -179,7 +179,6 @@ enum AudioBackend {
 
 struct Audio {
     AudioBackend backend = none;
-    Windows::Faust faust;
     char *in_device_id = nullptr;
     char *out_device_id = nullptr;
     bool running = true;
@@ -215,8 +214,7 @@ JSON_TYPE(WindowsData::StateWindows, viewer, memory_editor, path_update_frequenc
 JSON_TYPE(WindowsData::Faust::Editor, file_name)
 JSON_TYPE(WindowsData::Faust, code, error, editor, log)
 JSON_TYPE(WindowsData, controls, state, style_editor, demos, metrics, faust)
-JSON_TYPE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
-
+JSON_TYPE(Audio, running, muted, backend, latency, sample_rate, out_raw)
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
     LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale, AntiAliasedLines,

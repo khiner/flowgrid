@@ -54,7 +54,7 @@ struct FaustContext {
 
         for (int i = 0; i < argc; i++) argv[i] = nullptr;
 
-        if (dsp_factory && c._state.audio.faust.error.empty()) {
+        if (dsp_factory && s.ui.windows.faust.error.empty()) {
             dsp = dsp_factory->createDSPInstance();
             dsp->init(sample_rate);
         }
@@ -152,9 +152,9 @@ void Context::update(const Action &action) {
 
             // Audio
             [&](const set_faust_code &a) {
-                _s.audio.faust.code = a.text;
+                c._state.ui.windows.faust.code = a.text;
 
-                faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.sample_rate, _s.audio.faust.error);
+                faust = std::make_unique<FaustContext>(s.ui.windows.faust.code, s.audio.sample_rate, _s.ui.windows.faust.error);
                 if (faust->dsp) {
                     StatefulFaustUI faust_ui;
                     faust->dsp->buildUserInterface(&faust_ui);

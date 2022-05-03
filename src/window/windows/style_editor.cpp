@@ -1,8 +1,6 @@
-#include "../windows.h"
-
-#include "../../imgui_helpers.h"
 #include "../../context.h"
 #include "../../stateful_imgui.h"
+#include "../../imgui_helpers.h"
 
 #include "imgui_internal.h"
 #include "implot.h"
@@ -27,7 +25,7 @@ bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {
 }
 
 // Returns `true` if style changes.
-bool drawImGui() {
+bool Windows::StyleEditor::drawImGui() {
     bool changed = false;
     auto &style = ui_s.ui.style.imgui;
 
@@ -257,8 +255,7 @@ bool ShowImPlotStyleSelector(const char *label, ImPlotStyle *dst) {
     return false;
 }
 
-// Returns `true` if style changes.
-bool drawImPlot() {
+bool Windows::StyleEditor::drawImPlot() {
     bool changed = false;
     auto &style = ui_s.ui.style.implot;
 
@@ -358,7 +355,7 @@ bool drawImPlot() {
     return changed;
 }
 
-void StyleEditor::draw() {
+void Windows::StyleEditor::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             if (drawImGui()) q.enqueue(set_imgui_style{ui_s.ui.style.imgui});

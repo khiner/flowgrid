@@ -10,7 +10,28 @@
 #include "draw.h"
 #include "context.h"
 #include "stateful_imgui.h"
-#include "window/windows.h"
+#include "window/windows/faust_editor.h"
+
+// TODO move `wrap_draw_in_window` into a new `StatefulImGuiWindowFlags : ImGuiWindowFlags` type
+void draw_window(Window &window, ImGuiWindowFlags flags, bool wrap_draw_in_window) {
+    const std::string &name = window.name;
+    const auto &w = s.ui.windows.named(name);
+    if (w.visible != window.visible) q.enqueue(toggle_window{name});
+    if (!window.visible) return;
+
+    if (wrap_draw_in_window) {
+        if (!ImGui::Begin(name.c_str(), &window.visible, flags)) {
+            ImGui::End();
+            return;
+        }
+    } else {
+        if (!window.visible) return;
+    }
+
+    window.draw();
+
+    if (wrap_draw_in_window) ImGui::End();
+}
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -132,16 +153,6 @@ void render(DrawContext &dc) {
     SDL_GL_SwapWindow(dc.window);
 }
 
-Controls controls{};
-StyleEditor style_editor{};
-StateWindows::StateViewer state_viewer{};
-StateWindows::MemoryEditorWindow state_memory_editor{};
-StateWindows::StatePathUpdateFrequency state_path_update_frequency{};
-FaustEditor faust_editor{};
-FaustLog faust_log{};
-Demos demos{};
-Metrics metrics{};
-
 bool open = true;
 
 // TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
@@ -163,7 +174,6 @@ void draw_frame() {
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
     ImGui::PopStyleVar(3);
 
-    const auto &w = s.ui.windows;
     auto dockspace_id = ImGui::GetID("DockSpace");
     if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
         ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
@@ -177,6 +187,8 @@ void draw_frame() {
         auto state_path_update_frequency_id = ImGui::DockBuilderSplitNode(state_memory_editor_id, ImGuiDir_Down, 0.4f, nullptr, &state_memory_editor_id);
         auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
+
+        const auto &w = s.ui.windows;
 
         dock_window(w.controls.name, controls_id);
 
@@ -228,18 +240,20 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    draw_window(w.controls.name, controls);
+    auto &w = ui_s.ui.windows;
 
-    draw_window(w.state.memory_editor.name, state_memory_editor, ImGuiWindowFlags_NoScrollbar);
-    draw_window(w.state.viewer.name, state_viewer, ImGuiWindowFlags_MenuBar);
-    draw_window(w.state.path_update_frequency.name, state_path_update_frequency, ImGuiWindowFlags_None);
+    draw_window(w.controls);
 
-    draw_window(w.style_editor.name, style_editor);
-    draw_window(w.demos.name, demos, ImGuiWindowFlags_MenuBar);
-    draw_window(w.metrics.name, metrics);
+    draw_window(w.state.memory_editor, ImGuiWindowFlags_NoScrollbar);
+    draw_window(w.state.viewer, ImGuiWindowFlags_MenuBar);
+    draw_window(w.state.path_update_frequency, ImGuiWindowFlags_None);
 
-    draw_window(w.faust.editor.name, faust_editor, ImGuiWindowFlags_MenuBar);
-    draw_window(w.faust.log.name, faust_log);
+    draw_window(w.style_editor);
+    draw_window(w.demos, ImGuiWindowFlags_MenuBar);
+    draw_window(w.metrics);
+
+    draw_window(w.faust.editor, ImGuiWindowFlags_MenuBar);
+    draw_window(w.faust.log);
 
     ImGui::End();
 }
@@ -328,7 +342,7 @@ int draw() {
         FrameMark
     }
 
-    faust_editor.destroy();
+    destroy_faust_editor();
     teardown(dc);
 
     return 0;

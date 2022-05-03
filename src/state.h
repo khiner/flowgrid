@@ -14,7 +14,7 @@
  * **State clients, such as the UI, can and do freely use this single, global, low-latency `ui_s` instance as the de-facto mutable copy of the source-of-truth `s`.**
  * For example, the UI passes (nested) `ui_s` members to ImGui widgets as direct value references.
  *
- * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
+  * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
  *   but expensive-to-compute derivations of their core (minimal but complete) data members.
  *  Many `{Stateful}` structs also implement convenience methods for complex state updates across multiple fields,
  *    or for generating less-frequently needed derived data.
@@ -33,22 +33,51 @@ struct WindowData {
     bool visible{true};
 };
 
-struct Window : WindowData {
-    Window() = default;
-    // Don't copy/assign references!
-    Window(const Window &other) : WindowData(other) {}
-
+struct Drawable {
     virtual void draw() = 0;
-    virtual void destroy() {};
+};
+
+struct Window : WindowData, Drawable {
+    Window() = default;
 };
 
 struct WindowsData {
-    struct FaustWindows {
-        WindowData editor{"Faust editor"};
-        WindowData log{"Faust log"};
+    struct Faust {
+        struct Editor : public Window {
+            Editor() : file_name{"default.dsp"} { name = "Faust editor"; }
+            void draw() override;
+
+            std::string file_name;
+        };
+
+        // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
+        // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
+        struct Log : public Window {
+            Log() { name = "Faust log"; }
+            void draw() override;
+        };
+
+        Editor editor{};
+        Log log{};
+
+        //    std::string code{"import(\"stdfaust.lib\");\n\n"
+//                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
+//                     "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
+//                     "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
+//                     "    hslider(\"shift (semitones) \", 0, -24, +24, 0.1)\n"
+//                     "  )\n"
+//                     ");\n"
+//                     "\n"
+//                     "process = no.noise : pitchshifter;\n"};
+        std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+        std::string error{};
     };
+
     struct StateWindows {
-        struct StateViewerWindow : public WindowData {
+        struct StateViewer : public Window {
+            StateViewer() { name = "State viewer"; }
+            void draw() override;
+
             struct Settings {
                 enum LabelMode { annotated, raw };
                 LabelMode label_mode{annotated};
@@ -56,19 +85,55 @@ struct WindowsData {
 
             Settings settings{};
         };
+        struct StatePathUpdateFrequency : public Window {
+            StatePathUpdateFrequency() { name = "State memory editor"; }
+            void draw() override;
+        };
 
-        StateViewerWindow viewer{{"State viewer"}};
-        WindowData memory_editor{"State memory editor"};
-        WindowData path_update_frequency{"Path update frequency"};
+        struct MemoryEditorWindow : public Window {
+            MemoryEditorWindow() { name = "Path update frequency"; }
+            void draw() override;
+        };
+
+        StateViewer viewer{};
+        MemoryEditorWindow memory_editor{};
+        StatePathUpdateFrequency path_update_frequency{};
+    };
+
+    struct Controls : public Window {
+        Controls() { name = "Controls"; }
+        void draw() override;
+    };
+
+    struct StyleEditor : public Window {
+        StyleEditor() { name = "Style editor"; }
+        void draw() override;
+
+    private:
+        // draw methods return `true` if style changes.
+        bool drawImGui();
+        bool drawImPlot();
+    };
+
+    struct Demos : public Window {
+        Demos() { name = "Demos"; }
+        void draw() override;
+    };
+
+    struct Metrics : public Window {
+        Metrics() { name = "Metrics"; }
+        void draw() override;
     };
 
     StateWindows state{};
-    WindowData controls{"Controls"};
-    WindowData style_editor{"Style editor"};
-    WindowData demos{"Demos"};
-    WindowData metrics{"Metrics"};
-    FaustWindows faust{};
+    Controls controls{};
+    StyleEditor style_editor{};
+    Demos demos{};
+    Metrics metrics{};
+    Faust faust{};
 };
+
+void draw_window(Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None, bool wrap_draw_in_window = true);
 
 struct Windows : public WindowsData {
     Windows() = default;
@@ -112,32 +177,9 @@ enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
 
-struct Editor {
-    std::string file_name;
-};
-
-struct Faust {
-//    std::string code{"import(\"stdfaust.lib\");\n\n"
-//                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
-//                     "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
-//                     "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
-//                     "    hslider(\"shift (semitones) \", 0, -24, +24, 0.1)\n"
-//                     "  )\n"
-//                     ");\n"
-//                     "\n"
-//                     "process = no.noise : pitchshifter;\n"};
-    std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
-    std::string error{};
-    Editor editor{"default.dsp"};
-
-    // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
-    // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
-
-};
-
 struct Audio {
     AudioBackend backend = none;
-    Faust faust;
+    Windows::Faust faust;
     char *in_device_id = nullptr;
     char *out_device_id = nullptr;
     bool running = true;
@@ -164,17 +206,17 @@ struct State {
     inline void to_json(nlohmann::json& nlohmann_json_j, const Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(NLOHMANN_JSON_TO, __VA_ARGS__)) } \
     inline void from_json(const nlohmann::json& nlohmann_json_j, Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(NLOHMANN_JSON_FROM, __VA_ARGS__)) }
 
-JSON_TYPE(Editor, file_name)
-JSON_TYPE(Faust, code, error, editor)
-JSON_TYPE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
 JSON_TYPE(ImVec2, x, y)
 JSON_TYPE(ImVec4, w, x, y, z)
 JSON_TYPE(Dimensions, position, size)
 JSON_TYPE(WindowData, name, visible)
-JSON_TYPE(WindowsData::StateWindows::StateViewerWindow::Settings, label_mode)
+JSON_TYPE(WindowsData::StateWindows::StateViewer::Settings, label_mode)
 JSON_TYPE(WindowsData::StateWindows, viewer, memory_editor, path_update_frequency)
-JSON_TYPE(WindowsData::FaustWindows, editor, log)
+JSON_TYPE(WindowsData::Faust::Editor, file_name)
+JSON_TYPE(WindowsData::Faust, code, error, editor, log)
 JSON_TYPE(WindowsData, controls, state, style_editor, demos, metrics, faust)
+JSON_TYPE(Audio, running, muted, backend, latency, sample_rate, out_raw, faust)
+
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
     LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale, AntiAliasedLines,

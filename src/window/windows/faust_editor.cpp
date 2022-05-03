@@ -1,4 +1,4 @@
-#include "../windows.h"
+#include "faust_editor.h"
 #include "../../context.h"
 
 #include "ImGuiFileDialog.h"
@@ -310,19 +310,19 @@ struct ZepWrapper : public ZepComponent, public IZepReplProvider {
 };
 
 std::unique_ptr<ZepWrapper> zep;
-std::unique_ptr<ZepEditor_ImGui> editor;
+std::unique_ptr<ZepEditor_ImGui> zep_editor;
 
 void zep_init() {
-    editor = std::make_unique<ZepEditor_ImGui>(ZepPath(config.app_root));
-    zep = std::make_unique<ZepWrapper>(*editor);
+    zep_editor = std::make_unique<ZepEditor_ImGui>(ZepPath(config.app_root));
+    zep = std::make_unique<ZepWrapper>(*zep_editor);
 
-    auto *display = editor->display;
+    auto *display = zep_editor->display;
     display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.0));
     display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.0));
     display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.5));
     display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.25));
     display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.125));
-    editor->InitWithText(s.audio.faust.editor.file_name, ui_s.audio.faust.code);
+    zep_editor->InitWithText(s.audio.faust.editor.file_name, ui_s.audio.faust.code);
 }
 
 void zep_draw() {
@@ -335,15 +335,15 @@ void zep_draw() {
     const auto &pos = ImGui::GetWindowPos();
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
-    editor->SetDisplayRegion({
+    zep_editor->SetDisplayRegion({
         {top_left.x + pos.x,     top_left.y + pos.y},
         {bottom_right.x + pos.x, bottom_right.y + pos.y}
     });
 
     //    editor->RefreshRequired(); // TODO Save battery by skipping display if not required.
-    editor->Display();
-    if (ImGui::IsWindowFocused()) editor->HandleInput();
-    else editor->ResetCursorTimer();
+    zep_editor->Display();
+    if (ImGui::IsWindowFocused()) zep_editor->HandleInput();
+    else zep_editor->ResetCursorTimer();
 
     // TODO this is not the usual immediate-mode case. Only set text if an undo/redo has changed the text
     //  Really what I want is for an application undo/redo containing code text changes to do exactly what
@@ -361,7 +361,7 @@ static const std::string openFileDialogKey = "ChooseFileDlgKey";
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
  *     (and right navigation should move from the end)
  */
-void FaustEditor::draw() {
+void Windows::Faust::Editor::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) {
@@ -372,25 +372,25 @@ void FaustEditor::draw() {
 
         if (ImGui::BeginMenu("Settings")) {
             if (ImGui::BeginMenu("Editor mode")) {
-                const auto *buffer = editor->activeTabWindow->GetActiveWindow()->buffer;
+                const auto *buffer = zep_editor->activeTabWindow->GetActiveWindow()->buffer;
                 bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
                 if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
-                    editor->SetGlobalMode(ZepMode_Vim::StaticName());
+                    zep_editor->SetGlobalMode(ZepMode_Vim::StaticName());
                 } else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal)) {
-                    editor->SetGlobalMode(ZepMode_Standard::StaticName());
+                    zep_editor->SetGlobalMode(ZepMode_Standard::StaticName());
                 }
                 ImGui::EndMenu();
             }
 
             if (ImGui::BeginMenu("Theme")) {
-                bool enabledDark = editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
+                bool enabledDark = zep_editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
                 bool enabledLight = !enabledDark;
 
                 if (ImGui::MenuItem("Dark", "", &enabledDark)) {
-                    editor->theme->SetThemeType(ThemeType::Dark);
+                    zep_editor->theme->SetThemeType(ThemeType::Dark);
                 } else if (ImGui::MenuItem("Light", "", &enabledLight)) {
-                    editor->theme->SetThemeType(ThemeType::Light);
+                    zep_editor->theme->SetThemeType(ThemeType::Light);
                 }
                 ImGui::EndMenu();
             }
@@ -398,7 +398,7 @@ void FaustEditor::draw() {
         }
 
         if (ImGui::BeginMenu("Window")) {
-            auto *tabWindow = editor->activeTabWindow;
+            auto *tabWindow = zep_editor->activeTabWindow;
             if (ImGui::MenuItem("Horizontal split")) {
                 tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
             } else if (ImGui::MenuItem("Vertical split")) {
@@ -412,8 +412,8 @@ void FaustEditor::draw() {
         if (ImGuiFileDialog::Instance()->Display(openFileDialogKey)) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                auto buffer = editor->GetFileBuffer(filePathName);
-                editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
+                auto buffer = zep_editor->GetFileBuffer(filePathName);
+                zep_editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
             }
 
             ImGuiFileDialog::Instance()->Close();
@@ -423,12 +423,12 @@ void FaustEditor::draw() {
     zep_draw();
 }
 
-void FaustEditor::destroy() {
-    zep.reset();
-}
-
-void FaustLog::draw() {
+void Windows::Faust::Log::draw() {
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();
+}
+
+void destroy_faust_editor() {
+    zep.reset();
 }

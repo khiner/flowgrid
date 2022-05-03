@@ -1,8 +1,9 @@
-#include "../windows.h"
+#include "../../state.h"
+
 #include "imgui.h"
 #include "implot.h"
 
-void Demos::draw() {
+void Windows::Demos::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowDemo();
@@ -16,7 +17,7 @@ void Demos::draw() {
     }
 }
 
-void Metrics::draw() {
+void Windows::Metrics::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowMetrics();

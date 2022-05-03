@@ -10,7 +10,7 @@
 #include "draw.h"
 #include "context.h"
 #include "stateful_imgui.h"
-#include "window/windows/faust_editor.h"
+#include "windows/faust_editor.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;

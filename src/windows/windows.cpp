@@ -1,4 +1,4 @@
-#include "../../context.h"
+#include "../context.h"
 
 // TODO move `wrap_draw_in_window` into a new `StatefulImGuiWindowFlags : ImGuiWindowFlags` type
 void draw_window(Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None, bool wrap_draw_in_window = true) {

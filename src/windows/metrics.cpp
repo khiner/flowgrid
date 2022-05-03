@@ -1,16 +1,15 @@
-#include "../../state.h"
+#include "../state.h"
 
 #include "imgui.h"
-#include "implot.h"
 
-void Windows::Demos::draw() {
+void Windows::Metrics::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
-            ImGui::ShowDemo();
+            ImGui::ShowMetrics();
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImPlot")) {
-            ImPlot::ShowDemo();
+            ImPlot::ShowMetrics();
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

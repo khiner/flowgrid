@@ -1,5 +1,5 @@
 #include "faust_editor.h"
-#include "../../context.h"
+#include "../context.h"
 
 #include "ImGuiFileDialog.h"
 

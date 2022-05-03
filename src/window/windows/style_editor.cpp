@@ -26,9 +26,10 @@ bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {
     return false;
 }
 
+// Returns `true` if style changes.
 bool drawImGui() {
     bool changed = false;
-    auto &style = ui_s.ui.style;
+    auto &style = ui_s.ui.style.imgui;
 
     changed |= ShowStyleSelector("Colors##Selector", &style);
 //    ImGui::ShowFontSelector("Fonts##Selector"); // TODO
@@ -256,11 +257,11 @@ bool ShowImPlotStyleSelector(const char *label, ImPlotStyle *dst) {
     return false;
 }
 
-
+// Returns `true` if style changes.
 bool drawImPlot() {
     bool changed = false;
+    auto &style = ui_s.ui.style.implot;
 
-    auto &style = ui_s.ui.implot_style;
     changed |= ShowImPlotStyleSelector("Colors##Selector", &style);
 
     if (ImGui::BeginTabBar("##ImPlotStyleEditor")) {
@@ -361,13 +362,13 @@ bool drawImPlot() {
 void StyleEditor::draw(Window &) {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
-            if (drawImGui()) q.enqueue(set_style{ui_s.ui.style});
+            if (drawImGui()) q.enqueue(set_imgui_style{ui_s.ui.style.imgui});
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImPlot")) {
             if (drawImPlot()) {
                 ImPlot::BustItemCache();
-                q.enqueue(set_implot_style{ui_s.ui.implot_style});
+                q.enqueue(set_implot_style{ui_s.ui.style.implot});
             }
             ImGui::EndTabItem();
         }

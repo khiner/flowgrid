@@ -297,8 +297,8 @@ int draw() {
         }
 
         // Load style
-        ui_context.imgui_context->Style = ui_s.ui.style;
-        ui_context.implot_context->Style = ui_s.ui.implot_style;
+        ui_context.imgui_context->Style = ui_s.ui.style.imgui;
+        ui_context.implot_context->Style = ui_s.ui.style.implot;
 
         // TODO holding these keys down for super-fast undo/redo is not very stable (lost events?)
         if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q.enqueue(undo{});

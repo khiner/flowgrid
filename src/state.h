@@ -72,10 +72,13 @@ struct Windows : public WindowsBase {
 };
 
 struct UiState { // Avoid name-clash with faust's `UI` class
+    struct Style {
+        ImGuiStyle imgui;
+        ImPlotStyle implot;
+    };
     bool running = true;
     Windows windows;
-    ImGuiStyle style;
-    ImPlotStyle implot_style;
+    Style style;
 };
 
 enum AudioBackend {
@@ -152,6 +155,7 @@ JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, Windo
 JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen,
     MinorTickLen, MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize,
     PlotMinSize, Colors, Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
-JSON_TYPE(UiState, running, windows, style, implot_style)
+JSON_TYPE(UiState::Style, imgui, implot)
+JSON_TYPE(UiState, running, windows, style)
 JSON_TYPE(ActionConsumer, running)
 JSON_TYPE(State, ui, audio, action_consumer);

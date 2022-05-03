@@ -135,8 +135,8 @@ void Context::update(const Action &action) {
     std::visit(
         visitor{
             [&](const set_ini_settings &a) { c.ini_settings = a.settings; },
-            [&](const set_style &a) { _s.ui.style = a.style; },
-            [&](const set_implot_style &a) { _s.ui.implot_style = a.implot_style; },
+            [&](const set_imgui_style &a) { _s.ui.style.imgui = a.imgui_style; },
+            [&](const set_implot_style &a) { _s.ui.style.implot = a.implot_style; },
 
             [&](const toggle_window &a) { _s.ui.windows.named(a.name).visible = !s.ui.windows.named(a.name).visible; },
 
@@ -195,7 +195,7 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     if (!d.ini_diff.empty()) has_new_ini_settings = true;
 
     for (auto &jd: d.json_diff) {
-        if (std::string(jd["path"]).rfind("/ui/implot_style", 0) == 0) {
+        if (std::string(jd["path"]).rfind("/ui/style/implot", 0) == 0) {
             has_new_implot_style = true;
         }
         state_stats.on_path_update(jd["path"], diff.system_time, direction);

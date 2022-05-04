@@ -16,7 +16,7 @@ bool HighlightedTreeNode(const char *label, bool is_highlighted = false) {
 }
 
 static void show_json_state_value_node(const std::string &key, const json &value, bool is_annotated_key = false) {
-    bool annotate = s.ui.windows.state.viewer.settings.label_mode == LabelMode::annotated;
+    bool annotate = s.windows.state.viewer.settings.label_mode == LabelMode::annotated;
     //      ImGuiTreeNodeFlags_DefaultOpen or SetNextItemOpen()
     if (value.is_null()) {
         ImGui::Text("null");
@@ -88,7 +88,7 @@ void Windows::StateWindows::StateViewer::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Settings")) {
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
-                auto label_mode = s.ui.windows.state.viewer.settings.label_mode;
+                auto label_mode = s.windows.state.viewer.settings.label_mode;
                 if (ImGui::MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
                     q.enqueue(set_state_viewer_label_mode{LabelMode::annotated});
                 } else if (ImGui::MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {

@@ -167,7 +167,7 @@ void draw_frame() {
         auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
-        const auto &w = s.ui.windows;
+        const auto &w = s.windows;
 
         dock_window(w.controls, controls_id);
 
@@ -194,7 +194,7 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
-            const auto &windows = s.ui.windows;
+            const auto &windows = s.windows;
             StatefulImGui::WindowToggleMenuItem(windows.controls);
 
             if (ImGui::BeginMenu("State")) {
@@ -219,7 +219,7 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    ui_s.ui.windows.draw();
+    ui_s.windows.draw();
 
     ImGui::End();
 }
@@ -277,8 +277,8 @@ int draw() {
         }
 
         // Load style
-        ui_context.imgui_context->Style = ui_s.ui.style.imgui;
-        ui_context.implot_context->Style = ui_s.ui.style.implot;
+        ui_context.imgui_context->Style = ui_s.style.imgui;
+        ui_context.implot_context->Style = ui_s.style.implot;
 
         // TODO holding these keys down for super-fast undo/redo is not very stable (lost events?)
         if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q.enqueue(undo{});

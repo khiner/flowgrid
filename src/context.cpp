@@ -54,7 +54,7 @@ struct FaustContext {
 
         for (int i = 0; i < argc; i++) argv[i] = nullptr;
 
-        if (dsp_factory && s.ui.windows.faust.error.empty()) {
+        if (dsp_factory && s.windows.faust.error.empty()) {
             dsp = dsp_factory->createDSPInstance();
             dsp->init(sample_rate);
         }
@@ -135,12 +135,12 @@ void Context::update(const Action &action) {
     std::visit(
         visitor{
             [&](const set_ini_settings &a) { c.ini_settings = a.settings; },
-            [&](const set_imgui_style &a) { _s.ui.style.imgui = a.imgui_style; },
-            [&](const set_implot_style &a) { _s.ui.style.implot = a.implot_style; },
+            [&](const set_imgui_style &a) { _s.style.imgui = a.imgui_style; },
+            [&](const set_implot_style &a) { _s.style.implot = a.implot_style; },
 
-            [&](const toggle_window &a) { _s.ui.windows.named(a.name).visible = !s.ui.windows.named(a.name).visible; },
+            [&](const toggle_window &a) { _s.windows.named(a.name).visible = !s.windows.named(a.name).visible; },
 
-            [&](const set_state_viewer_label_mode &a) { _s.ui.windows.state.viewer.settings.label_mode = a.label_mode; },
+            [&](const set_state_viewer_label_mode &a) { _s.windows.state.viewer.settings.label_mode = a.label_mode; },
 
             [&](set_ui_running a) { _s.processes.ui.running = a.running; },
 
@@ -152,9 +152,9 @@ void Context::update(const Action &action) {
 
             // Audio
             [&](const set_faust_code &a) {
-                c._state.ui.windows.faust.code = a.text;
+                c._state.windows.faust.code = a.text;
 
-                faust = std::make_unique<FaustContext>(s.ui.windows.faust.code, s.audio.sample_rate, _s.ui.windows.faust.error);
+                faust = std::make_unique<FaustContext>(s.windows.faust.code, s.audio.sample_rate, _s.windows.faust.error);
                 if (faust->dsp) {
                     StatefulFaustUI faust_ui;
                     faust->dsp->buildUserInterface(&faust_ui);

@@ -3,7 +3,7 @@
 // TODO move `wrap_draw_in_window` into a new `StatefulImGuiWindowFlags : ImGuiWindowFlags` type
 void draw_window(Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None, bool wrap_draw_in_window = true) {
     const auto &name = window.name;
-    if (s.ui.windows.named(name).visible != window.visible) q.enqueue(toggle_window{name});
+    if (s.windows.named(name).visible != window.visible) q.enqueue(toggle_window{name});
     if (!window.visible) return;
 
     if (wrap_draw_in_window) {

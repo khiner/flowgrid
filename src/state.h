@@ -163,15 +163,6 @@ struct Windows : public WindowsData, Drawable {
     std::vector<std::reference_wrapper<const WindowData>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, demos, metrics, faust.editor, faust.log};
 };
 
-struct UiState { // Avoid name-clash with faust's `UI` class
-    struct Style {
-        ImGuiStyle imgui;
-        ImPlotStyle implot;
-    };
-    Windows windows;
-    Style style;
-};
-
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
@@ -187,6 +178,11 @@ struct Audio {
 
 };
 
+struct Style {
+    ImGuiStyle imgui;
+    ImPlotStyle implot;
+};
+
 struct Processes {
     struct Process {
         bool running = true;
@@ -198,7 +194,8 @@ struct Processes {
 };
 
 struct State {
-    UiState ui;
+    Windows windows;
+    Style style;
     Audio audio;
     Processes processes;
 };
@@ -226,8 +223,7 @@ JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, Windo
 JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
-JSON_TYPE(UiState::Style, imgui, implot)
-JSON_TYPE(UiState, windows, style)
+JSON_TYPE(Style, imgui, implot)
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)
-JSON_TYPE(State, ui, audio, processes);
+JSON_TYPE(State, windows, style, audio, processes);

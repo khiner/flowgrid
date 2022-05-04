@@ -27,7 +27,7 @@ bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {
 // Returns `true` if style changes.
 bool Windows::StyleEditor::drawImGui() {
     bool changed = false;
-    auto &style = ui_s.ui.style.imgui;
+    auto &style = ui_s.style.imgui;
 
     changed |= ShowStyleSelector("Colors##Selector", &style);
 //    ImGui::ShowFontSelector("Fonts##Selector"); // TODO
@@ -257,7 +257,7 @@ bool ShowImPlotStyleSelector(const char *label, ImPlotStyle *dst) {
 
 bool Windows::StyleEditor::drawImPlot() {
     bool changed = false;
-    auto &style = ui_s.ui.style.implot;
+    auto &style = ui_s.style.implot;
 
     changed |= ShowImPlotStyleSelector("Colors##Selector", &style);
 
@@ -358,13 +358,13 @@ bool Windows::StyleEditor::drawImPlot() {
 void Windows::StyleEditor::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
-            if (drawImGui()) q.enqueue(set_imgui_style{ui_s.ui.style.imgui});
+            if (drawImGui()) q.enqueue(set_imgui_style{ui_s.style.imgui});
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImPlot")) {
             if (drawImPlot()) {
                 ImPlot::BustItemCache();
-                q.enqueue(set_implot_style{ui_s.ui.style.implot});
+                q.enqueue(set_implot_style{ui_s.style.implot});
             }
             ImGui::EndTabItem();
         }

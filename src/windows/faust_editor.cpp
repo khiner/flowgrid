@@ -351,7 +351,7 @@ void zep_draw() {
 //    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
-static const std::string openFileDialogKey = "ChooseFileDlgKey";
+static const std::string open_file_dialog_key = "ChooseFileDlgKey";
 
 /*
  * TODO
@@ -365,7 +365,7 @@ void Windows::Faust::Editor::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) {
-                ImGuiFileDialog::Instance()->OpenDialog(openFileDialogKey, "Choose file", ".cpp,.h,.hpp", ".");
+                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".cpp,.h,.hpp", ".");
             }
             ImGui::EndMenu();
         }
@@ -405,7 +405,8 @@ void Windows::Faust::Editor::draw() {
         }
         ImGui::EndMenuBar();
 
-        if (ImGuiFileDialog::Instance()->Display(openFileDialogKey)) {
+        const auto min_dialog_size = toImVec2(toNVec2f(ImGui::GetMainViewport()->Size) / 2.0);
+        if (ImGuiFileDialog::Instance()->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 auto buffer = zep_editor->GetFileBuffer(filePathName);

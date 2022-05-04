@@ -168,7 +168,6 @@ struct UiState { // Avoid name-clash with faust's `UI` class
         ImGuiStyle imgui;
         ImPlotStyle implot;
     };
-    bool running = true;
     Windows windows;
     Style style;
 };
@@ -181,7 +180,6 @@ struct Audio {
     AudioBackend backend = none;
     char *in_device_id = nullptr;
     char *out_device_id = nullptr;
-    bool running = true;
     bool muted = true;
     bool out_raw = false;
     int sample_rate = 48000;
@@ -189,14 +187,20 @@ struct Audio {
 
 };
 
-struct ActionConsumer {
-    bool running = true;
+struct Processes {
+    struct Process {
+        bool running = true;
+    };
+
+    Process action_consumer;
+    Process ui;
+    Process audio;
 };
 
 struct State {
     UiState ui;
     Audio audio;
-    ActionConsumer action_consumer;
+    Processes processes;
 };
 
 // An exact copy of `NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE`, but with a shorter name.
@@ -214,7 +218,7 @@ JSON_TYPE(WindowsData::StateWindows, viewer, memory_editor, path_update_frequenc
 JSON_TYPE(WindowsData::Faust::Editor, file_name)
 JSON_TYPE(WindowsData::Faust, code, error, editor, log)
 JSON_TYPE(WindowsData, controls, state, style_editor, demos, metrics, faust)
-JSON_TYPE(Audio, running, muted, backend, latency, sample_rate, out_raw)
+JSON_TYPE(Audio, muted, backend, latency, sample_rate, out_raw)
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
     LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale, AntiAliasedLines,
@@ -223,6 +227,7 @@ JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, 
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
 JSON_TYPE(UiState::Style, imgui, implot)
-JSON_TYPE(UiState, running, windows, style)
-JSON_TYPE(ActionConsumer, running)
-JSON_TYPE(State, ui, audio, action_consumer);
+JSON_TYPE(UiState, windows, style)
+JSON_TYPE(Processes::Process, running)
+JSON_TYPE(Processes, action_consumer, audio, ui)
+JSON_TYPE(State, ui, audio, processes);

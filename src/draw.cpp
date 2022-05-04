@@ -240,7 +240,7 @@ int draw() {
     }
 
     // Main loop
-    while (s.ui.running) {
+    while (s.processes.ui.running) {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -262,7 +262,7 @@ int draw() {
         // (Like all other actions, the `close_application` action is enqueued and handled in the main event loop thread.
         // However, we don't want to render another frame after enqueueing a close action, since resources can be deallocated
         // at any point thereafter.)
-        if (closed_this_frame || !s.ui.running) {
+        if (closed_this_frame || !s.processes.ui.running) {
             FrameMark;
             break;
         }

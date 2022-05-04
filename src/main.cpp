@@ -20,7 +20,7 @@ int main(int, const char *argv[]) {
 
     ProcessManager process_manager;
     std::thread action_consumer([&]() {
-        while (s.action_consumer.running) {
+        while (s.processes.action_consumer.running) {
             Action a;
             q.wait_dequeue(a);
             c.on_action(a);

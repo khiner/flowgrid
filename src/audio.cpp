@@ -184,7 +184,7 @@ int audio() {
 
     std::cout << "Software latency (s): " << outstream->software_latency << std::endl;
 
-    while (s.audio.running) {}
+    while (s.processes.audio.running) {}
 
     // SoundIO cleanup
     soundio_outstream_destroy(outstream);

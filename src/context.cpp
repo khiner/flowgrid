@@ -142,12 +142,12 @@ void Context::update(const Action &action) {
 
             [&](const set_state_viewer_label_mode &a) { _s.ui.windows.state.viewer.settings.label_mode = a.label_mode; },
 
-            [&](set_ui_running a) { _s.ui.running = a.running; },
+            [&](set_ui_running a) { _s.processes.ui.running = a.running; },
 
             [&](close_application) {
-                _s.ui.running = false;
-                _s.audio.running = false;
-                _s.action_consumer.running = false;
+                _s.processes.ui.running = false;
+                _s.processes.audio.running = false;
+                _s.processes.action_consumer.running = false;
             },
 
             // Audio
@@ -165,8 +165,8 @@ void Context::update(const Action &action) {
                 }
             },
             [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
-            [&](set_audio_thread_running a) { _s.audio.running = a.running; },
-            [&](toggle_audio_running) { _s.audio.running = !s.audio.running; },
+            [&](set_audio_thread_running a) { _s.processes.audio.running = a.running; },
+            [&](toggle_audio_running) { _s.processes.audio.running = !s.processes.audio.running; },
             [&](const set_audio_sample_rate &a) { _s.audio.sample_rate = a.sample_rate; },
 
             // All actions that don't affect state:

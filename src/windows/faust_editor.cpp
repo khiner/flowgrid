@@ -369,7 +369,6 @@ void Windows::Faust::Editor::draw() {
             }
             ImGui::EndMenu();
         }
-
         if (ImGui::BeginMenu("Settings")) {
             if (ImGui::BeginMenu("Editor mode")) {
                 const auto *buffer = zep_editor->activeTabWindow->GetActiveWindow()->buffer;
@@ -382,7 +381,6 @@ void Windows::Faust::Editor::draw() {
                 }
                 ImGui::EndMenu();
             }
-
             if (ImGui::BeginMenu("Theme")) {
                 bool enabledDark = zep_editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
                 bool enabledLight = !enabledDark;
@@ -396,7 +394,6 @@ void Windows::Faust::Editor::draw() {
             }
             ImGui::EndMenu();
         }
-
         if (ImGui::BeginMenu("Window")) {
             auto *tabWindow = zep_editor->activeTabWindow;
             if (ImGui::MenuItem("Horizontal split")) {
@@ -406,7 +403,6 @@ void Windows::Faust::Editor::draw() {
             }
             ImGui::EndMenu();
         }
-
         ImGui::EndMenuBar();
 
         if (ImGuiFileDialog::Instance()->Display(openFileDialogKey)) {

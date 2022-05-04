@@ -169,18 +169,18 @@ void draw_frame() {
 
         const auto &w = s.ui.windows;
 
-        dock_window(w.controls.name, controls_id);
+        dock_window(w.controls, controls_id);
 
-        dock_window(w.state.viewer.name, state_viewer_id);
-        dock_window(w.state.memory_editor.name, state_memory_editor_id);
-        dock_window(w.state.path_update_frequency.name, state_path_update_frequency_id);
+        dock_window(w.state.viewer, state_viewer_id);
+        dock_window(w.state.memory_editor, state_memory_editor_id);
+        dock_window(w.state.path_update_frequency, state_path_update_frequency_id);
 
-        dock_window(w.faust.editor.name, faust_editor_id);
-        dock_window(w.faust.log.name, faust_log_window_id);
+        dock_window(w.faust.editor, faust_editor_id);
+        dock_window(w.faust.log, faust_log_window_id);
 
-        dock_window(w.style_editor.name, imgui_windows_id);
-        dock_window(w.demos.name, imgui_windows_id);
-        dock_window(w.metrics.name, imgui_windows_id);
+        dock_window(w.style_editor, imgui_windows_id);
+        dock_window(w.demos, imgui_windows_id);
+        dock_window(w.metrics, imgui_windows_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
@@ -195,23 +195,23 @@ void draw_frame() {
         }
         if (ImGui::BeginMenu("Windows")) {
             const auto &windows = s.ui.windows;
-            StatefulImGui::WindowToggleMenuItem(windows.controls.name);
+            StatefulImGui::WindowToggleMenuItem(windows.controls);
 
             if (ImGui::BeginMenu("State")) {
-                StatefulImGui::WindowToggleMenuItem(windows.state.viewer.name);
-                StatefulImGui::WindowToggleMenuItem(windows.state.memory_editor.name);
-                StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency.name);
+                StatefulImGui::WindowToggleMenuItem(windows.state.viewer);
+                StatefulImGui::WindowToggleMenuItem(windows.state.memory_editor);
+                StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(windows.style_editor.name);
-                StatefulImGui::WindowToggleMenuItem(windows.demos.name);
-                StatefulImGui::WindowToggleMenuItem(windows.metrics.name);
+                StatefulImGui::WindowToggleMenuItem(windows.style_editor);
+                StatefulImGui::WindowToggleMenuItem(windows.demos);
+                StatefulImGui::WindowToggleMenuItem(windows.metrics);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Faust")) {
-                StatefulImGui::WindowToggleMenuItem(windows.faust.editor.name);
-                StatefulImGui::WindowToggleMenuItem(windows.faust.log.name);
+                StatefulImGui::WindowToggleMenuItem(windows.faust.editor);
+                StatefulImGui::WindowToggleMenuItem(windows.faust.log);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -219,8 +219,7 @@ void draw_frame() {
         ImGui::EndMenuBar();
     }
 
-    auto &w = ui_s.ui.windows;
-    w.draw();
+    ui_s.ui.windows.draw();
 
     ImGui::End();
 }

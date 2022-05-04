@@ -2,12 +2,12 @@
 
 #include "state.h"
 
-void dock_window(const std::string &name, ImGuiID node_id);
+void dock_window(const Window &w, ImGuiID node_id);
 void gestured();
 
 namespace StatefulImGui {
 
-bool WindowToggleMenuItem(const std::string &name);
+bool WindowToggleMenuItem(const Window &);
 
 bool SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
 bool SliderFloat2(const char *label, float v[2], float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);

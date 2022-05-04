@@ -22,12 +22,6 @@
  * **The global `const StateData &s` and `State ui_s` instances are declared in `context.h` and instantiated in `main.cpp`.**
  */
 
-
-struct Dimensions {
-    ImVec2 position;
-    ImVec2 size;
-};
-
 struct WindowData {
     std::string name;
     bool visible{true};
@@ -175,7 +169,6 @@ struct Audio {
     bool out_raw = false;
     int sample_rate = 48000;
     double latency = 0.0;
-
 };
 
 struct Style {
@@ -208,7 +201,6 @@ struct State {
 
 JSON_TYPE(ImVec2, x, y)
 JSON_TYPE(ImVec4, w, x, y, z)
-JSON_TYPE(Dimensions, position, size)
 JSON_TYPE(WindowData, name, visible)
 JSON_TYPE(WindowsData::StateWindows::StateViewer::Settings, label_mode)
 JSON_TYPE(WindowsData::StateWindows, viewer, memory_editor, path_update_frequency)

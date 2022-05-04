@@ -86,12 +86,12 @@ struct WindowsData {
             Settings settings{};
         };
         struct StatePathUpdateFrequency : public Window {
-            StatePathUpdateFrequency() { name = "State memory editor"; }
+            StatePathUpdateFrequency() { name = "Path update frequency"; }
             void draw() override;
         };
 
         struct MemoryEditorWindow : public Window {
-            MemoryEditorWindow() { name = "Path update frequency"; }
+            MemoryEditorWindow() { name = "State memory editor"; }
             void draw() override;
         };
 

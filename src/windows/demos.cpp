@@ -1,8 +1,5 @@
 #include "../state.h"
 
-#include "imgui.h"
-#include "implot.h"
-
 void Windows::Demos::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {

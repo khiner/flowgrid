@@ -1,16 +1,14 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include <Tracy.hpp>
-#include "imgui.h"
+#include "context.h"
+#include "draw.h"
+#include "stateful_imgui.h"
+#include "windows/faust_editor.h"
 #include "imgui_internal.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
-#include "implot.h"
 #include "implot_internal.h"
-#include "draw.h"
-#include "context.h"
-#include "stateful_imgui.h"
-#include "windows/faust_editor.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;

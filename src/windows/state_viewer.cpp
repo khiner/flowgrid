@@ -1,7 +1,6 @@
 #include "../context.h"
 #include "../imgui_helpers.h"
 
-#include "implot.h"
 #include "imgui_memory_editor.h"
 
 using Settings = WindowsData::StateWindows::StateViewer::Settings;

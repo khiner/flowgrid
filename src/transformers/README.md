@@ -1,3 +1,14 @@
+**Note: this thinking is a bit out of date. Good concept, but instead of `a2b`/`b2a`, just support assignment
+from `struct B` to `struct A`, and single-argument constructors `A(B)` and `B(A)`:**
+
+```cpp
+//  TODO flesh out with correct impl, but this idea
+struct A {
+A(const B &b);
+const A &A::operator=(const B &pszString);
+};
+```
+
 # Transformers
 
 Transformer `a2b` is a function that takes a single `const A &a` argument and return an instance of type `B b`

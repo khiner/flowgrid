@@ -353,6 +353,8 @@ void zep_draw() {
 
 static const std::string open_file_dialog_key = "ChooseFileDlgKey";
 
+bool is_save_file_dialog = false; // open/save
+
 /*
  * TODO
  *   Implement `w` forward-word navigation for Vim mode
@@ -365,7 +367,12 @@ void Windows::Faust::Editor::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open")) {
-                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".cpp,.h,.hpp", ".");
+                is_save_file_dialog = false;
+                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".dsp", ".");
+            }
+            if (ImGui::MenuItem("Save")) {
+                is_save_file_dialog = true;
+                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".dsp", ".", "my_dsp", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
             }
             ImGui::EndMenu();
         }
@@ -408,9 +415,21 @@ void Windows::Faust::Editor::draw() {
         const auto min_dialog_size = toImVec2(toNVec2f(ImGui::GetMainViewport()->Size) / 2.0);
         if (ImGuiFileDialog::Instance()->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                auto filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                auto buffer = zep_editor->GetFileBuffer(filePathName);
-                zep_editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
+                auto file_path_name = ImGuiFileDialog::Instance()->GetFilePathName();
+                if (is_save_file_dialog) {
+                    const std::string buffer_contents = zep_editor->activeTabWindow->GetActiveWindow()->buffer->workingBuffer.string();
+                    std::fstream out_file;
+                    out_file.open(file_path_name, std::ios::out);
+                    if (out_file) {
+                        out_file << buffer_contents.c_str();
+                        out_file.close();
+                    } else {
+                        // TODO console error
+                    }
+                } else {
+                    auto buffer = zep_editor->GetFileBuffer(file_path_name);
+                    zep_editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
+                }
             }
 
             ImGuiFileDialog::Instance()->Close();

@@ -244,15 +244,12 @@ void draw_frame() {
                 //   with full undo/redo history/position/etc.!
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
-                    json full_state_json({
-                        {"state",        c.json_state},
-                        {"ini_settings", c.ini_settings}
-                    });
-                    if (!write_file(file_path, full_state_json.dump())) {
+
+                    if (!write_file(file_path, c.get_full_state_json().dump())) {
                         // TODO console error
                     }
                 } else {
-                    const auto &buffer = read_file(file_path);
+                    c.set_full_state_json(json::parse(read_file(file_path)));
                 }
             }
 

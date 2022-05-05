@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 
+// TODO handle errors
 std::string read_file(const fs::path &path) {
     std::ifstream f(path, std::ios::in | std::ios::binary);
     const auto size = fs::file_size(path);

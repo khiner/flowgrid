@@ -130,7 +130,7 @@ public:
     */
     std::vector<BidirectionalStateDiff> diffs;
     int current_action_index = -1;
-    json json_state;
+    json state_json;
 
     ImFont *defaultFont{};
     ImFont *fixedWidthFont{};
@@ -158,6 +158,9 @@ public:
     // Audio
     void compute_frames(int frame_count) const;
     float get_sample(int channel, int frame) const;
+    // contains both state and ini_settings
+    json get_full_state_json() const;
+    void set_full_state_json(json full_state_json);
 };
 
 /**

@@ -11,6 +11,8 @@ const State &s = c.s; // Convenient shorthand
 State &ui_s = c.ui_s; // Convenient shorthand
 BlockingConcurrentQueue<Action> q{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
+// TODO:
+//   * Crash on undo after project open
 int main(int, const char *argv[]) {
     config.app_root = std::string(argv[0]);
     config.faust_libraries_path = config.app_root + "/../../lib/faust/libraries";

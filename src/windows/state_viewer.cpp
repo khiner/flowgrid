@@ -100,5 +100,5 @@ void Windows::StateWindows::StateViewer::draw() {
         ImGui::EndMenuBar();
     }
 
-    show_json_state_value_node("State", c.json_state);
+    show_json_state_value_node("State", c.state_json);
 }

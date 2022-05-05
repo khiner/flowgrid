@@ -1,7 +1,5 @@
 #include <iostream>
 #include "context.h"
-#include "transformers/bijective/state2json.h"
-#include "transformers/bijective/json2state.h"
 #include "visitor.h"
 
 #include "faust/dsp/llvm-dsp.h"
@@ -103,6 +101,27 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || state.audio.muted ? 0 : faust->get_sample(channel, frame);
 }
 
+json Context::get_full_state_json() const {
+    return {
+        {"state",        state_json},
+        {"ini_settings", ini_settings}
+    };
+}
+
+void Context::set_full_state_json(json full_state_json) {
+    // Overwrite all the primary state variables.
+    _state = full_state_json["state"].get<State>();
+    ui_s = _state; // Update the UI-copy of the state to reflect.
+    ini_settings = full_state_json["ini_settings"].dump();
+
+    // Other housekeeping side-effects:
+    // TODO consider grouping these into a the constructor of a new `struct` member,
+    //  and do this atomically with a single assignment to that variable (`derived_full_state`?)
+    state_stats = {};
+    has_new_ini_settings = true;
+    has_new_implot_style = true;
+}
+
 std::ostream &operator<<(std::ostream &os, const StateDiff &diff) {
     return (os << "\tJSON diff:\n" << diff.json_diff << "\n\tINI diff:\n" << diff.ini_diff);
 }
@@ -110,7 +129,7 @@ std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
     return (os << "Forward:\n" << diff.forward << "\nReverse:\n" << diff.reverse);
 }
 
-Context::Context() : json_state(state2json(_state)) {}
+Context::Context() : state_json(_state) {}
 
 void Context::on_action(const Action &action) {
     if (std::holds_alternative<undo>(action)) {
@@ -188,8 +207,8 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     }
 
     ini_settings = prev_ini_settings = new_ini_settings;
-    json_state = json_state.patch(d.json_diff);
-    _state = json2state(json_state);
+    state_json = state_json.patch(d.json_diff);
+    _state = state_json;
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
     if (!d.ini_diff.empty()) has_new_ini_settings = true;
@@ -208,9 +227,9 @@ void Context::apply_diff(const int action_index, const Direction direction) {
 //  ```
 //  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
 void Context::finalize_gesture() {
-    auto old_json_state = json_state;
-    json_state = state2json(s);
-    auto json_diff = json::diff(old_json_state, json_state);
+    auto old_json_state = state_json;
+    state_json = s;
+    auto json_diff = json::diff(old_json_state, state_json);
 
     auto old_ini_settings = prev_ini_settings;
     prev_ini_settings = ini_settings;
@@ -224,7 +243,7 @@ void Context::finalize_gesture() {
         auto ini_settings_reverse_diff = diff_match_patch<std::string>::patch_toText(dmp.patch_make(ini_settings, old_ini_settings));
         const BidirectionalStateDiff diff{
             {json_diff, ini_settings_diff},
-            {json::diff(json_state, old_json_state), ini_settings_reverse_diff},
+            {json::diff(state_json, old_json_state), ini_settings_reverse_diff},
             std::chrono::system_clock::now(),
         };
         diffs.emplace_back(diff);

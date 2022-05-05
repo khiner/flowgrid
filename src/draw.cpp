@@ -9,6 +9,8 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "implot_internal.h"
+#include "ImGuiFileDialog.h"
+#include "file_helpers.h"
 
 struct DrawContext {
     SDL_Window *window = nullptr;
@@ -130,13 +132,16 @@ void render(DrawContext &dc) {
     SDL_GL_SwapWindow(dc.window);
 }
 
-bool open = true;
+bool main_window_open = true;
+static const std::string open_file_dialog_key = "ApplicationFileDialog";
 
 // TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
 //  for how to programmatically set up a default layout
 
 void draw_frame() {
     ZoneScoped
+
+    static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
 
     // Adapted from `imgui_demo::ShowExampleAppDockSpace`
     // More docking info at https://github.com/ocornut/imgui/issues/2109
@@ -147,7 +152,7 @@ void draw_frame() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("FlowGrid", &open, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+    ImGui::Begin("FlowGrid", &main_window_open, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
     ImGui::PopStyleVar(3);
 
@@ -187,6 +192,18 @@ void draw_frame() {
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Open project", "Cmd+o")) {
+                is_save_file_dialog = false;
+                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".");
+            }
+            // TODO 'Save' menu item, saving to current project file, only enabled if a project file is opened and there are changes
+            if (ImGui::MenuItem("Save project as...")) {
+                is_save_file_dialog = true;
+                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".", "my_flowgrid_project", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem("Undo", "Cmd+z", false, c.can_undo())) { q.enqueue(undo{}); }
             if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.can_redo())) { q.enqueue(redo{}); }
             ImGui::EndMenu();
@@ -215,6 +232,24 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
+
+        // TODO need to get custom vecs with math going
+        const ImVec2 min_dialog_size = {ImGui::GetMainViewport()->Size.x / 2.0f, ImGui::GetMainViewport()->Size.y / 2.0f};
+        if (ImGuiFileDialog::Instance()->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                auto file_path_name = ImGuiFileDialog::Instance()->GetFilePathName();
+                if (is_save_file_dialog) {
+                    if (!write_file(file_path_name, c.json_state.dump())) {
+                        // TODO console error
+                    }
+                } else {
+                    const auto &buffer = read_file(file_path_name);
+                    // TODO actually do the project load
+                }
+            }
+
+            ImGuiFileDialog::Instance()->Close();
+        }
     }
 
     ui_s.windows.draw();

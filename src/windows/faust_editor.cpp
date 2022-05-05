@@ -9,6 +9,7 @@
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
 #include "zep/tab_window.h"
+#include "../file_helpers.h"
 
 using namespace Zep;
 
@@ -351,9 +352,7 @@ void zep_draw() {
 //    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
-static const std::string open_file_dialog_key = "ChooseFileDlgKey";
-
-bool is_save_file_dialog = false; // open/save
+static const std::string open_file_dialog_key = "FaustFileDialog";
 
 /*
  * TODO
@@ -364,13 +363,15 @@ bool is_save_file_dialog = false; // open/save
  *     (and right navigation should move from the end)
  */
 void Windows::Faust::Editor::draw() {
+    static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
+
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open")) {
+            if (ImGui::MenuItem("Open DSP file")) {
                 is_save_file_dialog = false;
-                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".dsp", ".");
+                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".dsp", ".", "", 1);
             }
-            if (ImGui::MenuItem("Save")) {
+            if (ImGui::MenuItem("Save DSP as...")) {
                 is_save_file_dialog = true;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".dsp", ".", "my_dsp", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
             }
@@ -418,16 +419,11 @@ void Windows::Faust::Editor::draw() {
                 auto file_path_name = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
                     const std::string buffer_contents = zep_editor->activeTabWindow->GetActiveWindow()->buffer->workingBuffer.string();
-                    std::fstream out_file;
-                    out_file.open(file_path_name, std::ios::out);
-                    if (out_file) {
-                        out_file << buffer_contents.c_str();
-                        out_file.close();
-                    } else {
+                    if (!write_file(file_path_name, buffer_contents)) {
                         // TODO console error
                     }
                 } else {
-                    auto buffer = zep_editor->GetFileBuffer(file_path_name);
+                    const auto &buffer = zep_editor->GetFileBuffer(file_path_name);
                     zep_editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
                 }
             }

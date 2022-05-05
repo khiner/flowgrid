@@ -416,14 +416,14 @@ void Windows::Faust::Editor::draw() {
         const auto min_dialog_size = toImVec2(toNVec2f(ImGui::GetMainViewport()->Size) / 2.0);
         if (ImGuiFileDialog::Instance()->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                auto file_path_name = ImGuiFileDialog::Instance()->GetFilePathName();
+                const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
                     const std::string buffer_contents = zep_editor->activeTabWindow->GetActiveWindow()->buffer->workingBuffer.string();
-                    if (!write_file(file_path_name, buffer_contents)) {
+                    if (!write_file(file_path, buffer_contents)) {
                         // TODO console error
                     }
                 } else {
-                    const auto &buffer = zep_editor->GetFileBuffer(file_path_name);
+                    const auto &buffer = zep_editor->GetFileBuffer(file_path);
                     zep_editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
                 }
             }

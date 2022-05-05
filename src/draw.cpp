@@ -237,14 +237,22 @@ void draw_frame() {
         const ImVec2 min_dialog_size = {ImGui::GetMainViewport()->Size.x / 2.0f, ImGui::GetMainViewport()->Size.y / 2.0f};
         if (ImGuiFileDialog::Instance()->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
-                auto file_path_name = ImGuiFileDialog::Instance()->GetFilePathName();
+                // TODO provide an option to save with undo state.
+                //   This file format would be a json list of diffs.
+                //   The file would generally be larger, and the load time would be slower,
+                //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
+                //   with full undo/redo history/position/etc.!
+                const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
-                    if (!write_file(file_path_name, c.json_state.dump())) {
+                    json full_state_json({
+                        {"state",        c.json_state},
+                        {"ini_settings", c.ini_settings}
+                    });
+                    if (!write_file(file_path, full_state_json.dump())) {
                         // TODO console error
                     }
                 } else {
-                    const auto &buffer = read_file(file_path_name);
-                    // TODO actually do the project load
+                    const auto &buffer = read_file(file_path);
                 }
             }
 

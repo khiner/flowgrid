@@ -158,9 +158,27 @@ public:
     // Audio
     void compute_frames(int frame_count) const;
     float get_sample(int channel, int frame) const;
-    // contains both state and ini_settings
-    json get_full_state_json() const;
-    void set_full_state_json(json full_state_json);
+
+    json get_full_state_json() const {
+        return {
+            {"state",        state_json},
+            {"ini_settings", ini_settings}
+        };
+    }
+
+    void set_full_state_json(json full_state_json) {
+        // Overwrite all the primary state variables.
+        _state = full_state_json["state"].get<State>();
+        ui_s = _state; // Update the UI-copy of the state to reflect.
+        ini_settings = full_state_json["ini_settings"].dump();
+
+        // Other housekeeping side-effects:
+        // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
+        //  and do this atomically with a single assignment.
+        state_stats = {};
+        has_new_ini_settings = true;
+        has_new_implot_style = true;
+    }
 };
 
 /**

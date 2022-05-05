@@ -101,27 +101,6 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || state.audio.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-json Context::get_full_state_json() const {
-    return {
-        {"state",        state_json},
-        {"ini_settings", ini_settings}
-    };
-}
-
-void Context::set_full_state_json(json full_state_json) {
-    // Overwrite all the primary state variables.
-    _state = full_state_json["state"].get<State>();
-    ui_s = _state; // Update the UI-copy of the state to reflect.
-    ini_settings = full_state_json["ini_settings"].dump();
-
-    // Other housekeeping side-effects:
-    // TODO consider grouping these into a the constructor of a new `struct` member,
-    //  and do this atomically with a single assignment to that variable (`derived_full_state`?)
-    state_stats = {};
-    has_new_ini_settings = true;
-    has_new_implot_style = true;
-}
-
 std::ostream &operator<<(std::ostream &os, const StateDiff &diff) {
     return (os << "\tJSON diff:\n" << diff.json_diff << "\n\tINI diff:\n" << diff.ini_diff);
 }

@@ -171,8 +171,25 @@ extern Context context, &c;
 extern const State &state, &s;
 extern State &ui_s;
 
-using namespace moodycamel; // ConcurrentQueue, BlockingConcurrentQueue
-extern BlockingConcurrentQueue<Action> q;
+using namespace moodycamel; // Has `ConcurrentQueue` & `BlockingConcurrentQueue`
+
+/**
+ * The action queue is available for use anywhere in the application.
+ * However, the singular usage of `queue.wait_dequeue` is in `main.cpp`.
+ * In fact, that's currently the only place in the application that anything but `enqueue` is called on `queue`.
+ *
+ * For convenience, a shorthand `q(action)` function is provided.
+ * By convention, there are no usages of `queue.enqueue(action)` in the code; the application only uses `q` to enqueue actions.
+ * enqueue an action into the main application action consumer loop.
+ */
+extern BlockingConcurrentQueue<Action> queue;
+
+// False positive unused function from CLion.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+static inline bool q(Action &&item) { return queue.enqueue(item); }
+#pragma clang diagnostic pop
+
 extern Config config;
 
 /**md

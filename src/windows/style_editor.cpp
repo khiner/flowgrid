@@ -357,13 +357,13 @@ bool Windows::StyleEditor::drawImPlot() {
 void Windows::StyleEditor::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
-            if (drawImGui()) q.enqueue(set_imgui_style{ui_s.style.imgui});
+            if (drawImGui()) q(set_imgui_style{ui_s.style.imgui});
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImPlot")) {
             if (drawImPlot()) {
                 ImPlot::BustItemCache();
-                q.enqueue(set_implot_style{ui_s.style.implot});
+                q(set_implot_style{ui_s.style.implot});
             }
             ImGui::EndTabItem();
         }

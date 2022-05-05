@@ -9,7 +9,7 @@ Context &c = context; // Convenient shorthand
 const State &state = c.s;
 const State &s = c.s; // Convenient shorthand
 State &ui_s = c.ui_s; // Convenient shorthand
-BlockingConcurrentQueue<Action> q{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
+BlockingConcurrentQueue<Action> queue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
 // TODO:
 //   * Crash on undo after project open
@@ -24,7 +24,7 @@ int main(int, const char *argv[]) {
     std::thread action_consumer([&]() {
         while (s.processes.action_consumer.running) {
             Action a;
-            q.wait_dequeue(a);
+            queue.wait_dequeue(a);
             c.on_action(a);
             process_manager.on_action(a);
         }

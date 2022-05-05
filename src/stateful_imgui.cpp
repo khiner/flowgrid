@@ -14,7 +14,7 @@ void gestured() {
 bool StatefulImGui::WindowToggleMenuItem(const Window &w) {
     const auto &name = w.name;
     const bool edited = ImGui::MenuItem(name.c_str(), nullptr, w.visible);
-    if (edited) q.enqueue(toggle_window{name});
+    if (edited) q(toggle_window{name});
     return edited;
 }
 

@@ -89,9 +89,9 @@ void Windows::StateWindows::StateViewer::draw() {
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
                 auto label_mode = s.windows.state.viewer.settings.label_mode;
                 if (ImGui::MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
-                    q.enqueue(set_state_viewer_label_mode{LabelMode::annotated});
+                    q(set_state_viewer_label_mode{LabelMode::annotated});
                 } else if (ImGui::MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {
-                    q.enqueue(set_state_viewer_label_mode{LabelMode::raw});
+                    q(set_state_viewer_label_mode{LabelMode::raw});
                 }
                 ImGui::EndMenu();
             }

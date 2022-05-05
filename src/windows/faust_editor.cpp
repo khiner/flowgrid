@@ -235,7 +235,7 @@ struct ZepWrapper : public ZepComponent, public IZepReplProvider {
                     auto *buffer = buffer_message->buffer;
                     if (zep_initialized && buffer->name == s.windows.faust.editor.file_name) {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                        q.enqueue(set_faust_code{buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                        q(set_faust_code{buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
                 }
                     break;

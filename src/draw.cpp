@@ -204,8 +204,8 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Cmd+z", false, c.can_undo())) { q.enqueue(undo{}); }
-            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.can_redo())) { q.enqueue(redo{}); }
+            if (ImGui::MenuItem("Undo", "Cmd+z", false, c.can_undo())) { q(undo{}); }
+            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.can_redo())) { q(redo{}); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
@@ -290,7 +290,7 @@ int draw() {
             if (event.type == SDL_QUIT ||
                 (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
                     event.window.windowID == SDL_GetWindowID(dc.window))) {
-                q.enqueue(close_application{});
+                q(close_application{});
                 closed_this_frame = true;
             }
         }
@@ -319,8 +319,8 @@ int draw() {
         ui_context.implot_context->Style = ui_s.style.implot;
 
         // TODO holding these keys down for super-fast undo/redo is not very stable (lost events?)
-        if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q.enqueue(undo{});
-        else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q.enqueue(redo{});
+        if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
+        else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
 
         new_frame();
         draw_frame();
@@ -338,7 +338,7 @@ int draw() {
                 c.ini_settings = c.prev_ini_settings = settings;
                 initial_save = false;
             } else {
-                q.enqueue(set_ini_settings{settings});
+                q(set_ini_settings{settings});
             }
             io.WantSaveIniSettings = false;
         }

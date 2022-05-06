@@ -11,7 +11,7 @@ namespace action {
 struct undo {};
 struct redo {};
 
-struct set_ini_settings { std::string settings; };
+struct set_imgui_settings { ImGuiSettings settings; };
 struct set_imgui_style { ImGuiStyle imgui_style; };
 struct set_implot_style { ImPlotStyle implot_style; };
 
@@ -38,7 +38,7 @@ using Action = std::variant<
     undo,
     redo,
 
-    set_ini_settings,
+    set_imgui_settings,
     set_imgui_style,
     set_implot_style,
 

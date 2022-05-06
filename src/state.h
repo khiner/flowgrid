@@ -2,6 +2,7 @@
 
 #include "nlohmann/json.hpp"
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "implot.h"
 
 /**
@@ -186,7 +187,74 @@ struct Processes {
     Process audio;
 };
 
+// The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).
+// This is a copy, and should be kept up-to-date with that definition.
+struct ImGuiDockNodeSettings {
+    ImGuiID ID{};
+    ImGuiID ParentNodeId{};
+    ImGuiID ParentWindowId{};
+    ImGuiID SelectedTabId{};
+    signed char SplitAxis{};
+    char Depth{};
+    ImGuiDockNodeFlags Flags{};
+    ImVec2ih Pos{};
+    ImVec2ih Size{};
+    ImVec2ih SizeRef{};
+};
+
+// Copied from `imgui.cpp`
+static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settings) {
+    const ImGuiViewport *main_viewport = ImGui::GetMainViewport();
+    window->ViewportPos = main_viewport->Pos;
+    if (settings->ViewportId) {
+        window->ViewportId = settings->ViewportId;
+        window->ViewportPos = ImVec2(settings->ViewportPos.x, settings->ViewportPos.y);
+    }
+    window->Pos = ImFloor(ImVec2(settings->Pos.x + window->ViewportPos.x, settings->Pos.y + window->ViewportPos.y));
+    if (settings->Size.x > 0 && settings->Size.y > 0)
+        window->Size = window->SizeFull = ImFloor(ImVec2(settings->Size.x, settings->Size.y));
+    window->Collapsed = settings->Collapsed;
+    window->DockId = settings->DockId;
+    window->DockOrder = settings->DockOrder;
+}
+
+struct ImGuiSettings {
+    ImVector<ImGuiDockNodeSettings> nodes_settings;
+    ImVector<ImGuiWindowSettings> windows_settings;
+    ImVector<ImGuiTableSettings> tables_settings;
+
+    ImGuiSettings() = default;
+    explicit ImGuiSettings(ImGuiContext *c) {
+        nodes_settings = c->DockContext.NodesSettings; // already an ImVector
+        // Convert `ImChunkStream`s to `ImVector`s.
+        for (auto *ws = c->SettingsWindows.begin(); ws != nullptr; ws = c->SettingsWindows.next_chunk(ws)) {
+            windows_settings.push_back(*ws);
+        }
+        for (auto *ts = c->SettingsTables.begin(); ts != nullptr; ts = c->SettingsTables.next_chunk(ts)) {
+            tables_settings.push_back(*ts);
+        }
+    }
+
+    // Inverse of above constructor. `imgui_context.settings = this`
+    void populate_context(ImGuiContext *c) const {
+        c->DockContext.NodesSettings = nodes_settings; // already an ImVector
+        ImGui::DockContextRebuildNodes(c);
+
+        // Assign `ImVector`s to the windows/tables settings `ImChunkStream` members:
+
+        // TODO is there an equivalent of `DockContextRebuildNodes` for windows?
+        for (auto ws: windows_settings) {
+            ApplyWindowSettings(ImGui::FindWindowByID(ws.ID), &ws);
+        }
+
+        // TODO table settings
+
+        // TODO any other housekeeping do we need to fully emulate `ImGui::LoadIniSettingsFromMemory`?
+    }
+};
+
 struct State {
+    ImGuiSettings imgui_settings;
     Windows windows;
     Style style;
     Audio audio;
@@ -201,6 +269,15 @@ struct State {
 
 JSON_TYPE(ImVec2, x, y)
 JSON_TYPE(ImVec4, w, x, y, z)
+JSON_TYPE(ImVec2ih, x, y)
+
+// Double-check occasionally that all fields in these ImGui settings definitions are present here!
+// TODO don't think we need `WantApply`
+//  (but may need to manually set it to true when setting in imgui, depends on the details there)
+JSON_TYPE(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
+JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed, WantApply)
+JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax, WantApply)
+
 JSON_TYPE(WindowData, name, visible)
 JSON_TYPE(WindowsData::StateWindows::StateViewer::Settings, label_mode)
 JSON_TYPE(WindowsData::StateWindows, viewer, memory_editor, path_update_frequency)
@@ -218,4 +295,5 @@ JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, 
 JSON_TYPE(Style, imgui, implot)
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)
-JSON_TYPE(State, windows, style, audio, processes);
+JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
+JSON_TYPE(State, imgui_settings, windows, style, audio, processes);

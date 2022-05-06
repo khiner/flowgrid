@@ -1,31 +1,49 @@
-#include <SDL.h>
-#include <SDL_opengl.h>
 #include <Tracy.hpp>
 #include "context.h"
 #include "draw.h"
 #include "stateful_imgui.h"
 #include "windows/faust_editor.h"
-#include "imgui_internal.h"
-#include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
-#include "implot_internal.h"
 #include "ImGuiFileDialog.h"
 #include "file_helpers.h"
 
-struct DrawContext {
-    SDL_Window *window = nullptr;
-    SDL_GLContext gl_context{};
-    const char *glsl_version = "#version 150";
-    ImGuiIO io;
-};
+/**md
+## UI methods
 
-void new_frame() {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
-}
+These are the only public methods.
 
-DrawContext create_draw_context() {
+```cpp
+    create_ui();
+    tick_ui();
+    destroy_ui(render_context);
+```
+
+## Render context methods
+
+```cpp
+    create_render_context();
+    destroy_render_context(render_context);
+```
+
+## UI context methods
+
+Superset of render context.
+
+```cpp
+    create_ui_context();
+    destroy_ui_context(ui_context);
+```
+
+## Frame methods
+
+```cpp
+    prepare_frame();
+    draw_frame();
+    render_frame(render_context);
+```
+ */
+
+RenderContext create_render_context() {
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
@@ -47,36 +65,28 @@ DrawContext create_draw_context() {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     auto window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_MAXIMIZED;
 
-    DrawContext draw_context;
+    RenderContext draw_context;
     draw_context.window = SDL_CreateWindow("FlowGrid", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     draw_context.gl_context = SDL_GL_CreateContext(draw_context.window);
 
     return draw_context;
 }
 
-void load_fonts() {
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    auto &io = ImGui::GetIO();
-    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16.0f);
-    c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Cousine-Regular.ttf", 15.0f);
-//    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Roboto-Medium.ttf", 16.0f);
+void destroy_render_context(const RenderContext &rc) {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+    ImPlot::DestroyContext();
+
+    SDL_GL_DeleteContext(rc.gl_context);
+    SDL_DestroyWindow(rc.window);
+    SDL_Quit();
 }
 
-bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
-    return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
-}
+UiContext create_ui_context() {
+    auto render_context = create_render_context();
 
-struct UiContext {
-    ImGuiContext *imgui_context;
-    ImPlotContext *implot_context;
-};
-
-UiContext setup(DrawContext &dc) {
-    SDL_GL_MakeCurrent(dc.window, dc.gl_context);
+    SDL_GL_MakeCurrent(render_context.window, render_context.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
@@ -99,44 +109,44 @@ UiContext setup(DrawContext &dc) {
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-    // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(dc.window, dc.gl_context);
-    ImGui_ImplOpenGL3_Init(dc.glsl_version);
+    ImGui_ImplSDL2_InitForOpenGL(render_context.window, render_context.gl_context);
+    ImGui_ImplOpenGL3_Init(render_context.glsl_version);
 
-    load_fonts();
+    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
+    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
+    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
+    // - Read 'docs/FONTS.md' for more instructions and details.
+    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16.0f);
+    c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Cousine-Regular.ttf", 15.0f);
+//    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Roboto-Medium.ttf", 16.0f);
 
-    return {imgui_context, implot_context};
+    return {render_context, imgui_context, implot_context};
 }
 
-void teardown(DrawContext &dc) {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
-    ImPlot::DestroyContext();
-
-    SDL_GL_DeleteContext(dc.gl_context);
-    SDL_DestroyWindow(dc.window);
-    SDL_Quit();
+void destroy_ui_context(const UiContext &ui_c) {
+    destroy_render_context(ui_c.render_context);
 }
 
-void render(DrawContext &dc) {
+void prepare_frame() {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+}
+
+void render_frame(RenderContext &rc) {
     ImGui::Render();
-    glViewport(0, 0, (int) dc.io.DisplaySize.x, (int) dc.io.DisplaySize.y);
-//    glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a);
+    glViewport(0, 0, (int) rc.io.DisplaySize.x, (int) rc.io.DisplaySize.y);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    SDL_GL_SwapWindow(dc.window);
+    SDL_GL_SwapWindow(rc.window);
 }
 
 bool main_window_open = true;
 static const std::string open_file_dialog_key = "ApplicationFileDialog";
-
-// TODO see https://github.com/ocornut/imgui/issues/2109#issuecomment-426204357
-//  for how to programmatically set up a default layout
 
 void draw_frame() {
     ZoneScoped
@@ -245,11 +255,12 @@ void draw_frame() {
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
 
-                    if (!write_file(file_path, c.get_full_state_json().dump())) {
+                    if (!write_file(file_path, c.state_json.dump())) {
                         // TODO console error
                     }
                 } else {
-                    c.set_full_state_json(json::parse(read_file(file_path)));
+                    c.state_json = json::parse(read_file(file_path));
+                    c.reset_from_state_json();
                 }
             }
 
@@ -262,92 +273,91 @@ void draw_frame() {
     ImGui::End();
 }
 
+bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
+    return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
+}
+
 bool closed_this_frame = false;
 
-int draw() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
-        printf("Error: %s\n", SDL_GetError());
-        return -1;
+UiContext create_ui() {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
+
+    return create_ui_context();
+}
+
+// Main UI tick function
+void tick_ui(UiContext &ui_context) {
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        if (event.type == SDL_QUIT ||
+            (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
+                event.window.windowID == SDL_GetWindowID(ui_context.render_context.window))) {
+            q(close_application{});
+            closed_this_frame = true;
+        }
     }
 
-    auto dc = create_draw_context();
-    auto ui_context = setup(dc);
-
-    if (!c.ini_settings.empty()) {
-        ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
+    // If the user close the application via the window-close button _this frame_ (or by other means since the previous
+    // check above), bail immediately.
+    // (Like all other actions, the `close_application` action is enqueued and handled in the main event loop thread.
+    // However, we don't want to render another frame after enqueueing a close action, since resources can be deallocated
+    // at any point thereafter.)
+    if (closed_this_frame || !s.processes.ui.running) {
+        FrameMark;
+        return;
     }
 
-    // Main loop
-    while (s.processes.ui.running) {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT ||
-                (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                    event.window.windowID == SDL_GetWindowID(dc.window))) {
-                q(close_application{});
-                closed_this_frame = true;
-            }
-        }
-
-        // If the user close the application via the window-close button _this frame_ (or by other means since the previous
-        // check above), bail immediately.
-        // (Like all other actions, the `close_application` action is enqueued and handled in the main event loop thread.
-        // However, we don't want to render another frame after enqueueing a close action, since resources can be deallocated
-        // at any point thereafter.)
-        if (closed_this_frame || !s.processes.ui.running) {
-            FrameMark;
-            break;
-        }
-
-        if (c.has_new_ini_settings) {
-            ImGui::LoadIniSettingsFromMemory(c.ini_settings.c_str(), c.ini_settings.size());
-            c.has_new_ini_settings = false;
-        }
-        if (c.has_new_implot_style) {
-            ImPlot::BustItemCache();
-            c.has_new_implot_style = false;
-        }
-
-        // Load style
-        ui_context.imgui_context->Style = ui_s.style.imgui;
-        ui_context.implot_context->Style = ui_s.style.implot;
-
-        // TODO holding these keys down for super-fast undo/redo is not very stable (lost events?)
-        if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
-        else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
-
-        new_frame();
-        draw_frame();
-        render(dc);
-
-        static bool initial_save = true;
-        auto &io = ImGui::GetIO();
-        if (io.WantSaveIniSettings) {
-            size_t settings_size = 0;
-            const char *settings = ImGui::SaveIniSettingsToMemory(&settings_size);
-            if (initial_save) {
-                // The first save that ImGui triggers will have the initial loaded state.
-                // TODO Once we can guarantee that initial state is loaded from either a saved or default project file,
-                //  this should no longer be needed.
-                c.ini_settings = c.prev_ini_settings = settings;
-                initial_save = false;
-            } else {
-                q(set_ini_settings{settings});
-            }
-            io.WantSaveIniSettings = false;
-        }
-
-        FrameMark
+    if (c.has_new_ini_settings) {
+        s.imgui_settings.populate_context(ui_context.imgui_context);
+        c.has_new_ini_settings = false;
+    }
+    if (c.has_new_implot_style) {
+        ImPlot::BustItemCache();
+        c.has_new_implot_style = false;
     }
 
+    // Load style
+    ui_context.imgui_context->Style = ui_s.style.imgui;
+    ui_context.implot_context->Style = ui_s.style.implot;
+
+    // TODO holding these keys down for super-fast undo/redo is not very stable (specifically for window resize events)
+    if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
+
+    prepare_frame();
+    draw_frame();
+    render_frame(ui_context.render_context);
+
+    static bool initial_save = true;
+    auto &io = ImGui::GetIO();
+    if (io.WantSaveIniSettings) {
+        // TODO we use this (and the one in `main.cpp`) for its side-effects populating in-memory settings on ImGui's context,
+        //  but it wastefully allocates and populates a text buffer with a copy of the settings in ImGui's .ini format.
+        //  We should probably just update the FlowGrid ImGui fork to completely remove .ini settings handling.
+        size_t settings_size = 0;
+        ImGui::SaveIniSettingsToMemory(&settings_size);
+        if (initial_save) {
+            // The first save that ImGui triggers will have the initial loaded state.
+            // TODO Once we can guarantee that initial state is loaded from either a saved or default project file,
+            //  this should no longer be needed.
+            c._state.imgui_settings = ImGuiSettings(ui_context.imgui_context);
+            initial_save = false;
+        } else {
+            q(set_imgui_settings{ImGuiSettings(ui_context.imgui_context)});
+        }
+        io.WantSaveIniSettings = false;
+    }
+
+    FrameMark
+}
+
+void destroy_ui(UiContext &ui_c) {
     destroy_faust_editor();
-    teardown(dc);
-
-    return 0;
+    destroy_ui_context(ui_c);
 }

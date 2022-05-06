@@ -13,7 +13,6 @@ enum Direction { Forward, Reverse };
 
 struct StateDiff {
     json json_diff;
-    std::string ini_diff; // string-encoded `diff_match_patch::Patches`
 };
 
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
@@ -108,16 +107,13 @@ public:
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     State ui_s{}; // Separate copy of the state that can be modified by the UI directly
-    std::string ini_settings; // ImGui's ini settings (for UI state) are stored separately
-    // Actions change the source-of-truth `ini_settings` in-place.
-    // When a gesture is finalized into an undo event, a patch is computed between the previous and current settings.
-    std::string prev_ini_settings;
+
     // Set after an undo/redo that includes an ini_settings change.
     // It's the UI's responsibility to set this to `false` after applying the new state.
     // (It's done this way to avoid an expensive settings-load & long string comparison between
     // ours and ImGui's ini settings on every frame.)
-    bool has_new_ini_settings{};
-    bool has_new_implot_style{};
+    bool has_new_ini_settings{true};
+    bool has_new_implot_style{true};
 
     /**
      This is a placeholder for the main in-memory data structure for action history.
@@ -159,18 +155,10 @@ public:
     void compute_frames(int frame_count) const;
     float get_sample(int channel, int frame) const;
 
-    json get_full_state_json() const {
-        return {
-            {"state",        state_json},
-            {"ini_settings", ini_settings}
-        };
-    }
-
-    void set_full_state_json(json full_state_json) {
+    void reset_from_state_json() {
         // Overwrite all the primary state variables.
-        _state = full_state_json["state"].get<State>();
+        _state = state_json.get<State>();
         ui_s = _state; // Update the UI-copy of the state to reflect.
-        ini_settings = full_state_json["ini_settings"].dump();
 
         // Other housekeeping side-effects:
         // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,

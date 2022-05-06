@@ -2,7 +2,6 @@
 #include "../stateful_imgui.h"
 #include "../imgui_helpers.h"
 
-#include "imgui_internal.h"
 #include "implot_internal.h"
 
 // From `imgui_demo.cpp`

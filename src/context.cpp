@@ -102,7 +102,7 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
 }
 
 std::ostream &operator<<(std::ostream &os, const StateDiff &diff) {
-    return (os << "\tJSON diff:\n" << diff.json_diff << "\n\tINI diff:\n" << diff.ini_diff);
+    return (os << "\tJSON diff:\n" << diff.json_diff << "\n");
 }
 std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
     return (os << "Forward:\n" << diff.forward << "\nReverse:\n" << diff.reverse);
@@ -132,7 +132,7 @@ void Context::update(const Action &action) {
     auto &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(
         visitor{
-            [&](const set_ini_settings &a) { c.ini_settings = a.settings; },
+            [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },
             [&](const set_imgui_style &a) { _s.style.imgui = a.imgui_style; },
             [&](const set_implot_style &a) { _s.style.implot = a.implot_style; },
 
@@ -179,22 +179,16 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     const auto &diff = diffs[action_index];
     const auto &d = direction == Forward ? diff.forward : diff.reverse;
 
-    const auto [new_ini_settings, successes] = dmp.patch_apply(dmp.patch_fromText(d.ini_diff), ini_settings);
-    if (!std::all_of(successes.begin(), successes.end(), [](bool v) { return v; })) {
-        throw std::runtime_error("Some ini-settings patches were not successfully applied.\nSettings:\n\t" +
-            ini_settings + "\nPatch:\n\t" + d.ini_diff + "\nResult:\n\t" + new_ini_settings);
-    }
-
-    ini_settings = prev_ini_settings = new_ini_settings;
+//    ini_settings = prev_ini_settings = new_ini_settings;
     state_json = state_json.patch(d.json_diff);
-    _state = state_json;
+    _state = state_json.get<State>();
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
-    if (!d.ini_diff.empty()) has_new_ini_settings = true;
-
     for (auto &jd: d.json_diff) {
-        if (std::string(jd["path"]).rfind("/ui/style/implot", 0) == 0) {
+        if (std::string(jd["path"]).rfind("/style/implot", 0) == 0) {
             has_new_implot_style = true;
+        } else if (std::string(jd["path"]).rfind("/imgui_settings", 0) == 0) {
+            has_new_ini_settings = true;
         }
         state_stats.on_path_update(jd["path"], diff.system_time, direction);
     }
@@ -210,19 +204,16 @@ void Context::finalize_gesture() {
     state_json = s;
     auto json_diff = json::diff(old_json_state, state_json);
 
-    auto old_ini_settings = prev_ini_settings;
-    prev_ini_settings = ini_settings;
-    auto ini_settings_patches = dmp.patch_make(old_ini_settings, ini_settings);
+//    auto old_ini_settings = prev_ini_settings;
+//    prev_ini_settings = ini_settings;
+//    auto ini_settings_patches = dmp.patch_make(old_ini_settings, ini_settings);
 
-    if (!json_diff.empty() || !ini_settings_patches.empty()) {
+    if (!json_diff.empty()) {
         while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
 
-        // TODO put diff/patch/text fns in `transformers/bijective`
-        auto ini_settings_diff = diff_match_patch<std::string>::patch_toText(ini_settings_patches);
-        auto ini_settings_reverse_diff = diff_match_patch<std::string>::patch_toText(dmp.patch_make(ini_settings, old_ini_settings));
         const BidirectionalStateDiff diff{
-            {json_diff, ini_settings_diff},
-            {json::diff(state_json, old_json_state), ini_settings_reverse_diff},
+            {json_diff},
+            {json::diff(state_json, old_json_state)},
             std::chrono::system_clock::now(),
         };
         diffs.emplace_back(diff);
@@ -230,5 +221,6 @@ void Context::finalize_gesture() {
         for (auto &jd: json_diff) {
             state_stats.on_path_update(jd["path"], diff.system_time, Forward);
         }
+        std::cout << json_diff << '\n';
     }
 }

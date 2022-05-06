@@ -1,6 +1,5 @@
 #include "stateful_imgui.h"
 #include "context.h"
-#include "imgui_internal.h"
 
 void dock_window(const Window &w, ImGuiID node_id) {
     ImGui::DockBuilderDockWindow(w.name.c_str(), node_id);

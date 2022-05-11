@@ -6,39 +6,68 @@
 using Settings = WindowsData::StateWindows::StateViewer::Settings;
 using LabelMode = Settings::LabelMode;
 
-bool HighlightedTreeNode(const char *label, bool is_highlighted = false) {
-    if (is_highlighted) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 255)); // TODO register a highlight color in style
+bool JsonTreeNode(const char *label, const std::string &path, bool is_highlighted = false) {
+    if (is_highlighted) {
+        // TODO register a highlight color in style
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 255));
+    }
+
     bool is_open = ImGui::TreeNode(label);
+
     if (is_highlighted) ImGui::PopStyleColor();
 
     return is_open;
 }
 
-static void show_json_state_value_node(const std::string &key, const json &value, bool is_annotated_key = false) {
+static void show_json_state_value_node(const std::string &key, const json &value, const std::filesystem::path &path, bool is_annotated_key = false) {
     bool annotate = s.windows.state.viewer.settings.label_mode == LabelMode::annotated;
     //      ImGuiTreeNodeFlags_DefaultOpen or SetNextItemOpen()
     if (value.is_null()) {
         ImGui::Text("null");
     } else if (value.is_object()) {
-        if (HighlightedTreeNode(key.c_str(), is_annotated_key)) {
+        if (JsonTreeNode(key.c_str(), path, is_annotated_key)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
-                show_json_state_value_node(it.key(), it.value());
+                show_json_state_value_node(it.key(), it.value(), path / it.key());
             }
             ImGui::TreePop();
         }
     } else if (value.is_array()) {
         bool annotate_color = annotate && key == "Colors";
-        if (HighlightedTreeNode(key.c_str(), is_annotated_key)) {
+        if (JsonTreeNode(key.c_str(), path, is_annotated_key)) {
             int i = 0;
             for (const auto &it: value) {
                 const bool is_child_annotated_key = annotate_color && i < ImGuiCol_COUNT;
                 const auto &name = is_child_annotated_key ? ImGui::GetStyleColorName(i) : std::to_string(i);
-                show_json_state_value_node(name, it, is_child_annotated_key);
+                show_json_state_value_node(name, it, path / std::to_string(i), is_child_annotated_key);
                 i++;
             }
             ImGui::TreePop();
         }
     } else {
+        if (c.state_stats.update_times_for_state_path.contains(path)) {
+            auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
+            const auto max_value = float(*std::max_element(values.begin(), values.end())); // TODO move to `state_stats`
+
+            const auto w_min = ImGui::GetWindowPos();
+            const float w_width = ImGui::GetWindowWidth();
+            const ImVec2 w_max = {w_min.x + w_width, w_min.y + ImGui::GetWindowHeight()};
+            const auto item_min = ImGui::GetItemRectMin();
+            const auto item_max = ImGui::GetItemRectMax();
+            const ImVec2 row_min = {w_min.x, item_min.y};
+            const ImVec2 row_max = {w_max.x, item_max.y};
+            const float row_width = w_width;
+
+            const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
+            const auto num_updates = float(update_times.size());
+            const float max_ratio = num_updates / max_value;
+
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                row_min, {row_min.x + row_width * max_ratio, row_max.y},
+                ImColor(ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered)), // TODO use ImPlot histogram bar color
+                0.0f,
+                ImDrawFlags_None
+            );
+        }
         ImGui::Text("%s : %s", key.c_str(), value.dump().c_str());
     }
 }
@@ -100,5 +129,5 @@ void Windows::StateWindows::StateViewer::draw() {
         ImGui::EndMenuBar();
     }
 
-    show_json_state_value_node("State", c.state_json);
+    show_json_state_value_node("State", c.state_json, "/");
 }

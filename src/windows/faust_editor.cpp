@@ -110,7 +110,7 @@ struct ZepEditor_ImGui : public ZepEditor {
 
     bool sendImGuiKeyPressToBuffer(ImGuiKey key, ImGuiKeyModFlags mod = ImGuiKeyModFlags_None) {
         if (ImGui::IsKeyPressed(key)) {
-            activeTabWindow->GetActiveWindow()->buffer->GetMode()->AddKeyPress(key, mod);
+            GetActiveBuffer()->GetMode()->AddKeyPress(key, mod);
             return true;
         }
         return false;
@@ -156,7 +156,8 @@ struct ZepEditor_ImGui : public ZepEditor {
         if (io.KeyCtrl) mod |= ImGuiKeyModFlags_Ctrl;
         if (io.KeyShift) mod |= ImGuiKeyModFlags_Shift;
 
-        const auto *buffer = activeTabWindow->GetActiveWindow()->buffer;
+        const auto *buffer = GetActiveBuffer();
+        if (!buffer) return;
 
         // Check USB Keys
         for (auto &f_key: F_KEYS) {
@@ -327,12 +328,6 @@ void zep_init() {
 }
 
 void zep_draw() {
-    if (!zep_initialized) {
-        // Called once after the fonts are initialized
-        zep_init();
-        zep_initialized = true;
-    }
-
     const auto &pos = ImGui::GetWindowPos();
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
@@ -365,6 +360,14 @@ static const std::string open_file_dialog_key = "FaustFileDialog";
 void Windows::Faust::Editor::draw() {
     static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
 
+    if (!zep_initialized) {
+        // Called once after the fonts are initialized
+        zep_init();
+        zep_initialized = true;
+    }
+
+    auto *active_buffer = zep_editor->GetActiveBuffer();
+
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open DSP file")) {
@@ -379,8 +382,7 @@ void Windows::Faust::Editor::draw() {
         }
         if (ImGui::BeginMenu("Settings")) {
             if (ImGui::BeginMenu("Editor mode")) {
-                const auto *buffer = zep_editor->activeTabWindow->GetActiveWindow()->buffer;
-                bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
+                bool enabledVim = strcmp(active_buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
                 if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
                     zep_editor->SetGlobalMode(ZepMode_Vim::StaticName());
@@ -405,9 +407,9 @@ void Windows::Faust::Editor::draw() {
         if (ImGui::BeginMenu("Window")) {
             auto *tabWindow = zep_editor->activeTabWindow;
             if (ImGui::MenuItem("Horizontal split")) {
-                tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
+                tabWindow->AddWindow(active_buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
             } else if (ImGui::MenuItem("Vertical split")) {
-                tabWindow->AddWindow(tabWindow->GetActiveWindow()->buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
+                tabWindow->AddWindow(active_buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
             }
             ImGui::EndMenu();
         }
@@ -418,13 +420,13 @@ void Windows::Faust::Editor::draw() {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
-                    const std::string buffer_contents = zep_editor->activeTabWindow->GetActiveWindow()->buffer->workingBuffer.string();
+                    const std::string buffer_contents = active_buffer->workingBuffer.string();
                     if (!write_file(file_path, buffer_contents)) {
                         // TODO console error
                     }
                 } else {
-                    const auto &buffer = zep_editor->GetFileBuffer(file_path);
-                    zep_editor->activeTabWindow->GetActiveWindow()->SetBuffer(buffer);
+                    auto *buffer = zep_editor->GetFileBuffer(file_path);
+                    if (buffer) zep_editor->EnsureWindow(*buffer);
                 }
             }
 

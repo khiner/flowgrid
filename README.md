@@ -12,7 +12,7 @@ Currently, I'm basically trying to maximally mash together some wonderful librar
 
 Prepare your environment:
 
-```shell
+```sh
 $ git clone --recursive git@github.com:khiner/flowgrid2.git
 $ brew install cmake pkgconfig llvm freetype
 $ brew link llvm --force
@@ -21,7 +21,7 @@ $ brew link llvm --force
 Build and run the application (or open the project in your IDE of choice and build - I can only speak for CLion
 working):
 
-```shell
+```sh
 $ cmake -B cmake-build-debug
 $ cmake --build cmake-build-debug --target FlowGrid -- -j 8
 $ cd cmake-build-debug
@@ -65,7 +65,7 @@ To enable tracing, set `TRACY_ENABLE` to `ON` in the main project `CMakeLists.tx
 
 To build and run the [Tracy](https://github.com/wolfpld/tracy) profiler,
 
-```shell
+```sh
 $ brew install gtk+3 glfw capstone freetype
 $ cd lib/tracy/profiler/build/unix
 $ make release
@@ -79,7 +79,7 @@ $ ./Tracy-release
 Most submodules are not forked.
 Here is my process for updating to the tip of all the submodule branches:
 
-```shell
+```sh
 $ git submodule update --remote
 $ git add .
 ```
@@ -97,10 +97,21 @@ upstream branch the fork is based on:
 I like to keep my changes rebased on top of the original repo branches.
 Here's my process:
 
-```shell
+```sh
 $ cd lib/{library}
 $ git pull --rebase upstream {branch} # `upstream` points to the original repo. See list above for the tracked branch
 $ ... # Resolve any conflicts & test
+$ git push --force
+```
+
+A notable exception is my zep fork, which has so many changes that almost no upstream commits will rebase successfully.
+The way I handle rebasing against zep is to rebase one commit at a time, using `--strategy-option theirs` (`-Xtheirs`),
+and then manually verifying & porting what the merge missed:
+
+```sh
+$ cd lib/zep
+$ git pull --rebase -Xtheirs upstream {commit_sha}
+$ ... # Resolve any conflicts, port any missing changes manually, verify...
 $ git push --force
 ```
 

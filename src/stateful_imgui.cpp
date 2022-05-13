@@ -10,10 +10,14 @@ void gestured() {
     if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture();
 }
 
-bool StatefulImGui::WindowToggleMenuItem(const Window &w) {
+bool StatefulImGui::WindowToggleMenuItem(Window &w) {
     const auto &name = w.name;
     const bool edited = ImGui::MenuItem(name.c_str(), nullptr, w.visible);
-    if (edited) q(toggle_window{name});
+    // The UI copy of the window state object is checked on every window draw,
+    // and a `toggle_window` action is issued whenever the UI copy disagrees with the canonical `s` window state.
+    // This allows for simply changing the UI copy variable, either in this toggle, or via the window close button,
+    // or any other mechanism.
+    if (edited) w.visible = !w.visible;
     return edited;
 }
 

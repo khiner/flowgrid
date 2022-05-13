@@ -222,24 +222,24 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
-            const auto &windows = s.windows;
-            StatefulImGui::WindowToggleMenuItem(windows.controls);
+            auto &w = ui_s.windows;
+            StatefulImGui::WindowToggleMenuItem(w.controls);
 
             if (ImGui::BeginMenu("State")) {
-                StatefulImGui::WindowToggleMenuItem(windows.state.viewer);
-                StatefulImGui::WindowToggleMenuItem(windows.state.memory_editor);
-                StatefulImGui::WindowToggleMenuItem(windows.state.path_update_frequency);
+                StatefulImGui::WindowToggleMenuItem(w.state.viewer);
+                StatefulImGui::WindowToggleMenuItem(w.state.memory_editor);
+                StatefulImGui::WindowToggleMenuItem(w.state.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(windows.style_editor);
-                StatefulImGui::WindowToggleMenuItem(windows.demos);
-                StatefulImGui::WindowToggleMenuItem(windows.metrics);
+                StatefulImGui::WindowToggleMenuItem(w.style_editor);
+                StatefulImGui::WindowToggleMenuItem(w.demos);
+                StatefulImGui::WindowToggleMenuItem(w.metrics);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Faust")) {
-                StatefulImGui::WindowToggleMenuItem(windows.faust.editor);
-                StatefulImGui::WindowToggleMenuItem(windows.faust.log);
+                StatefulImGui::WindowToggleMenuItem(w.faust.editor);
+                StatefulImGui::WindowToggleMenuItem(w.faust.log);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -363,7 +363,7 @@ void tick_ui(UiContext &ui_context) {
     FrameMark
 }
 
-void destroy_ui(UiContext &ui_c) {
+void destroy_ui(UiContext &) {
     destroy_faust_editor();
     destroy_render_context(render_context);
 }

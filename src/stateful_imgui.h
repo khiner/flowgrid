@@ -7,7 +7,7 @@ void gestured();
 
 namespace StatefulImGui {
 
-bool WindowToggleMenuItem(const Window &);
+bool WindowToggleMenuItem(Window &);
 
 bool SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
 bool SliderFloat2(const char *label, float v[2], float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);

@@ -35,7 +35,7 @@ struct StateStats {
 
     std::map<std::string, std::vector<SystemTime>> update_times_for_state_path{};
     Plottable path_update_frequency_plottable;
-
+    ImU64 max_num_updates{0};
 
     void on_path_update(const std::string &path, SystemTime time, Direction direction) {
         if (direction == Forward) {
@@ -47,6 +47,8 @@ struct StateStats {
             if (update_times.empty()) update_times_for_state_path.erase(path);
         }
         path_update_frequency_plottable = create_path_update_frequency_plottable();
+        const auto &num_updates = path_update_frequency_plottable.values;
+        max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
     }
 
 private:

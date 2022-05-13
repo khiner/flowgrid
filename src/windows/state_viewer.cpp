@@ -46,7 +46,6 @@ static void show_json_state_value_node(const std::string &key, const json &value
     } else {
         if (c.state_stats.update_times_for_state_path.contains(path)) {
             auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
-            const auto max_value = float(*std::max_element(values.begin(), values.end())); // TODO move to `state_stats`
 
             const auto w_min = ImGui::GetWindowPos();
             const float w_width = ImGui::GetWindowWidth();
@@ -58,8 +57,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
             const float row_width = w_width;
 
             const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
-            const auto num_updates = float(update_times.size());
-            const float max_ratio = num_updates / max_value;
+            const float max_ratio = float(update_times.size()) / float(c.state_stats.max_num_updates);
 
             ImGui::GetWindowDrawList()->AddRectFilled(
                 row_min, {row_min.x + row_width * max_ratio, row_max.y},
@@ -92,7 +90,6 @@ void Windows::StateWindows::StatePathUpdateFrequency::draw() {
     }
 
     auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
-    const ImU64 max_value = *std::max_element(values.begin(), values.end());
 
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
@@ -100,7 +97,7 @@ void Windows::StateWindows::StatePathUpdateFrequency::draw() {
         // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
         if (labels.size() == 1) labels.emplace_back("");
 
-        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(max_value), int(max_value) + 1, nullptr, false);
+        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         ImPlot::PlotBarsH("Number of updates", values.data(), int(values.size()), 0.75, 0);
         ImPlot::EndPlot();

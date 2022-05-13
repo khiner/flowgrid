@@ -1,11 +1,22 @@
+#include <SDL.h>
+#include <SDL_opengl.h>
 #include <Tracy.hpp>
 #include "context.h"
 #include "draw.h"
 #include "stateful_imgui.h"
 #include "windows/faust_editor.h"
+#include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "ImGuiFileDialog.h"
 #include "file_helpers.h"
+
+
+struct RenderContext {
+    SDL_Window *window = nullptr;
+    SDL_GLContext gl_context{};
+    const char *glsl_version = "#version 150";
+    ImGuiIO io;
+};
 
 /**md
 ## UI methods
@@ -31,7 +42,6 @@ Superset of render context.
 
 ```cpp
     create_ui_context();
-    destroy_ui_context(ui_context);
 ```
 
 ## Frame methods
@@ -83,9 +93,7 @@ void destroy_render_context(const RenderContext &rc) {
     SDL_Quit();
 }
 
-UiContext create_ui_context() {
-    auto render_context = create_render_context();
-
+UiContext create_ui_context(const RenderContext &render_context) {
     SDL_GL_MakeCurrent(render_context.window, render_context.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
@@ -93,7 +101,6 @@ UiContext create_ui_context() {
     IMGUI_CHECKVERSION();
     auto *imgui_context = ImGui::CreateContext();
     auto *implot_context = ImPlot::CreateContext();
-    // TODO default ImPlot FrameBg color of transparent
 
     auto &io = ImGui::GetIO();
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
@@ -124,11 +131,7 @@ UiContext create_ui_context() {
     c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Cousine-Regular.ttf", 15.0f);
 //    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Roboto-Medium.ttf", 16.0f);
 
-    return {render_context, imgui_context, implot_context};
-}
-
-void destroy_ui_context(const UiContext &ui_c) {
-    destroy_render_context(ui_c.render_context);
+    return {imgui_context, implot_context};
 }
 
 void prepare_frame() {
@@ -279,10 +282,13 @@ bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
 
 bool closed_this_frame = false;
 
+RenderContext render_context;
+
 UiContext create_ui() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
 
-    return create_ui_context();
+    render_context = create_render_context();
+    return create_ui_context(render_context);
 }
 
 // Main UI tick function
@@ -297,7 +303,7 @@ void tick_ui(UiContext &ui_context) {
         ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT ||
             (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                event.window.windowID == SDL_GetWindowID(ui_context.render_context.window))) {
+                event.window.windowID == SDL_GetWindowID(render_context.window))) {
             q(close_application{});
             closed_this_frame = true;
         }
@@ -332,7 +338,7 @@ void tick_ui(UiContext &ui_context) {
 
     prepare_frame();
     draw_frame();
-    render_frame(ui_context.render_context);
+    render_frame(render_context);
 
     static bool initial_save = true;
     auto &io = ImGui::GetIO();
@@ -359,5 +365,5 @@ void tick_ui(UiContext &ui_context) {
 
 void destroy_ui(UiContext &ui_c) {
     destroy_faust_editor();
-    destroy_ui_context(ui_c);
+    destroy_render_context(render_context);
 }

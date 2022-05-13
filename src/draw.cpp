@@ -116,8 +116,6 @@ UiContext create_ui_context(const RenderContext &render_context) {
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-    ImGui::StyleColorsDark();
-
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(render_context.window, render_context.gl_context);
     ImGui_ImplOpenGL3_Init(render_context.glsl_version);

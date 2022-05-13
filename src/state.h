@@ -175,6 +175,12 @@ struct Audio {
 struct Style {
     ImGuiStyle imgui;
     ImPlotStyle implot;
+
+    Style() {
+        // Transparent background. Need this to draw in background draw list, behind ImGui contents.
+        // Specifically, using this for background rects in tree nodes. Can't find a better way...
+        imgui.Colors[ImGuiCol_WindowBg].w = 0;
+    }
 };
 
 struct Processes {

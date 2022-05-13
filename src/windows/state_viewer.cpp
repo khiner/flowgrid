@@ -60,7 +60,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
             const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
             const float max_ratio = float(update_times.size()) / float(c.state_stats.max_num_updates);
 
-            ImGui::GetWindowDrawList()->AddRectFilled(
+            ImGui::GetBackgroundDrawList()->AddRectFilled(
                 row_min, {row_min.x + row_width * max_ratio, row_max.y},
                 ImColor(ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered)), // TODO use ImPlot histogram bar color
                 0.0f,

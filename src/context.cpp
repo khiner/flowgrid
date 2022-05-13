@@ -150,7 +150,7 @@ void Context::update(const Action &action) {
 
             // Audio
             [&](const set_faust_code &a) {
-                c._state.windows.faust.code = a.text;
+                _s.windows.faust.code = a.text;
 
                 faust = std::make_unique<FaustContext>(s.windows.faust.code, s.audio.sample_rate, _s.windows.faust.error);
                 if (faust->dsp) {

@@ -179,6 +179,7 @@ struct Style {
     Style() {
         // Transparent background. Need this to draw in background draw list, behind ImGui contents.
         // Specifically, using this for background rects in tree nodes. Can't find a better way...
+        // TODO post an ImGui issue asking about a way to draw a rect _between_ the window bg color and the ImGui frame content
         imgui.Colors[ImGuiCol_WindowBg].w = 0;
     }
 };

@@ -6,7 +6,7 @@
 using Settings = WindowsData::StateWindows::StateViewer::Settings;
 using LabelMode = Settings::LabelMode;
 
-bool JsonTreeNode(const char *label, const std::string &path, bool is_highlighted = false) {
+bool JsonTreeNode(const char *label, bool is_highlighted = false) {
     if (is_highlighted) {
         // TODO register a highlight color in style
         ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 255));
@@ -25,7 +25,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
     if (value.is_null()) {
         ImGui::Text("null");
     } else if (value.is_object()) {
-        if (JsonTreeNode(key.c_str(), path, is_annotated_key)) {
+        if (JsonTreeNode(key.c_str(), is_annotated_key)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 show_json_state_value_node(it.key(), it.value(), path / it.key());
             }
@@ -33,7 +33,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
         }
     } else if (value.is_array()) {
         bool annotate_color = annotate && key == "Colors";
-        if (JsonTreeNode(key.c_str(), path, is_annotated_key)) {
+        if (JsonTreeNode(key.c_str(), is_annotated_key)) {
             int i = 0;
             for (const auto &it: value) {
                 const bool is_child_annotated_key = annotate_color && i < ImGuiCol_COUNT;

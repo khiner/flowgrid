@@ -125,24 +125,19 @@ be released under the GPL v3 license.
 
 ### Why copyleft?
 
-The choice of a copyleft license for this project is not an incidental one.
-
 The audio world has a ton of amazing and fully open-source code, educational resources, libraries, etc.
-However, the commercial audio industry is also full of closely guarded secret sauces and protected IP.
+However, the commercial audio industry is also full of protected IP.
 This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in an
 industry in which it's notoriously difficult to do so.
 
-Roughly speaking, and all other things being equal, choosing a permissive license that allows for closed-source
-commercial usage stands to benefit more end users (musicians, artists, creators) in the short-term, since companies
-producing closed-source software could freely put the code right into their products.
+Choosing a permissive license that allows for closed-source commercial usage stands to benefit more end users (
+musicians, artists, creators) in the short-term, since companies producing closed-source software could freely put the
+code right into their products.
 
-However, my experience as both a developer and musician (very much in that order), is basically that musicians are
-taken care of pretty darn well, and that audio developers are not very well off at all.
-The way I see the situation, it's very easy, and always getting easier, to find the software/hardware you need to make a
-track, or a generative audio piece, or whatever your jam is.
-I've found it's much harder to find an effective path to creating new audio software.
+In my experience, it's very easy, and always getting easier, to find the software/hardware you need to create music,
+while it's much harder to find an effective path to creating new audio software.
 
 Ultimately, although this project is first and foremost a creative tool, the intention and spirit is much more about
 hacking, learning, education and research than it is about creating end media products.
-For these purposes, it's much more important to ensure the information stays open than it is to make the functionality
-freely and widely available.
+For these purposes, it's more important to keep the information open than to make the functionality freely and widely
+available.

@@ -44,6 +44,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
             ImGui::TreePop();
         }
     } else {
+        ImGui::Text("%s : %s", key.c_str(), value.dump().c_str());
         if (c.state_stats.update_times_for_state_path.contains(path)) {
             auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
 
@@ -66,7 +67,6 @@ static void show_json_state_value_node(const std::string &key, const json &value
                 ImDrawFlags_None
             );
         }
-        ImGui::Text("%s : %s", key.c_str(), value.dump().c_str());
     }
 }
 

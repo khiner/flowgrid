@@ -145,33 +145,16 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
-bool main_window_open = true;
 static const std::string open_file_dialog_key = "ApplicationFileDialog";
+
+bool first_draw = true;
 
 void draw_frame() {
     ZoneScoped
 
-    static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
-
-    // Adapted from `imgui_demo::ShowExampleAppDockSpace`
-    // More docking info at https://github.com/ocornut/imgui/issues/2109
-    const auto *viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
-    ImGui::SetNextWindowViewport(viewport->ID);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("FlowGrid", &main_window_open, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
-        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
-    ImGui::PopStyleVar(3);
-
-    auto dockspace_id = ImGui::GetID("DockSpace");
-    if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
-        ImGui::DockBuilderRemoveNode(dockspace_id); // Clear out existing layout
-        ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace); // Add empty node
-        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
-
+    // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
+    auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+    if (first_draw) {
         auto faust_editor_id = dockspace_id;
         auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_id);
         auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
@@ -181,7 +164,6 @@ void draw_frame() {
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
         const auto &w = s.windows;
-
         dock_window(w.controls, controls_id);
 
         dock_window(w.state.viewer, state_viewer_id);
@@ -194,13 +176,12 @@ void draw_frame() {
         dock_window(w.style_editor, imgui_windows_id);
         dock_window(w.demos, imgui_windows_id);
         dock_window(w.metrics, imgui_windows_id);
-
-        ImGui::DockBuilderFinish(dockspace_id);
+//        ImGui::DockBuilderFinish(dockspace_id);
+        first_draw = false;
     }
 
-    ImGui::DockSpace(dockspace_id);
-
-    if (ImGui::BeginMenuBar()) {
+    static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
+    if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open project", "Cmd+o")) {
                 is_save_file_dialog = false;
@@ -241,7 +222,7 @@ void draw_frame() {
             }
             ImGui::EndMenu();
         }
-        ImGui::EndMenuBar();
+        ImGui::EndMainMenuBar();
 
         // TODO need to get custom vecs with math going
         const ImVec2 min_dialog_size = {ImGui::GetMainViewport()->Size.x / 2.0f, ImGui::GetMainViewport()->Size.y / 2.0f};
@@ -269,8 +250,6 @@ void draw_frame() {
     }
 
     ui_s.windows.draw();
-
-    ImGui::End();
 }
 
 bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {

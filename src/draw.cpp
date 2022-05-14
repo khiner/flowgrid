@@ -316,7 +316,6 @@ void tick_ui() {
         return;
     }
 
-    // TODO holding these keys down for super-fast undo/redo is not very stable (specifically for window resize events)
     if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
 

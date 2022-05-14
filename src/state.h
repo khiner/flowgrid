@@ -257,7 +257,9 @@ struct ImGuiSettings {
 
         // TODO table settings
 
-        // TODO any other housekeeping do we need to fully emulate `ImGui::LoadIniSettingsFromMemory`?
+        // Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory`:
+        c->SettingsLoaded = true;
+        c->SettingsDirtyTimer = 0.0f;
     }
 };
 

@@ -10,7 +10,6 @@
 #include "ImGuiFileDialog.h"
 #include "file_helpers.h"
 
-
 struct RenderContext {
     SDL_Window *window = nullptr;
     SDL_GLContext gl_context{};
@@ -325,7 +324,6 @@ void tick_ui() {
     draw_frame();
     render_frame(render_context);
 
-    static bool initial_save = true;
     auto &io = ImGui::GetIO();
     if (io.WantSaveIniSettings) {
         // TODO we use this (and the one in `main.cpp`) for its side-effects populating in-memory settings on ImGui's context,
@@ -333,15 +331,7 @@ void tick_ui() {
         //  We should probably just update the FlowGrid ImGui fork to completely remove .ini settings handling.
         size_t settings_size = 0;
         ImGui::SaveIniSettingsToMemory(&settings_size);
-        if (initial_save) {
-            // The first save that ImGui triggers will have the initial loaded state.
-            // TODO Once we can guarantee that initial state is loaded from either a saved or default project file,
-            //  this should no longer be needed.
-            c._state.imgui_settings = ImGuiSettings(c.ui->imgui_context);
-            initial_save = false;
-        } else {
-            q(set_imgui_settings{ImGuiSettings(c.ui->imgui_context)});
-        }
+        q(set_imgui_settings{ImGuiSettings(c.ui->imgui_context)});
         io.WantSaveIniSettings = false;
     }
 

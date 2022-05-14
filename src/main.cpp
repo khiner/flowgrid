@@ -26,18 +26,19 @@ BlockingConcurrentQueue<Action> queue{}; // NOLINT(cppcoreguidelines-interfaces-
 int main(int, const char *argv[]) {
     config.app_root = std::string(argv[0]);
     config.faust_libraries_path = config.app_root + "/../../lib/faust/libraries";
+    auto ui_context = create_ui();
+    context.ui = &ui_context;
 
-    UiContext ui_context = create_ui();
     // TODO when we're loading default projects
     // if (!s.imgui_settings.empty()) s.imgui_settings.populate_context(ui_context.imgui_context);
     // else c._state.imgui_settings = ImGuiSettings(ui_context.imgui_context);
 
-    tick_ui(ui_context); // Rendering the first frame has side effects like creating dockspaces and setting initial window sizes.
+    tick_ui(); // Rendering the first frame has side effects like creating dockspaces and setting initial window sizes.
     size_t settings_size = 0;
     ImGui::SaveIniSettingsToMemory(&settings_size);
 
     // Synthetic actions to initialize state
-    c.on_action(set_imgui_settings({ImGuiSettings(ui_context.imgui_context)})); // Initialize the ImGui state
+    c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)})); // Initialize the ImGui state
     c.on_action(set_faust_code{s.windows.faust.code}); // Trigger faust dsp generation
     c.clear_undo(); // Make sure we don't start with any undo state (should only be the above `set_faust_code` action on the stack).
     c.state_stats = {};
@@ -85,9 +86,9 @@ int main(int, const char *argv[]) {
     });
 
     while (s.processes.ui.running) {
-        tick_ui(ui_context);
+        tick_ui();
     }
-    destroy_ui(ui_context);
+    destroy_ui();
     action_consumer.join();
 
     return 0;

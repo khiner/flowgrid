@@ -133,8 +133,14 @@ void Context::update(const Action &action) {
     std::visit(
         visitor{
             [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },
-            [&](const set_imgui_style &a) { _s.style.imgui = a.imgui_style; },
-            [&](const set_implot_style &a) { _s.style.implot = a.implot_style; },
+            [&](const set_imgui_style &a) {
+                _s.style.imgui = a.imgui_style;
+                ui->imgui_context->Style = a.imgui_style;
+            },
+            [&](const set_implot_style &a) {
+                _s.style.implot = a.implot_style;
+                ui->implot_context->Style = a.implot_style;
+            },
 
             [&](const toggle_window &a) { _s.windows.named(a.name).visible = !s.windows.named(a.name).visible; },
 
@@ -184,13 +190,24 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     _state = state_json.get<State>();
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
+    bool has_imgui_settings = false;
+    bool has_imgui_style = false;
+    bool has_implot_style = false;
+
     for (auto &jd: d.json_diff) {
-        if (std::string(jd["path"]).rfind("/style/implot", 0) == 0) {
-            has_new_implot_style = true;
-        } else if (std::string(jd["path"]).rfind("/imgui_settings", 0) == 0) {
-            has_new_ini_settings = true;
-        }
-        state_stats.on_path_update(jd["path"], diff.system_time, direction);
+        const auto &path = std::string(jd["path"]);
+        if (path.rfind("/imgui_settings", 0) == 0) has_imgui_settings = true;
+        else if (path.rfind("/style/imgui", 0) == 0) has_imgui_style = true;
+        else if (path.rfind("/style/implot", 0) == 0) has_implot_style = true;
+
+        state_stats.on_path_update(path, diff.system_time, direction);
+    }
+
+    if (has_imgui_settings) s.imgui_settings.populate_context(ui->imgui_context);
+    if (has_imgui_style) ui->imgui_context->Style = s.style.imgui;
+    if (has_implot_style) {
+        ImPlot::BustItemCache();
+        ui->implot_context->Style = s.style.implot;
     }
 }
 

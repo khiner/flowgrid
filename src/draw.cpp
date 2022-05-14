@@ -290,7 +290,7 @@ UiContext create_ui() {
 }
 
 // Main UI tick function
-void tick_ui(UiContext &ui_context) {
+void tick_ui() {
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -317,19 +317,6 @@ void tick_ui(UiContext &ui_context) {
         return;
     }
 
-    if (c.has_new_ini_settings) {
-        s.imgui_settings.populate_context(ui_context.imgui_context);
-        c.has_new_ini_settings = false;
-    }
-    if (c.has_new_implot_style) {
-        ImPlot::BustItemCache();
-        c.has_new_implot_style = false;
-    }
-
-    // Load style
-    ui_context.imgui_context->Style = ui_s.style.imgui;
-    ui_context.implot_context->Style = ui_s.style.implot;
-
     // TODO holding these keys down for super-fast undo/redo is not very stable (specifically for window resize events)
     if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
@@ -350,10 +337,10 @@ void tick_ui(UiContext &ui_context) {
             // The first save that ImGui triggers will have the initial loaded state.
             // TODO Once we can guarantee that initial state is loaded from either a saved or default project file,
             //  this should no longer be needed.
-            c._state.imgui_settings = ImGuiSettings(ui_context.imgui_context);
+            c._state.imgui_settings = ImGuiSettings(c.ui->imgui_context);
             initial_save = false;
         } else {
-            q(set_imgui_settings{ImGuiSettings(ui_context.imgui_context)});
+            q(set_imgui_settings{ImGuiSettings(c.ui->imgui_context)});
         }
         io.WantSaveIniSettings = false;
     }
@@ -361,7 +348,7 @@ void tick_ui(UiContext &ui_context) {
     FrameMark
 }
 
-void destroy_ui(UiContext &) {
+void destroy_ui() {
     destroy_faust_editor();
     destroy_render_context(render_context);
 }

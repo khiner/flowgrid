@@ -4,6 +4,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"
+#include "implot_internal.h"
 
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.

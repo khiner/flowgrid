@@ -5,6 +5,14 @@
 #include "blockingconcurrentqueue.h"
 #include "diff_match_patch.h"
 
+struct RenderContext;
+struct UiContext {
+    UiContext(ImGuiContext *imgui_context, ImPlotContext *implot_context) : imgui_context(imgui_context), implot_context(implot_context) {}
+
+    ImGuiContext *imgui_context;
+    ImPlotContext *implot_context;
+};
+
 using namespace nlohmann; // json
 
 using SystemTime = std::chrono::time_point<std::chrono::system_clock>;
@@ -105,17 +113,11 @@ public:
     StateStats state_stats;
     State _state{};
     diff_match_patch<std::string> dmp;
+    UiContext *ui;
 
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
     State ui_s{}; // Separate copy of the state that can be modified by the UI directly
-
-    // Set after an undo/redo that includes an ini_settings change.
-    // It's the UI's responsibility to set this to `false` after applying the new state.
-    // (It's done this way to avoid an expensive settings-load & long string comparison between
-    // ours and ImGui's ini settings on every frame.)
-    bool has_new_ini_settings{true};
-    bool has_new_implot_style{true};
 
     /**
      This is a placeholder for the main in-memory data structure for action history.
@@ -166,8 +168,6 @@ public:
         // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
         //  and do this atomically with a single assignment.
         state_stats = {};
-        has_new_ini_settings = true;
-        has_new_implot_style = true;
     }
 };
 

@@ -33,7 +33,8 @@ int main(int, const char *argv[]) {
     // if (!s.imgui_settings.empty()) s.imgui_settings.populate_context(ui_context.imgui_context);
     // else c._state.imgui_settings = ImGuiSettings(ui_context.imgui_context);
 
-    tick_ui(); // Rendering the first frame has side effects like creating dockspaces and setting initial window sizes.
+    tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
+    tick_ui(); // Another frame is needed to update the Window->DockNode relationships after creating the windows in the first frame.
 
     // Synthetic actions to initialize state
     c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)})); // Initialize the ImGui state

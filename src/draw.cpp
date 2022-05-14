@@ -325,11 +325,6 @@ void tick_ui() {
 
     auto &io = ImGui::GetIO();
     if (io.WantSaveIniSettings) {
-        // TODO we use this (and the one in `main.cpp`) for its side-effects populating in-memory settings on ImGui's context,
-        //  but it wastefully allocates and populates a text buffer with a copy of the settings in ImGui's .ini format.
-        //  We should probably just update the FlowGrid ImGui fork to completely remove .ini settings handling.
-        size_t settings_size = 0;
-        ImGui::SaveIniSettingsToMemory(&settings_size);
         q(set_imgui_settings{ImGuiSettings(c.ui->imgui_context)});
         io.WantSaveIniSettings = false;
     }

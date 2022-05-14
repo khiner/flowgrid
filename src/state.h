@@ -233,6 +233,7 @@ struct ImGuiSettings {
 
     ImGuiSettings() = default;
     explicit ImGuiSettings(ImGuiContext *c) {
+        ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
         nodes_settings = c->DockContext.NodesSettings; // already an ImVector
         // Convert `ImChunkStream`s to `ImVector`s.
         for (auto *ws = c->SettingsWindows.begin(); ws != nullptr; ws = c->SettingsWindows.next_chunk(ws)) {

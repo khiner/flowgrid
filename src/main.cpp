@@ -34,8 +34,6 @@ int main(int, const char *argv[]) {
     // else c._state.imgui_settings = ImGuiSettings(ui_context.imgui_context);
 
     tick_ui(); // Rendering the first frame has side effects like creating dockspaces and setting initial window sizes.
-    size_t settings_size = 0;
-    ImGui::SaveIniSettingsToMemory(&settings_size);
 
     // Synthetic actions to initialize state
     c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)})); // Initialize the ImGui state

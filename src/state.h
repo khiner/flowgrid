@@ -245,10 +245,9 @@ struct ImGuiSettings {
     }
 
     // Inverse of above constructor. `imgui_context.settings = this`
+    // Mirrors `ImGui::LoadIniSettingsFromMemory`, using the structured
+    // `...Settings` members in this struct instead of the serialized .ini text format.
     void populate_context(ImGuiContext *c) const {
-        c->DockContext.NodesSettings = nodes_settings; // already an ImVector
-        ImGui::DockContextRebuildNodes(c);
-
         // Assign `ImVector`s to the windows/tables settings `ImChunkStream` members:
 
         // TODO is there an equivalent of `DockContextRebuildNodes` for windows?
@@ -256,6 +255,8 @@ struct ImGuiSettings {
             ApplyWindowSettings(ImGui::FindWindowByID(ws.ID), &ws);
         }
 
+        c->DockContext.NodesSettings = nodes_settings; // already an ImVector
+        ImGui::DockContextRebuildNodes(c);
         // TODO table settings
 
         // Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory`:

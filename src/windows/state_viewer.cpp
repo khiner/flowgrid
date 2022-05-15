@@ -25,6 +25,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
     // TODO ImGui::SetNextItemOpen(if me or any descendant was recently updated);
     //  or ImGuiTreeNodeFlags_DefaultOpen ?
 
+    // TODO update to new behavior of add/remove ops affecting _parent_ json path.
     if (value.is_null()) {
         ImGui::Text("null");
     } else if (value.is_object()) {

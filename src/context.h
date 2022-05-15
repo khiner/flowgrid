@@ -52,14 +52,21 @@ struct StateStats {
     Plottable path_update_frequency_plottable;
     ImU64 max_num_updates{0};
 
-    void on_path_update(const std::string &path, SystemTime time, Direction direction) {
+    // `patch` conforms to the [JSON patch](http://jsonpatch.com/) spec.
+    void on_json_patch(const json &patch, SystemTime time, Direction direction) {
+        const std::string path = patch["path"];
+        const std::string op = patch["op"];
+
+        // For add/remove ops, the thing being updated is the _parent_.
+        const std::string changed_path = op == "add" || op == "remove" ? path.substr(0, path.find_last_of('/')) : path;
+
         if (direction == Forward) {
-            auto &update_times = update_times_for_state_path[path];
+            auto &update_times = update_times_for_state_path[changed_path];
             update_times.emplace_back(time);
         } else {
-            auto &update_times = update_times_for_state_path.at(path);
+            auto &update_times = update_times_for_state_path.at(changed_path);
             update_times.pop_back();
-            if (update_times.empty()) update_times_for_state_path.erase(path);
+            if (update_times.empty()) update_times_for_state_path.erase(changed_path);
         }
         path_update_frequency_plottable = create_path_update_frequency_plottable();
         const auto &num_updates = path_update_frequency_plottable.values;

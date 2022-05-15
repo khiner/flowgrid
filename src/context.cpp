@@ -200,7 +200,7 @@ void Context::apply_diff(const int action_index, const Direction direction) {
         else if (path.rfind("/style/imgui", 0) == 0) has_imgui_style = true;
         else if (path.rfind("/style/implot", 0) == 0) has_implot_style = true;
 
-        state_stats.on_path_update(path, diff.system_time, direction);
+        state_stats.on_json_patch(jd, diff.system_time, direction);
     }
 
     if (has_imgui_settings) s.imgui_settings.populate_context(ui->imgui_context);
@@ -236,7 +236,7 @@ void Context::finalize_gesture() {
         diffs.emplace_back(diff);
         current_action_index = int(diffs.size()) - 1;
         for (auto &jd: json_diff) {
-            state_stats.on_path_update(jd["path"], diff.system_time, Forward);
+            state_stats.on_json_patch(jd, diff.system_time, Forward);
         }
         std::cout << json_diff << '\n';
     }

@@ -247,6 +247,8 @@ struct ImGuiSettings {
     // Inverse of above constructor. `imgui_context.settings = this`
     // Mirrors `ImGui::LoadIniSettingsFromMemory`, using the structured
     // `...Settings` members in this struct instead of the serialized .ini text format.
+    // TODO fix bugs undoing window size changes after closing a window, and undoing a window undock
+    //  (maybe re-implement doing `SaveIniSettingsToMemory`/`LoadIniSettingsFromMemory` to a string var to compare against)
     void populate_context(ImGuiContext *c) const {
         // Assign `ImVector`s to the windows/tables settings `ImChunkStream` members:
 

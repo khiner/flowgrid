@@ -5,6 +5,12 @@
 #include "blockingconcurrentqueue.h"
 #include "diff_match_patch.h"
 
+// TODO The time definitions/units here look nice https://stackoverflow.com/a/14391562, might want to adopt
+using namespace std::chrono_literals;
+using Clock = std::chrono::system_clock;
+using SystemTime = std::chrono::time_point<Clock, std::chrono::nanoseconds>;
+using Nanos = std::chrono::nanoseconds;
+
 struct RenderContext;
 struct UiContext {
     UiContext(ImGuiContext *imgui_context, ImPlotContext *implot_context) : imgui_context(imgui_context), implot_context(implot_context) {}
@@ -14,8 +20,6 @@ struct UiContext {
 };
 
 using namespace nlohmann; // json
-
-using SystemTime = std::chrono::time_point<std::chrono::system_clock>;
 
 enum Direction { Forward, Reverse };
 

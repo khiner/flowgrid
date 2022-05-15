@@ -1,5 +1,8 @@
 #pragma once
 
+// Import common libraries once in this widely-shared header
+#include <iostream>
+
 #include "state.h"
 #include "action.h"
 #include "blockingconcurrentqueue.h"

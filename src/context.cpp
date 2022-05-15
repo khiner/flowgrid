@@ -141,6 +141,7 @@ void Context::update(const Action &action) {
                 _s.style.implot = a.implot_style;
                 ui->implot_context->Style = a.implot_style;
             },
+            [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
 
             [&](const toggle_window &a) { _s.windows.named(a.name).visible = !s.windows.named(a.name).visible; },
 

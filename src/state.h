@@ -109,6 +109,7 @@ struct WindowsData {
         // draw methods return `true` if style changes.
         bool drawImGui();
         bool drawImPlot();
+        bool drawFlowGrid();
     };
 
     struct Demos : public Window {
@@ -173,9 +174,45 @@ struct Audio {
     double latency = 0.0;
 };
 
+enum FlowGridCol_ {
+    FlowGridCol_Flash, // ImGuiCol_TitleBgActive
+    FlowGridCol_COUNT
+};
+
+typedef int FlowGridCol; // -> enum ImGuiCol_
+
+struct FlowGridStyle {
+    ImVec4 Colors[FlowGridCol_COUNT];
+
+    static void StyleColorsDark(FlowGridStyle &style) {
+        auto *colors = style.Colors;
+        colors[FlowGridCol_Flash] = ImVec4(0.16f, 0.29f, 0.48f, 1.00f);
+    }
+    static void StyleColorsClassic(FlowGridStyle &style) {
+        auto *colors = style.Colors;
+        colors[FlowGridCol_Flash] = ImVec4(0.32f, 0.32f, 0.63f, 0.87f);
+    }
+    static void StyleColorsLight(FlowGridStyle &style) {
+        auto *colors = style.Colors;
+        colors[FlowGridCol_Flash] = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+    }
+
+    FlowGridStyle() {
+        StyleColorsDark(*this);
+    }
+
+    static const char *GetColorName(FlowGridCol idx) {
+        switch (idx) { // NOLINT(hicpp-multiway-paths-covered)
+            case FlowGridCol_Flash: return "Flash";
+        }
+        return "Unknown";
+    }
+};
+
 struct Style {
     ImGuiStyle imgui;
     ImPlotStyle implot;
+    FlowGridStyle flowgrid;
 
     Style() {
         // Transparent background. Need this to draw in background draw list, behind ImGui contents.
@@ -306,7 +343,8 @@ JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, Windo
 JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
-JSON_TYPE(Style, imgui, implot)
+JSON_TYPE(FlowGridStyle, Colors)
+JSON_TYPE(Style, imgui, implot, flowgrid)
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)
 JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)

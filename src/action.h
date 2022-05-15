@@ -14,6 +14,7 @@ struct redo {};
 struct set_imgui_settings { ImGuiSettings settings; };
 struct set_imgui_style { ImGuiStyle imgui_style; };
 struct set_implot_style { ImPlotStyle implot_style; };
+struct set_flowgrid_style { FlowGridStyle flowgrid_style; };
 
 struct toggle_window { std::string name; };
 
@@ -41,6 +42,7 @@ using Action = std::variant<
     set_imgui_settings,
     set_imgui_style,
     set_implot_style,
+    set_flowgrid_style,
 
     toggle_window,
 

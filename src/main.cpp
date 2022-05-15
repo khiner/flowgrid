@@ -42,6 +42,7 @@ int main(int, const char *argv[]) {
     c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)}));
     c.on_action(set_imgui_style({s.style.imgui}));
     c.on_action(set_implot_style({s.style.implot}));
+    c.on_action(set_flowgrid_style({s.style.flowgrid}));
 
     c.on_action(set_faust_code{s.windows.faust.code}); // Trigger faust dsp generation
     c.clear_undo(); // Make sure we don't start with any undo state (should only be the above `set_faust_code` action on the stack).

@@ -79,7 +79,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
                 0.0f, ImDrawFlags_None
             );
 
-            auto flash_color = ImGui::GetStyleColorVec4(ImGuiCol_TitleBgActive); // TODO add ImGuiCol_Flash
+            auto flash_color = state.style.flowgrid.Colors[FlowGridCol_Flash];
             flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
 
             ImGui::GetBackgroundDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
@@ -116,10 +116,12 @@ void Windows::StateWindows::StatePathUpdateFrequency::draw() {
         // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
         if (labels.size() == 1) labels.emplace_back("");
 
+        ImPlot::PushStyleColor(ImPlotCol_Fill, ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram));
         ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         ImPlot::PlotBarsH("Number of updates", values.data(), int(values.size()), 0.75, 0);
         ImPlot::EndPlot();
+        ImPlot::PopStyleColor();
     }
 }
 

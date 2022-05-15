@@ -232,7 +232,6 @@ bool Windows::StyleEditor::drawImGui() {
     return changed;
 }
 
-
 // From `implot_demo.cpp`
 bool ShowImPlotStyleSelector(const char *label, ImPlotStyle *dst) {
     static int style_idx = -1;
@@ -353,8 +352,77 @@ bool Windows::StyleEditor::drawImPlot() {
     return changed;
 }
 
+bool ShowFlowGridStyleSelector(const char *label, FlowGridStyle &style) {
+    static int style_idx = -1;
+    if (ImGui::Combo(label, &style_idx, "Dark\0Light\0Classic\0")) {
+        switch (style_idx) {
+            case 0: FlowGridStyle::StyleColorsDark(style);
+                break;
+            case 1: FlowGridStyle::StyleColorsLight(style);
+                break;
+            case 2: FlowGridStyle::StyleColorsClassic(style);
+                break;
+            default:break;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool Windows::StyleEditor::drawFlowGrid() {
+    bool changed = false;
+    auto &style = ui_s.style.flowgrid;
+
+    changed |= ShowFlowGridStyleSelector("Colors##Selector", style);
+
+    if (ImGui::BeginTabBar("##FlowGridStyleEditor")) {
+        if (ImGui::BeginTabItem("Colors")) {
+            // TODO DRY up this part across style editors
+            static ImGuiTextFilter filter;
+            filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
+
+            static ImGuiColorEditFlags alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
+            if (ImGui::RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
+            ImGui::SameLine();
+            HelpMarker(
+                "In the color list:\n"
+                "Left-click on colored square to open color picker,\n"
+                "Right-click to open edit options menu.");
+
+            ImGui::Separator();
+            ImGui::PushItemWidth(-160);
+            for (int i = 0; i < FlowGridCol_COUNT; i++) {
+                const char *name = FlowGridStyle::GetColorName(i);
+                if (!filter.PassFilter(name)) continue;
+
+                ImGui::PushID(i);
+                ImVec4 temp = style.Colors[i];
+                ImGui::SameLine();
+                if (StatefulImGui::ColorEdit4(name, &temp.x, ImGuiColorEditFlags_NoInputs | alpha_flags)) {
+                    style.Colors[i] = temp;
+                    changed = true;
+                }
+                ImGui::PopID();
+            }
+            ImGui::PopItemWidth(); // TODO can we delete this?
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+
+    return changed;
+}
+
 void Windows::StyleEditor::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
+        if (ImGui::BeginTabItem("FlowGrid")) {
+            if (drawFlowGrid()) q(set_flowgrid_style{ui_s.style.flowgrid});
+            ImGui::EndTabItem();
+        }
         if (ImGui::BeginTabItem("ImGui")) {
             if (drawImGui()) q(set_imgui_style{ui_s.style.imgui});
             ImGui::EndTabItem();

@@ -282,21 +282,21 @@ struct ImGuiSettings {
     }
 
     // Inverse of above constructor. `imgui_context.settings = this`
-    // Mirrors `ImGui::LoadIniSettingsFromMemory`, using the structured
-    // `...Settings` members in this struct instead of the serialized .ini text format.
-    // TODO fix bugs undoing window size changes after closing a window, and undoing a window undock
-    //  (maybe re-implement doing `SaveIniSettingsToMemory`/`LoadIniSettingsFromMemory` to a string var to compare against)
+    // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
+    // in this struct instead of the serialized .ini text format.
+    // TODO table settings
     void populate_context(ImGuiContext *c) const {
         // Assign `ImVector`s to the windows/tables settings `ImChunkStream` members:
 
-        // TODO is there an equivalent of `DockContextRebuildNodes` for windows?
+        // Clear
+        ImGui::DockSettingsHandler_ClearAll(c, nullptr);
+
+        // Apply
         for (auto ws: windows_settings) {
             ApplyWindowSettings(ImGui::FindWindowByID(ws.ID), &ws);
         }
-
         c->DockContext.NodesSettings = nodes_settings; // already an ImVector
-        ImGui::DockContextRebuildNodes(c);
-        // TODO table settings
+        ImGui::DockSettingsHandler_ApplyAll(c, nullptr);
 
         // Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory`:
         c->SettingsLoaded = true;

@@ -6,22 +6,58 @@
 using Settings = WindowsData::StateWindows::StateViewer::Settings;
 using LabelMode = Settings::LabelMode;
 
-bool JsonTreeNode(const char *label, bool is_highlighted = false) {
-    if (is_highlighted) {
-        // TODO register a highlight color in style
-        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 255, 0, 255));
-    }
+typedef int JsonTreeNodeFlags;
+enum JsonTreeNodeFlags_ {
+    JsonTreeNodeFlags_None,
+    JsonTreeNodeFlags_Highlighted
+};
 
+bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
+    bool is_highlighted = flags & JsonTreeNodeFlags_Highlighted;
+
+    if (is_highlighted) ImGui::PushStyleColor(ImGuiCol_Text, state.style.flowgrid.Colors[FlowGridCol_HighlightText]);
     bool is_open = ImGui::TreeNode(label);
-
     if (is_highlighted) ImGui::PopStyleColor();
 
     return is_open;
 }
 
+bool is_number(const std::string &str) {
+    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+}
 
-static void show_json_state_value_node(const std::string &key, const json &value, const std::filesystem::path &path, bool is_annotated_key = false) {
-    bool annotate = s.windows.state.viewer.settings.label_mode == LabelMode::annotated;
+enum ColorPaths_ {
+    ColorPaths_ImGui,
+    ColorPaths_ImPlot,
+    ColorPaths_FlowGrid,
+};
+//using ColorPaths = int;
+
+static const std::filesystem::path color_paths[] = { // addressable by `ColorPaths`
+    "/style/imgui/Colors",
+    "/style/implot/Colors",
+    "/style/flowgrid/Colors",
+};
+
+static void show_json_state_value_node(const std::string &key, const json &value, const std::filesystem::path &path) {
+    const bool annotate_enabled = s.windows.state.viewer.settings.label_mode == LabelMode::annotated;
+
+    const std::string &file_name = path.filename();
+    const bool is_array_item = is_number(file_name);
+    const int array_index = is_array_item ? std::stoi(file_name) : -1;
+    const bool is_color = std::string(path).find("Colors") != std::string::npos && is_array_item;
+    const bool is_imgui_color = path.parent_path() == color_paths[ColorPaths_ImGui];
+    const bool is_implot_color = path.parent_path() == color_paths[ColorPaths_ImPlot];
+    const bool is_flowgrid_color = path.parent_path() == color_paths[ColorPaths_FlowGrid];
+    const auto &name = annotate_enabled ?
+                       (is_imgui_color ?
+                        ImGui::GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
+                                                                is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
+                                                                is_array_item ? file_name : key) : key;
+
+    const bool should_highlight = annotate_enabled && is_color;
+    const auto node_flags = should_highlight ? JsonTreeNodeFlags_Highlighted : JsonTreeNodeFlags_None;
+
     // TODO ImGui::SetNextItemOpen(if me or any descendant was recently updated);
     //  or ImGuiTreeNodeFlags_DefaultOpen ?
 
@@ -29,26 +65,23 @@ static void show_json_state_value_node(const std::string &key, const json &value
     if (value.is_null()) {
         ImGui::Text("null");
     } else if (value.is_object()) {
-        if (JsonTreeNode(key.c_str(), is_annotated_key)) {
+        if (JsonTreeNode(name.c_str(), node_flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 show_json_state_value_node(it.key(), it.value(), path / it.key());
             }
             ImGui::TreePop();
         }
     } else if (value.is_array()) {
-        bool annotate_color = annotate && key == "Colors";
-        if (JsonTreeNode(key.c_str(), is_annotated_key)) {
+        if (JsonTreeNode(name.c_str(), node_flags)) {
             int i = 0;
             for (const auto &it: value) {
-                const bool is_child_annotated_key = annotate_color && i < ImGuiCol_COUNT;
-                const auto &name = is_child_annotated_key ? ImGui::GetStyleColorName(i) : std::to_string(i);
-                show_json_state_value_node(name, it, path / std::to_string(i), is_child_annotated_key);
+                show_json_state_value_node(std::to_string(i), it, path / std::to_string(i));
                 i++;
             }
             ImGui::TreePop();
         }
     } else {
-        ImGui::Text("%s : %s", key.c_str(), value.dump().c_str());
+        ImGui::Text("%s : %s", name.c_str(), value.dump().c_str());
         if (c.state_stats.update_times_for_state_path.contains(path)) {
             auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
 
@@ -82,7 +115,6 @@ static void show_json_state_value_node(const std::string &key, const json &value
 
             auto flash_color = state.style.flowgrid.Colors[FlowGridCol_Flash];
             flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
-
             ImGui::GetBackgroundDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
 
             // TODO indicate relative update-recency

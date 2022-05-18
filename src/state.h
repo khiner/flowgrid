@@ -24,6 +24,13 @@
  * **The global `const StateData &s` and `State ui_s` instances are declared in `context.h` and instantiated in `main.cpp`.**
  */
 
+// TODO should all state members implement the `std::path` interface, returning their path from the root `State`?
+//  then we could do something like
+//  ```cpp
+//     const bool is_color = path.parent_path() == s.style.imgui.colors < ImGuiCol_COUNT;
+//     const int color_index = std::stoi(path.);
+//  ```
+
 struct WindowData {
     std::string name;
     bool visible{true};
@@ -176,6 +183,7 @@ struct Audio {
 
 enum FlowGridCol_ {
     FlowGridCol_Flash, // ImGuiCol_TitleBgActive
+    FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
     FlowGridCol_COUNT
 };
 
@@ -187,14 +195,17 @@ struct FlowGridStyle {
     static void StyleColorsDark(FlowGridStyle &style) {
         auto *colors = style.Colors;
         colors[FlowGridCol_Flash] = ImVec4(0.16f, 0.29f, 0.48f, 1.00f);
+        colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
     }
     static void StyleColorsClassic(FlowGridStyle &style) {
         auto *colors = style.Colors;
         colors[FlowGridCol_Flash] = ImVec4(0.32f, 0.32f, 0.63f, 0.87f);
+        colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
     }
     static void StyleColorsLight(FlowGridStyle &style) {
         auto *colors = style.Colors;
         colors[FlowGridCol_Flash] = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+        colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
     }
 
     FlowGridStyle() {
@@ -202,8 +213,9 @@ struct FlowGridStyle {
     }
 
     static const char *GetColorName(FlowGridCol idx) {
-        switch (idx) { // NOLINT(hicpp-multiway-paths-covered)
+        switch (idx) {
             case FlowGridCol_Flash: return "Flash";
+            case FlowGridCol_HighlightText: return "HighlightText";
         }
         return "Unknown";
     }
@@ -286,19 +298,16 @@ struct ImGuiSettings {
     // in this struct instead of the serialized .ini text format.
     // TODO table settings
     void populate_context(ImGuiContext *c) const {
-        // Assign `ImVector`s to the windows/tables settings `ImChunkStream` members:
-
-        // Clear
+        /** Clear **/
         ImGui::DockSettingsHandler_ClearAll(c, nullptr);
 
-        // Apply
-        for (auto ws: windows_settings) {
-            ApplyWindowSettings(ImGui::FindWindowByID(ws.ID), &ws);
-        }
+        /** Apply **/
+        for (auto ws: windows_settings) ApplyWindowSettings(ImGui::FindWindowByID(ws.ID), &ws);
+
         c->DockContext.NodesSettings = nodes_settings; // already an ImVector
         ImGui::DockSettingsHandler_ApplyAll(c, nullptr);
 
-        // Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory`:
+        /** Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory` **/
         c->SettingsLoaded = true;
         c->SettingsDirtyTimer = 0.0f;
     }

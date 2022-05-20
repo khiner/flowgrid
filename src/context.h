@@ -134,7 +134,7 @@ public:
     StateStats state_stats;
     State _state{};
     diff_match_patch<std::string> dmp;
-    UiContext *ui;
+    UiContext *ui{};
 
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand

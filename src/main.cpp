@@ -1,7 +1,6 @@
 #include <thread>
 #include "context.h"
 #include "draw.h"
-#include "process_manager.h"
 
 // Initialize global variables, and convenient shorthand variables.
 Config config{};
@@ -10,7 +9,7 @@ Context &c = context;
 const State &state = c.s;
 const State &s = c.s;
 State &ui_s = c.ui_s;
-BlockingConcurrentQueue<Action> queue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
+ProcessManager process_manager{};
 
 /**md
  # Notes
@@ -80,21 +79,12 @@ int main(int, const char *argv[]) {
 
       Ok I think I know a next step to try first - can we get rid of the `ui_s` mutable state copy entirely?
     */
-    ProcessManager process_manager;
-    std::thread action_consumer([&]() {
-        while (s.processes.action_consumer.running) {
-            Action a;
-            queue.wait_dequeue(a);
-            c.on_action(a);
-            process_manager.on_action(a);
-        }
-    });
 
     while (s.processes.ui.running) {
         tick_ui();
     }
+
     destroy_ui();
-    action_consumer.join();
 
     return 0;
 }

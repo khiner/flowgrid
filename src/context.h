@@ -5,7 +5,7 @@
 
 #include "state.h"
 #include "action.h"
-#include "blockingconcurrentqueue.h"
+#include "process_manager.h"
 #include "diff_match_patch.h"
 
 // TODO The time definitions/units here look nice https://stackoverflow.com/a/14391562, might want to adopt
@@ -199,24 +199,17 @@ public:
 extern Context context, &c;
 extern const State &state, &s;
 extern State &ui_s;
-
-using namespace moodycamel; // Has `ConcurrentQueue` & `BlockingConcurrentQueue`
-
-/**
- * The action queue is available for use anywhere in the application.
- * However, the singular usage of `queue.wait_dequeue` is in `main.cpp`.
- * In fact, that's currently the only place in the application that anything but `enqueue` is called on `queue`.
- *
- * For convenience, a shorthand `q(action)` function is provided.
- * By convention, there are no usages of `queue.enqueue(action)` in the code; the application only uses `q` to enqueue actions.
- * enqueue an action into the main application action consumer loop.
- */
-extern BlockingConcurrentQueue<Action> queue;
+extern ProcessManager process_manager;
 
 // False positive unused function from CLion.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
-static inline bool q(Action &&item) { return queue.enqueue(item); }
+static inline bool q(Action &&a) {
+    c.on_action(a);
+    process_manager.on_action(a);
+//    return queue.enqueue(a); // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
+    return true;
+}
 #pragma clang diagnostic pop
 
 extern Config config;

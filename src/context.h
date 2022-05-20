@@ -207,7 +207,9 @@ extern ProcessManager process_manager;
 static inline bool q(Action &&a) {
     c.on_action(a);
     process_manager.on_action(a);
-//    return queue.enqueue(a); // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
+    // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
+    // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
+    // return queue.enqueue(a);
     return true;
 }
 #pragma clang diagnostic pop

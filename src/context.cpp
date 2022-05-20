@@ -144,6 +144,7 @@ void Context::update(const Action &action) {
 
             [&](const toggle_window &a) { _s.windows.named(a.name).visible = !s.windows.named(a.name).visible; },
 
+            [&](const toggle_state_viewer_auto_select &) { _s.windows.state.viewer.settings.auto_select = !s.windows.state.viewer.settings.auto_select; },
             [&](const set_state_viewer_label_mode &a) { _s.windows.state.viewer.settings.label_mode = a.label_mode; },
 
             [&](set_ui_running a) { _s.processes.ui.running = a.running; },
@@ -199,9 +200,8 @@ void Context::apply_diff(const int action_index, const Direction direction) {
         if (path.rfind("/imgui_settings", 0) == 0) has_imgui_settings = true;
         else if (path.rfind("/style/imgui", 0) == 0) has_imgui_style = true;
         else if (path.rfind("/style/implot", 0) == 0) has_implot_style = true;
-
-        state_stats.on_json_patch(jd, diff.system_time, direction);
     }
+    state_stats.on_json_diff(d.json_diff, diff.system_time, direction);
 
     if (has_imgui_settings) s.imgui_settings.populate_context(ui->imgui_context);
     if (has_imgui_style) ui->imgui_context->Style = s.style.imgui;
@@ -235,9 +235,7 @@ void Context::finalize_gesture() {
         };
         diffs.emplace_back(diff);
         current_action_index = int(diffs.size()) - 1;
-        for (auto &jd: json_diff) {
-            state_stats.on_json_patch(jd, diff.system_time, Forward);
-        }
+        state_stats.on_json_diff(json_diff, diff.system_time, Forward);
         std::cout << json_diff << '\n';
     }
 }

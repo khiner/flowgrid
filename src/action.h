@@ -18,6 +18,7 @@ struct set_flowgrid_style { FlowGridStyle flowgrid_style; };
 
 struct toggle_window { std::string name; };
 
+struct toggle_state_viewer_auto_select {};
 struct set_state_viewer_label_mode { Windows::StateWindows::StateViewer::Settings::LabelMode label_mode; };
 
 struct toggle_audio_muted {};
@@ -46,6 +47,7 @@ using Action = std::variant<
 
     toggle_window,
 
+    toggle_state_viewer_auto_select,
     set_state_viewer_label_mode,
 
     toggle_audio_muted,

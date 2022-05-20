@@ -84,6 +84,7 @@ struct WindowsData {
             struct Settings {
                 enum LabelMode { annotated, raw };
                 LabelMode label_mode{annotated};
+                bool auto_select{true};
             };
 
             Settings settings{};
@@ -216,8 +217,8 @@ struct FlowGridStyle {
         switch (idx) {
             case FlowGridCol_Flash: return "Flash";
             case FlowGridCol_HighlightText: return "HighlightText";
+            default: return "Unknown";
         }
-        return "Unknown";
     }
 };
 
@@ -339,7 +340,8 @@ JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, C
 JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax, WantApply)
 
 JSON_TYPE(WindowData, name, visible)
-JSON_TYPE(WindowsData::StateWindows::StateViewer::Settings, label_mode)
+JSON_TYPE(WindowsData::StateWindows::StateViewer::Settings, label_mode, auto_select)
+JSON_TYPE(WindowsData::StateWindows::StateViewer, settings)
 JSON_TYPE(WindowsData::StateWindows, viewer, memory_editor, path_update_frequency)
 JSON_TYPE(WindowsData::Faust::Editor, file_name)
 JSON_TYPE(WindowsData::Faust, code, error, editor, log)

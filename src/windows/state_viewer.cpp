@@ -9,15 +9,19 @@ using LabelMode = Settings::LabelMode;
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None,
-    JsonTreeNodeFlags_Highlighted
+    JsonTreeNodeFlags_Highlighted,
+    JsonTreeNodeFlags_Disabled,
 };
 
 bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
-    bool is_highlighted = flags & JsonTreeNodeFlags_Highlighted;
+    bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
+    bool disabled = flags & JsonTreeNodeFlags_Disabled;
 
-    if (is_highlighted) ImGui::PushStyleColor(ImGuiCol_Text, state.style.flowgrid.Colors[FlowGridCol_HighlightText]);
+    if (disabled) ImGui::BeginDisabled();
+    if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, state.style.flowgrid.Colors[FlowGridCol_HighlightText]);
     bool is_open = ImGui::TreeNode(label);
-    if (is_highlighted) ImGui::PopStyleColor();
+    if (highlighted) ImGui::PopStyleColor();
+    if (disabled) ImGui::EndDisabled();
 
     return is_open;
 }
@@ -40,6 +44,7 @@ static const std::filesystem::path color_paths[] = { // addressable by `ColorPat
 };
 
 static void show_json_state_value_node(const std::string &key, const json &value, const std::filesystem::path &path) {
+    const bool auto_select = s.windows.state.viewer.settings.auto_select;
     const bool annotate_enabled = s.windows.state.viewer.settings.label_mode == LabelMode::annotated;
 
     const std::string &file_name = path.filename();
@@ -55,11 +60,18 @@ static void show_json_state_value_node(const std::string &key, const json &value
                                                                 is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
                                                                 is_array_item ? file_name : key) : key;
 
-    const bool should_highlight = annotate_enabled && is_color;
-    const auto node_flags = should_highlight ? JsonTreeNodeFlags_Highlighted : JsonTreeNodeFlags_None;
-
     // TODO ImGui::SetNextItemOpen(if me or any descendant was recently updated);
     //  or ImGuiTreeNodeFlags_DefaultOpen ?
+    if (auto_select) {
+        const auto &update_paths = c.state_stats.most_recent_update_paths;
+        const auto is_ancestor_path = [path](const std::string &candidate_path) { return candidate_path.rfind(path, 0) == 0; };
+        const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
+        ImGui::SetNextItemOpen(was_recently_updated);
+    }
+
+    JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None;
+    if (annotate_enabled && is_color) node_flags |= JsonTreeNodeFlags_Highlighted;
+    if (auto_select) node_flags |= JsonTreeNodeFlags_Disabled;
 
     // TODO update to new behavior of add/remove ops affecting _parent_ json path.
     if (value.is_null()) {
@@ -82,9 +94,8 @@ static void show_json_state_value_node(const std::string &key, const json &value
         }
     } else {
         ImGui::Text("%s : %s", name.c_str(), value.dump().c_str());
-        if (c.state_stats.update_times_for_state_path.contains(path)) {
-            auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
 
+        if (c.state_stats.update_times_for_state_path.contains(path)) {
             const ImVec2 w_min = ImGui::GetWindowPos();
             const float w_width = ImGui::GetWindowWidth();
             const ImVec2 w_max = {w_min.x + w_width, w_min.y + ImGui::GetWindowHeight()};
@@ -162,10 +173,16 @@ static const std::string label_help = "The raw JSON state doesn't store keys for
                                       "For example, the main `ui.style.colors` state is a list.\n\n"
                                       "'Annotated' mode shows (highlighted) labels for such state items.\n"
                                       "'Raw' mode shows the state exactly as it is in the raw JSON state.";
+static const std::string auto_select_help = "When auto-select is enabled, state changes automatically open.\n"
+                                            "The state viewer to the changed state node(s), closing all other state nodes.\n"
+                                            "State menu items can only be opened or closed manually if auto-select is disabled.";
 
 void Windows::StateWindows::StateViewer::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Settings")) {
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.windows.state.viewer.settings.auto_select)) {
+                q(toggle_state_viewer_auto_select{});
+            }
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
                 auto label_mode = s.windows.state.viewer.settings.label_mode;
                 if (ImGui::MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {

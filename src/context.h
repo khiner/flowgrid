@@ -51,26 +51,19 @@ struct StateStats {
     std::map<std::string, std::vector<SystemTime>> update_times_for_state_path{};
     Plottable path_update_frequency_plottable;
     ImU64 max_num_updates{0};
+    std::vector<std::string> most_recent_update_paths{};
 
     // `patch` conforms to the [JSON patch](http://jsonpatch.com/) spec.
-    void on_json_patch(const json &patch, SystemTime time, Direction direction) {
-        const std::string path = patch["path"];
-        const std::string op = patch["op"];
-
-        // For add/remove ops, the thing being updated is the _parent_.
-        const std::string changed_path = op == "add" || op == "remove" ? path.substr(0, path.find_last_of('/')) : path;
-
-        if (direction == Forward) {
-            auto &update_times = update_times_for_state_path[changed_path];
-            update_times.emplace_back(time);
-        } else {
-            auto &update_times = update_times_for_state_path.at(changed_path);
-            update_times.pop_back();
-            if (update_times.empty()) update_times_for_state_path.erase(changed_path);
+    void on_json_diff(const json &diff, SystemTime time, Direction direction) {
+        most_recent_update_paths = {};
+        for (auto &patch: diff) {
+            const std::string path = patch["path"];
+            const std::string op = patch["op"];
+            // For add/remove ops, the thing being updated is the _parent_.
+            const std::string changed_path = op == "add" || op == "remove" ? path.substr(0, path.find_last_of('/')) : path;
+            on_json_patch(changed_path, time, direction);
+            most_recent_update_paths.emplace_back(changed_path);
         }
-        path_update_frequency_plottable = create_path_update_frequency_plottable();
-        const auto &num_updates = path_update_frequency_plottable.values;
-        max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
     }
 
 private:
@@ -79,6 +72,20 @@ private:
         char *pc = new char[str.size()];
         std::strcpy(pc, std::string{str.begin() + 1, str.end()}.c_str());
         return pc;
+    }
+
+    void on_json_patch(const std::string &path, SystemTime time, Direction direction) {
+        if (direction == Forward) {
+            auto &update_times = update_times_for_state_path[path];
+            update_times.emplace_back(time);
+        } else {
+            auto &update_times = update_times_for_state_path.at(path);
+            update_times.pop_back();
+            if (update_times.empty()) update_times_for_state_path.erase(path);
+        }
+        path_update_frequency_plottable = create_path_update_frequency_plottable();
+        const auto &num_updates = path_update_frequency_plottable.values;
+        max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
     }
 
     Plottable create_path_update_frequency_plottable() {

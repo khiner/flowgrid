@@ -108,6 +108,7 @@ private:
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(int index, Direction direction);
     void finalize_gesture();
+
 public:
 /**md
  * # Writing directly to state
@@ -190,6 +191,11 @@ public:
         //  and do this atomically with a single assignment.
         state_stats = {};
     }
+
+    void update_ui(Direction direction, bool update_imgui_settings, bool update_imgui_style, bool update_implot_style);
+
+private:
+    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
 };
 
 /**

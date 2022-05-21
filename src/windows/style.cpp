@@ -23,7 +23,7 @@ bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {
 }
 
 // Returns `true` if style changes.
-bool Windows::StyleEditor::drawImGui() {
+bool Windows::StyleEditor::ImGuiStyleEditor() {
     bool changed = false;
     auto &style = ui_s.style.imgui;
 
@@ -252,7 +252,7 @@ bool ShowImPlotStyleSelector(const char *label, ImPlotStyle *dst) {
     return false;
 }
 
-bool Windows::StyleEditor::drawImPlot() {
+bool Windows::StyleEditor::ImPlotStyleEditor() {
     bool changed = false;
     auto &style = ui_s.style.implot;
 
@@ -375,7 +375,7 @@ static ImU64 u64_v = (ImU64) -1;
 #define IM_PRIu64   "llu"
 
 // TODO refactor to `::FlowGrid::StyleEditor::draw()`
-bool Windows::StyleEditor::drawFlowGrid() {
+bool Windows::StyleEditor::FlowGridStyleEditor() {
     bool changed = false;
     auto &style = ui_s.style.flowgrid;
 
@@ -428,15 +428,15 @@ bool Windows::StyleEditor::drawFlowGrid() {
 void Windows::StyleEditor::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("FlowGrid")) {
-            if (drawFlowGrid()) q(set_flowgrid_style{ui_s.style.flowgrid});
+            if (FlowGridStyleEditor()) q(set_flowgrid_style{ui_s.style.flowgrid});
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImGui")) {
-            if (drawImGui()) q(set_imgui_style{ui_s.style.imgui});
+            if (ImGuiStyleEditor()) q(set_imgui_style{ui_s.style.imgui});
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImPlot")) {
-            if (drawImPlot()) {
+            if (ImPlotStyleEditor()) {
                 ImPlot::BustItemCache();
                 q(set_implot_style{ui_s.style.implot});
             }

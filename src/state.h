@@ -58,10 +58,10 @@ struct Windows : Drawable {
         void draw() override;
 
     private:
-        // draw methods return `true` if style changes.
-        bool drawImGui();
-        bool drawImPlot();
-        bool drawFlowGrid();
+        // `...StyleEditor` methods are drawn as tabs, and return `true` if style changes.
+        bool ImGuiStyleEditor();
+        bool ImPlotStyleEditor();
+        bool FlowGridStyleEditor();
     };
 
     struct Demos : Window {

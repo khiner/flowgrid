@@ -52,7 +52,7 @@ struct StateStats {
 
     std::map<string, std::vector<SystemTime>> update_times_for_state_path{};
     Plottable path_update_frequency_plottable;
-    ImU64 max_num_updates{0};
+    ImU32 max_num_updates{0};
     std::vector<string> most_recent_update_paths{};
 
     // `patch` conforms to the [JSON patch](http://jsonpatch.com/) spec.

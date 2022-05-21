@@ -223,9 +223,7 @@ void Context::finalize_gesture() {
 void Context::update_ui(UpdateUiFlags flags) {
     if (flags == UpdateUiFlags_None) return;
 
-    if (flags & UpdateUiFlags_ImGuiSettings) {
-        s.imgui_settings.populate_context(ui->imgui_context);
-    }
+    if (flags & UpdateUiFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
     if (flags & UpdateUiFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
     if (flags & UpdateUiFlags_ImPlotStyle) {
         ImPlot::BustItemCache();

@@ -377,16 +377,12 @@ bool FlowGridStyleSelector(const char *label, FlowGridStyle &style) {
     return false;
 }
 
-// Copied from `imgui_demo.cpp`
-const ImU64 u64_min = 0, u64_max = ULLONG_MAX / 2;
-#define IM_PRIu64 "llu"
-
 // TODO refactor to `::FlowGrid::StyleEditor::draw()`
 bool Windows::StyleEditor::FlowGridStyleEditor() {
     bool changed = false;
     auto &style = ui_s.style.flowgrid;
 
-    changed |= StatefulImGui::SliderScalar("FlashDurationNs", ImGuiDataType_U64, &style.FlashDurationNs, &u64_min, &u64_max, "%" IM_PRIu64 " ns");
+    changed |= StatefulImGui::SliderScalar("FlashDuration", ImGuiDataType_U32, &style.FlashDurationMs, &FlashDurationMsMin, &FlashDurationMsMax, "%u ms");
     changed |= FlowGridStyleSelector("Colors##Selector", style);
 
     if (ImGui::BeginTabBar("##FlowGridStyleEditor")) {

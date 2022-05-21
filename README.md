@@ -1,10 +1,24 @@
 # FlowGrid
 
 Prototyping the new stack for FlowGrid.
-(Old version [here](https://github.com/khiner/flowgrid))
 
-I'm still actively building this.
-Currently, I'm basically trying to maximally mash together some wonderful libraries (see [**Stack**](#stack)):
+(Old version [here](https://github.com/khiner/flowgrid)) with an out-of-date demo gif and in general dissaray.
+Planning on making that solid in what it does soon (without adding any new features), but got carried away having fun
+laying foundations for a new [**Stack**](#stack), aimed at helping me be more productive.
+
+Still actively building this.
+
+Focusing here on making it easier to stay in flow state while using _and creating_ the app.
+
+* Keeping full clean-and-build times low
+* Keeping rebuild times low after edits of commonly imported headers
+* Spend more time upfront trying to get simple and flexible foundations right
+* Always Be Improving the experience of creating the application
+* Have fun building this - that will make me actually build it
+* Let myself prematurely optimize. More Fast <=> More Fun. In the computers, fast things are good and always more fun
+  than slow things.
+
+So far, I'm basically trying to mash together some great libraries (see [**Stack**](#stack)):
 
 ## Build and run
 
@@ -32,7 +46,7 @@ TODO: Will probably want to eventually build llvm locally as a submodule, and po
 See [TD-Faust](https://github.com/DBraun/TD-Faust/blob/02f35e4343370559c779468413c32179f55c6552/build_macos.sh#L5-L31)
 as an example.
 
-## Stack
+## [**Stack**](#stack)
 
 ### Audio
 

@@ -352,7 +352,7 @@ bool Windows::StyleEditor::drawImPlot() {
     return changed;
 }
 
-bool ShowFlowGridStyleSelector(const char *label, FlowGridStyle &style) {
+bool FlowGridStyleSelector(const char *label, FlowGridStyle &style) {
     static int style_idx = -1;
     if (ImGui::Combo(label, &style_idx, "Dark\0Light\0Classic\0")) {
         switch (style_idx) {
@@ -369,11 +369,19 @@ bool ShowFlowGridStyleSelector(const char *label, FlowGridStyle &style) {
     return false;
 }
 
+// Copied from `imgui_demo.cpp`
+const ImU64 u64_zero = 0, u64_one = 1, u64_fifty = 50, u64_min = 0, u64_max = ULLONG_MAX / 2, u64_hi_a = ULLONG_MAX / 2 - 100, u64_hi_b = ULLONG_MAX / 2;
+static ImU64 u64_v = (ImU64) -1;
+#define IM_PRIu64   "llu"
+
+// TODO refactor to `::FlowGrid::StyleEditor::draw()`
 bool Windows::StyleEditor::drawFlowGrid() {
     bool changed = false;
     auto &style = ui_s.style.flowgrid;
 
-    changed |= ShowFlowGridStyleSelector("Colors##Selector", style);
+//    changed |= StatefulImGui::SliderScalar("slider u64 full", ImGuiDataType_U64, &u64_v, &u64_min, &u64_max, "%" IM_PRIu64 " ns");
+    changed |= StatefulImGui::SliderScalar("FlashDurationNs", ImGuiDataType_U64, &style.FlashDurationNs, &u64_min, &u64_max, "%" IM_PRIu64 " ns");
+    changed |= FlowGridStyleSelector("Colors##Selector", style);
 
     if (ImGui::BeginTabBar("##FlowGridStyleEditor")) {
         if (ImGui::BeginTabItem("Colors")) {

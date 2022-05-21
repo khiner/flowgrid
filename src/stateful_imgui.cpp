@@ -48,6 +48,18 @@ bool StatefulImGui::SliderFloat2(const char *label, float *v, float v_min, float
     return edited;
 }
 
+bool StatefulImGui::SliderInt(const char *label, int *v, int v_min, int v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderInt(label, v, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool StatefulImGui::SliderScalar(const char *label, ImGuiDataType data_type, void *p_data, const void *p_min, const void *p_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderScalar(label, data_type, p_data, p_min, p_max, format, flags);
+    gestured();
+    return edited;
+}
+
 bool StatefulImGui::DragFloat(const char *label, float *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
     const bool edited = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
     gestured();

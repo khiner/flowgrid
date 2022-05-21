@@ -6,6 +6,12 @@
 #include "implot.h"
 #include "implot_internal.h"
 
+// TODO The time definitions/units here look nice https://stackoverflow.com/a/14391562, might want to adopt
+using namespace std::chrono_literals;
+using Clock = std::chrono::system_clock;
+using SystemTime = std::chrono::time_point<Clock, std::chrono::nanoseconds>;
+using Nanos = std::chrono::nanoseconds;
+
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.
  *
@@ -164,6 +170,7 @@ typedef int FlowGridCol; // -> enum ImGuiCol_
 
 struct FlowGridStyle {
     ImVec4 Colors[FlowGridCol_COUNT];
+    ImU64 FlashDurationNs = Nanos(500ms).count(); // TODO this should be `FlashDurationTime`, of type `SystemTime`, which may need its own new json type
 
     static void StyleColorsDark(FlowGridStyle &style) {
         auto *colors = style.Colors;
@@ -354,6 +361,7 @@ JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)
 JSON_TYPE(Audio::Faust, code, error, editor, log)
 JSON_TYPE(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
 JSON_TYPE(Audio, settings, faust)
+
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
     LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale, AntiAliasedLines,
@@ -361,8 +369,9 @@ JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, Windo
 JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
-JSON_TYPE(FlowGridStyle, Colors)
+JSON_TYPE(FlowGridStyle, Colors, FlashDurationNs)
 JSON_TYPE(Style, imgui, implot, flowgrid)
+
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)
 JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)

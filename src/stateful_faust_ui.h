@@ -17,7 +17,7 @@
 
 using uint = unsigned int;
 
-struct StatefulFaustUI : public PathBuilder, public Meta, public UI {
+struct StatefulFaustUI : PathBuilder, Meta, UI {
     enum ItemType { kButton = 0, kCheckButton, kVSlider, kHSlider, kNumEntry, kHBargraph, kVBargraph };
     enum Type { kAcc = 0, kGyr = 1, kNoType };
 

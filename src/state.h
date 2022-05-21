@@ -50,11 +50,11 @@ struct Window : WindowData, Drawable {
     Window() = default;
 };
 
-struct Windows : public Drawable {
+struct Windows : Drawable {
     void draw() override;
 
     struct StateWindows {
-        struct StateViewer : public Window {
+        struct StateViewer : Window {
             StateViewer() { name = "State viewer"; }
             void draw() override;
 
@@ -63,12 +63,12 @@ struct Windows : public Drawable {
             bool auto_select{true};
         };
 
-        struct MemoryEditorWindow : public Window {
+        struct MemoryEditorWindow : Window {
             MemoryEditorWindow() { name = "State memory editor"; }
             void draw() override;
         };
 
-        struct StatePathUpdateFrequency : public Window {
+        struct StatePathUpdateFrequency : Window {
             StatePathUpdateFrequency() { name = "Path update frequency"; }
             void draw() override;
         };
@@ -78,7 +78,7 @@ struct Windows : public Drawable {
         StatePathUpdateFrequency path_update_frequency{};
     };
 
-    struct StyleEditor : public Window {
+    struct StyleEditor : Window {
         StyleEditor() { name = "Style editor"; }
         void draw() override;
 
@@ -89,12 +89,12 @@ struct Windows : public Drawable {
         bool drawFlowGrid();
     };
 
-    struct Demos : public Window {
+    struct Demos : Window {
         Demos() { name = "Demos"; }
         void draw() override;
     };
 
-    struct Metrics : public Window {
+    struct Metrics : Window {
         Metrics() { name = "Metrics"; }
         void draw() override;
     };
@@ -109,10 +109,10 @@ enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
 
-struct Audio : public Drawable {
+struct Audio : Drawable {
     void draw() override;
 
-    struct Settings : public Window {
+    struct Settings : Window {
         Settings() { name = "Audio settings"; }
         void draw() override;
 
@@ -126,7 +126,7 @@ struct Audio : public Drawable {
     };
 
     struct Faust {
-        struct Editor : public Window {
+        struct Editor : Window {
             Editor() : file_name{"default.dsp"} { name = "Faust editor"; }
             void draw() override;
 
@@ -135,7 +135,7 @@ struct Audio : public Drawable {
 
         // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
         // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
-        struct Log : public Window {
+        struct Log : Window {
             Log() { name = "Faust log"; }
             void draw() override;
         };
@@ -301,7 +301,7 @@ struct StateData {
     Processes processes;
 };
 
-struct State : public StateData {
+struct State : StateData {
     State() = default;
     // Don't copy/assign references!
     explicit State(const StateData &other) : StateData(other) {}

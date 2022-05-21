@@ -16,7 +16,7 @@ using namespace Zep;
 inline NVec2f toNVec2f(const ImVec2 &im) { return {im.x, im.y}; }
 inline ImVec2 toImVec2(const NVec2f &im) { return {im.x, im.y}; }
 
-struct ZepFont_ImGui : public ZepFont {
+struct ZepFont_ImGui : ZepFont {
     ZepFont_ImGui(ZepDisplay &display, ImFont *font, float heightRatio) : ZepFont(display), font(font) {
         SetPixelHeight(int(font->FontSize * heightRatio));
     }
@@ -46,7 +46,7 @@ static ImU32 GetStyleModulatedColor(const NVec4f &color) {
     return ToPackedABGR(NVec4f(color.x, color.y, color.z, color.w * ImGui::GetStyle().Alpha));
 }
 
-struct ZepDisplay_ImGui : public ZepDisplay {
+struct ZepDisplay_ImGui : ZepDisplay {
     ZepDisplay_ImGui() : ZepDisplay() {}
 
     void DrawChars(ZepFont &font, const NVec2f &pos, const NVec4f &col, const uint8_t *text_begin, const uint8_t *text_end) const override {
@@ -104,7 +104,7 @@ struct ZepDisplay_ImGui : public ZepDisplay {
     NRectf clipRect;
 };
 
-struct ZepEditor_ImGui : public ZepEditor {
+struct ZepEditor_ImGui : ZepEditor {
     explicit ZepEditor_ImGui(const ZepPath &root, uint32_t flags = 0, ZepFileSystem *pFileSystem = nullptr)
         : ZepEditor(new ZepDisplay_ImGui(), root, flags, pFileSystem) {}
 
@@ -215,7 +215,7 @@ struct ZepEditor_ImGui : public ZepEditor {
 
 bool zep_initialized = false;
 
-struct ZepWrapper : public ZepComponent, public IZepReplProvider {
+struct ZepWrapper : ZepComponent, IZepReplProvider {
     explicit ZepWrapper(ZepEditor_ImGui &editor) : ZepComponent(editor) {
         ZepRegressExCommand::Register(editor);
 

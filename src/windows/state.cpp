@@ -8,9 +8,9 @@ using LabelMode = State::StateWindows::StateViewer::LabelMode;
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
-    JsonTreeNodeFlags_None,
-    JsonTreeNodeFlags_Highlighted,
-    JsonTreeNodeFlags_Disabled,
+    JsonTreeNodeFlags_None = 0,
+    JsonTreeNodeFlags_Highlighted = 1 << 0,
+    JsonTreeNodeFlags_Disabled = 1 << 1,
 };
 
 bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {

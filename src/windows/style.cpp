@@ -408,10 +408,7 @@ void Windows::StyleEditor::draw() {
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImPlot")) {
-            if (ImPlotStyleEditor()) {
-                ImPlot::BustItemCache();
-                q(set_implot_style{ui_s.style.implot});
-            }
+            if (ImPlotStyleEditor()) q(set_implot_style{ui_s.style.implot});
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

@@ -37,7 +37,7 @@ int main(int, const char *argv[]) {
 
     // Initialize the ImGui/ImPlot settings/style:
     c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)}));
-    c.update_ui(Forward, false, true, true);
+    c.update_ui(UpdateUiFlags_ImGuiStyle | UpdateUiFlags_ImPlotStyle);
 
     c.on_action(set_faust_code{s.audio.faust.code}); // Trigger faust dsp generation
     c.clear_undo(); // Make sure we don't start with any undo state (should only be the above `set_faust_code` action on the stack).

@@ -8,6 +8,8 @@
 #include "process_manager.h"
 //#include "diff_match_patch.h"
 
+using namespace nlohmann; // json
+
 struct RenderContext;
 struct UiContext {
     UiContext(ImGuiContext *imgui_context, ImPlotContext *implot_context) : imgui_context(imgui_context), implot_context(implot_context) {}
@@ -16,7 +18,13 @@ struct UiContext {
     ImPlotContext *implot_context;
 };
 
-using namespace nlohmann; // json
+using UpdateUiFlags = int;
+enum UpdateUiFlags_ {
+    UpdateUiFlags_None = 0,
+    UpdateUiFlags_ImGuiSettings = 1 << 0,
+    UpdateUiFlags_ImGuiStyle = 1 << 1,
+    UpdateUiFlags_ImPlotStyle = 1 << 2,
+};
 
 enum Direction { Forward, Reverse };
 
@@ -186,7 +194,7 @@ public:
         state_stats = {};
     }
 
-    void update_ui(Direction direction, bool update_imgui_settings, bool update_imgui_style, bool update_implot_style);
+    void update_ui(UpdateUiFlags flags);
 
 private:
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);

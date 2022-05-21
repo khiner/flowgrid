@@ -131,11 +131,18 @@ void Context::update(const Action &action) {
     auto &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(
         visitor{
+            // Setting `imgui_settings` does not require a `c.update_ui` on the action,
+            // since the action will be initiated by ImGui itself, whereas the style
+            // editors don't update the ImGui/ImPlot contexts themselves.
             [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },
             [&](const set_imgui_style &a) {
                 _s.style.imgui = a.imgui_style;
+                c.update_ui(UpdateUiFlags_ImGuiStyle);
             },
-            [&](const set_implot_style &a) { _s.style.implot = a.implot_style; },
+            [&](const set_implot_style &a) {
+                _s.style.implot = a.implot_style;
+                c.update_ui(UpdateUiFlags_ImPlotStyle);
+            },
             [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
 
             [&](const toggle_window &a) { _s.named(a.name).visible = !s.named(a.name).visible; },
@@ -213,11 +220,15 @@ void Context::finalize_gesture() {
     on_json_diff(diff, Forward);
 }
 
-void Context::update_ui(Direction direction, bool update_imgui_settings, bool update_imgui_style, bool update_implot_style) {
-    if (update_imgui_settings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (update_imgui_style) ui->imgui_context->Style = s.style.imgui;
-    if (update_implot_style) {
-        if (direction == Reverse) ImPlot::BustItemCache(); // assuming `Forward` represents actions done in the UI, and this is done by
+void Context::update_ui(UpdateUiFlags flags) {
+    if (flags == UpdateUiFlags_None) return;
+
+    if (flags & UpdateUiFlags_ImGuiSettings) {
+        s.imgui_settings.populate_context(ui->imgui_context);
+    }
+    if (flags & UpdateUiFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
+    if (flags & UpdateUiFlags_ImPlotStyle) {
+        ImPlot::BustItemCache();
         ui->implot_context->Style = s.style.implot;
     }
 }
@@ -227,18 +238,14 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     const json &json_diff = state_diff.json_diff;
     state_stats.on_json_diff(json_diff, diff.system_time, direction);
 
-    bool has_imgui_settings = false;
-    bool has_imgui_style = false;
-    bool has_implot_style = false;
-
+    UpdateUiFlags update_ui_flags = UpdateUiFlags_None;
     for (auto &jd: json_diff) {
         const auto &path = std::string(jd["path"]);
-        // TODO really would like this as constants, but don't want to define and maintain them on each state path.
+        // TODO really would like these paths as constants, but don't want to define and maintain them manually.
         //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
-        if (path.rfind("/imgui_settings", 0) == 0) has_imgui_settings = true;
-        else if (path.rfind("/style/imgui", 0) == 0) has_imgui_style = true;
-        else if (path.rfind("/style/implot", 0) == 0) has_implot_style = true;
+        if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UpdateUiFlags_ImGuiSettings;
+        else if (path.rfind("/style/imgui", 0) == 0) update_ui_flags |= UpdateUiFlags_ImGuiStyle;
+        else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UpdateUiFlags_ImPlotStyle;
     }
-
-    update_ui(direction, has_imgui_settings, has_imgui_style, has_implot_style);
+    update_ui(update_ui_flags);
 }

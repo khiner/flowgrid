@@ -53,31 +53,6 @@ struct Window : WindowData, Drawable {
 struct Windows : Drawable {
     void draw() override;
 
-    struct StateWindows {
-        struct StateViewer : Window {
-            StateViewer() { name = "State viewer"; }
-            void draw() override;
-
-            enum LabelMode { annotated, raw };
-            LabelMode label_mode{annotated};
-            bool auto_select{true};
-        };
-
-        struct MemoryEditorWindow : Window {
-            MemoryEditorWindow() { name = "State memory editor"; }
-            void draw() override;
-        };
-
-        struct StatePathUpdateFrequency : Window {
-            StatePathUpdateFrequency() { name = "Path update frequency"; }
-            void draw() override;
-        };
-
-        StateViewer viewer{};
-        MemoryEditorWindow memory_editor{};
-        StatePathUpdateFrequency path_update_frequency{};
-    };
-
     struct StyleEditor : Window {
         StyleEditor() { name = "Style editor"; }
         void draw() override;
@@ -99,7 +74,6 @@ struct Windows : Drawable {
         void draw() override;
     };
 
-    StateWindows state{};
     StyleEditor style_editor{};
     Demos demos{};
     Metrics metrics{};
@@ -299,6 +273,35 @@ struct StateData {
     Style style;
     Audio audio;
     Processes processes;
+
+    struct StateWindows : Drawable {
+        void draw() override;
+
+        struct StateViewer : Window {
+            StateViewer() { name = "State viewer"; }
+            void draw() override;
+
+            enum LabelMode { annotated, raw };
+            LabelMode label_mode{annotated};
+            bool auto_select{true};
+        };
+
+        struct StateMemoryEditor : Window {
+            StateMemoryEditor() { name = "State memory editor"; }
+            void draw() override;
+        };
+
+        struct StatePathUpdateFrequency : Window {
+            StatePathUpdateFrequency() { name = "State path update frequency"; }
+            void draw() override;
+        };
+
+        StateViewer viewer{};
+        StateMemoryEditor memory_editor{};
+        StatePathUpdateFrequency path_update_frequency{};
+    };
+
+    StateWindows state{};
 };
 
 struct State : StateData {
@@ -312,12 +315,12 @@ struct State : StateData {
     }
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{
-        windows.state.viewer, windows.state.memory_editor, windows.state.path_update_frequency,
+        state.viewer, state.memory_editor, state.path_update_frequency,
         windows.style_editor, windows.demos, windows.metrics,
         audio.settings, audio.faust.editor, audio.faust.log
     };
     std::vector<std::reference_wrapper<const WindowData>> all_windows_const{
-        windows.state.viewer, windows.state.memory_editor, windows.state.path_update_frequency,
+        state.viewer, state.memory_editor, state.path_update_frequency,
         windows.style_editor, windows.demos, windows.metrics,
         audio.settings, audio.faust.editor, audio.faust.log
     };
@@ -336,6 +339,7 @@ struct State : StateData {
         throw std::invalid_argument(name);
     }
 };
+
 // An exact copy of `NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE`, but with a shorter name.
 // Note: It's probably a good idea to occasionally check the definition in `nlohmann/json.cpp` for any changes.
 #define JSON_TYPE(Type, ...)  \
@@ -354,9 +358,7 @@ JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, C
 JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax, WantApply)
 
 JSON_TYPE(WindowData, name, visible)
-JSON_TYPE(Windows::StateWindows::StateViewer, name, visible, label_mode, auto_select)
-JSON_TYPE(Windows::StateWindows, viewer, memory_editor, path_update_frequency)
-JSON_TYPE(Windows, state, style_editor, demos, metrics)
+JSON_TYPE(Windows, style_editor, demos, metrics)
 JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)
 JSON_TYPE(Audio::Faust, code, error, editor, log)
 JSON_TYPE(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
@@ -375,4 +377,6 @@ JSON_TYPE(Style, imgui, implot, flowgrid)
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)
 JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
-JSON_TYPE(StateData, audio, style, imgui_settings, windows, processes);
+JSON_TYPE(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
+JSON_TYPE(State::StateWindows, viewer, memory_editor, path_update_frequency)
+JSON_TYPE(StateData, audio, style, imgui_settings, windows, state, processes);

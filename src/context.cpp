@@ -140,8 +140,8 @@ void Context::update(const Action &action) {
 
             [&](const toggle_window &a) { _s.named(a.name).visible = !s.named(a.name).visible; },
 
-            [&](const toggle_state_viewer_auto_select &) { _s.windows.state.viewer.auto_select = !s.windows.state.viewer.auto_select; },
-            [&](const set_state_viewer_label_mode &a) { _s.windows.state.viewer.label_mode = a.label_mode; },
+            [&](const toggle_state_viewer_auto_select &) { _s.state.viewer.auto_select = !s.state.viewer.auto_select; },
+            [&](const set_state_viewer_label_mode &a) { _s.state.viewer.label_mode = a.label_mode; },
 
             [&](set_ui_running a) { _s.processes.ui.running = a.running; },
 

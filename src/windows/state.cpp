@@ -1,9 +1,10 @@
 #include "../context.h"
 #include "../imgui_helpers.h"
+#include "../stateful_imgui.h"
 
 #include "imgui_memory_editor.h"
 
-using LabelMode = Windows::StateWindows::StateViewer::LabelMode;
+using LabelMode = State::StateWindows::StateViewer::LabelMode;
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
@@ -43,8 +44,8 @@ static const std::filesystem::path color_paths[] = { // addressable by `ColorPat
 };
 
 static void show_json_state_value_node(const std::string &key, const json &value, const std::filesystem::path &path) {
-    const bool auto_select = s.windows.state.viewer.auto_select;
-    const bool annotate_enabled = s.windows.state.viewer.label_mode == LabelMode::annotated;
+    const bool auto_select = s.state.viewer.auto_select;
+    const bool annotate_enabled = s.state.viewer.label_mode == LabelMode::annotated;
 
     const std::string &file_name = path.filename();
     const bool is_array_item = is_number(file_name);
@@ -125,7 +126,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
     }
 }
 
-void Windows::StateWindows::MemoryEditorWindow::draw() {
+void State::StateWindows::StateMemoryEditor::draw() {
     static MemoryEditor memory_editor;
     static bool first_render{true};
     if (first_render) {
@@ -138,7 +139,7 @@ void Windows::StateWindows::MemoryEditorWindow::draw() {
     memory_editor.DrawContents(mem_data, mem_size);
 }
 
-void Windows::StateWindows::StatePathUpdateFrequency::draw() {
+void State::StateWindows::StatePathUpdateFrequency::draw() {
     if (c.state_stats.update_times_for_state_path.empty()) {
         ImGui::Text("No state updates yet.");
         return;
@@ -169,10 +170,10 @@ static const std::string auto_select_help = "When auto-select is enabled, state 
                                             "The state viewer to the changed state node(s), closing all other state nodes.\n"
                                             "State menu items can only be opened or closed manually if auto-select is disabled.";
 
-void Windows::StateWindows::StateViewer::draw() {
+void State::StateWindows::StateViewer::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.windows.state.viewer.auto_select)) {
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state.viewer.auto_select)) {
                 q(toggle_state_viewer_auto_select{});
             }
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
@@ -189,4 +190,10 @@ void Windows::StateWindows::StateViewer::draw() {
     }
 
     show_json_state_value_node("State", c.state_json, "/");
+}
+
+void StateData::StateWindows::draw() {
+    StatefulImGui::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
+    StatefulImGui::DrawWindow(viewer, ImGuiWindowFlags_MenuBar);
+    StatefulImGui::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
 }

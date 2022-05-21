@@ -168,9 +168,9 @@ void draw_frame() {
         dock_window(s.audio.faust.log, faust_log_window_id);
 
         const auto &w = s.windows;
-        dock_window(w.state.viewer, state_viewer_id);
-        dock_window(w.state.memory_editor, state_memory_editor_id);
-        dock_window(w.state.path_update_frequency, state_path_update_frequency_id);
+        dock_window(s.state.viewer, state_viewer_id);
+        dock_window(s.state.memory_editor, state_memory_editor_id);
+        dock_window(s.state.path_update_frequency, state_path_update_frequency_id);
 
         dock_window(w.style_editor, imgui_windows_id);
         dock_window(w.demos, imgui_windows_id);
@@ -198,11 +198,10 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
-            auto &w = ui_s.windows;
             if (ImGui::BeginMenu("State")) {
-                StatefulImGui::WindowToggleMenuItem(w.state.viewer);
-                StatefulImGui::WindowToggleMenuItem(w.state.memory_editor);
-                StatefulImGui::WindowToggleMenuItem(w.state.path_update_frequency);
+                StatefulImGui::WindowToggleMenuItem(ui_s.state.viewer);
+                StatefulImGui::WindowToggleMenuItem(ui_s.state.memory_editor);
+                StatefulImGui::WindowToggleMenuItem(ui_s.state.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
@@ -214,10 +213,10 @@ void draw_frame() {
                 }
                 ImGui::EndMenu();
             }
-            StatefulImGui::WindowToggleMenuItem(w.style_editor);
+            StatefulImGui::WindowToggleMenuItem(ui_s.windows.style_editor);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(w.demos);
-                StatefulImGui::WindowToggleMenuItem(w.metrics);
+                StatefulImGui::WindowToggleMenuItem(ui_s.windows.demos);
+                StatefulImGui::WindowToggleMenuItem(ui_s.windows.metrics);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -251,6 +250,7 @@ void draw_frame() {
 
     ui_s.windows.draw();
     ui_s.audio.draw();
+    ui_s.state.draw();
 }
 
 bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {

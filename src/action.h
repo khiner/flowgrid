@@ -19,7 +19,7 @@ struct set_flowgrid_style { FlowGridStyle flowgrid_style; };
 struct toggle_window { std::string name; };
 
 struct toggle_state_viewer_auto_select {};
-struct set_state_viewer_label_mode { Windows::StateWindows::StateViewer::LabelMode label_mode; };
+struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; };
 
 struct toggle_audio_muted {};
 struct set_audio_thread_running { bool running; };

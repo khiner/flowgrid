@@ -44,7 +44,81 @@ struct Window : WindowData, Drawable {
     Window() = default;
 };
 
-struct WindowsData {
+struct Windows : public Drawable {
+    void draw() override;
+
+    struct StateWindows {
+        struct StateViewer : public Window {
+            StateViewer() { name = "State viewer"; }
+            void draw() override;
+
+            enum LabelMode { annotated, raw };
+            LabelMode label_mode{annotated};
+            bool auto_select{true};
+        };
+
+        struct MemoryEditorWindow : public Window {
+            MemoryEditorWindow() { name = "State memory editor"; }
+            void draw() override;
+        };
+
+        struct StatePathUpdateFrequency : public Window {
+            StatePathUpdateFrequency() { name = "Path update frequency"; }
+            void draw() override;
+        };
+
+        StateViewer viewer{};
+        MemoryEditorWindow memory_editor{};
+        StatePathUpdateFrequency path_update_frequency{};
+    };
+
+    struct StyleEditor : public Window {
+        StyleEditor() { name = "Style editor"; }
+        void draw() override;
+
+    private:
+        // draw methods return `true` if style changes.
+        bool drawImGui();
+        bool drawImPlot();
+        bool drawFlowGrid();
+    };
+
+    struct Demos : public Window {
+        Demos() { name = "Demos"; }
+        void draw() override;
+    };
+
+    struct Metrics : public Window {
+        Metrics() { name = "Metrics"; }
+        void draw() override;
+    };
+
+    StateWindows state{};
+    StyleEditor style_editor{};
+    Demos demos{};
+    Metrics metrics{};
+};
+
+enum AudioBackend {
+    none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
+};
+
+struct Audio : public Drawable {
+    void draw() override;
+
+    struct Settings : public Window {
+        Settings() { name = "Audio settings"; }
+        void draw() override;
+
+        AudioBackend backend = none;
+        char *in_device_id = nullptr;
+        char *out_device_id = nullptr;
+        bool muted = true;
+        bool out_raw = false;
+        int sample_rate = 48000;
+        double latency = 0.0;
+    };
+
     struct Faust {
         struct Editor : public Window {
             Editor() : file_name{"default.dsp"} { name = "Faust editor"; }
@@ -76,110 +150,8 @@ struct WindowsData {
         std::string error{};
     };
 
-    struct StateWindows {
-        struct StateViewer : public Window {
-            StateViewer() { name = "State viewer"; }
-            void draw() override;
-
-            struct Settings {
-                enum LabelMode { annotated, raw };
-                LabelMode label_mode{annotated};
-                bool auto_select{true};
-            };
-
-            Settings settings{};
-        };
-        struct StatePathUpdateFrequency : public Window {
-            StatePathUpdateFrequency() { name = "Path update frequency"; }
-            void draw() override;
-        };
-
-        struct MemoryEditorWindow : public Window {
-            MemoryEditorWindow() { name = "State memory editor"; }
-            void draw() override;
-        };
-
-        StateViewer viewer{};
-        MemoryEditorWindow memory_editor{};
-        StatePathUpdateFrequency path_update_frequency{};
-    };
-
-    struct Controls : public Window {
-        Controls() { name = "Controls"; }
-        void draw() override;
-    };
-
-    struct StyleEditor : public Window {
-        StyleEditor() { name = "Style editor"; }
-        void draw() override;
-
-    private:
-        // draw methods return `true` if style changes.
-        bool drawImGui();
-        bool drawImPlot();
-        bool drawFlowGrid();
-    };
-
-    struct Demos : public Window {
-        Demos() { name = "Demos"; }
-        void draw() override;
-    };
-
-    struct Metrics : public Window {
-        Metrics() { name = "Metrics"; }
-        void draw() override;
-    };
-
-    StateWindows state{};
-    Controls controls{};
-    StyleEditor style_editor{};
-    Demos demos{};
-    Metrics metrics{};
+    Settings settings{};
     Faust faust{};
-};
-
-struct Windows : public WindowsData, Drawable {
-    Windows() = default;
-    // Don't copy/assign references!
-    explicit Windows(const WindowsData &other) : WindowsData(other) {}
-
-    Windows &operator=(const Windows &other) {
-        WindowsData::operator=(other);
-        return *this;
-    }
-
-    void draw() override;
-
-    WindowData &named(const std::string &name) {
-        for (auto &window: all) {
-            if (name == window.get().name) return window;
-        }
-        throw std::invalid_argument(name);
-    }
-
-    const WindowData &named(const std::string &name) const {
-        for (auto &window: all_const) {
-            if (name == window.get().name) return window;
-        }
-        throw std::invalid_argument(name);
-    }
-
-    std::vector<std::reference_wrapper<WindowData>> all{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, demos, metrics, faust.editor, faust.log};
-    std::vector<std::reference_wrapper<const WindowData>> all_const{controls, state.viewer, state.memory_editor, state.path_update_frequency, style_editor, demos, metrics, faust.editor, faust.log};
-};
-
-enum AudioBackend {
-    none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
-};
-
-struct Audio {
-    AudioBackend backend = none;
-    char *in_device_id = nullptr;
-    char *out_device_id = nullptr;
-    bool muted = true;
-    bool out_raw = false;
-    int sample_rate = 48000;
-    double latency = 0.0;
 };
 
 enum FlowGridCol_ {
@@ -314,7 +286,7 @@ struct ImGuiSettings {
     }
 };
 
-struct State {
+struct StateData {
     ImGuiSettings imgui_settings;
     Windows windows;
     Style style;
@@ -322,6 +294,41 @@ struct State {
     Processes processes;
 };
 
+struct State : public StateData {
+    State() = default;
+    // Don't copy/assign references!
+    explicit State(const StateData &other) : StateData(other) {}
+
+    State &operator=(const State &other) {
+        StateData::operator=(other);
+        return *this;
+    }
+
+    std::vector<std::reference_wrapper<WindowData>> all_windows{
+        windows.state.viewer, windows.state.memory_editor, windows.state.path_update_frequency,
+        windows.style_editor, windows.demos, windows.metrics,
+        audio.settings, audio.faust.editor, audio.faust.log
+    };
+    std::vector<std::reference_wrapper<const WindowData>> all_windows_const{
+        windows.state.viewer, windows.state.memory_editor, windows.state.path_update_frequency,
+        windows.style_editor, windows.demos, windows.metrics,
+        audio.settings, audio.faust.editor, audio.faust.log
+    };
+
+    WindowData &named(const std::string &name) {
+        for (auto &window: all_windows) {
+            if (name == window.get().name) return window;
+        }
+        throw std::invalid_argument(name);
+    }
+
+    const WindowData &named(const std::string &name) const {
+        for (auto &window: all_windows_const) {
+            if (name == window.get().name) return window;
+        }
+        throw std::invalid_argument(name);
+    }
+};
 // An exact copy of `NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE`, but with a shorter name.
 // Note: It's probably a good idea to occasionally check the definition in `nlohmann/json.cpp` for any changes.
 #define JSON_TYPE(Type, ...)  \
@@ -340,13 +347,13 @@ JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, C
 JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax, WantApply)
 
 JSON_TYPE(WindowData, name, visible)
-JSON_TYPE(WindowsData::StateWindows::StateViewer::Settings, label_mode, auto_select)
-JSON_TYPE(WindowsData::StateWindows::StateViewer, settings)
-JSON_TYPE(WindowsData::StateWindows, viewer, memory_editor, path_update_frequency)
-JSON_TYPE(WindowsData::Faust::Editor, file_name)
-JSON_TYPE(WindowsData::Faust, code, error, editor, log)
-JSON_TYPE(WindowsData, controls, state, style_editor, demos, metrics, faust)
-JSON_TYPE(Audio, muted, backend, latency, sample_rate, out_raw)
+JSON_TYPE(Windows::StateWindows::StateViewer, name, visible, label_mode, auto_select)
+JSON_TYPE(Windows::StateWindows, viewer, memory_editor, path_update_frequency)
+JSON_TYPE(Windows, state, style_editor, demos, metrics)
+JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)
+JSON_TYPE(Audio::Faust, code, error, editor, log)
+JSON_TYPE(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
+JSON_TYPE(Audio, settings, faust)
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
     LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale, AntiAliasedLines,
@@ -359,4 +366,4 @@ JSON_TYPE(Style, imgui, implot, flowgrid)
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)
 JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
-JSON_TYPE(State, imgui_settings, windows, style, audio, processes);
+JSON_TYPE(StateData, audio, style, imgui_settings, windows, processes);

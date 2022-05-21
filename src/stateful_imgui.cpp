@@ -1,6 +1,21 @@
 #include "stateful_imgui.h"
 #include "context.h"
 
+void StatefulImGui::DrawWindow(Window &window, ImGuiWindowFlags flags) {
+    const auto &name = window.name;
+    if (s.named(name).visible != window.visible) q(toggle_window{name});
+    if (!window.visible) return;
+
+    if (!ImGui::Begin(name.c_str(), &window.visible, flags)) {
+        ImGui::End();
+        return;
+    }
+
+    window.draw();
+
+    ImGui::End();
+}
+
 void dock_window(const Window &w, ImGuiID node_id) {
     ImGui::DockBuilderDockWindow(w.name.c_str(), node_id);
 }

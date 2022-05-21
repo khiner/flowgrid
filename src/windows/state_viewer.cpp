@@ -3,8 +3,7 @@
 
 #include "imgui_memory_editor.h"
 
-using Settings = WindowsData::StateWindows::StateViewer::Settings;
-using LabelMode = Settings::LabelMode;
+using LabelMode = Windows::StateWindows::StateViewer::LabelMode;
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
@@ -44,8 +43,8 @@ static const std::filesystem::path color_paths[] = { // addressable by `ColorPat
 };
 
 static void show_json_state_value_node(const std::string &key, const json &value, const std::filesystem::path &path) {
-    const bool auto_select = s.windows.state.viewer.settings.auto_select;
-    const bool annotate_enabled = s.windows.state.viewer.settings.label_mode == LabelMode::annotated;
+    const bool auto_select = s.windows.state.viewer.auto_select;
+    const bool annotate_enabled = s.windows.state.viewer.label_mode == LabelMode::annotated;
 
     const std::string &file_name = path.filename();
     const bool is_array_item = is_number(file_name);
@@ -180,11 +179,11 @@ static const std::string auto_select_help = "When auto-select is enabled, state 
 void Windows::StateWindows::StateViewer::draw() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.windows.state.viewer.settings.auto_select)) {
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.windows.state.viewer.auto_select)) {
                 q(toggle_state_viewer_auto_select{});
             }
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
-                auto label_mode = s.windows.state.viewer.settings.label_mode;
+                auto label_mode = s.windows.state.viewer.label_mode;
                 if (ImGui::MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
                     q(set_state_viewer_label_mode{LabelMode::annotated});
                 } else if (ImGui::MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {

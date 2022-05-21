@@ -16,4 +16,6 @@ bool DragFloat(const char *label, float *v, float v_speed = 1.0f, float v_min = 
 
 bool ColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flags = 0);
 
+void DrawWindow(Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None);
+
 }

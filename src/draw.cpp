@@ -163,20 +163,18 @@ void draw_frame() {
         auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
-        const auto &w = s.windows;
-        dock_window(w.controls, controls_id);
+        dock_window(s.audio.settings, controls_id);
+        dock_window(s.audio.faust.editor, faust_editor_id);
+        dock_window(s.audio.faust.log, faust_log_window_id);
 
+        const auto &w = s.windows;
         dock_window(w.state.viewer, state_viewer_id);
         dock_window(w.state.memory_editor, state_memory_editor_id);
         dock_window(w.state.path_update_frequency, state_path_update_frequency_id);
 
-        dock_window(w.faust.editor, faust_editor_id);
-        dock_window(w.faust.log, faust_log_window_id);
-
         dock_window(w.style_editor, imgui_windows_id);
         dock_window(w.demos, imgui_windows_id);
         dock_window(w.metrics, imgui_windows_id);
-//        ImGui::DockBuilderFinish(dockspace_id);
         first_draw = false;
     }
 
@@ -201,23 +199,25 @@ void draw_frame() {
         }
         if (ImGui::BeginMenu("Windows")) {
             auto &w = ui_s.windows;
-            StatefulImGui::WindowToggleMenuItem(w.controls);
-
             if (ImGui::BeginMenu("State")) {
                 StatefulImGui::WindowToggleMenuItem(w.state.viewer);
                 StatefulImGui::WindowToggleMenuItem(w.state.memory_editor);
                 StatefulImGui::WindowToggleMenuItem(w.state.path_update_frequency);
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(w.style_editor);
-                StatefulImGui::WindowToggleMenuItem(w.demos);
-                StatefulImGui::WindowToggleMenuItem(w.metrics);
+            if (ImGui::BeginMenu("Audio")) {
+                StatefulImGui::WindowToggleMenuItem(ui_s.audio.settings);
+                if (ImGui::BeginMenu("Faust")) {
+                    StatefulImGui::WindowToggleMenuItem(ui_s.audio.faust.editor);
+                    StatefulImGui::WindowToggleMenuItem(ui_s.audio.faust.log);
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Faust")) {
-                StatefulImGui::WindowToggleMenuItem(w.faust.editor);
-                StatefulImGui::WindowToggleMenuItem(w.faust.log);
+            StatefulImGui::WindowToggleMenuItem(w.style_editor);
+            if (ImGui::BeginMenu("ImGui/ImPlot")) {
+                StatefulImGui::WindowToggleMenuItem(w.demos);
+                StatefulImGui::WindowToggleMenuItem(w.metrics);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -250,6 +250,7 @@ void draw_frame() {
     }
 
     ui_s.windows.draw();
+    ui_s.audio.draw();
 }
 
 bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {

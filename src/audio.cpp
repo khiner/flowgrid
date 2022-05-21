@@ -5,6 +5,7 @@
 #include <soundio/soundio.h>
 
 #include "context.h"
+#include "stateful_imgui.h"
 
 static int prioritized_sample_rates[] = {
     48000,
@@ -72,7 +73,8 @@ int audio() {
     auto *soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
-    int err = (s.audio.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(s.audio.backend));
+    auto &settings = s.audio.settings;
+    int err = (settings.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(settings.backend));
     if (err) throw std::runtime_error(std::string("Unable to connect to backend: ") + soundio_strerror(err));
 
     std::cout << "Backend: " << soundio_backend_name(soundio->current_backend) << std::endl;
@@ -84,11 +86,11 @@ int audio() {
     if (default_out_device_index < 0) throw std::runtime_error("No output device found");
 
     int out_device_index = default_out_device_index;
-    if (s.audio.out_device_id) {
+    if (settings.out_device_id) {
         bool found = false;
         for (int i = 0; i < soundio_output_device_count(soundio); i += 1) {
             struct SoundIoDevice *device = soundio_get_output_device(soundio, i);
-            if (device->is_raw == s.audio.out_raw && strcmp(device->id, s.audio.out_device_id) == 0) {
+            if (device->is_raw == settings.out_raw && strcmp(device->id, settings.out_device_id) == 0) {
                 out_device_index = i;
                 found = true;
                 soundio_device_unref(device);
@@ -96,7 +98,7 @@ int audio() {
             }
             soundio_device_unref(device);
         }
-        if (!found) throw std::runtime_error(std::string("Invalid output device id: ") + s.audio.out_device_id);
+        if (!found) throw std::runtime_error(std::string("Invalid output device id: ") + settings.out_device_id);
     }
 
     struct SoundIoDevice *out_device = soundio_get_output_device(soundio, out_device_index);
@@ -107,9 +109,9 @@ int audio() {
     if (!outstream) throw std::runtime_error("Out of memory");
 
     std::cout << "Output device: " << out_device->name << std::endl;
-    outstream->software_latency = s.audio.latency;
+    outstream->software_latency = settings.latency;
 
-    int default_sample_rate = s.audio.sample_rate;
+    int default_sample_rate = settings.sample_rate;
     int *sample_rate = &default_sample_rate;
     if (*sample_rate != 0) {
         if (!soundio_device_supports_sample_rate(out_device, *sample_rate)) {
@@ -191,4 +193,10 @@ int audio() {
     soundio_destroy(soundio);
 
     return 0;
+}
+
+void Audio::draw() {
+    StatefulImGui::DrawWindow(ui_s.audio.settings);
+    StatefulImGui::DrawWindow(ui_s.audio.faust.editor, ImGuiWindowFlags_MenuBar);
+    StatefulImGui::DrawWindow(ui_s.audio.faust.log);
 }

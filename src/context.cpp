@@ -51,7 +51,7 @@ struct FaustContext {
 
         for (int i = 0; i < argc; i++) argv[i] = nullptr;
 
-        if (dsp_factory && s.windows.faust.error.empty()) {
+        if (dsp_factory && s.audio.faust.error.empty()) {
             dsp = dsp_factory->createDSPInstance();
             dsp->init(sample_rate);
         }
@@ -97,7 +97,7 @@ void Context::compute_frames(int frame_count) const { // NOLINT(readability-conv
 }
 
 FAUSTFLOAT Context::get_sample(int channel, int frame) const {
-    return !faust || state.audio.muted ? 0 : faust->get_sample(channel, frame);
+    return !faust || state.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
 }
 
 std::ostream &operator<<(std::ostream &os, const StateDiff &diff) {
@@ -142,10 +142,10 @@ void Context::update(const Action &action) {
             },
             [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
 
-            [&](const toggle_window &a) { _s.windows.named(a.name).visible = !s.windows.named(a.name).visible; },
+            [&](const toggle_window &a) { _s.named(a.name).visible = !s.named(a.name).visible; },
 
-            [&](const toggle_state_viewer_auto_select &) { _s.windows.state.viewer.settings.auto_select = !s.windows.state.viewer.settings.auto_select; },
-            [&](const set_state_viewer_label_mode &a) { _s.windows.state.viewer.settings.label_mode = a.label_mode; },
+            [&](const toggle_state_viewer_auto_select &) { _s.windows.state.viewer.auto_select = !s.windows.state.viewer.auto_select; },
+            [&](const set_state_viewer_label_mode &a) { _s.windows.state.viewer.label_mode = a.label_mode; },
 
             [&](set_ui_running a) { _s.processes.ui.running = a.running; },
 
@@ -157,9 +157,9 @@ void Context::update(const Action &action) {
 
             // Audio
             [&](const set_faust_code &a) {
-                _s.windows.faust.code = a.text;
+                _s.audio.faust.code = a.text;
 
-                faust = std::make_unique<FaustContext>(s.windows.faust.code, s.audio.sample_rate, _s.windows.faust.error);
+                faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, _s.audio.faust.error);
                 if (faust->dsp) {
                     StatefulFaustUI faust_ui;
                     faust->dsp->buildUserInterface(&faust_ui);
@@ -169,10 +169,10 @@ void Context::update(const Action &action) {
 //                    _s.audio.faust.json = "";
                 }
             },
-            [&](toggle_audio_muted) { _s.audio.muted = !s.audio.muted; },
+            [&](toggle_audio_muted) { _s.audio.settings.muted = !s.audio.settings.muted; },
             [&](set_audio_thread_running a) { _s.processes.audio.running = a.running; },
             [&](toggle_audio_running) { _s.processes.audio.running = !s.processes.audio.running; },
-            [&](const set_audio_sample_rate &a) { _s.audio.sample_rate = a.sample_rate; },
+            [&](const set_audio_sample_rate &a) { _s.audio.settings.sample_rate = a.sample_rate; },
 
             // All actions that don't affect state:
             [&](undo) {},

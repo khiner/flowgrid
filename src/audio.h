@@ -1,4 +1,5 @@
 #pragma once
 
+// Also implements State::Audio draw methods.
+
 int audio();
-// Also implements State::Audio::draw

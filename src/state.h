@@ -37,13 +37,13 @@ using Nanos = std::chrono::nanoseconds;
 //     const int color_index = std::stoi(path.);
 //  ```
 
+struct Drawable {
+    virtual void draw() = 0;
+};
+
 struct WindowData {
     std::string name;
     bool visible{true};
-};
-
-struct Drawable {
-    virtual void draw() = 0;
 };
 
 struct Window : WindowData, Drawable {

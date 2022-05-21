@@ -20,12 +20,13 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 include_directories(lib/faust/architecture)
 include_directories(lib/faust/compiler)
-include_directories(lib/concurrentqueue)
 include_directories(lib/zep/include)
-include_directories(lib/diff-match-patch-cpp-stl)
 include_directories(lib/ImGuiFileDialog)
 include_directories(lib/implot)
 include_directories(lib/imgui_club/imgui_memory_editor)
+# See readme for plans with these libraries
+#include_directories(lib/concurrentqueue) # Not used atm.
+#include_directories(lib/diff-match-patch-cpp-stl)
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_json::nlohmann_json dynamiclib Zep::Zep Tracy::TracyClient)

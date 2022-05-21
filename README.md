@@ -14,9 +14,8 @@ Focusing here on making it easier to stay in flow state while using _and creatin
 * Keeping rebuild times low after edits of commonly imported headers
 * Spend more time upfront trying to get simple and flexible foundations right
 * Always Be Improving the experience of creating the application
-* Have fun building this - that will make me actually build it
-* Let myself prematurely optimize. More Fast <=> More Fun. In the computers, fast things are good and always more fun
-  than slow things.
+* Have fun building the app. This will help me actually build it.
+* Let myself optimize. More Fast <=> More Fun. In computers, fast things are good and always more fun than slow things.
 
 So far, I'm basically trying to mash together some great libraries (see [**Stack**](#stack)):
 
@@ -63,9 +62,16 @@ as an example.
 ### Backend
 
 * [json](https://github.com/nlohmann/json) for state serialization, and for the diff-patching mechanism behind undo/redo
-* [ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main event queue
-* [diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
-  text
+* ~~[ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main event queue~~
+    * For now just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to
+      complex structures like JSON)
+* ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
+  text~~
+    - Was using to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
+      Will be using this again soon, to
+      adapt [hlohmann json patches](https://github.com/nlohmann/json#json-pointer-and-json-patch) into something
+      like [jsondiffpatch's deltas](https://github.com/benjamine/jsondiffpatch/blob/master/docs/deltas.md#text-diffs),
+      for unified handling of state diffs involving long text strings (like code strings).
 
 ### Debugging
 

@@ -6,7 +6,7 @@
 #include "state.h"
 #include "action.h"
 #include "process_manager.h"
-#include "diff_match_patch.h"
+//#include "diff_match_patch.h"
 
 struct RenderContext;
 struct UiContext {
@@ -128,7 +128,7 @@ public:
  */
     StateStats state_stats;
     State _state{};
-    diff_match_patch<std::string> dmp;
+//    diff_match_patch<std::string> dmp;
     UiContext *ui{};
 
     const State &state = _state; // Read-only public state

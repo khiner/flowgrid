@@ -26,7 +26,7 @@ bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
     return is_open;
 }
 
-bool is_number(const std::string &str) {
+bool is_number(const string &str) {
     return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
 }
 
@@ -43,14 +43,14 @@ static const std::filesystem::path color_paths[] = { // addressable by `ColorPat
     "/style/flowgrid/Colors",
 };
 
-static void show_json_state_value_node(const std::string &key, const json &value, const std::filesystem::path &path) {
+static void show_json_state_value_node(const string &key, const json &value, const std::filesystem::path &path) {
     const bool auto_select = s.state.viewer.auto_select;
     const bool annotate_enabled = s.state.viewer.label_mode == LabelMode::annotated;
 
-    const std::string &file_name = path.filename();
+    const string &file_name = path.filename();
     const bool is_array_item = is_number(file_name);
     const int array_index = is_array_item ? std::stoi(file_name) : -1;
-    const bool is_color = std::string(path).find("Colors") != std::string::npos && is_array_item;
+    const bool is_color = string(path).find("Colors") != string::npos && is_array_item;
     const bool is_imgui_color = path.parent_path() == color_paths[ColorPaths_ImGui];
     const bool is_implot_color = path.parent_path() == color_paths[ColorPaths_ImPlot];
     const bool is_flowgrid_color = path.parent_path() == color_paths[ColorPaths_FlowGrid];
@@ -62,7 +62,7 @@ static void show_json_state_value_node(const std::string &key, const json &value
 
     if (auto_select) {
         const auto &update_paths = c.state_stats.most_recent_update_paths;
-        const auto is_ancestor_path = [path](const std::string &candidate_path) { return candidate_path.rfind(path, 0) == 0; };
+        const auto is_ancestor_path = [path](const string &candidate_path) { return candidate_path.rfind(path, 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         ImGui::SetNextItemOpen(was_recently_updated);
     }
@@ -162,13 +162,13 @@ void State::StateWindows::StatePathUpdateFrequency::draw() {
     }
 }
 
-static const std::string label_help = "The raw JSON state doesn't store keys for all items.\n"
-                                      "For example, the main `ui.style.colors` state is a list.\n\n"
-                                      "'Annotated' mode shows (highlighted) labels for such state items.\n"
-                                      "'Raw' mode shows the state exactly as it is in the raw JSON state.";
-static const std::string auto_select_help = "When auto-select is enabled, state changes automatically open.\n"
-                                            "The state viewer to the changed state node(s), closing all other state nodes.\n"
-                                            "State menu items can only be opened or closed manually if auto-select is disabled.";
+static const string label_help = "The raw JSON state doesn't store keys for all items.\n"
+                                 "For example, the main `ui.style.colors` state is a list.\n\n"
+                                 "'Annotated' mode shows (highlighted) labels for such state items.\n"
+                                 "'Raw' mode shows the state exactly as it is in the raw JSON state.";
+static const string auto_select_help = "When auto-select is enabled, state changes automatically open.\n"
+                                       "The state viewer to the changed state node(s), closing all other state nodes.\n"
+                                       "State menu items can only be opened or closed manually if auto-select is disabled.";
 
 void State::StateWindows::StateViewer::draw() {
     if (ImGui::BeginMenuBar()) {

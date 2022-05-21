@@ -16,7 +16,7 @@ struct set_imgui_style { ImGuiStyle imgui_style; };
 struct set_implot_style { ImPlotStyle implot_style; };
 struct set_flowgrid_style { FlowGridStyle flowgrid_style; };
 
-struct toggle_window { std::string name; };
+struct toggle_window { string name; };
 
 struct toggle_state_viewer_auto_select {};
 struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; };
@@ -28,7 +28,7 @@ struct set_audio_sample_rate { int sample_rate; };
 
 struct set_ui_running { bool running; };
 
-struct set_faust_code { std::string text; };
+struct set_faust_code { string text; };
 
 struct close_application {};
 

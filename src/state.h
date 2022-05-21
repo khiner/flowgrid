@@ -6,6 +6,8 @@
 #include "implot.h"
 #include "implot_internal.h"
 
+using std::string;
+
 // TODO The time definitions/units here look nice https://stackoverflow.com/a/14391562, might want to adopt
 using namespace std::chrono_literals;
 using Clock = std::chrono::system_clock;
@@ -42,7 +44,7 @@ struct Drawable {
 };
 
 struct WindowData {
-    std::string name;
+    string name;
     bool visible{true};
 };
 
@@ -104,7 +106,7 @@ struct Audio : Drawable {
             Editor() : file_name{"default.dsp"} { name = "Faust editor"; }
             void draw() override;
 
-            std::string file_name;
+            string file_name;
         };
 
         // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
@@ -117,7 +119,7 @@ struct Audio : Drawable {
         Editor editor{};
         Log log{};
 
-        //    std::string code{"import(\"stdfaust.lib\");\n\n"
+        //    string code{"import(\"stdfaust.lib\");\n\n"
 //                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
 //                     "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
 //                     "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
@@ -126,8 +128,8 @@ struct Audio : Drawable {
 //                     ");\n"
 //                     "\n"
 //                     "process = no.noise : pitchshifter;\n"};
-        std::string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
-        std::string error{};
+        string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+        string error{};
     };
 
     Settings settings{};
@@ -325,14 +327,14 @@ struct State : StateData {
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
-    WindowData &named(const std::string &name) {
+    WindowData &named(const string &name) {
         for (auto &window: all_windows) {
             if (name == window.get().name) return window;
         }
         throw std::invalid_argument(name);
     }
 
-    const WindowData &named(const std::string &name) const {
+    const WindowData &named(const string &name) const {
         for (auto &window: all_windows_const) {
             if (name == window.get().name) return window;
         }

@@ -4,6 +4,7 @@
 #include <string>
 
 namespace fs = std::filesystem;
+using std::string;
 
-std::string read_file(const fs::path &path);
-bool write_file(const fs::path &path, const std::string &contents);
+string read_file(const fs::path &path);
+bool write_file(const fs::path &path, const string &contents);

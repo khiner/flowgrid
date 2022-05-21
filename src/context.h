@@ -40,8 +40,8 @@ struct BidirectionalStateDiff {
 };
 
 struct Config {
-    std::string app_root;
-    std::string faust_libraries_path{};
+    string app_root;
+    string faust_libraries_path{};
 };
 
 struct StateStats {
@@ -50,33 +50,33 @@ struct StateStats {
         std::vector<ImU64> values;
     };
 
-    std::map<std::string, std::vector<SystemTime>> update_times_for_state_path{};
+    std::map<string, std::vector<SystemTime>> update_times_for_state_path{};
     Plottable path_update_frequency_plottable;
     ImU64 max_num_updates{0};
-    std::vector<std::string> most_recent_update_paths{};
+    std::vector<string> most_recent_update_paths{};
 
     // `patch` conforms to the [JSON patch](http://jsonpatch.com/) spec.
     void on_json_diff(const json &diff, SystemTime time, Direction direction) {
         most_recent_update_paths = {};
         for (auto &patch: diff) {
-            const std::string path = patch["path"];
-            const std::string op = patch["op"];
+            const string path = patch["path"];
+            const string op = patch["op"];
             // For add/remove ops, the thing being updated is the _parent_.
-            const std::string changed_path = op == "add" || op == "remove" ? path.substr(0, path.find_last_of('/')) : path;
+            const string changed_path = op == "add" || op == "remove" ? path.substr(0, path.find_last_of('/')) : path;
             on_json_patch(changed_path, time, direction);
             most_recent_update_paths.emplace_back(changed_path);
         }
     }
 
 private:
-    // Convert `std::string` to char array, removing first character of the path, which is a '/'.
-    static const char *convert_path(const std::string &str) {
+    // Convert `string` to char array, removing first character of the path, which is a '/'.
+    static const char *convert_path(const string &str) {
         char *pc = new char[str.size()];
-        std::strcpy(pc, std::string{str.begin() + 1, str.end()}.c_str());
+        std::strcpy(pc, string{str.begin() + 1, str.end()}.c_str());
         return pc;
     }
 
-    void on_json_patch(const std::string &path, SystemTime time, Direction direction) {
+    void on_json_patch(const string &path, SystemTime time, Direction direction) {
         if (direction == Forward) {
             auto &update_times = update_times_for_state_path[path];
             update_times.emplace_back(time);
@@ -91,7 +91,7 @@ private:
     }
 
     Plottable create_path_update_frequency_plottable() {
-        std::vector<std::string> paths;
+        std::vector<string> paths;
         std::vector<ImU64> values;
         for (const auto &[path, action_times]: update_times_for_state_path) {
             paths.push_back(path);
@@ -136,7 +136,7 @@ public:
  */
     StateStats state_stats;
     State _state{};
-//    diff_match_patch<std::string> dmp;
+//    diff_match_patch<string> dmp;
     UiContext *ui{};
 
     const State &state = _state; // Read-only public state

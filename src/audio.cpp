@@ -63,7 +63,7 @@ auto write_sample_for_format(const SoundIoFormat format) {
         case SoundIoFormatFloat64NE: return write_sample_float64ne;
         case SoundIoFormatS32NE: return write_sample_s32ne;
         case SoundIoFormatS16NE: return write_sample_s16ne;
-        default: throw std::runtime_error(std::string("No `write_sample` function defined for format"));
+        default: throw std::runtime_error(string("No `write_sample` function defined for format"));
     }
 }
 
@@ -75,7 +75,7 @@ int audio() {
 
     auto &settings = s.audio.settings;
     int err = (settings.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(settings.backend));
-    if (err) throw std::runtime_error(std::string("Unable to connect to backend: ") + soundio_strerror(err));
+    if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
 
     std::cout << "Backend: " << soundio_backend_name(soundio->current_backend) << std::endl;
 
@@ -98,12 +98,12 @@ int audio() {
             }
             soundio_device_unref(device);
         }
-        if (!found) throw std::runtime_error(std::string("Invalid output device id: ") + settings.out_device_id);
+        if (!found) throw std::runtime_error(string("Invalid output device id: ") + settings.out_device_id);
     }
 
     struct SoundIoDevice *out_device = soundio_get_output_device(soundio, out_device_index);
     if (!out_device) throw std::runtime_error("Could not get output device: out of memory");
-    if (out_device->probe_error) throw std::runtime_error(std::string("Cannot probe device: ") + soundio_strerror(out_device->probe_error));
+    if (out_device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(out_device->probe_error));
 
     auto *outstream = soundio_outstream_create(out_device);
     if (!outstream) throw std::runtime_error("Out of memory");
@@ -174,13 +174,13 @@ int audio() {
     };
 
     if ((err = soundio_outstream_open(outstream))) {
-        throw std::runtime_error(std::string("Unable to open device: ") + soundio_strerror(err));
+        throw std::runtime_error(string("Unable to open device: ") + soundio_strerror(err));
     }
     if (outstream->layout_error) {
         std::cerr << "Unable to set channel layout: " << soundio_strerror(outstream->layout_error);
     }
     if ((err = soundio_outstream_start(outstream))) {
-        throw std::runtime_error(std::string("Unable to start device: ") + soundio_strerror(err));
+        throw std::runtime_error(string("Unable to start device: ") + soundio_strerror(err));
     }
 
     std::cout << "Software latency (s): " << outstream->software_latency << std::endl;

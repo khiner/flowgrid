@@ -23,7 +23,7 @@ ProcessManager process_manager{};
  * **Actor:** A thread that generates **actions**
  */
 int main(int, const char *argv[]) {
-    config.app_root = std::string(argv[0]);
+    config.app_root = string(argv[0]);
     config.faust_libraries_path = config.app_root + "/../../lib/faust/libraries";
     auto ui_context = create_ui();
     context.ui = &ui_context;

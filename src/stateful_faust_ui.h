@@ -107,10 +107,10 @@ public:
     int getParamsCount() { return int(items.size()); }
 
     int getParamIndex(const char *path) {
-        auto it1 = find_if(items.begin(), items.end(), [=](const Item &it) { return it.path == std::string(path); });
+        auto it1 = find_if(items.begin(), items.end(), [=](const Item &it) { return it.path == string(path); });
         if (it1 != items.end()) return int(it1 - items.begin());
 
-        auto it2 = find_if(items.begin(), items.end(), [=](const Item &it) { return it.label == std::string(path); });
+        auto it2 = find_if(items.begin(), items.end(), [=](const Item &it) { return it.label == string(path); });
         if (it2 != items.end()) return int(it2 - items.begin());
 
         return -1;
@@ -119,7 +119,7 @@ public:
     const char *getParamLabel(int p) { return items[uint(p)].label.c_str(); }
     std::map<const char *, const char *> getMetadata(int p) {
         std::map<const char *, const char *> res;
-        std::map<std::string, std::string> _metadata = metadata[uint(p)];
+        std::map<string, string> _metadata = metadata[uint(p)];
         for (const auto &it: _metadata) {
             res[it.first.c_str()] = it.second.c_str();
         }
@@ -318,8 +318,8 @@ protected:
     enum Mapping { kLin = 0, kLog = 1, kExp = 2 };
 
     struct Item {
-        std::string path;
-        std::string label;
+        string path;
+        string label;
         ValueConverter *value_converter;
         FAUSTFLOAT *zone;
         FAUSTFLOAT init;
@@ -330,7 +330,7 @@ protected:
     };
     std::vector<Item> items;
 
-    std::vector<std::map<std::string, std::string> > metadata;
+    std::vector<std::map<string, string> > metadata;
     std::vector<ZoneControl *> acc[3];
     std::vector<ZoneControl *> gyr[3];
 
@@ -342,17 +342,17 @@ protected:
     ZoneReader *blue_reader;
 
     // Current values controlled by metadata
-    std::string current_unit;
+    string current_unit;
     int current_scale;
-    std::string current_acc;
-    std::string current_gyr;
-    std::string current_color;
-    std::string current_tooltip;
-    std::map<std::string, std::string> current_metadata;
+    string current_acc;
+    string current_gyr;
+    string current_color;
+    string current_tooltip;
+    std::map<string, string> current_metadata;
 
     // Add a generic parameter
     void addParameter(const char *label, FAUSTFLOAT *zone, FAUSTFLOAT init, FAUSTFLOAT min, FAUSTFLOAT max, FAUSTFLOAT step, ItemType type) {
-        std::string path = buildPath(label);
+        string path = buildPath(label);
 
         // handle scale metadata
         ValueConverter *converter = nullptr;

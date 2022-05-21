@@ -248,7 +248,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
     }
 
 
-    std::string ReplParse(ZepBuffer &buffer, const GlyphIterator &cursorOffset, ReplParseType type) override {
+    string ReplParse(ZepBuffer &buffer, const GlyphIterator &cursorOffset, ReplParseType type) override {
         ZEP_UNUSED(cursorOffset);
         ZEP_UNUSED(type);
 
@@ -266,7 +266,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
         buffer.BeginFlash(time, flashType, range);
 
 //        const auto &text = buffer.workingBuffer;
-//        auto eval = std::string(text.begin() + range.first.index, text.begin() + range.second.index);
+//        auto eval = string(text.begin() + range.first.index, text.begin() + range.second.index);
 //        auto ret = chibi_repl(scheme, NULL, eval);
 //        ret = RTrim(ret);
 //
@@ -276,14 +276,14 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
         return "";
     }
 
-    std::string ReplParse(const std::string &str) override {
+    string ReplParse(const string &str) override {
 //        auto ret = chibi_repl(scheme, NULL, str);
 //        ret = RTrim(ret);
 //        return ret;
         return str;
     }
 
-    bool ReplIsFormComplete(const std::string &str, int &indent) override {
+    bool ReplIsFormComplete(const string &str, int &indent) override {
         int count = 0;
         for (auto &ch: str) {
             if (ch == '(') count++;
@@ -347,7 +347,7 @@ void zep_draw() {
 //    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
-static const std::string open_file_dialog_key = "FaustFileDialog";
+static const string open_file_dialog_key = "FaustFileDialog";
 
 /*
  * TODO
@@ -420,7 +420,7 @@ void Audio::Faust::Editor::draw() {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
-                    const std::string buffer_contents = active_buffer->workingBuffer.string();
+                    const string buffer_contents = active_buffer->workingBuffer.string();
                     if (!write_file(file_path, buffer_contents)) {
                         // TODO console error
                     }

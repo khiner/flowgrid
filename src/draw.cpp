@@ -145,7 +145,7 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
-static const std::string open_file_dialog_key = "ApplicationFileDialog";
+static const string open_file_dialog_key = "ApplicationFileDialog";
 
 bool first_draw = true;
 

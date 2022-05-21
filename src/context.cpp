@@ -39,7 +39,7 @@ struct FaustContext {
     dsp *dsp = nullptr;
     std::unique_ptr<FaustBuffers> buffers;
 
-    FaustContext(const std::string &code, int sample_rate, std::string &error_msg) {
+    FaustContext(const string &code, int sample_rate, string &error_msg) {
         int argc = 0;
         const char **argv = new const char *[8];
         argv[argc++] = "-I";
@@ -240,7 +240,7 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
 
     UpdateUiFlags update_ui_flags = UpdateUiFlags_None;
     for (auto &jd: json_diff) {
-        const auto &path = std::string(jd["path"]);
+        const auto &path = string(jd["path"]);
         // TODO really would like these paths as constants, but don't want to define and maintain them manually.
         //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
         if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UpdateUiFlags_ImGuiSettings;

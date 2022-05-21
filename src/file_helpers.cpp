@@ -5,15 +5,15 @@
 #include <string>
 
 // TODO handle errors
-std::string read_file(const fs::path &path) {
+string read_file(const fs::path &path) {
     std::ifstream f(path, std::ios::in | std::ios::binary);
     const auto size = fs::file_size(path);
-    std::string result(size, '\0');
+    string result(size, '\0');
     f.read(result.data(), long(size));
     return result;
 }
 
-bool write_file(const fs::path &path, const std::string &contents) {
+bool write_file(const fs::path &path, const string &contents) {
     std::fstream out_file;
     out_file.open(path, std::ios::out);
     if (out_file) {

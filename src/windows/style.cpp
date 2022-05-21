@@ -4,6 +4,46 @@
 
 #include "implot_internal.h"
 
+bool ShowColorEditor(ImVec4 *colors, int color_count, const std::function<const char *(int)> &GetColorName) {
+    bool changed = false;
+
+    if (ImGui::BeginTabItem("Colors")) {
+        static ImGuiTextFilter filter;
+        filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
+
+        static ImGuiColorEditFlags alpha_flags = 0;
+        if (ImGui::RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
+        ImGui::SameLine();
+        HelpMarker(
+            "In the color list:\n"
+            "Left-click on color square to open color picker,\n"
+            "Right-click to open edit options menu.");
+
+        ImGui::BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
+        ImGui::PushItemWidth(-160);
+        for (int i = 0; i < color_count; i++) {
+            const char *name = GetColorName(i);
+            if (!filter.PassFilter(name)) continue;
+
+            ImGui::PushID(i);
+            changed |= StatefulImGui::ColorEdit4("##color", (float *) &colors[i], ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            ImGui::SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
+            ImGui::TextUnformatted(name);
+            ImGui::PopID();
+        }
+        ImGui::PopItemWidth();
+        ImGui::EndChild();
+
+        ImGui::EndTabItem();
+    }
+
+    return changed;
+}
+
 // From `imgui_demo.cpp`
 bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {
     static int style_idx = -1;
@@ -109,39 +149,7 @@ bool Windows::StyleEditor::ImGuiStyleEditor() {
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Colors")) {
-            static ImGuiTextFilter filter;
-            filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
-
-            static ImGuiColorEditFlags alpha_flags = 0;
-            if (ImGui::RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
-            ImGui::SameLine();
-            HelpMarker(
-                "In the color list:\n"
-                "Left-click on color square to open color picker,\n"
-                "Right-click to open edit options menu.");
-
-            ImGui::BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
-            ImGui::PushItemWidth(-160);
-            for (int i = 0; i < ImGuiCol_COUNT; i++) {
-                const char *name = ImGui::GetStyleColorName(i);
-                if (!filter.PassFilter(name)) continue;
-
-                ImGui::PushID(i);
-                changed |= StatefulImGui::ColorEdit4("##color", (float *) &style.Colors[i], ImGuiColorEditFlags_AlphaBar | alpha_flags);
-                ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
-                ImGui::TextUnformatted(name);
-                ImGui::PopID();
-            }
-            ImGui::PopItemWidth();
-            ImGui::EndChild();
-
-            ImGui::EndTabItem();
-        }
+        changed |= ShowColorEditor(style.Colors, ImGuiCol_COUNT, ImGui::GetStyleColorName);
 
 //        if (ImGui::BeginTabItem("Fonts")) {
 //            ImGuiIO &io = ImGui::GetIO();
@@ -384,41 +392,7 @@ bool Windows::StyleEditor::FlowGridStyleEditor() {
     changed |= FlowGridStyleSelector("Colors##Selector", style);
 
     if (ImGui::BeginTabBar("##FlowGridStyleEditor")) {
-        if (ImGui::BeginTabItem("Colors")) {
-            // TODO DRY up this part across style editors
-            static ImGuiTextFilter filter;
-            filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
-
-            static ImGuiColorEditFlags alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
-            if (ImGui::RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
-            ImGui::SameLine();
-            HelpMarker(
-                "In the color list:\n"
-                "Left-click on colored square to open color picker,\n"
-                "Right-click to open edit options menu.");
-
-            ImGui::Separator();
-            ImGui::PushItemWidth(-160);
-            for (int i = 0; i < FlowGridCol_COUNT; i++) {
-                const char *name = FlowGridStyle::GetColorName(i);
-                if (!filter.PassFilter(name)) continue;
-
-                ImGui::PushID(i);
-                ImVec4 temp = style.Colors[i];
-                ImGui::SameLine();
-                if (StatefulImGui::ColorEdit4(name, &temp.x, ImGuiColorEditFlags_NoInputs | alpha_flags)) {
-                    style.Colors[i] = temp;
-                    changed = true;
-                }
-                ImGui::PopID();
-            }
-            ImGui::PopItemWidth(); // TODO can we delete this?
-            ImGui::EndTabItem();
-        }
+        changed |= ShowColorEditor(style.Colors, FlowGridCol_COUNT, FlowGridStyle::GetColorName);
         ImGui::EndTabBar();
     }
 

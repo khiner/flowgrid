@@ -59,9 +59,9 @@ struct Windows : Drawable {
 
     private:
         // `...StyleEditor` methods are drawn as tabs, and return `true` if style changes.
-        bool ImGuiStyleEditor();
-        bool ImPlotStyleEditor();
-        bool FlowGridStyleEditor();
+        static bool ImGuiStyleEditor();
+        static bool ImPlotStyleEditor();
+        static bool FlowGridStyleEditor();
     };
 
     struct Demo : Window {

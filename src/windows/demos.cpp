@@ -1,6 +1,6 @@
 #include "../state.h"
 
-void Windows::Demos::draw() {
+void Windows::Demo::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowDemo();

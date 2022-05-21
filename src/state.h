@@ -64,8 +64,8 @@ struct Windows : Drawable {
         bool FlowGridStyleEditor();
     };
 
-    struct Demos : Window {
-        Demos() { name = "Demos"; }
+    struct Demo : Window {
+        Demo() { name = "Demo"; }
         void draw() override;
     };
 
@@ -75,7 +75,7 @@ struct Windows : Drawable {
     };
 
     StyleEditor style_editor{};
-    Demos demos{};
+    Demo demos{};
     Metrics metrics{};
 };
 

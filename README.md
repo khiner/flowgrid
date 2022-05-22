@@ -23,6 +23,8 @@ So far, I'm basically trying to mash together some great libraries (see [**Stack
 
 ### Mac
 
+#### System requirements
+
 Prepare your environment:
 
 ```sh
@@ -31,13 +33,37 @@ $ brew install cmake pkgconfig llvm freetype
 $ brew link llvm --force
 ```
 
-Build and run the application (or open the project in your IDE of choice and build - I can only speak for CLion
-working):
+#### IDE clean/build/run
+
+* **CLion:** I use CLion to develop this application, so that's the only IDE I can attest to working smoothly.
+* **TODO:** anything needed for a VSCode project? would be nice to be able to assess it since most refactoring seems
+  weirdly slow in CLion, and doesn't support many features in other JetBrains products.
+
+#### Manual clean/build/run
+
+Clean and rebuild the project:
 
 ```sh
-$ cmake -B cmake-build-debug
-$ cmake --build cmake-build-debug --target FlowGrid -- -j 8
-$ cd cmake-build-debug
+$ rm -rf cmake-build-debug # clean
+$ cmake -B cmake-build-debug # create
+$ cmake --build cmake-build-debug --target FlowGrid -- -j 8 # make
+```
+
+Or, you could just run the `rebuild` script for the same effect:
+
+```sh
+$ ./rebuild
+```
+
+The application should now be fully rebuilt and ready to run.
+If this isn't the case for you, please report it to me along with your environment and any other relevant details!
+
+To run the freshly (re-)built application:
+
+```sh
+# The application assumes it's being run from the build directory,
+# and makes assumptions about the locations of its resource files (e.g. font files).
+$ cd make-build-debug
 $ ./FlowGrid
 ```
 

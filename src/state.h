@@ -303,11 +303,9 @@ JSON_TYPE(ImVec4, w, x, y, z)
 JSON_TYPE(ImVec2ih, x, y)
 
 // Double-check occasionally that all fields in these ImGui settings definitions are present here!
-// TODO don't think we need `WantApply`
-//  (but may need to manually set it to true when setting in imgui, depends on the details there)
 JSON_TYPE(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
-JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed, WantApply)
-JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax, WantApply)
+JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
+JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
 
 JSON_TYPE(WindowData, name, visible)
 JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)

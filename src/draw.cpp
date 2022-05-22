@@ -233,14 +233,11 @@ void draw_frame() {
                 //   with full undo/redo history/position/etc.!
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
-
-                    // serialize to MessagePack
                     if (!write_file(file_path, json::to_msgpack(c.state_json))) {
                         // TODO console error
                     }
                 } else {
-                    c.state_json = json::from_msgpack(read_file(file_path));
-                    c.reset_from_state_json();
+                    c.set_state_json(json::from_msgpack(read_file(file_path)));
                 }
             }
 

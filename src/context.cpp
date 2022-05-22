@@ -109,6 +109,19 @@ std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
 
 Context::Context() : state_json(_state) {}
 
+void Context::set_state_json(const json &new_state_json) {
+    state_json = new_state_json;
+    _state = state_json.get<State>();
+    ui_s = _state; // Update the UI-copy of the state to reflect.
+
+    // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
+    //  and do this atomically with a single assignment.
+    state_stats = {};
+    clear_undo();
+
+    update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+}
+
 void Context::on_action(const Action &action) {
     if (std::holds_alternative<undo>(action)) {
         if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);
@@ -116,7 +129,7 @@ void Context::on_action(const Action &action) {
         if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
     } else {
         update(action);
-        if (!in_gesture) finalize_gesture();
+        if (!gesturing) finalize_gesture();
     }
 }
 
@@ -230,6 +243,8 @@ void Context::update_ui_context(UiContextFlags flags) {
         ui->implot_context->Style = s.style.implot;
     }
 }
+
+// Private
 
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction) {
     const StateDiff &state_diff = direction == Forward ? diff.forward : diff.reverse;

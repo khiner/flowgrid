@@ -159,18 +159,25 @@ public:
     ImFont *defaultFont{};
     ImFont *fixedWidthFont{};
 
-    bool in_gesture{};
+    bool gesturing{};
 
     Context();
     ~Context() = default;
 
+    // Takes care of all side effects needed to put the app into the provided application state json.
+    // This function can be run at any time, but it's not thread-safe.
+    // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
+    // This is especially the case when assigning to `state_json`, which is not an automic operation like assigning to `_state` is.
+    void set_state_json(const json &new_state_json);
+
     void on_action(const Action &);
 
-    void start_gesture() { in_gesture = true; }
+    void start_gesture() { gesturing = true; }
     void end_gesture() {
-        in_gesture = false;
+        gesturing = false;
         finalize_gesture();
     }
+
     bool can_undo() const { return current_action_index >= 0; }
     bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }
 
@@ -182,18 +189,6 @@ public:
     // Audio
     void compute_frames(int frame_count) const;
     float get_sample(int channel, int frame) const;
-
-    void reset_from_state_json() {
-        // Overwrite all the primary state variables.
-        _state = state_json.get<State>();
-        ui_s = _state; // Update the UI-copy of the state to reflect.
-
-        // Other housekeeping side-effects:
-        // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
-        //  and do this atomically with a single assignment.
-        state_stats = {};
-        update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
-    }
 
     void update_ui_context(UiContextFlags flags);
 

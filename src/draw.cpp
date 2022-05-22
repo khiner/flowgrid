@@ -171,10 +171,9 @@ void draw_frame() {
         dock_window(s.state.memory_editor, state_memory_editor_id);
         dock_window(s.state.path_update_frequency, state_path_update_frequency_id);
 
-        const auto &w = s.windows;
         dock_window(s.style, imgui_windows_id);
-        dock_window(w.demos, imgui_windows_id);
-        dock_window(w.metrics, imgui_windows_id);
+        dock_window(s.demo, imgui_windows_id);
+        dock_window(s.metrics, imgui_windows_id);
         first_draw = false;
     }
 
@@ -215,8 +214,8 @@ void draw_frame() {
             }
             StatefulImGui::WindowToggleMenuItem(ui_s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(ui_s.windows.demos);
-                StatefulImGui::WindowToggleMenuItem(ui_s.windows.metrics);
+                StatefulImGui::WindowToggleMenuItem(ui_s.demo);
+                StatefulImGui::WindowToggleMenuItem(ui_s.metrics);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -248,7 +247,8 @@ void draw_frame() {
         }
     }
 
-    ui_s.windows.draw();
+    StatefulImGui::DrawWindow(ui_s.demo, ImGuiWindowFlags_MenuBar);
+    StatefulImGui::DrawWindow(ui_s.metrics);
     ui_s.audio.draw();
     ui_s.state.draw();
     StatefulImGui::DrawWindow(ui_s.style);

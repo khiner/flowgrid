@@ -54,23 +54,6 @@ struct Window : WindowData, Drawable {
     Window() = default;
 };
 
-struct Windows : Drawable {
-    void draw() override;
-
-    struct Demo : Window {
-        Demo() { name = "Demo"; }
-        void draw() override;
-    };
-
-    struct Metrics : Window {
-        Metrics() { name = "Metrics"; }
-        void draw() override;
-    };
-
-    Demo demos{};
-    Metrics metrics{};
-};
-
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
@@ -233,7 +216,6 @@ struct ImGuiSettings {
 
 struct StateData {
     ImGuiSettings imgui_settings;
-    Windows windows;
     Style style;
     Audio audio;
     Processes processes;
@@ -265,7 +247,19 @@ struct StateData {
         StatePathUpdateFrequency path_update_frequency{};
     };
 
+    struct Demo : Window {
+        Demo() { name = "Demo"; }
+        void draw() override;
+    };
+
+    struct Metrics : Window {
+        Metrics() { name = "Metrics"; }
+        void draw() override;
+    };
+
     StateWindows state{};
+    Demo demo{};
+    Metrics metrics{};
 };
 
 struct State : StateData {
@@ -280,12 +274,12 @@ struct State : StateData {
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{
         state.viewer, state.memory_editor, state.path_update_frequency,
-        style, windows.demos, windows.metrics,
+        style, demo, metrics,
         audio.settings, audio.faust.editor, audio.faust.log
     };
     std::vector<std::reference_wrapper<const WindowData>> all_windows_const{
         state.viewer, state.memory_editor, state.path_update_frequency,
-        style, windows.demos, windows.metrics,
+        style, demo, metrics,
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
@@ -322,7 +316,6 @@ JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, C
 JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax, WantApply)
 
 JSON_TYPE(WindowData, name, visible)
-JSON_TYPE(Windows, demos, metrics)
 JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)
 JSON_TYPE(Audio::Faust, code, error, editor, log)
 JSON_TYPE(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
@@ -343,4 +336,4 @@ JSON_TYPE(Processes, action_consumer, audio, ui)
 JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
 JSON_TYPE(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
 JSON_TYPE(State::StateWindows, viewer, memory_editor, path_update_frequency)
-JSON_TYPE(StateData, audio, style, imgui_settings, windows, state, processes);
+JSON_TYPE(StateData, audio, style, imgui_settings, demo, metrics, state, processes);

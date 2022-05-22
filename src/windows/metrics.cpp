@@ -1,6 +1,6 @@
 #include "../state.h"
 
-void Windows::Metrics::draw() {
+void State::Metrics::draw() {
     if (ImGui::BeginTabBar("##tabs")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowMetrics();

@@ -192,6 +192,7 @@ public:
         // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
         //  and do this atomically with a single assignment.
         state_stats = {};
+        update_ui(UpdateUiFlags_ImGuiSettings | UpdateUiFlags_ImGuiStyle | UpdateUiFlags_ImPlotStyle);
     }
 
     void update_ui(UpdateUiFlags flags);

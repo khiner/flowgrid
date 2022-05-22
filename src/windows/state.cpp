@@ -71,6 +71,32 @@ static void show_json_state_value_node(const string &key, const json &value, con
     if (annotate_enabled && is_color) node_flags |= JsonTreeNodeFlags_Highlighted;
     if (auto_select) node_flags |= JsonTreeNodeFlags_Disabled;
 
+    // Tree acts like a histogram, where rect length corresponds to relative update frequency, with `width => most frequently updated`.
+    // Background color of nodes flashes on update.
+    if (c.state_stats.update_times_for_state_path.contains(path)) {
+        const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
+
+        const ImVec2 row_min = {ImGui::GetWindowPos().x, ImGui::GetCursorScreenPos().y};
+        const float item_w = ImGui::GetWindowWidth();
+        const ImVec2 row_max = {row_min.x + item_w, row_min.y + ImGui::GetFontSize()};
+        const float max_ratio = float(update_times.size()) / float(c.state_stats.max_num_updates);
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            row_min, {row_min.x + item_w * max_ratio, row_max.y},
+            ImColor(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram)),
+            0.0f, ImDrawFlags_None
+        );
+
+        // Flash background on update
+        const auto most_recent_update_time = update_times.back();
+        const fsec flash_remaining_sec = Clock::now() - most_recent_update_time;
+        const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
+        auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
+        flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
+        ImGui::GetWindowDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
+
+        // TODO indicate relative update-recency
+    }
+
     if (value.is_null()) {
         ImGui::Text("null");
     } else if (value.is_object()) {
@@ -91,37 +117,6 @@ static void show_json_state_value_node(const string &key, const json &value, con
         }
     } else {
         ImGui::Text("%s : %s", name.c_str(), value.dump().c_str());
-    }
-
-    // Tree acts like a histogram, where rect length corresponds to relative update frequency, with `width => most frequently updated`.
-    // Background color of nodes flashes on update.
-    if (c.state_stats.update_times_for_state_path.contains(path)) {
-        const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
-
-        const ImVec2 w_min = ImGui::GetWindowPos();
-        const float w_width = ImGui::GetWindowWidth();
-        const ImVec2 w_max = {w_min.x + w_width, w_min.y + ImGui::GetWindowHeight()};
-        const ImVec2 item_min = ImGui::GetItemRectMin();
-        const ImVec2 item_max = ImGui::GetItemRectMax();
-        const ImVec2 row_min = {w_min.x, item_min.y};
-        const ImVec2 row_max = {w_max.x, item_max.y};
-        const float row_width = w_width;
-        const float max_ratio = float(update_times.size()) / float(c.state_stats.max_num_updates);
-        ImGui::GetBackgroundDrawList()->AddRectFilled(
-            row_min, {row_min.x + row_width * max_ratio, row_max.y},
-            ImColor(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram)),
-            0.0f, ImDrawFlags_None
-        );
-
-        // Flash background on update
-        const auto most_recent_update_time = update_times.back();
-        const fsec flash_remaining_sec = Clock::now() - most_recent_update_time;
-        const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
-        auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
-        flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
-        ImGui::GetBackgroundDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
-
-        // TODO indicate relative update-recency
     }
 }
 

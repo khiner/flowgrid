@@ -153,13 +153,7 @@ struct FlowGridStyle {
 };
 
 struct Style : Window {
-    Style() {
-        name = "Style";
-        // Transparent background. Need this to draw in background draw list, behind ImGui contents.
-        // Specifically, using this for background rects in tree nodes. Can't find a better way...
-        // TODO waiting to hear back on https://github.com/ocornut/imgui/issues/5334
-        imgui.Colors[ImGuiCol_WindowBg].w = 0;
-    }
+    Style() { name = "Style"; }
 
     void draw() override;
 

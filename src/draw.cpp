@@ -180,12 +180,19 @@ void draw_frame() {
     static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            static const char *default_project_path = "default_project.flo";
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) {
+                c.set_state_json(json::from_msgpack(read_file(default_project_path)));
+            }
             if (ImGui::MenuItem("Open project", "Cmd+o")) {
                 is_save_file_dialog = false;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".");
             }
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) {
+                write_file(default_project_path, json::to_msgpack(c.state_json));
+            }
             // TODO 'Save' menu item, saving to current project file, only enabled if a project file is opened and there are changes
-            if (ImGui::MenuItem("Save project as...")) {
+            if (ImGui::MenuItem("Save project as...", "Cmd+s")) {
                 is_save_file_dialog = true;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".", "my_flowgrid_project", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
             }

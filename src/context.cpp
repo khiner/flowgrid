@@ -144,7 +144,7 @@ void Context::update(const Action &action) {
     auto &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(
         visitor{
-            // Setting `imgui_settings` does not require a `c.update_ui` on the action,
+            // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
             // since the action will be initiated by ImGui itself, whereas the style
             // editors don't update the ImGui/ImPlot contexts themselves.
             [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },

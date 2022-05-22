@@ -18,12 +18,12 @@ struct UiContext {
     ImPlotContext *implot_context;
 };
 
-using UpdateUiFlags = int;
-enum UpdateUiFlags_ {
-    UpdateUiFlags_None = 0,
-    UpdateUiFlags_ImGuiSettings = 1 << 0,
-    UpdateUiFlags_ImGuiStyle = 1 << 1,
-    UpdateUiFlags_ImPlotStyle = 1 << 2,
+using UiContextFlags = int;
+enum UiContextFlags_ {
+    UiContextFlags_None = 0,
+    UiContextFlags_ImGuiSettings = 1 << 0,
+    UiContextFlags_ImGuiStyle = 1 << 1,
+    UiContextFlags_ImPlotStyle = 1 << 2,
 };
 
 enum Direction { Forward, Reverse };
@@ -192,10 +192,10 @@ public:
         // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
         //  and do this atomically with a single assignment.
         state_stats = {};
-        update_ui(UpdateUiFlags_ImGuiSettings | UpdateUiFlags_ImGuiStyle | UpdateUiFlags_ImPlotStyle);
+        update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
     }
 
-    void update_ui(UpdateUiFlags flags);
+    void update_ui_context(UiContextFlags flags);
 
 private:
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);

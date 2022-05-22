@@ -137,11 +137,11 @@ void Context::update(const Action &action) {
             [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },
             [&](const set_imgui_style &a) {
                 _s.style.imgui = a.imgui_style;
-                c.update_ui(UpdateUiFlags_ImGuiStyle);
+                c.update_ui_context(UiContextFlags_ImGuiStyle);
             },
             [&](const set_implot_style &a) {
                 _s.style.implot = a.implot_style;
-                c.update_ui(UpdateUiFlags_ImPlotStyle);
+                c.update_ui_context(UiContextFlags_ImPlotStyle);
             },
             [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
 
@@ -220,12 +220,12 @@ void Context::finalize_gesture() {
     on_json_diff(diff, Forward);
 }
 
-void Context::update_ui(UpdateUiFlags flags) {
-    if (flags == UpdateUiFlags_None) return;
+void Context::update_ui_context(UiContextFlags flags) {
+    if (flags == UiContextFlags_None) return;
 
-    if (flags & UpdateUiFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (flags & UpdateUiFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
-    if (flags & UpdateUiFlags_ImPlotStyle) {
+    if (flags & UiContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
+    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
+    if (flags & UiContextFlags_ImPlotStyle) {
         ImPlot::BustItemCache();
         ui->implot_context->Style = s.style.implot;
     }
@@ -236,14 +236,14 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     const json &json_diff = state_diff.json_diff;
     state_stats.on_json_diff(json_diff, diff.system_time, direction);
 
-    UpdateUiFlags update_ui_flags = UpdateUiFlags_None;
+    UiContextFlags update_ui_flags = UiContextFlags_None;
     for (auto &jd: json_diff) {
         const auto &path = string(jd["path"]);
         // TODO really would like these paths as constants, but don't want to define and maintain them manually.
         //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
-        if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UpdateUiFlags_ImGuiSettings;
-        else if (path.rfind("/style/imgui", 0) == 0) update_ui_flags |= UpdateUiFlags_ImGuiStyle;
-        else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UpdateUiFlags_ImPlotStyle;
+        if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;
+        else if (path.rfind("/style/imgui", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiStyle;
+        else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
     }
-    update_ui(update_ui_flags);
+    update_ui_context(update_ui_flags);
 }

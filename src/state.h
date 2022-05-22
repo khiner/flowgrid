@@ -8,14 +8,13 @@
 
 using std::string;
 
-// TODO The time definitions/units here look nice https://stackoverflow.com/a/14391562, might want to adopt
-using namespace std::chrono_literals;
-using Clock = std::chrono::system_clock;
-using Nanos = std::chrono::nanoseconds;
-using Millis = std::chrono::milliseconds;
-using SystemTimeDuration = Nanos;
-using SystemTime = std::chrono::time_point<Clock, SystemTimeDuration>;
-using SystemTimeMs = std::chrono::time_point<Clock, Millis>;
+// Time declarations inspired by https://stackoverflow.com/a/14391562/780425
+using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
+using Clock = std::chrono::high_resolution_clock; // Main system clock
+using DurationSec = float; // floats used for main duration type
+using fsec = std::chrono::duration<DurationSec>; // float seconds as a std::chrono::duration
+using ns = std::chrono::nanoseconds;
+using TimePoint = std::chrono::time_point<Clock, ns>; // nanos are used for the main high-resolution time-point representation.
 
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.
@@ -147,11 +146,11 @@ enum FlowGridCol_ {
 
 typedef int FlowGridCol; // -> enum ImGuiCol_
 
-const ImU32 FlashDurationMsMin = 0, FlashDurationMsMax = Millis(5s).count();
+const DurationSec FlashDurationSecMin = 0.0, FlashDurationSecMax = 5.0;
 
 struct FlowGridStyle {
     ImVec4 Colors[FlowGridCol_COUNT];
-    ImU32 FlashDurationMs = 500;
+    DurationSec FlashDurationSec{0.6};
 
     static void StyleColorsDark(FlowGridStyle &style) {
         auto *colors = style.Colors;
@@ -339,7 +338,7 @@ JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, Windo
 JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
-JSON_TYPE(FlowGridStyle, Colors, FlashDurationMs)
+JSON_TYPE(FlowGridStyle, Colors, FlashDurationSec)
 JSON_TYPE(Style, imgui, implot, flowgrid)
 
 JSON_TYPE(Processes::Process, running)

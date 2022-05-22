@@ -36,7 +36,7 @@ struct StateDiff {
 struct BidirectionalStateDiff {
     StateDiff forward;
     StateDiff reverse;
-    SystemTime system_time;
+    TimePoint system_time;
 };
 
 struct Config {
@@ -50,13 +50,13 @@ struct StateStats {
         std::vector<ImU64> values;
     };
 
-    std::map<string, std::vector<SystemTime>> update_times_for_state_path{};
+    std::map<string, std::vector<TimePoint>> update_times_for_state_path{};
     Plottable path_update_frequency_plottable;
     ImU32 max_num_updates{0};
     std::vector<string> most_recent_update_paths{};
 
     // `patch` conforms to the [JSON patch](http://jsonpatch.com/) spec.
-    void on_json_diff(const json &diff, SystemTime time, Direction direction) {
+    void on_json_diff(const json &diff, TimePoint time, Direction direction) {
         most_recent_update_paths = {};
         for (auto &patch: diff) {
             const string path = patch["path"];
@@ -76,7 +76,7 @@ private:
         return pc;
     }
 
-    void on_json_patch(const string &path, SystemTime time, Direction direction) {
+    void on_json_patch(const string &path, TimePoint time, Direction direction) {
         if (direction == Forward) {
             auto &update_times = update_times_for_state_path[path];
             update_times.emplace_back(time);

@@ -382,7 +382,7 @@ bool Windows::StyleEditor::FlowGridStyleEditor() {
     bool changed = false;
     auto &style = ui_s.style.flowgrid;
 
-    changed |= StatefulImGui::SliderScalar("FlashDuration", ImGuiDataType_U32, &style.FlashDurationMs, &FlashDurationMsMin, &FlashDurationMsMax, "%u ms");
+    changed |= StatefulImGui::SliderFloat("FlashDuration", &style.FlashDurationSec, FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
     changed |= FlowGridStyleSelector("Colors##Selector", style);
 
     if (ImGui::BeginTabBar("##FlowGridStyleEditor")) {

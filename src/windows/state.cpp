@@ -114,10 +114,9 @@ static void show_json_state_value_node(const string &key, const json &value, con
         );
 
         // Flash background on update
-        const SystemTimeMs now = time_point_cast<Millis>(Clock::now());
-        const SystemTimeMs most_recent_update_time = time_point_cast<Millis>(update_times.back());
-        const auto flash_remaining_ms = now.time_since_epoch().count() - most_recent_update_time.time_since_epoch().count();
-        const float flash_complete_ratio = float(flash_remaining_ms) / float(s.style.flowgrid.FlashDurationMs);
+        const auto most_recent_update_time = update_times.back();
+        const fsec flash_remaining_sec = Clock::now() - most_recent_update_time;
+        const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
         auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
         flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
         ImGui::GetBackgroundDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);

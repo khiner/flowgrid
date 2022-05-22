@@ -212,7 +212,7 @@ void Context::finalize_gesture() {
     const BidirectionalStateDiff diff{
         {json_diff},
         {json::diff(state_json, old_json_state)},
-        std::chrono::system_clock::now(),
+        Clock::now(),
     };
     diffs.emplace_back(diff);
     current_action_index = int(diffs.size()) - 1;

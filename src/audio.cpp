@@ -197,11 +197,11 @@ int audio() {
 
 void Audio::Settings::draw() {
     if (ImGui::Checkbox("Audio thread running", &ui_s.processes.audio.running)) { q(toggle_audio_running{}); }
-    if (ImGui::Checkbox("Mute audio", &ui_s.audio.settings.muted)) { q(toggle_audio_muted{}); }
+    if (ImGui::Checkbox("Mute audio", &muted)) { q(toggle_audio_muted{}); }
 }
 
 void Audio::draw() {
-    StatefulImGui::DrawWindow(ui_s.audio.settings);
-    StatefulImGui::DrawWindow(ui_s.audio.faust.editor, ImGuiWindowFlags_MenuBar);
-    StatefulImGui::DrawWindow(ui_s.audio.faust.log);
+    StatefulImGui::DrawWindow(settings);
+    StatefulImGui::DrawWindow(faust.editor, ImGuiWindowFlags_MenuBar);
+    StatefulImGui::DrawWindow(faust.log);
 }

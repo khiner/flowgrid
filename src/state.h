@@ -302,16 +302,15 @@ JSON_TYPE(ImVec2, x, y)
 JSON_TYPE(ImVec4, w, x, y, z)
 JSON_TYPE(ImVec2ih, x, y)
 
-// Double-check occasionally that all fields in these ImGui settings definitions are present here!
-JSON_TYPE(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
-JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
-JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
-
 JSON_TYPE(WindowData, name, visible)
+
 JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)
 JSON_TYPE(Audio::Faust, code, error, editor, log)
 JSON_TYPE(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
 JSON_TYPE(Audio, settings, faust)
+
+JSON_TYPE(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
+JSON_TYPE(State::StateWindows, viewer, memory_editor, path_update_frequency)
 
 JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
@@ -323,9 +322,13 @@ JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, 
 JSON_TYPE(FlowGridStyle, Colors, FlashDurationSec)
 JSON_TYPE(Style, name, visible, imgui, implot, flowgrid)
 
+// Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.
+JSON_TYPE(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
+JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
+JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
+JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
+
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)
-JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
-JSON_TYPE(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
-JSON_TYPE(State::StateWindows, viewer, memory_editor, path_update_frequency)
+
 JSON_TYPE(StateData, audio, style, imgui_settings, demo, metrics, state, processes);

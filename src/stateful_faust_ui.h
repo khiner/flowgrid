@@ -40,7 +40,17 @@ public:
     void openTabBox(const char *label) override { pushLabel(label); }
     void openHorizontalBox(const char *label) override { pushLabel(label); }
     void openVerticalBox(const char *label) override { pushLabel(label); }
-    void closeBox() override { popLabel(); }
+    void closeBox() override {
+        if (popLabel()) {
+            // Shortnames can be computed when all fullnames are known
+            computeShortNames();
+            // Fill 'shortname' field for each item
+            for (const auto &it: fFull2Short) {
+                int index = getParamIndex(it.first.c_str());
+                items[index].shortname = it.second;
+            }
+        }
+    }
 
     // -- active widgets
 
@@ -106,17 +116,17 @@ public:
     //-------------------------------------------------------------------------------
     int getParamsCount() { return int(items.size()); }
 
-    int getParamIndex(const char *path) {
-        auto it1 = find_if(items.begin(), items.end(), [=](const Item &it) { return it.path == string(path); });
-        if (it1 != items.end()) return int(it1 - items.begin());
-
-        auto it2 = find_if(items.begin(), items.end(), [=](const Item &it) { return it.label == string(path); });
-        if (it2 != items.end()) return int(it2 - items.begin());
-
-        return -1;
+    int getParamIndex(const char *path_aux) {
+        std::string path = std::string(path_aux);
+        auto it = find_if(items.begin(), items.end(),
+            [=](const Item &it) { return (it.label == path) || (it.shortname == path) || (it.path == path); });
+        return (it != items.end()) ? int(it - items.begin()) : -1;
     }
-    const char *getParamAddress(int p) { return items[uint(p)].path.c_str(); }
+
     const char *getParamLabel(int p) { return items[uint(p)].label.c_str(); }
+    const char *getParamShortname(int p) { return items[uint(p)].shortname.c_str(); }
+    const char *getParamAddress(int p) { return items[uint(p)].path.c_str(); }
+
     std::map<const char *, const char *> getMetadata(int p) {
         std::map<const char *, const char *> res;
         std::map<string, string> _metadata = metadata[uint(p)];
@@ -139,7 +149,10 @@ public:
     FAUSTFLOAT getParamValue(int p) { return *items[uint(p)].zone; }
     FAUSTFLOAT getParamValue(const char *path) {
         int index = getParamIndex(path);
-        return (index >= 0) ? getParamValue(index) : FAUSTFLOAT(0);
+        if (index >= 0) return getParamValue(index);
+
+        fprintf(stderr, "getParamValue : '%s' not found\n", (path == nullptr ? "NULL" : path));
+        return FAUSTFLOAT(0);
     }
 
     void setParamValue(int p, FAUSTFLOAT v) {
@@ -226,7 +239,7 @@ public:
      * Used to edit gyroscope curves and mapping. Set curve and related mapping for a given UI parameter.
      *
      * @param p - the UI parameter index
-     * @param acc - 0 for X gyroscope, 1 for Y gyroscope, 2 for Z gyroscope (-1 means "no mapping")
+     * @param gry - 0 for X gyroscope, 1 for Y gyroscope, 2 for Z gyroscope (-1 means "no mapping")
      * @param curve - between 0 and 3
      * @param amin - mapping 'min' point
      * @param amid - mapping 'middle' point
@@ -318,8 +331,9 @@ protected:
     enum Mapping { kLin = 0, kLog = 1, kExp = 2 };
 
     struct Item {
-        string path;
         string label;
+        string shortname;
+        string path;
         ValueConverter *value_converter;
         FAUSTFLOAT *zone;
         FAUSTFLOAT init;
@@ -327,6 +341,19 @@ protected:
         FAUSTFLOAT max;
         FAUSTFLOAT step;
         ItemType item_type;
+
+        Item(const string &label,
+             const string &short_name,
+             const string &path,
+             ValueConverter *value_converter,
+             FAUSTFLOAT *zone,
+             FAUSTFLOAT init,
+             FAUSTFLOAT min,
+             FAUSTFLOAT max,
+             FAUSTFLOAT step,
+             ItemType item_type)
+            : label(label), shortname(short_name), path(path), value_converter(value_converter),
+              zone(zone), init(init), min(min), max(max), step(step), item_type(item_type) {}
     };
     std::vector<Item> items;
 
@@ -353,6 +380,7 @@ protected:
     // Add a generic parameter
     void addParameter(const char *label, FAUSTFLOAT *zone, FAUSTFLOAT init, FAUSTFLOAT min, FAUSTFLOAT max, FAUSTFLOAT step, ItemType type) {
         string path = buildPath(label);
+        fFullPaths.push_back(path);
 
         // handle scale metadata
         ValueConverter *converter = nullptr;
@@ -366,7 +394,7 @@ protected:
         }
         current_scale = kLin;
 
-        items.push_back({path, label, converter, zone, init, min, max, step, type});
+        items.push_back(Item(label, "", path, converter, zone, init, min, max, step, type));
 
         if (!current_acc.empty() && !current_gyr.empty()) {
             fprintf(stderr, "warning : 'acc' and 'gyr' metadata used for the same %s parameter !!\n", label);

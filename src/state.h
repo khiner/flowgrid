@@ -57,17 +57,6 @@ struct Window : WindowData, Drawable {
 struct Windows : Drawable {
     void draw() override;
 
-    struct StyleEditor : Window {
-        StyleEditor() { name = "Style editor"; }
-        void draw() override;
-
-    private:
-        // `...StyleEditor` methods are drawn as tabs, and return `true` if style changes.
-        static bool ImGuiStyleEditor();
-        static bool ImPlotStyleEditor();
-        static bool FlowGridStyleEditor();
-    };
-
     struct Demo : Window {
         Demo() { name = "Demo"; }
         void draw() override;
@@ -78,7 +67,6 @@ struct Windows : Drawable {
         void draw() override;
     };
 
-    StyleEditor style_editor{};
     Demo demos{};
     Metrics metrics{};
 };
@@ -181,17 +169,26 @@ struct FlowGridStyle {
     }
 };
 
-struct Style {
-    ImGuiStyle imgui;
-    ImPlotStyle implot;
-    FlowGridStyle flowgrid;
-
+struct Style : Window {
     Style() {
+        name = "Style";
         // Transparent background. Need this to draw in background draw list, behind ImGui contents.
         // Specifically, using this for background rects in tree nodes. Can't find a better way...
         // TODO post an ImGui issue asking about a way to draw a rect _between_ the window bg color and the ImGui frame content
         imgui.Colors[ImGuiCol_WindowBg].w = 0;
     }
+
+    void draw() override;
+
+    ImGuiStyle imgui;
+    ImPlotStyle implot;
+    FlowGridStyle flowgrid;
+
+private:
+    // `...StyleEditor` methods are drawn as tabs, and return `true` if style changes.
+    static bool ImGuiStyleEditor();
+    static bool ImPlotStyleEditor();
+    static bool FlowGridStyleEditor();
 };
 
 struct Processes {
@@ -283,12 +280,12 @@ struct State : StateData {
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{
         state.viewer, state.memory_editor, state.path_update_frequency,
-        windows.style_editor, windows.demos, windows.metrics,
+        style, windows.demos, windows.metrics,
         audio.settings, audio.faust.editor, audio.faust.log
     };
     std::vector<std::reference_wrapper<const WindowData>> all_windows_const{
         state.viewer, state.memory_editor, state.path_update_frequency,
-        windows.style_editor, windows.demos, windows.metrics,
+        style, windows.demos, windows.metrics,
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
@@ -325,7 +322,7 @@ JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, C
 JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax, WantApply)
 
 JSON_TYPE(WindowData, name, visible)
-JSON_TYPE(Windows, style_editor, demos, metrics)
+JSON_TYPE(Windows, demos, metrics)
 JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)
 JSON_TYPE(Audio::Faust, code, error, editor, log)
 JSON_TYPE(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
@@ -339,7 +336,7 @@ JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, 
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
 JSON_TYPE(FlowGridStyle, Colors, FlashDurationSec)
-JSON_TYPE(Style, imgui, implot, flowgrid)
+JSON_TYPE(Style, name, visible, imgui, implot, flowgrid)
 
 JSON_TYPE(Processes::Process, running)
 JSON_TYPE(Processes, action_consumer, audio, ui)

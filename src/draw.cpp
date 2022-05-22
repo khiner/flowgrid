@@ -167,12 +167,12 @@ void draw_frame() {
         dock_window(s.audio.faust.editor, faust_editor_id);
         dock_window(s.audio.faust.log, faust_log_window_id);
 
-        const auto &w = s.windows;
         dock_window(s.state.viewer, state_viewer_id);
         dock_window(s.state.memory_editor, state_memory_editor_id);
         dock_window(s.state.path_update_frequency, state_path_update_frequency_id);
 
-        dock_window(w.style_editor, imgui_windows_id);
+        const auto &w = s.windows;
+        dock_window(s.style, imgui_windows_id);
         dock_window(w.demos, imgui_windows_id);
         dock_window(w.metrics, imgui_windows_id);
         first_draw = false;
@@ -213,7 +213,7 @@ void draw_frame() {
                 }
                 ImGui::EndMenu();
             }
-            StatefulImGui::WindowToggleMenuItem(ui_s.windows.style_editor);
+            StatefulImGui::WindowToggleMenuItem(ui_s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
                 StatefulImGui::WindowToggleMenuItem(ui_s.windows.demos);
                 StatefulImGui::WindowToggleMenuItem(ui_s.windows.metrics);
@@ -251,6 +251,7 @@ void draw_frame() {
     ui_s.windows.draw();
     ui_s.audio.draw();
     ui_s.state.draw();
+    StatefulImGui::DrawWindow(ui_s.style);
 }
 
 bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {

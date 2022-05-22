@@ -2,7 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
-#include <string>
+#include <vector>
 
 // TODO handle errors
 string read_file(const fs::path &path) {
@@ -18,6 +18,17 @@ bool write_file(const fs::path &path, const string &contents) {
     out_file.open(path, std::ios::out);
     if (out_file) {
         out_file << contents.c_str();
+        out_file.close();
+        return true;
+    }
+
+    return false;
+}
+
+bool write_file(const fs::path &path, const MessagePackBytes &contents) {
+    std::fstream out_file(path, std::ios::out | std::ios::binary);
+    if (out_file) {
+        out_file.write(reinterpret_cast<const char *>(contents.data()), std::streamsize(contents.size()));
         out_file.close();
         return true;
     }

@@ -234,11 +234,12 @@ void draw_frame() {
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
 
-                    if (!write_file(file_path, c.state_json.dump())) {
+                    // serialize to MessagePack
+                    if (!write_file(file_path, json::to_msgpack(c.state_json))) {
                         // TODO console error
                     }
                 } else {
-                    c.state_json = json::parse(read_file(file_path));
+                    c.state_json = json::from_msgpack(read_file(file_path));
                     c.reset_from_state_json();
                 }
             }

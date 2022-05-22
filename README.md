@@ -161,6 +161,14 @@ $ ... # Resolve any conflicts, port any missing changes manually, verify...
 $ git push --force
 ```
 
+## Application docs
+
+### Project files
+
+FlowGrid project files
+are [MessagePack-encoded JSON](https://github.com/nlohmann/json#binary-formats-bson-cbor-messagepack-ubjson-and-bjdata).
+Project files are saved with a `.flo` extension.
+
 ## License
 
 This software is distributed under the [GPL v3 License](./LICENSE).

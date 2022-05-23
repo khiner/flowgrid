@@ -4,6 +4,7 @@
 #include "faust/dsp/llvm-dsp.h"
 #include "stateful_faust_ui.h"
 #include "file_helpers.h"
+#include "audio.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
 // Used to initialize the static Faust buffer.
@@ -260,6 +261,16 @@ void Context::update_ui_context(UiContextFlags flags) {
     }
 }
 
+bool audio_running = false;
+
+void Context::update_processes() {
+    if (audio_running != s.processes.audio.running) {
+        if (s.processes.audio.running) threads.audio_thread = std::thread(audio);
+        else threads.audio_thread.join();
+        audio_running = s.processes.audio.running;
+    }
+}
+
 // Private
 
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction) {
@@ -277,4 +288,5 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
         else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
     }
     update_ui_context(update_ui_flags);
+    update_processes();
 }

@@ -3,10 +3,10 @@
 // Import common libraries once in this widely-shared header
 #include <iostream>
 #include <filesystem>
+#include <thread>
 
 #include "state.h"
 #include "action.h"
-#include "process_manager.h"
 //#include "diff_match_patch.h"
 
 namespace fs = std::filesystem;
@@ -44,6 +44,10 @@ struct BidirectionalStateDiff {
 struct Config {
     string app_root;
     string faust_libraries_path{};
+};
+
+struct Threads {
+    std::thread audio_thread;
 };
 
 struct StateStats {
@@ -109,8 +113,10 @@ private:
 
 struct Context {
 private:
+    Threads threads;
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(int index, Direction direction);
+    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
     void finalize_gesture();
 
 public:
@@ -198,9 +204,7 @@ public:
     float get_sample(int channel, int frame) const;
 
     void update_ui_context(UiContextFlags flags);
-
-private:
-    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
+    void update_processes();
 };
 
 /**
@@ -210,14 +214,12 @@ private:
 extern Context context, &c;
 extern const State &state, &s;
 extern State &ui_s;
-extern ProcessManager process_manager;
 
 // False positive unused function from CLion.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 static inline bool q(Action &&a) {
     c.on_action(a);
-    process_manager.on_action(a);
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
     // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
     // return queue.enqueue(a);

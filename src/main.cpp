@@ -9,7 +9,6 @@ Context &c = context;
 const State &state = c.s;
 const State &s = c.s;
 State &ui_s = c.ui_s;
-ProcessManager process_manager{};
 
 /**md
  # Notes

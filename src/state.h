@@ -173,7 +173,6 @@ struct Processes {
         bool running = true;
     };
 
-    Process action_consumer;
     Process ui;
     Process audio;
 };
@@ -329,6 +328,6 @@ JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCoun
 JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
 
 JSON_TYPE(Processes::Process, running)
-JSON_TYPE(Processes, action_consumer, audio, ui)
+JSON_TYPE(Processes, audio, ui)
 
 JSON_TYPE(StateData, audio, style, imgui_settings, demo, metrics, state, processes);

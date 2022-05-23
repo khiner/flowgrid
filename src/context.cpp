@@ -185,7 +185,6 @@ void Context::update(const Action &action) {
             [&](close_application) {
                 _s.processes.ui.running = false;
                 _s.processes.audio.running = false;
-                _s.processes.action_consumer.running = false;
             },
 
             // Audio

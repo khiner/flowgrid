@@ -180,13 +180,6 @@ void Context::update(const Action &action) {
             [&](const toggle_state_viewer_auto_select &) { _s.state.viewer.auto_select = !s.state.viewer.auto_select; },
             [&](const set_state_viewer_label_mode &a) { _s.state.viewer.label_mode = a.label_mode; },
 
-            [&](set_ui_running a) { _s.processes.ui.running = a.running; },
-
-            [&](close_application) {
-                _s.processes.ui.running = false;
-                _s.processes.audio.running = false;
-            },
-
             // Audio
             [&](const set_faust_code &a) {
                 _s.audio.faust.code = a.text;
@@ -202,9 +195,18 @@ void Context::update(const Action &action) {
                 }
             },
             [&](toggle_audio_muted) { _s.audio.settings.muted = !s.audio.settings.muted; },
-            [&](set_audio_thread_running a) { _s.processes.audio.running = a.running; },
-            [&](toggle_audio_running) { _s.processes.audio.running = !s.processes.audio.running; },
             [&](const set_audio_sample_rate &a) { _s.audio.settings.sample_rate = a.sample_rate; },
+
+            [&](set_audio_running a) { _s.processes.audio.running = a.running; },
+            [&](toggle_audio_running) { _s.processes.audio.running = !s.processes.audio.running; },
+            [&](set_ui_running a) { _s.processes.ui.running = a.running; },
+
+            [&](action::open_default_project) { open_default_project(); },
+            [&](action::save_default_project) { save_default_project(); },
+            [&](close_application) {
+                _s.processes.ui.running = false;
+                _s.processes.audio.running = false;
+            },
 
             // All actions that don't affect state:
             [&](undo) {},

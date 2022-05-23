@@ -67,10 +67,6 @@ $ cd make-build-debug
 $ ./FlowGrid
 ```
 
-TODO: Will probably want to eventually build llvm locally as a submodule, and point to it.
-See [TD-Faust](https://github.com/DBraun/TD-Faust/blob/02f35e4343370559c779468413c32179f55c6552/build_macos.sh#L5-L31)
-as an example.
-
 ## [**Stack**](#stack)
 
 ### Audio

@@ -22,14 +22,16 @@ struct toggle_state_viewer_auto_select {};
 struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; };
 
 struct toggle_audio_muted {};
-struct set_audio_thread_running { bool running; };
-struct toggle_audio_running {};
 struct set_audio_sample_rate { int sample_rate; };
 
+struct set_audio_running { bool running; };
+struct toggle_audio_running {};
 struct set_ui_running { bool running; };
 
 struct set_faust_code { string text; };
 
+struct open_default_project {};
+struct save_default_project {};
 struct close_application {};
 
 }
@@ -51,13 +53,15 @@ using Action = std::variant<
     set_state_viewer_label_mode,
 
     toggle_audio_muted,
-    set_audio_thread_running,
-    toggle_audio_running,
     set_audio_sample_rate,
 
+    set_audio_running,
+    toggle_audio_running,
     set_ui_running,
 
     set_faust_code,
 
+    open_default_project,
+    save_default_project,
     close_application
 >;

@@ -179,12 +179,12 @@ void draw_frame() {
     static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) c.open_default_project();
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) q(open_default_project{});
             if (ImGui::MenuItem("Open project", "Cmd+o")) {
                 is_save_file_dialog = false;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".");
             }
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) c.save_default_project();
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) q(save_default_project{});
             // TODO 'Save' menu item, saving to current project file, only enabled if a project file is opened and there are changes
             if (ImGui::MenuItem("Save project as...", "Cmd+s")) {
                 is_save_file_dialog = true;
@@ -298,8 +298,8 @@ void tick_ui() {
 
     if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O)) c.open_default_project();
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S)) c.save_default_project();
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O)) q(open_default_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S)) q(save_default_project{});
 
     prepare_frame();
     draw_frame();

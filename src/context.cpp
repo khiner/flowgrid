@@ -3,6 +3,7 @@
 
 #include "faust/dsp/llvm-dsp.h"
 #include "stateful_faust_ui.h"
+#include "file_helpers.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
 // Used to initialize the static Faust buffer.
@@ -108,6 +109,21 @@ std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
 }
 
 Context::Context() : state_json(_state) {}
+
+static const fs::path default_project_path = "default_project.flo";
+
+void Context::open_project(const fs::path &path) {
+    set_state_json(json::from_msgpack(read_file(path)));
+}
+void Context::open_default_project() {
+    open_project(default_project_path);
+}
+bool Context::save_project(const fs::path &path) const {
+    return write_file(path, json::to_msgpack(state_json));
+}
+bool Context::save_default_project() const {
+    return save_project(default_project_path);
+}
 
 void Context::set_state_json(const json &new_state_json) {
     state_json = new_state_json;

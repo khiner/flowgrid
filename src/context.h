@@ -2,12 +2,14 @@
 
 // Import common libraries once in this widely-shared header
 #include <iostream>
+#include <filesystem>
 
 #include "state.h"
 #include "action.h"
 #include "process_manager.h"
 //#include "diff_match_patch.h"
 
+namespace fs = std::filesystem;
 using namespace nlohmann; // json
 
 struct RenderContext;
@@ -163,6 +165,11 @@ public:
 
     Context();
     ~Context() = default;
+
+    void open_project(const fs::path &path);
+    void open_default_project();
+    bool save_project(const fs::path &path) const;
+    bool save_default_project() const;
 
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.

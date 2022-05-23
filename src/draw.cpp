@@ -8,7 +8,6 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "ImGuiFileDialog.h"
-#include "file_helpers.h"
 
 struct RenderContext {
     SDL_Window *window = nullptr;
@@ -180,17 +179,12 @@ void draw_frame() {
     static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            static const char *default_project_path = "default_project.flo";
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) {
-                c.set_state_json(json::from_msgpack(read_file(default_project_path)));
-            }
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) c.open_default_project();
             if (ImGui::MenuItem("Open project", "Cmd+o")) {
                 is_save_file_dialog = false;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".");
             }
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) {
-                write_file(default_project_path, json::to_msgpack(c.state_json));
-            }
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) c.save_default_project();
             // TODO 'Save' menu item, saving to current project file, only enabled if a project file is opened and there are changes
             if (ImGui::MenuItem("Save project as...", "Cmd+s")) {
                 is_save_file_dialog = true;
@@ -240,11 +234,11 @@ void draw_frame() {
                 //   with full undo/redo history/position/etc.!
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
-                    if (!write_file(file_path, json::to_msgpack(c.state_json))) {
+                    if (!c.save_project(file_path)) {
                         // TODO console error
                     }
                 } else {
-                    c.set_state_json(json::from_msgpack(read_file(file_path)));
+                    c.open_project(file_path);
                 }
             }
 
@@ -304,6 +298,8 @@ void tick_ui() {
 
     if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O)) c.open_default_project();
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S)) c.save_default_project();
 
     prepare_frame();
     draw_frame();

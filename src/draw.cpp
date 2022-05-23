@@ -259,8 +259,6 @@ bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
     return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
 
-bool closed_this_frame = false;
-
 RenderContext render_context;
 
 UiContext create_ui() {
@@ -284,18 +282,7 @@ void tick_ui() {
             (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
                 event.window.windowID == SDL_GetWindowID(render_context.window))) {
             q(close_application{});
-            closed_this_frame = true;
         }
-    }
-
-    // If the user close the application via the window-close button _this frame_ (or by other means since the previous
-    // check above), bail immediately.
-    // (Like all other actions, the `close_application` action is enqueued and handled in the main event loop thread.
-    // However, we don't want to render another frame after enqueueing a close action, since resources can be deallocated
-    // at any point thereafter.)
-    if (closed_this_frame || !s.processes.ui.running) {
-        FrameMark;
-        return;
     }
 
     if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});

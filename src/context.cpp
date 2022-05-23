@@ -151,14 +151,18 @@ void Context::run_queued_actions() {
 }
 
 void Context::on_action(const Action &action) {
-    if (std::holds_alternative<undo>(action)) {
-        if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);
-    } else if (std::holds_alternative<redo>(action)) {
-        if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
-    } else {
-        update(action);
-        if (!gesturing) finalize_gesture();
-    }
+    std::visit(visitor{
+        [&](undo) {
+            if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);
+        },
+        [&](redo) {
+            if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
+        },
+        [&](auto) { // other action
+            update(action);
+            if (!gesturing) finalize_gesture();
+        }
+    }, action);
 }
 
 /**

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <filesystem>
 #include <thread>
+#include <queue>
 
 #include "state.h"
 #include "action.h"
@@ -114,6 +115,8 @@ private:
 struct Context {
 private:
     Threads threads;
+    std::queue<const Action> queued_actions;
+
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(int index, Direction direction);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
@@ -183,7 +186,9 @@ public:
     // This is especially the case when assigning to `state_json`, which is not an automic operation like assigning to `_state` is.
     void set_state_json(const json &new_state_json);
 
-    void on_action(const Action &);
+    void enqueue_action(const Action &a);
+    void run_queued_actions();
+    void on_action(const Action &); // Immediately execute the action TODO make private?
 
     void start_gesture() { gesturing = true; }
     void end_gesture() {
@@ -219,7 +224,7 @@ extern State &ui_s;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 static inline bool q(Action &&a) {
-    c.on_action(a);
+    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
     // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
     // return queue.enqueue(a);

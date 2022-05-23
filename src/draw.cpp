@@ -251,6 +251,8 @@ void draw_frame() {
     ui_s.audio.draw();
     ui_s.state.draw();
     StatefulImGui::DrawWindow(ui_s.style);
+
+    c.run_queued_actions();
 }
 
 bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {

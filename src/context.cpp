@@ -139,6 +139,17 @@ void Context::set_state_json(const json &new_state_json) {
     update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
 }
 
+void Context::enqueue_action(const Action &a) {
+    queued_actions.push(a);
+}
+
+void Context::run_queued_actions() {
+    while (!queued_actions.empty()) {
+        on_action(queued_actions.front());
+        queued_actions.pop();
+    }
+}
+
 void Context::on_action(const Action &action) {
     if (std::holds_alternative<undo>(action)) {
         if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);

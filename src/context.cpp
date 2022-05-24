@@ -158,6 +158,8 @@ void Context::on_action(const Action &action) {
         [&](redo) {
             if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
         },
+        [&](action::open_default_project) { open_default_project(); },
+        [&](action::save_default_project) { save_default_project(); },
         [&](auto) { // other action
             update(action);
             if (!gesturing) finalize_gesture();
@@ -174,61 +176,59 @@ void Context::on_action(const Action &action) {
  */
 void Context::update(const Action &action) {
     auto &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
-    std::visit(
-        visitor{
-            // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
-            // since the action will be initiated by ImGui itself, whereas the style
-            // editors don't update the ImGui/ImPlot contexts themselves.
-            [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },
-            [&](const set_imgui_style &a) {
-                _s.style.imgui = a.imgui_style;
-                c.update_ui_context(UiContextFlags_ImGuiStyle);
-            },
-            [&](const set_implot_style &a) {
-                _s.style.implot = a.implot_style;
-                c.update_ui_context(UiContextFlags_ImPlotStyle);
-            },
-            [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
-
-            [&](const toggle_window &a) { _s.named(a.name).visible = !s.named(a.name).visible; },
-
-            [&](const toggle_state_viewer_auto_select &) { _s.state.viewer.auto_select = !s.state.viewer.auto_select; },
-            [&](const set_state_viewer_label_mode &a) { _s.state.viewer.label_mode = a.label_mode; },
-
-            // Audio
-            [&](const set_faust_code &a) {
-                _s.audio.faust.code = a.text;
-
-                faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, _s.audio.faust.error);
-                if (faust->dsp) {
-                    StatefulFaustUI faust_ui;
-                    faust->dsp->buildUserInterface(&faust_ui);
-//                    faust->dsp->metadata(&faust_ui); // version/author/licence/etc
-//                    _s.audio.faust.json = faust_ui.
-                } else {
-//                    _s.audio.faust.json = "";
-                }
-            },
-            [&](toggle_audio_muted) { _s.audio.settings.muted = !s.audio.settings.muted; },
-            [&](const set_audio_sample_rate &a) { _s.audio.settings.sample_rate = a.sample_rate; },
-
-            [&](set_audio_running a) { _s.processes.audio.running = a.running; },
-            [&](toggle_audio_running) { _s.processes.audio.running = !s.processes.audio.running; },
-            [&](set_ui_running a) { _s.processes.ui.running = a.running; },
-
-            [&](action::open_default_project) { open_default_project(); },
-            [&](action::save_default_project) { save_default_project(); },
-            [&](close_application) {
-                _s.processes.ui.running = false;
-                _s.processes.audio.running = false;
-            },
-
-            // All actions that don't affect state:
-            [&](undo) {},
-            [&](redo) {},
+    std::visit(visitor{
+        // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
+        // since the action will be initiated by ImGui itself, whereas the style
+        // editors don't update the ImGui/ImPlot contexts themselves.
+        [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },
+        [&](const set_imgui_style &a) {
+            _s.style.imgui = a.imgui_style;
+            c.update_ui_context(UiContextFlags_ImGuiStyle);
         },
-        action
-    );
+        [&](const set_implot_style &a) {
+            _s.style.implot = a.implot_style;
+            c.update_ui_context(UiContextFlags_ImPlotStyle);
+        },
+        [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
+
+        [&](const toggle_window &a) { _s.named(a.name).visible = !s.named(a.name).visible; },
+
+        [&](const toggle_state_viewer_auto_select &) { _s.state.viewer.auto_select = !s.state.viewer.auto_select; },
+        [&](const set_state_viewer_label_mode &a) { _s.state.viewer.label_mode = a.label_mode; },
+
+        // Audio
+        [&](const set_faust_code &a) {
+            _s.audio.faust.code = a.text;
+
+            // TODO move this side-effect to post-processing
+            faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, _s.audio.faust.error);
+            if (faust->dsp) {
+                StatefulFaustUI faust_ui;
+                faust->dsp->buildUserInterface(&faust_ui);
+//                faust->dsp->metadata(&faust_ui); // version/author/licence/etc
+//                _s.audio.faust.json = faust_ui.
+            } else {
+//                _s.audio.faust.json = "";
+            }
+        },
+        [&](toggle_audio_muted) { _s.audio.settings.muted = !s.audio.settings.muted; },
+        [&](const set_audio_sample_rate &a) { _s.audio.settings.sample_rate = a.sample_rate; },
+
+        [&](set_audio_running a) { _s.processes.audio.running = a.running; },
+        [&](toggle_audio_running) { _s.processes.audio.running = !s.processes.audio.running; },
+        [&](set_ui_running a) { _s.processes.ui.running = a.running; },
+
+        [&](close_application) {
+            _s.processes.ui.running = false;
+            _s.processes.audio.running = false;
+        },
+
+        // All actions that don't directly update state:
+        [&](undo) {},
+        [&](redo) {},
+        [&](action::open_default_project) {},
+        [&](action::save_default_project) {},
+    }, action);
 }
 
 void Context::apply_diff(const int action_index, const Direction direction) {

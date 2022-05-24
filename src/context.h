@@ -119,7 +119,7 @@ private:
 
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(int index, Direction direction);
-    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
+    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
     void finalize_gesture();
 
 public:

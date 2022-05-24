@@ -239,7 +239,7 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     _state = state_json.get<State>();
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
-    on_json_diff(diff, direction);
+    on_json_diff(diff, direction, false);
 }
 
 // TODO Implement
@@ -263,7 +263,7 @@ void Context::finalize_gesture() {
     diffs.emplace_back(diff);
     current_action_index = int(diffs.size()) - 1;
 
-    on_json_diff(diff, Forward);
+    on_json_diff(diff, Forward, true);
 }
 
 void Context::update_ui_context(UiContextFlags flags) {
@@ -289,20 +289,24 @@ void Context::update_processes() {
 
 // Private
 
-void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction) {
+void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated) {
     const StateDiff &state_diff = direction == Forward ? diff.forward : diff.reverse;
     const json &json_diff = state_diff.json_diff;
     state_stats.on_json_diff(json_diff, diff.system_time, direction);
 
-    UiContextFlags update_ui_flags = UiContextFlags_None;
-    for (auto &jd: json_diff) {
-        const auto &path = string(jd["path"]);
-        // TODO really would like these paths as constants, but don't want to define and maintain them manually.
-        //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
-        if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;
-        else if (path.rfind("/style/imgui", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiStyle;
-        else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
+    if (!ui_initiated) {
+        // Only need to update the UI context for undo/redo. UI-initiated actions already take care of this.
+        UiContextFlags update_ui_flags = UiContextFlags_None;
+        for (auto &jd: json_diff) {
+            const auto &path = string(jd["path"]);
+            // TODO really would like these paths as constants, but don't want to define and maintain them manually.
+            //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
+            if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;
+            else if (path.rfind("/style/imgui", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiStyle;
+            else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
+        }
+        update_ui_context(update_ui_flags);
     }
-    update_ui_context(update_ui_flags);
+
     update_processes();
 }

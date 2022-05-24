@@ -226,7 +226,10 @@ struct StateData {
         };
 
         struct StateMemoryEditor : Window {
-            StateMemoryEditor() { name = "State memory editor"; }
+            StateMemoryEditor() {
+                name = "State memory editor";
+                visible = false;
+            }
             void draw() override;
         };
 

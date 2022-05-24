@@ -8,9 +8,6 @@
 
 namespace action {
 
-struct undo {};
-struct redo {};
-
 struct set_imgui_settings { ImGuiSettings settings; };
 struct set_imgui_style { ImGuiStyle imgui_style; };
 struct set_implot_style { ImPlotStyle implot_style; };
@@ -30,6 +27,8 @@ struct set_ui_running { bool running; };
 
 struct set_faust_code { string text; };
 
+struct undo {};
+struct redo {};
 struct open_default_project {};
 struct save_default_project {};
 struct close_application {};
@@ -39,9 +38,6 @@ struct close_application {};
 using namespace action;
 
 using Action = std::variant<
-    undo,
-    redo,
-
     set_imgui_settings,
     set_imgui_style,
     set_implot_style,
@@ -61,6 +57,8 @@ using Action = std::variant<
 
     set_faust_code,
 
+    undo,
+    redo,
     open_default_project,
     save_default_project,
     close_application

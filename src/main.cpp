@@ -38,7 +38,15 @@ int main(int, const char *argv[]) {
     c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)}));
     c.update_ui_context(UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
 
+    // Set some windows to be closed by default.
+    // (This currently needs to happen _after_ docked windows are constructed with windows open, otherwise state gets wonky.)
+    // TODO closed windows flash on the screen before they close
+    c.on_action(toggle_window{s.state.memory_editor.name});
+
     c.on_action(set_faust_code{s.audio.faust.code}); // Trigger faust dsp generation
+
+    // TODO clean this up
+    c.ui_s = c.s;
     c.clear_undo(); // Make sure we don't start with any undo state (should only be the above `set_faust_code` action on the stack).
     c.state_stats = {};
 

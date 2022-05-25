@@ -233,13 +233,8 @@ void draw_frame() {
                 //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
                 //   with full undo/redo history/position/etc.!
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
-                if (is_save_file_dialog) {
-                    if (!c.save_project(file_path)) {
-                        // TODO console error
-                    }
-                } else {
-                    c.open_project(file_path);
-                }
+                if (is_save_file_dialog) q(save_project{file_path});
+                else q(open_project{file_path});
             }
 
             ImGuiFileDialog::Instance()->Close();

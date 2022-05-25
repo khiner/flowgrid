@@ -158,6 +158,8 @@ void Context::on_action(const Action &action) {
         [&](redo) {
             if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
         },
+        [&](const action::open_project &a) { open_project(a.path); },
+        [&](const action::save_project &a) { save_project(a.path); },
         [&](action::open_default_project) { open_default_project(); },
         [&](action::save_default_project) { save_default_project(); },
         [&](auto) { // other action
@@ -223,11 +225,7 @@ void Context::update(const Action &action) {
             _s.processes.audio.running = false;
         },
 
-        // All actions that don't directly update state:
-        [&](undo) {},
-        [&](redo) {},
-        [&](action::open_default_project) {},
-        [&](action::save_default_project) {},
+        [&](auto) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
     }, action);
 }
 

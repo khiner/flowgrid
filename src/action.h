@@ -33,6 +33,8 @@ struct set_faust_code { string text; };
 
 struct undo {};
 struct redo {};
+struct open_project { string path; };
+struct save_project { string path; };
 struct open_default_project {};
 struct save_default_project {};
 struct close_application {};
@@ -43,9 +45,7 @@ using namespace action;
 
 using Action = std::variant<
     set_imgui_settings,
-    set_imgui_style,
-    set_implot_style,
-    set_flowgrid_style,
+    set_imgui_style, set_implot_style, set_flowgrid_style,
 
     toggle_window,
 
@@ -61,9 +61,8 @@ using Action = std::variant<
 
     set_faust_code,
 
-    undo,
-    redo,
-    open_default_project,
-    save_default_project,
+    undo, redo,
+    open_project, open_default_project,
+    save_project, save_default_project,
     close_application
 >;

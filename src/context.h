@@ -11,7 +11,6 @@
 //#include "diff_match_patch.h"
 
 namespace fs = std::filesystem;
-using namespace nlohmann; // json
 
 struct RenderContext;
 struct UiContext {

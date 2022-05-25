@@ -8,10 +8,14 @@
 
 namespace action {
 
-struct set_imgui_settings { ImGuiSettings settings; };
-struct set_imgui_style { ImGuiStyle imgui_style; };
-struct set_implot_style { ImPlotStyle implot_style; };
-struct set_flowgrid_style { FlowGridStyle flowgrid_style; };
+// JSON types are used for actions that hold very large structured data.
+// This is because the `Action` `std::variant` below can hold any action type, and variants must be large enough to hold their largest type.
+// As of 5/24/2022, the largest raw action member type was `ImGuiStyle`, which resulted in an `Action` variant size of 1088 bytes.
+// That's pretty silly for a type that can also hold a single boolean value! Replacing with JSON types brought the size down to 32 bytes.
+struct set_imgui_settings { json settings; }; // ImGuiSettings
+struct set_imgui_style { json imgui_style; }; // ImGuiStyle
+struct set_implot_style { json implot_style; }; // ImPlotStyle
+struct set_flowgrid_style { json flowgrid_style; }; // FlowGridStyle
 
 struct toggle_window { string name; };
 

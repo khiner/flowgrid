@@ -7,6 +7,7 @@
 #include "implot_internal.h"
 
 using std::string;
+using namespace nlohmann; // json
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`

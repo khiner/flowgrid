@@ -6,7 +6,7 @@ namespace FlowGrid {
 void ShowMetrics() {
     ImGui::Text("Action variant size: %lu bytes", sizeof(Action));
     ImGui::SameLine();
-    HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type.\n"
+    HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
                "Thus, it's important to keep action data small.");
 }
 

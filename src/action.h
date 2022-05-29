@@ -3,6 +3,19 @@
 #include <variant>
 #include "state.h"
 
+/*!
+ * From [lager](https://github.com/arximboldi/lager/blob/c9d8b7d3c7dc7138913757d1624ab705866d791d/lager/util.hpp#L27-L49)
+ * Utility to make a variant visitor out of lambdas, using the *overloaded pattern* as described
+ * [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
+ */
+template<class... Ts>
+struct visitor : Ts ... {
+    using Ts::operator()...;
+};
+
+template<class... Ts> visitor(Ts...)->visitor<Ts...>;
+
+
 // An `Action` is an immutable representation of a user interaction event.
 // Each action stores all information needed for `update` to apply it to a given `State` instance.
 
@@ -55,15 +68,44 @@ using Action = std::variant<
 
     toggle_audio_muted,
     set_audio_sample_rate,
+    set_faust_code,
 
     set_audio_running,
     toggle_audio_running,
     set_ui_running,
-
-    set_faust_code,
 
     undo, redo,
     open_project, open_default_project,
     save_project, save_default_project, save_current_project,
     close_application
 >;
+
+static string get_action_name(const Action &action) {
+    return std::visit(visitor{
+        [&](const set_imgui_settings &) { return "Set ImGui Settings"; },
+        [&](const set_imgui_style &) { return "Set ImGui Style"; },
+        [&](const set_implot_style &) { return "Set ImPlot Style"; },
+        [&](const set_flowgrid_style &) { return "Set FlowGrid Style"; },
+
+        [&](const toggle_window &) { return "Toggle Window"; },
+
+        [&](const toggle_state_viewer_auto_select &) { return "Toggle state viewer auto-select"; },
+        [&](const set_state_viewer_label_mode &) { return "Set state-viewer label-mode"; },
+        [&](const toggle_audio_muted &) { return "Toggle audio muted"; },
+        [&](const set_audio_sample_rate &) { return "Set audio sample rate"; },
+        [&](const set_faust_code &) { return "Set faust code"; },
+
+        [&](const set_audio_running &) { return "Set audio running"; },
+        [&](const toggle_audio_running &) { return "Toggle audio running"; },
+        [&](const set_ui_running &) { return "Set UI running"; },
+
+        [&](const undo &) { return "Undo"; },
+        [&](const redo &) { return "Redo"; },
+        [&](const open_project &) { return "Open project"; },
+        [&](const open_default_project &) { return "Open default project"; },
+        [&](const save_project &) { return "Save project"; },
+        [&](const save_default_project &) { return "Save default project"; },
+        [&](const save_current_project &) { return "Save current project"; },
+        [&](const close_application &) { return "Close application"; },
+    }, action);
+}

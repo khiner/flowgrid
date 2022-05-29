@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <thread>
 #include <queue>
+#include <set>
 
 #include "preferences.h"
 #include "state.h"
@@ -37,6 +38,7 @@ struct StateDiff {
 
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
+    std::set<string> action_names;
     StateDiff forward;
     StateDiff reverse;
     TimePoint system_time;
@@ -111,11 +113,11 @@ struct Context {
 private:
     Threads threads;
     std::queue<const Action> queued_actions;
+    std::set<string> gesture_action_names;
 
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(int index, Direction direction);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
-    void finalize_gesture();
     void set_current_project_path(const fs::path &path);
 
 public:
@@ -196,10 +198,7 @@ public:
     void on_action(const Action &); // Immediately execute the action TODO make private?
 
     void start_gesture() { gesturing = true; }
-    void end_gesture() {
-        gesturing = false;
-        finalize_gesture();
-    }
+    void end_gesture();
 
     bool can_undo() const { return current_action_index >= 0; }
     bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }
@@ -207,6 +206,8 @@ public:
     void clear_undo() {
         current_action_index = -1;
         diffs.clear();
+        gesture_action_names.clear();
+        gesturing = false;
     }
 
     // Audio

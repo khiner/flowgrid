@@ -1,5 +1,4 @@
 #include "context.h"
-#include "visitor.h"
 
 #include "faust/dsp/llvm-dsp.h"
 #include "stateful_faust_ui.h"
@@ -182,6 +181,7 @@ void Context::run_queued_actions() {
 }
 
 void Context::on_action(const Action &action) {
+    gesture_action_names.emplace(get_action_name(action));
     std::visit(visitor{
         [&](undo) {
             if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);
@@ -196,7 +196,7 @@ void Context::on_action(const Action &action) {
         [&](action::save_current_project) { save_current_project(); },
         [&](auto) { // other action
             update(action);
-            if (!gesturing) finalize_gesture();
+            if (!gesturing) end_gesture();
         }
     }, action);
 }
@@ -277,7 +277,7 @@ void Context::apply_diff(const int action_index, const Direction direction) {
 //  std::pair<Diff, Diff> {forward_diff, reverse_diff} = json::bidirectional_diff(old_state_json, new_state_json);
 //  ```
 //  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
-void Context::finalize_gesture() {
+void Context::end_gesture() {
     auto old_json_state = state_json;
     state_json = s;
     auto json_diff = json::diff(old_json_state, state_json);
@@ -286,6 +286,7 @@ void Context::finalize_gesture() {
     while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
 
     const BidirectionalStateDiff diff{
+        gesture_action_names,
         {json_diff},
         {json::diff(state_json, old_json_state)},
         Clock::now(),
@@ -294,6 +295,9 @@ void Context::finalize_gesture() {
     current_action_index = int(diffs.size()) - 1;
 
     on_json_diff(diff, Forward, true);
+
+    gesturing = false;
+    gesture_action_names.clear();
 }
 
 void Context::set_current_project_path(const fs::path &path) {

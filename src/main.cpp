@@ -20,9 +20,8 @@ State &ui_s = c.ui_s;
    - An action must contain all the information needed to transform the current state into the new state after the action.
  * **Actor:** A thread that generates **actions**
  */
-int main(int, const char *argv[]) {
-    config.app_root_path = string(argv[0]);
-    config.faust_libraries_path = config.app_root_path / "../.." / "lib/faust/libraries";
+int main(int, const char **) {
+    config.faust_libraries_path = fs::relative("../lib/faust/libraries");
     auto ui_context = create_ui();
     context.ui = &ui_context;
 

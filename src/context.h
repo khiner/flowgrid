@@ -43,7 +43,6 @@ struct BidirectionalStateDiff {
 };
 
 struct Config {
-    fs::path app_root_path;
     fs::path faust_libraries_path{};
 };
 

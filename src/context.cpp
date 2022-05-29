@@ -45,7 +45,7 @@ struct FaustContext {
         int argc = 0;
         const char **argv = new const char *[8];
         argv[argc++] = "-I";
-        argv[argc++] = &config.faust_libraries_path.c_str()[0]; // convert to char*
+        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
         // Consider additional args: "-vec", "-vs", "128", "-dfs"
 
         const int optimize_level = -1;

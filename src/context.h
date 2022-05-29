@@ -42,10 +42,6 @@ struct BidirectionalStateDiff {
     TimePoint system_time;
 };
 
-struct Config {
-    fs::path faust_libraries_path{};
-};
-
 struct Threads {
     std::thread audio_thread;
 };
@@ -240,8 +236,6 @@ static inline bool q(Action &&a) {
     return true;
 }
 #pragma clang diagnostic pop
-
-extern Config config;
 
 /**md
 # Usage

@@ -2,7 +2,6 @@
 #include "draw.h"
 
 // Initialize global variables, and convenient shorthand variables.
-Config config{};
 Context context{};
 Context &c = context;
 const State &state = c.s;
@@ -21,7 +20,6 @@ State &ui_s = c.ui_s;
  * **Actor:** A thread that generates **actions**
  */
 int main(int, const char **) {
-    config.faust_libraries_path = fs::relative("../lib/faust/libraries");
     auto ui_context = create_ui();
     context.ui = &ui_context;
 

@@ -1,13 +1,12 @@
 #pragma once
 
-#include "nlohmann/json.hpp"
+#include "json_type.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"
 #include "implot_internal.h"
 
 using std::string;
-using namespace nlohmann; // json
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
@@ -291,12 +290,6 @@ struct State : StateData {
         throw std::invalid_argument(name);
     }
 };
-
-// An exact copy of `NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE`, but with a shorter name.
-// Note: It's probably a good idea to occasionally check the definition in `nlohmann/json.cpp` for any changes.
-#define JSON_TYPE(Type, ...)  \
-    inline void to_json(nlohmann::json& nlohmann_json_j, const Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(NLOHMANN_JSON_TO, __VA_ARGS__)) } \
-    inline void from_json(const nlohmann::json& nlohmann_json_j, Type& nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(NLOHMANN_JSON_FROM, __VA_ARGS__)) }
 
 JSON_TYPE(ImVec2, x, y)
 JSON_TYPE(ImVec4, w, x, y, z)

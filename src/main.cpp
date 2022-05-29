@@ -1,4 +1,3 @@
-#include <thread>
 #include "context.h"
 #include "draw.h"
 
@@ -22,8 +21,8 @@ State &ui_s = c.ui_s;
  * **Actor:** A thread that generates **actions**
  */
 int main(int, const char *argv[]) {
-    config.app_root = string(argv[0]);
-    config.faust_libraries_path = config.app_root + "/../../lib/faust/libraries";
+    config.app_root_path = string(argv[0]);
+    config.faust_libraries_path = config.app_root_path / "../.." / "lib/faust/libraries";
     auto ui_context = create_ui();
     context.ui = &ui_context;
 

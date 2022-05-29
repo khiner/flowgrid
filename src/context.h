@@ -6,6 +6,7 @@
 #include <thread>
 #include <queue>
 
+#include "preferences.h"
 #include "state.h"
 #include "action.h"
 //#include "diff_match_patch.h"
@@ -42,8 +43,8 @@ struct BidirectionalStateDiff {
 };
 
 struct Config {
-    string app_root;
-    string faust_libraries_path{};
+    fs::path app_root_path;
+    fs::path faust_libraries_path{};
 };
 
 struct Threads {
@@ -120,8 +121,11 @@ private:
     void apply_diff(int index, Direction direction);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
     void finalize_gesture();
+    void set_current_project_path(const fs::path &path);
 
 public:
+    Preferences preferences;
+
 /**md
  * # Writing directly to state
  *
@@ -180,6 +184,7 @@ public:
     void open_project(const fs::path &path);
     void open_default_project();
 
+    static bool is_default_project_path(const fs::path &path);
     bool can_save_project() const;
     bool save_project(const fs::path &path);
     bool save_current_project();

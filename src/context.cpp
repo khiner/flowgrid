@@ -45,7 +45,7 @@ struct FaustContext {
         int argc = 0;
         const char **argv = new const char *[8];
         argv[argc++] = "-I";
-        argv[argc++] = &config.faust_libraries_path[0]; // convert to char*
+        argv[argc++] = &config.faust_libraries_path.c_str()[0]; // convert to char*
         // Consider additional args: "-vec", "-vs", "128", "-dfs"
 
         const int optimize_level = -1;
@@ -109,18 +109,27 @@ std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
     return (os << "Forward:\n" << diff.forward << "\nReverse:\n" << diff.reverse);
 }
 
-Context::Context() : state_json(_state) {}
+Context::Context() : state_json(_state) {
+    if (fs::exists(preferences_path)) {
+        preferences = json::from_msgpack(read_file(preferences_path));
+    } else {
+        write_file(preferences_path, json::to_msgpack(preferences));
+    }
+}
 
 static const fs::path default_project_path = "default_project.flo";
+bool Context::is_default_project_path(const fs::path &path) {
+    return fs::equivalent(path, default_project_path);
+}
 
 void Context::open_project(const fs::path &path) {
     set_state_json(json::from_msgpack(read_file(path)));
-    if (path == default_project_path) {
+
+    if (!is_default_project_path(path)) {
+        set_current_project_path(path);
+    } else {
         current_project_path.reset();
         current_project_saved_action_index = -1;
-    } else {
-        current_project_path = path;
-        current_project_saved_action_index = current_action_index;
     }
 }
 void Context::open_default_project() {
@@ -131,12 +140,11 @@ bool Context::can_save_project() const {
     return current_project_path.has_value() && current_action_index != current_project_saved_action_index;
 }
 bool Context::save_project(const fs::path &path) {
-    if (path == current_project_path && !can_save_project()) return false;
+    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_project()) return false;
 
     if (write_file(path, json::to_msgpack(state_json))) {
-        if (path != default_project_path) {
-            current_project_path = path;
-            current_project_saved_action_index = current_action_index;
+        if (!is_default_project_path(path)) {
+            set_current_project_path(path);
         }
         return true;
     }
@@ -286,6 +294,14 @@ void Context::finalize_gesture() {
     current_action_index = int(diffs.size()) - 1;
 
     on_json_diff(diff, Forward, true);
+}
+
+void Context::set_current_project_path(const fs::path &path) {
+    current_project_path = path;
+    current_project_saved_action_index = current_action_index;
+    preferences.recently_opened_paths.remove(path);
+    preferences.recently_opened_paths.emplace_front(path);
+    write_file(preferences_path, json::to_msgpack(preferences));
 }
 
 void Context::update_ui_context(UiContextFlags flags) {

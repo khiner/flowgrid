@@ -315,7 +315,7 @@ std::unique_ptr<ZepWrapper> zep;
 std::unique_ptr<ZepEditor_ImGui> zep_editor;
 
 void zep_init() {
-    zep_editor = std::make_unique<ZepEditor_ImGui>(ZepPath(config.app_root));
+    zep_editor = std::make_unique<ZepEditor_ImGui>(ZepPath(config.app_root_path));
     zep = std::make_unique<ZepWrapper>(*zep_editor);
 
     auto *display = zep_editor->display;

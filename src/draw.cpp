@@ -184,6 +184,17 @@ void draw_frame() {
                 is_save_file_dialog = false;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".");
             }
+            const auto &recently_opened_paths = c.preferences.recently_opened_paths;
+            if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
+                for (const auto &recently_opened_path: recently_opened_paths) {
+                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) {
+                        is_save_file_dialog = false;
+                        q(open_project{recently_opened_path});
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
             if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) q(save_default_project{});
             if (ImGui::MenuItem("Save project", "Cmd+s", false, c.can_save_project())) q(save_current_project{});
             if (ImGui::MenuItem("Save project as...")) {

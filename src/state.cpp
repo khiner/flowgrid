@@ -14,6 +14,8 @@ ImGuiSettings::ImGuiSettings(ImGuiContext *c) {
 
 // Copied from `imgui.cpp`
 static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settings) {
+    if (!window) return; // TODO log
+
     const ImGuiViewport *main_viewport = ImGui::GetMainViewport();
     window->ViewportPos = main_viewport->Pos;
     if (settings->ViewportId) {

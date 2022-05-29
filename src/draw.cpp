@@ -185,8 +185,8 @@ void draw_frame() {
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".");
             }
             if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) q(save_default_project{});
-            // TODO 'Save' menu item, saving to current project file, only enabled if a project file is opened and there are changes
-            if (ImGui::MenuItem("Save project as...", "Cmd+s")) {
+            if (ImGui::MenuItem("Save project", "Cmd+s", false, c.can_save_project())) q(save_current_project{});
+            if (ImGui::MenuItem("Save project as...")) {
                 is_save_file_dialog = true;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".", "my_flowgrid_project", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
             }
@@ -284,6 +284,7 @@ void tick_ui() {
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O)) q(open_default_project{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S)) q(save_default_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_S)) q(save_current_project{});
 
     prepare_frame();
     draw_frame();

@@ -115,15 +115,38 @@ static const fs::path default_project_path = "default_project.flo";
 
 void Context::open_project(const fs::path &path) {
     set_state_json(json::from_msgpack(read_file(path)));
+    if (path == default_project_path) {
+        current_project_path.reset();
+        current_project_saved_action_index = -1;
+    } else {
+        current_project_path = path;
+        current_project_saved_action_index = current_action_index;
+    }
 }
 void Context::open_default_project() {
     open_project(default_project_path);
 }
-bool Context::save_project(const fs::path &path) const {
-    return write_file(path, json::to_msgpack(state_json));
+
+bool Context::can_save_project() const {
+    return current_project_path.has_value() && current_action_index != current_project_saved_action_index;
 }
-bool Context::save_default_project() const {
+bool Context::save_project(const fs::path &path) {
+    if (path == current_project_path && !can_save_project()) return false;
+
+    if (write_file(path, json::to_msgpack(state_json))) {
+        if (path != default_project_path) {
+            current_project_path = path;
+            current_project_saved_action_index = current_action_index;
+        }
+        return true;
+    }
+    return false;
+}
+bool Context::save_default_project() {
     return save_project(default_project_path);
+}
+bool Context::save_current_project() {
+    return can_save_project() && save_project(current_project_path.value());
 }
 
 void Context::set_state_json(const json &new_state_json) {
@@ -162,6 +185,7 @@ void Context::on_action(const Action &action) {
         [&](const action::save_project &a) { save_project(a.path); },
         [&](action::open_default_project) { open_default_project(); },
         [&](action::save_default_project) { save_default_project(); },
+        [&](action::save_current_project) { save_current_project(); },
         [&](auto) { // other action
             update(action);
             if (!gesturing) finalize_gesture();

@@ -35,6 +35,7 @@ struct undo {};
 struct redo {};
 struct open_project { string path; };
 struct save_project { string path; };
+struct save_current_project {};
 struct open_default_project {};
 struct save_default_project {};
 struct close_application {};
@@ -63,6 +64,6 @@ using Action = std::variant<
 
     undo, redo,
     open_project, open_default_project,
-    save_project, save_default_project,
+    save_project, save_default_project, save_current_project,
     close_application
 >;

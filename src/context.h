@@ -166,6 +166,9 @@ public:
     int current_action_index = -1;
     json state_json;
 
+    std::optional<fs::path> current_project_path;
+    int current_project_saved_action_index = -1;
+
     ImFont *defaultFont{};
     ImFont *fixedWidthFont{};
 
@@ -176,8 +179,11 @@ public:
 
     void open_project(const fs::path &path);
     void open_default_project();
-    bool save_project(const fs::path &path) const;
-    bool save_default_project() const;
+
+    bool can_save_project() const;
+    bool save_project(const fs::path &path);
+    bool save_current_project();
+    bool save_default_project();
 
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.

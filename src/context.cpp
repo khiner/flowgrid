@@ -163,7 +163,6 @@ void Context::set_state_json(const json &new_state_json) {
 
     // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
     //  and do this atomically with a single assignment.
-    state_stats = {};
     clear_undo();
 
     update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);

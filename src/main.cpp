@@ -21,7 +21,8 @@ State &ui_s = c.ui_s;
  */
 int main(int, const char **) {
     auto ui_context = create_ui();
-    context.ui = &ui_context;
+    c.ui = &ui_context;
+    c.update_processes();
 
     // TODO when we're loading default projects
     // if (!s.imgui_settings.empty()) s.imgui_settings.populate_context(ui_context.imgui_context);
@@ -38,13 +39,10 @@ int main(int, const char **) {
     // (This currently needs to happen _after_ docked windows are constructed with windows open, otherwise state gets wonky.)
     // TODO closed windows flash on the screen before they close
     c.on_action(toggle_window{s.state.memory_editor.name});
-
     c.on_action(set_faust_code{s.audio.faust.code}); // Trigger faust dsp generation
 
-    // TODO clean this up
-    c.ui_s = c.s;
+    c.ui_s = c.s; // TODO don't like this
     c.clear_undo(); // Make sure we don't start with any undo state (should only be the above `set_faust_code` action on the stack).
-    c.state_stats = {};
 
     /** TODO need more consistent pattern for state updates.
      The issue is that by putting actions in the queue before updating state, even simple effects against state

@@ -208,6 +208,7 @@ public:
         diffs.clear();
         gesture_action_names.clear();
         gesturing = false;
+        state_stats = {};
     }
 
     // Audio

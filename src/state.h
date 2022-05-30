@@ -313,6 +313,7 @@ using JsonPatch = std::vector<JsonPatchOp>;
 NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
     { Add, "add" },
     { Remove, "remove" },
+    { Replace, "replace" },
     { Copy, "copy" },
     { Move, "move" },
     { Test, "test" },

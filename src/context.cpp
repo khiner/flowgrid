@@ -101,13 +101,6 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || state.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-std::ostream &operator<<(std::ostream &os, const json &diff) {
-    return (os << "\tJSON diff:\n" << diff.dump() << "\n");
-}
-std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
-    return (os << "Forward:\n" << diff.forward.dump() << "\nReverse:\n" << diff.reverse.dump());
-}
-
 Context::Context() : state_json(_state) {
     if (fs::exists(preferences_path)) {
         preferences = json::from_msgpack(read_file(preferences_path));

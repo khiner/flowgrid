@@ -4,6 +4,8 @@
 
 #include "imgui_memory_editor.h"
 
+using namespace ImGui;
+
 using LabelMode = State::StateWindows::StateViewer::LabelMode;
 
 typedef int JsonTreeNodeFlags;
@@ -17,11 +19,11 @@ bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
     bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
     bool disabled = flags & JsonTreeNodeFlags_Disabled;
 
-    if (disabled) ImGui::BeginDisabled();
-    if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, state.style.flowgrid.Colors[FlowGridCol_HighlightText]);
-    bool is_open = ImGui::TreeNode(label);
-    if (highlighted) ImGui::PopStyleColor();
-    if (disabled) ImGui::EndDisabled();
+    if (disabled) BeginDisabled();
+    if (highlighted) PushStyleColor(ImGuiCol_Text, state.style.flowgrid.Colors[FlowGridCol_HighlightText]);
+    bool is_open = TreeNode(label);
+    if (highlighted) PopStyleColor();
+    if (disabled) EndDisabled();
 
     return is_open;
 }
@@ -56,15 +58,15 @@ static void show_json_state_value_node(const string &key, const json &value, con
     const bool is_flowgrid_color = path.parent_path() == color_paths[ColorPaths_FlowGrid];
     const auto &name = annotate_enabled ?
                        (is_imgui_color ?
-                        ImGui::GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
-                                                                is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
-                                                                is_array_item ? file_name : key) : key;
+                        GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
+                                                         is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
+                                                         is_array_item ? file_name : key) : key;
 
     if (auto_select) {
         const auto &update_paths = c.state_stats.most_recent_update_paths;
         const auto is_ancestor_path = [path](const string &candidate_path) { return candidate_path.rfind(path, 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
-        ImGui::SetNextItemOpen(was_recently_updated);
+        SetNextItemOpen(was_recently_updated);
     }
 
     JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None;
@@ -76,13 +78,13 @@ static void show_json_state_value_node(const string &key, const json &value, con
     if (c.state_stats.update_times_for_state_path.contains(path)) {
         const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
 
-        const ImVec2 row_min = {ImGui::GetWindowPos().x, ImGui::GetCursorScreenPos().y};
-        const float item_w = ImGui::GetWindowWidth();
-        const ImVec2 row_max = {row_min.x + item_w, row_min.y + ImGui::GetFontSize()};
+        const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+        const float item_w = GetWindowWidth();
+        const ImVec2 row_max = {row_min.x + item_w, row_min.y + GetFontSize()};
         const float max_ratio = float(update_times.size()) / float(c.state_stats.max_num_updates);
-        ImGui::GetWindowDrawList()->AddRectFilled(
+        GetWindowDrawList()->AddRectFilled(
             row_min, {row_min.x + item_w * max_ratio, row_max.y},
-            ImColor(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram)),
+            ImColor(GetStyleColorVec4(ImGuiCol_PlotHistogram)),
             0.0f, ImDrawFlags_None
         );
 
@@ -92,19 +94,19 @@ static void show_json_state_value_node(const string &key, const json &value, con
         const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
         auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
         flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
-        ImGui::GetWindowDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
+        GetWindowDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
 
         // TODO indicate relative update-recency
     }
 
     if (value.is_null()) {
-        ImGui::Text("null");
+        Text("null");
     } else if (value.is_object()) {
         if (JsonTreeNode(name.c_str(), node_flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 show_json_state_value_node(it.key(), it.value(), path / it.key());
             }
-            ImGui::TreePop();
+            TreePop();
         }
     } else if (value.is_array()) {
         if (JsonTreeNode(name.c_str(), node_flags)) {
@@ -113,10 +115,10 @@ static void show_json_state_value_node(const string &key, const json &value, con
                 show_json_state_value_node(std::to_string(i), it, path / std::to_string(i));
                 i++;
             }
-            ImGui::TreePop();
+            TreePop();
         }
     } else {
-        ImGui::Text("%s : %s", name.c_str(), value.dump().c_str());
+        Text("%s : %s", name.c_str(), value.dump().c_str());
     }
 }
 
@@ -135,7 +137,7 @@ void State::StateWindows::StateMemoryEditor::draw() {
 
 void State::StateWindows::StatePathUpdateFrequency::draw() {
     if (c.state_stats.update_times_for_state_path.empty()) {
-        ImGui::Text("No state updates yet.");
+        Text("No state updates yet.");
         return;
     }
 
@@ -147,7 +149,7 @@ void State::StateWindows::StatePathUpdateFrequency::draw() {
         // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
         if (labels.size() == 1) labels.emplace_back("");
 
-        ImPlot::PushStyleColor(ImPlotCol_Fill, ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram));
+        ImPlot::PushStyleColor(ImPlotCol_Fill, GetStyleColorVec4(ImGuiCol_PlotHistogram));
         ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         ImPlot::PlotBarsH("Number of updates", values.data(), int(values.size()), 0.75, 0);
@@ -165,22 +167,22 @@ static const string auto_select_help = "When auto-select is enabled, state chang
                                        "State menu items can only be opened or closed manually if auto-select is disabled.";
 
 void State::StateWindows::StateViewer::draw() {
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Settings")) {
+    if (BeginMenuBar()) {
+        if (BeginMenu("Settings")) {
             if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state.viewer.auto_select)) {
                 q(toggle_state_viewer_auto_select{});
             }
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
-                if (ImGui::MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
+                if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
                     q(set_state_viewer_label_mode{LabelMode::annotated});
-                } else if (ImGui::MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {
+                } else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {
                     q(set_state_viewer_label_mode{LabelMode::raw});
                 }
-                ImGui::EndMenu();
+                EndMenu();
             }
-            ImGui::EndMenu();
+            EndMenu();
         }
-        ImGui::EndMenuBar();
+        EndMenuBar();
     }
 
     show_json_state_value_node("State", c.state_json, "/");

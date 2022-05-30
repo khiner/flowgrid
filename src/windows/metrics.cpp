@@ -7,10 +7,10 @@ namespace FlowGrid {
 
 // json diff conforms to the [JSON patch](http://jsonpatch.com/) spec.
 // TODO deserialize into a `Patch` struct
-void ShowStateDiffMetrics(const StateDiff &diff) {
-    for (size_t i = 0; i < diff.json_diff.size(); i++) {
+void ShowStateDiffMetrics(const json &diff) {
+    for (size_t i = 0; i < diff.size(); i++) {
         if (TreeNode(std::to_string(i).c_str())) {
-            const auto &jd = diff.json_diff[i];
+            const auto &jd = diff[i];
             const std::string &path = jd["path"];
             const std::string &op = jd["op"];
             const std::string &value = jd["value"].dump();

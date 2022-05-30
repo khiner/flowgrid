@@ -32,15 +32,11 @@ enum UiContextFlags_ {
 
 enum Direction { Forward, Reverse };
 
-struct StateDiff {
-    json json_diff;
-};
-
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
     std::set<string> action_names;
-    StateDiff forward;
-    StateDiff reverse;
+    json forward;
+    json reverse;
     TimePoint system_time;
 };
 

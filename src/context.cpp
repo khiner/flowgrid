@@ -101,11 +101,11 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || state.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-std::ostream &operator<<(std::ostream &os, const StateDiff &diff) {
-    return (os << "\tJSON diff:\n" << diff.json_diff << "\n");
+std::ostream &operator<<(std::ostream &os, const json &diff) {
+    return (os << "\tJSON diff:\n" << diff.dump() << "\n");
 }
 std::ostream &operator<<(std::ostream &os, const BidirectionalStateDiff &diff) {
-    return (os << "Forward:\n" << diff.forward << "\nReverse:\n" << diff.reverse);
+    return (os << "Forward:\n" << diff.forward.dump() << "\nReverse:\n" << diff.reverse.dump());
 }
 
 Context::Context() : state_json(_state) {
@@ -262,9 +262,9 @@ void Context::update(const Action &action) {
 
 void Context::apply_diff(const int action_index, const Direction direction) {
     const auto &diff = diffs[action_index];
-    const auto &d = direction == Forward ? diff.forward : diff.reverse;
+    const auto &jd = direction == Forward ? diff.forward : diff.reverse;
 
-    state_json = state_json.patch(d.json_diff);
+    state_json = state_json.patch(jd);
     _state = state_json.get<State>();
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
@@ -331,8 +331,7 @@ void Context::update_processes() {
 // Private
 
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated) {
-    const StateDiff &state_diff = direction == Forward ? diff.forward : diff.reverse;
-    const json &json_diff = state_diff.json_diff;
+    const json &json_diff = direction == Forward ? diff.forward : diff.reverse;
     state_stats.on_json_diff(json_diff, diff.system_time, direction);
 
     if (!ui_initiated) {

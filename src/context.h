@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <thread>
 #include <queue>
-#include <set>
 
 #include "preferences.h"
 #include "state.h"
@@ -31,14 +30,6 @@ enum UiContextFlags_ {
 };
 
 enum Direction { Forward, Reverse };
-
-// One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
-struct BidirectionalStateDiff {
-    std::set<string> action_names;
-    JsonPatch forward_patch;
-    JsonPatch reverse_patch;
-    TimePoint system_time;
-};
 
 struct Threads {
     std::thread audio_thread;

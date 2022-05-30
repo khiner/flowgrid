@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include "json_type.h"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -310,6 +311,14 @@ struct JsonPatchOp {
 };
 using JsonPatch = std::vector<JsonPatchOp>;
 
+// One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
+struct BidirectionalStateDiff {
+    std::set<string> action_names;
+    JsonPatch forward_patch;
+    JsonPatch reverse_patch;
+    TimePoint system_time;
+};
+
 NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
     { Add, "add" },
     { Remove, "remove" },
@@ -320,6 +329,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
 })
 
 JSON_TYPE(JsonPatchOp, path, op, value)
+JSON_TYPE(BidirectionalStateDiff, action_names, forward_patch, reverse_patch, system_time)
 
 JSON_TYPE(ImVec2, x, y)
 JSON_TYPE(ImVec4, w, x, y, z)

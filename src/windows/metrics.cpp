@@ -17,10 +17,14 @@ void ShowJsonPatchOpMetrics(const json &patch_op) {
 }
 
 void ShowJsonPatchMetrics(const json &patch) {
-    for (size_t i = 0; i < patch.size(); i++) {
-        if (TreeNode(std::to_string(i).c_str())) {
-            ShowJsonPatchOpMetrics(patch[i]);
-            TreePop();
+    if (patch.size() == 1) {
+        ShowJsonPatchOpMetrics(patch[0]);
+    } else {
+        for (size_t i = 0; i < patch.size(); i++) {
+            if (TreeNodeEx(std::to_string(i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                ShowJsonPatchOpMetrics(patch[i]);
+                TreePop();
+            }
         }
     }
 }

@@ -5,18 +5,18 @@ using namespace ImGui;
 
 namespace FlowGrid {
 
-// Conforms to the [JSON patch](http://jsonpatch.com/) spec.
-// TODO deserialize into a `Patch` struct
-void ShowJsonPatchOpMetrics(const json &patch_op) {
-    const std::string &path = patch_op["path"];
-    const std::string &op = patch_op["op"];
-    const std::string &value = patch_op["value"].dump();
-    BulletText("Path: %s", path.c_str());
-    BulletText("Op: %s", op.c_str());
-    BulletText("Value:\n%s", value.c_str());
+void ShowJsonPatchOpMetrics(const JsonPatchOp &patch_op) {
+    BulletText("Path: %s", patch_op.path.c_str());
+    BulletText("Op: %s", json(patch_op.op).dump().c_str());
+    if (patch_op.value.has_value()) {
+        BulletText("Value: %s", patch_op.value.value().dump().c_str());
+    }
+    if (patch_op.from.has_value()) {
+        BulletText("From: %s", patch_op.from.value().c_str());
+    }
 }
 
-void ShowJsonPatchMetrics(const json &patch) {
+void ShowJsonPatchMetrics(const JsonPatch &patch) {
     if (patch.size() == 1) {
         ShowJsonPatchOpMetrics(patch[0]);
     } else {

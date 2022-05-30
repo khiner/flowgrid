@@ -272,17 +272,13 @@ void Context::apply_diff(const int action_index, const Direction direction) {
 void Context::end_gesture() {
     auto old_json_state = state_json;
     state_json = s;
-    auto json_diff = json::diff(old_json_state, state_json);
-    if (json_diff.empty()) return;
+    const JsonPatch patch = json::diff(old_json_state, state_json);
+    if (patch.empty()) return;
 
     while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
 
-    const BidirectionalStateDiff diff{
-        gesture_action_names,
-        {json_diff},
-        {json::diff(state_json, old_json_state)},
-        Clock::now(),
-    };
+    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
+    const BidirectionalStateDiff diff{gesture_action_names, patch, reverse_patch, Clock::now()};
     diffs.emplace_back(diff);
     current_action_index = int(diffs.size()) - 1;
 
@@ -330,8 +326,8 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     if (!ui_initiated) {
         // Only need to update the UI context for undo/redo. UI-initiated actions already take care of this.
         UiContextFlags update_ui_flags = UiContextFlags_None;
-        for (auto &patch_op: patch) {
-            const auto &path = string(patch_op["path"]);
+        for (const auto &patch_op: patch) {
+            const auto &path = patch_op.path;
             // TODO really would like these paths as constants, but don't want to define and maintain them manually.
             //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
             if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;

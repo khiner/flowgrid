@@ -291,6 +291,36 @@ struct State : StateData {
     }
 };
 
+// Types for [json-patch](https://jsonpatch.com)
+// For a much more well-defined schema, see https://json.schemastore.org/json-patch
+// A JSON-schema validation lib like https://github.com/tristanpenman/valijson
+
+enum JsonPatchOpType {
+    Add,
+    Remove,
+    Replace,
+    Copy,
+    Move,
+    Test,
+};
+struct JsonPatchOp {
+    string path;
+    JsonPatchOpType op;
+    std::optional<json> value; // Present for add/replace/test
+    std::optional<string> from; // Present for copy/move
+};
+using JsonPatch = std::vector<JsonPatchOp>;
+
+NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
+    { Add, "add" },
+    { Remove, "remove" },
+    { Copy, "copy" },
+    { Move, "move" },
+    { Test, "test" },
+})
+
+JSON_TYPE(JsonPatchOp, path, op, value)
+
 JSON_TYPE(ImVec2, x, y)
 JSON_TYPE(ImVec4, w, x, y, z)
 JSON_TYPE(ImVec2ih, x, y)

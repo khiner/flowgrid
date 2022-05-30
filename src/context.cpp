@@ -109,7 +109,7 @@ Context::Context() : state_json(_state) {
     }
 }
 
-static const fs::path default_project_path = "default_project.flo";
+static const fs::path default_project_path = "default_project" + ExtensionForProjectFormat.at(StateFormat);
 bool Context::is_default_project_path(const fs::path &path) {
     return fs::equivalent(path, default_project_path);
 }
@@ -120,7 +120,12 @@ json Context::get_project_json(const ProjectFormat format) const {
 }
 
 void Context::open_project(const fs::path &path) {
-    set_state_json(json::from_msgpack(read_file(path)));
+    const auto project_format = ProjectFormatForExtension.at(path.extension());
+    if (project_format == None) return; // TODO log
+
+    const json &project_json = json::from_msgpack(read_file(path));
+    if (project_format == StateFormat) set_state_json(project_json);
+    else set_diffs_json(project_json);
 
     if (!is_default_project_path(path)) {
         set_current_project_path(path);
@@ -136,10 +141,10 @@ void Context::open_default_project() {
 bool Context::can_save_project() const {
     return current_project_path.has_value() && current_action_index != current_project_saved_action_index;
 }
-bool Context::save_project(const fs::path &path, const ProjectFormat format) {
+bool Context::save_project(const fs::path &path) {
     if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_project()) return false;
 
-    if (write_project_file(path, format)) {
+    if (write_project_file(path)) {
         if (!is_default_project_path(path)) {
             set_current_project_path(path);
         }
@@ -160,15 +165,22 @@ bool Context::clear_preferences() {
 }
 
 void Context::set_state_json(const json &new_state_json) {
+    clear_undo();
+
     state_json = new_state_json;
     _state = state_json.get<State>();
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
-    // TODO Consider grouping these into a the constructor of a new `struct DerivedFullState` (or somesuch) member,
-    //  and do this atomically with a single assignment.
+    update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+}
+
+void Context::set_diffs_json(const json &new_diffs_json) {
     clear_undo();
 
-    update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+    diffs = new_diffs_json;
+    for (size_t i = 0; i < diffs.size(); i++) {
+        apply_diff(int(i));
+    }
 }
 
 void Context::enqueue_action(const Action &a) {
@@ -343,8 +355,18 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     update_processes();
 }
 
-bool Context::write_project_file(const fs::path &path, const ProjectFormat format) const {
-    return write_file(path, json::to_msgpack(get_project_json(format)));
+ProjectFormat get_project_format(const fs::path &path) {
+    const string &ext = path.extension();
+    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
+}
+
+bool Context::write_project_file(const fs::path &path) const {
+    const ProjectFormat format = get_project_format(path);
+    if (format != None) {
+        return write_file(path, json::to_msgpack(get_project_json(format)));
+    }
+    // TODO log
+    return false;
 }
 bool Context::write_preferences_file() const {
     return write_file(preferences_path, json::to_msgpack(preferences));

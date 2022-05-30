@@ -182,7 +182,7 @@ void draw_frame() {
             if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) q(open_default_project{});
             if (ImGui::MenuItem("Open project", "Cmd+o")) {
                 is_save_file_dialog = false;
-                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".");
+                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
             }
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
@@ -199,7 +199,16 @@ void draw_frame() {
             if (ImGui::MenuItem("Save project", "Cmd+s", false, c.can_save_project())) q(save_current_project{});
             if (ImGui::MenuItem("Save project as...")) {
                 is_save_file_dialog = true;
-                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".flo", ".", "my_flowgrid_project", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+                ImGuiFileDialog::Instance()->OpenDialog(
+                    open_file_dialog_key,
+                    "Choose file",
+                    AllProjectExtensions.c_str(),
+                    ".",
+                    "my_flowgrid_project",
+                    1,
+                    nullptr,
+                    ImGuiFileDialogFlags_ConfirmOverwrite
+                );
             }
             ImGui::EndMenu();
         }

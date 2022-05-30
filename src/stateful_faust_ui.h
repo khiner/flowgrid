@@ -117,7 +117,7 @@ public:
     int getParamsCount() { return int(items.size()); }
 
     int getParamIndex(const char *path_aux) {
-        std::string path = std::string(path_aux);
+        string path = string(path_aux);
         auto it = find_if(items.begin(), items.end(),
             [=](const Item &it) { return (it.label == path) || (it.shortname == path) || (it.path == path); });
         return (it != items.end()) ? int(it - items.begin()) : -1;

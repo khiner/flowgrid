@@ -96,9 +96,20 @@ private:
 };
 
 enum ProjectFormat {
+    None,
     StateFormat,
     DiffFormat,
 };
+
+const std::map<ProjectFormat, string> ExtensionForProjectFormat{
+    {StateFormat, ".fls"},
+    {DiffFormat,  ".fld"},
+};
+const std::map<string, ProjectFormat> ProjectFormatForExtension{
+    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
+    {ExtensionForProjectFormat.at(DiffFormat),  DiffFormat},
+};
+const string AllProjectExtensions = ".fls,.fld";
 
 struct Context {
 private:
@@ -107,9 +118,9 @@ private:
     std::set<string> gesture_action_names;
 
     void update(const Action &); // State is only updated via `context.on_action(action)`
-    void apply_diff(int index, Direction direction);
+    void apply_diff(int index, Direction direction = Forward);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
-    bool write_project_file(const fs::path &path, ProjectFormat format = StateFormat) const;
+    bool write_project_file(const fs::path &path) const;
     bool write_preferences_file() const;
     void set_current_project_path(const fs::path &path);
 
@@ -177,7 +188,7 @@ public:
     json get_project_json(ProjectFormat format = StateFormat) const;
     static bool is_default_project_path(const fs::path &path);
     bool can_save_project() const;
-    bool save_project(const fs::path &path, ProjectFormat format = StateFormat);
+    bool save_project(const fs::path &path);
     bool save_current_project();
     bool save_default_project();
 
@@ -187,7 +198,8 @@ public:
     // This function can be run at any time, but it's not thread-safe.
     // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
     // This is especially the case when assigning to `state_json`, which is not an automic operation like assigning to `_state` is.
-    void set_state_json(const json &new_state_json);
+    void set_state_json(const json &);
+    void set_diffs_json(const json &);
 
     void enqueue_action(const Action &a);
     void run_queued_actions();

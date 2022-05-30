@@ -56,25 +56,22 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
 }
 
 void ShowMetrics() {
-    if (c.diffs.empty()) BeginDisabled();
-    if (TreeNode("Diffs", "Diffs (%lu)", c.diffs.size())) {
+    const bool has_diffs = !c.diffs.empty();
+    if (!has_diffs) BeginDisabled();
+    if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.current_action_index)) {
         for (size_t i = 0; i < c.diffs.size(); i++) {
-            if (TreeNode(std::to_string(i).c_str())) {
+            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.current_action_index ? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None)) {
                 ShowDiffMetrics(c.diffs[i]);
             }
         }
         TreePop();
     }
-    if (c.diffs.empty()) EndDisabled();
+    if (!has_diffs) EndDisabled();
 
-    if (TreeNode("Actions")) {
-        Text("Action variant size: %lu bytes", sizeof(Action));
-        SameLine();
-        HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
-                   "Thus, it's important to keep action data small.");
-
-        TreePop();
-    }
+    Text("Action variant size: %lu bytes", sizeof(Action));
+    SameLine();
+    HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
+               "Thus, it's important to keep action data small.");
 }
 
 }

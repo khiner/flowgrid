@@ -270,6 +270,10 @@ void Context::apply_diff(const int action_index, const Direction direction) {
 //  ```
 //  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
 void Context::end_gesture() {
+    const auto action_names = gesture_action_names; // Make a copy so we can clear.
+    gesturing = false;
+    gesture_action_names.clear();
+
     auto old_json_state = state_json;
     state_json = s;
     const JsonPatch patch = json::diff(old_json_state, state_json);
@@ -278,14 +282,11 @@ void Context::end_gesture() {
     while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
 
     const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
-    const BidirectionalStateDiff diff{gesture_action_names, patch, reverse_patch, Clock::now()};
+    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
     diffs.emplace_back(diff);
     current_action_index = int(diffs.size()) - 1;
 
     on_json_diff(diff, Forward, true);
-
-    gesturing = false;
-    gesture_action_names.clear();
 }
 
 void Context::set_current_project_path(const fs::path &path) {

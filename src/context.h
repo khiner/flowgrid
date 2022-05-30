@@ -35,8 +35,8 @@ enum Direction { Forward, Reverse };
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
     std::set<string> action_names;
-    json forward;
-    json reverse;
+    json forward_patch;
+    json reverse_patch;
     TimePoint system_time;
 };
 
@@ -56,14 +56,14 @@ struct StateStats {
     std::vector<string> most_recent_update_paths{};
 
     // `patch` conforms to the [JSON patch](http://jsonpatch.com/) spec.
-    void on_json_diff(const json &diff, TimePoint time, Direction direction) {
+    void on_json_patch(const json &patch, TimePoint time, Direction direction) {
         most_recent_update_paths = {};
-        for (auto &patch: diff) {
-            const string path = patch["path"];
-            const string op = patch["op"];
+        for (const auto &patch_op: patch) {
+            const string path = patch_op["path"];
+            const string op = patch_op["op"];
             // For add/remove ops, the thing being updated is the _parent_.
             const string changed_path = op == "add" || op == "remove" ? path.substr(0, path.find_last_of('/')) : path;
-            on_json_patch(changed_path, time, direction);
+            on_json_patch_op(changed_path, time, direction);
             most_recent_update_paths.emplace_back(changed_path);
         }
     }
@@ -76,7 +76,7 @@ private:
         return pc;
     }
 
-    void on_json_patch(const string &path, TimePoint time, Direction direction) {
+    void on_json_patch_op(const string &path, TimePoint time, Direction direction) {
         if (direction == Forward) {
             auto &update_times = update_times_for_state_path[path];
             update_times.emplace_back(time);

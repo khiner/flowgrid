@@ -5,19 +5,21 @@ using namespace ImGui;
 
 namespace FlowGrid {
 
-// json diff conforms to the [JSON patch](http://jsonpatch.com/) spec.
+// Conforms to the [JSON patch](http://jsonpatch.com/) spec.
 // TODO deserialize into a `Patch` struct
-void ShowStateDiffMetrics(const json &diff) {
-    for (size_t i = 0; i < diff.size(); i++) {
-        if (TreeNode(std::to_string(i).c_str())) {
-            const auto &jd = diff[i];
-            const std::string &path = jd["path"];
-            const std::string &op = jd["op"];
-            const std::string &value = jd["value"].dump();
-            BulletText("Path: %s", path.c_str());
-            BulletText("Op: %s", op.c_str());
-            BulletText("Value:\n%s", value.c_str());
+void ShowJsonPatchOpMetrics(const json &patch_op) {
+    const std::string &path = patch_op["path"];
+    const std::string &op = patch_op["op"];
+    const std::string &value = patch_op["value"].dump();
+    BulletText("Path: %s", path.c_str());
+    BulletText("Op: %s", op.c_str());
+    BulletText("Value:\n%s", value.c_str());
+}
 
+void ShowJsonPatchMetrics(const json &patch) {
+    for (size_t i = 0; i < patch.size(); i++) {
+        if (TreeNode(std::to_string(i).c_str())) {
+            ShowJsonPatchOpMetrics(patch[i]);
             TreePop();
         }
     }
@@ -35,11 +37,11 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
         }
     }
     if (TreeNode("Forward diff")) {
-        ShowStateDiffMetrics(diff.forward);
+        ShowJsonPatchMetrics(diff.forward_patch);
         TreePop();
     }
     if (TreeNode("Reverse diff")) {
-        ShowStateDiffMetrics(diff.reverse);
+        ShowJsonPatchMetrics(diff.reverse_patch);
         TreePop();
     }
 

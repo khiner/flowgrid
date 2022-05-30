@@ -255,9 +255,9 @@ void Context::update(const Action &action) {
 
 void Context::apply_diff(const int action_index, const Direction direction) {
     const auto &diff = diffs[action_index];
-    const auto &jd = direction == Forward ? diff.forward : diff.reverse;
+    const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
 
-    state_json = state_json.patch(jd);
+    state_json = state_json.patch(patch);
     _state = state_json.get<State>();
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
@@ -324,14 +324,14 @@ void Context::update_processes() {
 // Private
 
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated) {
-    const json &json_diff = direction == Forward ? diff.forward : diff.reverse;
-    state_stats.on_json_diff(json_diff, diff.system_time, direction);
+    const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
+    state_stats.on_json_patch(patch, diff.system_time, direction);
 
     if (!ui_initiated) {
         // Only need to update the UI context for undo/redo. UI-initiated actions already take care of this.
         UiContextFlags update_ui_flags = UiContextFlags_None;
-        for (auto &jd: json_diff) {
-            const auto &path = string(jd["path"]);
+        for (auto &patch_op: patch) {
+            const auto &path = string(patch_op["path"]);
             // TODO really would like these paths as constants, but don't want to define and maintain them manually.
             //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
             if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;

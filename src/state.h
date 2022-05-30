@@ -10,11 +10,10 @@ using std::string;
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
-using Clock = std::chrono::high_resolution_clock; // Main system clock
+using Clock = std::chrono::system_clock; // Main system clock
 using DurationSec = float; // floats used for main duration type
 using fsec = std::chrono::duration<DurationSec>; // float seconds as a std::chrono::duration
-using ns = std::chrono::nanoseconds;
-using TimePoint = std::chrono::time_point<Clock, ns>; // nanos are used for the main high-resolution time-point representation.
+using TimePoint = Clock::time_point;
 
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.

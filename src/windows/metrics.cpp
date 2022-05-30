@@ -1,5 +1,6 @@
 #include "../context.h"
 #include "../imgui_helpers.h"
+#include "fmt/chrono.h"
 
 using namespace ImGui;
 
@@ -49,9 +50,7 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
         TreePop();
     }
 
-    // TODO add https://github.com/fmtlib/fmt and use e.g.
-    //    std::format("{:%Y/%m/%d %T}", tSysTime);
-    BulletText("Nanos: %llu", diff.system_time.time_since_epoch().count());
+    BulletText("Time: %s", fmt::format("{}\n", diff.system_time).c_str());
     TreePop();
 }
 
@@ -60,7 +59,7 @@ void ShowMetrics() {
     if (!has_diffs) BeginDisabled();
     if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.current_action_index)) {
         for (size_t i = 0; i < c.diffs.size(); i++) {
-            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.current_action_index ? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None)) {
+            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.current_action_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                 ShowDiffMetrics(c.diffs[i]);
             }
         }

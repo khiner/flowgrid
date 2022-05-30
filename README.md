@@ -76,6 +76,7 @@ $ ./FlowGrid
 
 ### UI/UX
 
+* [fmt](https://github.com/fmtlib/fmt) for C++20-style string formatting. Currently, only used for time-formatting.
 * [ImGui](https://github.com/ocornut/imgui) for UI
 * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for file selection
 * [ImPlot](https://github.com/epezent/implot) for plotting

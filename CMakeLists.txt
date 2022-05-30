@@ -14,6 +14,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.h src/*.cpp
     lib/implot/implot.h lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_internal.h
     lib/imgui_club/imgui_memory_editor/imgui_memory_editor.h
     lib/implot/implot_demo.cpp
+    lib/fmt/src/format.cc
     )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -24,6 +25,7 @@ include_directories(lib/zep/include)
 include_directories(lib/ImGuiFileDialog)
 include_directories(lib/implot)
 include_directories(lib/imgui_club/imgui_memory_editor)
+include_directories(lib/fmt/include)
 # See readme for plans with these libraries
 #include_directories(lib/concurrentqueue) # Not used atm.
 #include_directories(lib/diff-match-patch-cpp-stl)

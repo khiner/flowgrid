@@ -89,3 +89,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
 #=================== tracy ===================
 
 add_subdirectory(tracy)
+
+#=================== fmt ===================
+
+add_subdirectory(fmt)

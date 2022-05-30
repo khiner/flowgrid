@@ -55,6 +55,8 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
 }
 
 void ShowMetrics() {
+    Text("Gesturing: %s", c.gesturing ? "true" : "false");
+
     const bool has_diffs = !c.diffs.empty();
     if (!has_diffs) BeginDisabled();
     if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.current_action_index)) {
@@ -67,7 +69,24 @@ void ShowMetrics() {
     }
     if (!has_diffs) EndDisabled();
 
-    Text("Gesturing: %s", c.gesturing ? "true" : "false");
+    static bool relative_paths = true;
+    const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
+    if (TreeNode("Preferences")) {
+        if (SmallButton("Clear")) c.clear_preferences();
+        SameLine();
+        Checkbox("Relative paths", &relative_paths);
+
+        if (!has_recently_opened_paths) BeginDisabled();
+        if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
+            for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
+                BulletText("%s", (relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+            }
+            TreePop();
+        }
+        if (!has_recently_opened_paths) EndDisabled();
+
+        TreePop();
+    }
     Text("Action variant size: %lu bytes", sizeof(Action));
     SameLine();
     HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "

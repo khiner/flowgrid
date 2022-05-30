@@ -114,6 +114,7 @@ private:
     void apply_diff(int index, Direction direction);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
     void set_current_project_path(const fs::path &path);
+    bool write_preferences_file();
 
 public:
     Preferences preferences;
@@ -181,6 +182,8 @@ public:
     bool save_project(const fs::path &path);
     bool save_current_project();
     bool save_default_project();
+
+    bool clear_preferences();
 
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.

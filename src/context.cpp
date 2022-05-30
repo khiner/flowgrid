@@ -105,7 +105,7 @@ Context::Context() : state_json(_state) {
     if (fs::exists(preferences_path)) {
         preferences = json::from_msgpack(read_file(preferences_path));
     } else {
-        write_file(preferences_path, json::to_msgpack(preferences));
+        write_preferences_file();
     }
 }
 
@@ -147,6 +147,11 @@ bool Context::save_default_project() {
 }
 bool Context::save_current_project() {
     return can_save_project() && save_project(current_project_path.value());
+}
+
+bool Context::clear_preferences() {
+    preferences.recently_opened_paths.clear();
+    return write_preferences_file();
 }
 
 void Context::set_state_json(const json &new_state_json) {
@@ -294,7 +299,11 @@ void Context::set_current_project_path(const fs::path &path) {
     current_project_saved_action_index = current_action_index;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
-    write_file(preferences_path, json::to_msgpack(preferences));
+    write_preferences_file();
+}
+
+bool Context::write_preferences_file() {
+    return write_file(preferences_path, json::to_msgpack(preferences));
 }
 
 void Context::update_ui_context(UiContextFlags flags) {

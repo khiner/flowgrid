@@ -114,6 +114,11 @@ bool Context::is_default_project_path(const fs::path &path) {
     return fs::equivalent(path, default_project_path);
 }
 
+json Context::get_project_json(const ProjectFormat format) const {
+    if (format == StateFormat) return state_json;
+    return diffs;
+}
+
 void Context::open_project(const fs::path &path) {
     set_state_json(json::from_msgpack(read_file(path)));
 
@@ -131,10 +136,10 @@ void Context::open_default_project() {
 bool Context::can_save_project() const {
     return current_project_path.has_value() && current_action_index != current_project_saved_action_index;
 }
-bool Context::save_project(const fs::path &path) {
+bool Context::save_project(const fs::path &path, const ProjectFormat format) {
     if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_project()) return false;
 
-    if (write_file(path, json::to_msgpack(state_json))) {
+    if (write_project_file(path, format)) {
         if (!is_default_project_path(path)) {
             set_current_project_path(path);
         }
@@ -197,6 +202,54 @@ void Context::on_action(const Action &action) {
         }
     }, action);
 }
+
+// TODO Implement
+//  ```cpp
+//  std::pair<Diff, Diff> {forward_diff, reverse_diff} = json::bidirectional_diff(old_state_json, new_state_json);
+//  ```
+//  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
+void Context::end_gesture() {
+    const auto action_names = gesture_action_names; // Make a copy so we can clear.
+    gesturing = false;
+    gesture_action_names.clear();
+
+    auto old_json_state = state_json;
+    state_json = s;
+    const JsonPatch patch = json::diff(old_json_state, state_json);
+    if (patch.empty()) return;
+
+    while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
+
+    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
+    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
+    diffs.emplace_back(diff);
+    current_action_index = int(diffs.size()) - 1;
+
+    on_json_diff(diff, Forward, true);
+}
+
+void Context::update_ui_context(UiContextFlags flags) {
+    if (flags == UiContextFlags_None) return;
+
+    if (flags & UiContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
+    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
+    if (flags & UiContextFlags_ImPlotStyle) {
+        ImPlot::BustItemCache();
+        ui->implot_context->Style = s.style.implot;
+    }
+}
+
+bool audio_running = false;
+
+void Context::update_processes() {
+    if (audio_running != s.processes.audio.running) {
+        if (s.processes.audio.running) threads.audio_thread = std::thread(audio);
+        else threads.audio_thread.join();
+        audio_running = s.processes.audio.running;
+    }
+}
+
+// Private
 
 /**
  * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer),
@@ -269,66 +322,6 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     on_json_diff(diff, direction, false);
 }
 
-// TODO Implement
-//  ```cpp
-//  std::pair<Diff, Diff> {forward_diff, reverse_diff} = json::bidirectional_diff(old_state_json, new_state_json);
-//  ```
-//  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
-void Context::end_gesture() {
-    const auto action_names = gesture_action_names; // Make a copy so we can clear.
-    gesturing = false;
-    gesture_action_names.clear();
-
-    auto old_json_state = state_json;
-    state_json = s;
-    const JsonPatch patch = json::diff(old_json_state, state_json);
-    if (patch.empty()) return;
-
-    while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
-
-    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
-    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
-    diffs.emplace_back(diff);
-    current_action_index = int(diffs.size()) - 1;
-
-    on_json_diff(diff, Forward, true);
-}
-
-void Context::set_current_project_path(const fs::path &path) {
-    current_project_path = path;
-    current_project_saved_action_index = current_action_index;
-    preferences.recently_opened_paths.remove(path);
-    preferences.recently_opened_paths.emplace_front(path);
-    write_preferences_file();
-}
-
-bool Context::write_preferences_file() {
-    return write_file(preferences_path, json::to_msgpack(preferences));
-}
-
-void Context::update_ui_context(UiContextFlags flags) {
-    if (flags == UiContextFlags_None) return;
-
-    if (flags & UiContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
-    if (flags & UiContextFlags_ImPlotStyle) {
-        ImPlot::BustItemCache();
-        ui->implot_context->Style = s.style.implot;
-    }
-}
-
-bool audio_running = false;
-
-void Context::update_processes() {
-    if (audio_running != s.processes.audio.running) {
-        if (s.processes.audio.running) threads.audio_thread = std::thread(audio);
-        else threads.audio_thread.join();
-        audio_running = s.processes.audio.running;
-    }
-}
-
-// Private
-
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated) {
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
     state_stats.on_json_patch(patch, diff.system_time, direction);
@@ -348,4 +341,19 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     }
 
     update_processes();
+}
+
+bool Context::write_project_file(const fs::path &path, const ProjectFormat format) const {
+    return write_file(path, json::to_msgpack(get_project_json(format)));
+}
+bool Context::write_preferences_file() const {
+    return write_file(preferences_path, json::to_msgpack(preferences));
+}
+
+void Context::set_current_project_path(const fs::path &path) {
+    current_project_path = path;
+    current_project_saved_action_index = current_action_index;
+    preferences.recently_opened_paths.remove(path);
+    preferences.recently_opened_paths.emplace_front(path);
+    write_preferences_file();
 }

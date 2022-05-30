@@ -95,6 +95,11 @@ private:
     }
 };
 
+enum ProjectFormat {
+    StateFormat,
+    DiffFormat,
+};
+
 struct Context {
 private:
     Threads threads;
@@ -104,8 +109,9 @@ private:
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(int index, Direction direction);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
+    bool write_project_file(const fs::path &path, ProjectFormat format = StateFormat) const;
+    bool write_preferences_file() const;
     void set_current_project_path(const fs::path &path);
-    bool write_preferences_file();
 
 public:
     Preferences preferences;
@@ -168,9 +174,10 @@ public:
     void open_project(const fs::path &path);
     void open_default_project();
 
+    json get_project_json(ProjectFormat format = StateFormat) const;
     static bool is_default_project_path(const fs::path &path);
     bool can_save_project() const;
-    bool save_project(const fs::path &path);
+    bool save_project(const fs::path &path, ProjectFormat format = StateFormat);
     bool save_current_project();
     bool save_default_project();
 

@@ -68,6 +68,7 @@ void ShowMetrics() {
     }
     if (!has_diffs) EndDisabled();
 
+    Text("Gesturing: %s", c.gesturing ? "true" : "false");
     Text("Action variant size: %lu bytes", sizeof(Action));
     SameLine();
     HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "

@@ -175,11 +175,12 @@ void Context::set_state_json(const json &new_state_json) {
 }
 
 void Context::set_diffs_json(const json &new_diffs_json) {
+    open_default_project();
     clear_undo();
 
     diffs = new_diffs_json;
-    for (size_t i = 0; i < diffs.size(); i++) {
-        apply_diff(int(i));
+    while (current_action_index < int(diffs.size() - 1)) {
+        apply_diff(++current_action_index);
     }
 }
 

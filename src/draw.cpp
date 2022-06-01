@@ -180,7 +180,6 @@ void draw_frame() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New project", "Cmd+N")) q(open_empty_project{});
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) q(open_default_project{});
             if (ImGui::MenuItem("Open project", "Cmd+O")) {
                 is_save_file_dialog = false;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
@@ -196,9 +195,8 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) q(save_default_project{});
-            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.can_save_project())) q(save_current_project{});
-            if (ImGui::MenuItem("Save project as...")) {
+            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.can_save_current_project())) q(save_current_project{});
+            if (ImGui::MenuItem("Save project as...", nullptr, false, c.project_has_changes())) {
                 is_save_file_dialog = true;
                 ImGuiFileDialog::Instance()->OpenDialog(
                     open_file_dialog_key,
@@ -211,6 +209,8 @@ void draw_frame() {
                     ImGuiFileDialogFlags_ConfirmOverwrite
                 );
             }
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, Context::default_project_exists())) q(open_default_project{});
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.project_has_changes())) q(save_default_project{});
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {

@@ -109,8 +109,8 @@ Context::Context() : state_json(_state) {
     }
 }
 
-static const fs::path empty_project_path = "empty_project" + ExtensionForProjectFormat.at(StateFormat);
-static const fs::path default_project_path = "default_project" + ExtensionForProjectFormat.at(StateFormat);
+static const fs::path empty_project_path = "empty" + ExtensionForProjectFormat.at(StateFormat);
+static const fs::path default_project_path = "default" + ExtensionForProjectFormat.at(StateFormat);
 
 bool Context::is_user_project_path(const fs::path &path) {
     return !fs::equivalent(path, empty_project_path) && !fs::equivalent(path, default_project_path);
@@ -139,15 +139,21 @@ void Context::open_project(const fs::path &path) {
 void Context::open_empty_project() {
     open_project(empty_project_path);
 }
+bool Context::default_project_exists() {
+    return fs::exists(default_project_path);
+}
 void Context::open_default_project() {
     open_project(default_project_path);
 }
 
-bool Context::can_save_project() const {
-    return current_project_path.has_value() && current_action_index != current_project_saved_action_index;
+bool Context::project_has_changes() const {
+    return current_action_index != current_project_saved_action_index;
+}
+bool Context::can_save_current_project() const {
+    return current_project_path.has_value() && project_has_changes();
 }
 bool Context::save_project(const fs::path &path) {
-    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_project()) return false;
+    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_current_project()) return false;
 
     if (write_project_file(path)) {
         if (is_user_project_path(path)) {
@@ -164,7 +170,7 @@ bool Context::save_default_project() {
     return save_project(default_project_path);
 }
 bool Context::save_current_project() {
-    return can_save_project() && save_project(current_project_path.value());
+    return can_save_current_project() && save_project(current_project_path.value());
 }
 
 bool Context::clear_preferences() {

@@ -148,6 +148,27 @@ static const string open_file_dialog_key = "ApplicationFileDialog";
 
 bool first_draw = true;
 
+static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
+
+void show_open_project_dialog() {
+    is_save_file_dialog = false;
+    ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
+}
+
+void show_save_project_dialog() {
+    is_save_file_dialog = true;
+    ImGuiFileDialog::Instance()->OpenDialog(
+        open_file_dialog_key,
+        "Choose file",
+        AllProjectExtensions.c_str(),
+        ".",
+        "my_flowgrid_project",
+        1,
+        nullptr,
+        ImGuiFileDialogFlags_ConfirmOverwrite
+    );
+}
+
 void draw_frame() {
     ZoneScoped
 
@@ -176,14 +197,11 @@ void draw_frame() {
         first_draw = false;
     }
 
-    static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New project", "Cmd+N")) q(open_empty_project{});
-            if (ImGui::MenuItem("Open project", "Cmd+O")) {
-                is_save_file_dialog = false;
-                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
-            }
+            if (ImGui::MenuItem("Open project", "Cmd+O")) show_open_project_dialog();
+
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
                 for (const auto &recently_opened_path: recently_opened_paths) {
@@ -195,27 +213,15 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.can_save_current_project())) q(save_current_project{});
-            if (ImGui::MenuItem("Save project as...", nullptr, false, c.project_has_changes())) {
-                is_save_file_dialog = true;
-                ImGuiFileDialog::Instance()->OpenDialog(
-                    open_file_dialog_key,
-                    "Choose file",
-                    AllProjectExtensions.c_str(),
-                    ".",
-                    "my_flowgrid_project",
-                    1,
-                    nullptr,
-                    ImGuiFileDialogFlags_ConfirmOverwrite
-                );
-            }
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, Context::default_project_exists())) q(open_default_project{});
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.project_has_changes())) q(save_default_project{});
+            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed<save_current_project>())) q(save_current_project{});
+            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed<save_project>())) show_save_project_dialog();
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed<open_default_project>())) q(open_default_project{});
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed<save_default_project>())) q(save_default_project{});
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.can_undo())) { q(undo{}); }
-            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.can_redo())) { q(redo{}); }
+            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed<undo>())) { q(undo{}); }
+            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed<redo>())) { q(redo{}); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
@@ -301,12 +307,13 @@ void tick_ui() {
         }
     }
 
-    if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_N)) q(open_empty_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O)) q(open_default_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S)) q(save_default_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_S)) q(save_current_project{});
+    if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z) && c.action_allowed<undo>()) q(undo{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z) && c.action_allowed<redo>()) q(redo{});
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_N) && c.action_allowed<open_empty_project>()) q(open_empty_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_O) && c.action_allowed<open_project>()) show_open_project_dialog();
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_S) && c.action_allowed<save_current_project>()) q(save_current_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O) && c.action_allowed<open_default_project>()) q(open_default_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S) && c.action_allowed<save_default_project>()) q(save_default_project{});
 
     prepare_frame();
     draw_frame();

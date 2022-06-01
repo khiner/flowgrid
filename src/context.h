@@ -12,6 +12,7 @@
 //#include "diff_match_patch.h"
 
 namespace fs = std::filesystem;
+using std::is_same_v;
 
 struct RenderContext;
 struct UiContext {
@@ -166,6 +167,17 @@ public:
     void enqueue_action(const Action &a);
     void run_queued_actions();
     void on_action(const Action &); // Immediately execute the action TODO make private?
+
+    template<class T>
+    bool action_allowed() const {
+        if (is_same_v<T, undo>) return can_undo();
+        if (is_same_v<T, redo>) return can_redo();
+        if (is_same_v<T, action::open_default_project>) return default_project_exists();
+        if (is_same_v<T, action::save_project>) return project_has_changes();
+        if (is_same_v<T, action::save_default_project>) return project_has_changes();
+        if (is_same_v<T, action::save_current_project>) return can_save_current_project();
+        return true;
+    }
 
     void start_gesture() { gesturing = true; }
     void end_gesture();

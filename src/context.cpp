@@ -262,6 +262,14 @@ void Context::update_processes() {
     }
 }
 
+void Context::clear_undo() {
+    current_action_index = -1;
+    diffs.clear();
+    gesture_action_names.clear();
+    gesturing = false;
+    state_stats = {};
+}
+
 // Private
 
 /**
@@ -379,4 +387,53 @@ void Context::set_current_project_path(const fs::path &path) {
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences_file();
+}
+
+// StateStats
+
+void StateStats::on_json_patch(const JsonPatch &patch, TimePoint time, Direction direction) {
+    most_recent_update_paths = {};
+    for (const JsonPatchOp &patch_op: patch) {
+        // For add/remove ops, the thing being updated is the _parent_.
+        const string &changed_path = patch_op.op == Add || patch_op.op == Remove ?
+                                     patch_op.path.substr(0, patch_op.path.find_last_of('/')) :
+                                     patch_op.path;
+        on_json_patch_op(changed_path, time, direction);
+        most_recent_update_paths.emplace_back(changed_path);
+    }
+}
+
+void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction direction) {
+    if (direction == Forward) {
+        auto &update_times = update_times_for_state_path[path];
+        update_times.emplace_back(time);
+    } else {
+        auto &update_times = update_times_for_state_path.at(path);
+        update_times.pop_back();
+        if (update_times.empty()) update_times_for_state_path.erase(path);
+    }
+    path_update_frequency_plottable = create_path_update_frequency_plottable();
+    const auto &num_updates = path_update_frequency_plottable.values;
+    max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
+}
+
+// Convert `string` to char array, removing first character of the path, which is a '/'.
+const char *convert_path(const string &str) {
+    char *pc = new char[str.size()];
+    std::strcpy(pc, string{str.begin() + 1, str.end()}.c_str());
+    return pc;
+}
+
+StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
+    std::vector<string> paths;
+    std::vector<ImU64> values;
+    for (const auto &[path, action_times]: update_times_for_state_path) {
+        paths.push_back(path);
+        values.push_back(action_times.size());
+    }
+
+    std::vector<const char *> labels;
+    std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert_path);
+
+    return {labels, values};
 }

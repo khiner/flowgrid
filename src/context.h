@@ -46,53 +46,11 @@ struct StateStats {
     ImU32 max_num_updates{0};
     std::vector<string> most_recent_update_paths{};
 
-    void on_json_patch(const JsonPatch &patch, TimePoint time, Direction direction) {
-        most_recent_update_paths = {};
-        for (const JsonPatchOp &patch_op: patch) {
-            // For add/remove ops, the thing being updated is the _parent_.
-            const string &changed_path = patch_op.op == Add || patch_op.op == Remove ?
-                                         patch_op.path.substr(0, patch_op.path.find_last_of('/')) :
-                                         patch_op.path;
-            on_json_patch_op(changed_path, time, direction);
-            most_recent_update_paths.emplace_back(changed_path);
-        }
-    }
+    void on_json_patch(const JsonPatch &patch, TimePoint time, Direction direction);
 
 private:
-    // Convert `string` to char array, removing first character of the path, which is a '/'.
-    static const char *convert_path(const string &str) {
-        char *pc = new char[str.size()];
-        std::strcpy(pc, string{str.begin() + 1, str.end()}.c_str());
-        return pc;
-    }
-
-    void on_json_patch_op(const string &path, TimePoint time, Direction direction) {
-        if (direction == Forward) {
-            auto &update_times = update_times_for_state_path[path];
-            update_times.emplace_back(time);
-        } else {
-            auto &update_times = update_times_for_state_path.at(path);
-            update_times.pop_back();
-            if (update_times.empty()) update_times_for_state_path.erase(path);
-        }
-        path_update_frequency_plottable = create_path_update_frequency_plottable();
-        const auto &num_updates = path_update_frequency_plottable.values;
-        max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
-    }
-
-    Plottable create_path_update_frequency_plottable() {
-        std::vector<string> paths;
-        std::vector<ImU64> values;
-        for (const auto &[path, action_times]: update_times_for_state_path) {
-            paths.push_back(path);
-            values.push_back(action_times.size());
-        }
-
-        std::vector<const char *> labels;
-        std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert_path);
-
-        return {labels, values};
-    }
+    void on_json_patch_op(const string &path, TimePoint time, Direction direction);
+    Plottable create_path_update_frequency_plottable();
 };
 
 enum ProjectFormat {
@@ -211,13 +169,7 @@ public:
     bool can_undo() const { return current_action_index >= 0; }
     bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }
 
-    void clear_undo() {
-        current_action_index = -1;
-        diffs.clear();
-        gesture_action_names.clear();
-        gesturing = false;
-        state_stats = {};
-    }
+    void clear_undo();
 
     // Audio
     void compute_frames(int frame_count) const;

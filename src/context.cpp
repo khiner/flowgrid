@@ -109,9 +109,11 @@ Context::Context() : state_json(_state) {
     }
 }
 
+static const fs::path empty_project_path = "empty_project" + ExtensionForProjectFormat.at(StateFormat);
 static const fs::path default_project_path = "default_project" + ExtensionForProjectFormat.at(StateFormat);
-bool Context::is_default_project_path(const fs::path &path) {
-    return fs::equivalent(path, default_project_path);
+
+bool Context::is_user_project_path(const fs::path &path) {
+    return !fs::equivalent(path, empty_project_path) && !fs::equivalent(path, default_project_path);
 }
 
 json Context::get_project_json(const ProjectFormat format) const {
@@ -127,12 +129,15 @@ void Context::open_project(const fs::path &path) {
     if (project_format == StateFormat) set_state_json(project_json);
     else set_diffs_json(project_json);
 
-    if (!is_default_project_path(path)) {
+    if (is_user_project_path(path)) {
         set_current_project_path(path);
     } else {
         current_project_path.reset();
         current_project_saved_action_index = -1;
     }
+}
+void Context::open_empty_project() {
+    open_project(empty_project_path);
 }
 void Context::open_default_project() {
     open_project(default_project_path);
@@ -145,12 +150,15 @@ bool Context::save_project(const fs::path &path) {
     if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_project()) return false;
 
     if (write_project_file(path)) {
-        if (!is_default_project_path(path)) {
+        if (is_user_project_path(path)) {
             set_current_project_path(path);
         }
         return true;
     }
     return false;
+}
+bool Context::save_empty_project() {
+    return save_project(empty_project_path);
 }
 bool Context::save_default_project() {
     return save_project(default_project_path);
@@ -175,7 +183,7 @@ void Context::set_state_json(const json &new_state_json) {
 }
 
 void Context::set_diffs_json(const json &new_diffs_json) {
-    open_default_project();
+    open_empty_project();
     clear_undo();
 
     diffs = new_diffs_json;
@@ -206,6 +214,7 @@ void Context::on_action(const Action &action) {
         },
         [&](const action::open_project &a) { open_project(a.path); },
         [&](const action::save_project &a) { save_project(a.path); },
+        [&](action::open_empty_project) { open_empty_project(); },
         [&](action::open_default_project) { open_default_project(); },
         [&](action::save_default_project) { save_default_project(); },
         [&](action::save_current_project) { save_current_project(); },

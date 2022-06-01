@@ -179,8 +179,9 @@ void draw_frame() {
     static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New project", "Cmd+N")) q(open_empty_project{});
             if (ImGui::MenuItem("Open default project", "Cmd+Shift+O")) q(open_default_project{});
-            if (ImGui::MenuItem("Open project", "Cmd+o")) {
+            if (ImGui::MenuItem("Open project", "Cmd+O")) {
                 is_save_file_dialog = false;
                 ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
             }
@@ -196,7 +197,7 @@ void draw_frame() {
             }
 
             if (ImGui::MenuItem("Save default project", "Cmd+Shift+S")) q(save_default_project{});
-            if (ImGui::MenuItem("Save project", "Cmd+s", false, c.can_save_project())) q(save_current_project{});
+            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.can_save_project())) q(save_current_project{});
             if (ImGui::MenuItem("Save project as...")) {
                 is_save_file_dialog = true;
                 ImGuiFileDialog::Instance()->OpenDialog(
@@ -213,7 +214,7 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Cmd+z", false, c.can_undo())) { q(undo{}); }
+            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.can_undo())) { q(undo{}); }
             if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.can_redo())) { q(redo{}); }
             ImGui::EndMenu();
         }
@@ -302,6 +303,7 @@ void tick_ui() {
 
     if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z)) c.can_undo() && q(undo{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z)) c.can_redo() && q(redo{});
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_N)) q(open_empty_project{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O)) q(open_default_project{});
     else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S)) q(save_default_project{});
     else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_S)) q(save_current_project{});

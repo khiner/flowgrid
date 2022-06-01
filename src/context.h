@@ -141,13 +141,15 @@ public:
     ~Context() = default;
 
     void open_project(const fs::path &path);
+    void open_empty_project();
     void open_default_project();
 
     json get_project_json(ProjectFormat format = StateFormat) const;
-    static bool is_default_project_path(const fs::path &path);
+    static bool is_user_project_path(const fs::path &path);
     bool can_save_project() const;
     bool save_project(const fs::path &path);
     bool save_current_project();
+    bool save_empty_project();
     bool save_default_project();
 
     bool clear_preferences();

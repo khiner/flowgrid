@@ -22,6 +22,7 @@ string get_action_name(const Action &action) {
         [&](const undo &) { return "Undo"; },
         [&](const redo &) { return "Redo"; },
         [&](const open_project &) { return "Open project"; },
+        [&](const open_empty_project &) { return "Open empty project"; },
         [&](const open_default_project &) { return "Open default project"; },
         [&](const save_project &) { return "Save project"; },
         [&](const save_default_project &) { return "Save default project"; },

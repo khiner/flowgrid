@@ -24,12 +24,8 @@ int main(int, const char **) {
     c.ui = &ui_context;
     c.update_processes();
 
-    // TODO when we're loading default projects
-    // if (!s.imgui_settings.empty()) s.imgui_settings.populate_context(ui_context.imgui_context);
-    // else c._state.imgui_settings = ImGuiSettings(ui_context.imgui_context);
-
     tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
-    tick_ui(); // Another frame is needed to update the Window->DockNode relationships after creating the windows in the first frame.
+    tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
 
     // Initialize the ImGui/ImPlot settings/style:
     c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)}));
@@ -42,7 +38,11 @@ int main(int, const char **) {
     c.on_action(set_faust_code{s.audio.faust.code}); // Trigger faust dsp generation
 
     c.ui_s = c.s; // TODO don't like this
-    c.clear_undo(); // Make sure we don't start with any undo state (should only be the above `set_faust_code` action on the stack).
+    c.clear_undo(); // Make sure we don't start with any undo state.
+
+    // Keep the canonical "empty" project up-to-date.
+    // This is the project that is loaded before applying diffs when loading a .fgd (FlowGridDiff) project.
+    c.save_empty_project();
 
     /** TODO need more consistent pattern for state updates.
      The issue is that by putting actions in the queue before updating state, even simple effects against state

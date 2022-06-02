@@ -168,6 +168,7 @@ public:
     void on_action(const Action &); // Immediately execute the action TODO make private?
 
     bool action_allowed(action::id) const;
+    bool action_allowed(const Action &) const;
 
     void start_gesture() { gesturing = true; }
     void end_gesture();

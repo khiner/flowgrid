@@ -210,6 +210,8 @@ void Context::run_queued_actions() {
 }
 
 void Context::on_action(const Action &action) {
+    if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
+
     gesture_action_names.emplace(get_action_name(action));
     std::visit(visitor{
         [&](undo) {
@@ -241,6 +243,9 @@ bool Context::action_allowed(const action::id action_id) const {
         case id::save_current_project: return can_save_current_project();
         default: return true;
     }
+}
+bool Context::action_allowed(const Action &action) const {
+    return action_allowed(get_action_id(action));
 }
 
 // TODO Implement

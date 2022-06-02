@@ -21,6 +21,47 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
 namespace action {
 
+//struct ActionBase {
+//    virtual string getId() { return id; }
+//    static string id;
+//};
+//
+//struct TestAction : ActionBase {
+//    static string id;
+//};
+
+//template<int id_value>
+//struct ActionBase {
+//    static const int id = id_value;
+//    static void printX() { std::cout << "X " << X << std::endl; };
+//};
+//
+//template<int XValue = 2>
+//struct B : public ActionBase<XValue> {
+//};
+//
+//int wut() {
+//    B<> b;
+//    B<>::printX();
+//}
+
+// Using [CRTP](https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern)
+// for derived classes with shared static members (downside: need to use methods instead of raw members)
+template<class Derived>
+struct ActionBase {
+    static string id() { return Derived::id(); }
+    static string name() { return Derived::name(); }
+};
+
+struct DerivedAction : public ActionBase<DerivedAction> {
+    static string id() { return "d_id"; }
+    static string name() { return "d_name"; }
+};
+
+//int main() {
+//    std::cout << DerivedAction::id();
+//}
+
 // JSON types are used for actions that hold very large structured data.
 // This is because the `Action` `std::variant` below can hold any action type, and variants must be large enough to hold their largest type.
 // As of 5/24/2022, the largest raw action member type was `ImGuiStyle`, which resulted in an `Action` variant size of 1088 bytes.

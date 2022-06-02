@@ -213,15 +213,15 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed(id::save_current_project))) q(save_current_project{});
-            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(id::save_project))) show_save_project_dialog();
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed(id::open_default_project))) q(open_default_project{});
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed(id::save_default_project))) q(save_default_project{});
+            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed(action_index<save_current_project>))) q(save_current_project{});
+            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(action_index<save_project>))) show_save_project_dialog();
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed(action_index<open_default_project>))) q(open_default_project{});
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed(action_index<save_default_project>))) q(save_default_project{});
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed(id::undo))) { q(undo{}); }
-            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed(id::redo))) { q(redo{}); }
+            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed(action_index<undo>))) { q(undo{}); }
+            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed(action_index<redo>))) { q(redo{}); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
@@ -277,7 +277,20 @@ void draw_frame() {
     c.run_queued_actions();
 }
 
-bool shortcut(ImGuiKeyModFlags mod, ImGuiKey key) {
+using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
+
+const std::map<KeyShortcut, ActionId> key_map = {
+    {{ImGuiKeyModFlags_Super,                          ImGuiKey_Z}, action_index<undo>},
+    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z}, action_index<redo>},
+    {{ImGuiKeyModFlags_Super,                          ImGuiKey_N}, action_index<open_empty_project>},
+//    {{ImGuiKeyModFlags_Super,                          ImGuiKey_O}, show_open_project_dialog::_id},
+    {{ImGuiKeyModFlags_Super,                          ImGuiKey_S}, action_index<save_current_project>},
+    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O}, action_index<open_default_project>},
+    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S}, action_index<save_default_project>},
+};
+
+bool shortcut_pressed(KeyShortcut shortcut) {
+    const auto &[mod, key] = shortcut;
     return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
 
@@ -307,13 +320,12 @@ void tick_ui() {
         }
     }
 
-    if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z) && c.action_allowed(id::undo)) q(undo{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z) && c.action_allowed(id::redo)) q(redo{});
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_N) && c.action_allowed(id::open_empty_project)) q(open_empty_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_O) && c.action_allowed(id::open_project)) show_open_project_dialog();
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_S) && c.action_allowed(id::save_current_project)) q(save_current_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O) && c.action_allowed(id::open_default_project)) q(open_default_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S) && c.action_allowed(id::save_default_project)) q(save_default_project{});
+    for (const auto &item: key_map) {
+        const auto &[shortcut, action_id] = item;
+        if (shortcut_pressed(shortcut) && c.action_allowed(action_id)) {
+            q(create_action(action_id));
+        }
+    }
 
     prepare_frame();
     draw_frame();

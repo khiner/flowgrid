@@ -233,14 +233,14 @@ void Context::on_action(const Action &action) {
     }, action);
 }
 
-bool Context::action_allowed(const action::id action_id) const {
+bool Context::action_allowed(const ActionId action_id) const {
     switch (action_id) {
-        case id::undo: return can_undo();
-        case id::redo: return can_redo();
-        case id::open_default_project: return default_project_exists();
-        case id::save_project:
-        case id::save_default_project: return project_has_changes();
-        case id::save_current_project: return can_save_current_project();
+        case action_index<undo>: return can_undo();
+        case action_index<redo>: return can_redo();
+        case action_index<action::open_default_project>: return default_project_exists();
+        case action_index<action::save_project>:
+        case action_index<action::save_default_project>: return project_has_changes();
+        case action_index<action::save_current_project>: return can_save_current_project();
         default: return true;
     }
 }

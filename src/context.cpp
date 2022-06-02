@@ -231,6 +231,18 @@ void Context::on_action(const Action &action) {
     }, action);
 }
 
+bool Context::action_allowed(const action::id action_id) const {
+    switch (action_id) {
+        case id::undo: return can_undo();
+        case id::redo: return can_redo();
+        case id::open_default_project: return default_project_exists();
+        case id::save_project:
+        case id::save_default_project: return project_has_changes();
+        case id::save_current_project: return can_save_current_project();
+        default: return true;
+    }
+}
+
 // TODO Implement
 //  ```cpp
 //  std::pair<Diff, Diff> {forward_diff, reverse_diff} = json::bidirectional_diff(old_state_json, new_state_json);

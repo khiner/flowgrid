@@ -28,38 +28,63 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
 namespace action {
 
-struct undo { static string _name; };
-struct redo { static string _name; };
-struct open_project { string path; static string _name; };
-struct save_project { string path; static string _name; };
-struct save_current_project { static string _name; };
-struct open_empty_project { static string _name; };
-struct open_default_project { static string _name; };
-struct save_default_project { static string _name; };
-struct close_application { static string _name; };
+enum struct id {
+    undo,
+    redo,
+    open_project,
+    save_project,
+    save_current_project,
+    open_empty_project,
+    open_default_project,
+    save_default_project,
+    close_application,
+    set_imgui_settings,
+    set_imgui_style,
+    set_implot_style,
+    set_flowgrid_style,
+    toggle_window,
+    toggle_state_viewer_auto_select,
+    set_state_viewer_label_mode,
+    toggle_audio_muted,
+    set_audio_sample_rate,
+    set_audio_running,
+    toggle_audio_running,
+    set_ui_running,
+    set_faust_code,
+};
+
+struct undo { const static id _id; const static string _name; };
+struct redo { const static id _id; const static string _name; };
+struct open_project { string path; const static id _id; const static string _name; };
+struct save_project { string path; const static id _id; const static string _name; };
+struct save_current_project { const static id _id; const static string _name; };
+struct open_empty_project { const static id _id; const static string _name; };
+struct open_default_project { const static id _id; const static string _name; };
+struct save_default_project { const static id _id; const static string _name; };
+struct close_application { const static id _id; const static string _name; };
 
 // JSON types are used for actions that hold very large structured data.
 // This is because the `Action` `std::variant` below can hold any action type, and variants must be large enough to hold their largest type.
 // As of 5/24/2022, the largest raw action member type was `ImGuiStyle`, which resulted in an `Action` variant size of 1088 bytes.
 // That's pretty silly for a type that can also hold a single boolean value! Replacing with JSON types brought the size down to 32 bytes.
-struct set_imgui_settings { json settings; static string _name; }; // ImGuiSettings
-struct set_imgui_style { json imgui_style; static string _name; }; // ImGuiStyle
-struct set_implot_style { json implot_style; static string _name; }; // ImPlotStyle
-struct set_flowgrid_style { json flowgrid_style; static string _name; }; // FlowGridStyle
+struct set_imgui_settings { json settings; const static id _id; const static string _name; }; // ImGuiSettings
+struct set_imgui_style { json imgui_style; const static id _id; const static string _name; }; // ImGuiStyle
+struct set_implot_style { json implot_style; const static id _id; const static string _name; }; // ImPlotStyle
+struct set_flowgrid_style { json flowgrid_style; const static id _id; const static string _name; }; // FlowGridStyle
 
-struct toggle_window { string name; static string _name; };
+struct toggle_window { string name; const static id _id; const static string _name; };
 
-struct toggle_state_viewer_auto_select { static string _name; };
-struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; static string _name; };
+struct toggle_state_viewer_auto_select { const static id _id; const static string _name; };
+struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; const static id _id; const static string _name; };
 
-struct toggle_audio_muted { static string _name; };
-struct set_audio_sample_rate { int sample_rate; static string _name; };
+struct toggle_audio_muted { const static id _id; const static string _name; };
+struct set_audio_sample_rate { int sample_rate; const static id _id; const static string _name; };
 
-struct set_audio_running { bool running; static string _name; };
-struct toggle_audio_running { static string _name; };
-struct set_ui_running { bool running; static string _name; };
+struct set_audio_running { bool running; const static id _id; const static string _name; };
+struct toggle_audio_running { const static id _id; const static string _name; };
+struct set_ui_running { bool running; const static id _id; const static string _name; };
 
-struct set_faust_code { string text; static string _name; };
+struct set_faust_code { string text; const static id _id; const static string _name; };
 
 }
 
@@ -88,4 +113,5 @@ using Action = std::variant<
     set_ui_running
 >;
 
+id get_action_id(const Action &);
 string get_action_name(const Action &);

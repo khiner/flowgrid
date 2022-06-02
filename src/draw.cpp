@@ -213,15 +213,15 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed<save_current_project>())) q(save_current_project{});
-            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed<save_project>())) show_save_project_dialog();
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed<open_default_project>())) q(open_default_project{});
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed<save_default_project>())) q(save_default_project{});
+            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed(id::save_current_project))) q(save_current_project{});
+            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(id::save_project))) show_save_project_dialog();
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed(id::open_default_project))) q(open_default_project{});
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed(id::save_default_project))) q(save_default_project{});
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed<undo>())) { q(undo{}); }
-            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed<redo>())) { q(redo{}); }
+            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed(id::undo))) { q(undo{}); }
+            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed(id::redo))) { q(redo{}); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
@@ -307,13 +307,13 @@ void tick_ui() {
         }
     }
 
-    if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z) && c.action_allowed<undo>()) q(undo{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z) && c.action_allowed<redo>()) q(redo{});
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_N) && c.action_allowed<open_empty_project>()) q(open_empty_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_O) && c.action_allowed<open_project>()) show_open_project_dialog();
-    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_S) && c.action_allowed<save_current_project>()) q(save_current_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O) && c.action_allowed<open_default_project>()) q(open_default_project{});
-    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S) && c.action_allowed<save_default_project>()) q(save_default_project{});
+    if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_Z) && c.action_allowed(id::undo)) q(undo{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z) && c.action_allowed(id::redo)) q(redo{});
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_N) && c.action_allowed(id::open_empty_project)) q(open_empty_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_O) && c.action_allowed(id::open_project)) show_open_project_dialog();
+    else if (shortcut(ImGuiKeyModFlags_Super, ImGuiKey_S) && c.action_allowed(id::save_current_project)) q(save_current_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O) && c.action_allowed(id::open_default_project)) q(open_default_project{});
+    else if (shortcut(ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S) && c.action_allowed(id::save_default_project)) q(save_default_project{});
 
     prepare_frame();
     draw_frame();

@@ -12,7 +12,6 @@
 //#include "diff_match_patch.h"
 
 namespace fs = std::filesystem;
-using std::is_same_v;
 
 struct RenderContext;
 struct UiContext {
@@ -141,16 +140,16 @@ public:
     Context();
     ~Context() = default;
 
-    void open_project(const fs::path &path);
+    void open_project(const fs::path &);
     void open_empty_project();
     static bool default_project_exists();
     void open_default_project();
 
     json get_project_json(ProjectFormat format = StateFormat) const;
-    static bool is_user_project_path(const fs::path &path);
+    static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;
     bool can_save_current_project() const;
-    bool save_project(const fs::path &path);
+    bool save_project(const fs::path &);
     bool save_current_project();
     bool save_empty_project();
     bool save_default_project();
@@ -164,20 +163,11 @@ public:
     void set_state_json(const json &);
     void set_diffs_json(const json &);
 
-    void enqueue_action(const Action &a);
+    void enqueue_action(const Action &);
     void run_queued_actions();
     void on_action(const Action &); // Immediately execute the action TODO make private?
 
-    template<class T>
-    bool action_allowed() const {
-        if (is_same_v<T, undo>) return can_undo();
-        if (is_same_v<T, redo>) return can_redo();
-        if (is_same_v<T, action::open_default_project>) return default_project_exists();
-        if (is_same_v<T, action::save_project>) return project_has_changes();
-        if (is_same_v<T, action::save_default_project>) return project_has_changes();
-        if (is_same_v<T, action::save_current_project>) return can_save_current_project();
-        return true;
-    }
+    bool action_allowed(action::id) const;
 
     void start_gesture() { gesturing = true; }
     void end_gesture();

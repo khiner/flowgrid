@@ -17,13 +17,17 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
 
 /**
- * An `Action` is an immutable representation of a user interaction event.
- * Each action stores all information needed for `update` to apply it to a given `State` instance.
- *
- * Static members are prefixed with an underscore to avoid name collisions with data members.
- * All such static members are declared _after_ data members, to allow for default construction using only non-static members.
- * Note that adding static members does not increase the size of the `Action` variant of which the `action::` structs are types.
- * (You can verify this by looking at the 'Action variant size' in the FlowGrid metrics window.)
+ An `Action` is an immutable representation of a user interaction event.
+ Each action stores all information needed for `update` to apply it to a given `State` instance.
+
+ Conventions:
+ * Static members
+   - _Not relevant as there aren't any static members atm, but note to future-self._
+   - Any static members should be prefixed with an underscore to avoid name collisions with data members.
+   - All such static members are declared _after_ data members, to allow for default construction using only non-static members.
+
+ Note that adding static members does not increase the size of the parent `Action` variant.
+ (You can verify this by looking at the 'Action variant size' in the FlowGrid metrics window.)
 */
 
 namespace actions {

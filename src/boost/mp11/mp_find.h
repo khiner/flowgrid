@@ -4,7 +4,7 @@
 #include <type_traits>
 
 /**
- * Standalone Boost's `mp_find`, from relevant parts of https://github.com/boostorg/mp11/blob/develop/include/boost/mp11/algorithm.hpp.
+ * Minimal standalone copy of Boost's `mp_find`, from relevant parts of https://github.com/boostorg/mp11/blob/develop/include/boost/mp11/algorithm.hpp.
  * Used to get variant index by type.
  * Suggestion to use `mp_find` for this came from [here](https://stackoverflow.com/a/66386518/780425)
  */

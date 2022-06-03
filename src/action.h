@@ -26,9 +26,7 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
  * (You can verify this by looking at the 'Action variant size' in the FlowGrid metrics window.)
 */
 
-namespace action {
-
-using ActionId = size_t;
+namespace actions {
 
 struct undo {};
 struct redo {};
@@ -63,6 +61,14 @@ struct set_ui_running { bool running; };
 
 struct set_faust_code { string text; };
 
+}
+
+using namespace actions;
+
+namespace action {
+
+using ID = size_t;
+
 using Action = std::variant<
     undo, redo,
     open_project, open_empty_project, open_default_project,
@@ -91,9 +97,9 @@ using Action = std::variant<
 // TODO or just this instead?
 //  set_faust_code r = std::variant_alternative_t<action_type_index<set_faust_code>, Action>{"foo"};
 template<std::size_t I = 0>
-Action create_action(std::size_t index) {
+Action create(std::size_t index) {
     if constexpr(I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + std::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? Action{std::in_place_index<I>} : create_action<I + 1>(index - 1);
+    else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
 }
 
 // Get the index for action variant type.
@@ -109,7 +115,7 @@ Action create_action(std::size_t index) {
 template<typename T>
 constexpr size_t id = mp_find<Action, T>::value;
 
-static const std::map<ActionId, string> named{
+static const std::map<ID, string> named{
     {id<undo>,                            "Undo"},
     {id<redo>,                            "Redo"},
     {id<open_project>,                    "Open project"},
@@ -134,9 +140,10 @@ static const std::map<ActionId, string> named{
     {id<set_ui_running>,                  "Set UI running"},
 };
 
-static ActionId get_id(const Action &action) { return action.index(); }
+static ID get_id(const Action &action) { return action.index(); }
 static string get_name(const Action &action) { return named.at(get_id(action)); }
 
 }
 
-using namespace action;
+using ActionID = action::ID;
+using Action = action::Action;

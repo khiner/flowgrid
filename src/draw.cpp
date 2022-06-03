@@ -213,15 +213,15 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed(id<save_current_project>))) q(save_current_project{});
-            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(id<save_project>))) show_save_project_dialog();
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed(id<open_default_project>))) q(open_default_project{});
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed(id<save_default_project>))) q(save_default_project{});
+            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed(action::id<save_current_project>))) q(save_current_project{});
+            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(action::id<save_project>))) show_save_project_dialog();
+            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed(action::id<open_default_project>))) q(open_default_project{});
+            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed(action::id<save_default_project>))) q(save_default_project{});
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed(id<undo>))) { q(undo{}); }
-            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed(id<redo>))) { q(redo{}); }
+            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed(action::id<undo>))) { q(undo{}); }
+            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed(action::id<redo>))) { q(redo{}); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
@@ -279,14 +279,14 @@ void draw_frame() {
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
 
-const std::map<KeyShortcut, ActionId> key_map = {
-    {{ImGuiKeyModFlags_Super,                          ImGuiKey_Z}, id<undo>},
-    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z}, id<redo>},
-    {{ImGuiKeyModFlags_Super,                          ImGuiKey_N}, id<open_empty_project>},
+const std::map<KeyShortcut, ActionID> key_map = {
+    {{ImGuiKeyModFlags_Super,                          ImGuiKey_Z}, action::id<undo>},
+    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z}, action::id<redo>},
+    {{ImGuiKeyModFlags_Super,                          ImGuiKey_N}, action::id<open_empty_project>},
 //    {{ImGuiKeyModFlags_Super,                          ImGuiKey_O}, show_open_project_dialog::_id},
-    {{ImGuiKeyModFlags_Super,                          ImGuiKey_S}, id<save_current_project>},
-    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O}, id<open_default_project>},
-    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S}, id<save_default_project>},
+    {{ImGuiKeyModFlags_Super,                          ImGuiKey_S}, action::id<save_current_project>},
+    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O}, action::id<open_default_project>},
+    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S}, action::id<save_default_project>},
 };
 
 bool shortcut_pressed(KeyShortcut shortcut) {
@@ -323,7 +323,7 @@ void tick_ui() {
     for (const auto &item: key_map) {
         const auto &[shortcut, action_id] = item;
         if (shortcut_pressed(shortcut) && c.action_allowed(action_id)) {
-            q(create_action(action_id));
+            q(action::create(action_id));
         }
     }
 

@@ -220,12 +220,12 @@ void Context::on_action(const Action &action) {
         [&](redo) {
             if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
         },
-        [&](const action::open_project &a) { open_project(a.path); },
-        [&](const action::save_project &a) { save_project(a.path); },
-        [&](action::open_empty_project) { open_empty_project(); },
-        [&](action::open_default_project) { open_default_project(); },
-        [&](action::save_default_project) { save_default_project(); },
-        [&](action::save_current_project) { save_current_project(); },
+        [&](const actions::open_project &a) { open_project(a.path); },
+        [&](const actions::save_project &a) { save_project(a.path); },
+        [&](actions::open_empty_project) { open_empty_project(); },
+        [&](actions::open_default_project) { open_default_project(); },
+        [&](actions::save_default_project) { save_default_project(); },
+        [&](actions::save_current_project) { save_current_project(); },
         [&](auto) { // other action
             update(action);
             if (!gesturing) end_gesture();
@@ -233,14 +233,14 @@ void Context::on_action(const Action &action) {
     }, action);
 }
 
-bool Context::action_allowed(const ActionId action_id) const {
+bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case id<undo>: return can_undo();
-        case id<redo>: return can_redo();
-        case id<action::open_default_project>: return default_project_exists();
-        case id<action::save_project>:
-        case id<action::save_default_project>: return project_has_changes();
-        case id<action::save_current_project>: return can_save_current_project();
+        case action::id<undo>: return can_undo();
+        case action::id<redo>: return can_redo();
+        case action::id<actions::open_default_project>: return default_project_exists();
+        case action::id<actions::save_project>:
+        case action::id<actions::save_default_project>: return project_has_changes();
+        case action::id<actions::save_current_project>: return can_save_current_project();
         default: return true;
     }
 }

@@ -167,7 +167,7 @@ public:
     void run_queued_actions();
     void on_action(const Action &); // Immediately execute the action TODO make private?
 
-    bool action_allowed(ActionId) const;
+    bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;
 
     void start_gesture() { gesturing = true; }

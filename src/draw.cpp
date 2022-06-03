@@ -9,13 +9,6 @@
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "ImGuiFileDialog.h"
 
-struct RenderContext {
-    SDL_Window *window = nullptr;
-    SDL_GLContext gl_context{};
-    const char *glsl_version = "#version 150";
-    ImGuiIO io;
-};
-
 /**md
 ## UI methods
 
@@ -50,6 +43,13 @@ Superset of render context.
     render_frame(render_context);
 ```
  */
+
+struct RenderContext {
+    SDL_Window *window = nullptr;
+    SDL_GLContext gl_context{};
+    const char *glsl_version = "#version 150";
+    ImGuiIO io;
+};
 
 RenderContext create_render_context() {
 #if defined(__APPLE__)
@@ -144,30 +144,7 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
-static const string open_file_dialog_key = "ApplicationFileDialog";
-
 bool first_draw = true;
-
-static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
-
-void show_open_project_dialog() {
-    is_save_file_dialog = false;
-    ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
-}
-
-void show_save_project_dialog() {
-    is_save_file_dialog = true;
-    ImGuiFileDialog::Instance()->OpenDialog(
-        open_file_dialog_key,
-        "Choose file",
-        AllProjectExtensions.c_str(),
-        ".",
-        "my_flowgrid_project",
-        1,
-        nullptr,
-        ImGuiFileDialogFlags_ConfirmOverwrite
-    );
-}
 
 void draw_frame() {
     ZoneScoped
@@ -200,13 +177,12 @@ void draw_frame() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New project", "Cmd+N")) q(open_empty_project{});
-            if (ImGui::MenuItem("Open project", "Cmd+O")) show_open_project_dialog();
+            if (ImGui::MenuItem("Open project", "Cmd+O")) q(show_open_project_dialog{});
 
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
                 for (const auto &recently_opened_path: recently_opened_paths) {
                     if (ImGui::MenuItem(recently_opened_path.filename().c_str())) {
-                        is_save_file_dialog = false;
                         q(open_project{recently_opened_path});
                     }
                 }
@@ -214,7 +190,7 @@ void draw_frame() {
             }
 
             if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed(action::id<save_current_project>))) q(save_current_project{});
-            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(action::id<save_project>))) show_save_project_dialog();
+            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(action::id<save_project>))) q(show_save_project_dialog{});
             if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed(action::id<open_default_project>))) q(open_default_project{});
             if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed(action::id<save_default_project>))) q(save_default_project{});
             ImGui::EndMenu();
@@ -260,7 +236,7 @@ void draw_frame() {
                 //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
                 //   with full undo/redo history/position/etc.!
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
-                if (is_save_file_dialog) q(save_project{file_path});
+                if (c.is_save_file_dialog) q(save_project{file_path});
                 else q(open_project{file_path});
             }
 
@@ -283,7 +259,7 @@ const std::map<KeyShortcut, ActionID> key_map = {
     {{ImGuiKeyModFlags_Super,                          ImGuiKey_Z}, action::id<undo>},
     {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z}, action::id<redo>},
     {{ImGuiKeyModFlags_Super,                          ImGuiKey_N}, action::id<open_empty_project>},
-//    {{ImGuiKeyModFlags_Super,                          ImGuiKey_O}, show_open_project_dialog::_id},
+    {{ImGuiKeyModFlags_Super,                          ImGuiKey_O}, action::id<show_open_project_dialog>},
     {{ImGuiKeyModFlags_Super,                          ImGuiKey_S}, action::id<save_current_project>},
     {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O}, action::id<open_default_project>},
     {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S}, action::id<save_default_project>},

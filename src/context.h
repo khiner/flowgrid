@@ -67,7 +67,9 @@ const std::map<string, ProjectFormat> ProjectFormatForExtension{
     {ExtensionForProjectFormat.at(StateFormat), StateFormat},
     {ExtensionForProjectFormat.at(DiffFormat),  DiffFormat},
 };
-const string AllProjectExtensions = ".fls,.fld";
+
+static const string AllProjectExtensions = ".fls,.fld";
+static const string open_file_dialog_key = "ApplicationFileDialog";
 
 struct Context {
 private:
@@ -136,6 +138,7 @@ public:
     ImFont *fixedWidthFont{};
 
     bool gesturing{};
+    bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
 
     Context();
     ~Context() = default;
@@ -144,15 +147,18 @@ public:
     void open_empty_project();
     static bool default_project_exists();
     void open_default_project();
+    void show_open_project_dialog();
 
-    json get_project_json(ProjectFormat format = StateFormat) const;
-    static bool is_user_project_path(const fs::path &);
-    bool project_has_changes() const;
     bool can_save_current_project() const;
     bool save_project(const fs::path &);
     bool save_current_project();
     bool save_empty_project();
     bool save_default_project();
+    void show_save_project_dialog();
+
+    json get_project_json(ProjectFormat format = StateFormat) const;
+    static bool is_user_project_path(const fs::path &);
+    bool project_has_changes() const;
 
     bool clear_preferences();
 

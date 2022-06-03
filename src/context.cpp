@@ -4,6 +4,7 @@
 #include "stateful_faust_ui.h"
 #include "file_helpers.h"
 #include "audio.h"
+#include "ImGuiFileDialog.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
 // Used to initialize the static Faust buffer.
@@ -145,6 +146,10 @@ bool Context::default_project_exists() {
 void Context::open_default_project() {
     open_project(default_project_path);
 }
+void Context::show_open_project_dialog() {
+    is_save_file_dialog = false;
+    ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
+}
 
 bool Context::project_has_changes() const {
     return current_action_index != current_project_saved_action_index;
@@ -171,6 +176,19 @@ bool Context::save_default_project() {
 }
 bool Context::save_current_project() {
     return can_save_current_project() && save_project(current_project_path.value());
+}
+void Context::show_save_project_dialog() {
+    is_save_file_dialog = true;
+    ImGuiFileDialog::Instance()->OpenDialog(
+        open_file_dialog_key,
+        "Choose file",
+        AllProjectExtensions.c_str(),
+        ".",
+        "my_flowgrid_project",
+        1,
+        nullptr,
+        ImGuiFileDialogFlags_ConfirmOverwrite
+    );
 }
 
 bool Context::clear_preferences() {
@@ -214,18 +232,19 @@ void Context::on_action(const Action &action) {
 
     gesture_action_names.emplace(action::get_name(action));
     std::visit(visitor{
-        [&](undo) {
-            if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);
-        },
-        [&](redo) {
-            if (can_redo()) apply_diff(++current_action_index, Direction::Forward);
-        },
-        [&](const actions::open_project &a) { open_project(a.path); },
-        [&](const actions::save_project &a) { save_project(a.path); },
+        [&](undo) { apply_diff(current_action_index--, Direction::Reverse); },
+        [&](redo) { apply_diff(++current_action_index, Direction::Forward); },
+
+        [&](actions::open_project &a) { open_project(a.path); },
         [&](actions::open_empty_project) { open_empty_project(); },
         [&](actions::open_default_project) { open_default_project(); },
+        [&](actions::show_open_project_dialog) { show_open_project_dialog(); },
+
+        [&](actions::save_project &a) { save_project(a.path); },
         [&](actions::save_default_project) { save_default_project(); },
         [&](actions::save_current_project) { save_current_project(); },
+        [&](actions::show_save_project_dialog) { show_save_project_dialog(); },
+
         [&](auto) { // other action
             update(action);
             if (!gesturing) end_gesture();

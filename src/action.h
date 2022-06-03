@@ -34,12 +34,17 @@ namespace actions {
 
 struct undo {};
 struct redo {};
+
 struct open_project { string path; };
-struct save_project { string path; };
-struct save_current_project {};
 struct open_empty_project {};
 struct open_default_project {};
+struct show_open_project_dialog {};
+
+struct save_project { string path; };
+struct save_current_project {};
 struct save_default_project {};
+struct show_save_project_dialog {};
+
 struct close_application {};
 
 // JSON types are used for actions that hold very large structured data.
@@ -75,8 +80,8 @@ using ID = size_t;
 
 using Action = std::variant<
     undo, redo,
-    open_project, open_empty_project, open_default_project,
-    save_project, save_default_project, save_current_project,
+    open_project, open_empty_project, open_default_project, show_open_project_dialog,
+    save_project, save_default_project, save_current_project, show_save_project_dialog,
     close_application,
 
     set_imgui_settings,
@@ -122,13 +127,19 @@ constexpr size_t id = mp_find<Action, T>::value;
 static const std::map<ID, string> named{
     {id<undo>,                            "Undo"},
     {id<redo>,                            "Redo"},
+
     {id<open_project>,                    "Open project"},
     {id<open_empty_project>,              "Open empty project"},
     {id<open_default_project>,            "Open default project"},
+    {id<show_open_project_dialog>,        "Show open project dialog"},
+
     {id<save_project>,                    "Save project"},
     {id<save_default_project>,            "Save default project"},
     {id<save_current_project>,            "Save current project"},
+    {id<show_save_project_dialog>,        "Show save project dialog"},
+
     {id<close_application>,               "Close application"},
+
     {id<set_imgui_settings>,              "Set ImGui Settings"},
     {id<set_imgui_style>,                 "Set ImGui Style"},
     {id<set_implot_style>,                "Set ImPlot Style"},

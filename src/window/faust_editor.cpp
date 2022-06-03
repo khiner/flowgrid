@@ -347,7 +347,7 @@ void zep_draw() {
 //    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
-static const string open_file_dialog_key = "FaustFileDialog";
+static const string open_faust_file_dialog_key = "FaustFileDialog";
 
 /*
  * TODO
@@ -372,11 +372,11 @@ void Audio::Faust::Editor::draw() {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open DSP file")) {
                 is_save_file_dialog = false;
-                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".dsp", ".", "", 1);
+                ImGuiFileDialog::Instance()->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "", 1);
             }
             if (ImGui::MenuItem("Save DSP as...")) {
                 is_save_file_dialog = true;
-                ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", ".dsp", ".", "my_dsp", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+                ImGuiFileDialog::Instance()->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "my_dsp", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
             }
             ImGui::EndMenu();
         }
@@ -416,7 +416,7 @@ void Audio::Faust::Editor::draw() {
         ImGui::EndMenuBar();
 
         const auto min_dialog_size = toImVec2(toNVec2f(ImGui::GetMainViewport()->Size) / 2.0);
-        if (ImGuiFileDialog::Instance()->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
+        if (ImGuiFileDialog::Instance()->Display(open_faust_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {

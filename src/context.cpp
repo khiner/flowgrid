@@ -212,7 +212,7 @@ void Context::run_queued_actions() {
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
 
-    gesture_action_names.emplace(get_action_name(action));
+    gesture_action_names.emplace(action::get_name(action));
     std::visit(visitor{
         [&](undo) {
             if (can_undo()) apply_diff(current_action_index--, Direction::Reverse);
@@ -235,18 +235,16 @@ void Context::on_action(const Action &action) {
 
 bool Context::action_allowed(const ActionId action_id) const {
     switch (action_id) {
-        case action_index<undo>: return can_undo();
-        case action_index<redo>: return can_redo();
-        case action_index<action::open_default_project>: return default_project_exists();
-        case action_index<action::save_project>:
-        case action_index<action::save_default_project>: return project_has_changes();
-        case action_index<action::save_current_project>: return can_save_current_project();
+        case id<undo>: return can_undo();
+        case id<redo>: return can_redo();
+        case id<action::open_default_project>: return default_project_exists();
+        case id<action::save_project>:
+        case id<action::save_default_project>: return project_has_changes();
+        case id<action::save_current_project>: return can_save_current_project();
         default: return true;
     }
 }
-bool Context::action_allowed(const Action &action) const {
-    return action_allowed(get_action_id(action));
-}
+bool Context::action_allowed(const Action &action) const { return action_allowed(action::get_id(action)); }
 
 // TODO Implement
 //  ```cpp

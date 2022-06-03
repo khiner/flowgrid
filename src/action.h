@@ -30,42 +30,38 @@ namespace action {
 
 using ActionId = size_t;
 
-struct undo { const static string _name; };
-struct redo { const static string _name; };
-struct open_project { string path; const static string _name; };
-struct save_project { string path; const static string _name; };
-struct save_current_project { const static string _name; };
-struct open_empty_project { const static string _name; };
-struct open_default_project { const static string _name; };
-struct save_default_project { const static string _name; };
-struct close_application { const static string _name; };
+struct undo {};
+struct redo {};
+struct open_project { string path; };
+struct save_project { string path; };
+struct save_current_project {};
+struct open_empty_project {};
+struct open_default_project {};
+struct save_default_project {};
+struct close_application {};
 
 // JSON types are used for actions that hold very large structured data.
 // This is because the `Action` `std::variant` below can hold any action type, and variants must be large enough to hold their largest type.
 // As of 5/24/2022, the largest raw action member type was `ImGuiStyle`, which resulted in an `Action` variant size of 1088 bytes.
 // That's pretty silly for a type that can also hold a single boolean value! Replacing with JSON types brought the size down to 32 bytes.
-struct set_imgui_settings { json settings; const static string _name; }; // ImGuiSettings
-struct set_imgui_style { json imgui_style; const static string _name; }; // ImGuiStyle
-struct set_implot_style { json implot_style; const static string _name; }; // ImPlotStyle
-struct set_flowgrid_style { json flowgrid_style; const static string _name; }; // FlowGridStyle
+struct set_imgui_settings { json settings; }; // ImGuiSettings
+struct set_imgui_style { json imgui_style; }; // ImGuiStyle
+struct set_implot_style { json implot_style; }; // ImPlotStyle
+struct set_flowgrid_style { json flowgrid_style; }; // FlowGridStyle
 
-struct toggle_window { string name; const static string _name; };
+struct toggle_window { string name; };
 
-struct toggle_state_viewer_auto_select { const static string _name; };
-struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; const static string _name; };
+struct toggle_state_viewer_auto_select {};
+struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; };
 
-struct toggle_audio_muted { const static string _name; };
-struct set_audio_sample_rate { int sample_rate; const static string _name; };
+struct toggle_audio_muted {};
+struct set_audio_sample_rate { int sample_rate; };
 
-struct set_audio_running { bool running; const static string _name; };
-struct toggle_audio_running { const static string _name; };
-struct set_ui_running { bool running; const static string _name; };
+struct set_audio_running { bool running; };
+struct toggle_audio_running {};
+struct set_ui_running { bool running; };
 
-struct set_faust_code { string text; const static string _name; };
-
-}
-
-using namespace action;
+struct set_faust_code { string text; };
 
 using Action = std::variant<
     undo, redo,
@@ -90,9 +86,6 @@ using Action = std::variant<
     set_ui_running
 >;
 
-ActionId get_action_id(const Action &);
-string get_action_name(const Action &);
-
 // Default-construct an action by its variant index (which is also its `_id`).
 // From https://stackoverflow.com/a/60567091/780425
 // TODO or just this instead?
@@ -105,7 +98,45 @@ Action create_action(std::size_t index) {
 
 // Get the index for action variant type.
 // From https://stackoverflow.com/a/66386518/780425
+
 #include "mp_find.h"
 
+// E.g. `const ActionId action_id = id<action>`
+// An action's ID is its index in the `Action` variant.
+// Down the road, this means `Action` would need to be append-only (no order changes) for backwards compatibility.
+// Not worried about that right now, since that should be an easy piece to replace with some uuid system later.
+// Index is simplest.
 template<typename T>
-constexpr size_t action_index = mp_find<Action, T>::value;
+constexpr size_t id = mp_find<Action, T>::value;
+
+static const std::map<ActionId, string> named{
+    {id<undo>,                            "Undo"},
+    {id<redo>,                            "Redo"},
+    {id<open_project>,                    "Open project"},
+    {id<open_empty_project>,              "Open empty project"},
+    {id<open_default_project>,            "Open default project"},
+    {id<save_project>,                    "Save project"},
+    {id<save_default_project>,            "Save default project"},
+    {id<save_current_project>,            "Save current project"},
+    {id<close_application>,               "Close application"},
+    {id<set_imgui_settings>,              "Set ImGui Settings"},
+    {id<set_imgui_style>,                 "Set ImGui Style"},
+    {id<set_implot_style>,                "Set ImPlot Style"},
+    {id<set_flowgrid_style>,              "Set FlowGrid Style"},
+    {id<toggle_window>,                   "Toggle Window"},
+    {id<toggle_state_viewer_auto_select>, "Toggle state viewer auto-select"},
+    {id<set_state_viewer_label_mode>,     "Set state-viewer label-mode"},
+    {id<toggle_audio_muted>,              "Toggle audio muted"},
+    {id<set_audio_sample_rate>,           "Set audio sample rate"},
+    {id<set_faust_code>,                  "Set faust code"},
+    {id<set_audio_running>,               "Set audio running"},
+    {id<toggle_audio_running>,            "Toggle audio running"},
+    {id<set_ui_running>,                  "Set UI running"},
+};
+
+static ActionId get_id(const Action &action) { return action.index(); }
+static string get_name(const Action &action) { return named.at(get_id(action)); }
+
+}
+
+using namespace action;

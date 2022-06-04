@@ -96,6 +96,10 @@ $ ./FlowGrid
       like [jsondiffpatch's deltas](https://github.com/benjamine/jsondiffpatch/blob/master/docs/deltas.md#text-diffs),
       for unified handling of state diffs involving long text strings (like code strings).
 
+### C++ extensions
+
+* [range-v3](https://github.com/ericniebler/range-v3), since ranges are only partially supported in Clang 13.x
+
 ### Debugging
 
 * [Tracy](https://github.com/wolfpld/tracy) for real-time profiling

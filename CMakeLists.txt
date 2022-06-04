@@ -26,6 +26,8 @@ include_directories(lib/ImGuiFileDialog)
 include_directories(lib/implot)
 include_directories(lib/imgui_club/imgui_memory_editor)
 include_directories(lib/fmt/include)
+include_directories(lib/range-v3/include)
+
 # See readme for plans with these libraries
 #include_directories(lib/concurrentqueue) # Not used atm.
 #include_directories(lib/diff-match-patch-cpp-stl)

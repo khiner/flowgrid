@@ -93,3 +93,7 @@ add_subdirectory(tracy)
 #=================== fmt ===================
 
 add_subdirectory(fmt)
+
+#=================== range-v3 ===================
+
+add_subdirectory(range-v3)

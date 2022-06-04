@@ -206,7 +206,7 @@ struct ZepEditor_ImGui : ZepEditor {
         if (!handled) {
             for (ImWchar ch: io.InputQueueCharacters) {
                 if (ch == '\r') continue; // Ignore '\r' - sometimes ImGui generates it!
-                ImGuiKey key = ch + ImGuiKey_A - 'a';
+                ImGuiKey key = ch - 'a' + ImGuiKey_A;
                 buffer->GetMode()->AddKeyPress(key, mod);
             }
         }

@@ -42,3 +42,6 @@
 [submodule "lib/fmt"]
 	path = lib/fmt
 	url = git@github.com:fmtlib/fmt.git
+[submodule "lib/range-v3"]
+	path = lib/range-v3
+	url = git@github.com:ericniebler/range-v3.git

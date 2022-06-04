@@ -8,6 +8,8 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "ImGuiFileDialog.h"
+#include "zep/stringutils.h"
+#include <range/v3/all.hpp>
 
 /**md
 ## UI methods
@@ -255,18 +257,55 @@ void draw_frame() {
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
 
-const std::map<KeyShortcut, ActionID> key_map = {
-    {{ImGuiKeyModFlags_Super,                          ImGuiKey_Z}, action::id<undo>},
-    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_Z}, action::id<redo>},
-    {{ImGuiKeyModFlags_Super,                          ImGuiKey_N}, action::id<open_empty_project>},
-    {{ImGuiKeyModFlags_Super,                          ImGuiKey_O}, action::id<show_open_project_dialog>},
-    {{ImGuiKeyModFlags_Super,                          ImGuiKey_S}, action::id<save_current_project>},
-    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_O}, action::id<open_default_project>},
-    {{ImGuiKeyModFlags_Super | ImGuiKeyModFlags_Shift, ImGuiKey_S}, action::id<save_default_project>},
+const std::map<string, ImGuiKeyModFlags> mod_keys{
+    {"shift", ImGuiKeyModFlags_Shift},
+    {"ctrl",  ImGuiKeyModFlags_Ctrl},
+    {"alt",   ImGuiKeyModFlags_Alt},
+    {"cmd",   ImGuiKeyModFlags_Super},
 };
 
-bool shortcut_pressed(KeyShortcut shortcut) {
-    const auto &[mod, key] = shortcut;
+// Handles any number of mods, along with any single non-mod character.
+// Example: 'shift+cmd+s'
+// **Case-sensitive. `shortcut` must be lowercase.**
+std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
+    std::vector<std::string> tokens;
+    Zep::string_split(shortcut, "+", tokens);
+    if (tokens.empty()) return {};
+
+    const string command = tokens.back();
+    if (command.length() != 1) return {};
+
+    tokens.pop_back();
+
+    ImGuiKey key = command[0] - 'a' + ImGuiKey_A;
+    ImGuiKeyModFlags mod_flags = ImGuiKeyModFlags_None;
+    while (!tokens.empty()) {
+        mod_flags |= mod_keys.at(tokens.back());
+        tokens.pop_back();
+    }
+
+    return {{mod_flags, key}};
+}
+
+const std::map<string, ActionID> key_shortcuts = {
+    {"cmd+z",       action::id<undo>},
+    {"shift+cmd+z", action::id<redo>},
+    {"cmd+n",       action::id<open_empty_project>},
+    {"cmd+o",       action::id<show_open_project_dialog>},
+    {"cmd+s",       action::id<save_current_project>},
+    {"shift+cmd+o", action::id<open_default_project>},
+    {"shift+cmd+s", action::id<save_default_project>},
+};
+
+// Just transforming the above map so the keys are `KeyShortcut`s. I mean there has just got to be a better way, this is a silly way.
+const std::vector<std::pair<KeyShortcut, ActionID>> key_map_pairs = key_shortcuts | ranges::views::transform([](const auto &entry) {
+    const auto &[shortcut, action_id] = entry;
+    return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
+}) | ranges::to_vector;
+const std::map<KeyShortcut, ActionID> key_map(key_map_pairs.begin(), key_map_pairs.end());
+
+bool is_shortcut_pressed(const KeyShortcut &key_shortcut) {
+    const auto &[mod, key] = key_shortcut;
     return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
 
@@ -298,7 +337,7 @@ void tick_ui() {
 
     for (const auto &item: key_map) {
         const auto &[shortcut, action_id] = item;
-        if (shortcut_pressed(shortcut) && c.action_allowed(action_id)) {
+        if (is_shortcut_pressed(shortcut) && c.action_allowed(action_id)) {
             q(action::create(action_id));
         }
     }

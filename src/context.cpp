@@ -232,20 +232,20 @@ void Context::on_action(const Action &action) {
 
     gesture_action_names.emplace(action::get_name(action));
     std::visit(visitor{
-        [&](undo) { apply_diff(current_action_index--, Direction::Reverse); },
-        [&](redo) { apply_diff(++current_action_index, Direction::Forward); },
+        [&](const undo &) { apply_diff(current_action_index--, Direction::Reverse); },
+        [&](const redo &) { apply_diff(++current_action_index, Direction::Forward); },
 
-        [&](actions::open_project &a) { open_project(a.path); },
-        [&](actions::open_empty_project) { open_empty_project(); },
-        [&](actions::open_default_project) { open_default_project(); },
-        [&](actions::show_open_project_dialog) { show_open_project_dialog(); },
+        [&](const actions::open_project &a) { open_project(a.path); },
+        [&](const actions::open_empty_project &) { open_empty_project(); },
+        [&](const actions::open_default_project &) { open_default_project(); },
+        [&](const actions::show_open_project_dialog &) { show_open_project_dialog(); },
 
-        [&](actions::save_project &a) { save_project(a.path); },
-        [&](actions::save_default_project) { save_default_project(); },
-        [&](actions::save_current_project) { save_current_project(); },
-        [&](actions::show_save_project_dialog) { show_save_project_dialog(); },
+        [&](const actions::save_project &a) { save_project(a.path); },
+        [&](const actions::save_default_project &) { save_default_project(); },
+        [&](const actions::save_current_project &) { save_current_project(); },
+        [&](const actions::show_save_project_dialog &) { show_save_project_dialog(); },
 
-        [&](auto) { // other action
+        [&](const auto &) { // other action
             update(action);
             if (!gesturing) end_gesture();
         }
@@ -366,19 +366,19 @@ void Context::update(const Action &action) {
 //                _s.audio.faust.json = "";
             }
         },
-        [&](toggle_audio_muted) { _s.audio.settings.muted = !s.audio.settings.muted; },
+        [&](const toggle_audio_muted &) { _s.audio.settings.muted = !s.audio.settings.muted; },
         [&](const set_audio_sample_rate &a) { _s.audio.settings.sample_rate = a.sample_rate; },
 
-        [&](set_audio_running a) { _s.processes.audio.running = a.running; },
-        [&](toggle_audio_running) { _s.processes.audio.running = !s.processes.audio.running; },
-        [&](set_ui_running a) { _s.processes.ui.running = a.running; },
+        [&](const set_audio_running &a) { _s.processes.audio.running = a.running; },
+        [&](const toggle_audio_running &) { _s.processes.audio.running = !s.processes.audio.running; },
+        [&](const set_ui_running &a) { _s.processes.ui.running = a.running; },
 
-        [&](close_application) {
+        [&](const close_application &) {
             _s.processes.ui.running = false;
             _s.processes.audio.running = false;
         },
 
-        [&](auto) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
+        [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
     }, action);
 }
 

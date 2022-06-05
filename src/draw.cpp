@@ -9,7 +9,7 @@
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "ImGuiFileDialog.h"
 #include "zep/stringutils.h"
-#include <range/v3/all.hpp>
+#include <range/v3/view.hpp>
 
 /**md
 ## UI methods
@@ -287,23 +287,14 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
     return {{mod_flags, key}};
 }
 
-const std::map<string, ActionID> key_shortcuts = {
-    {"cmd+z",       action::id<undo>},
-    {"shift+cmd+z", action::id<redo>},
-    {"cmd+n",       action::id<open_empty_project>},
-    {"cmd+o",       action::id<show_open_project_dialog>},
-    {"cmd+s",       action::id<save_current_project>},
-    {"shift+cmd+o", action::id<open_default_project>},
-    {"shift+cmd+s", action::id<save_default_project>},
-};
-
-// Just transforming the above map so the keys are `KeyShortcut`s. I mean there has just got to be a better way, this is a silly way.
-const std::vector<std::pair<KeyShortcut, ActionID>> key_map_pairs = key_shortcuts | ranges::views::transform([](const auto &entry) {
-    const auto &[shortcut, action_id] = entry;
+// Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
+const std::map<KeyShortcut, ActionID> key_map = action::shortcut_for_id | ranges::views::transform([](const auto &entry) {
+    const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
-}) | ranges::to_vector;
-const std::map<KeyShortcut, ActionID> key_map(key_map_pairs.begin(), key_map_pairs.end());
+}) | ranges::to_vector | ranges::to<std::map<KeyShortcut, ActionID>>();
 
+// TODO what about going the other way? Get list of pressed KeyShortcuts.
+//  Then map from action_id to KeyShortcut. See `faust_editor::HandleInput`.
 bool is_shortcut_pressed(const KeyShortcut &key_shortcut) {
     const auto &[mod, key] = key_shortcut;
     return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));

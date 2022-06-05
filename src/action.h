@@ -124,7 +124,7 @@ Action create(std::size_t index) {
 template<typename T>
 constexpr size_t id = mp_find<Action, T>::value;
 
-static const std::map<ID, string> named{
+static const std::map<ID, string> name_for_id{
     {id<undo>,                            "Undo"},
     {id<redo>,                            "Redo"},
 
@@ -155,8 +155,31 @@ static const std::map<ID, string> named{
     {id<set_ui_running>,                  "Set UI running"},
 };
 
+static const std::map<ID, string> menu_label_for_id{
+    {id<show_open_project_dialog>, "Open project"},
+    {id<open_empty_project>,       "New project"},
+    {id<save_current_project>,     "Save project"},
+    {id<show_save_project_dialog>, "Save project as..."},
+};
+
+const std::map<ID, string> shortcut_for_id = {
+    {id<undo>,                     "cmd+z"},
+    {id<redo>,                     "shift+cmd+z"},
+    {id<open_empty_project>,       "cmd+n"},
+    {id<show_open_project_dialog>, "cmd+o"},
+    {id<save_current_project>,     "cmd+s"},
+    {id<open_default_project>,     "shift+cmd+o"},
+    {id<save_default_project>,     "shift+cmd+s"},
+};
+
 static ID get_id(const Action &action) { return action.index(); }
-static string get_name(const Action &action) { return named.at(get_id(action)); }
+static string get_name(const Action &action) { return name_for_id.at(get_id(action)); }
+
+// An action's menu label is its name, except for a few exceptions.
+static const char *get_menu_label(ID action_id) {
+    if (menu_label_for_id.contains(action_id)) return menu_label_for_id.at(action_id).c_str();
+    return name_for_id.at(action_id).c_str();
+}
 
 }
 

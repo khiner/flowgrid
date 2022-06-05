@@ -178,8 +178,8 @@ void draw_frame() {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New project", "Cmd+N")) q(open_empty_project{});
-            if (ImGui::MenuItem("Open project", "Cmd+O")) q(show_open_project_dialog{});
+            StatefulImGui::MenuItem(action::id<open_empty_project>);
+            StatefulImGui::MenuItem(action::id<show_open_project_dialog>);
 
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
@@ -191,15 +191,15 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save project", "Cmd+S", false, c.action_allowed(action::id<save_current_project>))) q(save_current_project{});
-            if (ImGui::MenuItem("Save project as...", nullptr, false, c.action_allowed(action::id<save_project>))) q(show_save_project_dialog{});
-            if (ImGui::MenuItem("Open default project", "Cmd+Shift+O", false, c.action_allowed(action::id<open_default_project>))) q(open_default_project{});
-            if (ImGui::MenuItem("Save default project", "Cmd+Shift+S", false, c.action_allowed(action::id<save_default_project>))) q(save_default_project{});
+            StatefulImGui::MenuItem(action::id<save_current_project>);
+            StatefulImGui::MenuItem(action::id<show_save_project_dialog>);
+            StatefulImGui::MenuItem(action::id<open_default_project>);
+            StatefulImGui::MenuItem(action::id<save_default_project>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Cmd+Z", false, c.action_allowed(action::id<undo>))) { q(undo{}); }
-            if (ImGui::MenuItem("Redo", "Cmd+Shift+Z", false, c.action_allowed(action::id<redo>))) { q(redo{}); }
+            StatefulImGui::MenuItem(action::id<undo>);
+            StatefulImGui::MenuItem(action::id<redo>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {

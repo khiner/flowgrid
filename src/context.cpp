@@ -258,6 +258,7 @@ bool Context::action_allowed(const ActionID action_id) const {
         case action::id<redo>: return can_redo();
         case action::id<actions::open_default_project>: return default_project_exists();
         case action::id<actions::save_project>:
+        case action::id<actions::show_save_project_dialog>:
         case action::id<actions::save_default_project>: return project_has_changes();
         case action::id<actions::save_current_project>: return can_save_current_project();
         default: return true;

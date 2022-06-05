@@ -72,3 +72,9 @@ bool StatefulImGui::ColorEdit4(const char *label, float col[4], ImGuiColorEditFl
     gestured();
     return edited;
 }
+
+void StatefulImGui::MenuItem(ActionID action_id) {
+    const char *menu_label = action::get_menu_label(action_id);
+    const char *shortcut = action::shortcut_for_id.contains(action_id) ? action::shortcut_for_id.at(action_id).c_str() : nullptr;
+    if (ImGui::MenuItem(menu_label, shortcut, false, c.action_allowed(action_id))) q(action::create(action_id));
+}

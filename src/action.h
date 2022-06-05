@@ -155,6 +155,7 @@ static const std::map<ID, string> name_for_id{
     {id<set_ui_running>,                  "Set UI running"},
 };
 
+// An action's menu label is its name, except for a few exceptions.
 static const std::map<ID, string> menu_label_for_id{
     {id<show_open_project_dialog>, "Open project"},
     {id<open_empty_project>,       "New project"},
@@ -175,7 +176,6 @@ const std::map<ID, string> shortcut_for_id = {
 static ID get_id(const Action &action) { return action.index(); }
 static string get_name(const Action &action) { return name_for_id.at(get_id(action)); }
 
-// An action's menu label is its name, except for a few exceptions.
 static const char *get_menu_label(ID action_id) {
     if (menu_label_for_id.contains(action_id)) return menu_label_for_id.at(action_id).c_str();
     return name_for_id.at(action_id).c_str();

@@ -138,6 +138,7 @@ upstream branch the fork is based on:
 
 * `imgui:docking`
 * `implot:master`
+* `ImGuiFileDialog:master`
 * `libsoundio:master`
 * `zep:master`
 

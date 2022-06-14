@@ -8,6 +8,7 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "ImGuiFileDialog.h"
+#include "file_dialog/ImGuiFileDialogDemo.h"
 #include "zep/stringutils.h"
 #include <range/v3/view.hpp>
 
@@ -306,7 +307,11 @@ UiContext create_ui() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
 
     render_context = create_render_context();
-    return create_ui_context(render_context);
+    const auto &uiContext = create_ui_context(render_context);
+
+    IGFD::InitializeDemo();
+
+    return uiContext;
 }
 
 // Main UI tick function
@@ -347,6 +352,7 @@ void tick_ui() {
 }
 
 void destroy_ui() {
+    IGFD::CleanupDemo();
     destroy_faust_editor();
     destroy_render_context(render_context);
 }

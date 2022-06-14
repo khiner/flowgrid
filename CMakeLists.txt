@@ -9,24 +9,24 @@ set(TRACY_ON_DEMAND OFF CACHE STRING "On-demand profiling" FORCE)
 
 add_subdirectory("lib")
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.h src/*.cpp
+file(
+    GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
-    lib/implot/implot.h lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_internal.h
-    lib/imgui_club/imgui_memory_editor/imgui_memory_editor.h
-    lib/implot/implot_demo.cpp
+    lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_demo.cpp
     lib/fmt/src/format.cc
-    )
+)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-include_directories(lib/faust/architecture)
-include_directories(lib/faust/compiler)
-include_directories(lib/zep/include)
-include_directories(lib/ImGuiFileDialog)
-include_directories(lib/implot)
-include_directories(lib/imgui_club/imgui_memory_editor)
-include_directories(lib/fmt/include)
-include_directories(lib/range-v3/include)
+include_directories(
+    lib/faust/architecture lib/faust/compiler
+    lib/zep/include
+    lib/ImGuiFileDialog
+    lib/implot
+    lib/imgui_club/imgui_memory_editor
+    lib/fmt/include
+    lib/range-v3/include
+)
 
 # See readme for plans with these libraries
 #include_directories(lib/concurrentqueue) # Not used atm.
@@ -39,3 +39,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAK
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 
 add_definitions(-DZEP_USE_SDL) # Needed for ctrl key to work with Zep
+add_definitions(-DCUSTOM_IMGUIFILEDIALOG_CONFIG="../../src/file_dialog/CustomImGuiFileDialogConfig.h") # Relative to `lib/ImGuiFileDialog`

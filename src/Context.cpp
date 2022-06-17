@@ -2,7 +2,7 @@
 
 #include "faust/dsp/llvm-dsp.h"
 #include "ui/StatefulFaustUi.h"
-#include "FileHelpers.h"
+#include "File.h"
 #include "Audio.h"
 #include "ImGuiFileDialog.h"
 //#include "generator/libfaust.h" // For the C++ backend

@@ -9,7 +9,7 @@
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
 #include "zep/tab_window.h"
-#include "../FileHelpers.h"
+#include "../File.h"
 
 using namespace Zep;
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <set>
-#include "json_type.h"
+#include "JsonType.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"
@@ -328,40 +328,40 @@ NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
     { Test, "test" },
 })
 
-JSON_TYPE(JsonPatchOp, path, op, value)
-JSON_TYPE(BidirectionalStateDiff, action_names, forward_patch, reverse_patch, system_time)
+JsonType(JsonPatchOp, path, op, value)
+JsonType(BidirectionalStateDiff, action_names, forward_patch, reverse_patch, system_time)
 
-JSON_TYPE(ImVec2, x, y)
-JSON_TYPE(ImVec4, w, x, y, z)
-JSON_TYPE(ImVec2ih, x, y)
+JsonType(ImVec2, x, y)
+JsonType(ImVec4, w, x, y, z)
+JsonType(ImVec2ih, x, y)
 
-JSON_TYPE(WindowData, name, visible)
+JsonType(WindowData, name, visible)
 
-JSON_TYPE(Audio::Faust::Editor, name, visible, file_name)
-JSON_TYPE(Audio::Faust, code, error, editor, log)
-JSON_TYPE(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
-JSON_TYPE(Audio, settings, faust)
+JsonType(Audio::Faust::Editor, name, visible, file_name)
+JsonType(Audio::Faust, code, error, editor, log)
+JsonType(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
+JsonType(Audio, settings, faust)
 
-JSON_TYPE(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
-JSON_TYPE(State::StateWindows, viewer, memory_editor, path_update_frequency)
+JsonType(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
+JsonType(State::StateWindows, viewer, memory_editor, path_update_frequency)
 
-JSON_TYPE(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
+JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
     LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale, AntiAliasedLines,
     AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
-JSON_TYPE(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
+JsonType(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, AntiAliasedLines, UseLocalTime, UseISO8601, Use24HourClock)
-JSON_TYPE(FlowGridStyle, Colors, FlashDurationSec)
-JSON_TYPE(Style, name, visible, imgui, implot, flowgrid)
+JsonType(FlowGridStyle, Colors, FlashDurationSec)
+JsonType(Style, name, visible, imgui, implot, flowgrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.
-JSON_TYPE(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
-JSON_TYPE(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
-JSON_TYPE(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
-JSON_TYPE(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
+JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
+JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
+JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
+JsonType(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
 
-JSON_TYPE(Processes::Process, running)
-JSON_TYPE(Processes, audio, ui)
+JsonType(Processes::Process, running)
+JsonType(Processes, audio, ui)
 
-JSON_TYPE(StateData, audio, style, imgui_settings, demo, metrics, state, processes);
+JsonType(StateData, audio, style, imgui_settings, demo, metrics, state, processes);

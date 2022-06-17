@@ -104,7 +104,7 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
 
 Context::Context() : state_json(_state) {
     if (fs::exists(preferences_path)) {
-        preferences = json::from_msgpack(read_file(preferences_path));
+        preferences = json::from_msgpack(File::read(preferences_path));
     } else {
         write_preferences_file();
     }
@@ -126,7 +126,7 @@ void Context::open_project(const fs::path &path) {
     const auto project_format = ProjectFormatForExtension.at(path.extension());
     if (project_format == None) return; // TODO log
 
-    const json &project_json = json::from_msgpack(read_file(path));
+    const json &project_json = json::from_msgpack(File::read(path));
     if (project_format == StateFormat) set_state_json(project_json);
     else set_diffs_json(project_json);
 
@@ -422,13 +422,13 @@ ProjectFormat get_project_format(const fs::path &path) {
 bool Context::write_project_file(const fs::path &path) const {
     const ProjectFormat format = get_project_format(path);
     if (format != None) {
-        return write_file(path, json::to_msgpack(get_project_json(format)));
+        return File::write(path, json::to_msgpack(get_project_json(format)));
     }
     // TODO log
     return false;
 }
 bool Context::write_preferences_file() const {
-    return write_file(preferences_path, json::to_msgpack(preferences));
+    return File::write(preferences_path, json::to_msgpack(preferences));
 }
 
 void Context::set_current_project_path(const fs::path &path) {

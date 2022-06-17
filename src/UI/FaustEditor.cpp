@@ -421,7 +421,7 @@ void Audio::Faust::Editor::draw() {
                 const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
                 if (is_save_file_dialog) {
                     const string buffer_contents = active_buffer->workingBuffer.string();
-                    if (!write_file(file_path, buffer_contents)) {
+                    if (!File::write(file_path, buffer_contents)) {
                         // TODO console error
                     }
                 } else {

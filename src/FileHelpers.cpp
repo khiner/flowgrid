@@ -5,7 +5,7 @@
 #include <vector>
 
 // TODO handle errors
-string read_file(const fs::path &path) {
+string File::read(const fs::path &path) {
     std::ifstream f(path, std::ios::in | std::ios::binary);
     const auto size = fs::file_size(path);
     string result(size, '\0');
@@ -13,7 +13,7 @@ string read_file(const fs::path &path) {
     return result;
 }
 
-bool write_file(const fs::path &path, const string &contents) {
+bool File::write(const fs::path &path, const string &contents) {
     std::fstream out_file;
     out_file.open(path, std::ios::out);
     if (out_file) {
@@ -25,7 +25,7 @@ bool write_file(const fs::path &path, const string &contents) {
     return false;
 }
 
-bool write_file(const fs::path &path, const MessagePackBytes &contents) {
+bool File::write(const fs::path &path, const MessagePackBytes &contents) {
     std::fstream out_file(path, std::ios::out | std::ios::binary);
     if (out_file) {
         out_file.write(reinterpret_cast<const char *>(contents.data()), std::streamsize(contents.size()));

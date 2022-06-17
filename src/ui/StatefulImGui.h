@@ -1,7 +1,7 @@
 #pragma once
 
-#include "state.h"
-#include "action.h"
+#include "../state.h"
+#include "../action.h"
 
 void dock_window(const Window &w, ImGuiID node_id);
 void gestured();

@@ -1,5 +1,5 @@
 #include "../context.h"
-#include "../stateful_imgui.h"
+#include "StatefulImGui.h"
 #include "../imgui_helpers.h"
 
 #include "implot_internal.h"

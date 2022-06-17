@@ -1,6 +1,6 @@
 #include "../context.h"
 #include "../imgui_helpers.h"
-#include "../stateful_imgui.h"
+#include "StatefulImGui.h"
 
 #include "imgui_memory_editor.h"
 

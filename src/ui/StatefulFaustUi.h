@@ -13,7 +13,7 @@
 #include "faust/gui/PathBuilder.h"
 #include "faust/gui/ValueConverter.h"
 
-#include "context.h"
+#include "../context.h"
 
 using uint = unsigned int;
 

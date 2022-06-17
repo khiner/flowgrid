@@ -1,7 +1,7 @@
 #include "context.h"
 
 #include "faust/dsp/llvm-dsp.h"
-#include "stateful_faust_ui.h"
+#include "ui/StatefulFaustUi.h"
 #include "file_helpers.h"
 #include "audio.h"
 #include "ImGuiFileDialog.h"

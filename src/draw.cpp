@@ -3,7 +3,7 @@
 #include <Tracy.hpp>
 #include "context.h"
 #include "draw.h"
-#include "stateful_imgui.h"
+#include "ui/StatefulImGui.h"
 #include "ui/FaustEditor.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal

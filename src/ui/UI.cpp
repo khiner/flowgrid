@@ -1,16 +1,16 @@
-#include <SDL.h>
-#include <SDL_opengl.h>
+#include "SDL.h"
+#include "SDL_opengl.h"
 #include <Tracy.hpp>
-#include "context.h"
-#include "draw.h"
-#include "ui/StatefulImGui.h"
-#include "ui/FaustEditor.h"
+#include "../context.h"
+#include "UI.h"
+#include "StatefulImGui.h"
+#include "FaustEditor.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
 #include "ImGuiFileDialog.h"
-#include "file_dialog/ImGuiFileDialogDemo.h"
+#include "../file_dialog/ImGuiFileDialogDemo.h"
 #include "zep/stringutils.h"
-#include <range/v3/view.hpp>
+#include "range/v3/view.hpp"
 
 /**md
 ## UI methods

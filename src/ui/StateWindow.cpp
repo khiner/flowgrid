@@ -188,7 +188,7 @@ void State::StateWindows::StateViewer::draw() {
     show_json_state_value_node("State", c.state_json, "/");
 }
 
-void StateData::StateWindows::draw() {
+void State::StateWindows::draw() {
     StatefulImGui::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
     StatefulImGui::DrawWindow(viewer, ImGuiWindowFlags_MenuBar);
     StatefulImGui::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);

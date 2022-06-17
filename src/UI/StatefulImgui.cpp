@@ -1,5 +1,5 @@
 #include "StatefulImGui.h"
-#include "../context.h"
+#include "../Context.h"
 
 void StatefulImGui::DrawWindow(Window &window, ImGuiWindowFlags flags) {
     const auto &name = window.name;

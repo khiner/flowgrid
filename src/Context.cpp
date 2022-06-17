@@ -1,9 +1,9 @@
-#include "context.h"
+#include "Context.h"
 
 #include "faust/dsp/llvm-dsp.h"
 #include "ui/StatefulFaustUi.h"
-#include "file_helpers.h"
-#include "audio.h"
+#include "FileHelpers.h"
+#include "Audio.h"
 #include "ImGuiFileDialog.h"
 //#include "generator/libfaust.h" // For the C++ backend
 

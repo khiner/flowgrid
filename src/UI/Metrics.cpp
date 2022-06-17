@@ -1,5 +1,5 @@
-#include "../context.h"
-#include "../imgui_helpers.h"
+#include "../Context.h"
+#include "../ImGuiHelpers.h"
 
 using namespace ImGui;
 

@@ -1,6 +1,6 @@
-#include "../state.h"
+#include "../State.h"
 #include "ImGuiFileDialog.h"
-#include "../file_dialog/ImGuiFileDialogDemo.h"
+#include "../FileDialog/ImGuiFileDialogDemo.h"
 
 void State::Demo::draw() {
     if (ImGui::BeginTabBar("##tabs")) {

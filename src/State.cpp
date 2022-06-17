@@ -1,4 +1,4 @@
-#include "state.h"
+#include "State.h"
 
 ImGuiSettings::ImGuiSettings(ImGuiContext *c) {
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members

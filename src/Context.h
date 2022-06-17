@@ -6,9 +6,9 @@
 #include <thread>
 #include <queue>
 
-#include "preferences.h"
-#include "state.h"
-#include "action.h"
+#include "Preferences.h"
+#include "State.h"
+#include "Action.h"
 //#include "diff_match_patch.h"
 
 namespace fs = std::filesystem;

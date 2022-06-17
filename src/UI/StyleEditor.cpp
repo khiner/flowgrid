@@ -1,6 +1,6 @@
-#include "../context.h"
+#include "../Context.h"
 #include "StatefulImGui.h"
-#include "../imgui_helpers.h"
+#include "../ImGuiHelpers.h"
 
 #include "implot_internal.h"
 

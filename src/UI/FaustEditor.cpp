@@ -1,5 +1,5 @@
 #include "FaustEditor.h"
-#include "../context.h"
+#include "../Context.h"
 
 #include "ImGuiFileDialog.h"
 
@@ -9,7 +9,7 @@
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
 #include "zep/tab_window.h"
-#include "../file_helpers.h"
+#include "../FileHelpers.h"
 
 using namespace Zep;
 

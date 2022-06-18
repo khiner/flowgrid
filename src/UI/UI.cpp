@@ -147,7 +147,8 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
-bool first_draw = true;
+static auto *file_dialog = ImGuiFileDialog::Instance();
+static bool first_draw = true;
 
 void draw_frame() {
     ZoneScoped
@@ -231,19 +232,19 @@ void draw_frame() {
 
         // TODO need to get custom vecs with math going
         const ImVec2 min_dialog_size = {ImGui::GetMainViewport()->Size.x / 2.0f, ImGui::GetMainViewport()->Size.y / 2.0f};
-        if (ImGuiFileDialog::Instance()->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
+        if (file_dialog->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
+            if (file_dialog->IsOk()) {
                 // TODO provide an option to save with undo state.
                 //   This file format would be a json list of diffs.
                 //   The file would generally be larger, and the load time would be slower,
                 //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
                 //   with full undo/redo history/position/etc.!
-                const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
+                const auto &file_path = file_dialog->GetFilePathName();
                 if (c.is_save_file_dialog) q(save_project{file_path});
                 else q(open_project{file_path});
             }
 
-            ImGuiFileDialog::Instance()->Close();
+            file_dialog->Close();
         }
     }
 

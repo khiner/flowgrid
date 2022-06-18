@@ -347,6 +347,7 @@ void zep_draw() {
 //    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
 }
 
+static auto *file_dialog = ImGuiFileDialog::Instance();
 static const string open_faust_file_dialog_key = "FaustFileDialog";
 
 /*
@@ -372,11 +373,11 @@ void Audio::Faust::Editor::draw() {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open DSP file")) {
                 is_save_file_dialog = false;
-                ImGuiFileDialog::Instance()->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "", 1);
+                file_dialog->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "", 1);
             }
             if (ImGui::MenuItem("Save DSP as...")) {
                 is_save_file_dialog = true;
-                ImGuiFileDialog::Instance()->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "my_dsp", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
+                file_dialog->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "my_dsp", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
             }
             ImGui::EndMenu();
         }
@@ -416,9 +417,9 @@ void Audio::Faust::Editor::draw() {
         ImGui::EndMenuBar();
 
         const auto min_dialog_size = toImVec2(toNVec2f(ImGui::GetMainViewport()->Size) / 2.0);
-        if (ImGuiFileDialog::Instance()->Display(open_faust_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
-                const auto &file_path = ImGuiFileDialog::Instance()->GetFilePathName();
+        if (file_dialog->Display(open_faust_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
+            if (file_dialog->IsOk()) {
+                const auto &file_path = file_dialog->GetFilePathName();
                 if (is_save_file_dialog) {
                     const string buffer_contents = active_buffer->workingBuffer.string();
                     if (!File::write(file_path, buffer_contents)) {
@@ -430,7 +431,7 @@ void Audio::Faust::Editor::draw() {
                 }
             }
 
-            ImGuiFileDialog::Instance()->Close();
+            file_dialog->Close();
         }
     }
 

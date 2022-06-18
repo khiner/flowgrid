@@ -108,13 +108,14 @@ inline bool RadioButtonLabeled_BitWise(
     return res;
 }
 
-ImGuiFileDialog *cfileDialog;
-ImGuiFileDialog fileDialog2;
-ImGuiFileDialog fileDialogEmbedded3;
+ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
+ImGuiFileDialog *cDialog;
+ImGuiFileDialog dialog2;
+ImGuiFileDialog dialogEmbedded3;
 
 void IGFD::InitializeDemo() {
 #ifdef USE_THUMBNAILS
-    ImGuiFileDialog::Instance()->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void
+    dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void
     {
         if (thumbnail_info && thumbnail_info->isReadyToUpload && thumbnail_info->textureFileDatas) {
             GLuint textureId = 0;
@@ -139,7 +140,7 @@ void IGFD::InitializeDemo() {
             thumbnail_info->isReadyToDisplay = true;
         }
     });
-    fileDialogEmbedded3.SetCreateThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info) -> void
+    dialogEmbedded3.SetCreateThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info) -> void
     {
         if (thumbnail_info && thumbnail_info->isReadyToUpload && thumbnail_info->textureFileDatas) {
             GLuint textureId = 0;
@@ -164,7 +165,7 @@ void IGFD::InitializeDemo() {
             thumbnail_info->isReadyToDisplay = true;
         }
     });
-    ImGuiFileDialog::Instance()->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
+    dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
     {
         if (thumbnail_info)
         {
@@ -173,7 +174,7 @@ void IGFD::InitializeDemo() {
             glFinish();
         }
     });
-    fileDialogEmbedded3.SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
+    dialogEmbedded3.SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
     {
         if (thumbnail_info)
         {
@@ -193,50 +194,50 @@ void IGFD::InitializeDemo() {
     ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15.0f, &icons_config, icons_ranges);
 
     // Singleton access
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", ImVec4(1.0f, 1.0f, 0.0f, 0.9f)); // use a regex
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, ImVec4(0.5f, 1.0f, 0.9f, 0.9f), ICON_IGFD_FOLDER); // for all dirs
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", ImVec4(0.1f, 0.5f, 0.5f, 0.9f), ICON_IGFD_ADD);
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, ImVec4(0.2f, 0.9f, 0.2f, 0.9f), ICON_IGFD_FILE); // for all link files
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FOLDER); // for all link dirs
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FILE); // for all link files
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.5f, 0.8f, 0.5f, 0.9f), ICON_IGFD_SAVE);
+    dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", ImVec4(1.0f, 1.0f, 0.0f, 0.9f)); // use a regex
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, ImVec4(0.5f, 1.0f, 0.9f, 0.9f), ICON_IGFD_FOLDER); // for all dirs
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", ImVec4(0.1f, 0.5f, 0.5f, 0.9f), ICON_IGFD_ADD);
+    dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, ImVec4(0.2f, 0.9f, 0.2f, 0.9f), ICON_IGFD_FILE); // for all link files
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FOLDER); // for all link dirs
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FILE); // for all link files
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.5f, 0.8f, 0.5f, 0.9f), ICON_IGFD_SAVE);
 
     // Multi dialog instance behavior
-    fileDialog2.SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
-    fileDialog2.SetFileStyle(IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f));
-    fileDialog2.SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
-    fileDialog2.SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
-    fileDialog2.SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    fileDialog2.SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
-    fileDialog2.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
+    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
+    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f));
+    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
+    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
+    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
+    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
+    dialog2.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
 
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f));
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
-    fileDialogEmbedded3.SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f));
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
+    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
 
     // C interface
-    cfileDialog = IGFD_Create();
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC, nullptr); // add an icon for the filter type
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]", nullptr); // add an text for a filter type
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC, nullptr);
-    IGFD_SetFileStyle(cfileDialog, IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK, nullptr);
+    cDialog = IGFD_Create();
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f), "", nullptr);
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f), "", nullptr);
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC, nullptr); // add an icon for the filter type
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]", nullptr); // add an text for a filter type
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC, nullptr);
+    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK, nullptr);
 
 #ifdef USE_BOOKMARK
     // Load bookmarks
@@ -244,7 +245,7 @@ void IGFD::InitializeDemo() {
     if (docFile_1.is_open()) {
         std::stringstream strStream;
         strStream << docFile_1.rdbuf();//read the file
-        ImGuiFileDialog::Instance()->DeserializeBookmarks(strStream.str());
+        dialog->DeserializeBookmarks(strStream.str());
         docFile_1.close();
     }
 
@@ -252,7 +253,7 @@ void IGFD::InitializeDemo() {
     if (docFile_2.is_open()) {
         std::stringstream strStream;
         strStream << docFile_2.rdbuf();//read the file
-        fileDialog2.DeserializeBookmarks(strStream.str());
+        dialog2.DeserializeBookmarks(strStream.str());
         docFile_2.close();
     }
 
@@ -261,12 +262,12 @@ void IGFD::InitializeDemo() {
     if (docFile_c.is_open()) {
         std::stringstream strStream;
         strStream << docFile_c.rdbuf();//read the file
-        IGFD_DeserializeBookmarks(cfileDialog, strStream.str().c_str());
+        IGFD_DeserializeBookmarks(cDialog, strStream.str().c_str());
         docFile_c.close();
     }
 
     // Add bookmark by code
-    ImGuiFileDialog::Instance()->AddBookmark("Current dir", ".");
+    dialog->AddBookmark("Current dir", ".");
 #endif
 }
 
@@ -282,21 +283,21 @@ void IGFD::ShowDemo() {
     if (ImGui::Button("R##resetflashlifetime"))
     {
         flashingAttenuationInSeconds = 1.0f;
-        ImGuiFileDialog::Instance()->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
-        fileDialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
+        dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
+        dialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
 
         // c interface
-        IGFD_SetFlashingAttenuationInSeconds(cfileDialog, flashingAttenuationInSeconds);
+        IGFD_SetFlashingAttenuationInSeconds(cDialog, flashingAttenuationInSeconds);
     }
     ImGui::SameLine();
     ImGui::PushItemWidth(200);
     if (ImGui::SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.0f))
     {
-        ImGuiFileDialog::Instance()->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
-        fileDialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
+        dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
+        dialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
 
         // c interface
-        IGFD_SetFlashingAttenuationInSeconds(cfileDialog, flashingAttenuationInSeconds);
+        IGFD_SetFlashingAttenuationInSeconds(cDialog, flashingAttenuationInSeconds);
     }
     ImGui::PopItemWidth();
 #endif
@@ -347,66 +348,66 @@ void IGFD::ShowDemo() {
     ImGui::Text("Singleton access:");
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
         const char *filters = ".*,.cpp,.h,.hpp";
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
-        else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
+        if (standardDialogMode) dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
+        else dialog->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with collections of filters")) {
         const char *filters = "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md";
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
-        else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
+        if (standardDialogMode) dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
+        else dialog->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
         const char *filters = "Regex Custom*.h{(Custom.+[.]h)}";
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a File", filters, ".", "", 1, nullptr, flags);
-        else ImGuiFileDialog::Instance()->OpenModal("ChooseFileDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a File", filters, ".", "", 1, nullptr, flags);
+        if (standardDialogMode) dialog->OpenDialog("ChooseFileDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a File", filters, ".", "", 1, nullptr, flags);
+        else dialog->OpenModal("ChooseFileDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a File", filters, ".", "", 1, nullptr, flags);
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
         const char *filters = ".*,.cpp,.h,.hpp";
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 5, nullptr, flags);
-        else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 5, nullptr, flags);
+        if (standardDialogMode) dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 5, nullptr, flags);
+        else dialog->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 5, nullptr, flags);
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
         const char *filters = ".*,.cpp,.h,.hpp";
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 0, nullptr, flags);
-        else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 0, nullptr, flags);
+        if (standardDialogMode) dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 0, nullptr, flags);
+        else dialog->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 0, nullptr, flags);
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with last file path name")) {
         const char *filters = ".*,.cpp,.h,.hpp";
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, filters, filePathName, 1, nullptr, flags);
-        else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFile, filters, filePathName, 1, nullptr, flags);
+        if (standardDialogMode) dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, filePathName, 1, nullptr, flags);
+        else dialog->OpenModal(chooseFileDialogKey, chooseFile, filters, filePathName, 1, nullptr, flags);
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open all file types with \".*\" filter")) {
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, ".*", ".", "", 1, nullptr, flags);
-        else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFile, ".*", ".", "", 1, nullptr, flags);
+        if (standardDialogMode) dialog->OpenDialog(chooseFileDialogKey, chooseFile, ".*", ".", "", 1, nullptr, flags);
+        else dialog->OpenModal(chooseFileDialogKey, chooseFile, ".*", ".", "", 1, nullptr, flags);
     }
     auto saveFileUserData = IGFDUserDatas("SaveFile");
     if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
         const char *filters = "C++ File (*.cpp){.cpp}";
         if (standardDialogMode)
-            ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFileSave, filters,
+            dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters,
                 ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
                 saveFileUserData, flags);
         else
-            ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFileSave, filters,
+            dialog->OpenModal(chooseFileDialogKey, chooseFileSave, filters,
                 ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
                 saveFileUserData, flags);
     }
     if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
         const char *filters = "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}";
-        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);
-        else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);
+        if (standardDialogMode) dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);
+        else dialog->OpenModal(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);
     }
 
     ImGui::Text("Other instance (multi dialog demo):");
 
     // Let filters be null for open directory chooser.
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open directory dialog")) {
-        if (standardDialogMode)fileDialog2.OpenDialog("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", 1, nullptr, flags);
-        else fileDialog2.OpenModal("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", 1, nullptr, flags);
+        if (standardDialogMode)dialog2.OpenDialog("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", 1, nullptr, flags);
+        else dialog2.OpenModal("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", 1, nullptr, flags);
     }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN "Open directory dialog with a selection of 5 items")) {
-        if (standardDialogMode) fileDialog2.OpenDialog("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", "", 5, nullptr, flags);
-        else fileDialog2.OpenModal("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", "", 5, nullptr, flags);
+    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open directory dialog with a selection of 5 items")) {
+        if (standardDialogMode) dialog2.OpenDialog("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", "", 5, nullptr, flags);
+        else dialog2.OpenModal("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", "", 5, nullptr, flags);
     }
 
     ImGui::Separator();
@@ -414,14 +415,14 @@ void IGFD::ShowDemo() {
     ImGui::Text("C instance demo:");
     if (ImGui::Button("C " ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
         const char *filters = "C++ File (*.cpp){.cpp}";
-        if (standardDialogMode) IGFD_OpenPaneDialog(cfileDialog, chooseFileDialogKey, chooseFileSave, filters, ".", "", &InfosPane, 350, 1, (void *) ("SaveFile"), flags);
-        else IGFD_OpenPaneModal(cfileDialog, chooseFileDialogKey, chooseFileSave, filters, ".", "", &InfosPane, 350, 1, (void *) ("SaveFile"), flags);
+        if (standardDialogMode) IGFD_OpenPaneDialog(cDialog, chooseFileDialogKey, chooseFileSave, filters, ".", "", &InfosPane, 350, 1, (void *) ("SaveFile"), flags);
+        else IGFD_OpenPaneModal(cDialog, chooseFileDialogKey, chooseFileSave, filters, ".", "", &InfosPane, 350, 1, (void *) ("SaveFile"), flags);
     }
 
     ImGui::Separator();
 
     ImGui::Text("Embedded dialog:");
-    fileDialogEmbedded3.OpenDialog("embedded", "Select file", ".*", "", -1, nullptr,
+    dialogEmbedded3.OpenDialog("embedded", "Select file", ".*", "", -1, nullptr,
         ImGuiFileDialogFlags_NoDialog |
 #ifdef USE_BOOKMARK
             ImGuiFileDialogFlags_DisableBookmarkMode |
@@ -429,22 +430,22 @@ void IGFD::ShowDemo() {
             ImGuiFileDialogFlags_DisableCreateDirectoryButton | ImGuiFileDialogFlags_ReadOnlyFileNameField);
 
     // When embedded, `minSize` does nothing. Only `maxSize` can size the dialog frame.
-    if (fileDialogEmbedded3.Display("embedded", ImGuiWindowFlags_NoCollapse, ImVec2(0, 0), ImVec2(0, 350))) {
-        if (fileDialogEmbedded3.IsOk()) {
-            filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-            filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-            filter = ImGuiFileDialog::Instance()->GetCurrentFilter();
+    if (dialogEmbedded3.Display("embedded", ImGuiWindowFlags_NoCollapse, ImVec2(0, 0), ImVec2(0, 350))) {
+        if (dialogEmbedded3.IsOk()) {
+            filePathName = dialog->GetFilePathName();
+            filePath = dialog->GetCurrentPath();
+            filter = dialog->GetCurrentFilter();
             // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            if (ImGuiFileDialog::Instance()->GetUserDatas()) {
-                userData = string((const char *) ImGuiFileDialog::Instance()->GetUserDatas());
+            if (dialog->GetUserDatas()) {
+                userData = string((const char *) dialog->GetUserDatas());
             }
-            auto sel = ImGuiFileDialog::Instance()->GetSelection(); // Multi-selection
+            auto sel = dialog->GetSelection(); // Multi-selection
             selection.clear();
             for (const auto &s: sel) {
                 selection.emplace_back(s.first, s.second);
             }
         }
-        fileDialogEmbedded3.Close();
+        dialogEmbedded3.Close();
     }
 
     ImGui::Separator();
@@ -463,54 +464,54 @@ void IGFD::ShowDemo() {
     //   minSize => 0,0
     //   maxSize => FLT_MAX, FLT_MAX (defined is float.h)
 
-    if (ImGuiFileDialog::Instance()->Display(chooseFileDialogKey, ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
-        if (ImGuiFileDialog::Instance()->IsOk()) {
-            filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-            filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-            filter = ImGuiFileDialog::Instance()->GetCurrentFilter();
+    if (dialog->Display(chooseFileDialogKey, ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
+        if (dialog->IsOk()) {
+            filePathName = dialog->GetFilePathName();
+            filePath = dialog->GetCurrentPath();
+            filter = dialog->GetCurrentFilter();
             // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            if (ImGuiFileDialog::Instance()->GetUserDatas()) {
-                userData = string((const char *) ImGuiFileDialog::Instance()->GetUserDatas());
+            if (dialog->GetUserDatas()) {
+                userData = string((const char *) dialog->GetUserDatas());
             }
-            auto sel = ImGuiFileDialog::Instance()->GetSelection(); // Multi-selection
+            auto sel = dialog->GetSelection(); // Multi-selection
             selection.clear();
             for (const auto &s: sel) {
                 selection.emplace_back(s.first, s.second);
             }
         }
-        ImGuiFileDialog::Instance()->Close();
+        dialog->Close();
     }
 
-    if (fileDialog2.Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
-        if (fileDialog2.IsOk()) {
-            filePathName = fileDialog2.GetFilePathName();
-            filePath = fileDialog2.GetCurrentPath();
-            filter = fileDialog2.GetCurrentFilter();
+    if (dialog2.Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
+        if (dialog2.IsOk()) {
+            filePathName = dialog2.GetFilePathName();
+            filePath = dialog2.GetCurrentPath();
+            filter = dialog2.GetCurrentFilter();
             // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            if (fileDialog2.GetUserDatas()) {
-                userData = string((const char *) fileDialog2.GetUserDatas());
+            if (dialog2.GetUserDatas()) {
+                userData = string((const char *) dialog2.GetUserDatas());
             }
-            auto sel = fileDialog2.GetSelection(); // multiselection
+            auto sel = dialog2.GetSelection(); // multiselection
             selection.clear();
             for (const auto &s: sel) {
                 selection.emplace_back(s.first, s.second);
             }
         }
-        fileDialog2.Close();
+        dialog2.Close();
     }
 
-    if (IGFD_DisplayDialog(cfileDialog, chooseFileDialogKey, ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
-        if (IGFD_IsOk(cfileDialog)) {
-            char *cfilePathName = IGFD_GetFilePathName(cfileDialog);
+    if (IGFD_DisplayDialog(cDialog, chooseFileDialogKey, ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
+        if (IGFD_IsOk(cDialog)) {
+            char *cfilePathName = IGFD_GetFilePathName(cDialog);
             if (cfilePathName) filePathName = cfilePathName;
-            char *cfilePath = IGFD_GetCurrentPath(cfileDialog);
+            char *cfilePath = IGFD_GetCurrentPath(cDialog);
             if (cfilePath) filePath = cfilePath;
-            char *cfilter = IGFD_GetCurrentFilter(cfileDialog);
+            char *cfilter = IGFD_GetCurrentFilter(cDialog);
             if (cfilter) filter = cfilter;
             // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            void *cUserData = IGFD_GetUserDatas(cfileDialog);
+            void *cUserData = IGFD_GetUserDatas(cDialog);
             if (cUserData) userData = (const char *) cUserData;
-            IGFD_Selection cSelection = IGFD_GetSelection(cfileDialog); // Multi-selection
+            IGFD_Selection cSelection = IGFD_GetSelection(cDialog); // Multi-selection
 
             selection.clear();
             for (size_t i = 0; i < cSelection.count; i++) {
@@ -525,7 +526,7 @@ void IGFD::ShowDemo() {
             delete[] cfilter;
             IGFD_Selection_DestroyContent(&cSelection);
         }
-        IGFD_CloseDialog(cfileDialog);
+        IGFD_CloseDialog(cDialog);
     }
 
     ImGui::Separator();
@@ -575,30 +576,30 @@ void IGFD::ShowDemo() {
 
 void IGFD::CleanupDemo() {
 #ifdef USE_THUMBNAILS
-    ImGuiFileDialog::Instance()->ManageGPUThumbnails();
+    dialog->ManageGPUThumbnails();
     fileDialogEmbedded3.ManageGPUThumbnails();
 #endif
 
 #ifdef USE_BOOKMARK
     // Remove bookmark
-    ImGuiFileDialog::Instance()->RemoveBookmark("Current dir");
+    dialog->RemoveBookmark("Current dir");
 
     // Save bookmarks dialog 1
     std::ofstream configFileWriter_1("bookmarks_1.conf", std::ios::out);
     if (!configFileWriter_1.bad()) {
-        configFileWriter_1 << ImGuiFileDialog::Instance()->SerializeBookmarks();
+        configFileWriter_1 << dialog->SerializeBookmarks();
         configFileWriter_1.close();
     }
     // Save bookmarks dialog 2
     std::ofstream configFileWriter_2("bookmarks_2.conf", std::ios::out);
     if (!configFileWriter_2.bad()) {
-        configFileWriter_2 << fileDialog2.SerializeBookmarks();
+        configFileWriter_2 << dialog2.SerializeBookmarks();
         configFileWriter_2.close();
     }
     // Save bookmarks dialog c interface
     std::ofstream configFileWriter_c("bookmarks_c.conf", std::ios::out);
     if (!configFileWriter_c.bad()) {
-        if (char *s = IGFD_SerializeBookmarks(cfileDialog, true)) {
+        if (char *s = IGFD_SerializeBookmarks(cDialog, true)) {
             configFileWriter_c << s;
             configFileWriter_c.close();
         }

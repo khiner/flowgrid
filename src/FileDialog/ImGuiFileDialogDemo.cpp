@@ -109,7 +109,6 @@ inline bool RadioButtonLabeled_BitWise(
 }
 
 ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
-ImGuiFileDialog *cDialog;
 ImGuiFileDialog dialog2;
 ImGuiFileDialog dialogEmbedded3;
 
@@ -227,18 +226,6 @@ void IGFD::InitializeDemo() {
     dialogEmbedded3.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
     dialogEmbedded3.SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
 
-    // C interface
-    cDialog = IGFD_Create();
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f), "", nullptr);
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC, nullptr); // add an icon for the filter type
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]", nullptr); // add an text for a filter type
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC, nullptr);
-    IGFD_SetFileStyle(cDialog, IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK, nullptr);
-
 #ifdef USE_BOOKMARK
     // Load bookmarks
     std::ifstream docFile_1("bookmarks_1.conf", std::ios::in);
@@ -257,15 +244,6 @@ void IGFD::InitializeDemo() {
         docFile_2.close();
     }
 
-    // C interface
-    std::ifstream docFile_c("bookmarks_c.conf", std::ios::in);
-    if (docFile_c.is_open()) {
-        std::stringstream strStream;
-        strStream << docFile_c.rdbuf();//read the file
-        IGFD_DeserializeBookmarks(cDialog, strStream.str().c_str());
-        docFile_c.close();
-    }
-
     // Add bookmark by code
     dialog->AddBookmark("Current dir", ".");
 #endif
@@ -280,27 +258,20 @@ void IGFD::ShowDemo() {
 
 #ifdef USE_EXPLORATION_BY_KEYS
     static float flashingAttenuationInSeconds = 1.0f;
-    if (ImGui::Button("R##resetflashlifetime"))
-    {
+    if (ImGui::Button("R##resetflashlifetime")) {
         flashingAttenuationInSeconds = 1.0f;
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
         dialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
-
-        // c interface
-        IGFD_SetFlashingAttenuationInSeconds(cDialog, flashingAttenuationInSeconds);
     }
     ImGui::SameLine();
     ImGui::PushItemWidth(200);
-    if (ImGui::SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.0f))
-    {
+    if (ImGui::SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.0f)) {
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
         dialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
-
-        // c interface
-        IGFD_SetFlashingAttenuationInSeconds(cDialog, flashingAttenuationInSeconds);
     }
     ImGui::PopItemWidth();
 #endif
+
     static bool UseWindowConstraints = true;
     ImGui::Separator();
     ImGui::Checkbox("Use file dialog constraint", &UseWindowConstraints);
@@ -410,17 +381,6 @@ void IGFD::ShowDemo() {
         else dialog2.OpenModal("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", "", 5, nullptr, flags);
     }
 
-    ImGui::Separator();
-
-    ImGui::Text("C instance demo:");
-    if (ImGui::Button("C " ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
-        const char *filters = "C++ File (*.cpp){.cpp}";
-        if (standardDialogMode) IGFD_OpenPaneDialog(cDialog, chooseFileDialogKey, chooseFileSave, filters, ".", "", &InfosPane, 350, 1, (void *) ("SaveFile"), flags);
-        else IGFD_OpenPaneModal(cDialog, chooseFileDialogKey, chooseFileSave, filters, ".", "", &InfosPane, 350, 1, (void *) ("SaveFile"), flags);
-    }
-
-    ImGui::Separator();
-
     ImGui::Text("Embedded dialog:");
     dialogEmbedded3.OpenDialog("embedded", "Select file", ".*", "", -1, nullptr,
         ImGuiFileDialogFlags_NoDialog |
@@ -500,35 +460,6 @@ void IGFD::ShowDemo() {
         dialog2.Close();
     }
 
-    if (IGFD_DisplayDialog(cDialog, chooseFileDialogKey, ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
-        if (IGFD_IsOk(cDialog)) {
-            char *cfilePathName = IGFD_GetFilePathName(cDialog);
-            if (cfilePathName) filePathName = cfilePathName;
-            char *cfilePath = IGFD_GetCurrentPath(cDialog);
-            if (cfilePath) filePath = cfilePath;
-            char *cfilter = IGFD_GetCurrentFilter(cDialog);
-            if (cfilter) filter = cfilter;
-            // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            void *cUserData = IGFD_GetUserDatas(cDialog);
-            if (cUserData) userData = (const char *) cUserData;
-            IGFD_Selection cSelection = IGFD_GetSelection(cDialog); // Multi-selection
-
-            selection.clear();
-            for (size_t i = 0; i < cSelection.count; i++) {
-                string _fileName = cSelection.table[i].fileName;
-                string _filePathName = cSelection.table[i].filePathName;
-                selection.emplace_back(_fileName, _filePathName);
-            }
-
-            // Destroy
-            delete[] cfilePathName;
-            delete[] cfilePath;
-            delete[] cfilter;
-            IGFD_Selection_DestroyContent(&cSelection);
-        }
-        IGFD_CloseDialog(cDialog);
-    }
-
     ImGui::Separator();
 
     ImGui::Text("ImGuiFileDialog returns:\n");
@@ -595,14 +526,6 @@ void IGFD::CleanupDemo() {
     if (!configFileWriter_2.bad()) {
         configFileWriter_2 << dialog2.SerializeBookmarks();
         configFileWriter_2.close();
-    }
-    // Save bookmarks dialog c interface
-    std::ofstream configFileWriter_c("bookmarks_c.conf", std::ios::out);
-    if (!configFileWriter_c.bad()) {
-        if (char *s = IGFD_SerializeBookmarks(cDialog, true)) {
-            configFileWriter_c << s;
-            configFileWriter_c.close();
-        }
     }
 #endif
 }

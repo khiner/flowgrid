@@ -192,8 +192,8 @@ void IGFD::InitializeDemo() {
     ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15.0f, &icons_config, icons_ranges);
 
     // Singleton access
+    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", ImVec4(1.0f, 1.0f, 0.0f, 0.9f)); // use a regex
     ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
-    ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f));
     ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
     ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
     ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
@@ -354,6 +354,11 @@ void IGFD::ShowDemo() {
         if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
         else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
     }
+    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
+        const char *filters = "Regex Custom*.h{(Custom.+[.]h)}";
+        if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a File", filters, ".", "", 1, nullptr, flags);
+        else ImGuiFileDialog::Instance()->OpenModal("ChooseFileDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a File", filters, ".", "", 1, nullptr, flags);
+    }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
         const char *filters = ".*,.cpp,.h,.hpp";
         if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 5, nullptr, flags);
@@ -385,7 +390,7 @@ void IGFD::ShowDemo() {
                 ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
                 saveFileUserData, flags);
     }
-    if (ImGui::Button(ICON_IGFD_SAVE "Save file dialog with confirm-overwrite dialog if file exists")) {
+    if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
         const char *filters = "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}";
         if (standardDialogMode) ImGuiFileDialog::Instance()->OpenDialog(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);
         else ImGuiFileDialog::Instance()->OpenModal(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);

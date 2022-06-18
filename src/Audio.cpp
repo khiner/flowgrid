@@ -5,7 +5,7 @@
 #include <soundio/soundio.h>
 
 #include "Context.h"
-#include "ui/StatefulImGui.h"
+#include "UI/StatefulImGui.h"
 
 static int prioritized_sample_rates[] = {
     48000,

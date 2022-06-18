@@ -269,7 +269,7 @@ const std::map<string, ImGuiKeyModFlags> mod_keys{
 // Example: 'shift+cmd+s'
 // **Case-sensitive. `shortcut` must be lowercase.**
 std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
-    std::vector<std::string> tokens;
+    std::vector<string> tokens;
     Zep::string_split(shortcut, "+", tokens);
     if (tokens.empty()) return {};
 

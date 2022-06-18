@@ -10,7 +10,8 @@
 #include "ImGuiFileDialogDemo.h"
 
 #include <sstream>
-#include <string>
+
+using std::string;
 
 static bool canValidateDialog = false;
 
@@ -270,11 +271,11 @@ void IGFD::InitializeDemo() {
 }
 
 void IGFD::ShowDemo() {
-    static std::string filePathName;
-    static std::string filePath;
-    static std::string filter;
-    static std::string userData;
-    static std::vector<std::pair<std::string, std::string>> selection = {};
+    static string filePathName;
+    static string filePath;
+    static string filter;
+    static string userData;
+    static std::vector<std::pair<string, string>> selection = {};
 
 #ifdef USE_EXPLORATION_BY_KEYS
     static float flashingAttenuationInSeconds = 1.0f;
@@ -435,7 +436,7 @@ void IGFD::ShowDemo() {
             filter = ImGuiFileDialog::Instance()->GetCurrentFilter();
             // Convert from string because a string was passed as a `userData`, but it can be what you want.
             if (ImGuiFileDialog::Instance()->GetUserDatas()) {
-                userData = std::string((const char *) ImGuiFileDialog::Instance()->GetUserDatas());
+                userData = string((const char *) ImGuiFileDialog::Instance()->GetUserDatas());
             }
             auto sel = ImGuiFileDialog::Instance()->GetSelection(); // Multi-selection
             selection.clear();
@@ -469,7 +470,7 @@ void IGFD::ShowDemo() {
             filter = ImGuiFileDialog::Instance()->GetCurrentFilter();
             // Convert from string because a string was passed as a `userData`, but it can be what you want.
             if (ImGuiFileDialog::Instance()->GetUserDatas()) {
-                userData = std::string((const char *) ImGuiFileDialog::Instance()->GetUserDatas());
+                userData = string((const char *) ImGuiFileDialog::Instance()->GetUserDatas());
             }
             auto sel = ImGuiFileDialog::Instance()->GetSelection(); // Multi-selection
             selection.clear();
@@ -487,7 +488,7 @@ void IGFD::ShowDemo() {
             filter = fileDialog2.GetCurrentFilter();
             // Convert from string because a string was passed as a `userData`, but it can be what you want.
             if (fileDialog2.GetUserDatas()) {
-                userData = std::string((const char *) fileDialog2.GetUserDatas());
+                userData = string((const char *) fileDialog2.GetUserDatas());
             }
             auto sel = fileDialog2.GetSelection(); // multiselection
             selection.clear();
@@ -513,8 +514,8 @@ void IGFD::ShowDemo() {
 
             selection.clear();
             for (size_t i = 0; i < cSelection.count; i++) {
-                std::string _fileName = cSelection.table[i].fileName;
-                std::string _filePathName = cSelection.table[i].filePathName;
+                string _fileName = cSelection.table[i].fileName;
+                string _filePathName = cSelection.table[i].filePathName;
                 selection.emplace_back(_fileName, _filePathName);
             }
 
@@ -535,7 +536,7 @@ void IGFD::ShowDemo() {
         ImGui::Text("GetFilePathName(): %s", filePathName.c_str());
         ImGui::Text("GetFilePath(): %s", filePath.c_str());
         ImGui::Text("GetCurrentFilter(): %s", filter.c_str());
-        ImGui::Text("GetUserDatas() (was a `std::string` in this sample): %s", userData.c_str());
+        ImGui::Text("GetUserDatas() (was a `string` in this sample): %s", userData.c_str());
         ImGui::Text("GetSelection(): ");
         ImGui::Indent();
         {

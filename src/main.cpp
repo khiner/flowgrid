@@ -23,6 +23,7 @@ int main(int, const char **) {
     auto ui_context = create_ui();
     c.ui = &ui_context;
     c.update_processes();
+    c.update_faust_context();
 
     tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
     tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.

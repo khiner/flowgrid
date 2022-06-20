@@ -74,8 +74,6 @@ struct FaustContext {
     FAUSTFLOAT get_sample(int channel, int frame) const;
 };
 
-std::unique_ptr<FaustContext> faust;
-
 void FaustContext::compute(int frame_count) const {
     if (buffers) {
         if (frame_count > buffers->num_frames) {
@@ -94,6 +92,7 @@ FAUSTFLOAT FaustContext::get_sample(int channel, int frame) const {
     return buffers->output[std::min(channel, buffers->num_output_channels - 1)][frame];
 }
 
+std::unique_ptr<FaustContext> faust;
 void Context::compute_frames(int frame_count) const { // NOLINT(readability-convert-member-functions-to-static)
     if (faust) faust->compute(frame_count);
 }
@@ -146,10 +145,6 @@ bool Context::default_project_exists() {
 void Context::open_default_project() {
     open_project(default_project_path);
 }
-void Context::show_open_project_dialog() {
-    is_save_file_dialog = false;
-    ImGuiFileDialog::Instance()->OpenDialog(open_file_dialog_key, "Choose file", AllProjectExtensions.c_str(), ".");
-}
 
 bool Context::project_has_changes() const {
     return current_action_index != current_project_saved_action_index;
@@ -177,19 +172,6 @@ bool Context::save_default_project() {
 bool Context::save_current_project() {
     return can_save_current_project() && save_project(current_project_path.value());
 }
-void Context::show_save_project_dialog() {
-    is_save_file_dialog = true;
-    ImGuiFileDialog::Instance()->OpenDialog(
-        open_file_dialog_key,
-        "Choose file",
-        AllProjectExtensions.c_str(),
-        ".",
-        "my_flowgrid_project",
-        1,
-        nullptr,
-        ImGuiFileDialogFlags_ConfirmOverwrite
-    );
-}
 
 bool Context::clear_preferences() {
     preferences.recently_opened_paths.clear();
@@ -204,6 +186,7 @@ void Context::set_state_json(const json &new_state_json) {
     ui_s = _state; // Update the UI-copy of the state to reflect.
 
     update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+    update_faust_context();
 }
 
 void Context::set_diffs_json(const json &new_diffs_json) {
@@ -238,14 +221,12 @@ void Context::on_action(const Action &action) {
         [&](const actions::open_project &a) { open_project(a.path); },
         [&](const actions::open_empty_project &) { open_empty_project(); },
         [&](const actions::open_default_project &) { open_default_project(); },
-        [&](const actions::show_open_project_dialog &) { show_open_project_dialog(); },
 
         [&](const actions::save_project &a) { save_project(a.path); },
         [&](const actions::save_default_project &) { save_default_project(); },
         [&](const actions::save_current_project &) { save_current_project(); },
-        [&](const actions::show_save_project_dialog &) { show_save_project_dialog(); },
 
-        [&](const auto &) { // other action
+        [&](const auto &) { // Remaining actions
             update(action);
             if (!gesturing) end_gesture();
         }
@@ -302,6 +283,20 @@ void Context::update_ui_context(UiContextFlags flags) {
     }
 }
 
+void Context::update_faust_context() {
+    has_new_faust_code = true;
+
+    faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, _state.audio.faust.error);
+    if (faust->dsp) {
+        StatefulFaustUI faust_ui;
+        faust->dsp->buildUserInterface(&faust_ui);
+//                faust->dsp->metadata(&faust_ui); // version/author/licence/etc
+//                _s.audio.faust.json = faust_ui.
+    } else {
+//                _s.audio.faust.json = "";
+    }
+}
+
 bool audio_running = false;
 
 void Context::update_processes() {
@@ -332,6 +327,12 @@ void Context::clear_undo() {
 void Context::update(const Action &action) {
     auto &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(visitor{
+        [&](const show_open_project_dialog &) { _s.file.dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
+        [&](const show_save_project_dialog &) { _s.file.dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_open_faust_file_dialog &) { _s.file.dialog = {"Choose file", FaustDspFileExtension, "."}; },
+        [&](const show_save_faust_file_dialog &) { _s.file.dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const close_file_dialog &) { _s.file.dialog.visible = false; },
+
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
         // since the action will be initiated by ImGui itself, whereas the style
         // editors don't update the ImGui/ImPlot contexts themselves.
@@ -352,20 +353,9 @@ void Context::update(const Action &action) {
         [&](const set_state_viewer_label_mode &a) { _s.state.viewer.label_mode = a.label_mode; },
 
         // Audio
-        [&](const set_faust_code &a) {
-            _s.audio.faust.code = a.text;
-
-            // TODO move this side-effect to post-processing
-            faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, _s.audio.faust.error);
-            if (faust->dsp) {
-                StatefulFaustUI faust_ui;
-                faust->dsp->buildUserInterface(&faust_ui);
-//                faust->dsp->metadata(&faust_ui); // version/author/licence/etc
-//                _s.audio.faust.json = faust_ui.
-            } else {
-//                _s.audio.faust.json = "";
-            }
-        },
+        [&](const save_faust_dsp_file &a) { File::write(a.path, s.audio.faust.code); },
+        [&](const open_faust_dsp_file &a) { _s.audio.faust.code = File::read(a.path); },
+        [&](const set_faust_code &a) { _s.audio.faust.code = a.text; },
         [&](const toggle_audio_muted &) { _s.audio.settings.muted = !s.audio.settings.muted; },
         [&](const set_audio_sample_rate &a) { _s.audio.settings.sample_rate = a.sample_rate; },
 
@@ -403,12 +393,19 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
         for (const auto &patch_op: patch) {
             const auto &path = patch_op.path;
             // TODO really would like these paths as constants, but don't want to define and maintain them manually.
-            //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `std::filesystem::path`).
+            //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `fs::path`).
             if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;
             else if (path.rfind("/style/imgui", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiStyle;
             else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
         }
         update_ui_context(update_ui_flags);
+    }
+
+    for (const auto &patch_op: patch) {
+        const auto &path = patch_op.path;
+        if (path == "/audio/faust/code") {
+            update_faust_context();
+        }
     }
 
     update_processes();

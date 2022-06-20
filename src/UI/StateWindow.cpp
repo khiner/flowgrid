@@ -39,13 +39,13 @@ enum ColorPaths_ {
 };
 //using ColorPaths = int;
 
-static const std::filesystem::path color_paths[] = { // addressable by `ColorPaths`
+static const fs::path color_paths[] = { // addressable by `ColorPaths`
     "/style/imgui/Colors",
     "/style/implot/Colors",
     "/style/flowgrid/Colors",
 };
 
-static void show_json_state_value_node(const string &key, const json &value, const std::filesystem::path &path) {
+static void show_json_state_value_node(const string &key, const json &value, const fs::path &path) {
     const bool auto_select = s.state.viewer.auto_select;
     const bool annotate_enabled = s.state.viewer.label_mode == LabelMode::annotated;
 

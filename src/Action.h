@@ -39,6 +39,7 @@ struct open_project { string path; };
 struct open_empty_project {};
 struct open_default_project {};
 struct show_open_project_dialog {};
+struct close_file_dialog {};
 
 struct save_project { string path; };
 struct save_current_project {};
@@ -68,6 +69,10 @@ struct set_audio_running { bool running; };
 struct toggle_audio_running {};
 struct set_ui_running { bool running; };
 
+struct show_open_faust_file_dialog {};
+struct show_save_faust_file_dialog {};
+struct save_faust_dsp_file { string path; };
+struct open_faust_dsp_file { string path; };
 struct set_faust_code { string text; };
 
 }
@@ -82,6 +87,7 @@ using Action = std::variant<
     undo, redo,
     open_project, open_empty_project, open_default_project, show_open_project_dialog,
     save_project, save_default_project, save_current_project, show_save_project_dialog,
+    close_file_dialog,
     close_application,
 
     set_imgui_settings,
@@ -95,6 +101,10 @@ using Action = std::variant<
     toggle_audio_muted,
     set_audio_sample_rate,
     set_faust_code,
+    open_faust_dsp_file,
+    save_faust_dsp_file,
+    show_open_faust_file_dialog,
+    show_save_faust_file_dialog,
 
     set_audio_running,
     toggle_audio_running,
@@ -132,6 +142,7 @@ static const std::map<ID, string> name_for_id{
     {id<open_empty_project>,              "Open empty project"},
     {id<open_default_project>,            "Open default project"},
     {id<show_open_project_dialog>,        "Show open project dialog"},
+    {id<close_file_dialog>,               "Close file dialog"},
 
     {id<save_project>,                    "Save project"},
     {id<save_default_project>,            "Save default project"},
@@ -150,6 +161,10 @@ static const std::map<ID, string> name_for_id{
     {id<toggle_audio_muted>,              "Toggle audio muted"},
     {id<set_audio_sample_rate>,           "Set audio sample rate"},
     {id<set_faust_code>,                  "Set faust code"},
+    {id<show_open_faust_file_dialog>,     "Show open Faust DSP dialog"},
+    {id<show_save_faust_file_dialog>,     "Show save Faust DSP dialog"},
+    {id<open_faust_dsp_file>,             "Save Faust DSP file"},
+    {id<save_faust_dsp_file>,             "Open Faust DSP file"},
     {id<set_audio_running>,               "Set audio running"},
     {id<toggle_audio_running>,            "Toggle audio running"},
     {id<set_ui_running>,                  "Set UI running"},
@@ -157,10 +172,12 @@ static const std::map<ID, string> name_for_id{
 
 // An action's menu label is its name, except for a few exceptions.
 static const std::map<ID, string> menu_label_for_id{
-    {id<show_open_project_dialog>, "Open project"},
-    {id<open_empty_project>,       "New project"},
-    {id<save_current_project>,     "Save project"},
-    {id<show_save_project_dialog>, "Save project as..."},
+    {id<show_open_project_dialog>,    "Open project"},
+    {id<open_empty_project>,          "New project"},
+    {id<save_current_project>,        "Save project"},
+    {id<show_save_project_dialog>,    "Save project as..."},
+    {id<show_open_faust_file_dialog>, "Open DSP file"},
+    {id<show_save_faust_file_dialog>, "Save DSP as..."},
 };
 
 const std::map<ID, string> shortcut_for_id = {

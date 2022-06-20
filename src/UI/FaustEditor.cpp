@@ -1,15 +1,13 @@
 #include "FaustEditor.h"
 #include "../Context.h"
 
-#include "ImGuiFileDialog.h"
-
 #include "zep/editor.h"
 #include "zep/regress.h"
 #include "zep/mode_repl.h"
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
 #include "zep/tab_window.h"
-#include "../File.h"
+#include "StatefulImGui.h"
 
 using namespace Zep;
 
@@ -214,6 +212,7 @@ struct ZepEditor_ImGui : ZepEditor {
 };
 
 bool zep_initialized = false;
+bool ignore_changes = false; // Used to ignore zep messages triggered when programmatically setting the buffer.
 
 struct ZepWrapper : ZepComponent, IZepReplProvider {
     explicit ZepWrapper(ZepEditor_ImGui &editor) : ZepComponent(editor) {
@@ -227,6 +226,8 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
     }
 
     void Notify(const std::shared_ptr<ZepMessage> &message) override {
+        if (ignore_changes) return;
+
         if (message->messageId == Msg::Buffer) {
             auto buffer_message = std::static_pointer_cast<BufferMessage>(message);
             switch (buffer_message->type) {
@@ -341,14 +342,17 @@ void zep_draw() {
     if (ImGui::IsWindowFocused()) zep_editor->HandleInput();
     else zep_editor->ResetCursorTimer();
 
-    // TODO this is not the usual immediate-mode case. Only set text if an undo/redo has changed the text
+    // TODO this is not the usual immediate-mode case. Only set text if  changed the text
     //  Really what I want is for an application undo/redo containing code text changes to do exactly what
     //  zep does for undo/redo internally.
-//    if (false) editor->buffers[0]->SetText(ui_s.audio.faust.code);
+    //  XXX This currently always redundantly re-sets the buffer when the change comes from the editor.
+    if (c.has_new_faust_code) {
+        ignore_changes = true;
+        zep_editor->GetActiveBuffer()->SetText(s.audio.faust.code);
+        ignore_changes = false;
+        c.has_new_faust_code = false;
+    }
 }
-
-static auto *file_dialog = ImGuiFileDialog::Instance();
-static const string open_faust_file_dialog_key = "FaustFileDialog";
 
 /*
  * TODO
@@ -359,8 +363,6 @@ static const string open_faust_file_dialog_key = "FaustFileDialog";
  *     (and right navigation should move from the end)
  */
 void Audio::Faust::Editor::draw() {
-    static bool is_save_file_dialog = false; // open/save toggle, since the same file dialog is used for both
-
     if (!zep_initialized) {
         // Called once after the fonts are initialized
         zep_init();
@@ -371,14 +373,8 @@ void Audio::Faust::Editor::draw() {
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open DSP file")) {
-                is_save_file_dialog = false;
-                file_dialog->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "", 1);
-            }
-            if (ImGui::MenuItem("Save DSP as...")) {
-                is_save_file_dialog = true;
-                file_dialog->OpenDialog(open_faust_file_dialog_key, "Choose file", ".dsp", ".", "my_dsp", 1, nullptr, ImGuiFileDialogFlags_ConfirmOverwrite);
-            }
+            StatefulImGui::MenuItem(action::id<show_open_faust_file_dialog>);
+            StatefulImGui::MenuItem(action::id<show_save_faust_file_dialog>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings")) {
@@ -415,24 +411,6 @@ void Audio::Faust::Editor::draw() {
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
-
-        const auto min_dialog_size = toImVec2(toNVec2f(ImGui::GetMainViewport()->Size) / 2.0);
-        if (file_dialog->Display(open_faust_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-            if (file_dialog->IsOk()) {
-                const auto &file_path = file_dialog->GetFilePathName();
-                if (is_save_file_dialog) {
-                    const string buffer_contents = active_buffer->workingBuffer.string();
-                    if (!File::write(file_path, buffer_contents)) {
-                        // TODO console error
-                    }
-                } else {
-                    auto *buffer = zep_editor->GetFileBuffer(file_path);
-                    if (buffer) zep_editor->EnsureWindow(*buffer);
-                }
-            }
-
-            file_dialog->Close();
-        }
     }
 
     zep_draw();
@@ -443,6 +421,7 @@ void Audio::Faust::Log::draw() {
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();
 }
+
 
 void destroy_faust_editor() {
     zep.reset();

@@ -7,10 +7,8 @@
 #include "FaustEditor.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO metal
-#include "ImGuiFileDialog.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 #include "zep/stringutils.h"
-#include "range/v3/view.hpp"
 
 /**md
 ## UI methods
@@ -147,7 +145,6 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
-static auto *file_dialog = ImGuiFileDialog::Instance();
 static bool first_draw = true;
 
 void draw_frame() {
@@ -229,29 +226,13 @@ void draw_frame() {
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
-
-        // TODO need to get custom vecs with math going
-        const ImVec2 min_dialog_size = {ImGui::GetMainViewport()->Size.x / 2.0f, ImGui::GetMainViewport()->Size.y / 2.0f};
-        if (file_dialog->Display(open_file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-            if (file_dialog->IsOk()) {
-                // TODO provide an option to save with undo state.
-                //   This file format would be a json list of diffs.
-                //   The file would generally be larger, and the load time would be slower,
-                //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
-                //   with full undo/redo history/position/etc.!
-                const auto &file_path = file_dialog->GetFilePathName();
-                if (c.is_save_file_dialog) q(save_project{file_path});
-                else q(open_project{file_path});
-            }
-
-            file_dialog->Close();
-        }
     }
 
     StatefulImGui::DrawWindow(ui_s.demo, ImGuiWindowFlags_MenuBar);
     StatefulImGui::DrawWindow(ui_s.metrics);
     ui_s.audio.draw();
     ui_s.state.draw();
+    s.file.dialog.draw();
     StatefulImGui::DrawWindow(ui_s.style);
 
     c.run_queued_actions();

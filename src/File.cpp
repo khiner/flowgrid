@@ -13,6 +13,7 @@ string File::read(const fs::path &path) {
     return result;
 }
 
+// TODO handle errors
 bool File::write(const fs::path &path, const string &contents) {
     std::fstream out_file;
     out_file.open(path, std::ios::out);

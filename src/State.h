@@ -1,6 +1,7 @@
 #pragma once
 
 #include <set>
+#include <utility>
 #include "JsonType.h"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -208,10 +209,35 @@ struct ImGuiSettings {
 };
 
 struct StateData {
+    struct File {
+        using ImGuiFileDialogFlags = int; // Declared in `lib/ImGuiFileDialog/ImGuiFileDialog.h`
+        // TODO window?
+        struct Dialog {
+            Dialog() = default;
+            Dialog(string title, string filters, string path, string default_file_name = "", const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
+                : visible(true), save_mode(save_mode), max_num_selections(max_num_selections), flags(flags),
+                  title(std::move(title)), filters(std::move(filters)), path(std::move(path)), default_file_name(std::move(default_file_name)) {};
+
+            void draw() const;
+
+            bool visible = false;
+            bool save_mode = false; // The same file dialog instance is used for both saving & opening files.
+            int max_num_selections = 1;
+            ImGuiFileDialogFlags flags = 0;
+            string title = "Choose file";
+            string filters;
+            string path = ".";
+            string default_file_name;
+        };
+
+        Dialog dialog;
+    };
+
     ImGuiSettings imgui_settings;
     Style style;
     Audio audio;
     Processes processes;
+    File file;
 
     struct StateWindows : Drawable {
         void draw() override;
@@ -305,7 +331,7 @@ enum JsonPatchOpType {
 };
 struct JsonPatchOp {
     string path;
-    JsonPatchOpType op;
+    JsonPatchOpType op{};
     std::optional<json> value; // Present for add/replace/test
     std::optional<string> from; // Present for copy/move
 };
@@ -341,7 +367,8 @@ JsonType(Audio::Faust::Editor, name, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
 JsonType(Audio, settings, faust)
-
+JsonType(State::File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
+JsonType(State::File, dialog)
 JsonType(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
 JsonType(State::StateWindows, viewer, memory_editor, path_update_frequency)
 
@@ -364,4 +391,4 @@ JsonType(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)
 
-JsonType(StateData, audio, style, imgui_settings, demo, metrics, state, processes);
+JsonType(StateData, audio, file, style, imgui_settings, demo, metrics, state, processes);

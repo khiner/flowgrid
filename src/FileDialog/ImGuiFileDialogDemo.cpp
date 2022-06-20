@@ -75,10 +75,7 @@ inline bool RadioButtonLabeled_BitWise(
     bool oneOrZeroAtTime = false, // only one selected at a time
     bool alwaysOne = true, // radio behavior, always one selected
     T flagsToTakeIntoAccount = (T) 0,
-    bool disableSelection = false,
-    ImFont *labelFont = nullptr) // radio will use only these flags
-{
-    (void) labelFont; // remove unused warnings
+    bool disableSelection = false) {
 
     bool selected = (*container) & flag;
     const bool res = RadioButtonLabeled(label, help, selected, disableSelection);
@@ -110,7 +107,6 @@ inline bool RadioButtonLabeled_BitWise(
 
 ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
 ImGuiFileDialog dialog2;
-ImGuiFileDialog dialogEmbedded3;
 
 void IGFD::InitializeDemo() {
 #ifdef USE_THUMBNAILS
@@ -139,44 +135,9 @@ void IGFD::InitializeDemo() {
             thumbnail_info->isReadyToDisplay = true;
         }
     });
-    dialogEmbedded3.SetCreateThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info) -> void
-    {
-        if (thumbnail_info && thumbnail_info->isReadyToUpload && thumbnail_info->textureFileDatas) {
-            GLuint textureId = 0;
-            glGenTextures(1, &textureId);
-            thumbnail_info->textureID = (void*)(size_t)textureId;
-
-            glBindTexture(GL_TEXTURE_2D, textureId);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                (GLsizei)thumbnail_info->textureWidth, (GLsizei)thumbnail_info->textureHeight,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, thumbnail_info->textureFileDatas);
-            glFinish();
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            delete[] thumbnail_info->textureFileDatas;
-            thumbnail_info->textureFileDatas = nullptr;
-
-            thumbnail_info->isReadyToUpload = false;
-            thumbnail_info->isReadyToDisplay = true;
-        }
-    });
     dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
     {
-        if (thumbnail_info)
-        {
-            GLuint texID = (GLuint)(size_t)thumbnail_info->textureID;
-            glDeleteTextures(1, &texID);
-            glFinish();
-        }
-    });
-    dialogEmbedded3.SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
-    {
-        if (thumbnail_info)
-        {
+        if (thumbnail_info) {
             GLuint texID = (GLuint)(size_t)thumbnail_info->textureID;
             glDeleteTextures(1, &texID);
             glFinish();
@@ -216,15 +177,6 @@ void IGFD::InitializeDemo() {
     dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
     dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
     dialog2.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
-
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f));
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
-    dialogEmbedded3.SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
 
 #ifdef USE_BOOKMARK
     // Load bookmarks
@@ -362,33 +314,6 @@ void IGFD::ShowDemo() {
         dialog2.OpenDialog("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", "", 5, nullptr, flags);
     }
 
-    ImGui::Text("Embedded dialog:");
-    dialogEmbedded3.OpenDialog("embedded", "Select file", ".*", "", -1, nullptr,
-        ImGuiFileDialogFlags_NoDialog |
-#ifdef USE_BOOKMARK
-            ImGuiFileDialogFlags_DisableBookmarkMode |
-#endif
-            ImGuiFileDialogFlags_DisableCreateDirectoryButton | ImGuiFileDialogFlags_ReadOnlyFileNameField);
-
-    // When embedded, `minSize` does nothing. Only `maxSize` can size the dialog frame.
-    if (dialogEmbedded3.Display("embedded", ImGuiWindowFlags_NoCollapse, ImVec2(0, 0), ImVec2(0, 350))) {
-        if (dialogEmbedded3.IsOk()) {
-            filePathName = dialog->GetFilePathName();
-            filePath = dialog->GetCurrentPath();
-            filter = dialog->GetCurrentFilter();
-            // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            if (dialog->GetUserDatas()) {
-                userData = string((const char *) dialog->GetUserDatas());
-            }
-            auto sel = dialog->GetSelection(); // Multi-selection
-            selection.clear();
-            for (const auto &s: sel) {
-                selection.emplace_back(s.first, s.second);
-            }
-        }
-        dialogEmbedded3.Close();
-    }
-
     ImGui::Separator();
 
     ImVec2 minSize = ImVec2(0, 0);
@@ -489,11 +414,9 @@ void IGFD::ShowDemo() {
 void IGFD::CleanupDemo() {
 #ifdef USE_THUMBNAILS
     dialog->ManageGPUThumbnails();
-    fileDialogEmbedded3.ManageGPUThumbnails();
 #endif
 
 #ifdef USE_BOOKMARK
-    // Remove bookmark
     dialog->RemoveBookmark("Current dir");
 
     // Save bookmarks dialog 1

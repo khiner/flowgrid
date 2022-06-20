@@ -106,7 +106,6 @@ inline bool RadioButtonLabeled_BitWise(
 }
 
 ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
-ImGuiFileDialog dialog2;
 
 void IGFD::InitializeDemo() {
 #ifdef USE_THUMBNAILS
@@ -169,31 +168,14 @@ void IGFD::InitializeDemo() {
     dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
     dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.5f, 0.8f, 0.5f, 0.9f), ICON_IGFD_SAVE);
 
-    // Multi dialog instance behavior
-    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
-    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".h", ImVec4(0.0f, 1.0f, 0.0f, 0.9f));
-    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
-    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
-    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    dialog2.SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
-    dialog2.SetFileStyle(IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
-
 #ifdef USE_BOOKMARK
     // Load bookmarks
-    std::ifstream docFile_1("bookmarks_1.conf", std::ios::in);
+    std::ifstream docFile_1("bookmarks.conf", std::ios::in);
     if (docFile_1.is_open()) {
         std::stringstream strStream;
         strStream << docFile_1.rdbuf();//read the file
         dialog->DeserializeBookmarks(strStream.str());
         docFile_1.close();
-    }
-
-    std::ifstream docFile_2("bookmarks_2.conf", std::ios::in);
-    if (docFile_2.is_open()) {
-        std::stringstream strStream;
-        strStream << docFile_2.rdbuf();//read the file
-        dialog2.DeserializeBookmarks(strStream.str());
-        docFile_2.close();
     }
 
     // Add bookmark by code
@@ -304,18 +286,6 @@ void IGFD::ShowDemo() {
         dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);
     }
 
-    ImGui::Text("Other instance (multi dialog demo):");
-
-    // Let filters be null for open directory chooser.
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open directory dialog")) {
-        dialog2.OpenDialog("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", 1, nullptr, flags);
-    }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open directory dialog with a selection of 5 items")) {
-        dialog2.OpenDialog("ChooseDirDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a directory", nullptr, ".", "", 5, nullptr, flags);
-    }
-
-    ImGui::Separator();
-
     ImVec2 minSize = ImVec2(0, 0);
     ImVec2 maxSize = ImVec2(FLT_MAX, FLT_MAX);
 
@@ -346,24 +316,6 @@ void IGFD::ShowDemo() {
             }
         }
         dialog->Close();
-    }
-
-    if (dialog2.Display("ChooseDirDlgKey", ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
-        if (dialog2.IsOk()) {
-            filePathName = dialog2.GetFilePathName();
-            filePath = dialog2.GetCurrentPath();
-            filter = dialog2.GetCurrentFilter();
-            // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            if (dialog2.GetUserDatas()) {
-                userData = string((const char *) dialog2.GetUserDatas());
-            }
-            auto sel = dialog2.GetSelection(); // multiselection
-            selection.clear();
-            for (const auto &s: sel) {
-                selection.emplace_back(s.first, s.second);
-            }
-        }
-        dialog2.Close();
     }
 
     ImGui::Separator();
@@ -424,12 +376,6 @@ void IGFD::CleanupDemo() {
     if (!configFileWriter_1.bad()) {
         configFileWriter_1 << dialog->SerializeBookmarks();
         configFileWriter_1.close();
-    }
-    // Save bookmarks dialog 2
-    std::ofstream configFileWriter_2("bookmarks_2.conf", std::ios::out);
-    if (!configFileWriter_2.bad()) {
-        configFileWriter_2 << dialog2.SerializeBookmarks();
-        configFileWriter_2.close();
     }
 #endif
 }

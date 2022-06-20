@@ -39,6 +39,8 @@ struct open_project { string path; };
 struct open_empty_project {};
 struct open_default_project {};
 struct show_open_project_dialog {};
+
+struct open_file_dialog { State::File::Dialog dialog; };
 struct close_file_dialog {};
 
 struct save_project { string path; };
@@ -87,7 +89,7 @@ using Action = std::variant<
     undo, redo,
     open_project, open_empty_project, open_default_project, show_open_project_dialog,
     save_project, save_default_project, save_current_project, show_save_project_dialog,
-    close_file_dialog,
+    open_file_dialog, close_file_dialog,
     close_application,
 
     set_imgui_settings,
@@ -142,6 +144,8 @@ static const std::map<ID, string> name_for_id{
     {id<open_empty_project>,              "Open empty project"},
     {id<open_default_project>,            "Open default project"},
     {id<show_open_project_dialog>,        "Show open project dialog"},
+
+    {id<open_file_dialog>,                "Open file dialog"},
     {id<close_file_dialog>,               "Close file dialog"},
 
     {id<save_project>,                    "Save project"},

@@ -8,21 +8,11 @@
 
 #include "ImGuiFileDialog.h"
 #include "ImGuiFileDialogDemo.h"
+#include "../Context.h"
 
 #include <sstream>
 
 using std::string;
-
-static bool canValidateDialog = false;
-
-// If `cantContinue` is false, the user can't validate the dialog.
-inline void InfosPane(const char *filter, IGFDUserDatas userData, bool *cantContinue) {
-    ImGui::TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
-    ImGui::Text("Selected Filter: %s", filter);
-    if (userData) ImGui::Text("User Data: %s", (const char *) userData);
-    ImGui::Checkbox("If not checked, you can't validate the dialog", &canValidateDialog);
-    if (cantContinue) *cantContinue = canValidateDialog;
-}
 
 inline bool RadioButtonLabeled(const char *label, const char *help, bool active, bool disabled) {
     using namespace ImGui;
@@ -184,32 +174,20 @@ void IGFD::InitializeDemo() {
 }
 
 void IGFD::ShowDemo() {
-    static string filePathName;
-    static string filePath;
-    static string filter;
-    static string userData;
-    static std::vector<std::pair<string, string>> selection = {};
-
 #ifdef USE_EXPLORATION_BY_KEYS
     static float flashingAttenuationInSeconds = 1.0f;
     if (ImGui::Button("R##resetflashlifetime")) {
         flashingAttenuationInSeconds = 1.0f;
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
-        dialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
     }
     ImGui::SameLine();
     ImGui::PushItemWidth(200);
     if (ImGui::SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.0f)) {
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
-        dialog2.SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
     }
     ImGui::PopItemWidth();
 #endif
 
-    static bool UseWindowConstraints = true;
-    ImGui::Separator();
-    ImGui::Checkbox("Use file dialog constraint", &UseWindowConstraints);
-    ImGui::Text("Constraints is used here for define min/max file dialog size");
     ImGui::Separator();
 
     static ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_Default;
@@ -242,92 +220,79 @@ void IGFD::ShowDemo() {
     }
     ImGui::Unindent();
 
+    static string filePathName; // Keep track of the last chosen file. There's an option below to open this path.
     static const char *chooseFileDialogKey = "ChooseFileDlgKey";
-    static const char *chooseFile = ICON_IGFD_FOLDER_OPEN " Choose a file";
+    static string chooseFile = ICON_IGFD_FOLDER_OPEN " Choose a file";
     static const char *chooseFileSave = ICON_IGFD_SAVE " Choose a file";
 
     ImGui::Text("Singleton access:");
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
-        const char *filters = ".*,.cpp,.h,.hpp";
-        dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
+        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags}});
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with collections of filters")) {
-        const char *filters = "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md";
-        dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 1, nullptr, flags);
-    }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
-        const char *filters = "Regex Custom*.h{(Custom.+[.]h)}";
-        dialog->OpenDialog("ChooseFileDlgKey", ICON_IGFD_FOLDER_OPEN " Choose a File", filters, ".", "", 1, nullptr, flags);
-    }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
-        const char *filters = ".*,.cpp,.h,.hpp";
-        dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 5, nullptr, flags);
-    }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
-        const char *filters = ".*,.cpp,.h,.hpp";
-        dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, ".", "", 0, nullptr, flags);
-    }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with last file path name")) {
-        const char *filters = ".*,.cpp,.h,.hpp";
-        dialog->OpenDialog(chooseFileDialogKey, chooseFile, filters, filePathName, 1, nullptr, flags);
+        const string filters = "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md";
+        q(open_file_dialog{{chooseFile, filters, ".", "", false, 1, flags}});
     }
     if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open all file types with \".*\" filter")) {
-        dialog->OpenDialog(chooseFileDialogKey, chooseFile, ".*", ".", "", 1, nullptr, flags);
+        q(open_file_dialog{{chooseFile, ".*", ".", filePathName, false, 1, flags}});
     }
-    auto saveFileUserData = IGFDUserDatas("SaveFile");
-    if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
-        const char *filters = "C++ File (*.cpp){.cpp}";
-        dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters,
-            ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
-            saveFileUserData, flags);
+    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
+        q(open_file_dialog{{chooseFile, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags}});
     }
+    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
+        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags}});
+    }
+    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
+        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags}});
+    }
+    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with last file path name")) {
+        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", filePathName, false, 1, flags}});
+    }
+
     if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
-        const char *filters = "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}";
-        dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters, ".", "", 1, saveFileUserData, ImGuiFileDialogFlags_ConfirmOverwrite);
+        const string filters = "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}";
+        q(open_file_dialog{{chooseFile, filters, ".", filePathName, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}});
     }
 
-    ImVec2 minSize = ImVec2(0, 0);
-    ImVec2 maxSize = ImVec2(FLT_MAX, FLT_MAX);
+    // Keeping this around to remind myself that custom panes & UserDatas are a thing.
+    // If `cantContinue` is false, the user can't validate the dialog.
+    // static bool canValidateDialog = false;
+    // inline void InfosPane(const char *filter, IGFDUserDatas userData, bool *cantContinue) {
+    //     ImGui::TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
+    //     ImGui::Text("Selected Filter: %s", filter);
+    //     if (userData) ImGui::Text("User Data: %s", (const char *) userData);
+    //     ImGui::Checkbox("If not checked, you can't validate the dialog", &canValidateDialog);
+    //     if (cantContinue) *cantContinue = canValidateDialog;
+    // }
+    //
+    // auto saveFileUserData = IGFDUserDatas("SaveFile");
+    // if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
+    //     const char *filters = "C++ File (*.cpp){.cpp}";
+    //     dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters,
+    //         ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
+    //         saveFileUserData, flags);
+    // }
 
-    if (UseWindowConstraints) {
-        maxSize = ImVec2(ImGui::GetWindowWidth(), ImGui::GetWindowHeight()) * 0.7f;
-        minSize = maxSize * 0.25f;
-    }
+    filePathName = dialog->GetFilePathName();
+    static string filePath = dialog->GetCurrentPath();
+    static string userData = dialog->GetUserDatas() ? string((const char *) dialog->GetUserDatas()) : "";
 
-    // You can define your flags and min/max window size.
-    // These settings are defined by default:
-    //   flags => ImGuiWindowFlags_NoCollapse
-    //   minSize => 0,0
-    //   maxSize => FLT_MAX, FLT_MAX (defined is float.h)
-
-    if (dialog->Display(chooseFileDialogKey, ImGuiWindowFlags_NoCollapse, minSize, maxSize)) {
-        if (dialog->IsOk()) {
-            filePathName = dialog->GetFilePathName();
-            filePath = dialog->GetCurrentPath();
-            filter = dialog->GetCurrentFilter();
-            // Convert from string because a string was passed as a `userData`, but it can be what you want.
-            if (dialog->GetUserDatas()) {
-                userData = string((const char *) dialog->GetUserDatas());
-            }
-            auto sel = dialog->GetSelection(); // Multi-selection
-            selection.clear();
-            for (const auto &s: sel) {
-                selection.emplace_back(s.first, s.second);
-            }
-        }
-        dialog->Close();
-    }
+    // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
+    const auto &selections = dialog->GetSelection();
+    static std::vector<std::pair<string, string>> selection = {};
+    selection.clear();
+    for (const auto &sel: selections) selection.emplace_back(sel.first, sel.second);
 
     ImGui::Separator();
 
-    ImGui::Text("ImGuiFileDialog returns:\n");
+    ImGui::Text("FileDialog state:\n");
     ImGui::Indent();
     {
-        ImGui::Text("GetFilePathName(): %s", filePathName.c_str());
-        ImGui::Text("GetFilePath(): %s", filePath.c_str());
-        ImGui::Text("GetCurrentFilter(): %s", filter.c_str());
-        ImGui::Text("GetUserDatas() (was a `string` in this sample): %s", userData.c_str());
-        ImGui::Text("GetSelection(): ");
+        ImGui::Text("FilePathName: %s", filePathName.c_str());
+        ImGui::Text("FilePath: %s", filePath.c_str());
+        ImGui::Text("Filters: %s", s.file.dialog.filters.c_str());
+        ImGui::Text("UserDatas: %s", userData.c_str());
+        ImGui::Text("Selection: ");
         ImGui::Indent();
         {
             static int selected = false;

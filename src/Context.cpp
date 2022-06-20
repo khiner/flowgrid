@@ -242,6 +242,9 @@ bool Context::action_allowed(const ActionID action_id) const {
         case action::id<actions::show_save_project_dialog>:
         case action::id<actions::save_default_project>: return project_has_changes();
         case action::id<actions::save_current_project>: return can_save_current_project();
+
+        case action::id<actions::open_file_dialog>: return !s.file.dialog.visible;
+        case action::id<actions::close_file_dialog>: return s.file.dialog.visible;
         default: return true;
     }
 }
@@ -331,6 +334,11 @@ void Context::update(const Action &action) {
         [&](const show_save_project_dialog &) { _s.file.dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
         [&](const show_open_faust_file_dialog &) { _s.file.dialog = {"Choose file", FaustDspFileExtension, "."}; },
         [&](const show_save_faust_file_dialog &) { _s.file.dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+
+        [&](const open_file_dialog &a) {
+            _s.file.dialog = a.dialog;
+            _s.file.dialog.visible = true;
+        },
         [&](const close_file_dialog &) { _s.file.dialog.visible = false; },
 
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,

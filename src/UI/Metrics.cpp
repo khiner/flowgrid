@@ -95,7 +95,7 @@ void ShowMetrics() {
 }
 
 void State::Metrics::draw() {
-    if (BeginTabBar("##tabs")) {
+    if (BeginTabBar("##metrics")) {
         if (BeginTabItem("FlowGrid")) {
             FlowGrid::ShowMetrics();
             EndTabItem();

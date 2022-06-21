@@ -393,7 +393,7 @@ bool Style::FlowGridStyleEditor() {
 }
 
 void Style::draw() {
-    if (ImGui::BeginTabBar("##tabs")) {
+    if (ImGui::BeginTabBar("##style")) {
         if (ImGui::BeginTabItem("FlowGrid")) {
             if (FlowGridStyleEditor()) q(set_flowgrid_style{flowgrid});
             ImGui::EndTabItem();

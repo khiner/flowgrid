@@ -2,7 +2,7 @@
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 
 void State::Demo::draw() {
-    if (ImGui::BeginTabBar("##tabs")) {
+    if (ImGui::BeginTabBar("##demos")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowDemo();
             ImGui::EndTabItem();

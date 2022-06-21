@@ -276,9 +276,15 @@ struct StateData {
         void draw() override;
     };
 
+    struct Tools : Window {
+        Tools() { name = "Tools"; }
+        void draw() override;
+    };
+
     StateWindows state{};
     Demo demo{};
     Metrics metrics{};
+    Tools tools{};
 };
 
 struct State : StateData {
@@ -293,12 +299,12 @@ struct State : StateData {
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{
         state.viewer, state.memory_editor, state.path_update_frequency,
-        style, demo, metrics,
+        style, demo, metrics, tools,
         audio.settings, audio.faust.editor, audio.faust.log
     };
     std::vector<std::reference_wrapper<const WindowData>> all_windows_const{
         state.viewer, state.memory_editor, state.path_update_frequency,
-        style, demo, metrics,
+        style, demo, metrics, tools,
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
@@ -391,4 +397,4 @@ JsonType(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)
 
-JsonType(StateData, audio, file, style, imgui_settings, demo, metrics, state, processes);
+JsonType(StateData, audio, file, style, imgui_settings, demo, metrics, tools, state, processes);

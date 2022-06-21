@@ -172,6 +172,7 @@ void draw_frame() {
         dock_window(s.style, imgui_windows_id);
         dock_window(s.demo, imgui_windows_id);
         dock_window(s.metrics, imgui_windows_id);
+        dock_window(s.tools, imgui_windows_id);
         first_draw = false;
     }
 
@@ -221,6 +222,7 @@ void draw_frame() {
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
                 StatefulImGui::WindowToggleMenuItem(ui_s.demo);
                 StatefulImGui::WindowToggleMenuItem(ui_s.metrics);
+                StatefulImGui::WindowToggleMenuItem(ui_s.tools);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -228,12 +230,13 @@ void draw_frame() {
         ImGui::EndMainMenuBar();
     }
 
-    StatefulImGui::DrawWindow(ui_s.demo, ImGuiWindowFlags_MenuBar);
-    StatefulImGui::DrawWindow(ui_s.metrics);
     ui_s.audio.draw();
     ui_s.state.draw();
     s.file.dialog.draw();
+    StatefulImGui::DrawWindow(ui_s.demo, ImGuiWindowFlags_MenuBar);
+    StatefulImGui::DrawWindow(ui_s.metrics);
     StatefulImGui::DrawWindow(ui_s.style);
+    StatefulImGui::DrawWindow(ui_s.tools);
 
     c.run_queued_actions();
 }

@@ -391,6 +391,12 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     on_json_diff(diff, direction, false);
 }
 
+// These state-paths trigger side effects when changed
+const auto imgui_settings_path = StatePath(s.imgui_settings);
+const auto imgui_style_path = StatePath(s.style.imgui);
+const auto implot_style_path = StatePath(s.style.implot);
+const auto faust_code_path = StatePath(s.audio.faust.code);
+
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated) {
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
     state_stats.on_json_patch(patch, diff.system_time, direction);
@@ -402,16 +408,16 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
             const auto &path = patch_op.path;
             // TODO really would like these paths as constants, but don't want to define and maintain them manually.
             //  Need to find a way to create a mapping between `State::...` c++ code references and paths (as a `fs::path`).
-            if (path.rfind("/imgui_settings", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;
-            else if (path.rfind("/style/imgui", 0) == 0) update_ui_flags |= UiContextFlags_ImGuiStyle;
-            else if (path.rfind("/style/implot", 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
+            if (path.rfind(imgui_settings_path, 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;
+            else if (path.rfind(imgui_style_path, 0) == 0) update_ui_flags |= UiContextFlags_ImGuiStyle;
+            else if (path.rfind(implot_style_path, 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
         }
         update_ui_context(update_ui_flags);
     }
 
     for (const auto &patch_op: patch) {
         const auto &path = patch_op.path;
-        if (path == "/audio/faust/code") {
+        if (path == faust_code_path) {
             update_faust_context();
         }
     }

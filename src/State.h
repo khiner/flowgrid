@@ -35,12 +35,22 @@ using TimePoint = Clock::time_point;
  * **The global `const StateData &s` and `State ui_s` instances are declared in `context.h` and instantiated in `main.cpp`.**
  */
 
-// TODO should all state members implement the `std::path` interface, returning their path from the root `State`?
-//  then we could do something like
-//  ```cpp
-//     const bool is_color = path.parent_path() == s.style.imgui.colors < ImGuiCol_COUNT;
-//     const int color_index = std::stoi(path.);
-//  ```
+// E.g. `convert_state_path("s.foo.bar") => "/foo/bar"`
+inline std::string convert_state_path(const string &state_member_name) {
+    std::size_t index = state_member_name.find('.');
+    // Must pass the fully-qualified state path.
+    // Could also check that the first segment is `s`, `_s`, `state`, or `_state`, but that's expensive and
+    assert(index != std::string::npos);
+    std::string subpath = state_member_name.substr(index);
+    std::replace(subpath.begin(), subpath.end(), '.', '/');
+    return subpath;
+}
+
+// Used to convert a state variable member to its respective path in state JSON.
+// This allows for code paths conditioned on which state member was changed, without needing to worry about manually changing paths when state members move.
+// _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s`, `ui_s` or `state`).
+// E.g. `StatePath(s.foo.bar) => "/foo/bar"`
+#define StatePath(x) convert_state_path(#x)
 
 struct Drawable {
     virtual void draw() = 0;
@@ -194,9 +204,9 @@ struct ImGuiDockNodeSettings {
 };
 
 struct ImGuiSettings {
-    ImVector<ImGuiDockNodeSettings> nodes_settings;
-    ImVector<ImGuiWindowSettings> windows_settings;
-    ImVector<ImGuiTableSettings> tables_settings;
+    ImVector<ImGuiDockNodeSettings> nodes;
+    ImVector<ImGuiWindowSettings> windows;
+    ImVector<ImGuiTableSettings> tables;
 
     ImGuiSettings() = default;
     explicit ImGuiSettings(ImGuiContext *c);
@@ -392,7 +402,7 @@ JsonType(Style, name, visible, imgui, implot, flowgrid)
 JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
 JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
 JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
-JsonType(ImGuiSettings, nodes_settings, windows_settings, tables_settings)
+JsonType(ImGuiSettings, nodes, windows, tables)
 
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)

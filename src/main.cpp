@@ -43,7 +43,6 @@ int main(int, const char **) {
         c.ui_s = c.s; // TODO don't like this
     }
 
-    c.on_action(set_faust_code{s.audio.faust.code}); // Trigger faust dsp generation
     c.clear_undo(); // Make sure we don't start with any undo state.
 
     // Keep the canonical "empty" project up-to-date.

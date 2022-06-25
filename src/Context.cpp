@@ -121,6 +121,9 @@ json Context::get_project_json(const ProjectFormat format) const {
     return diffs;
 }
 
+bool Context::project_has_changes() const { return current_action_index != current_project_saved_action_index; }
+bool Context::can_save_current_project() const { return current_project_path.has_value() && project_has_changes(); }
+
 void Context::open_project(const fs::path &path) {
     const auto project_format = ProjectFormatForExtension.at(path.extension());
     if (project_format == None) return; // TODO log
@@ -136,22 +139,7 @@ void Context::open_project(const fs::path &path) {
         current_project_saved_action_index = -1;
     }
 }
-void Context::open_empty_project() {
-    open_project(empty_project_path);
-}
-bool Context::default_project_exists() {
-    return fs::exists(default_project_path);
-}
-void Context::open_default_project() {
-    open_project(default_project_path);
-}
 
-bool Context::project_has_changes() const {
-    return current_action_index != current_project_saved_action_index;
-}
-bool Context::can_save_current_project() const {
-    return current_project_path.has_value() && project_has_changes();
-}
 bool Context::save_project(const fs::path &path) {
     if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_current_project()) return false;
 
@@ -163,15 +151,13 @@ bool Context::save_project(const fs::path &path) {
     }
     return false;
 }
-bool Context::save_empty_project() {
-    return save_project(empty_project_path);
-}
-bool Context::save_default_project() {
-    return save_project(default_project_path);
-}
-bool Context::save_current_project() {
-    return can_save_current_project() && save_project(current_project_path.value());
-}
+
+void Context::open_empty_project() { open_project(empty_project_path); }
+void Context::open_default_project() { open_project(default_project_path); }
+
+bool Context::save_empty_project() { return save_project(empty_project_path); }
+bool Context::save_default_project() { return save_project(default_project_path); }
+bool Context::save_current_project() { return can_save_current_project() && save_project(current_project_path.value()); }
 
 bool Context::clear_preferences() {
     preferences.recently_opened_paths.clear();
@@ -215,7 +201,7 @@ bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
         case action::id<undo>: return can_undo();
         case action::id<redo>: return can_redo();
-        case action::id<actions::open_default_project>: return default_project_exists();
+        case action::id<actions::open_default_project>: return fs::exists(default_project_path);
         case action::id<actions::save_project>:
         case action::id<actions::show_save_project_dialog>:
         case action::id<actions::save_default_project>: return project_has_changes();

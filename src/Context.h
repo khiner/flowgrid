@@ -80,7 +80,6 @@ struct Context {
 
     void open_project(const fs::path &);
     void open_empty_project();
-    static bool default_project_exists();
     void open_default_project();
 
     bool can_save_current_project() const;

@@ -199,8 +199,8 @@ void Context::run_queued_actions() {
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<undo>: return can_undo();
-        case action::id<redo>: return can_redo();
+        case action::id<undo>: return current_action_index >= 0;
+        case action::id<redo>: return current_action_index < (int) diffs.size() - 1;
         case action::id<actions::open_default_project>: return fs::exists(default_project_path);
         case action::id<actions::save_project>:
         case action::id<actions::show_save_project_dialog>:

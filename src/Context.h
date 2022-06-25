@@ -107,9 +107,6 @@ struct Context {
     bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;
 
-    bool can_undo() const { return current_action_index >= 0; }
-    bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }
-
     void clear_undo();
 
     // Audio

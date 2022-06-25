@@ -363,9 +363,6 @@ void Context::update(const Action &action) {
 }
 
 void Context::finalize_gesture() {
-    const auto action_names = gesture_action_names; // Make a copy so we can clear.
-    gesture_action_names.clear();
-
     auto old_json_state = state_json;
     state_json = s;
     const JsonPatch patch = json::diff(old_json_state, state_json);
@@ -374,7 +371,9 @@ void Context::finalize_gesture() {
     while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
 
     const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
-    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
+    const BidirectionalStateDiff diff{gesture_action_names, patch, reverse_patch, Clock::now()};
+    gesture_action_names.clear();
+
     diffs.emplace_back(diff);
     current_action_index = int(diffs.size()) - 1;
 

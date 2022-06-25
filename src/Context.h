@@ -78,9 +78,6 @@ struct Context {
     Context();
     ~Context() = default;
 
-    void open_project(const fs::path &);
-
-    bool save_project(const fs::path &);
     bool save_empty_project();
 
     json get_project_json(ProjectFormat format = StateFormat) const;
@@ -173,9 +170,11 @@ private:
     void finalize_gesture();
     void apply_diff(int index, Direction direction = Forward);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
-    bool write_project_file(const fs::path &path) const;
-    bool write_preferences_file() const;
+
+    void open_project(const fs::path &);
+    bool save_project(const fs::path &);
     void set_current_project_path(const fs::path &path);
+    bool write_preferences_file() const;
 
     Threads threads;
     std::queue<const Action> queued_actions;

@@ -123,34 +123,6 @@ json Context::get_project_json(const ProjectFormat format) const {
 
 bool Context::project_has_changes() const { return current_action_index != current_project_saved_action_index; }
 
-void Context::open_project(const fs::path &path) {
-    const auto project_format = ProjectFormatForExtension.at(path.extension());
-    if (project_format == None) return; // TODO log
-
-    const json &project_json = json::from_msgpack(File::read(path));
-    if (project_format == StateFormat) set_state_json(project_json);
-    else set_diffs_json(project_json);
-
-    if (is_user_project_path(path)) {
-        set_current_project_path(path);
-    } else {
-        current_project_path.reset();
-        current_project_saved_action_index = -1;
-    }
-}
-
-bool Context::save_project(const fs::path &path) {
-    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !action_allowed(action::id<save_current_project>)) return false;
-
-    if (write_project_file(path)) {
-        if (is_user_project_path(path)) {
-            set_current_project_path(path);
-        }
-        return true;
-    }
-    return false;
-}
-
 bool Context::save_empty_project() { return save_project(empty_project_path); }
 
 bool Context::clear_preferences() {
@@ -255,11 +227,6 @@ void Context::clear_undo() {
     gesture_action_names.clear();
     gesturing = false;
     state_stats = {};
-}
-
-ProjectFormat get_project_format(const fs::path &path) {
-    const string &ext = path.extension();
-    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
 }
 
 // StateStats
@@ -457,21 +424,50 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     update_processes();
 }
 
-bool Context::write_project_file(const fs::path &path) const {
-    const ProjectFormat format = get_project_format(path);
-    if (format != None) {
-        return File::write(path, json::to_msgpack(get_project_json(format)));
+void Context::open_project(const fs::path &path) {
+    const auto project_format = ProjectFormatForExtension.at(path.extension());
+    if (project_format == None) return; // TODO log
+
+    const json &project_json = json::from_msgpack(File::read(path));
+    if (project_format == StateFormat) set_state_json(project_json);
+    else set_diffs_json(project_json);
+
+    if (is_user_project_path(path)) {
+        set_current_project_path(path);
+    } else {
+        current_project_path.reset();
+        current_project_saved_action_index = -1;
     }
-    // TODO log
+}
+
+ProjectFormat get_project_format(const fs::path &path) {
+    const string &ext = path.extension();
+    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
+}
+
+bool Context::save_project(const fs::path &path) {
+    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !action_allowed(action::id<save_current_project>)) return false;
+
+    const ProjectFormat format = get_project_format(path);
+    if (format == None) return false; // TODO log
+
+    if (File::write(path, json::to_msgpack(get_project_json(format)))) {
+        if (is_user_project_path(path)) {
+            set_current_project_path(path);
+        }
+        return true;
+    }
     return false;
 }
-bool Context::write_preferences_file() const {
-    return File::write(preferences_path, json::to_msgpack(preferences));
-}
+
 void Context::set_current_project_path(const fs::path &path) {
     current_project_path = path;
     current_project_saved_action_index = current_action_index;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences_file();
+}
+
+bool Context::write_preferences_file() const {
+    return File::write(preferences_path, json::to_msgpack(preferences));
 }

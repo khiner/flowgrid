@@ -237,8 +237,6 @@ void draw_frame() {
     StatefulImGui::DrawWindow(ui_s.metrics);
     StatefulImGui::DrawWindow(ui_s.style);
     StatefulImGui::DrawWindow(ui_s.tools);
-
-    c.run_queued_actions();
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
@@ -332,6 +330,8 @@ void tick_ui() {
         q(set_imgui_settings{ImGuiSettings(c.ui->imgui_context)});
         io.WantSaveIniSettings = false;
     }
+
+    c.run_queued_actions();
 
     FrameMark
 }

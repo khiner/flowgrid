@@ -21,9 +21,8 @@ void dock_window(const Window &w, ImGuiID node_id) {
 }
 
 void gestured() {
-    if (ImGui::IsItemActivated()) c.begin_gesture();
-    if (ImGui::IsItemDeactivated()) c.end_gesture();
-//    if (ImGui::IsItemDeactivatedAfterEdit()) c.end_gesture(); // This doesn't catch opening and closing a color edit without editing.
+    if (ImGui::IsItemActivated()) c.gesturing = true;
+    if (ImGui::IsItemDeactivated()) c.gesturing = false;
 }
 
 bool StatefulImGui::WindowToggleMenuItem(Window &w) {

@@ -25,20 +25,25 @@ int main(int, const char **) {
     c.update_processes();
     c.update_faust_context();
 
-    tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
-    tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+    // Initialize UI.
+    // Relying on these imperatively-run side effects up front is not great.
+    {
+        // Set some windows to be closed by default.
+        // (This currently needs to happen _after_ docked windows are constructed with windows open, otherwise state gets wonky.)
+        // TODO closed windows flash on the screen before they close
+        c.on_action(toggle_window{s.state.memory_editor.name});
 
-    // Initialize the ImGui/ImPlot settings/style:
-    c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)}));
-    c.update_ui_context(UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+        tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
+        tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
 
-    // Set some windows to be closed by default.
-    // (This currently needs to happen _after_ docked windows are constructed with windows open, otherwise state gets wonky.)
-    // TODO closed windows flash on the screen before they close
-    c.on_action(toggle_window{s.state.memory_editor.name});
+        // Initialize the ImGui/ImPlot settings/style:
+        c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)}));
+        c.update_ui_context(UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+
+        c.ui_s = c.s; // TODO don't like this
+    }
+
     c.on_action(set_faust_code{s.audio.faust.code}); // Trigger faust dsp generation
-
-    c.ui_s = c.s; // TODO don't like this
     c.clear_undo(); // Make sure we don't start with any undo state.
 
     // Keep the canonical "empty" project up-to-date.

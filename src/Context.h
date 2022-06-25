@@ -177,7 +177,7 @@ public:
     bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;
 
-    void start_gesture() { gesturing = true; }
+    void begin_gesture() { gesturing = true; }
     void end_gesture();
 
     bool can_undo() const { return current_action_index >= 0; }

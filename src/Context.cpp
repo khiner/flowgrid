@@ -215,6 +215,7 @@ void Context::on_action(const Action &action) {
 
     gesture_action_names.emplace(action::get_name(action));
     std::visit(visitor{
+        // Handle actions that don't directly update state.
         [&](const undo &) { apply_diff(current_action_index--, Direction::Reverse); },
         [&](const redo &) { apply_diff(++current_action_index, Direction::Forward); },
 
@@ -226,7 +227,8 @@ void Context::on_action(const Action &action) {
         [&](const actions::save_default_project &) { save_default_project(); },
         [&](const actions::save_current_project &) { save_current_project(); },
 
-        [&](const auto &) { // Remaining actions
+        // Remaining actions have a direct effect on the application state.
+        [&](const auto &) {
             update(action);
             if (!gesturing) end_gesture();
         }
@@ -417,9 +419,7 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
 
     for (const auto &patch_op: patch) {
         const auto &path = patch_op.path;
-        if (path == faust_code_path) {
-            update_faust_context();
-        }
+        if (path == faust_code_path) update_faust_context();
     }
 
     update_processes();

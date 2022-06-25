@@ -32,8 +32,6 @@ int main(int, const char **) {
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
 
-        c.update_ui_context(UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
-
         c.ui_s = c.s; // TODO don't like this
     }
 

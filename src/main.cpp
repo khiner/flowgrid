@@ -21,25 +21,28 @@ State &ui_s = c.ui_s;
  */
 int main(int, const char **) {
     auto ui_context = create_ui();
-    c.ui = &ui_context;
-    c.update_processes();
-    c.update_faust_context();
 
-    // Initialize UI.
-    // Relying on these imperatively-run side effects up front is not great.
     {
+        // Relying on these imperatively-run side effects up front is not great.
+        c.ui = &ui_context;
         tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-
-        c.ui_s = c.s; // TODO don't like this
+        tick_ui(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        c.run_queued_actions();
+        c.ui_s = c.s;
     }
 
     c.clear_undo(); // Make sure we don't start with any undo state.
 
     // Keep the canonical "empty" project up-to-date.
-    // This is the project that is loaded before applying diffs when loading a .fgd (FlowGridDiff) project.
+    // This project is loaded before applying diffs when loading any .fgd (FlowGridDiff) project.
     c.save_empty_project();
+
+    // Run initialization that doesn't update state.
+    // It's obvious at app start time if anything further has state-modification side effects,
+    // since any further state changes would show up in the undo stack.
+    c.update_processes();
+    c.update_faust_context();
 
     /** TODO need more consistent pattern for state updates.
      The issue is that by putting actions in the queue before updating state, even simple effects against state
@@ -76,6 +79,7 @@ int main(int, const char **) {
 
     while (s.processes.ui.running) {
         tick_ui();
+        c.run_queued_actions();
     }
 
     destroy_ui();

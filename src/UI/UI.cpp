@@ -331,8 +331,6 @@ void tick_ui() {
         io.WantSaveIniSettings = false;
     }
 
-    c.run_queued_actions();
-
     FrameMark
 }
 

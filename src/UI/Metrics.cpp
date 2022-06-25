@@ -94,7 +94,7 @@ void ShowMetrics() {
 
 }
 
-void State::Metrics::draw() {
+void State::Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
         if (BeginTabItem("FlowGrid")) {
             FlowGrid::ShowMetrics();

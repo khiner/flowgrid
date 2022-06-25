@@ -53,7 +53,7 @@ inline std::string convert_state_path(const string &state_member_name) {
 #define StatePath(x) convert_state_path(#x)
 
 struct Drawable {
-    virtual void draw() = 0;
+    virtual void draw() const = 0;
 };
 
 struct WindowData {
@@ -70,11 +70,11 @@ enum AudioBackend {
 };
 
 struct Audio : Drawable {
-    void draw() override;
+    void draw() const override;
 
     struct Settings : Window {
         Settings() { name = "Audio settings"; }
-        void draw() override;
+        void draw() const override;
 
         AudioBackend backend = none;
         char *in_device_id = nullptr;
@@ -88,7 +88,7 @@ struct Audio : Drawable {
     struct Faust {
         struct Editor : Window {
             Editor() : file_name{"default.dsp"} { name = "Faust editor"; }
-            void draw() override;
+            void draw() const override;
 
             string file_name;
         };
@@ -97,7 +97,7 @@ struct Audio : Drawable {
         // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
         struct Log : Window {
             Log() { name = "Faust log"; }
-            void draw() override;
+            void draw() const override;
         };
 
         Editor editor{};
@@ -166,7 +166,7 @@ struct FlowGridStyle {
 struct Style : Window {
     Style() { name = "Style"; }
 
-    void draw() override;
+    void draw() const override;
 
     ImGuiStyle imgui;
     ImPlotStyle implot;
@@ -250,11 +250,11 @@ struct StateData {
     File file;
 
     struct StateWindows : Drawable {
-        void draw() override;
+        void draw() const override;
 
         struct StateViewer : Window {
             StateViewer() { name = "State viewer"; }
-            void draw() override;
+            void draw() const override;
 
             enum LabelMode { annotated, raw };
             LabelMode label_mode{annotated};
@@ -263,12 +263,12 @@ struct StateData {
 
         struct StateMemoryEditor : Window {
             StateMemoryEditor() { name = "State memory editor"; }
-            void draw() override;
+            void draw() const override;
         };
 
         struct StatePathUpdateFrequency : Window {
             StatePathUpdateFrequency() { name = "State path update frequency"; }
-            void draw() override;
+            void draw() const override;
         };
 
         StateViewer viewer{};
@@ -278,17 +278,17 @@ struct StateData {
 
     struct Demo : Window {
         Demo() { name = "Demo"; }
-        void draw() override;
+        void draw() const override;
     };
 
     struct Metrics : Window {
         Metrics() { name = "Metrics"; }
-        void draw() override;
+        void draw() const override;
     };
 
     struct Tools : Window {
         Tools() { name = "Tools"; }
-        void draw() override;
+        void draw() const override;
     };
 
     StateWindows state{};
@@ -299,7 +299,7 @@ struct StateData {
 
 struct State : StateData {
     State() = default;
-    // Don't copy/assign references!
+    // Don't copy/assign reference members!
     explicit State(const StateData &other) : StateData(other) {}
 
     State &operator=(const State &other) {

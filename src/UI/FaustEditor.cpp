@@ -325,7 +325,7 @@ void zep_init() {
     display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.5));
     display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.25));
     display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.125));
-    zep_editor->InitWithText(s.audio.faust.editor.file_name, ui_s.audio.faust.code);
+    zep_editor->InitWithText(s.audio.faust.editor.file_name, s.audio.faust.code);
 }
 
 void zep_draw() {
@@ -362,7 +362,7 @@ void zep_draw() {
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
  *     (and right navigation should move from the end)
  */
-void Audio::Faust::Editor::draw() {
+void Audio::Faust::Editor::draw() const {
     if (!zep_initialized) {
         // Called once after the fonts are initialized
         zep_init();
@@ -416,7 +416,7 @@ void Audio::Faust::Editor::draw() {
     zep_draw();
 }
 
-void Audio::Faust::Log::draw() {
+void Audio::Faust::Log::draw() const {
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();

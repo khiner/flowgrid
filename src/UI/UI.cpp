@@ -204,25 +204,25 @@ void draw_frame() {
         }
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
-                StatefulImGui::WindowToggleMenuItem(ui_s.state.viewer);
-                StatefulImGui::WindowToggleMenuItem(ui_s.state.memory_editor);
-                StatefulImGui::WindowToggleMenuItem(ui_s.state.path_update_frequency);
+                StatefulImGui::WindowToggleMenuItem(s.state.viewer);
+                StatefulImGui::WindowToggleMenuItem(s.state.memory_editor);
+                StatefulImGui::WindowToggleMenuItem(s.state.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
-                StatefulImGui::WindowToggleMenuItem(ui_s.audio.settings);
+                StatefulImGui::WindowToggleMenuItem(s.audio.settings);
                 if (ImGui::BeginMenu("Faust")) {
-                    StatefulImGui::WindowToggleMenuItem(ui_s.audio.faust.editor);
-                    StatefulImGui::WindowToggleMenuItem(ui_s.audio.faust.log);
+                    StatefulImGui::WindowToggleMenuItem(s.audio.faust.editor);
+                    StatefulImGui::WindowToggleMenuItem(s.audio.faust.log);
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
             }
-            StatefulImGui::WindowToggleMenuItem(ui_s.style);
+            StatefulImGui::WindowToggleMenuItem(s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(ui_s.demo);
-                StatefulImGui::WindowToggleMenuItem(ui_s.metrics);
-                StatefulImGui::WindowToggleMenuItem(ui_s.tools);
+                StatefulImGui::WindowToggleMenuItem(s.demo);
+                StatefulImGui::WindowToggleMenuItem(s.metrics);
+                StatefulImGui::WindowToggleMenuItem(s.tools);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -230,13 +230,13 @@ void draw_frame() {
         ImGui::EndMainMenuBar();
     }
 
-    ui_s.audio.draw();
-    ui_s.state.draw();
+    s.audio.draw();
+    s.state.draw();
     s.file.dialog.draw();
-    StatefulImGui::DrawWindow(ui_s.demo, ImGuiWindowFlags_MenuBar);
-    StatefulImGui::DrawWindow(ui_s.metrics);
-    StatefulImGui::DrawWindow(ui_s.style);
-    StatefulImGui::DrawWindow(ui_s.tools);
+    StatefulImGui::DrawWindow(s.demo, ImGuiWindowFlags_MenuBar);
+    StatefulImGui::DrawWindow(s.metrics);
+    StatefulImGui::DrawWindow(s.style);
+    StatefulImGui::DrawWindow(s.tools);
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
@@ -272,10 +272,10 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 }
 
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
-const std::map<KeyShortcut, ActionID> key_map = action::shortcut_for_id | ranges::views::transform([](const auto &entry) {
+const auto key_map = action::shortcut_for_id | ranges::views::transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
-}) | ranges::to_vector | ranges::to<std::map<KeyShortcut, ActionID>>();
+}) | ranges::to<std::map<KeyShortcut, ActionID>>();
 
 // TODO what about going the other way? Get list of pressed KeyShortcuts.
 //  Then map from action_id to KeyShortcut. See `faust_editor::HandleInput`.

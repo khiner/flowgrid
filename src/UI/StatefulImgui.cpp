@@ -1,18 +1,19 @@
 #include "StatefulImGui.h"
 #include "../Context.h"
 
-void StatefulImGui::DrawWindow(Window &window, ImGuiWindowFlags flags) {
-    const auto &name = window.name;
-    if (s.named(name).visible != window.visible) q(toggle_window{name});
+void StatefulImGui::DrawWindow(const Window &window, ImGuiWindowFlags flags) {
+    static auto window_visible = s.all_windows_const | ranges::views::transform([](const auto &window_ref) {
+        const auto &window = window_ref.get();
+        return std::pair<string, bool>(window.name, window.visible);
+    }) | ranges::to<std::map<string, bool>>();
+
     if (!window.visible) return;
 
-    if (!ImGui::Begin(name.c_str(), &window.visible, flags)) {
-        ImGui::End();
-        return;
+    bool &visible_mutable = window_visible[window.name];
+    if (ImGui::Begin(window.name.c_str(), &visible_mutable, flags)) {
+        if (visible_mutable) window.draw();
+        else q(close_window{window.name});
     }
-
-    window.draw();
-
     ImGui::End();
 }
 
@@ -25,15 +26,14 @@ void gestured() {
     if (ImGui::IsItemDeactivated()) c.gesturing = false;
 }
 
-bool StatefulImGui::WindowToggleMenuItem(Window &w) {
-    const auto &name = w.name;
-    const bool edited = ImGui::MenuItem(name.c_str(), nullptr, w.visible);
-    // The UI copy of the window state object is checked on every window draw,
-    // and a `toggle_window` action is issued whenever the UI copy disagrees with the canonical `s` window state.
-    // This allows for simply changing the UI copy variable, either in this toggle, or via the window close button,
-    // or any other mechanism.
-    if (edited) w.visible = !w.visible;
+bool StatefulImGui::WindowToggleMenuItem(const Window &window) {
+    const bool edited = ImGui::MenuItem(window.name.c_str(), nullptr, window.visible);
+    if (edited) q(toggle_window{window.name});
     return edited;
+}
+
+bool StatefulImGui::Checkbox(const char *label, bool v) {
+    return ImGui::Checkbox(label, &v);
 }
 
 bool StatefulImGui::SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {

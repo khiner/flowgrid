@@ -1,7 +1,7 @@
 #include "../State.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 
-void State::Demo::draw() {
+void State::Demo::draw() const {
     if (ImGui::BeginTabBar("##demos")) {
         if (ImGui::BeginTabItem("ImGui")) {
             ImGui::ShowDemo();

@@ -1,6 +1,6 @@
 #include "../State.h"
 
-void State::Tools::draw() {
+void State::Tools::draw() const {
     if (ImGui::BeginTabBar("##tools")) {
         if (ImGui::BeginTabItem("ImGui")) {
             if (ImGui::BeginTabBar("##imgui_tools")) {

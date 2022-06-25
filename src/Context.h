@@ -87,6 +87,7 @@ private:
     bool write_project_file(const fs::path &path) const;
     bool write_preferences_file() const;
     void set_current_project_path(const fs::path &path);
+    void finalize_gesture();
 
 public:
     Preferences preferences;
@@ -178,7 +179,7 @@ public:
     bool action_allowed(const Action &) const;
 
     void begin_gesture() { gesturing = true; }
-    void end_gesture();
+    void end_gesture() { gesturing = false; }
 
     bool can_undo() const { return current_action_index >= 0; }
     bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }

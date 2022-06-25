@@ -208,6 +208,26 @@ void Context::run_queued_actions() {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
+    if (!gesturing) finalize_gesture();
+}
+
+void Context::finalize_gesture() {
+    const auto action_names = gesture_action_names; // Make a copy so we can clear.
+    gesture_action_names.clear();
+
+    auto old_json_state = state_json;
+    state_json = s;
+    const JsonPatch patch = json::diff(old_json_state, state_json);
+    if (patch.empty()) return;
+
+    while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
+
+    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
+    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
+    diffs.emplace_back(diff);
+    current_action_index = int(diffs.size()) - 1;
+
+    on_json_diff(diff, Forward, true);
 }
 
 void Context::on_action(const Action &action) {
@@ -228,10 +248,7 @@ void Context::on_action(const Action &action) {
         [&](const actions::save_current_project &) { save_current_project(); },
 
         // Remaining actions have a direct effect on the application state.
-        [&](const auto &) {
-            update(action);
-            if (!gesturing) end_gesture();
-        }
+        [&](const auto &) { update(action); }
     }, action);
 }
 
@@ -257,25 +274,6 @@ bool Context::action_allowed(const Action &action) const { return action_allowed
 //  std::pair<Diff, Diff> {forward_diff, reverse_diff} = json::bidirectional_diff(old_state_json, new_state_json);
 //  ```
 //  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
-void Context::end_gesture() {
-    const auto action_names = gesture_action_names; // Make a copy so we can clear.
-    gesturing = false;
-    gesture_action_names.clear();
-
-    auto old_json_state = state_json;
-    state_json = s;
-    const JsonPatch patch = json::diff(old_json_state, state_json);
-    if (patch.empty()) return;
-
-    while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
-
-    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
-    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
-    diffs.emplace_back(diff);
-    current_action_index = int(diffs.size()) - 1;
-
-    on_json_diff(diff, Forward, true);
-}
 
 void Context::update_ui_context(UiContextFlags flags) {
     if (flags == UiContextFlags_None) return;

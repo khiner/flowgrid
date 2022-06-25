@@ -59,6 +59,7 @@ struct set_imgui_style { json imgui_style; }; // ImGuiStyle
 struct set_implot_style { json implot_style; }; // ImPlotStyle
 struct set_flowgrid_style { json flowgrid_style; }; // FlowGridStyle
 
+struct close_window { string name; };
 struct toggle_window { string name; };
 
 struct toggle_state_viewer_auto_select {};
@@ -95,7 +96,7 @@ using Action = std::variant<
     set_imgui_settings,
     set_imgui_style, set_implot_style, set_flowgrid_style,
 
-    toggle_window,
+    close_window, toggle_window,
 
     toggle_state_viewer_auto_select,
     set_state_viewer_label_mode,
@@ -155,11 +156,14 @@ static const std::map<ID, string> name_for_id{
 
     {id<close_application>,               "Close application"},
 
-    {id<set_imgui_settings>,              "Set ImGui Settings"},
-    {id<set_imgui_style>,                 "Set ImGui Style"},
-    {id<set_implot_style>,                "Set ImPlot Style"},
-    {id<set_flowgrid_style>,              "Set FlowGrid Style"},
-    {id<toggle_window>,                   "Toggle Window"},
+    {id<set_imgui_settings>,              "Set ImGui settings"},
+    {id<set_imgui_style>,                 "Set ImGui style"},
+    {id<set_implot_style>,                "Set ImPlot style"},
+    {id<set_flowgrid_style>,              "Set FlowGrid style"},
+
+    {id<close_window>,                    "Close window"},
+    {id<toggle_window>,                   "Toggle window"},
+
     {id<toggle_state_viewer_auto_select>, "Toggle state viewer auto-select"},
     {id<set_state_viewer_label_mode>,     "Set state-viewer label-mode"},
     {id<toggle_audio_muted>,              "Toggle audio muted"},

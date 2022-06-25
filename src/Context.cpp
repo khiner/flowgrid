@@ -337,6 +337,7 @@ void Context::update(const Action &action) {
         },
         [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
 
+        [&](const close_window &a) { _s.named(a.name).visible = false; },
         [&](const toggle_window &a) { _s.named(a.name).visible = !s.named(a.name).visible; },
 
         [&](const toggle_state_viewer_auto_select &) { _s.state.viewer.auto_select = !s.state.viewer.auto_select; },

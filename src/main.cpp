@@ -28,11 +28,6 @@ int main(int, const char **) {
     // Initialize UI.
     // Relying on these imperatively-run side effects up front is not great.
     {
-        // Set some windows to be closed by default.
-        // (This currently needs to happen _after_ docked windows are constructed with windows open, otherwise state gets wonky.)
-        // TODO closed windows flash on the screen before they close
-        c.on_action(toggle_window{s.state.memory_editor.name});
-
         tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
         tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
 

@@ -80,6 +80,7 @@ private:
     std::queue<const Action> queued_actions;
     std::set<string> gesture_action_names;
 
+    void on_action(const Action &); // Immediately execute the action
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void apply_diff(int index, Direction direction = Forward);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
@@ -172,7 +173,6 @@ public:
 
     void enqueue_action(const Action &);
     void run_queued_actions();
-    void on_action(const Action &); // Immediately execute the action TODO make private?
 
     bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;

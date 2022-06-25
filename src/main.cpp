@@ -29,10 +29,9 @@ int main(int, const char **) {
     // Relying on these imperatively-run side effects up front is not great.
     {
         tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
+        ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         tick_ui(); // Another frame is needed form ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
 
-        // Initialize the ImGui/ImPlot settings/style:
-        c.on_action(set_imgui_settings({ImGuiSettings(c.ui->imgui_context)}));
         c.update_ui_context(UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
 
         c.ui_s = c.s; // TODO don't like this

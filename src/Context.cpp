@@ -211,47 +211,6 @@ void Context::run_queued_actions() {
     if (!gesturing) finalize_gesture();
 }
 
-void Context::finalize_gesture() {
-    const auto action_names = gesture_action_names; // Make a copy so we can clear.
-    gesture_action_names.clear();
-
-    auto old_json_state = state_json;
-    state_json = s;
-    const JsonPatch patch = json::diff(old_json_state, state_json);
-    if (patch.empty()) return;
-
-    while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
-
-    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
-    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
-    diffs.emplace_back(diff);
-    current_action_index = int(diffs.size()) - 1;
-
-    on_json_diff(diff, Forward, true);
-}
-
-void Context::on_action(const Action &action) {
-    if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
-
-    gesture_action_names.emplace(action::get_name(action));
-    std::visit(visitor{
-        // Handle actions that don't directly update state.
-        [&](const undo &) { apply_diff(current_action_index--, Direction::Reverse); },
-        [&](const redo &) { apply_diff(++current_action_index, Direction::Forward); },
-
-        [&](const actions::open_project &a) { open_project(a.path); },
-        [&](const actions::open_empty_project &) { open_empty_project(); },
-        [&](const actions::open_default_project &) { open_default_project(); },
-
-        [&](const actions::save_project &a) { save_project(a.path); },
-        [&](const actions::save_default_project &) { save_default_project(); },
-        [&](const actions::save_current_project &) { save_current_project(); },
-
-        // Remaining actions have a direct effect on the application state.
-        [&](const auto &) { update(action); }
-    }, action);
-}
-
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
         case action::id<undo>: return can_undo();
@@ -318,7 +277,83 @@ void Context::clear_undo() {
     state_stats = {};
 }
 
-// Private
+ProjectFormat get_project_format(const fs::path &path) {
+    const string &ext = path.extension();
+    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
+}
+
+// StateStats
+
+void StateStats::on_json_patch(const JsonPatch &patch, TimePoint time, Direction direction) {
+    most_recent_update_paths = {};
+    for (const JsonPatchOp &patch_op: patch) {
+        // For add/remove ops, the thing being updated is the _parent_.
+        const string &changed_path = patch_op.op == Add || patch_op.op == Remove ?
+                                     patch_op.path.substr(0, patch_op.path.find_last_of('/')) :
+                                     patch_op.path;
+        on_json_patch_op(changed_path, time, direction);
+        most_recent_update_paths.emplace_back(changed_path);
+    }
+}
+
+void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction direction) {
+    if (direction == Forward) {
+        auto &update_times = update_times_for_state_path[path];
+        update_times.emplace_back(time);
+    } else {
+        auto &update_times = update_times_for_state_path.at(path);
+        update_times.pop_back();
+        if (update_times.empty()) update_times_for_state_path.erase(path);
+    }
+    path_update_frequency_plottable = create_path_update_frequency_plottable();
+    const auto &num_updates = path_update_frequency_plottable.values;
+    max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
+}
+
+// Convert `string` to char array, removing first character of the path, which is a '/'.
+const char *convert_path(const string &str) {
+    char *pc = new char[str.size()];
+    std::strcpy(pc, string{str.begin() + 1, str.end()}.c_str());
+    return pc;
+}
+
+StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
+    std::vector<string> paths;
+    std::vector<ImU64> values;
+    for (const auto &[path, action_times]: update_times_for_state_path) {
+        paths.push_back(path);
+        values.push_back(action_times.size());
+    }
+
+    std::vector<const char *> labels;
+    std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert_path);
+
+    return {labels, values};
+}
+
+// Private methods
+
+void Context::on_action(const Action &action) {
+    if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
+
+    gesture_action_names.emplace(action::get_name(action));
+    std::visit(visitor{
+        // Handle actions that don't directly update state.
+        [&](const undo &) { apply_diff(current_action_index--, Direction::Reverse); },
+        [&](const redo &) { apply_diff(++current_action_index, Direction::Forward); },
+
+        [&](const actions::open_project &a) { open_project(a.path); },
+        [&](const actions::open_empty_project &) { open_empty_project(); },
+        [&](const actions::open_default_project &) { open_default_project(); },
+
+        [&](const actions::save_project &a) { save_project(a.path); },
+        [&](const actions::save_default_project &) { save_default_project(); },
+        [&](const actions::save_current_project &) { save_current_project(); },
+
+        // Remaining actions have a direct effect on the application state.
+        [&](const auto &) { update(action); }
+    }, action);
+}
 
 /**
  * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer),
@@ -380,6 +415,25 @@ void Context::update(const Action &action) {
     }, action);
 }
 
+void Context::finalize_gesture() {
+    const auto action_names = gesture_action_names; // Make a copy so we can clear.
+    gesture_action_names.clear();
+
+    auto old_json_state = state_json;
+    state_json = s;
+    const JsonPatch patch = json::diff(old_json_state, state_json);
+    if (patch.empty()) return;
+
+    while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
+
+    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
+    const BidirectionalStateDiff diff{action_names, patch, reverse_patch, Clock::now()};
+    diffs.emplace_back(diff);
+    current_action_index = int(diffs.size()) - 1;
+
+    on_json_diff(diff, Forward, true);
+}
+
 void Context::apply_diff(const int action_index, const Direction direction) {
     const auto &diff = diffs[action_index];
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
@@ -391,13 +445,13 @@ void Context::apply_diff(const int action_index, const Direction direction) {
     on_json_diff(diff, direction, false);
 }
 
-// These state-paths trigger side effects when changed
-const auto imgui_settings_path = StatePath(s.imgui_settings);
-const auto imgui_style_path = StatePath(s.style.imgui);
-const auto implot_style_path = StatePath(s.style.implot);
-const auto faust_code_path = StatePath(s.audio.faust.code);
-
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated) {
+    // These state-paths trigger side effects when changed
+    const static auto imgui_settings_path = StatePath(s.imgui_settings);
+    const static auto imgui_style_path = StatePath(s.style.imgui);
+    const static auto implot_style_path = StatePath(s.style.implot);
+    const static auto faust_code_path = StatePath(s.audio.faust.code);
+
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
     state_stats.on_json_patch(patch, diff.system_time, direction);
 
@@ -423,11 +477,6 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     update_processes();
 }
 
-ProjectFormat get_project_format(const fs::path &path) {
-    const string &ext = path.extension();
-    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
-}
-
 bool Context::write_project_file(const fs::path &path) const {
     const ProjectFormat format = get_project_format(path);
     if (format != None) {
@@ -439,60 +488,10 @@ bool Context::write_project_file(const fs::path &path) const {
 bool Context::write_preferences_file() const {
     return File::write(preferences_path, json::to_msgpack(preferences));
 }
-
 void Context::set_current_project_path(const fs::path &path) {
     current_project_path = path;
     current_project_saved_action_index = current_action_index;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences_file();
-}
-
-// StateStats
-
-void StateStats::on_json_patch(const JsonPatch &patch, TimePoint time, Direction direction) {
-    most_recent_update_paths = {};
-    for (const JsonPatchOp &patch_op: patch) {
-        // For add/remove ops, the thing being updated is the _parent_.
-        const string &changed_path = patch_op.op == Add || patch_op.op == Remove ?
-                                     patch_op.path.substr(0, patch_op.path.find_last_of('/')) :
-                                     patch_op.path;
-        on_json_patch_op(changed_path, time, direction);
-        most_recent_update_paths.emplace_back(changed_path);
-    }
-}
-
-void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction direction) {
-    if (direction == Forward) {
-        auto &update_times = update_times_for_state_path[path];
-        update_times.emplace_back(time);
-    } else {
-        auto &update_times = update_times_for_state_path.at(path);
-        update_times.pop_back();
-        if (update_times.empty()) update_times_for_state_path.erase(path);
-    }
-    path_update_frequency_plottable = create_path_update_frequency_plottable();
-    const auto &num_updates = path_update_frequency_plottable.values;
-    max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
-}
-
-// Convert `string` to char array, removing first character of the path, which is a '/'.
-const char *convert_path(const string &str) {
-    char *pc = new char[str.size()];
-    std::strcpy(pc, string{str.begin() + 1, str.end()}.c_str());
-    return pc;
-}
-
-StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
-    std::vector<string> paths;
-    std::vector<ImU64> values;
-    for (const auto &[path, action_times]: update_times_for_state_path) {
-        paths.push_back(path);
-        values.push_back(action_times.size());
-    }
-
-    std::vector<const char *> labels;
-    std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert_path);
-
-    return {labels, values};
 }

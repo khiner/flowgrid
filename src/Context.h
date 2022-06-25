@@ -75,21 +75,55 @@ static const string AllProjectExtensionsDelimited = AllProjectExtensions | range
 static const string FaustDspFileExtension = ".dsp";
 
 struct Context {
-private:
-    Threads threads;
-    std::queue<const Action> queued_actions;
-    std::set<string> gesture_action_names;
+    Context();
+    ~Context() = default;
 
-    void on_action(const Action &); // Immediately execute the action
-    void update(const Action &); // State is only updated via `context.on_action(action)`
-    void apply_diff(int index, Direction direction = Forward);
-    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
-    bool write_project_file(const fs::path &path) const;
-    bool write_preferences_file() const;
-    void set_current_project_path(const fs::path &path);
-    void finalize_gesture();
+    void open_project(const fs::path &);
+    void open_empty_project();
+    static bool default_project_exists();
+    void open_default_project();
 
-public:
+    bool can_save_current_project() const;
+    bool save_project(const fs::path &);
+    bool save_current_project();
+    bool save_empty_project();
+    bool save_default_project();
+
+    json get_project_json(ProjectFormat format = StateFormat) const;
+    static bool is_user_project_path(const fs::path &);
+    bool project_has_changes() const;
+
+    bool clear_preferences();
+
+    // Takes care of all side effects needed to put the app into the provided application state json.
+    // This function can be run at any time, but it's not thread-safe.
+    // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
+    // This is especially the case when assigning to `state_json`, which is not an automic operation like assigning to `_state` is.
+    void set_state_json(const json &);
+    void set_diffs_json(const json &);
+
+    void enqueue_action(const Action &);
+    void run_queued_actions();
+
+    bool action_allowed(ActionID) const;
+    bool action_allowed(const Action &) const;
+
+    void begin_gesture() { gesturing = true; }
+    void end_gesture() { gesturing = false; }
+
+    bool can_undo() const { return current_action_index >= 0; }
+    bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }
+
+    void clear_undo();
+
+    // Audio
+    void compute_frames(int frame_count) const;
+    float get_sample(int channel, int frame) const;
+
+    void update_ui_context(UiContextFlags flags);
+    void update_faust_context();
+    void update_processes();
+
     Preferences preferences;
 
 /**md
@@ -145,54 +179,19 @@ public:
     bool gesturing{};
     bool has_new_faust_code{};
 
-    Context();
-    ~Context() = default;
+private:
+    void on_action(const Action &); // Immediately execute the action
+    void update(const Action &); // State is only updated via `context.on_action(action)`
+    void finalize_gesture();
+    void apply_diff(int index, Direction direction = Forward);
+    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
+    bool write_project_file(const fs::path &path) const;
+    bool write_preferences_file() const;
+    void set_current_project_path(const fs::path &path);
 
-    void open_project(const fs::path &);
-    void open_empty_project();
-    static bool default_project_exists();
-    void open_default_project();
-
-    bool can_save_current_project() const;
-    bool save_project(const fs::path &);
-    bool save_current_project();
-    bool save_empty_project();
-    bool save_default_project();
-
-    json get_project_json(ProjectFormat format = StateFormat) const;
-    static bool is_user_project_path(const fs::path &);
-    bool project_has_changes() const;
-
-    bool clear_preferences();
-
-    // Takes care of all side effects needed to put the app into the provided application state json.
-    // This function can be run at any time, but it's not thread-safe.
-    // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
-    // This is especially the case when assigning to `state_json`, which is not an automic operation like assigning to `_state` is.
-    void set_state_json(const json &);
-    void set_diffs_json(const json &);
-
-    void enqueue_action(const Action &);
-    void run_queued_actions();
-
-    bool action_allowed(ActionID) const;
-    bool action_allowed(const Action &) const;
-
-    void begin_gesture() { gesturing = true; }
-    void end_gesture() { gesturing = false; }
-
-    bool can_undo() const { return current_action_index >= 0; }
-    bool can_redo() const { return current_action_index < (int) diffs.size() - 1; }
-
-    void clear_undo();
-
-    // Audio
-    void compute_frames(int frame_count) const;
-    float get_sample(int channel, int frame) const;
-
-    void update_ui_context(UiContextFlags flags);
-    void update_faust_context();
-    void update_processes();
+    Threads threads;
+    std::queue<const Action> queued_actions;
+    std::set<string> gesture_action_names;
 };
 
 /**

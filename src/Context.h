@@ -79,14 +79,9 @@ struct Context {
     ~Context() = default;
 
     void open_project(const fs::path &);
-    void open_empty_project();
-    void open_default_project();
 
-    bool can_save_current_project() const;
     bool save_project(const fs::path &);
-    bool save_current_project();
     bool save_empty_project();
-    bool save_default_project();
 
     json get_project_json(ProjectFormat format = StateFormat) const;
     static bool is_user_project_path(const fs::path &);

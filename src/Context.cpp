@@ -122,7 +122,6 @@ json Context::get_project_json(const ProjectFormat format) const {
 }
 
 bool Context::project_has_changes() const { return current_action_index != current_project_saved_action_index; }
-bool Context::can_save_current_project() const { return current_project_path.has_value() && project_has_changes(); }
 
 void Context::open_project(const fs::path &path) {
     const auto project_format = ProjectFormatForExtension.at(path.extension());
@@ -141,7 +140,7 @@ void Context::open_project(const fs::path &path) {
 }
 
 bool Context::save_project(const fs::path &path) {
-    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !can_save_current_project()) return false;
+    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !action_allowed(action::id<save_current_project>)) return false;
 
     if (write_project_file(path)) {
         if (is_user_project_path(path)) {
@@ -152,12 +151,7 @@ bool Context::save_project(const fs::path &path) {
     return false;
 }
 
-void Context::open_empty_project() { open_project(empty_project_path); }
-void Context::open_default_project() { open_project(default_project_path); }
-
 bool Context::save_empty_project() { return save_project(empty_project_path); }
-bool Context::save_default_project() { return save_project(default_project_path); }
-bool Context::save_current_project() { return can_save_current_project() && save_project(current_project_path.value()); }
 
 bool Context::clear_preferences() {
     preferences.recently_opened_paths.clear();
@@ -176,7 +170,7 @@ void Context::set_state_json(const json &new_state_json) {
 }
 
 void Context::set_diffs_json(const json &new_diffs_json) {
-    open_empty_project();
+    open_project(empty_project_path);
     clear_undo();
 
     diffs = new_diffs_json;
@@ -205,7 +199,7 @@ bool Context::action_allowed(const ActionID action_id) const {
         case action::id<actions::save_project>:
         case action::id<actions::show_save_project_dialog>:
         case action::id<actions::save_default_project>: return project_has_changes();
-        case action::id<actions::save_current_project>: return can_save_current_project();
+        case action::id<actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
 
         case action::id<actions::open_file_dialog>: return !s.file.dialog.visible;
         case action::id<actions::close_file_dialog>: return s.file.dialog.visible;
@@ -329,12 +323,12 @@ void Context::on_action(const Action &action) {
         [&](const redo &) { apply_diff(++current_action_index, Direction::Forward); },
 
         [&](const actions::open_project &a) { open_project(a.path); },
-        [&](const actions::open_empty_project &) { open_empty_project(); },
-        [&](const actions::open_default_project &) { open_default_project(); },
+        [&](const open_empty_project &) { open_project(empty_project_path); },
+        [&](const open_default_project &) { open_project(default_project_path); },
 
         [&](const actions::save_project &a) { save_project(a.path); },
-        [&](const actions::save_default_project &) { save_default_project(); },
-        [&](const actions::save_current_project &) { save_current_project(); },
+        [&](const save_default_project &) { save_project(default_project_path); },
+        [&](const actions::save_current_project &) { save_project(current_project_path.value()); },
 
         // Remaining actions have a direct effect on the application state.
         [&](const auto &) { update(action); }

@@ -23,16 +23,12 @@ using TimePoint = Clock::time_point;
  * The entire codebase has read-only access to the immutable, single source-of-truth application state instance `s`.
  * The global `Context c` instance updates `s` when it receives an `Action a` instance via the global `BlockingConcurrentQueue<Action> q` action queue.
  *
- * After modifying its `c.s` instance (referred to globally as `s`), `c` updates its mutable `c.ui_s` copy (referred to globally as `ui_s`).
- * **State clients, such as the UI, can and do freely use this single, global, low-latency `ui_s` instance as the de-facto mutable copy of the source-of-truth `s`.**
- * For example, the UI passes (nested) `ui_s` members to ImGui widgets as direct value references.
- *
   * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
  *   but expensive-to-compute derivations of their core (minimal but complete) data members.
  *  Many `{Stateful}` structs also implement convenience methods for complex state updates across multiple fields,
  *    or for generating less-frequently needed derived data.
  *
- * **The global `const StateData &s` and `State ui_s` instances are declared in `context.h` and instantiated in `main.cpp`.**
+ * **The global `const StateData &s` instance is declared in `context.h` and instantiated in `main.cpp`.**
  */
 
 // E.g. `convert_state_path("s.foo.bar") => "/foo/bar"`
@@ -48,7 +44,7 @@ inline std::string convert_state_path(const string &state_member_name) {
 
 // Used to convert a state variable member to its respective path in state JSON.
 // This allows for code paths conditioned on which state member was changed, without needing to worry about manually changing paths when state members move.
-// _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s`, `ui_s` or `state`).
+// _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s` or `state`).
 // E.g. `StatePath(s.foo.bar) => "/foo/bar"`
 #define StatePath(x) convert_state_path(#x)
 

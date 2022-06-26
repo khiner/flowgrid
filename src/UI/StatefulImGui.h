@@ -3,7 +3,7 @@
 #include "../State.h"
 #include "../Action.h"
 
-void dock_window(const Window &w, ImGuiID node_id);
+void dock_window(const Window &window, ImGuiID node_id);
 void gestured();
 
 namespace StatefulImGui {

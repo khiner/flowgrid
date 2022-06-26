@@ -2,23 +2,18 @@
 #include "../Context.h"
 
 void StatefulImGui::DrawWindow(const Window &window, ImGuiWindowFlags flags) {
-    static auto window_visible = s.all_windows_const | ranges::views::transform([](const auto &window_ref) {
-        const auto &window = window_ref.get();
-        return std::pair<string, bool>(window.name, window.visible);
-    }) | ranges::to<std::map<string, bool>>();
-
     if (!window.visible) return;
 
-    bool &visible_mutable = window_visible[window.name];
-    if (ImGui::Begin(window.name.c_str(), &visible_mutable, flags)) {
-        if (visible_mutable) window.draw();
+    bool &visible = c.derived_state.window_visible[window.name];
+    if (ImGui::Begin(window.name.c_str(), &visible, flags)) {
+        if (visible) window.draw();
         else q(close_window{window.name});
     }
     ImGui::End();
 }
 
-void dock_window(const Window &w, ImGuiID node_id) {
-    ImGui::DockBuilderDockWindow(w.name.c_str(), node_id);
+void dock_window(const Window &window, ImGuiID node_id) {
+    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
 }
 
 void gestured() {

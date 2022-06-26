@@ -65,7 +65,7 @@ bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {
 // Returns `true` if style changes.
 bool Style::ImGuiStyleEditor() {
     bool changed = false;
-    auto &style = ui_s.style.imgui;
+    auto &style = c.derived_state.style.imgui;
 
     changed |= ShowStyleSelector("Colors##Selector", &style);
 //    ImGui::ShowFontSelector("Fonts##Selector"); // TODO
@@ -262,7 +262,7 @@ bool ShowImPlotStyleSelector(const char *label, ImPlotStyle *dst) {
 
 bool Style::ImPlotStyleEditor() {
     bool changed = false;
-    auto &style = ui_s.style.implot;
+    auto &style = c.derived_state.style.implot;
 
     changed |= ShowImPlotStyleSelector("Colors##Selector", &style);
 
@@ -379,7 +379,7 @@ bool FlowGridStyleSelector(const char *label, FlowGridStyle &style) {
 
 bool Style::FlowGridStyleEditor() {
     bool changed = false;
-    auto &style = ui_s.style.flowgrid;
+    auto &style = c.derived_state.style.flowgrid;
 
     changed |= StatefulImGui::SliderFloat("FlashDuration", &style.FlashDurationSec, FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
     changed |= FlowGridStyleSelector("Colors##Selector", style);

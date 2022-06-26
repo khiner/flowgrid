@@ -6,7 +6,6 @@ Context context{};
 Context &c = context;
 const State &state = c.s;
 const State &s = c.s;
-State &ui_s = c.ui_s;
 
 /**md
  # Notes
@@ -20,6 +19,8 @@ State &ui_s = c.ui_s;
  * **Actor:** A thread that generates **actions**
  */
 int main(int, const char **) {
+    c.update_processes(); // Currently has a state side effect of setting audio sample rate.
+
     auto ui_context = create_ui();
 
     {
@@ -29,7 +30,6 @@ int main(int, const char **) {
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         tick_ui(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
         c.run_queued_actions();
-        c.ui_s = c.s;
     }
 
     c.clear_undo(); // Make sure we don't start with any undo state.
@@ -41,7 +41,6 @@ int main(int, const char **) {
     // Run initialization that doesn't update state.
     // It's obvious at app start time if anything further has state-modification side effects,
     // since any further state changes would show up in the undo stack.
-    c.update_processes();
     c.update_faust_context();
 
     /** TODO need more consistent pattern for state updates.
@@ -73,8 +72,6 @@ int main(int, const char **) {
         Potential issues:
         * It would still be nice to allow shutting down the UI thread entirely, without killing the app, like we can currently
           (allowing for running headless).
-
-      Ok I think I know a next step to try first - can we get rid of the `ui_s` mutable state copy entirely?
     */
 
     while (s.processes.ui.running) {

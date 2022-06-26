@@ -130,8 +130,8 @@ void State::StateWindows::StateMemoryEditor::draw() const {
         first_render = false;
     }
 
-    void *mem_data{&ui_s};
-    size_t mem_size{sizeof(ui_s)};
+    void *mem_data{&c._state};
+    size_t mem_size{sizeof(c._state)};
     memory_editor.DrawContents(mem_data, mem_size);
 }
 

@@ -55,6 +55,13 @@ private:
     Plottable create_path_update_frequency_plottable();
 };
 
+struct DerivedState {
+    explicit DerivedState(const State &);
+
+    Style style;
+    std::map<string, bool> window_visible;
+};
+
 enum ProjectFormat {
     None,
     StateFormat,
@@ -131,16 +138,16 @@ struct Context {
  * expectation that a variable called `faust_error_message` would only be populated with
  * _actual_ Faust errors.
  *
- * Also, we don't want error messages to pollute the undo tree.
+ * Also, we don't want setting the error messages to pollute the undo tree with its own action.
  */
-    StateStats state_stats;
     State _state{};
 //    diff_match_patch<string> dmp;
     UiContext *ui{};
+    StateStats state_stats;
+    DerivedState derived_state;
 
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
-    State ui_s{}; // Separate copy of the state that can be modified by the UI directly
 
     /**
      This is a placeholder for the main in-memory data structure for action history.
@@ -152,7 +159,7 @@ struct Context {
          and modify to taste.
     */
     std::vector<BidirectionalStateDiff> diffs;
-    int current_action_index = -1;
+    int current_diff_index = -1;
     json state_json;
 
     std::optional<fs::path> current_project_path;
@@ -178,7 +185,7 @@ private:
 
     Threads threads;
     std::queue<const Action> queued_actions;
-    std::set<string> gesture_action_names;
+    std::set<string> gesture_action_names; // TODO change to `gesture_actions` (IDs)
 };
 
 /**
@@ -187,7 +194,6 @@ private:
 */
 extern Context context, &c;
 extern const State &state, &s;
-extern State &ui_s;
 
 inline bool q(Action &&a) {
     c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.

@@ -58,9 +58,9 @@ void ShowMetrics() {
 
     const bool has_diffs = !c.diffs.empty();
     if (!has_diffs) BeginDisabled();
-    if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.current_action_index)) {
+    if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.current_diff_index)) {
         for (size_t i = 0; i < c.diffs.size(); i++) {
-            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.current_action_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.current_diff_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                 ShowDiffMetrics(c.diffs[i]);
             }
         }

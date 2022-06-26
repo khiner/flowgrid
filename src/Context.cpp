@@ -101,7 +101,7 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || state.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-Context::Context() : state_json(_state) {
+Context::Context() : derived_state(_state), state_json(_state) {
     if (fs::exists(preferences_path)) {
         preferences = json::from_msgpack(File::read(preferences_path));
     } else {
@@ -121,7 +121,7 @@ json Context::get_project_json(const ProjectFormat format) const {
     return diffs;
 }
 
-bool Context::project_has_changes() const { return current_action_index != current_project_saved_action_index; }
+bool Context::project_has_changes() const { return current_diff_index != current_project_saved_action_index; }
 
 bool Context::save_empty_project() { return save_project(empty_project_path); }
 
@@ -135,7 +135,7 @@ void Context::set_state_json(const json &new_state_json) {
 
     state_json = new_state_json;
     _state = state_json.get<State>();
-    ui_s = _state; // Update the UI-copy of the state to reflect.
+    derived_state = DerivedState(_state);
 
     update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
     update_faust_context();
@@ -146,8 +146,8 @@ void Context::set_diffs_json(const json &new_diffs_json) {
     clear_undo();
 
     diffs = new_diffs_json;
-    while (current_action_index < int(diffs.size() - 1)) {
-        apply_diff(++current_action_index);
+    while (current_diff_index < int(diffs.size() - 1)) {
+        apply_diff(++current_diff_index);
     }
 }
 
@@ -160,13 +160,13 @@ void Context::run_queued_actions() {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if (!gesturing) finalize_gesture();
+    if (!gesturing && !gesture_action_names.empty()) finalize_gesture();
 }
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<undo>: return current_action_index >= 0;
-        case action::id<redo>: return current_action_index < (int) diffs.size() - 1;
+        case action::id<undo>: return current_diff_index >= 0;
+        case action::id<redo>: return current_diff_index < (int) diffs.size() - 1;
         case action::id<actions::open_default_project>: return fs::exists(default_project_path);
         case action::id<actions::save_project>:
         case action::id<actions::show_save_project_dialog>:
@@ -222,7 +222,7 @@ void Context::update_processes() {
 }
 
 void Context::clear_undo() {
-    current_action_index = -1;
+    current_diff_index = -1;
     diffs.clear();
     gesture_action_names.clear();
     gesturing = false;
@@ -257,6 +257,13 @@ void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction 
     max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
 }
 
+DerivedState::DerivedState(const State &_state) : style(_state.style) {
+    window_visible = _state.all_windows_const | ranges::views::transform([](const auto &window_ref) {
+        const auto &window = window_ref.get();
+        return std::pair<string, bool>(window.name, window.visible);
+    }) | ranges::to<std::map<string, bool>>();
+}
+
 // Convert `string` to char array, removing first character of the path, which is a '/'.
 const char *convert_path(const string &str) {
     char *pc = new char[str.size()];
@@ -283,11 +290,10 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
 
-    gesture_action_names.emplace(action::get_name(action));
     std::visit(visitor{
         // Handle actions that don't directly update state.
-        [&](const undo &) { apply_diff(current_action_index--, Direction::Reverse); },
-        [&](const redo &) { apply_diff(++current_action_index, Direction::Forward); },
+        [&](const undo &) { apply_diff(current_diff_index--, Direction::Reverse); },
+        [&](const redo &) { apply_diff(++current_diff_index, Direction::Forward); },
 
         [&](const actions::open_project &a) { open_project(a.path); },
         [&](const open_empty_project &) { open_project(empty_project_path); },
@@ -310,6 +316,8 @@ void Context::on_action(const Action &action) {
  * make working copies as needed. Otherwise, modify the (single, global) state directly, in-place.
  */
 void Context::update(const Action &action) {
+    gesture_action_names.emplace(action::get_name(action));
+
     auto &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(visitor{
         [&](const show_open_project_dialog &) { _s.file.dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
@@ -369,25 +377,25 @@ void Context::finalize_gesture() {
     const JsonPatch patch = json::diff(old_json_state, state_json);
     if (patch.empty()) return;
 
-    while (int(diffs.size()) > current_action_index + 1) diffs.pop_back();
+    while (int(diffs.size()) > current_diff_index + 1) diffs.pop_back();
 
     const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
     const BidirectionalStateDiff diff{gesture_action_names, patch, reverse_patch, Clock::now()};
     gesture_action_names.clear();
 
     diffs.emplace_back(diff);
-    current_action_index = int(diffs.size()) - 1;
+    current_diff_index = int(diffs.size()) - 1;
 
     on_json_diff(diff, Forward, true);
 }
 
-void Context::apply_diff(const int action_index, const Direction direction) {
-    const auto &diff = diffs[action_index];
+void Context::apply_diff(const int index, const Direction direction) {
+    const auto &diff = diffs[index];
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
 
     state_json = state_json.patch(patch);
     _state = state_json.get<State>();
-    ui_s = _state; // Update the UI-copy of the state to reflect.
+    derived_state = DerivedState(_state);
 
     on_json_diff(diff, direction, false);
 }
@@ -462,7 +470,7 @@ bool Context::save_project(const fs::path &path) {
 
 void Context::set_current_project_path(const fs::path &path) {
     current_project_path = path;
-    current_project_saved_action_index = current_action_index;
+    current_project_saved_action_index = current_diff_index;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences_file();

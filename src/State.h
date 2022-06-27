@@ -32,6 +32,7 @@ using TimePoint = Clock::time_point;
  */
 
 // E.g. `convert_state_path("s.foo.bar") => "/foo/bar"`
+// TODO return `fs::path`
 inline std::string convert_state_path(const string &state_member_name) {
     std::size_t index = state_member_name.find('.');
     // Must pass the fully-qualified state path.

@@ -174,7 +174,7 @@ struct Context {
 private:
     void on_action(const Action &); // Immediately execute the action
     void update(const Action &); // State is only updated via `context.on_action(action)`
-    void finalize_gesture();
+    void finalize_gesture(bool merge = false); // If `merge = true`, this gesture's diff is rolled into the previous diff.
     void apply_diff(int index, Direction direction = Forward);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
 

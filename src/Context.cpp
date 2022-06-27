@@ -371,17 +371,27 @@ void Context::update(const Action &action) {
     }, action);
 }
 
-void Context::finalize_gesture() {
-    auto old_json_state = state_json;
+void Context::finalize_gesture(bool merge) {
+    const bool should_merge = merge && current_diff_index > 0;
+    const json old_state_json = should_merge ? state_json.patch(diffs.back().reverse_patch) : state_json;
     state_json = s;
-    const JsonPatch patch = json::diff(old_json_state, state_json);
+    const JsonPatch patch = json::diff(old_state_json, state_json);
     if (patch.empty()) return;
 
+    // If we're not already at the end of the undo stack, wind it back.
+    // TODO use an unto _tree_ and keep this history
     while (int(diffs.size()) > current_diff_index + 1) diffs.pop_back();
 
-    const JsonPatch reverse_patch = json::diff(state_json, old_json_state);
-    const BidirectionalStateDiff diff{gesture_action_names, patch, reverse_patch, Clock::now()};
+    const JsonPatch reverse_patch = json::diff(state_json, old_state_json);
+    BidirectionalStateDiff diff{gesture_action_names, patch, reverse_patch, Clock::now()};
     gesture_action_names.clear();
+
+    if (should_merge) {
+        const auto last_diff = diffs.back();
+        diffs.pop_back();
+        diff.action_names.insert(last_diff.action_names.begin(), last_diff.action_names.end());
+        on_json_diff(last_diff, Reverse, true);
+    }
 
     diffs.emplace_back(diff);
     current_diff_index = int(diffs.size()) - 1;

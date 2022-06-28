@@ -101,7 +101,9 @@ struct Context {
     void set_diffs_json(const json &);
 
     void enqueue_action(const Action &);
-    void run_queued_actions();
+    // If `merge_gesture = true`, the gesture diff will be merged with the previous one when it's finalized.
+    void run_queued_actions(bool merge_gesture = false);
+    size_t num_queued_actions() { return queued_actions.size(); }
 
     bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;
@@ -195,11 +197,13 @@ private:
 extern Context context, &c;
 extern const State &state, &s;
 
+// This is the main action-queue method.
 inline bool q(Action &&a) {
-    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
     // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
     // return queue.enqueue(a);
+
+    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
     return true;
 }
 

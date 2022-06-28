@@ -74,9 +74,19 @@ int main(int, const char **) {
           (allowing for running headless).
     */
 
+    // Merge actions that happen within very short succession.
+    // This is needed e.g. to roll window size adjustments that get processed
+    // by ImGui shortly after a neighboring docked window is closed.
+    // TODO Can we remove/greatly shorten this after removing the `IniSavingRate` behavior entirely in ImGui, and
+    //  just setting `WantSaveIniSettings` immediately?
+    static const int num_action_frames_to_merge = 10;
+    static int num_action_frames = 0;
     while (s.processes.ui.running) {
         tick_ui();
-        c.run_queued_actions();
+        bool frame_has_queued_actions = c.num_queued_actions() > 0;
+        c.run_queued_actions(num_action_frames > 0);
+        if (frame_has_queued_actions) num_action_frames = num_action_frames_to_merge + 1;
+        num_action_frames = std::max(0, num_action_frames - 1);
     }
 
     destroy_ui();

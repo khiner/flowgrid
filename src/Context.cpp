@@ -155,12 +155,12 @@ void Context::enqueue_action(const Action &a) {
     queued_actions.push(a);
 }
 
-void Context::run_queued_actions() {
+void Context::run_queued_actions(bool merge_gesture) {
     while (!queued_actions.empty()) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if (!gesturing && !gesture_action_names.empty()) finalize_gesture();
+    if (!gesturing && !gesture_action_names.empty()) finalize_gesture(merge_gesture);
 }
 
 bool Context::action_allowed(const ActionID action_id) const {
@@ -372,19 +372,20 @@ void Context::update(const Action &action) {
 }
 
 void Context::finalize_gesture(bool merge) {
-    const bool should_merge = merge && current_diff_index > 0;
-    const json old_state_json = should_merge ? state_json.patch(diffs.back().reverse_patch) : state_json;
-    state_json = s;
-    const JsonPatch patch = json::diff(old_state_json, state_json);
+    const auto gesture_names_copy = gesture_action_names;
+    gesture_action_names.clear();
+
+    const bool should_merge = merge && !diffs.empty();
+    if (should_merge && int(diffs.size()) != current_diff_index + 1) return; // Only allow merges for new gestures at the end of the undo chain.
+
+    const json compare_with_state_json = should_merge ? state_json.patch(diffs.back().reverse_patch) : state_json;
+    const JsonPatch patch = json::diff(compare_with_state_json, s);
     if (patch.empty()) return;
 
-    // If we're not already at the end of the undo stack, wind it back.
-    // TODO use an unto _tree_ and keep this history
-    while (int(diffs.size()) > current_diff_index + 1) diffs.pop_back();
+    state_json = s;
 
-    const JsonPatch reverse_patch = json::diff(state_json, old_state_json);
-    BidirectionalStateDiff diff{gesture_action_names, patch, reverse_patch, Clock::now()};
-    gesture_action_names.clear();
+    const JsonPatch reverse_patch = json::diff(state_json, compare_with_state_json);
+    BidirectionalStateDiff diff{gesture_names_copy, patch, reverse_patch, Clock::now()};
 
     if (should_merge) {
         const auto last_diff = diffs.back();
@@ -392,6 +393,10 @@ void Context::finalize_gesture(bool merge) {
         diff.action_names.insert(last_diff.action_names.begin(), last_diff.action_names.end());
         on_json_diff(last_diff, Reverse, true);
     }
+
+    // If we're not already at the end of the undo stack, wind it back.
+    // TODO use an unto _tree_ and keep this history
+    while (int(diffs.size()) > current_diff_index + 1) diffs.pop_back();
 
     diffs.emplace_back(diff);
     current_diff_index = int(diffs.size()) - 1;

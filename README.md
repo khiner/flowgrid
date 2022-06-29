@@ -13,8 +13,7 @@ Focusing here on making it easier to stay in flow state while using _and creatin
 * Keeping full clean-and-build times low
 * Keeping rebuild times low after edits of commonly imported headers
 * Spend more time upfront trying to get simple and flexible foundations right
-* Always Be Improving the experience of creating the application
-* Have fun building the app. This will help me actually build it.
+* Improve the experience of creating the application.
 * Let myself optimize. More Fast <=> More Fun. In computers, fast things are good and always more fun than slow things.
 
 So far, I'm basically trying to mash together some great libraries (see [**Stack**](#stack)):
@@ -219,19 +218,19 @@ be released under the GPL v3 license.
 
 ### Why copyleft?
 
-The audio world has a ton of amazing and fully open-source code, educational resources, libraries, etc.
+The audio world has lots of high quality open-source code, educational resources, libraries, and other software resources.
 However, the commercial audio industry is also full of protected IP.
-This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in an
-industry in which it's notoriously difficult to do so.
+This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in the
+audio software industry, in which it's notoriously hard to do so.
 
-Choosing a permissive license that allows for closed-source commercial usage stands to benefit more end users (
-musicians, artists, creators) in the short-term, since companies producing closed-source software could freely put the
-code right into their products.
+Choosing a permissive license allowing for closed-source commercial usage stands to benefit more end users (musicians,
+artists, creators) in the short-term, since companies producing closed-source software could freely put the code right
+into their products.
 
-In my experience, it's very easy, and always getting easier, to find the software/hardware you need to create music,
-while it's much harder to find an effective path to creating new audio software.
+In my experience, it's very easy, and always getting easier, to find the music software or hardware you need, while it's
+much harder to find the right tools and methods for creating new audio software.
 
-Ultimately, although this project is first and foremost a creative tool, the intention and spirit is much more about
+Although this project is first and foremost a creative tool, the intention and spirit is much more about
 hacking, learning, education and research than it is about creating end media products.
 For these purposes, it's more important to keep the information open than to make the functionality freely and widely
 available.

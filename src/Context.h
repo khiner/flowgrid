@@ -191,11 +191,12 @@ private:
 };
 
 /**
- * Declare a full name & convenient shorthand for the global `Context` and `State` instances.
+ * Declare a full name & convenient shorthand for the global `Context`, `State`, and `DerivedState` instances.
  * _These are instantiated in `main.cpp`._
 */
 extern Context context, &c;
 extern const State &state, &s;
+extern DerivedState &ds;
 
 // This is the main action-queue method.
 inline bool q(Action &&a) {

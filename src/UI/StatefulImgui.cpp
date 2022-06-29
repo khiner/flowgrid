@@ -4,7 +4,7 @@
 void StatefulImGui::DrawWindow(const Window &window, ImGuiWindowFlags flags) {
     if (!window.visible) return;
 
-    bool &visible = c.derived_state.window_visible[window.name];
+    bool &visible = ds.window_visible[window.name];
     if (ImGui::Begin(window.name.c_str(), &visible, flags)) {
         if (visible) window.draw();
         else q(close_window{window.name});

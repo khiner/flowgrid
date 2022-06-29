@@ -65,7 +65,7 @@ bool ShowStyleSelector(const char *label, ImGuiStyle *dst) {
 // Returns `true` if style changes.
 bool Style::ImGuiStyleEditor() {
     bool changed = false;
-    auto &style = c.derived_state.style.imgui;
+    auto &style = ds.style.imgui;
 
     changed |= ShowStyleSelector("Colors##Selector", &style);
 //    ImGui::ShowFontSelector("Fonts##Selector"); // TODO
@@ -262,7 +262,7 @@ bool ShowImPlotStyleSelector(const char *label, ImPlotStyle *dst) {
 
 bool Style::ImPlotStyleEditor() {
     bool changed = false;
-    auto &style = c.derived_state.style.implot;
+    auto &style = ds.style.implot;
 
     changed |= ShowImPlotStyleSelector("Colors##Selector", &style);
 
@@ -379,7 +379,7 @@ bool FlowGridStyleSelector(const char *label, FlowGridStyle &style) {
 
 bool Style::FlowGridStyleEditor() {
     bool changed = false;
-    auto &style = c.derived_state.style.flowgrid;
+    auto &style = ds.style.flowgrid;
 
     changed |= StatefulImGui::SliderFloat("FlashDuration", &style.FlashDurationSec, FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
     changed |= FlowGridStyleSelector("Colors##Selector", style);
@@ -395,15 +395,15 @@ bool Style::FlowGridStyleEditor() {
 void Style::draw() const {
     if (ImGui::BeginTabBar("##style")) {
         if (ImGui::BeginTabItem("FlowGrid")) {
-            if (FlowGridStyleEditor()) q(set_flowgrid_style{flowgrid});
+            if (FlowGridStyleEditor()) q(set_flowgrid_style{ds.style.flowgrid});
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImGui")) {
-            if (ImGuiStyleEditor()) q(set_imgui_style{imgui});
+            if (ImGuiStyleEditor()) q(set_imgui_style{ds.style.imgui});
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("ImPlot")) {
-            if (ImPlotStyleEditor()) q(set_implot_style{implot});
+            if (ImPlotStyleEditor()) q(set_implot_style{ds.style.implot});
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

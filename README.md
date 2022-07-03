@@ -3,8 +3,7 @@
 Prototyping the new stack for FlowGrid.
 
 (Old version [here](https://github.com/khiner/flowgrid)) with an out-of-date demo gif and in general dissaray.
-Planning on making that solid in what it does soon (without adding any new features), but got carried away having fun
-laying foundations for a new [**Stack**](#stack), aimed at helping me be more productive.
+Planning on making that solid in what it does soon (without adding any new features), but got carried away having fun laying foundations for a new [**Stack**](#stack), aimed at helping me be more productive.
 
 Still actively building this.
 
@@ -35,8 +34,7 @@ $ brew link llvm --force
 #### IDE clean/build/run
 
 * **CLion:** I use CLion to develop this application, so that's the only IDE I can attest to working smoothly.
-* **TODO:** anything needed for a VSCode project? would be nice to be able to assess it since most refactoring seems
-  weirdly slow in CLion, and doesn't support many features in other JetBrains products.
+* **TODO:** anything needed for a VSCode project? would be nice to be able to assess it since most refactoring seems weirdly slow in CLion, and doesn't support many features in other JetBrains products.
 
 #### Manual clean/build/run
 
@@ -85,14 +83,12 @@ $ ./FlowGrid
 
 * [json](https://github.com/nlohmann/json) for state serialization, and for the diff-patching mechanism behind undo/redo
 * ~~[ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main event queue~~
-    * For now just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to
-      complex structures like JSON)
+    * For now just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to complex structures like JSON)
 * ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
   text~~
     - Was using to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
-      Will be using this again soon, to
-      adapt [hlohmann json patches](https://github.com/nlohmann/json#json-pointer-and-json-patch) into something
-      like [jsondiffpatch's deltas](https://github.com/benjamine/jsondiffpatch/blob/master/docs/deltas.md#text-diffs),
+      Will be using this again soon, to adapt [hlohmann json patches](https://github.com/nlohmann/json#json-pointer-and-json-patch)
+      into something like [jsondiffpatch's deltas](https://github.com/benjamine/jsondiffpatch/blob/master/docs/deltas.md#text-diffs),
       for unified handling of state diffs involving long text strings (like code strings).
 
 ### C++ extensions
@@ -132,8 +128,7 @@ $ git add .
 
 #### Forked submodules
 
-The following modules are [forked by me](https://github.com/khiner?tab=repositories&q=&type=fork), along with the
-upstream branch the fork is based on:
+The following modules are [forked by me](https://github.com/khiner?tab=repositories&q=&type=fork), along with the upstream branch the fork is based on:
 
 * `imgui:docking`
 * `implot:master`
@@ -151,8 +146,7 @@ $ git push --force
 ```
 
 A notable exception is my zep fork, which has so many changes that almost no upstream commits will rebase successfully.
-The way I handle rebasing against zep is to rebase one commit at a time, using `--strategy-option theirs` (`-Xtheirs`),
-and then manually verifying & porting what the merge missed:
+The way I handle rebasing against zep is to rebase one commit at a time, using `--strategy-option theirs` (`-Xtheirs`), and then manually verifying & porting what the merge missed:
 
 ```sh
 $ cd lib/zep
@@ -166,45 +160,33 @@ $ git push --force
 ### Project files
 
 FlowGrid supports three project formats.
-When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file
-dialog.
+When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file dialog.
+Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https://github.com/nlohmann/json#binary-formats-bson-cbor-messagepack-ubjson-and-bjdata).
 
 * `.fgs`: _FlowGrid**State**_
     - The full application state.
       An `.fgs` file contains a JSON blob with all the information needed to get back to the saved project state.
       Loading a `.fgs` project file will completely replace the application state with its own.
-    - As a special case, the project file `./internal/empty.fgs` (relative to the project build folder) is used
-      internally to load projects.
-      This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered
-      via the `File->New project` menu item, or with `Cmd+n`.
-      FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently,
-      rendering two frames to let ImGui fully establish its context).
-      This approach provides a pretty strong guarantee that if state-loading is implemented correctly, loading a new
-      project will always produce the same, valid empty-project state.
+    - As a special case, the project file `./internal/empty.fgs` (relative to the project build folder) is used internally to load projects.
+      This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
+      FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
+      This approach provides a pretty strong guarantee that if state-loading is implemented correctly, loading a new project will always produce the same, valid empty-project state.
 * `.fgd`: _FlowGrid**Diffs**_
     - Instead of saving the full application state, `.fgd` project files store a JSON object with two properties:
-        - `diffs`: A list of _project state diffs_ (deltas, patches), in [JSON Patch](https://jsonpatch.com/) format,
-          corresponding to the application-state effects of every action that has effected the application's state since
-          its launch
-        - `position`: The project's position in the list of diffs. (Or, equivalently, action position or position in the
-          undo-stack).
+        - `diffs`: A list of _project state diffs_ (deltas, patches), in [JSON Patch](https://jsonpatch.com/) format, corresponding to the application-state effects of every action that has effected the application's state since its launch
+        - `position`: The project's position in the list of diffs. (Or, equivalently, action position or position in the undo-stack).
           When you save your project as an `.fgd` file, your current undo-position is stored here.
     - FlowGrid loads `.fgd` project files by:
-        * Running the `open_empty_project` action (explained above) to clear the current application and load a fresh
-          empty one
+        * Running the `open_empty_project` action (explained above) to clear the current application and load a fresh empty one
         * Applying each diff (patch) in the `diff` list to the application state
         * Setting the application's undo position to the non-negative integer stored in `position`
 * `.fga`: _FlowGrid**Actions**_ (still working on this)
     - Finally, FlowGrid can save and load projects as a list of _actions_.
       This file stores an ordered record of _every action_ that affected the app state up to the time it was saved.
-      Each item in an `.fga` file contains all the information needed to carry out a logical action affecting the app
-      state.
-      Contrast this `.fgd` project files, which store the _results_ of each action over the application session.]
+      Each item in an `.fga` file contains all the information needed to carry out a logical action affecting the app state.
+      Contrast this with `.fgd` project files, which store the _results_ of each action over the application session.
       An action list item in a `.fga` file tells you, in application-domain semantics, "what happened".
       A diff item in a `.fgd` file tells you "what changed as a result of some action".
-
-Each type of FlowGrid project files is saved
-as [MessagePack-encoded JSON](https://github.com/nlohmann/json#binary-formats-bson-cbor-messagepack-ubjson-and-bjdata).
 
 TODO: Tradeoffs between project types
 
@@ -212,25 +194,17 @@ TODO: Tradeoffs between project types
 
 This software is distributed under the [GPL v3 License](./LICENSE).
 
-GPL v3 is a strong copyleft license, which basically means any copy or modification of the code in this repo (excluding
-any libraries in the `lib` directory with different licenses) must also
-be released under the GPL v3 license.
+GPL v3 is a strong copyleft license, which basically means any copy or modification of the code in this repo (excluding any libraries in the `lib` directory with different licenses) must also be released under the GPL v3 license.
 
 ### Why copyleft?
 
 The audio world has lots of high quality open-source code, educational resources, libraries, and other software resources.
 However, the commercial audio industry is also full of protected IP.
-This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in the
-audio software industry, in which it's notoriously hard to do so.
+This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in the audio software industry, in which it's notoriously hard to do so.
 
-Choosing a permissive license allowing for closed-source commercial usage stands to benefit more end users (musicians,
-artists, creators) in the short-term, since companies producing closed-source software could freely put the code right
-into their products.
+Choosing a permissive license allowing for closed-source commercial usage stands to benefit more end users (musicians, artists, creators) in the short-term, since companies producing closed-source software could freely put the code right into their products.
 
-In my experience, it's very easy, and always getting easier, to find the music software or hardware you need, while it's
-much harder to find the right tools and methods for creating new audio software.
+In my experience, it's very easy, and always getting easier, to find the music software or hardware you need, while it's much harder to find the right tools and methods for creating new audio software.
 
-Although this project is first and foremost a creative tool, the intention and spirit is much more about
-hacking, learning, education and research than it is about creating end media products.
-For these purposes, it's more important to keep the information open than to make the functionality freely and widely
-available.
+Although this project is first and foremost a creative tool, the intention and spirit is much more about hacking, learning, education and research than it is about creating end media products.
+For these purposes, it's more important to keep the information open than to make the functionality freely and widely available.

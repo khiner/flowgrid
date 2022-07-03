@@ -5,6 +5,9 @@
         <fileSet type="globPattern" pattern="lib/{concurrentqueue,diff-match-patch-cpp,faust,imgui,imgui_club,ImGuiFileDialog,implot,json,libsoundio,SDL,tracy}/*" />
       </list>
     </option>
+    <Markdown>
+      <option name="WRAP_TEXT_IF_LONG" value="false" />
+    </Markdown>
     <Objective-C>
       <option name="INDENT_NAMESPACE_MEMBERS" value="0" />
       <option name="KEEP_STRUCTURES_IN_ONE_LINE" value="true" />

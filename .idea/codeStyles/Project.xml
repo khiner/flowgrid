@@ -6,6 +6,7 @@
       </list>
     </option>
     <Markdown>
+      <option name="MAX_LINES_AROUND_BLOCK_ELEMENTS" value="0" />
       <option name="WRAP_TEXT_IF_LONG" value="false" />
     </Markdown>
     <Objective-C>
@@ -17,6 +18,11 @@
     <codeStyleSettings language="CMake">
       <indentOptions>
         <option name="CONTINUATION_INDENT_SIZE" value="4" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="Markdown">
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
       </indentOptions>
     </codeStyleSettings>
     <codeStyleSettings language="ObjectiveC">

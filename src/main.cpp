@@ -47,7 +47,7 @@ int main(int, const char **) {
     /** TODO need more consistent pattern for state updates.
      The issue is that by putting actions in the queue before updating state, even simple effects against state
      have an unbounded lag. This can cause race conditions, e.g.
-     [this one](https://github.com/khiner/flowgrid2/commit/4fee03d6d7ca35a1376b66f11e3748fe5241f99f).
+     [this one](https://github.com/khiner/flowgrid/commit/4fee03d6d7ca35a1376b66f11e3748fe5241f99f).
      We def want a main event queue/listener so we can take expensive things like duplicating to state-json, adding to undo queue, etc.
      off of the hot path (to keep renders nice and smooth, for example).
      However, maybe we can _do the actions' state updates synchronously in the UI thread (or any actor thread),

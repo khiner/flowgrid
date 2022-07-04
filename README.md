@@ -3,9 +3,6 @@
 Prototyping the new stack for FlowGrid.
 Still actively building this.
 
-_Old version [here](https://github.com/khiner/flowgrid), with an out-of-date demo gif and in general disarray.
-Planning on making that solid in what it does soon (without adding any new features), but got carried away having fun laying foundations for a new [**Stack**](#stack), aimed at helping me be more productive._
-
 Focusing here on making it easier to stay in flow state while using _and creating_ the app.
 * Keeping full clean-and-build times low
 * Keeping rebuild times low after edits of commonly imported headers
@@ -24,7 +21,7 @@ So far, I'm basically trying to mash together some great libraries.
 Prepare your environment:
 
 ```sh
-$ git clone --recursive git@github.com:khiner/flowgrid2.git
+$ git clone --recursive git@github.com:khiner/flowgrid.git
 $ brew install cmake pkgconfig llvm freetype
 $ brew link llvm --force
 ```

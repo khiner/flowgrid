@@ -1,16 +1,42 @@
 # FlowGrid
 
-Prototyping the new stack for FlowGrid.
 Still actively building this.
 
-Focusing here on making it easier to stay in flow state while using _and creating_ the app.
-* Keeping full clean-and-build times low
-* Keeping rebuild times low after edits of commonly imported headers
-* Spend more time upfront trying to get simple and flexible foundations right
-* Improve the experience of creating the application.
-* Let myself optimize. More Fast <=> More Fun. In computers, fast things are good and always more fun than slow things.
+## Current development goals
+
+After learning a lot of lessons developing the [first iteration](https://github.com/khiner/flowgrid_old) of this project, I'm starting from scratch with a new stack and a clearer vision.
 
 So far, I'm basically trying to mash together some great libraries.
+
+Here are some of my current development thoughts/goals, roughly broken up into abstract/concrete:
+
+### Abstract development goals
+
+* Focus on making it fun to use _and create_ this application.
+* Spend more time upfront trying to get simple and flexible foundations right
+* Try to keep (re-)build times low.
+* Early on, the main function of the app should be to _facilitate the development of the app_.
+  Invest early in things like debugging capabilities, making the application state transparent, providing metrics, measuring performance, etc.
+* Let myself optimize to some extent.
+  In computers, fast things are good and always more fun than slow things.
+* Prioritize learning over development velocity.
+  Dig into, and take ownership over, low-level concerns where appropriate.
+  Feed curiosity.
+  Bias towards reinventing wheels over accepting bloated/complex/overly-featured dependencies.
+
+### Concrete development goals
+
+* Store the source-of-truth application state in a single `struct` with global read access.
+* Perform all actions that affect the application state in one place.
+* Provide global read access to all application runtime state
+* Make _everything_ undo/redo-able.
+
+The main architecture patterns for this app are inspired by [lager's](https://github.com/arximboldi/lager) value-oriented design and unidirectional data-flow architecture.
+Lager, in turn, is inspired by frameworks like [Elm](https://guide.elm-lang.org/architecture) and [Redux](https://redux.js.org/introduction/getting-started).
+I don't actually use lager in this project, however, since I find it to be too complex.
+Given how fundamental state management is, I'd prefer to understand as much as possible about how it's implemented, and I want to avoid any layers of abstraction.
+
+Rather than using proper [persistent data structures](https://github.com/arximboldi/immer), FlowGrid uses regular old C++ data types & `std` data structures, and records state diffs by [computing a JSON diff](https://github.com/nlohmann/json#json-pointer-and-json-patch) after each action.
 
 ## Build and run
 

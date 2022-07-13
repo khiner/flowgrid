@@ -104,13 +104,6 @@ UiContext create_ui_context(const RenderContext &render_context) {
     auto &io = ImGui::GetIO();
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
 
-    // However, since the default ImGui behavior is to write to disk (to the .ini file) when the ini state is marked dirty,
-    // it buffers marking dirty (`g.IO.WantSaveIniSettings = true`) with a `io.IniSavingRate` timer (which is 5s by default).
-    // We want this to be a very small value, since we want to create actions for the undo stack as soon after a user action
-    // as possible.
-    // TODO closing windows or changing their dockspace should be independent actions, but resize events can get rolled into
-    //  the next action?
-    io.IniSavingRate = 0.1;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls

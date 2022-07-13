@@ -42,5 +42,5 @@ void ImGuiSettings::populate_context(ImGuiContext *c) const {
 
     /** Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory` **/
     c->SettingsLoaded = true;
-    c->SettingsDirtyTimer = 0.0f;
+    c->SettingsDirty = false;
 }

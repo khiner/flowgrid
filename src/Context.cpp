@@ -102,18 +102,15 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
 }
 
 Context::Context() : derived_state(_state), state_json(_state) {
-    if (fs::exists(preferences_path)) {
-        preferences = json::from_msgpack(File::read(preferences_path));
+    if (fs::exists(PreferencesPath)) {
+        preferences = json::from_msgpack(File::read(PreferencesPath));
     } else {
         write_preferences_file();
     }
 }
 
-static const fs::path empty_project_path = "empty" + ExtensionForProjectFormat.at(StateFormat);
-static const fs::path default_project_path = "default" + ExtensionForProjectFormat.at(StateFormat);
-
 bool Context::is_user_project_path(const fs::path &path) {
-    return !fs::equivalent(path, empty_project_path) && !fs::equivalent(path, default_project_path);
+    return !fs::equivalent(path, EmptyProjectPath) && !fs::equivalent(path, DefaultProjectPath);
 }
 
 json Context::get_project_json(const ProjectFormat format) const {
@@ -123,7 +120,7 @@ json Context::get_project_json(const ProjectFormat format) const {
 
 bool Context::project_has_changes() const { return current_diff_index != current_project_saved_action_index; }
 
-bool Context::save_empty_project() { return save_project(empty_project_path); }
+bool Context::save_empty_project() { return save_project(EmptyProjectPath); }
 
 bool Context::clear_preferences() {
     preferences.recently_opened_paths.clear();
@@ -142,7 +139,7 @@ void Context::set_state_json(const json &new_state_json) {
 }
 
 void Context::set_diffs_json(const json &new_diffs_json) {
-    open_project(empty_project_path);
+    open_project(EmptyProjectPath);
     clear_undo();
 
     diffs = new_diffs_json;
@@ -167,7 +164,7 @@ bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
         case action::id<undo>: return current_diff_index >= 0;
         case action::id<redo>: return current_diff_index < (int) diffs.size() - 1;
-        case action::id<actions::open_default_project>: return fs::exists(default_project_path);
+        case action::id<actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<actions::save_project>:
         case action::id<actions::show_save_project_dialog>:
         case action::id<actions::save_default_project>: return project_has_changes();
@@ -296,11 +293,11 @@ void Context::on_action(const Action &action) {
         [&](const redo &) { apply_diff(++current_diff_index, Direction::Forward); },
 
         [&](const actions::open_project &a) { open_project(a.path); },
-        [&](const open_empty_project &) { open_project(empty_project_path); },
-        [&](const open_default_project &) { open_project(default_project_path); },
+        [&](const open_empty_project &) { open_project(EmptyProjectPath); },
+        [&](const open_default_project &) { open_project(DefaultProjectPath); },
 
         [&](const actions::save_project &a) { save_project(a.path); },
-        [&](const save_default_project &) { save_project(default_project_path); },
+        [&](const save_default_project &) { save_project(DefaultProjectPath); },
         [&](const actions::save_current_project &) { save_project(current_project_path.value()); },
 
         // Remaining actions have a direct effect on the application state.
@@ -490,5 +487,5 @@ void Context::set_current_project_path(const fs::path &path) {
 }
 
 bool Context::write_preferences_file() const {
-    return File::write(preferences_path, json::to_msgpack(preferences));
+    return File::write(PreferencesPath, json::to_msgpack(preferences));
 }

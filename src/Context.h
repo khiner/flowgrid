@@ -79,7 +79,13 @@ const std::map<string, ProjectFormat> ProjectFormatForExtension{
 
 static const std::set<string> AllProjectExtensions = {".fls", ".fld"};
 static const string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>();
+static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";
+
+static const fs::path InternalPath = ".flowgrid";
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
 
 struct Context {
     Context();

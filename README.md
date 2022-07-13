@@ -195,7 +195,7 @@ Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https:
   - The full application state.
     An `.fgs` file contains a JSON blob with all the information needed to get back to the saved project state.
     Loading a `.fgs` project file will completely replace the application state with its own.
-  - As a special case, the project file `./internal/empty.fgs` (relative to the project build folder) is used internally to load projects.
+  - As a special case, the project file `./flowgrid/empty.fgs` (relative to the project build folder) is used internally to load projects.
     This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
     FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
     This approach provides a pretty strong guarantee that if state-loading is implemented correctly, loading a new project will always produce the same, valid empty-project state.

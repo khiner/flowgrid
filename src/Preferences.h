@@ -11,5 +11,3 @@ struct Preferences {
 };
 
 JsonType(Preferences, recently_opened_paths)
-
-static const fs::path preferences_path = "preferences.flp";

@@ -152,7 +152,7 @@ void State::StateWindows::StatePathUpdateFrequency::draw() const {
         ImPlot::PushStyleColor(ImPlotCol_Fill, GetStyleColorVec4(ImGuiCol_PlotHistogram));
         ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
-        ImPlot::PlotBarsH("Number of updates", values.data(), int(values.size()), 0.75, 0);
+        ImPlot::PlotBars("Number of updates", values.data(), int(values.size()), 0.75, 0, ImPlotBarsFlags_Horizontal);
         ImPlot::EndPlot();
         ImPlot::PopStyleColor();
     }

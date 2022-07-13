@@ -278,11 +278,6 @@ bool Style::ImPlotStyleEditor() {
             changed |= StatefulImGui::SliderFloat("DigitalBitHeight", &style.DigitalBitHeight, 0.0f, 20.0f, "%.1f");
             changed |= StatefulImGui::SliderFloat("DigitalBitGap", &style.DigitalBitGap, 0.0f, 20.0f, "%.1f");
 
-            float indent = ImGui::CalcItemWidth() - ImGui::GetFrameHeight();
-            ImGui::Indent(ImGui::CalcItemWidth() - ImGui::GetFrameHeight());
-            changed |= ImGui::Checkbox("AntiAliasedLines", &style.AntiAliasedLines);
-            ImGui::Unindent(indent);
-
             ImGui::Text("Plot Styling");
             changed |= StatefulImGui::SliderFloat("PlotBorderSize", &style.PlotBorderSize, 0.0f, 2.0f, "%.0f");
             changed |= StatefulImGui::SliderFloat("MinorAlpha", &style.MinorAlpha, 0.0f, 1.0f, "%.2f");

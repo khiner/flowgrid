@@ -25,10 +25,10 @@ int main(int, const char **) {
     c.update_processes(); // Currently has a state side effect of setting audio sample rate.
 
     auto ui_context = create_ui();
+    c.ui = &ui_context;
 
     {
         // Relying on these imperatively-run side effects up front is not great.
-        c.ui = &ui_context;
         tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         tick_ui(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.

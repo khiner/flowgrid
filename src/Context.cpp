@@ -110,7 +110,8 @@ Context::Context() : derived_state(_state), state_json(_state) {
 }
 
 bool Context::is_user_project_path(const fs::path &path) {
-    return !fs::equivalent(path, EmptyProjectPath) && !fs::equivalent(path, DefaultProjectPath);
+    // Using relative path to avoid error: `filesystem error: in equivalent: Operation not supported`
+    return !fs::equivalent(fs::relative(path), EmptyProjectPath) && !fs::equivalent(fs::relative(path), DefaultProjectPath);
 }
 
 json Context::get_project_json(const ProjectFormat format) const {

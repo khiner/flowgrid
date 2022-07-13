@@ -102,7 +102,7 @@ struct Context {
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.
     // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
-    // This is especially the case when assigning to `state_json`, which is not an automic operation like assigning to `_state` is.
+    // This is especially the case when assigning to `state_json`, which is not an atomic operation like assigning to `_state` is.
     void set_state_json(const json &);
     void set_diffs_json(const json &);
 

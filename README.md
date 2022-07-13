@@ -1,13 +1,21 @@
 # FlowGrid
 
-Still actively building this.
+_Still actively building this._
+
+## Application goals
+
+**Ultimately, I aim to make FlowGrid a sort of general-purpose audiovisual programming language.**
+
+I eventually hope to use FlowGrid to create artful/(self-)educational/useful interactive audiovisual programs.
+
+However, I am currently focused on making FlowGrid a development and debugging environment specialized to the needs of developing FlowGrid (yo dawg).
+This is because any feature that increases overall development velocity will have a greater impact on total development time the earlier it is done.
 
 ## Current development goals
 
-After learning a lot of lessons developing the [first iteration](https://github.com/khiner/flowgrid_old) of this project, I'm starting from scratch with a new stack and a clearer vision.
+After learning a lot of lessons developing the [first iteration](https://github.com/khiner/flowgrid_old) of this project, I'm starting from scratch with a [new stack](#Stack) and expanded scope.
 
 So far, I'm basically trying to mash together some great libraries.
-
 Here are some of my current development thoughts/goals, roughly broken up into abstract/concrete:
 
 ### Abstract development goals
@@ -31,7 +39,7 @@ Here are some of my current development thoughts/goals, roughly broken up into a
 * Provide global read access to all application runtime state
 * Make _everything_ undo/redo-able.
 
-The main architecture patterns for this app are inspired by [lager's](https://github.com/arximboldi/lager) value-oriented design and unidirectional data-flow architecture.
+The main architecture patterns for this app are inspired by [Lager's](https://github.com/arximboldi/lager) value-oriented design and unidirectional data-flow architecture.
 Lager, in turn, is inspired by frameworks like [Elm](https://guide.elm-lang.org/architecture) and [Redux](https://redux.js.org/introduction/getting-started).
 I don't actually use lager in this project, however, since I find it to be too complex.
 Given how fundamental state management is, I'd prefer to understand as much as possible about how it's implemented, and I want to avoid any layers of abstraction.

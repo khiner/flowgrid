@@ -8,11 +8,6 @@ struct Drawable {
     virtual void draw() const = 0;
 };
 
-struct WindowData {
-    string name;
-    bool visible{true};
-};
-
 struct Window : WindowData, Drawable {
     Window() = default;
 };

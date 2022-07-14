@@ -257,21 +257,9 @@ struct State : StateData {
         style, windows.demo, windows.metrics, windows.tools,
         audio.settings, audio.faust.editor, audio.faust.log
     };
-    std::vector<std::reference_wrapper<const WindowData>> all_windows_const{
-        windows.state_viewer, windows.memory_editor, windows.path_update_frequency,
-        style, windows.demo, windows.metrics, windows.tools,
-        audio.settings, audio.faust.editor, audio.faust.log
-    };
 
     WindowData &named(const string &name) {
         for (auto &window: all_windows) {
-            if (name == window.get().name) return window;
-        }
-        throw std::invalid_argument(name);
-    }
-
-    const WindowData &named(const string &name) const {
-        for (auto &window: all_windows_const) {
             if (name == window.get().name) return window;
         }
         throw std::invalid_argument(name);

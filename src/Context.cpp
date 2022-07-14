@@ -255,7 +255,7 @@ void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction 
 }
 
 DerivedState::DerivedState(const State &_state) : style(_state.style) {
-    window_visible = _state.all_windows_const | ranges::views::transform([](const auto &window_ref) {
+    window_visible = _state.all_windows | ranges::views::transform([](const auto &window_ref) {
         const auto &window = window_ref.get();
         return std::pair<string, bool>(window.name, window.visible);
     }) | ranges::to<std::map<string, bool>>();

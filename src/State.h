@@ -1,17 +1,17 @@
 #pragma once
 
 #include <set>
-#include <utility>
-#include "JsonType.h"
+#include "range/v3/view.hpp"
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"
 #include "implot_internal.h"
+
+#include "JsonType.h"
 #include "Action.h"
-#include "range/v3/view.hpp"
 
 using Action = action::Action;
-using std::string;
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`

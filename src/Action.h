@@ -1,11 +1,10 @@
 #pragma once
 
-#include <variant>
 #include <string>
+#include <variant>
+
 #include "File.h"
 #include "UI/Windows.h"
-
-using std::string;
 
 /*!
  * From [lager](https://github.com/arximboldi/lager/blob/c9d8b7d3c7dc7138913757d1624ab705866d791d/lager/util.hpp#L27-L49)

@@ -1,18 +1,12 @@
-#include "imgui.h"
+#include <sstream>
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
 
-#include "imgui_internal.h"
-
+#include "../Context.h"
 #include "ImGuiFileDialog.h"
 #include "ImGuiFileDialogDemo.h"
-#include "../Context.h"
-
-#include <sstream>
-
-using std::string;
 
 inline bool RadioButtonLabeled(const char *label, const char *help, bool active, bool disabled) {
     using namespace ImGui;

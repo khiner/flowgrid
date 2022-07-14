@@ -2,7 +2,6 @@
 
 // Import common libraries once in this widely-shared header
 #include <iostream>
-#include <filesystem>
 #include <thread>
 #include <queue>
 

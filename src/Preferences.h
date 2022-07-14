@@ -2,6 +2,7 @@
 
 #include <list>
 #include <filesystem>
+
 #include "JsonType.h"
 
 namespace fs = std::filesystem;

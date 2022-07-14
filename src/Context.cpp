@@ -254,12 +254,7 @@ void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction 
     max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
 }
 
-DerivedState::DerivedState(const State &_state) : style(_state.style) {
-    window_visible = _state.all_windows | ranges::views::transform([](const auto &window_ref) {
-        const auto &window = window_ref.get();
-        return std::pair<string, bool>(window.name, window.visible);
-    }) | ranges::to<std::map<string, bool>>();
-}
+DerivedState::DerivedState(const State &_state) : style(_state.style) {}
 
 // Convert `string` to char array, removing first character of the path, which is a '/'.
 const char *convert_path(const string &str) {

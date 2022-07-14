@@ -56,7 +56,6 @@ struct DerivedState {
     explicit DerivedState(const State &);
 
     Style style;
-    std::map<string, bool> window_visible;
 };
 
 struct Context {

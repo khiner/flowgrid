@@ -7,7 +7,10 @@
 #include "imgui_internal.h"
 #include "implot.h"
 #include "implot_internal.h"
+#include "Action.h"
+#include "range/v3/view.hpp"
 
+using Action = action::Action;
 using std::string;
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
@@ -16,6 +19,31 @@ using Clock = std::chrono::system_clock; // Main system clock
 using DurationSec = float; // floats used for main duration type
 using fsec = std::chrono::duration<DurationSec>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
+
+enum ProjectFormat {
+    None,
+    StateFormat,
+    DiffFormat,
+};
+
+const std::map<ProjectFormat, string> ExtensionForProjectFormat{
+    {StateFormat, ".fls"},
+    {DiffFormat,  ".fld"},
+};
+const std::map<string, ProjectFormat> ProjectFormatForExtension{
+    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
+    {ExtensionForProjectFormat.at(DiffFormat),  DiffFormat},
+};
+
+static const std::set<string> AllProjectExtensions = {".fls", ".fld"};
+static const string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>();
+static const string PreferencesFileExtension = ".flp";
+static const string FaustDspFileExtension = ".dsp";
+
+static const fs::path InternalPath = ".flowgrid";
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
 
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.
@@ -49,18 +77,6 @@ inline std::string convert_state_path(const string &state_member_name) {
 // E.g. `StatePath(s.foo.bar) => "/foo/bar"`
 #define StatePath(x) convert_state_path(#x)
 
-struct Drawable {
-    virtual void draw() const = 0;
-};
-
-struct WindowData {
-    string name;
-    bool visible{true};
-};
-
-struct Window : WindowData, Drawable {
-    Window() = default;
-};
 
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
@@ -216,62 +232,12 @@ struct ImGuiSettings {
 };
 
 struct StateData {
-    struct File {
-        using ImGuiFileDialogFlags = int; // Declared in `lib/ImGuiFileDialog/ImGuiFileDialog.h`
-        // TODO window?
-        struct Dialog {
-            Dialog() = default;
-            Dialog(string title, string filters, string path, string default_file_name = "", const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
-                : visible(true), save_mode(save_mode), max_num_selections(max_num_selections), flags(flags),
-                  title(std::move(title)), filters(std::move(filters)), path(std::move(path)), default_file_name(std::move(default_file_name)) {};
-
-            void draw() const;
-
-            bool visible = false;
-            bool save_mode = false; // The same file dialog instance is used for both saving & opening files.
-            int max_num_selections = 1;
-            ImGuiFileDialogFlags flags = 0;
-            string title = "Choose file";
-            string filters;
-            string path = ".";
-            string default_file_name;
-        };
-
-        Dialog dialog;
-    };
-
     ImGuiSettings imgui_settings;
     Style style;
     Audio audio;
     Processes processes;
     File file;
 
-    struct StateWindows : Drawable {
-        void draw() const override;
-
-        struct StateViewer : Window {
-            StateViewer() { name = "State viewer"; }
-            void draw() const override;
-
-            enum LabelMode { annotated, raw };
-            LabelMode label_mode{annotated};
-            bool auto_select{true};
-        };
-
-        struct StateMemoryEditor : Window {
-            StateMemoryEditor() { name = "State memory editor"; }
-            void draw() const override;
-        };
-
-        struct StatePathUpdateFrequency : Window {
-            StatePathUpdateFrequency() { name = "State path update frequency"; }
-            void draw() const override;
-        };
-
-        StateViewer viewer{};
-        StateMemoryEditor memory_editor{};
-        StatePathUpdateFrequency path_update_frequency{};
-    };
 
     struct Demo : Window {
         Demo() { name = "Demo"; }
@@ -288,7 +254,7 @@ struct StateData {
         void draw() const override;
     };
 
-    StateWindows state{};
+    Windows state{};
     Demo demo{};
     Metrics metrics{};
     Tools tools{};
@@ -303,6 +269,8 @@ struct State : StateData {
         StateData::operator=(other);
         return *this;
     }
+
+    void update(const Action &); // State is only updated via `context.on_action(action)`
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{
         state.viewer, state.memory_editor, state.path_update_frequency,
@@ -380,10 +348,10 @@ JsonType(Audio::Faust::Editor, name, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
 JsonType(Audio, settings, faust)
-JsonType(State::File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
-JsonType(State::File, dialog)
-JsonType(State::StateWindows::StateViewer, name, visible, label_mode, auto_select)
-JsonType(State::StateWindows, viewer, memory_editor, path_update_frequency)
+JsonType(File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
+JsonType(File, dialog)
+JsonType(Windows::StateViewer, name, visible, label_mode, auto_select)
+JsonType(Windows, viewer, memory_editor, path_update_frequency)
 
 JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,

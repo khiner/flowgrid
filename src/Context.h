@@ -5,11 +5,9 @@
 #include <filesystem>
 #include <thread>
 #include <queue>
-#include "range/v3/view.hpp"
 
 #include "Preferences.h"
 #include "State.h"
-#include "Action.h"
 
 //#include "diff_match_patch.h"
 
@@ -61,31 +59,6 @@ struct DerivedState {
     Style style;
     std::map<string, bool> window_visible;
 };
-
-enum ProjectFormat {
-    None,
-    StateFormat,
-    DiffFormat,
-};
-
-const std::map<ProjectFormat, string> ExtensionForProjectFormat{
-    {StateFormat, ".fls"},
-    {DiffFormat,  ".fld"},
-};
-const std::map<string, ProjectFormat> ProjectFormatForExtension{
-    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
-    {ExtensionForProjectFormat.at(DiffFormat),  DiffFormat},
-};
-
-static const std::set<string> AllProjectExtensions = {".fls", ".fld"};
-static const string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>();
-static const string PreferencesFileExtension = ".flp";
-static const string FaustDspFileExtension = ".dsp";
-
-static const fs::path InternalPath = ".flowgrid";
-static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
-static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
-static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
 
 struct Context {
     Context();

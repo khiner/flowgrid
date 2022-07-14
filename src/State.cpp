@@ -1,4 +1,54 @@
+#include "ImGuiFileDialog.h"
+
 #include "State.h"
+#include "Action.h"
+#include "File.h"
+
+/**
+ * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
+ */
+void State::update(const Action &action) {
+    std::visit(visitor{
+        [&](const show_open_project_dialog &) { file.dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
+        [&](const show_save_project_dialog &) { file.dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_open_faust_file_dialog &) { file.dialog = {"Choose file", FaustDspFileExtension, "."}; },
+        [&](const show_save_faust_file_dialog &) { file.dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+
+        [&](const open_file_dialog &a) {
+            file.dialog = a.dialog;
+            file.dialog.visible = true;
+        },
+        [&](const close_file_dialog &) { file.dialog.visible = false; },
+
+        [&](const set_imgui_settings &a) { imgui_settings = a.settings; },
+        [&](const set_imgui_style &a) { style.imgui = a.imgui_style; },
+        [&](const set_implot_style &a) { style.implot = a.implot_style; },
+        [&](const set_flowgrid_style &a) { style.flowgrid = a.flowgrid_style; },
+
+        [&](const close_window &a) { named(a.name).visible = false; },
+        [&](const toggle_window &a) { named(a.name).visible = !named(a.name).visible; },
+
+        [&](const toggle_state_viewer_auto_select &) { state.viewer.auto_select = !state.viewer.auto_select; },
+        [&](const set_state_viewer_label_mode &a) { state.viewer.label_mode = a.label_mode; },
+
+        // Audio
+        [&](const open_faust_dsp_file &a) { audio.faust.code = ::File::read(a.path); },
+        [&](const set_faust_code &a) { audio.faust.code = a.text; },
+        [&](const toggle_audio_muted &) { audio.settings.muted = !audio.settings.muted; },
+        [&](const set_audio_sample_rate &a) { audio.settings.sample_rate = a.sample_rate; },
+
+        [&](const set_audio_running &a) { processes.audio.running = a.running; },
+        [&](const toggle_audio_running &) { processes.audio.running = !processes.audio.running; },
+        [&](const set_ui_running &a) { processes.ui.running = a.running; },
+
+        [&](const close_application &) {
+            processes.ui.running = false;
+            processes.audio.running = false;
+        },
+
+        [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
+    }, action);
+}
 
 ImGuiSettings::ImGuiSettings(ImGuiContext *c) {
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members

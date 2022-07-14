@@ -1,7 +1,11 @@
 #pragma once
 
 #include <variant>
-#include "State.h"
+#include <string>
+#include "File.h"
+#include "UI/Windows.h"
+
+using std::string;
 
 /*!
  * From [lager](https://github.com/arximboldi/lager/blob/c9d8b7d3c7dc7138913757d1624ab705866d791d/lager/util.hpp#L27-L49)
@@ -40,7 +44,7 @@ struct open_empty_project {};
 struct open_default_project {};
 struct show_open_project_dialog {};
 
-struct open_file_dialog { State::File::Dialog dialog; };
+struct open_file_dialog { File::Dialog dialog; };
 struct close_file_dialog {};
 
 struct save_project { string path; };
@@ -63,7 +67,7 @@ struct close_window { string name; };
 struct toggle_window { string name; };
 
 struct toggle_state_viewer_auto_select {};
-struct set_state_viewer_label_mode { State::StateWindows::StateViewer::LabelMode label_mode; };
+struct set_state_viewer_label_mode { Windows::StateViewer::LabelMode label_mode; };
 
 struct toggle_audio_muted {};
 struct set_audio_sample_rate { int sample_rate; };
@@ -209,4 +213,3 @@ static const char *get_menu_label(ID action_id) {
 }
 
 using ActionID = action::ID;
-using Action = action::Action;

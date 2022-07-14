@@ -5,7 +5,7 @@
 static auto *file_dialog = ImGuiFileDialog::Instance();
 static const string file_dialog_key = "FileDialog";
 
-void State::File::Dialog::draw() const {
+void File::Dialog::draw() const {
     if (visible) {
         // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
         file_dialog->OpenDialog(file_dialog_key, title, filters.c_str(), path, default_file_name, max_num_selections, nullptr, flags);

@@ -6,7 +6,7 @@
 
 using namespace ImGui;
 
-using LabelMode = State::StateWindows::StateViewer::LabelMode;
+using LabelMode = Windows::StateViewer::LabelMode;
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
@@ -122,7 +122,7 @@ static void show_json_state_value_node(const string &key, const json &value, con
     }
 }
 
-void State::StateWindows::StateMemoryEditor::draw() const {
+void Windows::StateMemoryEditor::draw() const {
     static MemoryEditor memory_editor;
     static bool first_render{true};
     if (first_render) {
@@ -135,7 +135,7 @@ void State::StateWindows::StateMemoryEditor::draw() const {
     memory_editor.DrawContents(mem_data, mem_size);
 }
 
-void State::StateWindows::StatePathUpdateFrequency::draw() const {
+void Windows::StatePathUpdateFrequency::draw() const {
     if (c.state_stats.update_times_for_state_path.empty()) {
         Text("No state updates yet.");
         return;
@@ -166,7 +166,7 @@ static const string auto_select_help = "When auto-select is enabled, state chang
                                        "The state viewer to the changed state node(s), closing all other state nodes.\n"
                                        "State menu items can only be opened or closed manually if auto-select is disabled.";
 
-void State::StateWindows::StateViewer::draw() const {
+void Windows::StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
             if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state.viewer.auto_select)) {
@@ -188,7 +188,7 @@ void State::StateWindows::StateViewer::draw() const {
     show_json_state_value_node("State", c.state_json, "/");
 }
 
-void State::StateWindows::draw() const {
+void Windows::draw() const {
     StatefulImGui::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
     StatefulImGui::DrawWindow(viewer, ImGuiWindowFlags_MenuBar);
     StatefulImGui::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);

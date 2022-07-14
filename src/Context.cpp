@@ -4,7 +4,6 @@
 #include "UI/StatefulFaustUi.h"
 #include "File.h"
 #include "Audio.h"
-#include "ImGuiFileDialog.h"
 //#include "generator/libfaust.h" // For the C++ backend
 
 // Used to initialize the static Faust buffer.
@@ -306,66 +305,19 @@ void Context::on_action(const Action &action) {
     }, action);
 }
 
-/**
- * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer),
- * but only the action-visitor pattern remains.
- *
- * When updates need to happen atomically across linked members for logical consistency,
- * make working copies as needed. Otherwise, modify the (single, global) state directly, in-place.
- */
 void Context::update(const Action &action) {
+    _state.update(action);
+
+    // Side effects
     gesture_action_names.emplace(action::get_name(action));
-
-    auto &_s = _state; // Convenient shorthand for the mutable state that doesn't conflict with the global `s` instance
     std::visit(visitor{
-        [&](const show_open_project_dialog &) { _s.file.dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
-        [&](const show_save_project_dialog &) { _s.file.dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_open_faust_file_dialog &) { _s.file.dialog = {"Choose file", FaustDspFileExtension, "."}; },
-        [&](const show_save_faust_file_dialog &) { _s.file.dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-
-        [&](const open_file_dialog &a) {
-            _s.file.dialog = a.dialog;
-            _s.file.dialog.visible = true;
-        },
-        [&](const close_file_dialog &) { _s.file.dialog.visible = false; },
-
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
-        // since the action will be initiated by ImGui itself, whereas the style
-        // editors don't update the ImGui/ImPlot contexts themselves.
-        [&](const set_imgui_settings &a) { _s.imgui_settings = a.settings; },
-        [&](const set_imgui_style &a) {
-            _s.style.imgui = a.imgui_style;
-            c.update_ui_context(UiContextFlags_ImGuiStyle);
-        },
-        [&](const set_implot_style &a) {
-            _s.style.implot = a.implot_style;
-            c.update_ui_context(UiContextFlags_ImPlotStyle);
-        },
-        [&](const set_flowgrid_style &a) { _s.style.flowgrid = a.flowgrid_style; },
-
-        [&](const close_window &a) { _s.named(a.name).visible = false; },
-        [&](const toggle_window &a) { _s.named(a.name).visible = !s.named(a.name).visible; },
-
-        [&](const toggle_state_viewer_auto_select &) { _s.state.viewer.auto_select = !s.state.viewer.auto_select; },
-        [&](const set_state_viewer_label_mode &a) { _s.state.viewer.label_mode = a.label_mode; },
-
-        // Audio
+        // since the action will be initiated by ImGui itself,
+        // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
+        [&](const set_imgui_style &) { c.update_ui_context(UiContextFlags_ImGuiStyle); },
+        [&](const set_implot_style &) { c.update_ui_context(UiContextFlags_ImPlotStyle); },
         [&](const save_faust_dsp_file &a) { File::write(a.path, s.audio.faust.code); },
-        [&](const open_faust_dsp_file &a) { _s.audio.faust.code = File::read(a.path); },
-        [&](const set_faust_code &a) { _s.audio.faust.code = a.text; },
-        [&](const toggle_audio_muted &) { _s.audio.settings.muted = !s.audio.settings.muted; },
-        [&](const set_audio_sample_rate &a) { _s.audio.settings.sample_rate = a.sample_rate; },
-
-        [&](const set_audio_running &a) { _s.processes.audio.running = a.running; },
-        [&](const toggle_audio_running &) { _s.processes.audio.running = !s.processes.audio.running; },
-        [&](const set_ui_running &a) { _s.processes.ui.running = a.running; },
-
-        [&](const close_application &) {
-            _s.processes.ui.running = false;
-            _s.processes.audio.running = false;
-        },
-
-        [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
+        [&](const auto &) {}, // All actions without side effects (only state updates)
     }, action);
 }
 

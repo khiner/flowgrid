@@ -237,27 +237,7 @@ struct StateData {
     Audio audio;
     Processes processes;
     File file;
-
-
-    struct Demo : Window {
-        Demo() { name = "Demo"; }
-        void draw() const override;
-    };
-
-    struct Metrics : Window {
-        Metrics() { name = "Metrics"; }
-        void draw() const override;
-    };
-
-    struct Tools : Window {
-        Tools() { name = "Tools"; }
-        void draw() const override;
-    };
-
-    Windows state{};
-    Demo demo{};
-    Metrics metrics{};
-    Tools tools{};
+    Windows windows{};
 };
 
 struct State : StateData {
@@ -273,13 +253,13 @@ struct State : StateData {
     void update(const Action &); // State is only updated via `context.on_action(action)`
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{
-        state.viewer, state.memory_editor, state.path_update_frequency,
-        style, demo, metrics, tools,
+        windows.state_viewer, windows.memory_editor, windows.path_update_frequency,
+        style, windows.demo, windows.metrics, windows.tools,
         audio.settings, audio.faust.editor, audio.faust.log
     };
     std::vector<std::reference_wrapper<const WindowData>> all_windows_const{
-        state.viewer, state.memory_editor, state.path_update_frequency,
-        style, demo, metrics, tools,
+        windows.state_viewer, windows.memory_editor, windows.path_update_frequency,
+        style, windows.demo, windows.metrics, windows.tools,
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
@@ -351,7 +331,7 @@ JsonType(Audio, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
 JsonType(Windows::StateViewer, name, visible, label_mode, auto_select)
-JsonType(Windows, viewer, memory_editor, path_update_frequency)
+JsonType(Windows, state_viewer, memory_editor, path_update_frequency, demo, metrics, tools)
 
 JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
@@ -372,4 +352,4 @@ JsonType(ImGuiSettings, nodes, windows, tables)
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)
 
-JsonType(StateData, audio, file, style, imgui_settings, demo, metrics, tools, state, processes);
+JsonType(StateData, audio, file, style, imgui_settings, processes, windows);

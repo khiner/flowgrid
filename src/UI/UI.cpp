@@ -158,14 +158,14 @@ void draw_frame() {
         dock_window(s.audio.faust.editor, faust_editor_id);
         dock_window(s.audio.faust.log, faust_log_window_id);
 
-        dock_window(s.state.viewer, state_viewer_id);
-        dock_window(s.state.memory_editor, state_memory_editor_id);
-        dock_window(s.state.path_update_frequency, state_path_update_frequency_id);
+        dock_window(s.windows.state_viewer, state_viewer_id);
+        dock_window(s.windows.memory_editor, state_memory_editor_id);
+        dock_window(s.windows.path_update_frequency, state_path_update_frequency_id);
 
         dock_window(s.style, imgui_windows_id);
-        dock_window(s.demo, imgui_windows_id);
-        dock_window(s.metrics, imgui_windows_id);
-        dock_window(s.tools, imgui_windows_id);
+        dock_window(s.windows.demo, imgui_windows_id);
+        dock_window(s.windows.metrics, imgui_windows_id);
+        dock_window(s.windows.tools, imgui_windows_id);
         first_draw = false;
     }
 
@@ -197,9 +197,9 @@ void draw_frame() {
         }
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
-                StatefulImGui::WindowToggleMenuItem(s.state.viewer);
-                StatefulImGui::WindowToggleMenuItem(s.state.memory_editor);
-                StatefulImGui::WindowToggleMenuItem(s.state.path_update_frequency);
+                StatefulImGui::WindowToggleMenuItem(s.windows.state_viewer);
+                StatefulImGui::WindowToggleMenuItem(s.windows.memory_editor);
+                StatefulImGui::WindowToggleMenuItem(s.windows.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
@@ -213,9 +213,9 @@ void draw_frame() {
             }
             StatefulImGui::WindowToggleMenuItem(s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(s.demo);
-                StatefulImGui::WindowToggleMenuItem(s.metrics);
-                StatefulImGui::WindowToggleMenuItem(s.tools);
+                StatefulImGui::WindowToggleMenuItem(s.windows.demo);
+                StatefulImGui::WindowToggleMenuItem(s.windows.metrics);
+                StatefulImGui::WindowToggleMenuItem(s.windows.tools);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -224,12 +224,12 @@ void draw_frame() {
     }
 
     s.audio.draw();
-    s.state.draw();
+    s.windows.draw();
     s.file.dialog.draw();
-    StatefulImGui::DrawWindow(s.demo, ImGuiWindowFlags_MenuBar);
-    StatefulImGui::DrawWindow(s.metrics);
+    StatefulImGui::DrawWindow(s.windows.demo, ImGuiWindowFlags_MenuBar);
+    StatefulImGui::DrawWindow(s.windows.metrics);
     StatefulImGui::DrawWindow(s.style);
-    StatefulImGui::DrawWindow(s.tools);
+    StatefulImGui::DrawWindow(s.windows.tools);
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;

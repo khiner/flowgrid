@@ -39,7 +39,25 @@ struct Windows : Drawable {
         void draw() const override;
     };
 
-    StateViewer viewer{};
+    struct Demo : Window {
+        Demo() { name = "Demo"; }
+        void draw() const override;
+    };
+
+    struct Metrics : Window {
+        Metrics() { name = "Metrics"; }
+        void draw() const override;
+    };
+
+    struct Tools : Window {
+        Tools() { name = "Tools"; }
+        void draw() const override;
+    };
+
+    Demo demo{};
+    Metrics metrics{};
+    Tools tools{};
+    StateViewer state_viewer{};
     StateMemoryEditor memory_editor{};
     StatePathUpdateFrequency path_update_frequency{};
 };

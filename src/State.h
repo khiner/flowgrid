@@ -258,12 +258,11 @@ struct State : StateData {
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
-    WindowData &named(const string &name) {
-        for (auto &window: all_windows) {
-            if (name == window.get().name) return window;
-        }
-        throw std::invalid_argument(name);
-    }
+    using WindowNamed = std::map<string, std::reference_wrapper<WindowData>>;
+
+    WindowNamed window_named = all_windows | ranges::views::transform([](const auto &window_ref) {
+        return std::pair<string, std::reference_wrapper<WindowData>>(window_ref.get().name, window_ref);
+    }) | ranges::to<WindowNamed>();
 };
 
 // Types for [json-patch](https://jsonpatch.com)

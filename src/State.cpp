@@ -25,8 +25,8 @@ void State::update(const Action &action) {
         [&](const set_implot_style &a) { style.implot = a.implot_style; },
         [&](const set_flowgrid_style &a) { style.flowgrid = a.flowgrid_style; },
 
-        [&](const close_window &a) { named(a.name).visible = false; },
-        [&](const toggle_window &a) { named(a.name).visible = !named(a.name).visible; },
+        [&](const close_window &a) { window_named.at(a.name).get().visible = false; },
+        [&](const toggle_window &a) { window_named.at(a.name).get().visible = !window_named.at(a.name).get().visible; },
 
         [&](const toggle_state_viewer_auto_select &) { windows.state_viewer.auto_select = !windows.state_viewer.auto_select; },
         [&](const set_state_viewer_label_mode &a) { windows.state_viewer.label_mode = a.label_mode; },

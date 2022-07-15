@@ -172,8 +172,8 @@ void draw_frame() {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            FG::MenuItem(action::id<open_empty_project>);
-            FG::MenuItem(action::id<show_open_project_dialog>);
+            fg::MenuItem(action::id<open_empty_project>);
+            fg::MenuItem(action::id<show_open_project_dialog>);
 
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
@@ -185,38 +185,38 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            FG::MenuItem(action::id<save_current_project>);
-            FG::MenuItem(action::id<show_save_project_dialog>);
-            FG::MenuItem(action::id<open_default_project>);
-            FG::MenuItem(action::id<save_default_project>);
+            fg::MenuItem(action::id<save_current_project>);
+            fg::MenuItem(action::id<show_save_project_dialog>);
+            fg::MenuItem(action::id<open_default_project>);
+            fg::MenuItem(action::id<save_default_project>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            FG::MenuItem(action::id<undo>);
-            FG::MenuItem(action::id<redo>);
+            fg::MenuItem(action::id<undo>);
+            fg::MenuItem(action::id<redo>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
-                FG::WindowToggleMenuItem(s.windows.state_viewer);
-                FG::WindowToggleMenuItem(s.windows.memory_editor);
-                FG::WindowToggleMenuItem(s.windows.path_update_frequency);
+                fg::WindowToggleMenuItem(s.windows.state_viewer);
+                fg::WindowToggleMenuItem(s.windows.memory_editor);
+                fg::WindowToggleMenuItem(s.windows.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
-                FG::WindowToggleMenuItem(s.audio.settings);
+                fg::WindowToggleMenuItem(s.audio.settings);
                 if (ImGui::BeginMenu("Faust")) {
-                    FG::WindowToggleMenuItem(s.audio.faust.editor);
-                    FG::WindowToggleMenuItem(s.audio.faust.log);
+                    fg::WindowToggleMenuItem(s.audio.faust.editor);
+                    fg::WindowToggleMenuItem(s.audio.faust.log);
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
             }
-            FG::WindowToggleMenuItem(s.style);
+            fg::WindowToggleMenuItem(s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                FG::WindowToggleMenuItem(s.windows.demo);
-                FG::WindowToggleMenuItem(s.windows.metrics);
-                FG::WindowToggleMenuItem(s.windows.tools);
+                fg::WindowToggleMenuItem(s.windows.demo);
+                fg::WindowToggleMenuItem(s.windows.metrics);
+                fg::WindowToggleMenuItem(s.windows.tools);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -227,10 +227,10 @@ void draw_frame() {
     s.audio.draw();
     s.windows.draw();
     s.file.dialog.draw();
-    FG::DrawWindow(s.windows.demo, ImGuiWindowFlags_MenuBar);
-    FG::DrawWindow(s.windows.metrics);
-    FG::DrawWindow(s.style);
-    FG::DrawWindow(s.windows.tools);
+    fg::DrawWindow(s.windows.demo, ImGuiWindowFlags_MenuBar);
+    fg::DrawWindow(s.windows.metrics);
+    fg::DrawWindow(s.style);
+    fg::DrawWindow(s.windows.tools);
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;

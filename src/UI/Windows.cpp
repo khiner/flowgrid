@@ -209,9 +209,9 @@ void Windows::Demo::draw() const {
 }
 
 void Windows::draw() const {
-    FG::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
-    FG::DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
-    FG::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
+    fg::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
+    fg::DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
+    fg::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
 }
 
 namespace FlowGrid {
@@ -308,7 +308,7 @@ void ShowMetrics() {
 void Windows::Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
         if (BeginTabItem("FlowGrid")) {
-            FG::ShowMetrics();
+            fg::ShowMetrics();
             EndTabItem();
         }
         if (BeginTabItem("ImGui")) {

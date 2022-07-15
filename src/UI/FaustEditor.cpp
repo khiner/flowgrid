@@ -373,8 +373,8 @@ void Audio::Faust::Editor::draw() const {
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            FG::MenuItem(action::id<show_open_faust_file_dialog>);
-            FG::MenuItem(action::id<show_save_faust_file_dialog>);
+            fg::MenuItem(action::id<show_open_faust_file_dialog>);
+            fg::MenuItem(action::id<show_save_faust_file_dialog>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings")) {

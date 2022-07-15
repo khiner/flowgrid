@@ -196,12 +196,12 @@ int audio() {
 }
 
 void Audio::Settings::draw() const {
-    if (FG::Checkbox("Audio thread running", s.processes.audio.running)) { q(toggle_audio_running{}); }
-    if (FG::Checkbox("Mute audio", muted)) { q(toggle_audio_muted{}); }
+    if (fg::Checkbox("Audio thread running", s.processes.audio.running)) { q(toggle_audio_running{}); }
+    if (fg::Checkbox("Mute audio", muted)) { q(toggle_audio_muted{}); }
 }
 
 void Audio::draw() const {
-    FG::DrawWindow(settings);
-    FG::DrawWindow(faust.editor, ImGuiWindowFlags_MenuBar);
-    FG::DrawWindow(faust.log);
+    fg::DrawWindow(settings);
+    fg::DrawWindow(faust.editor, ImGuiWindowFlags_MenuBar);
+    fg::DrawWindow(faust.log);
 }

@@ -11,6 +11,11 @@
 #include "JsonType.h"
 #include "Action.h"
 
+using std::string;
+namespace fs = std::filesystem;
+
+namespace FlowGrid {}
+namespace fg = FlowGrid;
 using Action = action::Action;
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425

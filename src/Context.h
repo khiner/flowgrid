@@ -1,18 +1,11 @@
 #pragma once
 
-// Import common libraries once in this widely-shared header
 #include <iostream>
-#include <thread>
 #include <queue>
+#include <thread>
 
 #include "Preferences.h"
 #include "State.h"
-
-//#include "diff_match_patch.h"
-
-namespace FlowGrid {}
-namespace FG = FlowGrid;
-namespace fs = std::filesystem;
 
 struct RenderContext;
 struct UiContext {

@@ -4,7 +4,7 @@
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 
 #include "Menu.h"
-#include "StatefulImGui.h"
+#include "UI.h"
 
 using namespace ImGui;
 
@@ -209,9 +209,9 @@ void Windows::Demo::draw() const {
 }
 
 void Windows::draw() const {
-    StatefulImGui::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
-    StatefulImGui::DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
-    StatefulImGui::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
+    FG::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
+    FG::DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
+    FG::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
 }
 
 namespace FlowGrid {
@@ -308,7 +308,7 @@ void ShowMetrics() {
 void Windows::Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
         if (BeginTabItem("FlowGrid")) {
-            FlowGrid::ShowMetrics();
+            FG::ShowMetrics();
             EndTabItem();
         }
         if (BeginTabItem("ImGui")) {

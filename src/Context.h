@@ -10,6 +10,8 @@
 
 //#include "diff_match_patch.h"
 
+namespace FlowGrid {}
+namespace FG = FlowGrid;
 namespace fs = std::filesystem;
 
 struct RenderContext;

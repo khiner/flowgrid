@@ -3,12 +3,91 @@
 #include <Tracy.hpp>
 #include "../Context.h"
 #include "UI.h"
-#include "StatefulImGui.h"
 #include "FaustEditor.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO vulkan
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 #include "zep/stringutils.h"
+
+// Widgets
+
+void FG::DrawWindow(const Window &window, ImGuiWindowFlags flags) {
+    if (!window.visible) return;
+
+    bool visible = window.visible;
+    if (ImGui::Begin(window.name.c_str(), &visible, flags)) {
+        if (visible) window.draw();
+        else q(close_window{window.name});
+    }
+    ImGui::End();
+}
+
+void dock_window(const Window &window, ImGuiID node_id) {
+    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
+}
+
+void gestured() {
+    if (ImGui::IsItemActivated()) c.gesturing = true;
+    if (ImGui::IsItemDeactivated()) c.gesturing = false;
+}
+
+bool FG::WindowToggleMenuItem(const Window &window) {
+    const bool edited = ImGui::MenuItem(window.name.c_str(), nullptr, window.visible);
+    if (edited) q(toggle_window{window.name});
+    return edited;
+}
+
+bool FG::Checkbox(const char *label, bool v) {
+    return ImGui::Checkbox(label, &v);
+}
+
+bool FG::SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderFloat(label, v, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool FG::SliderFloat2(const char *label, ImVec2 *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderFloat2(label, (float *) v, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool FG::SliderInt(const char *label, int *v, int v_min, int v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderInt(label, v, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool FG::SliderScalar(const char *label, ImGuiDataType data_type, void *p_data, const void *p_min, const void *p_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderScalar(label, data_type, p_data, p_min, p_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool FG::DragFloat(const char *label, float *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+    gestured();
+    return edited;
+}
+
+bool FG::ColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flags) {
+    const bool edited = ImGui::ColorEdit4(label, col, flags);
+    gestured();
+    return edited;
+}
+
+bool FG::ColorEdit4(const char *label, ImVec4 *col, ImGuiColorEditFlags flags) {
+    return FG::ColorEdit4(label, (float *) col, flags);
+}
+
+void FG::MenuItem(ActionID action_id) {
+    const char *menu_label = action::get_menu_label(action_id);
+    const char *shortcut = action::shortcut_for_id.contains(action_id) ? action::shortcut_for_id.at(action_id).c_str() : nullptr;
+    if (ImGui::MenuItem(menu_label, shortcut, false, c.action_allowed(action_id))) q(action::create(action_id));
+}
+
+// UI
 
 /**md
 ## UI methods
@@ -171,8 +250,8 @@ void draw_frame() {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            StatefulImGui::MenuItem(action::id<open_empty_project>);
-            StatefulImGui::MenuItem(action::id<show_open_project_dialog>);
+            FG::MenuItem(action::id<open_empty_project>);
+            FG::MenuItem(action::id<show_open_project_dialog>);
 
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
@@ -184,38 +263,38 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            StatefulImGui::MenuItem(action::id<save_current_project>);
-            StatefulImGui::MenuItem(action::id<show_save_project_dialog>);
-            StatefulImGui::MenuItem(action::id<open_default_project>);
-            StatefulImGui::MenuItem(action::id<save_default_project>);
+            FG::MenuItem(action::id<save_current_project>);
+            FG::MenuItem(action::id<show_save_project_dialog>);
+            FG::MenuItem(action::id<open_default_project>);
+            FG::MenuItem(action::id<save_default_project>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            StatefulImGui::MenuItem(action::id<undo>);
-            StatefulImGui::MenuItem(action::id<redo>);
+            FG::MenuItem(action::id<undo>);
+            FG::MenuItem(action::id<redo>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
-                StatefulImGui::WindowToggleMenuItem(s.windows.state_viewer);
-                StatefulImGui::WindowToggleMenuItem(s.windows.memory_editor);
-                StatefulImGui::WindowToggleMenuItem(s.windows.path_update_frequency);
+                FG::WindowToggleMenuItem(s.windows.state_viewer);
+                FG::WindowToggleMenuItem(s.windows.memory_editor);
+                FG::WindowToggleMenuItem(s.windows.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
-                StatefulImGui::WindowToggleMenuItem(s.audio.settings);
+                FG::WindowToggleMenuItem(s.audio.settings);
                 if (ImGui::BeginMenu("Faust")) {
-                    StatefulImGui::WindowToggleMenuItem(s.audio.faust.editor);
-                    StatefulImGui::WindowToggleMenuItem(s.audio.faust.log);
+                    FG::WindowToggleMenuItem(s.audio.faust.editor);
+                    FG::WindowToggleMenuItem(s.audio.faust.log);
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
             }
-            StatefulImGui::WindowToggleMenuItem(s.style);
+            FG::WindowToggleMenuItem(s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                StatefulImGui::WindowToggleMenuItem(s.windows.demo);
-                StatefulImGui::WindowToggleMenuItem(s.windows.metrics);
-                StatefulImGui::WindowToggleMenuItem(s.windows.tools);
+                FG::WindowToggleMenuItem(s.windows.demo);
+                FG::WindowToggleMenuItem(s.windows.metrics);
+                FG::WindowToggleMenuItem(s.windows.tools);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -226,10 +305,10 @@ void draw_frame() {
     s.audio.draw();
     s.windows.draw();
     s.file.dialog.draw();
-    StatefulImGui::DrawWindow(s.windows.demo, ImGuiWindowFlags_MenuBar);
-    StatefulImGui::DrawWindow(s.windows.metrics);
-    StatefulImGui::DrawWindow(s.style);
-    StatefulImGui::DrawWindow(s.windows.tools);
+    FG::DrawWindow(s.windows.demo, ImGuiWindowFlags_MenuBar);
+    FG::DrawWindow(s.windows.metrics);
+    FG::DrawWindow(s.style);
+    FG::DrawWindow(s.windows.tools);
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;

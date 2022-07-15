@@ -5,7 +5,7 @@
 #include <soundio/soundio.h>
 
 #include "Context.h"
-#include "UI/StatefulImGui.h"
+#include "UI/UI.h"
 
 static int prioritized_sample_rates[] = {
     48000,
@@ -196,12 +196,12 @@ int audio() {
 }
 
 void Audio::Settings::draw() const {
-    if (StatefulImGui::Checkbox("Audio thread running", s.processes.audio.running)) { q(toggle_audio_running{}); }
-    if (StatefulImGui::Checkbox("Mute audio", muted)) { q(toggle_audio_muted{}); }
+    if (FG::Checkbox("Audio thread running", s.processes.audio.running)) { q(toggle_audio_running{}); }
+    if (FG::Checkbox("Mute audio", muted)) { q(toggle_audio_muted{}); }
 }
 
 void Audio::draw() const {
-    StatefulImGui::DrawWindow(settings);
-    StatefulImGui::DrawWindow(faust.editor, ImGuiWindowFlags_MenuBar);
-    StatefulImGui::DrawWindow(faust.log);
+    FG::DrawWindow(settings);
+    FG::DrawWindow(faust.editor, ImGuiWindowFlags_MenuBar);
+    FG::DrawWindow(faust.log);
 }

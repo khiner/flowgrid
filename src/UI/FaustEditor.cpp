@@ -7,7 +7,7 @@
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
 #include "zep/tab_window.h"
-#include "StatefulImGui.h"
+#include "UI.h"
 
 using namespace Zep;
 
@@ -373,8 +373,8 @@ void Audio::Faust::Editor::draw() const {
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            StatefulImGui::MenuItem(action::id<show_open_faust_file_dialog>);
-            StatefulImGui::MenuItem(action::id<show_save_faust_file_dialog>);
+            FG::MenuItem(action::id<show_open_faust_file_dialog>);
+            FG::MenuItem(action::id<show_save_faust_file_dialog>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings")) {

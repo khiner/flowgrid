@@ -191,20 +191,20 @@ void Windows::StateViewer::draw() const {
 }
 
 void Windows::Demo::draw() const {
-    if (ImGui::BeginTabBar("##demos")) {
-        if (ImGui::BeginTabItem("ImGui")) {
-            ImGui::ShowDemo();
-            ImGui::EndTabItem();
+    if (BeginTabBar("##demos")) {
+        if (BeginTabItem("ImGui")) {
+            ShowDemo();
+            EndTabItem();
         }
-        if (ImGui::BeginTabItem("ImPlot")) {
-            ImPlot::ShowDemo();
-            ImGui::EndTabItem();
+        if (BeginTabItem("ImPlot")) {
+            ShowDemo();
+            EndTabItem();
         }
         if (ImGui::BeginTabItem("ImGuiFileDialog")) {
             IGFD::ShowDemo();
-            ImGui::EndTabItem();
+            EndTabItem();
         }
-        ImGui::EndTabBar();
+        EndTabBar();
     }
 }
 
@@ -264,7 +264,7 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
     TreePop();
 }
 
-void ShowMetrics() {
+void ShowMetrics(bool show_relative_paths) {
     Text("Gesturing: %s", c.gesturing ? "true" : "false");
 
     const bool has_diffs = !c.diffs.empty();
@@ -279,17 +279,17 @@ void ShowMetrics() {
     }
     if (!has_diffs) EndDisabled();
 
-    static bool relative_paths = true;
     const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
     if (TreeNode("Preferences")) {
         if (SmallButton("Clear")) c.clear_preferences();
         SameLine();
-        Checkbox("Relative paths", &relative_paths);
+        // todo combine all this into a new `fg::Checkbox` widget that just takes a state path
+        if (fg::Checkbox("Relative paths", show_relative_paths)) { q(set_boolean{StatePath(s.windows.metrics.show_relative_paths), !show_relative_paths}); }
 
         if (!has_recently_opened_paths) BeginDisabled();
         if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
             for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
-                BulletText("%s", (relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                BulletText("%s", (show_relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
             }
             TreePop();
         }
@@ -308,11 +308,11 @@ void ShowMetrics() {
 void Windows::Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
         if (BeginTabItem("FlowGrid")) {
-            fg::ShowMetrics();
+            fg::ShowMetrics(show_relative_paths);
             EndTabItem();
         }
         if (BeginTabItem("ImGui")) {
-            ShowMetrics();
+            ImGui::ShowMetrics();
             EndTabItem();
         }
         if (BeginTabItem("ImPlot")) {
@@ -324,17 +324,17 @@ void Windows::Metrics::draw() const {
 }
 
 void Windows::Tools::draw() const {
-    if (ImGui::BeginTabBar("##tools")) {
-        if (ImGui::BeginTabItem("ImGui")) {
-            if (ImGui::BeginTabBar("##imgui_tools")) {
-                if (ImGui::BeginTabItem("Debug log")) {
-                    ImGui::ShowDebugLog();
-                    ImGui::EndTabItem();
+    if (BeginTabBar("##tools")) {
+        if (BeginTabItem("ImGui")) {
+            if (BeginTabBar("##imgui_tools")) {
+                if (BeginTabItem("Debug log")) {
+                    ShowDebugLog();
+                    EndTabItem();
                 }
-                ImGui::EndTabBar();
+                EndTabBar();
             }
+            EndTabItem();
         }
-        ImGui::EndTabItem();
-        ImGui::EndTabBar();
+        EndTabBar();
     }
 }

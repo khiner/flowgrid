@@ -135,6 +135,7 @@ struct Context {
     std::vector<BidirectionalStateDiff> diffs;
     int current_diff_index = -1;
     json state_json;
+    JsonPatch gesture_patch; // Generic setter actions create patches instead of modifying state.
 
     std::optional<fs::path> current_project_path;
     int current_project_saved_action_index = -1;

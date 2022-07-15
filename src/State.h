@@ -64,9 +64,9 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
  * **The global `const StateData &s` instance is declared in `context.h` and instantiated in `main.cpp`.**
  */
 
-// E.g. `convert_state_path("s.foo.bar") => "/foo/bar"`
+// E.g. `state_member_name_to_path("s.foo.bar") => "/foo/bar"`
 // TODO return `fs::path`
-inline std::string convert_state_path(const string &state_member_name) {
+inline std::string state_member_name_to_path(const string &state_member_name) {
     std::size_t index = state_member_name.find('.');
     // Must pass the fully-qualified state path.
     // Could also check that the first segment is `s`, `_s`, `state`, or `_state`, but that's expensive and
@@ -80,7 +80,7 @@ inline std::string convert_state_path(const string &state_member_name) {
 // This allows for code paths conditioned on which state member was changed, without needing to worry about manually changing paths when state members move.
 // _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s` or `state`).
 // E.g. `StatePath(s.foo.bar) => "/foo/bar"`
-#define StatePath(x) convert_state_path(#x)
+#define StatePath(state_member_name) state_member_name_to_path(#state_member_name)
 
 
 enum AudioBackend {
@@ -323,6 +323,7 @@ JsonType(Audio, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
 JsonType(Windows::StateViewer, name, visible, label_mode, auto_select)
+JsonType(Windows::Metrics, name, visible, show_relative_paths)
 JsonType(Windows, state_viewer, memory_editor, path_update_frequency, demo, metrics, tools)
 
 JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,

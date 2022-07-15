@@ -47,6 +47,8 @@ struct Windows : Drawable {
     struct Metrics : Window {
         Metrics() { name = "Metrics"; }
         void draw() const override;
+
+        bool show_relative_paths = true;
     };
 
     struct Tools : Window {

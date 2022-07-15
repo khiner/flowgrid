@@ -309,9 +309,15 @@ void Context::update(const Action &action) {
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
         // since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        [&](const set_imgui_style &) { c.update_ui_context(UiContextFlags_ImGuiStyle); },
-        [&](const set_implot_style &) { c.update_ui_context(UiContextFlags_ImPlotStyle); },
+        [&](const set_imgui_style &) { update_ui_context(UiContextFlags_ImGuiStyle); },
+        [&](const set_implot_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
         [&](const save_faust_dsp_file &a) { File::write(a.path, s.audio.faust.code); },
+
+        [&](const set_boolean &a) {
+            const JsonPatchOp op{a.state_path, Replace, a.value, {}};
+            gesture_patch.emplace_back(op);
+        },
+
         [&](const auto &) {}, // All actions without side effects (only state updates)
     }, action);
 }
@@ -319,15 +325,19 @@ void Context::update(const Action &action) {
 void Context::finalize_gesture(bool merge) {
     const auto gesture_names_copy = gesture_action_names;
     gesture_action_names.clear();
+    if (!gesture_patch.empty()) {
+        _state = json(_state).patch(gesture_patch);
+        gesture_patch.clear();
+    }
 
     const bool should_merge = merge && !diffs.empty();
     if (should_merge && int(diffs.size()) != current_diff_index + 1) return; // Only allow merges for new gestures at the end of the undo chain.
 
     const json compare_with_state_json = should_merge ? state_json.patch(diffs.back().reverse_patch) : state_json;
-    const JsonPatch patch = json::diff(compare_with_state_json, s);
-    if (patch.empty()) return;
-
     state_json = s;
+
+    const JsonPatch patch = json::diff(compare_with_state_json, state_json);
+    if (patch.empty()) return;
 
     const JsonPatch reverse_patch = json::diff(state_json, compare_with_state_json);
     BidirectionalStateDiff diff{gesture_names_copy, patch, reverse_patch, Clock::now()};

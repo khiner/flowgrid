@@ -53,6 +53,8 @@ struct show_save_project_dialog {};
 
 struct close_application {};
 
+struct set_boolean { string state_path; bool value; };
+
 // JSON types are used for actions that hold very large structured data.
 // This is because the `Action` `std::variant` below can hold any action type, and variants must be large enough to hold their largest type.
 // As of 5/24/2022, the largest raw action member type was `ImGuiStyle`, which resulted in an `Action` variant size of 1088 bytes.
@@ -96,24 +98,21 @@ using Action = std::variant<
     open_file_dialog, close_file_dialog,
     close_application,
 
-    set_imgui_settings,
-    set_imgui_style, set_implot_style, set_flowgrid_style,
+    set_boolean,
+
+    set_imgui_settings, set_imgui_style, set_implot_style, set_flowgrid_style,
 
     close_window, toggle_window,
 
-    toggle_state_viewer_auto_select,
-    set_state_viewer_label_mode,
+    toggle_state_viewer_auto_select, set_state_viewer_label_mode,
 
     toggle_audio_muted,
     set_audio_sample_rate,
     set_faust_code,
-    open_faust_dsp_file,
-    save_faust_dsp_file,
-    show_open_faust_file_dialog,
-    show_save_faust_file_dialog,
+    open_faust_dsp_file, save_faust_dsp_file,
+    show_open_faust_file_dialog, show_save_faust_file_dialog,
 
-    set_audio_running,
-    toggle_audio_running,
+    set_audio_running, toggle_audio_running,
     set_ui_running
 >;
 
@@ -158,6 +157,8 @@ static const std::map<ID, string> name_for_id{
     {id<show_save_project_dialog>,        "Show save project dialog"},
 
     {id<close_application>,               "Close application"},
+
+    {id<set_boolean>,                     "Toggle boolean"},
 
     {id<set_imgui_settings>,              "Set ImGui settings"},
     {id<set_imgui_style>,                 "Set ImGui style"},

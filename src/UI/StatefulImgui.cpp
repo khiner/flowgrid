@@ -37,8 +37,8 @@ bool StatefulImGui::SliderFloat(const char *label, float *v, float v_min, float 
     return edited;
 }
 
-bool StatefulImGui::SliderFloat2(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
-    const bool edited = ImGui::SliderFloat2(label, v, v_min, v_max, format, flags);
+bool StatefulImGui::SliderFloat2(const char *label, ImVec2 *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    const bool edited = ImGui::SliderFloat2(label, (float *) v, v_min, v_max, format, flags);
     gestured();
     return edited;
 }
@@ -65,6 +65,10 @@ bool StatefulImGui::ColorEdit4(const char *label, float col[4], ImGuiColorEditFl
     const bool edited = ImGui::ColorEdit4(label, col, flags);
     gestured();
     return edited;
+}
+
+bool StatefulImGui::ColorEdit4(const char *label, ImVec4 *col, ImGuiColorEditFlags flags) {
+    return StatefulImGui::ColorEdit4(label, (float *) col, flags);
 }
 
 void StatefulImGui::MenuItem(ActionID action_id) {

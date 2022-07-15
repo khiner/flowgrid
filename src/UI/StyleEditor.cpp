@@ -30,7 +30,7 @@ bool ShowColorEditor(ImVec4 *colors, int color_count, const std::function<const 
             if (!filter.PassFilter(name)) continue;
 
             ImGui::PushID(i);
-            changed |= StatefulImGui::ColorEdit4("##color", (float *) &colors[i], ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            changed |= StatefulImGui::ColorEdit4("##color", &colors[i], ImGuiColorEditFlags_AlphaBar | alpha_flags);
             ImGui::SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
             ImGui::TextUnformatted(name);
             ImGui::PopID();
@@ -76,7 +76,7 @@ bool Style::ImGuiStyleEditor() {
         changed = true;
     }
     {
-        bool border = (style.WindowBorderSize > 0.0f);
+        bool border = style.WindowBorderSize > 0.0f;
         if (ImGui::Checkbox("WindowBorder", &border)) {
             style.WindowBorderSize = border ? 1.0f : 0.0f;
             changed = true;
@@ -84,7 +84,7 @@ bool Style::ImGuiStyleEditor() {
     }
     ImGui::SameLine();
     {
-        bool border = (style.FrameBorderSize > 0.0f);
+        bool border = style.FrameBorderSize > 0.0f;
         if (ImGui::Checkbox("FrameBorder", &border)) {
             style.FrameBorderSize = border ? 1.0f : 0.0f;
             changed = true;
@@ -92,7 +92,7 @@ bool Style::ImGuiStyleEditor() {
     }
     ImGui::SameLine();
     {
-        bool border = (style.PopupBorderSize > 0.0f);
+        bool border = style.PopupBorderSize > 0.0f;
         if (ImGui::Checkbox("PopupBorder", &border)) {
             style.PopupBorderSize = border ? 1.0f : 0.0f;
             changed = true;
@@ -104,12 +104,12 @@ bool Style::ImGuiStyleEditor() {
     if (ImGui::BeginTabBar("##ImGuiStyleEditor", ImGuiTabBarFlags_None)) {
         if (ImGui::BeginTabItem("Sizes")) {
             ImGui::Text("Main");
-            changed |= StatefulImGui::SliderFloat2("WindowPadding", (float *) &style.WindowPadding, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("FramePadding", (float *) &style.FramePadding, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("CellPadding", (float *) &style.CellPadding, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("ItemSpacing", (float *) &style.ItemSpacing, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("ItemInnerSpacing", (float *) &style.ItemInnerSpacing, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("TouchExtraPadding", (float *) &style.TouchExtraPadding, 0.0f, 10.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("WindowPadding", &style.WindowPadding, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("FramePadding", &style.FramePadding, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("CellPadding", &style.CellPadding, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("ItemSpacing", &style.ItemSpacing, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("ItemInnerSpacing", &style.ItemInnerSpacing, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("TouchExtraPadding", &style.TouchExtraPadding, 0.0f, 10.0f, "%.0f");
             changed |= StatefulImGui::SliderFloat("IndentSpacing", &style.IndentSpacing, 0.0f, 30.0f, "%.0f");
             changed |= StatefulImGui::SliderFloat("ScrollbarSize", &style.ScrollbarSize, 1.0f, 20.0f, "%.0f");
             changed |= StatefulImGui::SliderFloat("GrabMinSize", &style.GrabMinSize, 1.0f, 20.0f, "%.0f");
@@ -129,23 +129,23 @@ bool Style::ImGuiStyleEditor() {
             changed |= StatefulImGui::SliderFloat("LogSliderDeadzone", &style.LogSliderDeadzone, 0.0f, 12.0f, "%.0f");
             changed |= StatefulImGui::SliderFloat("TabRounding", &style.TabRounding, 0.0f, 12.0f, "%.0f");
             ImGui::Text("Alignment");
-            changed |= StatefulImGui::SliderFloat2("WindowTitleAlign", (float *) &style.WindowTitleAlign, 0.0f, 1.0f, "%.2f");
+            changed |= StatefulImGui::SliderFloat2("WindowTitleAlign", &style.WindowTitleAlign, 0.0f, 1.0f, "%.2f");
             int window_menu_button_position = style.WindowMenuButtonPosition + 1;
             if (ImGui::Combo("WindowMenuButtonPosition", (int *) &window_menu_button_position, "None\0Left\0Right\0")) {
                 style.WindowMenuButtonPosition = window_menu_button_position - 1;
                 changed = true;
             }
             changed |= ImGui::Combo("ColorButtonPosition", (int *) &style.ColorButtonPosition, "Left\0Right\0");
-            changed |= StatefulImGui::SliderFloat2("ButtonTextAlign", (float *) &style.ButtonTextAlign, 0.0f, 1.0f, "%.2f");
+            changed |= StatefulImGui::SliderFloat2("ButtonTextAlign", &style.ButtonTextAlign, 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
             HelpMarker("Alignment applies when a button is larger than its text content.");
-            changed |= StatefulImGui::SliderFloat2("SelectableTextAlign", (float *) &style.SelectableTextAlign, 0.0f, 1.0f, "%.2f");
+            changed |= StatefulImGui::SliderFloat2("SelectableTextAlign", &style.SelectableTextAlign, 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
             HelpMarker("Alignment applies when a selectable is larger than its text content.");
             ImGui::Text("Safe Area Padding");
             ImGui::SameLine();
             HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
-            changed |= StatefulImGui::SliderFloat2("DisplaySafeAreaPadding", (float *) &style.DisplaySafeAreaPadding, 0.0f, 30.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("DisplaySafeAreaPadding", &style.DisplaySafeAreaPadding, 0.0f, 30.0f, "%.0f");
             ImGui::EndTabItem();
         }
 
@@ -281,24 +281,24 @@ bool Style::ImPlotStyleEditor() {
             ImGui::Text("Plot Styling");
             changed |= StatefulImGui::SliderFloat("PlotBorderSize", &style.PlotBorderSize, 0.0f, 2.0f, "%.0f");
             changed |= StatefulImGui::SliderFloat("MinorAlpha", &style.MinorAlpha, 0.0f, 1.0f, "%.2f");
-            changed |= StatefulImGui::SliderFloat2("MajorTickLen", (float *) &style.MajorTickLen, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("MinorTickLen", (float *) &style.MinorTickLen, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("MajorTickSize", (float *) &style.MajorTickSize, 0.0f, 2.0f, "%.1f");
-            changed |= StatefulImGui::SliderFloat2("MinorTickSize", (float *) &style.MinorTickSize, 0.0f, 2.0f, "%.1f");
-            changed |= StatefulImGui::SliderFloat2("MajorGridSize", (float *) &style.MajorGridSize, 0.0f, 2.0f, "%.1f");
-            changed |= StatefulImGui::SliderFloat2("MinorGridSize", (float *) &style.MinorGridSize, 0.0f, 2.0f, "%.1f");
-            changed |= StatefulImGui::SliderFloat2("PlotDefaultSize", (float *) &style.PlotDefaultSize, 0.0f, 1000, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("PlotMinSize", (float *) &style.PlotMinSize, 0.0f, 300, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("MajorTickLen", &style.MajorTickLen, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("MinorTickLen", &style.MinorTickLen, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("MajorTickSize", &style.MajorTickSize, 0.0f, 2.0f, "%.1f");
+            changed |= StatefulImGui::SliderFloat2("MinorTickSize", &style.MinorTickSize, 0.0f, 2.0f, "%.1f");
+            changed |= StatefulImGui::SliderFloat2("MajorGridSize", &style.MajorGridSize, 0.0f, 2.0f, "%.1f");
+            changed |= StatefulImGui::SliderFloat2("MinorGridSize", &style.MinorGridSize, 0.0f, 2.0f, "%.1f");
+            changed |= StatefulImGui::SliderFloat2("PlotDefaultSize", &style.PlotDefaultSize, 0.0f, 1000, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("PlotMinSize", &style.PlotMinSize, 0.0f, 300, "%.0f");
 
             ImGui::Text("Plot Padding");
-            changed |= StatefulImGui::SliderFloat2("PlotPadding", (float *) &style.PlotPadding, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("LabelPadding", (float *) &style.LabelPadding, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("LegendPadding", (float *) &style.LegendPadding, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("LegendInnerPadding", (float *) &style.LegendInnerPadding, 0.0f, 10.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("LegendSpacing", (float *) &style.LegendSpacing, 0.0f, 5.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("MousePosPadding", (float *) &style.MousePosPadding, 0.0f, 20.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("AnnotationPadding", (float *) &style.AnnotationPadding, 0.0f, 5.0f, "%.0f");
-            changed |= StatefulImGui::SliderFloat2("FitPadding", (float *) &style.FitPadding, 0, 0.2f, "%.2f");
+            changed |= StatefulImGui::SliderFloat2("PlotPadding", &style.PlotPadding, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("LabelPadding", &style.LabelPadding, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("LegendPadding", &style.LegendPadding, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("LegendInnerPadding", &style.LegendInnerPadding, 0.0f, 10.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("LegendSpacing", &style.LegendSpacing, 0.0f, 5.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("MousePosPadding", &style.MousePosPadding, 0.0f, 20.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("AnnotationPadding", &style.AnnotationPadding, 0.0f, 5.0f, "%.0f");
+            changed |= StatefulImGui::SliderFloat2("FitPadding", &style.FitPadding, 0, 0.2f, "%.2f");
 
             ImGui::EndTabItem();
         }

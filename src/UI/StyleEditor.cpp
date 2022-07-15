@@ -1,5 +1,6 @@
 #include "../Context.h"
 #include "UI.h"
+#include "Widgets.h"
 #include "Menu.h"
 
 #include "implot_internal.h"

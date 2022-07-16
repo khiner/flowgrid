@@ -11,6 +11,7 @@
 #include "JsonType.h"
 #include "Action.h"
 
+namespace views = ranges::views;
 using std::string;
 namespace fs = std::filesystem;
 
@@ -41,7 +42,7 @@ const std::map<string, ProjectFormat> ProjectFormatForExtension{
 };
 
 static const std::set<string> AllProjectExtensions = {".fls", ".fld"};
-static const string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>();
+static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>();
 static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";
 
@@ -265,7 +266,7 @@ struct State : StateData {
 
     using WindowNamed = std::map<string, std::reference_wrapper<WindowData>>;
 
-    WindowNamed window_named = all_windows | ranges::views::transform([](const auto &window_ref) {
+    WindowNamed window_named = all_windows | views::transform([](const auto &window_ref) {
         return std::pair<string, std::reference_wrapper<WindowData>>(window_ref.get().name, window_ref);
     }) | ranges::to<WindowNamed>();
 };

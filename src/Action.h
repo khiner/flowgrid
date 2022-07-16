@@ -140,8 +140,8 @@ template<typename T>
 constexpr size_t id = mp_find<Action, T>::value;
 
 inline string snake_case_to_sentence_case(const string &snake_case) {
-    using namespace ranges;
-    auto spaced = snake_case | views::split('_') | views::join(' ') | to<std::string>();
+    namespace views = ranges::views;
+    auto spaced = snake_case | views::split('_') | views::join(' ') | ranges::to<std::string>();
     spaced[0] = toupper(spaced[0]);
     return spaced;
 }

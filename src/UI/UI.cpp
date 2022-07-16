@@ -5,8 +5,8 @@
 #include <Tracy.hpp>
 #include "zep/stringutils.h"
 
-#include "../Context.h"
 #include "UI.h"
+#include "../Context.h"
 #include "Widgets.h"
 #include "FaustEditor.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"
@@ -266,7 +266,7 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 }
 
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
-const auto key_map = action::shortcut_for_id | ranges::views::transform([](const auto &entry) {
+const auto key_map = action::shortcut_for_id | views::transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
 }) | ranges::to<std::map<KeyShortcut, ActionID>>();

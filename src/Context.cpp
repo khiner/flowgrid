@@ -313,8 +313,8 @@ void Context::update(const Action &action) {
         [&](const set_implot_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
         [&](const save_faust_dsp_file &a) { File::write(a.path, s.audio.faust.code); },
 
-        [&](const set_boolean &a) {
-            const JsonPatchOp op{a.state_path, Replace, a.value, {}};
+        [&](const set_value &a) {
+            const JsonPatchOp op{a.state_path, Replace, {a.value}, {}};
             gesture_patch.emplace_back(op);
         },
 

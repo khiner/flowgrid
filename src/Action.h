@@ -53,7 +53,7 @@ struct show_save_project_dialog {};
 
 struct close_application {};
 
-struct set_boolean { string state_path; bool value; };
+struct set_value { string state_path; json value; };
 
 // JSON types are used for actions that hold very large structured data.
 // This is because the `Action` `std::variant` below can hold any action type, and variants must be large enough to hold their largest type.
@@ -98,7 +98,7 @@ using Action = std::variant<
     open_file_dialog, close_file_dialog,
     close_application,
 
-    set_boolean,
+    set_value,
 
     set_imgui_settings, set_imgui_style, set_implot_style, set_flowgrid_style,
 
@@ -158,7 +158,7 @@ static const std::map<ID, string> name_for_id{
 
     {id<close_application>,               "Close application"},
 
-    {id<set_boolean>,                     "Toggle boolean"},
+    {id<set_value>,                       "Set value"},
 
     {id<set_imgui_settings>,              "Set ImGui settings"},
     {id<set_imgui_style>,                 "Set ImGui style"},

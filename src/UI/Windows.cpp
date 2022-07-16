@@ -284,7 +284,7 @@ void ShowMetrics(bool show_relative_paths) {
         if (SmallButton("Clear")) c.clear_preferences();
         SameLine();
         // todo combine all this into a new `fg::Checkbox` widget that just takes a state path
-        if (fg::Checkbox("Relative paths", show_relative_paths)) { q(set_boolean{StatePath(s.windows.metrics.show_relative_paths), !show_relative_paths}); }
+        if (fg::Checkbox("Relative paths", show_relative_paths)) { q(set_value{StatePath(s.windows.metrics.show_relative_paths), !show_relative_paths}); }
 
         if (!has_recently_opened_paths) BeginDisabled();
         if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {

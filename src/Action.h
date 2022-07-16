@@ -139,47 +139,57 @@ Action create(std::size_t index) {
 template<typename T>
 constexpr size_t id = mp_find<Action, T>::value;
 
+inline string snake_case_to_sentence_case(const string &snake_case) {
+    using namespace ranges;
+    auto spaced = snake_case | views::split('_') | views::join(' ') | to<std::string>();
+    spaced[0] = toupper(spaced[0]);
+    return spaced;
+}
+
+#define ActionName(action_var_name) snake_case_to_sentence_case(#action_var_name)
+
 static const std::map<ID, string> name_for_id{
-    {id<undo>,                            "Undo"},
-    {id<redo>,                            "Redo"},
+    {id<undo>,                            ActionName(undo)},
+    {id<redo>,                            ActionName(redo)},
 
-    {id<open_project>,                    "Open project"},
-    {id<open_empty_project>,              "Open empty project"},
-    {id<open_default_project>,            "Open default project"},
-    {id<show_open_project_dialog>,        "Show open project dialog"},
+    {id<open_project>,                    ActionName(open_project)},
+    {id<open_empty_project>,              ActionName(open_empty_project)},
+    {id<open_default_project>,            ActionName(open_default_project)},
+    {id<show_open_project_dialog>,        ActionName(show_open_project_dialog)},
 
-    {id<open_file_dialog>,                "Open file dialog"},
-    {id<close_file_dialog>,               "Close file dialog"},
+    {id<open_file_dialog>,                ActionName(open_file_dialog)},
+    {id<close_file_dialog>,               ActionName(close_file_dialog)},
 
-    {id<save_project>,                    "Save project"},
-    {id<save_default_project>,            "Save default project"},
-    {id<save_current_project>,            "Save current project"},
-    {id<show_save_project_dialog>,        "Show save project dialog"},
+    {id<save_project>,                    ActionName(save_project)},
+    {id<save_default_project>,            ActionName(save_default_project)},
+    {id<save_current_project>,            ActionName(save_current_project)},
+    {id<show_save_project_dialog>,        ActionName(show_save_project_dialog)},
 
-    {id<close_application>,               "Close application"},
+    {id<close_application>,               ActionName(close_application)},
 
-    {id<set_value>,                       "Set value"},
+    {id<set_value>,                       ActionName(set_value)},
 
-    {id<set_imgui_settings>,              "Set ImGui settings"},
-    {id<set_imgui_style>,                 "Set ImGui style"},
-    {id<set_implot_style>,                "Set ImPlot style"},
-    {id<set_flowgrid_style>,              "Set FlowGrid style"},
+    {id<set_imgui_settings>,          "Set ImGui settings"},
+    {id<set_imgui_style>,             "Set ImGui style"},
+    {id<set_implot_style>,            "Set ImPlot style"},
+    {id<set_flowgrid_style>,          "Set FlowGrid style"},
 
-    {id<close_window>,                    "Close window"},
-    {id<toggle_window>,                   "Toggle window"},
+    {id<close_window>,                    ActionName(close_window)},
+    {id<toggle_window>,                   ActionName(toggle_window)},
 
-    {id<toggle_state_viewer_auto_select>, "Toggle state viewer auto-select"},
-    {id<set_state_viewer_label_mode>,     "Set state-viewer label-mode"},
-    {id<toggle_audio_muted>,              "Toggle audio muted"},
-    {id<set_audio_sample_rate>,           "Set audio sample rate"},
-    {id<set_faust_code>,                  "Set faust code"},
-    {id<show_open_faust_file_dialog>,     "Show open Faust file dialog"},
-    {id<show_save_faust_file_dialog>,     "Show save Faust file dialog"},
-    {id<open_faust_file>,                 "Open Faust file"},
-    {id<save_faust_file>,                 "Save Faust file"},
-    {id<set_audio_running>,               "Set audio running"},
-    {id<toggle_audio_running>,            "Toggle audio running"},
-    {id<set_ui_running>,                  "Set UI running"},
+    {id<toggle_state_viewer_auto_select>, ActionName(toggle_state_viewer_auto_select)},
+    {id<set_state_viewer_label_mode>, "Set state-viewer label-mode"},
+    {id<toggle_audio_muted>,              ActionName(toggle_audio_muted)},
+    {id<set_audio_sample_rate>,           ActionName(set_audio_sample_rate)},
+    {id<set_faust_code>,              "Set Faust code"},
+    {id<show_open_faust_file_dialog>, "Show open Faust file dialog"},
+    {id<show_save_faust_file_dialog>, "Show save Faust file dialog"},
+    {id<open_faust_file>,             "Open Faust file"},
+    {id<save_faust_file>,             "Save Faust file"},
+
+    {id<set_audio_running>,               ActionName(set_audio_running)},
+    {id<toggle_audio_running>,            ActionName(toggle_audio_running)},
+    {id<set_ui_running>,              "Set UI running"},
 };
 
 // An action's menu label is its name, except for a few exceptions.

@@ -25,8 +25,8 @@ void File::Dialog::draw() const {
                     if (save_mode) q(save_project{file_path});
                     else q(open_project{file_path});
                 } else if (extension == FaustDspFileExtension) {
-                    if (save_mode) q(save_faust_dsp_file{file_path});
-                    else q(open_faust_dsp_file{file_path});
+                    if (save_mode) q(save_faust_file{file_path});
+                    else q(open_faust_file{file_path});
                 }
             }
             q(close_file_dialog{});

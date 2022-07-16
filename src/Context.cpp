@@ -311,7 +311,7 @@ void Context::update(const Action &action) {
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
         [&](const set_imgui_style &) { update_ui_context(UiContextFlags_ImGuiStyle); },
         [&](const set_implot_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
-        [&](const save_faust_dsp_file &a) { File::write(a.path, s.audio.faust.code); },
+        [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
         [&](const set_value &a) {
             const JsonPatchOp op{a.state_path, Replace, {a.value}, {}};

@@ -79,8 +79,8 @@ struct set_ui_running { bool running; };
 
 struct show_open_faust_file_dialog {};
 struct show_save_faust_file_dialog {};
-struct save_faust_dsp_file { string path; };
-struct open_faust_dsp_file { string path; };
+struct save_faust_file { string path; };
+struct open_faust_file { string path; };
 struct set_faust_code { string text; };
 
 }
@@ -109,7 +109,7 @@ using Action = std::variant<
     toggle_audio_muted,
     set_audio_sample_rate,
     set_faust_code,
-    open_faust_dsp_file, save_faust_dsp_file,
+    open_faust_file, save_faust_file,
     show_open_faust_file_dialog, show_save_faust_file_dialog,
 
     set_audio_running, toggle_audio_running,
@@ -173,10 +173,10 @@ static const std::map<ID, string> name_for_id{
     {id<toggle_audio_muted>,              "Toggle audio muted"},
     {id<set_audio_sample_rate>,           "Set audio sample rate"},
     {id<set_faust_code>,                  "Set faust code"},
-    {id<show_open_faust_file_dialog>,     "Show open Faust DSP dialog"},
-    {id<show_save_faust_file_dialog>,     "Show save Faust DSP dialog"},
-    {id<open_faust_dsp_file>,             "Save Faust DSP file"},
-    {id<save_faust_dsp_file>,             "Open Faust DSP file"},
+    {id<show_open_faust_file_dialog>,     "Show open Faust file dialog"},
+    {id<show_save_faust_file_dialog>,     "Show save Faust file dialog"},
+    {id<open_faust_file>,                 "Open Faust file"},
+    {id<save_faust_file>,                 "Save Faust file"},
     {id<set_audio_running>,               "Set audio running"},
     {id<toggle_audio_running>,            "Toggle audio running"},
     {id<set_ui_running>,                  "Set UI running"},

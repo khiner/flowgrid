@@ -32,7 +32,7 @@ void State::update(const Action &action) {
         [&](const set_state_viewer_label_mode &a) { windows.state_viewer.label_mode = a.label_mode; },
 
         // Audio
-        [&](const open_faust_dsp_file &a) { audio.faust.code = ::File::read(a.path); },
+        [&](const open_faust_file &a) { audio.faust.code = ::File::read(a.path); },
         [&](const set_faust_code &a) { audio.faust.code = a.text; },
         [&](const toggle_audio_muted &) { audio.settings.muted = !audio.settings.muted; },
         [&](const set_audio_sample_rate &a) { audio.settings.sample_rate = a.sample_rate; },

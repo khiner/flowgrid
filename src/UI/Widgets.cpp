@@ -31,7 +31,7 @@ bool fg::Checkbox(const char *label, bool v) {
     return ImGui::Checkbox(label, &v);
 }
 
-void fg::Checkbox(const json::json_pointer &path) {
+void fg::Checkbox(const JsonPath &path) {
     bool v = c.state_json[path];
     if (ImGui::Checkbox(snake_case_to_sentence_case(path_variable_name(path)).c_str(), &v)) { q(set_value{path, v}); }
 }

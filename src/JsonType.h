@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 
 using namespace nlohmann;
+using JsonPath = json::json_pointer;
 
 // Convert `std::chrono::time_point`s to/from JSON.
 // From https://github.com/nlohmann/json/issues/2159#issuecomment-638104529

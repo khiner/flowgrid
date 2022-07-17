@@ -34,11 +34,8 @@ void State::update(const Action &action) {
         // Audio
         [&](const open_faust_file &a) { audio.faust.code = ::File::read(a.path); },
         [&](const set_faust_code &a) { audio.faust.code = a.text; },
-        [&](const toggle_audio_muted &) { audio.settings.muted = !audio.settings.muted; },
         [&](const set_audio_sample_rate &a) { audio.settings.sample_rate = a.sample_rate; },
 
-        [&](const set_audio_running &a) { processes.audio.running = a.running; },
-        [&](const toggle_audio_running &) { processes.audio.running = !processes.audio.running; },
         [&](const set_ui_running &a) { processes.ui.running = a.running; },
 
         [&](const close_application &) {

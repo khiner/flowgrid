@@ -71,11 +71,8 @@ struct toggle_window { string name; };
 struct toggle_state_viewer_auto_select {};
 struct set_state_viewer_label_mode { Windows::StateViewer::LabelMode label_mode; };
 
-struct toggle_audio_muted {};
 struct set_audio_sample_rate { int sample_rate; };
 
-struct set_audio_running { bool running; };
-struct toggle_audio_running {};
 struct set_ui_running { bool running; };
 
 struct show_open_faust_file_dialog {};
@@ -107,13 +104,11 @@ using Action = std::variant<
 
     toggle_state_viewer_auto_select, set_state_viewer_label_mode,
 
-    toggle_audio_muted,
     set_audio_sample_rate,
     set_faust_code,
     open_faust_file, save_faust_file,
     show_open_faust_file_dialog, show_save_faust_file_dialog,
 
-    set_audio_running, toggle_audio_running,
     set_ui_running
 >;
 
@@ -173,7 +168,6 @@ static const std::map<ID, string> name_for_id{
 
     {id<toggle_state_viewer_auto_select>, ActionName(toggle_state_viewer_auto_select)},
     {id<set_state_viewer_label_mode>, "Set state-viewer label-mode"},
-    {id<toggle_audio_muted>,              ActionName(toggle_audio_muted)},
     {id<set_audio_sample_rate>,           ActionName(set_audio_sample_rate)},
     {id<set_faust_code>,              "Set Faust code"},
     {id<show_open_faust_file_dialog>, "Show open Faust file dialog"},
@@ -181,8 +175,6 @@ static const std::map<ID, string> name_for_id{
     {id<open_faust_file>,             "Open Faust file"},
     {id<save_faust_file>,             "Save Faust file"},
 
-    {id<set_audio_running>,               ActionName(set_audio_running)},
-    {id<toggle_audio_running>,            ActionName(toggle_audio_running)},
     {id<set_ui_running>,              "Set UI running"},
 };
 

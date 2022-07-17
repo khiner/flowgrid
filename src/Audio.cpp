@@ -196,8 +196,8 @@ int audio() {
 }
 
 void Audio::Settings::draw() const {
-    if (fg::Checkbox("Audio thread running", s.processes.audio.running)) { q(toggle_audio_running{}); }
-    if (fg::Checkbox("Mute audio", muted)) { q(toggle_audio_muted{}); }
+    fg::Checkbox(StatePath(s.processes.audio.running));
+    fg::Checkbox(StatePath(s.audio.settings.muted));
 }
 
 void Audio::draw() const {

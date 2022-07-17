@@ -1,7 +1,6 @@
 #pragma once
 
 #include <set>
-#include "range/v3/view.hpp"
 
 #include "imgui.h"
 #include "imgui_internal.h"

@@ -6,7 +6,6 @@
 #include "zep/stringutils.h"
 
 #include "UI.h"
-#include "../Context.h"
 #include "Widgets.h"
 #include "FaustEditor.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"

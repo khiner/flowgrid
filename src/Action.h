@@ -5,6 +5,7 @@
 
 #include "File.h"
 #include "UI/Windows.h"
+#include "Helper/String.h"
 
 /*!
  * From [lager](https://github.com/arximboldi/lager/blob/c9d8b7d3c7dc7138913757d1624ab705866d791d/lager/util.hpp#L27-L49)
@@ -138,13 +139,6 @@ Action create(std::size_t index) {
 // Index is simplest.
 template<typename T>
 constexpr size_t id = mp_find<Action, T>::value;
-
-inline string snake_case_to_sentence_case(const string &snake_case) {
-    namespace views = ranges::views;
-    auto spaced = snake_case | views::split('_') | views::join(' ') | ranges::to<std::string>();
-    spaced[0] = toupper(spaced[0]);
-    return spaced;
-}
 
 #define ActionName(action_var_name) snake_case_to_sentence_case(#action_var_name)
 

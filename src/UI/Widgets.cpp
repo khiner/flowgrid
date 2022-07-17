@@ -31,6 +31,10 @@ bool fg::Checkbox(const char *label, bool v) {
     return ImGui::Checkbox(label, &v);
 }
 
+bool fg::Checkbox(const string &path, bool v) {
+    if (ImGui::Checkbox(snake_case_to_sentence_case(path_variable_name(path)).c_str(), &v)) { q(set_value{path, v}); }
+}
+
 bool fg::SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
     const bool edited = ImGui::SliderFloat(label, v, v_min, v_max, format, flags);
     gestured();

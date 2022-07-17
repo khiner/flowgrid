@@ -65,15 +65,14 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
  */
 
 // E.g. `state_member_name_to_path("s.foo.bar") => "/foo/bar"`
-// TODO return `fs::path`
-inline std::string state_member_name_to_path(const string &state_member_name) {
+inline json::json_pointer state_member_name_to_path(const string &state_member_name) {
     std::size_t index = state_member_name.find('.');
     // Must pass the fully-qualified state path.
     // Could also check that the first segment is `s`, `_s`, `state`, or `_state`, but that's expensive and
     assert(index != std::string::npos);
     std::string subpath = state_member_name.substr(index);
     std::replace(subpath.begin(), subpath.end(), '.', '/');
-    return subpath;
+    return json::json_pointer(subpath);
 }
 
 // Used to convert a state variable member to its respective path in state JSON.

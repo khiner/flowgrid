@@ -394,7 +394,7 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
 
     for (const auto &patch_op: patch) {
         const auto &path = patch_op.path;
-        if (path == faust_code_path) update_faust_context();
+        if (path == faust_code_path.to_string()) update_faust_context();
     }
 
     update_processes();

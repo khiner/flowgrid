@@ -5,7 +5,6 @@ namespace FlowGrid {
 void DrawWindow(const Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None);
 bool WindowToggleMenuItem(const Window &);
 
-bool Checkbox(const char *label, bool v);
 void Checkbox(const JsonPath &path);
 bool SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
 bool SliderFloat2(const char *label, ImVec2 *v, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);

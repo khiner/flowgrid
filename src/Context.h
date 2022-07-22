@@ -108,13 +108,10 @@ struct Context {
  *
  * Also, we don't want setting the error messages to pollute the undo tree with its own action.
  */
-    State _state{};
+    State state{};
 //    diff_match_patch<string> dmp;
     UiContext *ui{};
     StateStats state_stats;
-
-    const State &state = _state; // Read-only public state
-    const State &s = state; // Convenient shorthand
 
     /**
      This is a placeholder for the main in-memory data structure for action history.
@@ -127,7 +124,6 @@ struct Context {
     */
     std::vector<BidirectionalStateDiff> diffs;
     int current_diff_index = -1;
-    json state_json;
 
     std::optional<fs::path> current_project_path;
     int current_project_saved_action_index = -1;
@@ -138,6 +134,9 @@ struct Context {
     bool gesturing{};
     bool has_new_faust_code{};
 
+    // Read-only public shorthand state references:
+    const State &s = state;
+    const json &sj = state_json;
 private:
     void on_action(const Action &); // Immediately execute the action
     void update(const Action &); // State is only updated via `context.on_action(action)`
@@ -154,6 +153,7 @@ private:
     Threads threads;
     std::queue<const Action> queued_actions;
     std::set<string> gesture_action_names; // TODO change to `gesture_actions` (IDs)
+    json state_json, previous_state_json; // `state_json` always reflects `state`. `previous_state_json` is only updated on gesture-end (for diff calculation).
 };
 
 /**
@@ -161,7 +161,8 @@ private:
  * _These are instantiated in `main.cpp`._
 */
 extern Context context, &c;
-extern const State &state, &s;
+extern const State &s;
+extern const json &sj;
 
 // This is the main action-queue method.
 inline bool q(Action &&a) {

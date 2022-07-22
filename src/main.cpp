@@ -4,8 +4,8 @@
 // Initialize global variables, and convenient shorthand variables.
 Context context{};
 Context &c = context;
-const State &state = c.s;
 const State &s = c.s;
+const json &sj = c.sj;
 
 /**md
  # Notes

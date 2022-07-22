@@ -28,14 +28,14 @@ bool fg::WindowToggleMenuItem(const Window &window) {
 }
 
 bool fg::Checkbox(const JsonPath &path, const char *label) {
-    bool v = c.state_json[path];
+    bool v = sj[path];
     const bool edited = ImGui::Checkbox(label ? label : path_label(path).c_str(), &v);
     if (edited) q(set_value{path, v});
     return edited;
 }
 
 bool fg::SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
-    float v = c.state_json[path];
+    float v = sj[path];
     const bool edited = ImGui::SliderFloat(label ? label : path_label(path).c_str(), &v, v_min, v_max, format, flags);
     gestured();
     if (edited) q(set_value{path, v});
@@ -43,7 +43,7 @@ bool fg::SliderFloat(const JsonPath &path, float v_min, float v_max, const char 
 }
 
 bool fg::SliderFloat2(const JsonPath &path, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
-    ImVec2 v = c.state_json[path];
+    ImVec2 v = sj[path];
     const bool edited = ImGui::SliderFloat2(path_label(path).c_str(), (float *) &v, v_min, v_max, format, flags);
     gestured();
     if (edited) q(set_value{path, v});
@@ -57,7 +57,7 @@ bool fg::SliderInt(const char *label, int *v, int v_min, int v_max, const char *
 }
 
 bool fg::DragFloat(const JsonPath &path, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
-    float v = c.state_json[path];
+    float v = sj[path];
     const bool edited = ImGui::DragFloat(label ? label : path_label(path).c_str(), &v, v_speed, v_min, v_max, format, flags);
     gestured();
     if (edited) q(set_value{path, v});
@@ -65,7 +65,7 @@ bool fg::DragFloat(const JsonPath &path, float v_speed, float v_min, float v_max
 }
 
 bool fg::ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags, const char *label) {
-    ImVec4 v = c.state_json[path];
+    ImVec4 v = sj[path];
     const bool edited = ImGui::ColorEdit4(label ? label : path_label(path).c_str(), (float *) &v, flags);
     gestured();
     if (edited) q(set_value{path, v});
@@ -79,7 +79,7 @@ void fg::MenuItem(ActionID action_id) {
 }
 
 bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int popup_max_height_in_items) {
-    int v = c.state_json[path];
+    int v = sj[path];
     const bool edited = ImGui::Combo(path_label(path).c_str(), &v, items_separated_by_zeros, popup_max_height_in_items);
     if (edited) q(set_value{path, v});
     return edited;

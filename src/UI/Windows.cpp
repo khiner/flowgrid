@@ -22,7 +22,7 @@ bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
     bool disabled = flags & JsonTreeNodeFlags_Disabled;
 
     if (disabled) BeginDisabled();
-    if (highlighted) PushStyleColor(ImGuiCol_Text, state.style.flowgrid.Colors[FlowGridCol_HighlightText]);
+    if (highlighted) PushStyleColor(ImGuiCol_Text, s.style.flowgrid.Colors[FlowGridCol_HighlightText]);
     bool is_open = TreeNode(label);
     if (highlighted) PopStyleColor();
     if (disabled) EndDisabled();
@@ -132,8 +132,8 @@ void Windows::StateMemoryEditor::draw() const {
         first_render = false;
     }
 
-    void *mem_data{&c._state};
-    size_t mem_size{sizeof(c._state)};
+    void *mem_data{&c.state};
+    size_t mem_size{sizeof(c.state)};
     memory_editor.DrawContents(mem_data, mem_size);
 }
 
@@ -187,7 +187,7 @@ void Windows::StateViewer::draw() const {
         EndMenuBar();
     }
 
-    show_json_state_value_node("State", c.state_json, "/");
+    show_json_state_value_node("State", sj, "/");
 }
 
 void Windows::Demo::draw() const {

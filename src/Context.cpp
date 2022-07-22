@@ -97,10 +97,10 @@ void Context::compute_frames(int frame_count) const { // NOLINT(readability-conv
 }
 
 FAUSTFLOAT Context::get_sample(int channel, int frame) const {
-    return !faust || state.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
+    return !faust || s.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-Context::Context() : state_json(_state) {
+Context::Context() : state_json(state), previous_state_json(state) {
     if (fs::exists(PreferencesPath)) {
         preferences = json::from_msgpack(File::read(PreferencesPath));
     } else {
@@ -114,7 +114,7 @@ bool Context::is_user_project_path(const fs::path &path) {
 }
 
 json Context::get_project_json(const ProjectFormat format) const {
-    if (format == StateFormat) return state_json;
+    if (format == StateFormat) return sj;
     return diffs;
 }
 
@@ -130,8 +130,8 @@ bool Context::clear_preferences() {
 void Context::set_state_json(const json &new_state_json) {
     clear_undo();
 
-    state_json = new_state_json;
-    _state = state_json.get<State>();
+    state_json = previous_state_json = new_state_json;
+    state = state_json.get<State>();
 
     update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
     update_faust_context();
@@ -186,17 +186,17 @@ void Context::update_ui_context(UiContextFlags flags) {
     if (flags == UiContextFlags_None) return;
 
     if (flags & UiContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = _state.style.imgui;
+    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
     if (flags & UiContextFlags_ImPlotStyle) {
         ImPlot::BustItemCache();
-        ui->implot_context->Style = _state.style.implot;
+        ui->implot_context->Style = s.style.implot;
     }
 }
 
 void Context::update_faust_context() {
     has_new_faust_code = true;
 
-    faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, _state.audio.faust.error);
+    faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, state.audio.faust.error);
     if (faust->dsp) {
         StatefulFaustUI faust_ui;
         faust->dsp->buildUserInterface(&faust_ui);
@@ -298,9 +298,17 @@ void Context::on_action(const Action &action) {
 }
 
 void Context::update(const Action &action) {
-    _state.update(action);
+    // Update state. Keep JSON & struct versions of state in sync.
+    if (std::holds_alternative<set_value>(action)) {
+        const auto &a = std::get<set_value>(action);
+        state_json[JsonPath(a.state_path)] = a.value;
+        state = state_json;
+    } else {
+        state.update(action);
+        state_json = state;
+    }
 
-    // Side effects
+    // Execute side effects.
     gesture_action_names.emplace(action::get_name(action));
     std::visit(visitor{
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
@@ -310,13 +318,7 @@ void Context::update(const Action &action) {
         [&](const set_implot_color_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
-        [&](const set_value &a) {
-            // TODO very inefficient. Maybe update `state_json` in place during a gesture?
-            //   This could also address the flicker-back-to-json-state-value-on-release issue with sliders
-            const JsonPatchOp op{a.state_path, Replace, {a.value}, {}};
-            _state = json(_state).patch({op});
-            on_set_value(a.state_path);
-        },
+        [&](const set_value &a) { on_set_value(a.state_path); },
 
         [&](const auto &) {}, // All actions without side effects (only state updates)
     }, action);
@@ -329,13 +331,13 @@ void Context::finalize_gesture(bool merge) {
     const bool should_merge = merge && !diffs.empty();
     if (should_merge && int(diffs.size()) != current_diff_index + 1) return; // Only allow merges for new gestures at the end of the undo chain.
 
-    const json compare_with_state_json = should_merge ? state_json.patch(diffs.back().reverse_patch) : state_json;
-    state_json = s;
+    const json &compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;
+    previous_state_json = s;
 
-    const JsonPatch patch = json::diff(compare_with_state_json, state_json);
+    const JsonPatch patch = json::diff(compare_with_state_json, sj);
     if (patch.empty()) return;
 
-    const JsonPatch reverse_patch = json::diff(state_json, compare_with_state_json);
+    const JsonPatch reverse_patch = json::diff(sj, compare_with_state_json);
     BidirectionalStateDiff diff{gesture_names_copy, patch, reverse_patch, Clock::now()};
 
     if (should_merge) {
@@ -359,8 +361,8 @@ void Context::apply_diff(const int index, const Direction direction) {
     const auto &diff = diffs[index];
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
 
-    state_json = state_json.patch(patch);
-    _state = state_json.get<State>();
+    state_json = previous_state_json = state_json.patch(patch);
+    state = state_json.get<State>();
 
     on_json_diff(diff, direction);
 }

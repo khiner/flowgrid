@@ -64,27 +64,12 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
  * **The global `const StateData &s` instance is declared in `context.h` and instantiated in `main.cpp`.**
  */
 
-// E.g. `state_member_name_to_path("s.foo.bar") => "/foo/bar"`
-// todo `constexpr` when clang15 is released
-// todo can't use `consteval` bc of the stringify in the `sp` macro.
-//  Would be better to use one of these fancy reflection libraries, like
-//  https://github.com/lock3/meta/tree/paper/p2320
-inline JsonPath state_member_name_to_path(const string &state_member_name) {
-    std::size_t index = state_member_name.find('.');
-    // Must pass the fully-qualified state path.
-    // Could also check that the first segment is `s`, `_s`, `state`, or `_state`, but that's expensive and
-    assert(index != string::npos);
-    string path = state_member_name.substr(index);
-    std::replace(path.begin(), path.end(), '.', '/');
-    return JsonPath(path);
-}
-
 // `sp` as in `StatePath`.
 // Used to convert a state variable member to its respective path in state JSON.
 // This allows for code paths conditioned on which state member was changed, without needing to worry about manually changing paths when state members move.
-// _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s` or `state`).
+// _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s`).
 // E.g. `sp(s.foo.bar) => "/foo/bar"`
-#define sp(state_member_name) state_member_name_to_path(#state_member_name)
+#define sp(member_name) JsonPath(((const string &) string(#member_name) | views::split('.') | views::join('/') | ranges::to<std::string>()).substr(string(#member_name).find('.')))
 
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi

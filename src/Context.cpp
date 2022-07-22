@@ -186,10 +186,10 @@ void Context::update_ui_context(UiContextFlags flags) {
     if (flags == UiContextFlags_None) return;
 
     if (flags & UiContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
+    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = _state.style.imgui;
     if (flags & UiContextFlags_ImPlotStyle) {
         ImPlot::BustItemCache();
-        ui->implot_context->Style = s.style.implot;
+        ui->implot_context->Style = _state.style.implot;
     }
 }
 
@@ -311,8 +311,9 @@ void Context::update(const Action &action) {
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
         [&](const set_value &a) {
+            // TODO very inefficient. Maybe update `state_json` in place during a gesture?
             const JsonPatchOp op{a.state_path, Replace, {a.value}, {}};
-            gesture_patch.emplace_back(op);
+            _state = json(_state).patch({op});
             on_set_value(a.state_path);
         },
 
@@ -323,10 +324,6 @@ void Context::update(const Action &action) {
 void Context::finalize_gesture(bool merge) {
     const auto gesture_names_copy = gesture_action_names;
     gesture_action_names.clear();
-    if (!gesture_patch.empty()) {
-        _state = json(_state).patch(gesture_patch);
-        gesture_patch.clear();
-    }
 
     const bool should_merge = merge && !diffs.empty();
     if (should_merge && int(diffs.size()) != current_diff_index + 1) return; // Only allow merges for new gestures at the end of the undo chain.

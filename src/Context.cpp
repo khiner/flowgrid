@@ -368,10 +368,10 @@ void Context::apply_diff(const int index, const Direction direction) {
 }
 
 void Context::on_set_value(const string &path) {
-    if (path.rfind(sp(s.imgui_settings), 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path.rfind(sp(s.style.imgui), 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle);
-    else if (path.rfind(sp(s.style.implot), 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
-    else if (path == sp(s.audio.faust.code).to_string()) update_faust_context();
+    if (path.rfind("/imgui_settings", 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path.rfind("/style/imgui", 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle);
+    else if (path.rfind("/style/implot", 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
+    else if (path == "/audio/faust/code") update_faust_context();
 }
 
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction) {

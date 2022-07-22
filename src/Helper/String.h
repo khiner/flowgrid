@@ -18,4 +18,4 @@ inline string path_variable_name(const string &path) {
     return res.back();
 }
 
-inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
+inline string path_label(const string &path) { return snake_case_to_sentence_case(path_variable_name(path)); }

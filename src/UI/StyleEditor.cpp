@@ -4,7 +4,7 @@
 
 #include "implot_internal.h"
 
-void ShowColorEditor(const JsonPath &path, int color_count, const std::function<const char *(int)> &GetColorName) {
+void ShowColorEditor(const char *path, int color_count, const std::function<const char *(int)> &GetColorName) {
     if (ImGui::BeginTabItem("Colors")) {
         static ImGuiTextFilter filter;
         filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
@@ -28,7 +28,7 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
             if (!filter.PassFilter(name)) continue;
 
             ImGui::PushID(i);
-            fg::ColorEdit4(path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            fg::ColorEdit4((JsonPath(path) / i).to_string().c_str(), ImGuiColorEditFlags_AlphaBar | alpha_flags);
             ImGui::SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
             ImGui::TextUnformatted(name);
             ImGui::PopID();
@@ -48,22 +48,22 @@ void Style::ImGuiStyleEditor() {
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     // TODO match with imgui
-    if (fg::SliderFloat(sp(s.style.imgui.FrameRounding), 0.0f, 12.0f, "%.0f")) {
-        q(set_value{sp(s.style.imgui.GrabRounding), s.style.imgui.FrameRounding}); // Make GrabRounding always the same value as FrameRounding
+    if (fg::SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f")) {
+        q(set_value{"/style/imgui/GrabRounding", s.style.imgui.FrameRounding}); // Make GrabRounding always the same value as FrameRounding
     }
     {
         bool border = s.style.imgui.WindowBorderSize > 0.0f;
-        if (ImGui::Checkbox("WindowBorder", &border)) q(set_value{sp(s.style.imgui.WindowBorderSize), border ? 1.0f : 0.0f});
+        if (ImGui::Checkbox("WindowBorder", &border)) q(set_value{"/style/imgui/WindowBorderSize", border ? 1.0f : 0.0f});
     }
     ImGui::SameLine();
     {
         bool border = s.style.imgui.FrameBorderSize > 0.0f;
-        if (ImGui::Checkbox("FrameBorder", &border)) q(set_value{sp(s.style.imgui.FrameBorderSize), border ? 1.0f : 0.0f});
+        if (ImGui::Checkbox("FrameBorder", &border)) q(set_value{"/style/imgui/FrameBorderSize", border ? 1.0f : 0.0f});
     }
     ImGui::SameLine();
     {
         bool border = s.style.imgui.PopupBorderSize > 0.0f;
-        if (ImGui::Checkbox("PopupBorder", &border)) q(set_value{sp(s.style.imgui.PopupBorderSize), border ? 1.0f : 0.0f});
+        if (ImGui::Checkbox("PopupBorder", &border)) q(set_value{"/style/imgui/PopupBorderSize", border ? 1.0f : 0.0f});
     }
 
     ImGui::Separator();
@@ -71,48 +71,48 @@ void Style::ImGuiStyleEditor() {
     if (ImGui::BeginTabBar("##ImGuiStyleEditor", ImGuiTabBarFlags_None)) {
         if (ImGui::BeginTabItem("Sizes")) {
             ImGui::Text("Main");
-            fg::SliderFloat2(sp(s.style.imgui.WindowPadding), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.imgui.FramePadding), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.imgui.CellPadding), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.imgui.ItemSpacing), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.imgui.ItemInnerSpacing), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.imgui.TouchExtraPadding), 0.0f, 10.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.IndentSpacing), 0.0f, 30.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.ScrollbarSize), 1.0f, 20.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.GrabMinSize), 1.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/imgui/WindowPadding", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/imgui/FramePadding", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/imgui/CellPadding", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/imgui/ItemSpacing", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/imgui/ItemInnerSpacing", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/imgui/TouchExtraPadding", 0.0f, 10.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/IndentSpacing", 0.0f, 30.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/ScrollbarSize", 1.0f, 20.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/GrabMinSize", 1.0f, 20.0f, "%.0f");
             ImGui::Text("Borders");
-            fg::SliderFloat(sp(s.style.imgui.WindowBorderSize), 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.ChildBorderSize), 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.PopupBorderSize), 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.FrameBorderSize), 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.TabBorderSize), 0.0f, 1.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/WindowBorderSize", 0.0f, 1.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/ChildBorderSize", 0.0f, 1.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/PopupBorderSize", 0.0f, 1.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/FrameBorderSize", 0.0f, 1.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/TabBorderSize", 0.0f, 1.0f, "%.0f");
             ImGui::Text("Rounding");
-            fg::SliderFloat(sp(s.style.imgui.WindowRounding), 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.ChildRounding), 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.FrameRounding), 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.PopupRounding), 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.ScrollbarRounding), 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.GrabRounding), 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.LogSliderDeadzone), 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.imgui.TabRounding), 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/WindowRounding", 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/ChildRounding", 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/PopupRounding", 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/ScrollbarRounding", 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/GrabRounding", 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/LogSliderDeadzone", 0.0f, 12.0f, "%.0f");
+            fg::SliderFloat("/style/imgui/TabRounding", 0.0f, 12.0f, "%.0f");
             ImGui::Text("Alignment");
-            fg::SliderFloat2(sp(s.style.imgui.WindowTitleAlign), 0.0f, 1.0f, "%.2f");
-            fg::Combo(sp(s.style.imgui.WindowMenuButtonPosition), "None\0Left\0Right\0");
-            fg::Combo(sp(s.style.imgui.ColorButtonPosition), "Left\0Right\0");
-            fg::SliderFloat2(sp(s.style.imgui.ButtonTextAlign), 0.0f, 1.0f, "%.2f");
+            fg::SliderFloat2("/style/imgui/WindowTitleAlign", 0.0f, 1.0f, "%.2f");
+            fg::Combo("/style/imgui/WindowMenuButtonPosition", "None\0Left\0Right\0");
+            fg::Combo("/style/imgui/ColorButtonPosition", "Left\0Right\0");
+            fg::SliderFloat2("/style/imgui/ButtonTextAlign", 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
             HelpMarker("Alignment applies when a button is larger than its text content.");
-            fg::SliderFloat2(sp(s.style.imgui.SelectableTextAlign), 0.0f, 1.0f, "%.2f");
+            fg::SliderFloat2("/style/imgui/SelectableTextAlign", 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
             HelpMarker("Alignment applies when a selectable is larger than its text content.");
             ImGui::Text("Safe Area Padding");
             ImGui::SameLine();
             HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
-            fg::SliderFloat2(sp(s.style.imgui.DisplaySafeAreaPadding), 0.0f, 30.0f, "%.0f");
+            fg::SliderFloat2("/style/imgui/DisplaySafeAreaPadding", 0.0f, 30.0f, "%.0f");
             ImGui::EndTabItem();
         }
 
-        ShowColorEditor(sp(s.style.imgui.Colors), ImGuiCol_COUNT, ImGui::GetStyleColorName);
+        ShowColorEditor("/style/imgui/Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName);
 
 //        if (ImGui::BeginTabItem("Fonts")) {
 //            ImGuiIO &io = ImGui::GetIO();
@@ -140,20 +140,20 @@ void Style::ImGuiStyleEditor() {
 //        }
 
         if (ImGui::BeginTabItem("Rendering")) {
-            fg::Checkbox(sp(s.style.imgui.AntiAliasedLines), "Anti-aliased lines");
+            fg::Checkbox("/style/imgui/AntiAliasedLines", "Anti-aliased lines");
             ImGui::SameLine();
             HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
 
-            fg::Checkbox(sp(s.style.imgui.AntiAliasedLinesUseTex), "Anti-aliased lines use texture");
+            fg::Checkbox("/style/imgui/AntiAliasedLinesUseTex", "Anti-aliased lines use texture");
             ImGui::SameLine();
             HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
 
-            fg::Checkbox(sp(s.style.imgui.AntiAliasedFill), "Anti-aliased fill");
+            fg::Checkbox("/style/imgui/AntiAliasedFill", "Anti-aliased fill");
             ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
-            fg::DragFloat(sp(s.style.imgui.CurveTessellationTol), 0.02f, 0.10f, 10.0f, "%.2f", ImGuiSliderFlags_None, "Curve Tessellation Tolerance");
+            fg::DragFloat("/style/imgui/CurveTessellationTol", 0.02f, 0.10f, 10.0f, "%.2f", ImGuiSliderFlags_None, "Curve Tessellation Tolerance");
 
             // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            fg::DragFloat(sp(s.style.imgui.CircleTessellationMaxError), 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            fg::DragFloat("/style/imgui/CircleTessellationMaxError", 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
             if (ImGui::IsItemActive()) {
                 ImGui::SetNextWindowPos(ImGui::GetCursorScreenPos());
                 ImGui::BeginTooltip();
@@ -187,8 +187,8 @@ void Style::ImGuiStyleEditor() {
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
             // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
-            fg::DragFloat(sp(s.style.imgui.Alpha), 0.005f, 0.20f, 1.0f, "%.2f");
-            fg::DragFloat(sp(s.style.imgui.DisabledAlpha), 0.005f, 0.0f, 1.0f, "%.2f");
+            fg::DragFloat("/style/imgui/Alpha", 0.005f, 0.20f, 1.0f, "%.2f");
+            fg::DragFloat("/style/imgui/DisabledAlpha", 0.005f, 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
             HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
             ImGui::PopItemWidth();
@@ -207,36 +207,36 @@ void Style::ImPlotStyleEditor() {
     if (ImGui::BeginTabBar("##ImPlotStyleEditor")) {
         if (ImGui::BeginTabItem("Variables")) {
             ImGui::Text("Item Styling");
-            fg::SliderFloat(sp(s.style.implot.LineWeight), 0.0f, 5.0f, "%.1f");
-            fg::SliderFloat(sp(s.style.implot.MarkerSize), 2.0f, 10.0f, "%.1f");
-            fg::SliderFloat(sp(s.style.implot.MarkerWeight), 0.0f, 5.0f, "%.1f");
-            fg::SliderFloat(sp(s.style.implot.FillAlpha), 0.0f, 1.0f, "%.2f");
-            fg::SliderFloat(sp(s.style.implot.ErrorBarSize), 0.0f, 10.0f, "%.1f");
-            fg::SliderFloat(sp(s.style.implot.ErrorBarWeight), 0.0f, 5.0f, "%.1f");
-            fg::SliderFloat(sp(s.style.implot.DigitalBitHeight), 0.0f, 20.0f, "%.1f");
-            fg::SliderFloat(sp(s.style.implot.DigitalBitGap), 0.0f, 20.0f, "%.1f");
+            fg::SliderFloat("/style/implot/LineWeight", 0.0f, 5.0f, "%.1f");
+            fg::SliderFloat("/style/implot/MarkerSize", 2.0f, 10.0f, "%.1f");
+            fg::SliderFloat("/style/implot/MarkerWeight", 0.0f, 5.0f, "%.1f");
+            fg::SliderFloat("/style/implot/FillAlpha", 0.0f, 1.0f, "%.2f");
+            fg::SliderFloat("/style/implot/ErrorBarSize", 0.0f, 10.0f, "%.1f");
+            fg::SliderFloat("/style/implot/ErrorBarWeight", 0.0f, 5.0f, "%.1f");
+            fg::SliderFloat("/style/implot/DigitalBitHeight", 0.0f, 20.0f, "%.1f");
+            fg::SliderFloat("/style/implot/DigitalBitGap", 0.0f, 20.0f, "%.1f");
 
             ImGui::Text("Plot Styling");
-            fg::SliderFloat(sp(s.style.implot.PlotBorderSize), 0.0f, 2.0f, "%.0f");
-            fg::SliderFloat(sp(s.style.implot.MinorAlpha), 0.0f, 1.0f, "%.2f");
-            fg::SliderFloat2(sp(s.style.implot.MajorTickLen), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.MinorTickLen), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.MajorTickSize), 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2(sp(s.style.implot.MinorTickSize), 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2(sp(s.style.implot.MajorGridSize), 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2(sp(s.style.implot.MinorGridSize), 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2(sp(s.style.implot.PlotDefaultSize), 0.0f, 1000, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.PlotMinSize), 0.0f, 300, "%.0f");
+            fg::SliderFloat("/style/implot/PlotBorderSize", 0.0f, 2.0f, "%.0f");
+            fg::SliderFloat("/style/implot/MinorAlpha", 0.0f, 1.0f, "%.2f");
+            fg::SliderFloat2("/style/implot/MajorTickLen", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/MinorTickLen", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/MajorTickSize", 0.0f, 2.0f, "%.1f");
+            fg::SliderFloat2("/style/implot/MinorTickSize", 0.0f, 2.0f, "%.1f");
+            fg::SliderFloat2("/style/implot/MajorGridSize", 0.0f, 2.0f, "%.1f");
+            fg::SliderFloat2("/style/implot/MinorGridSize", 0.0f, 2.0f, "%.1f");
+            fg::SliderFloat2("/style/implot/PlotDefaultSize", 0.0f, 1000, "%.0f");
+            fg::SliderFloat2("/style/implot/PlotMinSize", 0.0f, 300, "%.0f");
 
             ImGui::Text("Plot Padding");
-            fg::SliderFloat2(sp(s.style.implot.PlotPadding), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.LabelPadding), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.LegendPadding), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.LegendInnerPadding), 0.0f, 10.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.LegendSpacing), 0.0f, 5.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.MousePosPadding), 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.AnnotationPadding), 0.0f, 5.0f, "%.0f");
-            fg::SliderFloat2(sp(s.style.implot.FitPadding), 0, 0.2f, "%.2f");
+            fg::SliderFloat2("/style/implot/PlotPadding", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/LabelPadding", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/LegendPadding", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/LegendInnerPadding", 0.0f, 10.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/LegendSpacing", 0.0f, 5.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/MousePosPadding", 0.0f, 20.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/AnnotationPadding", 0.0f, 5.0f, "%.0f");
+            fg::SliderFloat2("/style/implot/FitPadding", 0, 0.2f, "%.2f");
 
             ImGui::EndTabItem();
         }
@@ -258,7 +258,7 @@ void Style::ImPlotStyleEditor() {
 
             ImGui::Separator();
             ImGui::PushItemWidth(-160);
-            const auto colors_path = sp(s.style.implot.Colors);
+            const auto colors_path = JsonPath("/style/implot/Colors");
             for (int i = 0; i < ImPlotCol_COUNT; i++) {
                 const char *name = ImPlot::GetStyleColorName(i);
                 if (!filter.PassFilter(name)) continue;
@@ -270,7 +270,7 @@ void Style::ImPlotStyleEditor() {
                 if (ImGui::Button("Auto")) q(set_value{colors_path / i, is_auto ? temp : IMPLOT_AUTO_COL});
                 if (!is_auto) ImGui::PopStyleVar();
                 ImGui::SameLine();
-                fg::ColorEdit4(colors_path / i, ImGuiColorEditFlags_NoInputs | alpha_flags, name);
+                fg::ColorEdit4((colors_path / i).to_string().c_str(), ImGuiColorEditFlags_NoInputs | alpha_flags, name);
                 ImGui::PopID();
             }
             ImGui::PopItemWidth();
@@ -287,12 +287,12 @@ void Style::ImPlotStyleEditor() {
 }
 
 void Style::FlowGridStyleEditor() {
-    fg::SliderFloat(sp(s.style.flowgrid.FlashDurationSec), FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
+    fg::SliderFloat("/style/flowgrid/FlashDurationSec", FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
     static int style_idx = -1;
     if (ImGui::Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});
 
     if (ImGui::BeginTabBar("##FlowGridStyleEditor")) {
-        ShowColorEditor(sp(s.style.flowgrid.Colors), FlowGridCol_COUNT, FlowGridStyle::GetColorName);
+        ShowColorEditor("/style/flowgrid/Colors", FlowGridCol_COUNT, FlowGridStyle::GetColorName);
         ImGui::EndTabBar();
     }
 }

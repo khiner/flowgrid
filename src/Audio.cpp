@@ -196,8 +196,8 @@ int audio() {
 }
 
 void Audio::Settings::draw() const {
-    fg::Checkbox(sp(s.processes.audio.running));
-    fg::Checkbox(sp(s.audio.settings.muted));
+    fg::Checkbox("/processes/audio/running");
+    fg::Checkbox("/audio/settings/muted");
 }
 
 void Audio::draw() const {

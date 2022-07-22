@@ -64,13 +64,6 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
  * **The global `const StateData &s` instance is declared in `context.h` and instantiated in `main.cpp`.**
  */
 
-// `sp` as in `StatePath`.
-// Used to convert a state variable member to its respective path in state JSON.
-// This allows for code paths conditioned on which state member was changed, without needing to worry about manually changing paths when state members move.
-// _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s`).
-// E.g. `sp(s.foo.bar) => "/foo/bar"`
-#define sp(member_name) JsonPath(((const string &) string(#member_name) | views::split('.') | views::join('/') | ranges::to<std::string>()).substr(string(#member_name).find('.')))
-
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };

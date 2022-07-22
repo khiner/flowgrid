@@ -21,9 +21,42 @@ void State::update(const Action &action) {
         [&](const close_file_dialog &) { file.dialog.visible = false; },
 
         [&](const set_imgui_settings &a) { imgui_settings = a.settings; },
-        [&](const set_imgui_style &a) { style.imgui = a.imgui_style; },
-        [&](const set_implot_style &a) { style.implot = a.implot_style; },
-        [&](const set_flowgrid_style &a) { style.flowgrid = a.flowgrid_style; },
+        [&](const set_imgui_color_style &a) {
+            auto *dst = &style.imgui;
+            switch (a.id) {
+                case 0: ImGui::StyleColorsDark(dst);
+                    break;
+                case 1: ImGui::StyleColorsLight(dst);
+                    break;
+                case 2: ImGui::StyleColorsClassic(dst);
+                    break;
+            }
+        },
+        [&](const set_implot_color_style &a) {
+            auto *dst = &style.implot;
+            switch (a.id) {
+                case 0: ImPlot::StyleColorsAuto(dst);
+                    break;
+                case 1: ImPlot::StyleColorsClassic(dst);
+                    break;
+                case 2: ImPlot::StyleColorsDark(dst);
+                    break;
+                case 3: ImPlot::StyleColorsLight(dst);
+                    break;
+            }
+        },
+        [&](const set_flowgrid_color_style &a) {
+            auto &dst = style.flowgrid;
+            switch (a.id) {
+                case 0: FlowGridStyle::StyleColorsDark(dst);
+                    break;
+                case 1: FlowGridStyle::StyleColorsLight(dst);
+                    break;
+                case 2: FlowGridStyle::StyleColorsClassic(dst);
+                    break;
+                default:break;
+            }
+        },
 
         [&](const close_window &a) { window_named.at(a.name).get().visible = false; },
         [&](const toggle_window &a) { window_named.at(a.name).get().visible = !window_named.at(a.name).get().visible; },

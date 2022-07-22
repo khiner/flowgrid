@@ -61,9 +61,9 @@ struct set_value { string state_path; json value; };
 // As of 5/24/2022, the largest raw action member type was `ImGuiStyle`, which resulted in an `Action` variant size of 1088 bytes.
 // That's pretty silly for a type that can also hold a single boolean value! Replacing with JSON types brought the size down to 32 bytes.
 struct set_imgui_settings { json settings; }; // ImGuiSettings
-struct set_imgui_style { json imgui_style; }; // ImGuiStyle
-struct set_implot_style { json implot_style; }; // ImPlotStyle
-struct set_flowgrid_style { json flowgrid_style; }; // FlowGridStyle
+struct set_imgui_color_style { int id; };
+struct set_implot_color_style { int id; };
+struct set_flowgrid_color_style { int id; };
 
 struct close_window { string name; };
 struct toggle_window { string name; };
@@ -98,7 +98,7 @@ using Action = std::variant<
 
     set_value,
 
-    set_imgui_settings, set_imgui_style, set_implot_style, set_flowgrid_style,
+    set_imgui_settings, set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
 
     close_window, toggle_window,
 
@@ -159,9 +159,9 @@ static const std::map<ID, string> name_for_id{
     {id<set_value>,                       ActionName(set_value)},
 
     {id<set_imgui_settings>,          "Set ImGui settings"},
-    {id<set_imgui_style>,             "Set ImGui style"},
-    {id<set_implot_style>,            "Set ImPlot style"},
-    {id<set_flowgrid_style>,          "Set FlowGrid style"},
+    {id<set_imgui_color_style>,       "Set ImGui color style"},
+    {id<set_implot_color_style>,      "Set ImPlot color style"},
+    {id<set_flowgrid_color_style>,    "Set FlowGrid color style"},
 
     {id<close_window>,                    ActionName(close_window)},
     {id<toggle_window>,                   ActionName(toggle_window)},

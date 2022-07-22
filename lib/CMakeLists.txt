@@ -45,8 +45,7 @@ add_subdirectory(json)
 
 #=================== faust ===================
 
-# See [the docs](https://faustdoc.grame.fr/manual/embedding/#using-libfaust-with-the-llvm-backend)
-# for general help.
+# See [the docs](https://faustdoc.grame.fr/manual/embedding/#using-libfaust-with-the-llvm-backend) for general help.
 
 # This config for building faust as a dynamic library is based on
 # [TD-Faust](https://github.com/DBraun/TD-Faust/blob/965963258b2c68054fc7e376e1fa84ea19ce7af4/FaustLib.cmake#L26-L62).

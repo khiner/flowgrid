@@ -47,12 +47,6 @@ private:
     Plottable create_path_update_frequency_plottable();
 };
 
-struct DerivedState {
-    explicit DerivedState(const State &);
-
-    Style style;
-};
-
 struct Context {
     Context();
     ~Context() = default;
@@ -118,7 +112,6 @@ struct Context {
 //    diff_match_patch<string> dmp;
     UiContext *ui{};
     StateStats state_stats;
-    DerivedState derived_state;
 
     const State &state = _state; // Read-only public state
     const State &s = state; // Convenient shorthand
@@ -151,7 +144,8 @@ private:
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void finalize_gesture(bool merge = false); // If `merge = true`, this gesture's diff is rolled into the previous diff.
     void apply_diff(int index, Direction direction = Forward);
-    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated);
+    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
+    void on_set_value(const string &path);
 
     void open_project(const fs::path &);
     bool save_project(const fs::path &);
@@ -164,12 +158,11 @@ private:
 };
 
 /**
- * Declare a full name & convenient shorthand for the global `Context`, `State`, and `DerivedState` instances.
+ * Declare a full name & convenient shorthand for the global `Context` & `State` instances.
  * _These are instantiated in `main.cpp`._
 */
 extern Context context, &c;
 extern const State &state, &s;
-extern DerivedState &ds;
 
 // This is the main action-queue method.
 inline bool q(Action &&a) {

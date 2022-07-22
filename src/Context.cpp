@@ -100,7 +100,7 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || state.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-Context::Context() : derived_state(_state), state_json(_state) {
+Context::Context() : state_json(_state) {
     if (fs::exists(PreferencesPath)) {
         preferences = json::from_msgpack(File::read(PreferencesPath));
     } else {
@@ -132,7 +132,6 @@ void Context::set_state_json(const json &new_state_json) {
 
     state_json = new_state_json;
     _state = state_json.get<State>();
-    derived_state = DerivedState(_state);
 
     update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
     update_faust_context();
@@ -254,8 +253,6 @@ void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction 
     max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
 }
 
-DerivedState::DerivedState(const State &_state) : style(_state.style) {}
-
 // Convert `string` to char array, removing first character of the path, which is a '/'.
 const char *convert_path(const string &str) {
     char *pc = new char[str.size()];
@@ -309,13 +306,14 @@ void Context::update(const Action &action) {
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
         // since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        [&](const set_imgui_style &) { update_ui_context(UiContextFlags_ImGuiStyle); },
-        [&](const set_implot_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
+        [&](const set_imgui_color_style &) { update_ui_context(UiContextFlags_ImGuiStyle); },
+        [&](const set_implot_color_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
         [&](const set_value &a) {
             const JsonPatchOp op{a.state_path, Replace, {a.value}, {}};
             gesture_patch.emplace_back(op);
+            on_set_value(a.state_path);
         },
 
         [&](const auto &) {}, // All actions without side effects (only state updates)
@@ -346,17 +344,17 @@ void Context::finalize_gesture(bool merge) {
         const auto last_diff = diffs.back();
         diffs.pop_back();
         diff.action_names.insert(last_diff.action_names.begin(), last_diff.action_names.end());
-        on_json_diff(last_diff, Reverse, true);
+        on_json_diff(last_diff, Reverse);
     }
 
     // If we're not already at the end of the undo stack, wind it back.
-    // TODO use an unto _tree_ and keep this history
+    // TODO use an undo _tree_ and keep this history
     while (int(diffs.size()) > current_diff_index + 1) diffs.pop_back();
 
     diffs.emplace_back(diff);
     current_diff_index = int(diffs.size()) - 1;
 
-    on_json_diff(diff, Forward, true);
+    on_json_diff(diff, Forward);
 }
 
 void Context::apply_diff(const int index, const Direction direction) {
@@ -365,38 +363,21 @@ void Context::apply_diff(const int index, const Direction direction) {
 
     state_json = state_json.patch(patch);
     _state = state_json.get<State>();
-    derived_state = DerivedState(_state);
 
-    on_json_diff(diff, direction, false);
+    on_json_diff(diff, direction);
 }
 
-void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction, bool ui_initiated) {
-    // These state-paths trigger side effects when changed
-    const static auto imgui_settings_path = StatePath(s.imgui_settings);
-    const static auto imgui_style_path = StatePath(s.style.imgui);
-    const static auto implot_style_path = StatePath(s.style.implot);
-    const static auto faust_code_path = StatePath(s.audio.faust.code);
+void Context::on_set_value(const string &path) {
+    if (path.rfind(sp(s.imgui_settings), 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path.rfind(sp(s.style.imgui), 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle);
+    else if (path.rfind(sp(s.style.implot), 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
+    else if (path == sp(s.audio.faust.code).to_string()) update_faust_context();
+}
 
+void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction) {
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
     state_stats.on_json_patch(patch, diff.system_time, direction);
-
-    if (!ui_initiated) {
-        // Only need to update the UI context for undo/redo. UI-initiated actions already take care of this.
-        UiContextFlags update_ui_flags = UiContextFlags_None;
-        for (const auto &patch_op: patch) {
-            const auto &path = patch_op.path;
-            if (path.rfind(imgui_settings_path, 0) == 0) update_ui_flags |= UiContextFlags_ImGuiSettings;
-            else if (path.rfind(imgui_style_path, 0) == 0) update_ui_flags |= UiContextFlags_ImGuiStyle;
-            else if (path.rfind(implot_style_path, 0) == 0) update_ui_flags |= UiContextFlags_ImPlotStyle;
-        }
-        update_ui_context(update_ui_flags);
-    }
-
-    for (const auto &patch_op: patch) {
-        const auto &path = patch_op.path;
-        if (path == faust_code_path.to_string()) update_faust_context();
-    }
-
+    for (const auto &patch_op: patch) on_set_value(patch_op.path);
     update_processes();
 }
 

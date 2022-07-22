@@ -17,3 +17,5 @@ inline string path_variable_name(const string &path) {
     const auto res = path | views::split('/') | to<std::vector<string>>();
     return res.back();
 }
+
+inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }

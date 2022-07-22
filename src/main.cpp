@@ -6,7 +6,6 @@ Context context{};
 Context &c = context;
 const State &state = c.s;
 const State &s = c.s;
-DerivedState &ds = c.derived_state;
 
 /**md
  # Notes

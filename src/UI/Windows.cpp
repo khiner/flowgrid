@@ -283,7 +283,7 @@ void ShowMetrics(bool show_relative_paths) {
     if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (SmallButton("Clear")) c.clear_preferences();
         SameLine();
-        fg::Checkbox(StatePath(s.windows.metrics.show_relative_paths));
+        fg::Checkbox(sp(s.windows.metrics.show_relative_paths));
 
         if (!has_recently_opened_paths) BeginDisabled();
         if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {

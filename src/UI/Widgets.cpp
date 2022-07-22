@@ -27,20 +27,26 @@ bool fg::WindowToggleMenuItem(const Window &window) {
     return edited;
 }
 
-void fg::Checkbox(const JsonPath &path) {
+bool fg::Checkbox(const JsonPath &path, const char *label) {
     bool v = c.state_json[path];
-    if (ImGui::Checkbox(snake_case_to_sentence_case(path_variable_name(path)).c_str(), &v)) { q(set_value{path, v}); }
-}
-
-bool fg::SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
-    const bool edited = ImGui::SliderFloat(label, v, v_min, v_max, format, flags);
-    gestured();
+    const bool edited = ImGui::Checkbox(label ? label : path_label(path).c_str(), &v);
+    if (edited) q(set_value{path, v});
     return edited;
 }
 
-bool fg::SliderFloat2(const char *label, ImVec2 *v, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
-    const bool edited = ImGui::SliderFloat2(label, (float *) v, v_min, v_max, format, flags);
+bool fg::SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
+    float v = c.state_json[path];
+    const bool edited = ImGui::SliderFloat(label ? label : path_label(path).c_str(), &v, v_min, v_max, format, flags);
     gestured();
+    if (edited) q(set_value{path, v});
+    return edited;
+}
+
+bool fg::SliderFloat2(const JsonPath &path, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
+    ImVec2 v = c.state_json[path];
+    const bool edited = ImGui::SliderFloat2(path_label(path).c_str(), (float *) &v, v_min, v_max, format, flags);
+    gestured();
+    if (edited) q(set_value{path, v});
     return edited;
 }
 
@@ -50,30 +56,31 @@ bool fg::SliderInt(const char *label, int *v, int v_min, int v_max, const char *
     return edited;
 }
 
-bool fg::SliderScalar(const char *label, ImGuiDataType data_type, void *p_data, const void *p_min, const void *p_max, const char *format, ImGuiSliderFlags flags) {
-    const bool edited = ImGui::SliderScalar(label, data_type, p_data, p_min, p_max, format, flags);
+bool fg::DragFloat(const JsonPath &path, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
+    float v = c.state_json[path];
+    const bool edited = ImGui::DragFloat(label ? label : path_label(path).c_str(), &v, v_speed, v_min, v_max, format, flags);
     gestured();
+    if (edited) q(set_value{path, v});
     return edited;
 }
 
-bool fg::DragFloat(const char *label, float *v, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
-    const bool edited = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+bool fg::ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags, const char *label) {
+    ImVec4 v = c.state_json[path];
+    const bool edited = ImGui::ColorEdit4(label ? label : path_label(path).c_str(), (float *) &v, flags);
     gestured();
+    if (edited) q(set_value{path, v});
     return edited;
-}
-
-bool fg::ColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flags) {
-    const bool edited = ImGui::ColorEdit4(label, col, flags);
-    gestured();
-    return edited;
-}
-
-bool fg::ColorEdit4(const char *label, ImVec4 *col, ImGuiColorEditFlags flags) {
-    return fg::ColorEdit4(label, (float *) col, flags);
 }
 
 void fg::MenuItem(ActionID action_id) {
     const char *menu_label = action::get_menu_label(action_id);
     const char *shortcut = action::shortcut_for_id.contains(action_id) ? action::shortcut_for_id.at(action_id).c_str() : nullptr;
     if (ImGui::MenuItem(menu_label, shortcut, false, c.action_allowed(action_id))) q(action::create(action_id));
+}
+
+bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int popup_max_height_in_items) {
+    int v = c.state_json[path];
+    const bool edited = ImGui::Combo(path_label(path).c_str(), &v, items_separated_by_zeros, popup_max_height_in_items);
+    if (edited) q(set_value{path, v});
+    return edited;
 }

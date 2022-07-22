@@ -65,22 +65,26 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
  */
 
 // E.g. `state_member_name_to_path("s.foo.bar") => "/foo/bar"`
+// todo `constexpr` when clang15 is released
+// todo can't use `consteval` bc of the stringify in the `sp` macro.
+//  Would be better to use one of these fancy reflection libraries, like
+//  https://github.com/lock3/meta/tree/paper/p2320
 inline JsonPath state_member_name_to_path(const string &state_member_name) {
     std::size_t index = state_member_name.find('.');
     // Must pass the fully-qualified state path.
     // Could also check that the first segment is `s`, `_s`, `state`, or `_state`, but that's expensive and
-    assert(index != std::string::npos);
-    std::string subpath = state_member_name.substr(index);
-    std::replace(subpath.begin(), subpath.end(), '.', '/');
-    return JsonPath(subpath);
+    assert(index != string::npos);
+    string path = state_member_name.substr(index);
+    std::replace(path.begin(), path.end(), '.', '/');
+    return JsonPath(path);
 }
 
+// `sp` as in `StatePath`.
 // Used to convert a state variable member to its respective path in state JSON.
 // This allows for code paths conditioned on which state member was changed, without needing to worry about manually changing paths when state members move.
 // _Must pass the fully qualified, nested state variable, starting with the root state variable (e.g. `s` or `state`).
-// E.g. `StatePath(s.foo.bar) => "/foo/bar"`
-#define StatePath(state_member_name) state_member_name_to_path(#state_member_name)
-
+// E.g. `sp(s.foo.bar) => "/foo/bar"`
+#define sp(state_member_name) state_member_name_to_path(#state_member_name)
 
 enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
@@ -191,9 +195,9 @@ struct Style : Window {
 
 private:
     // `...StyleEditor` methods are drawn as tabs, and return `true` if style changes.
-    static bool ImGuiStyleEditor();
-    static bool ImPlotStyleEditor();
-    static bool FlowGridStyleEditor();
+    static void ImGuiStyleEditor();
+    static void ImPlotStyleEditor();
+    static void FlowGridStyleEditor();
 };
 
 struct Processes {

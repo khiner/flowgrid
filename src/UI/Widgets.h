@@ -5,19 +5,18 @@ namespace FlowGrid {
 void DrawWindow(const Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None);
 bool WindowToggleMenuItem(const Window &);
 
-void Checkbox(const JsonPath &path);
-bool SliderFloat(const char *label, float *v, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
-bool SliderFloat2(const char *label, ImVec2 *v, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
+bool Checkbox(const JsonPath &path, const char *label = nullptr);
+bool SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0, const char *label = nullptr);
+bool SliderFloat2(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
 bool SliderInt(const char *label, int *v, int v_min, int v_max, const char *format = "%d", ImGuiSliderFlags flags = 0);
-// Example: `fg::SliderScalar("slider u64 full", ImGuiDataType_U64, &u64_v, &u64_min, &u64_max, "%" IM_PRIu64 " ns");`
-bool SliderScalar(const char *label, ImGuiDataType data_type, void *p_data, const void *p_min, const void *p_max, const char *format = nullptr, ImGuiSliderFlags flags = 0);
 
-bool DragFloat(const char *label, float *v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
+bool DragFloat(const JsonPath &path, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char *format = "%.3f", ImGuiSliderFlags flags = 0, const char *label = nullptr);
 
-bool ColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flags = 0);
-bool ColorEdit4(const char *label, ImVec4 *col, ImGuiColorEditFlags flags = 0);
+bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
 
 // For actions with no data members.
 void MenuItem(ActionID);
+
+bool Combo(const JsonPath &path, const char *items_separated_by_zeros, int popup_max_height_in_items = -1);
 
 }

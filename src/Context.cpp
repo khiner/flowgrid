@@ -312,6 +312,7 @@ void Context::update(const Action &action) {
 
         [&](const set_value &a) {
             // TODO very inefficient. Maybe update `state_json` in place during a gesture?
+            //   This could also address the flicker-back-to-json-state-value-on-release issue with sliders
             const JsonPatchOp op{a.state_path, Replace, {a.value}, {}};
             _state = json(_state).patch({op});
             on_set_value(a.state_path);

@@ -9,19 +9,20 @@ struct Drawable {
 };
 
 struct WindowData {
+    explicit WindowData(string name) : name(std::move(name)) {}
     string name;
     bool visible{true};
 };
 
 struct Window : WindowData, Drawable {
-    Window() = default;
+    explicit Window(const string &name) : WindowData(name) {}
 };
 
 struct Windows : Drawable {
     void draw() const override;
 
     struct StateViewer : Window {
-        StateViewer() { name = "State viewer"; }
+        using Window::Window;
         void draw() const override;
 
         enum LabelMode { annotated, raw };
@@ -30,36 +31,36 @@ struct Windows : Drawable {
     };
 
     struct StateMemoryEditor : Window {
-        StateMemoryEditor() { name = "State memory editor"; }
+        using Window::Window;
         void draw() const override;
     };
 
     struct StatePathUpdateFrequency : Window {
-        StatePathUpdateFrequency() { name = "State path update frequency"; }
+        using Window::Window;
         void draw() const override;
     };
 
     struct Demo : Window {
-        Demo() { name = "Demo"; }
+        using Window::Window;
         void draw() const override;
     };
 
     struct Metrics : Window {
-        Metrics() { name = "Metrics"; }
+        using Window::Window;
         void draw() const override;
 
         bool show_relative_paths = true;
     };
 
     struct Tools : Window {
-        Tools() { name = "Tools"; }
+        using Window::Window;
         void draw() const override;
     };
 
-    Demo demo{};
-    Metrics metrics{};
-    Tools tools{};
-    StateViewer state_viewer{};
-    StateMemoryEditor memory_editor{};
-    StatePathUpdateFrequency path_update_frequency{};
+    Demo demo{"Demo"};
+    Metrics metrics{"Metrics"};
+    Tools tools{"Tools"};
+    StateViewer state_viewer{"State viewer"};
+    StateMemoryEditor memory_editor{"State memory editor"};
+    StatePathUpdateFrequency path_update_frequency{"State path update frequency"};
 };

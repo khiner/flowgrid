@@ -72,7 +72,7 @@ struct Audio : Drawable {
     void draw() const override;
 
     struct Settings : Window {
-        Settings() { name = "Audio settings"; }
+        using Window::Window;
         void draw() const override;
 
         AudioBackend backend = none;
@@ -86,7 +86,7 @@ struct Audio : Drawable {
 
     struct Faust {
         struct Editor : Window {
-            Editor() : file_name{"default.dsp"} { name = "Faust editor"; }
+            Editor(const string &name) : Window(name), file_name{"default.dsp"} {}
             void draw() const override;
 
             string file_name;
@@ -95,12 +95,12 @@ struct Audio : Drawable {
         // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
         // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
         struct Log : Window {
-            Log() { name = "Faust log"; }
+            using Window::Window;
             void draw() const override;
         };
 
-        Editor editor{};
-        Log log{};
+        Editor editor{"Faust editor"};
+        Log log{"Faust log"};
 
         //    string code{"import(\"stdfaust.lib\");\n\n"
 //                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
@@ -115,7 +115,7 @@ struct Audio : Drawable {
         string error{};
     };
 
-    Settings settings{};
+    Settings settings{"Audio settings"};
     Faust faust{};
 };
 
@@ -163,7 +163,7 @@ struct FlowGridStyle {
 };
 
 struct Style : Window {
-    Style() { name = "Style"; }
+    using Window::Window;
 
     void draw() const override;
 
@@ -219,7 +219,7 @@ struct ImGuiSettings {
 
 struct StateData {
     ImGuiSettings imgui_settings;
-    Style style;
+    Style style{"Style"};
     Audio audio;
     Processes processes;
     File file;

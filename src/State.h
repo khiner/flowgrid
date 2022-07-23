@@ -295,16 +295,16 @@ JsonType(ImVec2, x, y)
 JsonType(ImVec4, w, x, y, z)
 JsonType(ImVec2ih, x, y)
 
-JsonType(WindowData, name, visible)
+JsonType(WindowData, visible)
 
-JsonType(Audio::Faust::Editor, name, visible, file_name)
+JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
-JsonType(Audio::Settings, name, visible, muted, backend, latency, sample_rate, out_raw)
+JsonType(Audio::Settings, visible, muted, backend, latency, sample_rate, out_raw)
 JsonType(Audio, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
-JsonType(Windows::StateViewer, name, visible, label_mode, auto_select)
-JsonType(Windows::Metrics, name, visible, show_relative_paths)
+JsonType(Windows::StateViewer, visible, label_mode, auto_select)
+JsonType(Windows::Metrics, visible, show_relative_paths)
 JsonType(Windows, state_viewer, memory_editor, path_update_frequency, demo, metrics, tools)
 
 JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
@@ -315,7 +315,7 @@ JsonType(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, E
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, UseLocalTime, UseISO8601, Use24HourClock)
 JsonType(FlowGridStyle, Colors, FlashDurationSec)
-JsonType(Style, name, visible, imgui, implot, flowgrid)
+JsonType(Style, visible, imgui, implot, flowgrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.
 JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)

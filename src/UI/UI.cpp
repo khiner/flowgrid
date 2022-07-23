@@ -138,6 +138,10 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
+void dock_window(const Window &window, ImGuiID node_id) {
+    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
+}
+
 static bool first_draw = true;
 
 void draw_frame() {

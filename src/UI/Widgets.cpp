@@ -35,10 +35,6 @@ void fg::DrawWindow(const Window &window, ImGuiWindowFlags flags) {
     ImGui::End();
 }
 
-void dock_window(const Window &window, ImGuiID node_id) {
-    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
-}
-
 void gestured() {
     if (ImGui::IsItemActivated()) c.gesturing = true;
     if (ImGui::IsItemDeactivated()) c.gesturing = false;

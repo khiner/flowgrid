@@ -18,9 +18,7 @@ struct Window : WindowData, Drawable {
     explicit Window(const string &name) : WindowData(name) {}
 };
 
-struct Windows : Drawable {
-    void draw() const override;
-
+struct Windows {
     struct StateViewer : Window {
         using Window::Window;
         void draw() const override;

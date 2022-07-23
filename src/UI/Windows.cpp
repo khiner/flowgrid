@@ -208,12 +208,6 @@ void Windows::Demo::draw() const {
     }
 }
 
-void Windows::draw() const {
-    fg::DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
-    fg::DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
-    fg::DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
-}
-
 namespace FlowGrid {
 
 void ShowJsonPatchOpMetrics(const JsonPatchOp &patch_op) {

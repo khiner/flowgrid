@@ -68,9 +68,7 @@ enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
 
-struct Audio : Drawable {
-    void draw() const override;
-
+struct Audio {
     struct Settings : Window {
         using Window::Window;
         void draw() const override;

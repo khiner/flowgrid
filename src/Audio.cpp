@@ -199,9 +199,3 @@ void Audio::Settings::draw() const {
     fg::Checkbox("/processes/audio/running");
     fg::Checkbox("/audio/settings/muted");
 }
-
-void Audio::draw() const {
-    fg::DrawWindow(settings);
-    fg::DrawWindow(faust.editor, ImGuiWindowFlags_MenuBar);
-    fg::DrawWindow(faust.log);
-}

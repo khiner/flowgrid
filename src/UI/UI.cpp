@@ -223,13 +223,17 @@ void draw_frame() {
         ImGui::EndMainMenuBar();
     }
 
-    s.audio.draw();
-    s.windows.draw();
-    s.file.dialog.draw();
+    fg::DrawWindow(s.audio.settings);
+    fg::DrawWindow(s.audio.faust.editor, ImGuiWindowFlags_MenuBar);
+    fg::DrawWindow(s.audio.faust.log);
+    fg::DrawWindow(s.windows.memory_editor, ImGuiWindowFlags_NoScrollbar);
+    fg::DrawWindow(s.windows.state_viewer, ImGuiWindowFlags_MenuBar);
+    fg::DrawWindow(s.windows.path_update_frequency, ImGuiWindowFlags_None);
     fg::DrawWindow(s.windows.demo, ImGuiWindowFlags_MenuBar);
     fg::DrawWindow(s.windows.metrics);
     fg::DrawWindow(s.style);
     fg::DrawWindow(s.windows.tools);
+    s.file.dialog.draw();
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;

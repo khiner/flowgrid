@@ -158,14 +158,14 @@ void draw_frame() {
         dock_window(s.audio.faust.editor, faust_editor_id);
         dock_window(s.audio.faust.log, faust_log_window_id);
 
-        dock_window(s.windows.state_viewer, state_viewer_id);
-        dock_window(s.windows.memory_editor, state_memory_editor_id);
-        dock_window(s.windows.path_update_frequency, state_path_update_frequency_id);
+        dock_window(s.state_viewer, state_viewer_id);
+        dock_window(s.memory_editor, state_memory_editor_id);
+        dock_window(s.path_update_frequency, state_path_update_frequency_id);
 
         dock_window(s.style, imgui_windows_id);
-        dock_window(s.windows.demo, imgui_windows_id);
-        dock_window(s.windows.metrics, imgui_windows_id);
-        dock_window(s.windows.tools, imgui_windows_id);
+        dock_window(s.demo, imgui_windows_id);
+        dock_window(s.metrics, imgui_windows_id);
+        dock_window(s.tools, imgui_windows_id);
         first_draw = false;
     }
 
@@ -197,9 +197,9 @@ void draw_frame() {
         }
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
-                fg::WindowToggleMenuItem(s.windows.state_viewer);
-                fg::WindowToggleMenuItem(s.windows.memory_editor);
-                fg::WindowToggleMenuItem(s.windows.path_update_frequency);
+                fg::WindowToggleMenuItem(s.state_viewer);
+                fg::WindowToggleMenuItem(s.memory_editor);
+                fg::WindowToggleMenuItem(s.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
@@ -213,9 +213,9 @@ void draw_frame() {
             }
             fg::WindowToggleMenuItem(s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                fg::WindowToggleMenuItem(s.windows.demo);
-                fg::WindowToggleMenuItem(s.windows.metrics);
-                fg::WindowToggleMenuItem(s.windows.tools);
+                fg::WindowToggleMenuItem(s.demo);
+                fg::WindowToggleMenuItem(s.metrics);
+                fg::WindowToggleMenuItem(s.tools);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -226,13 +226,13 @@ void draw_frame() {
     fg::DrawWindow(s.audio.settings);
     fg::DrawWindow(s.audio.faust.editor, ImGuiWindowFlags_MenuBar);
     fg::DrawWindow(s.audio.faust.log);
-    fg::DrawWindow(s.windows.memory_editor, ImGuiWindowFlags_NoScrollbar);
-    fg::DrawWindow(s.windows.state_viewer, ImGuiWindowFlags_MenuBar);
-    fg::DrawWindow(s.windows.path_update_frequency, ImGuiWindowFlags_None);
-    fg::DrawWindow(s.windows.demo, ImGuiWindowFlags_MenuBar);
-    fg::DrawWindow(s.windows.metrics);
+    fg::DrawWindow(s.memory_editor, ImGuiWindowFlags_NoScrollbar);
+    fg::DrawWindow(s.state_viewer, ImGuiWindowFlags_MenuBar);
+    fg::DrawWindow(s.path_update_frequency, ImGuiWindowFlags_None);
+    fg::DrawWindow(s.demo, ImGuiWindowFlags_MenuBar);
+    fg::DrawWindow(s.metrics);
     fg::DrawWindow(s.style);
-    fg::DrawWindow(s.windows.tools);
+    fg::DrawWindow(s.tools);
     s.file.dialog.draw();
 }
 

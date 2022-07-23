@@ -18,47 +18,38 @@ struct Window : WindowData, Drawable {
     explicit Window(const string &name) : WindowData(name) {}
 };
 
-struct Windows {
-    struct StateViewer : Window {
-        using Window::Window;
-        void draw() const override;
+struct StateViewer : Window {
+    using Window::Window;
+    void draw() const override;
 
-        enum LabelMode { annotated, raw };
-        LabelMode label_mode{annotated};
-        bool auto_select{true};
-    };
+    enum LabelMode { annotated, raw };
+    LabelMode label_mode{annotated};
+    bool auto_select{true};
+};
 
-    struct StateMemoryEditor : Window {
-        using Window::Window;
-        void draw() const override;
-    };
+struct StateMemoryEditor : Window {
+    using Window::Window;
+    void draw() const override;
+};
 
-    struct StatePathUpdateFrequency : Window {
-        using Window::Window;
-        void draw() const override;
-    };
+struct StatePathUpdateFrequency : Window {
+    using Window::Window;
+    void draw() const override;
+};
 
-    struct Demo : Window {
-        using Window::Window;
-        void draw() const override;
-    };
+struct Demo : Window {
+    using Window::Window;
+    void draw() const override;
+};
 
-    struct Metrics : Window {
-        using Window::Window;
-        void draw() const override;
+struct Metrics : Window {
+    using Window::Window;
+    void draw() const override;
 
-        bool show_relative_paths = true;
-    };
+    bool show_relative_paths = true;
+};
 
-    struct Tools : Window {
-        using Window::Window;
-        void draw() const override;
-    };
-
-    Demo demo{"Demo"};
-    Metrics metrics{"Metrics"};
-    Tools tools{"Tools"};
-    StateViewer state_viewer{"State viewer"};
-    StateMemoryEditor memory_editor{"State memory editor"};
-    StatePathUpdateFrequency path_update_frequency{"State path update frequency"};
+struct Tools : Window {
+    using Window::Window;
+    void draw() const override;
 };

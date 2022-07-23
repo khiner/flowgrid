@@ -69,7 +69,7 @@ struct close_window { string name; };
 struct toggle_window { string name; };
 
 struct toggle_state_viewer_auto_select {};
-struct set_state_viewer_label_mode { Windows::StateViewer::LabelMode label_mode; };
+struct set_state_viewer_label_mode { StateViewer::LabelMode label_mode; };
 
 struct set_audio_sample_rate { int sample_rate; };
 

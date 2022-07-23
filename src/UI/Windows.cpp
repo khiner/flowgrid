@@ -8,7 +8,7 @@
 
 using namespace ImGui;
 
-using LabelMode = Windows::StateViewer::LabelMode;
+using LabelMode = StateViewer::LabelMode;
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
@@ -48,8 +48,8 @@ static const fs::path color_paths[] = { // addressable by `ColorPaths`
 };
 
 static void show_json_state_value_node(const string &key, const json &value, const fs::path &path) {
-    const bool auto_select = s.windows.state_viewer.auto_select;
-    const bool annotate_enabled = s.windows.state_viewer.label_mode == LabelMode::annotated;
+    const bool auto_select = s.state_viewer.auto_select;
+    const bool annotate_enabled = s.state_viewer.label_mode == LabelMode::annotated;
 
     const string &file_name = path.filename();
     const bool is_array_item = is_number(file_name);
@@ -124,7 +124,7 @@ static void show_json_state_value_node(const string &key, const json &value, con
     }
 }
 
-void Windows::StateMemoryEditor::draw() const {
+void StateMemoryEditor::draw() const {
     static MemoryEditor memory_editor;
     static bool first_render{true};
     if (first_render) {
@@ -137,7 +137,7 @@ void Windows::StateMemoryEditor::draw() const {
     memory_editor.DrawContents(mem_data, mem_size);
 }
 
-void Windows::StatePathUpdateFrequency::draw() const {
+void StatePathUpdateFrequency::draw() const {
     if (c.state_stats.update_times_for_state_path.empty()) {
         Text("No state updates yet.");
         return;
@@ -168,10 +168,10 @@ static const string auto_select_help = "When auto-select is enabled, state chang
                                        "The state viewer to the changed state node(s), closing all other state nodes.\n"
                                        "State menu items can only be opened or closed manually if auto-select is disabled.";
 
-void Windows::StateViewer::draw() const {
+void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.windows.state_viewer.auto_select)) {
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) {
                 q(toggle_state_viewer_auto_select{});
             }
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
@@ -190,7 +190,7 @@ void Windows::StateViewer::draw() const {
     show_json_state_value_node("State", sj, "/");
 }
 
-void Windows::Demo::draw() const {
+void Demo::draw() const {
     if (BeginTabBar("##demos")) {
         if (BeginTabItem("ImGui")) {
             ShowDemo();
@@ -277,7 +277,7 @@ void ShowMetrics(bool show_relative_paths) {
     if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (SmallButton("Clear")) c.clear_preferences();
         SameLine();
-        fg::Checkbox("/windows/metrics/show_relative_paths");
+        fg::Checkbox("/metrics/show_relative_paths");
 
         if (!has_recently_opened_paths) BeginDisabled();
         if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -298,7 +298,7 @@ void ShowMetrics(bool show_relative_paths) {
 
 }
 
-void Windows::Metrics::draw() const {
+void Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
         if (BeginTabItem("FlowGrid")) {
             fg::ShowMetrics(show_relative_paths);
@@ -316,7 +316,7 @@ void Windows::Metrics::draw() const {
     }
 }
 
-void Windows::Tools::draw() const {
+void Tools::draw() const {
     if (BeginTabBar("##tools")) {
         if (BeginTabItem("ImGui")) {
             if (BeginTabBar("##imgui_tools")) {

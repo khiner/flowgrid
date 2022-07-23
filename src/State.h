@@ -221,7 +221,13 @@ struct StateData {
     Audio audio;
     Processes processes;
     File file;
-    Windows windows{};
+
+    Demo demo{"Demo"};
+    Metrics metrics{"Metrics"};
+    Tools tools{"Tools"};
+    StateViewer state_viewer{"State viewer"};
+    StateMemoryEditor memory_editor{"State memory editor"};
+    StatePathUpdateFrequency path_update_frequency{"State path update frequency"};
 };
 
 struct State : StateData {
@@ -237,8 +243,8 @@ struct State : StateData {
     void update(const Action &); // State is only updated via `context.on_action(action)`
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{
-        windows.state_viewer, windows.memory_editor, windows.path_update_frequency,
-        style, windows.demo, windows.metrics, windows.tools,
+        state_viewer, memory_editor, path_update_frequency,
+        style, demo, metrics, tools,
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
@@ -301,9 +307,8 @@ JsonType(Audio::Settings, visible, muted, backend, latency, sample_rate, out_raw
 JsonType(Audio, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
-JsonType(Windows::StateViewer, visible, label_mode, auto_select)
-JsonType(Windows::Metrics, visible, show_relative_paths)
-JsonType(Windows, state_viewer, memory_editor, path_update_frequency, demo, metrics, tools)
+JsonType(StateViewer, visible, label_mode, auto_select)
+JsonType(Metrics, visible, show_relative_paths)
 
 JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
@@ -324,4 +329,4 @@ JsonType(ImGuiSettings, nodes, windows, tables)
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)
 
-JsonType(StateData, audio, file, style, imgui_settings, processes, windows);
+JsonType(StateData, audio, file, style, imgui_settings, processes, state_viewer, memory_editor, path_update_frequency, demo, metrics, tools);

@@ -1,6 +1,5 @@
 #include "../Context.h"
 #include "Widgets.h"
-#include "Menu.h"
 
 #include "implot_internal.h"
 
@@ -16,7 +15,7 @@ void ShowColorEditor(const char *path, int color_count, const std::function<cons
         ImGui::SameLine();
         if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
         ImGui::SameLine();
-        HelpMarker(
+        fg::HelpMarker(
             "In the color list:\n"
             "Left-click on color square to open color picker,\n"
             "Right-click to open edit options menu.");
@@ -101,13 +100,13 @@ void Style::ImGuiStyleEditor() {
             fg::Combo("/style/imgui/ColorButtonPosition", "Left\0Right\0");
             fg::SliderFloat2("/style/imgui/ButtonTextAlign", 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
-            HelpMarker("Alignment applies when a button is larger than its text content.");
+            fg::HelpMarker("Alignment applies when a button is larger than its text content.");
             fg::SliderFloat2("/style/imgui/SelectableTextAlign", 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
-            HelpMarker("Alignment applies when a selectable is larger than its text content.");
+            fg::HelpMarker("Alignment applies when a selectable is larger than its text content.");
             ImGui::Text("Safe Area Padding");
             ImGui::SameLine();
-            HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
+            fg::HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
             fg::SliderFloat2("/style/imgui/DisplaySafeAreaPadding", 0.0f, 30.0f, "%.0f");
             ImGui::EndTabItem();
         }
@@ -142,11 +141,11 @@ void Style::ImGuiStyleEditor() {
         if (ImGui::BeginTabItem("Rendering")) {
             fg::Checkbox("/style/imgui/AntiAliasedLines", "Anti-aliased lines");
             ImGui::SameLine();
-            HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
+            fg::HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
 
             fg::Checkbox("/style/imgui/AntiAliasedLinesUseTex", "Anti-aliased lines use texture");
             ImGui::SameLine();
-            HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
+            fg::HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
 
             fg::Checkbox("/style/imgui/AntiAliasedFill", "Anti-aliased fill");
             ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
@@ -184,13 +183,13 @@ void Style::ImGuiStyleEditor() {
                 ImGui::EndTooltip();
             }
             ImGui::SameLine();
-            HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
+            fg::HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
             // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
             fg::DragFloat("/style/imgui/Alpha", 0.005f, 0.20f, 1.0f, "%.2f");
             fg::DragFloat("/style/imgui/DisabledAlpha", 0.005f, 0.0f, 1.0f, "%.2f");
             ImGui::SameLine();
-            HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
+            fg::HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
             ImGui::PopItemWidth();
 
             ImGui::EndTabItem();
@@ -251,7 +250,7 @@ void Style::ImPlotStyleEditor() {
             ImGui::SameLine();
             if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
             ImGui::SameLine();
-            HelpMarker(
+            fg::HelpMarker(
                 "In the color list:\n"
                 "Left-click on colored square to open color picker,\n"
                 "Right-click to open edit options menu.");

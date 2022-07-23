@@ -1,6 +1,29 @@
 #include "Widgets.h"
 #include "../Context.h"
 
+void fg::HelpMarker(const char *desc) {
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
+bool fg::BeginMenuWithHelp(const char *label, const char *help, bool enabled) {
+    HelpMarker(help);
+    ImGui::SameLine();
+    return ImGui::BeginMenu(label, enabled);
+}
+
+bool fg::MenuItemWithHelp(const char *label, const char *help, const char *shortcut, bool selected, bool enabled) {
+    HelpMarker(help);
+    ImGui::SameLine();
+    return ImGui::MenuItem(label, shortcut, selected, enabled);
+}
+
 void fg::DrawWindow(const Window &window, ImGuiWindowFlags flags) {
     if (!window.visible) return;
 

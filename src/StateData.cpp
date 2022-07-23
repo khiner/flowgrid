@@ -1,10 +1,9 @@
-#include "../Context.h"
+#include "Context.h"
 
 #include "imgui_memory_editor.h"
-#include "../FileDialog/ImGuiFileDialogDemo.h"
+#include "FileDialog/ImGuiFileDialogDemo.h"
 
-#include "Menu.h"
-#include "Widgets.h"
+#include "UI/Widgets.h"
 
 using namespace ImGui;
 
@@ -171,10 +170,10 @@ static const string auto_select_help = "When auto-select is enabled, state chang
 void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) {
+            if (fg::MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) {
                 q(toggle_state_viewer_auto_select{});
             }
-            if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
+            if (fg::BeginMenuWithHelp("Label mode", label_help.c_str())) {
                 if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
                     q(set_state_viewer_label_mode{LabelMode::annotated});
                 } else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {

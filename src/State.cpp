@@ -3,6 +3,7 @@
 #include "State.h"
 #include "Action.h"
 #include "File.h"
+#include "UI/Widgets.h"
 
 /**
  * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
@@ -123,4 +124,20 @@ void ImGuiSettings::populate_context(ImGuiContext *c) const {
     /** Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory` **/
     c->SettingsLoaded = true;
     c->SettingsDirty = false;
+}
+
+using namespace fg;
+
+void State::draw() const {
+    DrawWindow(audio.settings);
+    DrawWindow(audio.faust.editor, ImGuiWindowFlags_MenuBar);
+    DrawWindow(audio.faust.log);
+    DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
+    DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
+    DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
+    DrawWindow(demo, ImGuiWindowFlags_MenuBar);
+    DrawWindow(metrics);
+    DrawWindow(style);
+    DrawWindow(tools);
+    file.dialog.draw();
 }

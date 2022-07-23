@@ -43,7 +43,7 @@ static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForP
 static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
 static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
 
-struct State : StateData {
+struct State : StateData, Drawable {
     State() = default;
     // Don't copy/assign reference members!
     explicit State(const StateData &other) : StateData(other) {}
@@ -53,6 +53,7 @@ struct State : StateData {
         return *this;
     }
 
+    void draw() const;
     void update(const Action &); // State is only updated via `context.on_action(action)`
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{

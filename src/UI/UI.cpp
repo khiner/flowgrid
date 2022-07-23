@@ -10,6 +10,8 @@
 #include "FaustEditor.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 
+using namespace fg;
+
 /**md
 ## UI methods
 
@@ -138,10 +140,6 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
-void dock_window(const Window &window, ImGuiID node_id) {
-    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
-}
-
 static bool first_draw = true;
 
 void draw_frame() {
@@ -150,6 +148,8 @@ void draw_frame() {
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     if (first_draw) {
+        first_draw = false;
+
         auto faust_editor_id = dockspace_id;
         auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_id);
         auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
@@ -158,25 +158,24 @@ void draw_frame() {
         auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
-        dock_window(s.audio.settings, controls_id);
-        dock_window(s.audio.faust.editor, faust_editor_id);
-        dock_window(s.audio.faust.log, faust_log_window_id);
+        DockWindow(s.audio.settings, controls_id);
+        DockWindow(s.audio.faust.editor, faust_editor_id);
+        DockWindow(s.audio.faust.log, faust_log_window_id);
 
-        dock_window(s.state_viewer, state_viewer_id);
-        dock_window(s.memory_editor, state_memory_editor_id);
-        dock_window(s.path_update_frequency, state_path_update_frequency_id);
+        DockWindow(s.state_viewer, state_viewer_id);
+        DockWindow(s.memory_editor, state_memory_editor_id);
+        DockWindow(s.path_update_frequency, state_path_update_frequency_id);
 
-        dock_window(s.style, imgui_windows_id);
-        dock_window(s.demo, imgui_windows_id);
-        dock_window(s.metrics, imgui_windows_id);
-        dock_window(s.tools, imgui_windows_id);
-        first_draw = false;
+        DockWindow(s.style, imgui_windows_id);
+        DockWindow(s.demo, imgui_windows_id);
+        DockWindow(s.metrics, imgui_windows_id);
+        DockWindow(s.tools, imgui_windows_id);
     }
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            fg::MenuItem(action::id<open_empty_project>);
-            fg::MenuItem(action::id<show_open_project_dialog>);
+            MenuItem(action::id<open_empty_project>);
+            MenuItem(action::id<show_open_project_dialog>);
 
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
@@ -188,38 +187,38 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
 
-            fg::MenuItem(action::id<save_current_project>);
-            fg::MenuItem(action::id<show_save_project_dialog>);
-            fg::MenuItem(action::id<open_default_project>);
-            fg::MenuItem(action::id<save_default_project>);
+            MenuItem(action::id<save_current_project>);
+            MenuItem(action::id<show_save_project_dialog>);
+            MenuItem(action::id<open_default_project>);
+            MenuItem(action::id<save_default_project>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
-            fg::MenuItem(action::id<undo>);
-            fg::MenuItem(action::id<redo>);
+            MenuItem(action::id<undo>);
+            MenuItem(action::id<redo>);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
-                fg::WindowToggleMenuItem(s.state_viewer);
-                fg::WindowToggleMenuItem(s.memory_editor);
-                fg::WindowToggleMenuItem(s.path_update_frequency);
+                WindowToggleMenuItem(s.state_viewer);
+                WindowToggleMenuItem(s.memory_editor);
+                WindowToggleMenuItem(s.path_update_frequency);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
-                fg::WindowToggleMenuItem(s.audio.settings);
+                WindowToggleMenuItem(s.audio.settings);
                 if (ImGui::BeginMenu("Faust")) {
-                    fg::WindowToggleMenuItem(s.audio.faust.editor);
-                    fg::WindowToggleMenuItem(s.audio.faust.log);
+                    WindowToggleMenuItem(s.audio.faust.editor);
+                    WindowToggleMenuItem(s.audio.faust.log);
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
             }
-            fg::WindowToggleMenuItem(s.style);
+            WindowToggleMenuItem(s.style);
             if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                fg::WindowToggleMenuItem(s.demo);
-                fg::WindowToggleMenuItem(s.metrics);
-                fg::WindowToggleMenuItem(s.tools);
+                WindowToggleMenuItem(s.demo);
+                WindowToggleMenuItem(s.metrics);
+                WindowToggleMenuItem(s.tools);
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -227,17 +226,7 @@ void draw_frame() {
         ImGui::EndMainMenuBar();
     }
 
-    fg::DrawWindow(s.audio.settings);
-    fg::DrawWindow(s.audio.faust.editor, ImGuiWindowFlags_MenuBar);
-    fg::DrawWindow(s.audio.faust.log);
-    fg::DrawWindow(s.memory_editor, ImGuiWindowFlags_NoScrollbar);
-    fg::DrawWindow(s.state_viewer, ImGuiWindowFlags_MenuBar);
-    fg::DrawWindow(s.path_update_frequency, ImGuiWindowFlags_None);
-    fg::DrawWindow(s.demo, ImGuiWindowFlags_MenuBar);
-    fg::DrawWindow(s.metrics);
-    fg::DrawWindow(s.style);
-    fg::DrawWindow(s.tools);
-    s.file.dialog.draw();
+    s.draw();
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;

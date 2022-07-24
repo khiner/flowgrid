@@ -783,7 +783,7 @@ static const string file_dialog_key = "FileDialog";
 void File::Dialog::draw() const {
     if (visible) {
         // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
-        file_dialog->OpenDialog(file_dialog_key, title, filters.c_str(), path, default_file_name, max_num_selections, nullptr, flags);
+        file_dialog->OpenDialog(file_dialog_key, title, filters.c_str(), file_path, default_file_name, max_num_selections, nullptr, flags);
 
         // TODO need to get custom vecs with math going
         const ImVec2 min_dialog_size = {GetMainViewport()->Size.x / 2.0f, GetMainViewport()->Size.y / 2.0f};

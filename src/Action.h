@@ -43,7 +43,7 @@ struct open_empty_project {};
 struct open_default_project {};
 struct show_open_project_dialog {};
 
-struct open_file_dialog { File::Dialog dialog; };
+struct open_file_dialog { File::DialogData dialog; };
 struct close_file_dialog {};
 
 struct save_project { string path; };

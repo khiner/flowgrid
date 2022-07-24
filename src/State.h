@@ -1,14 +1,15 @@
 #pragma once
 
 #include <set>
+#include <filesystem>
 
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "File.h"
 #include "JsonType.h"
+#include "Helper/String.h"
 
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.
@@ -24,6 +25,8 @@
  * **The global `const StateData &s` instance is declared in `context.h` and instantiated in `main.cpp`.**
  */
 
+namespace fs = std::filesystem;
+
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 using Clock = std::chrono::system_clock; // Main system clock
@@ -35,14 +38,22 @@ struct Drawable {
     virtual void draw() const = 0;
 };
 
-struct WindowData {
-    explicit WindowData(string name) : name(std::move(name)) {}
-    string name;
+struct StateMember {
+    StateMember(const JsonPath &parent_path, const string &id, const string &name = "")
+        : path(parent_path / id), id(id), name(name.empty() ? snake_case_to_sentence_case(id) : name) {}
+
+    JsonPath path;
+    string id, name;
+};
+
+struct WindowData : StateMember {
+    using StateMember::StateMember;
+
     bool visible{true};
 };
 
 struct Window : WindowData, Drawable {
-    explicit Window(const string &name) : WindowData(name) {}
+    using WindowData::WindowData;
 };
 
 struct StateViewer : Window {
@@ -85,7 +96,9 @@ enum AudioBackend {
     none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
 };
 
-struct Audio {
+struct Audio : StateMember {
+    using StateMember::StateMember;
+
     struct Settings : Window {
         using Window::Window;
         void draw() const override;
@@ -99,12 +112,14 @@ struct Audio {
         double latency = 0.0;
     };
 
-    struct Faust {
+    struct Faust : StateMember {
+        using StateMember::StateMember;
+
         struct Editor : Window {
-            explicit Editor(const string &name) : Window(name), file_name{"default.dsp"} {}
+            using Window::Window;
             void draw() const override;
 
-            string file_name;
+            string file_name{"default.dsp"};
         };
 
         // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
@@ -114,8 +129,8 @@ struct Audio {
             void draw() const override;
         };
 
-        Editor editor{"Faust editor"};
-        Log log{"Faust log"};
+        Editor editor{path, "editor", "Faust editor"};
+        Log log{path, "log", "Faust log"};
 
         //    string code{"import(\"stdfaust.lib\");\n\n"
 //                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
@@ -130,8 +145,54 @@ struct Audio {
         string error{};
     };
 
-    Settings settings{"Audio settings"};
-    Faust faust{};
+    Settings settings{path, "settings", "Audio settings"};
+    Faust faust{path, "faust"};
+};
+
+
+using MessagePackBytes = std::vector<std::uint8_t>;
+
+struct File : StateMember {
+    using StateMember::StateMember;
+    using ImGuiFileDialogFlags = int; // Declared in `lib/ImGuiFileDialog/ImGuiFileDialog.h`
+
+    struct DialogData {
+        DialogData(string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "",
+                   const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
+            : save_mode(save_mode), max_num_selections(max_num_selections), flags(flags),
+              title(std::move(title)), filters(std::move(filters)), file_path(std::move(file_path)), default_file_name(std::move(default_file_name)) {};
+
+        bool visible;
+        bool save_mode; // The same file dialog instance is used for both saving & opening files.
+        int max_num_selections;
+        ImGuiFileDialogFlags flags;
+        string title;
+        string filters;
+        string file_path;
+        string default_file_name;
+    };
+
+    // TODO window?
+    struct Dialog : StateMember, DialogData {
+        Dialog(const JsonPath &path, const string &id,
+               string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "", const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
+            : StateMember(path, id, title),
+              DialogData(std::move(title), std::move(filters), std::move(file_path), std::move(default_file_name), save_mode, max_num_selections, flags) {};
+
+        Dialog &operator=(const DialogData &other) {
+            DialogData::operator=(other);
+            visible = true;
+            return *this;
+        }
+
+        void draw() const;
+    };
+
+    static string read(const fs::path &path);
+    static bool write(const fs::path &path, const string &contents);
+    static bool write(const fs::path &path, const MessagePackBytes &contents);
+
+    Dialog dialog{path, "dialog"};
 };
 
 enum FlowGridCol_ {
@@ -144,7 +205,12 @@ typedef int FlowGridCol; // -> enum FlowGridCol_
 
 const DurationSec FlashDurationSecMin = 0.0, FlashDurationSecMax = 5.0;
 
-struct FlowGridStyle {
+struct FlowGridStyle : StateMember {
+    using StateMember::StateMember;
+    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
+        StyleColorsDark(*this);
+    }
+
     ImVec4 Colors[FlowGridCol_COUNT];
     DurationSec FlashDurationSec{0.6};
 
@@ -164,10 +230,6 @@ struct FlowGridStyle {
         colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
     }
 
-    FlowGridStyle() {
-        StyleColorsDark(*this);
-    }
-
     static const char *GetColorName(FlowGridCol idx) {
         switch (idx) {
             case FlowGridCol_Flash: return "Flash";
@@ -184,22 +246,24 @@ struct Style : Window {
 
     ImGuiStyle imgui;
     ImPlotStyle implot;
-    FlowGridStyle flowgrid;
+    FlowGridStyle flowgrid{path, "flowgrid"};
 
 private:
-    // `...StyleEditor` methods are drawn as tabs, and return `true` if style changes.
     static void ImGuiStyleEditor();
     static void ImPlotStyleEditor();
     static void FlowGridStyleEditor();
 };
 
-struct Processes {
-    struct Process {
+struct Processes : StateMember {
+    using StateMember::StateMember;
+
+    struct Process : StateMember {
+        using StateMember::StateMember;
         bool running = true;
     };
 
-    Process ui;
-    Process audio;
+    Process ui{path, "ui", "UI"};
+    Process audio{path, "audio"};
 };
 
 // The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).
@@ -229,22 +293,24 @@ struct ImGuiSettings {
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized .ini text format.
     // TODO table settings
-    void populate_context(ImGuiContext *c) const;
+    void populate_context(ImGuiContext *ctx) const;
 };
 
-struct StateData {
-    ImGuiSettings imgui_settings;
-    Style style{"Style"};
-    Audio audio;
-    Processes processes;
-    File file;
+struct StateData : StateMember {
+    StateData() : StateMember(JsonPath("/"), "") {}
 
-    Demo demo{"Demo"};
-    Metrics metrics{"Metrics"};
-    Tools tools{"Tools"};
-    StateViewer state_viewer{"State viewer"};
-    StateMemoryEditor memory_editor{"State memory editor"};
-    StatePathUpdateFrequency path_update_frequency{"State path update frequency"};
+    ImGuiSettings imgui_settings;
+    Style style{path, "style"};
+    Audio audio{path, "audio"};
+    Processes processes{path, "processes"};
+    File file{path, "file"};
+
+    Demo demo{path, "demo"};
+    Metrics metrics{path, "metrics"};
+    Tools tools{path, "tools"};
+    StateViewer state_viewer{path, "state_viewer"};
+    StateMemoryEditor memory_editor{path, "state_memory_editor"};
+    StatePathUpdateFrequency path_update_frequency{path, "path_update_frequency", "State path update frequency"};
 };
 
 // Types for [json-patch](https://jsonpatch.com)
@@ -297,7 +363,7 @@ JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio::Settings, visible, muted, backend, latency, sample_rate, out_raw)
 JsonType(Audio, settings, faust)
-JsonType(File::Dialog, visible, title, save_mode, filters, path, default_file_name, max_num_selections, flags)
+JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
 JsonType(StateViewer, visible, label_mode, auto_select)
 JsonType(Metrics, visible, show_relative_paths)

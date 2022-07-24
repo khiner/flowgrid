@@ -15,7 +15,6 @@ JsonType(Preferences, recently_opened_paths)
 
 namespace views = ranges::views;
 using std::string;
-namespace fs = std::filesystem;
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
@@ -48,6 +47,7 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
 
 struct State : StateData, Drawable {
     State() = default;
+
     // Don't copy/assign reference members!
     explicit State(const StateData &other) : StateData(other) {}
 
@@ -56,7 +56,7 @@ struct State : StateData, Drawable {
         return *this;
     }
 
-    void draw() const;
+    void draw() const override;
     void update(const Action &); // State is only updated via `context.on_action(action)`
 
     std::vector<std::reference_wrapper<WindowData>> all_windows{

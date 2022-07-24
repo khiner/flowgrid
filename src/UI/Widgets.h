@@ -1,4 +1,5 @@
-#include "../State.h"
+#include "../StateData.h"
+#include "../Action.h"
 
 namespace FlowGrid {
 

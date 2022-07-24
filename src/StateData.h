@@ -1,5 +1,10 @@
 #pragma once
 
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "implot.h"
+#include "implot_internal.h"
+
 #include "File.h"
 #include "JsonType.h"
 #include "Time.h"
@@ -56,8 +61,8 @@ struct Tools : Window {
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.
  *
- * The entire codebase has read-only access to the immutable, single source-of-truth application state instance `s`.
- * The global `Context c` instance updates `s` when it receives an `Action a` instance via the global `BlockingConcurrentQueue<Action> q` action queue.
+ * The entire codebase has read-only access to the immutable, single source-of-truth application `State` instance `s`.
+ * The global `Context c` instance updates `s` when it receives an `Action` instance via the global `q(Action)` action queue method.
  *
   * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
  *   but expensive-to-compute derivations of their core (minimal but complete) data members.
@@ -126,7 +131,7 @@ enum FlowGridCol_ {
     FlowGridCol_COUNT
 };
 
-typedef int FlowGridCol; // -> enum ImGuiCol_
+typedef int FlowGridCol; // -> enum FlowGridCol_
 
 const DurationSec FlashDurationSecMin = 0.0, FlashDurationSecMax = 5.0;
 

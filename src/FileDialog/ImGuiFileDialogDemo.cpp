@@ -5,8 +5,8 @@
 #endif
 
 #include "../Context.h"
-#include "ImGuiFileDialog.h"
 #include "ImGuiFileDialogDemo.h"
+#include "ImGuiFileDialog.h"
 
 inline bool RadioButtonLabeled(const char *label, const char *help, bool active, bool disabled) {
     using namespace ImGui;

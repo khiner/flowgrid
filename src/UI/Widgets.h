@@ -1,5 +1,4 @@
-#include "../StateData.h"
-#include "../Action.h"
+#include "../State.h"
 
 namespace FlowGrid {
 
@@ -22,6 +21,8 @@ bool SliderInt(const char *label, int *v, int v_min, int v_max, const char *form
 bool DragFloat(const char *path, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char *format = "%.3f", ImGuiSliderFlags flags = 0, const char *label = nullptr);
 
 bool ColorEdit4(const char *path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
+
+using ActionID = size_t; // duplicate definition to avoid importing `Action.h`
 
 // For actions with no data members.
 void MenuItem(ActionID);

@@ -3,8 +3,7 @@
 #include <string>
 #include <variant>
 
-#include "File.h"
-#include "StateData.h"
+#include "State.h"
 #include "Helper/String.h"
 
 /*!

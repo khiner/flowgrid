@@ -1,13 +1,77 @@
 #pragma once
 
 #include <iostream>
+#include <list>
 #include <queue>
 #include <thread>
 
-#include "Preferences.h"
-#include "State.h"
+#include "Action.h"
 
-struct RenderContext;
+struct Preferences {
+    std::list<fs::path> recently_opened_paths;
+};
+
+JsonType(Preferences, recently_opened_paths)
+
+namespace views = ranges::views;
+using std::string;
+namespace fs = std::filesystem;
+
+namespace FlowGrid {}
+namespace fg = FlowGrid;
+using Action = action::Action;
+
+enum ProjectFormat {
+    None,
+    StateFormat,
+    DiffFormat,
+};
+
+const std::map<ProjectFormat, string> ExtensionForProjectFormat{
+    {StateFormat, ".fls"},
+    {DiffFormat,  ".fld"},
+};
+const std::map<string, ProjectFormat> ProjectFormatForExtension{
+    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
+    {ExtensionForProjectFormat.at(DiffFormat),  DiffFormat},
+};
+
+static const std::set<string> AllProjectExtensions = {".fls", ".fld"};
+static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>();
+static const string PreferencesFileExtension = ".flp";
+static const string FaustDspFileExtension = ".dsp";
+
+static const fs::path InternalPath = ".flowgrid";
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
+
+struct State : StateData, Drawable {
+    State() = default;
+    // Don't copy/assign reference members!
+    explicit State(const StateData &other) : StateData(other) {}
+
+    State &operator=(const State &other) {
+        StateData::operator=(other);
+        return *this;
+    }
+
+    void draw() const;
+    void update(const Action &); // State is only updated via `context.on_action(action)`
+
+    std::vector<std::reference_wrapper<WindowData>> all_windows{
+        state_viewer, memory_editor, path_update_frequency,
+        style, demo, metrics, tools,
+        audio.settings, audio.faust.editor, audio.faust.log
+    };
+
+    using WindowNamed = std::map<string, std::reference_wrapper<WindowData>>;
+
+    WindowNamed window_named = all_windows | views::transform([](const auto &window_ref) {
+        return std::pair<string, std::reference_wrapper<WindowData>>(window_ref.get().name, window_ref);
+    }) | ranges::to<WindowNamed>();
+};
+
 struct UiContext {
     UiContext(ImGuiContext *imgui_context, ImPlotContext *implot_context) : imgui_context(imgui_context), implot_context(implot_context) {}
 

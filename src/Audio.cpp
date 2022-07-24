@@ -5,7 +5,6 @@
 #include <soundio/soundio.h>
 
 #include "Context.h"
-#include "UI/Widgets.h"
 
 static int prioritized_sample_rates[] = {
     48000,
@@ -193,9 +192,4 @@ int audio() {
     soundio_destroy(soundio);
 
     return 0;
-}
-
-void Audio::Settings::draw() const {
-    fg::Checkbox("/processes/audio/running");
-    fg::Checkbox("/audio/settings/muted");
 }

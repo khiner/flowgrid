@@ -7,8 +7,12 @@
 #include "UI/Widgets.h"
 
 using namespace ImGui;
+using namespace fg;
 
-using LabelMode = StateViewer::LabelMode;
+void Audio::Settings::draw() const {
+    Checkbox("/processes/audio/running");
+    Checkbox("/audio/settings/muted");
+}
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
@@ -49,7 +53,7 @@ static const fs::path color_paths[] = { // addressable by `ColorPaths`
 
 static void show_json_state_value_node(const string &key, const json &value, const fs::path &path) {
     const bool auto_select = s.state_viewer.auto_select;
-    const bool annotate_enabled = s.state_viewer.label_mode == LabelMode::annotated;
+    const bool annotate_enabled = s.state_viewer.label_mode == StateViewer::LabelMode::annotated;
 
     const string &file_name = path.filename();
     const bool is_array_item = is_number(file_name);
@@ -171,10 +175,10 @@ static const string auto_select_help = "When auto-select is enabled, state chang
 void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            if (fg::MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) {
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) {
                 q(toggle_state_viewer_auto_select{});
             }
-            if (fg::BeginMenuWithHelp("Label mode", label_help.c_str())) {
+            if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
                 if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
                     q(set_state_viewer_label_mode{LabelMode::annotated});
                 } else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {
@@ -200,7 +204,7 @@ void Demo::draw() const {
             ShowDemo();
             EndTabItem();
         }
-        if (ImGui::BeginTabItem("ImGuiFileDialog")) {
+        if (BeginTabItem("ImGuiFileDialog")) {
             IGFD::ShowDemo();
             EndTabItem();
         }
@@ -277,7 +281,7 @@ void ShowMetrics(bool show_relative_paths) {
     if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (SmallButton("Clear")) c.clear_preferences();
         SameLine();
-        fg::Checkbox("/metrics/show_relative_paths");
+        Checkbox("/metrics/show_relative_paths");
 
         if (!has_recently_opened_paths) BeginDisabled();
         if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -301,11 +305,11 @@ void ShowMetrics(bool show_relative_paths) {
 void Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
         if (BeginTabItem("FlowGrid")) {
-            fg::ShowMetrics(show_relative_paths);
+            ShowMetrics(show_relative_paths);
             EndTabItem();
         }
         if (BeginTabItem("ImGui")) {
-            ImGui::ShowMetrics();
+            ShowMetrics();
             EndTabItem();
         }
         if (BeginTabItem("ImPlot")) {
@@ -337,120 +341,120 @@ void Tools::draw() const {
 //-----------------------------------------------------------------------------
 
 void ShowColorEditor(const char *path, int color_count, const std::function<const char *(int)> &GetColorName) {
-    if (ImGui::BeginTabItem("Colors")) {
+    if (BeginTabItem("Colors")) {
         static ImGuiTextFilter filter;
-        filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
+        filter.Draw("Filter colors", GetFontSize() * 16);
 
         static ImGuiColorEditFlags alpha_flags = 0;
-        if (ImGui::RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
-        ImGui::SameLine();
-        fg::HelpMarker(
+        if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
+        SameLine();
+        if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
+        SameLine();
+        if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
+        SameLine();
+        HelpMarker(
             "In the color list:\n"
             "Left-click on color square to open color picker,\n"
             "Right-click to open edit options menu.");
 
-        ImGui::BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
-        ImGui::PushItemWidth(-160);
+        BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
+        PushItemWidth(-160);
         for (int i = 0; i < color_count; i++) {
             const char *name = GetColorName(i);
             if (!filter.PassFilter(name)) continue;
 
-            ImGui::PushID(i);
-            fg::ColorEdit4((JsonPath(path) / i).to_string().c_str(), ImGuiColorEditFlags_AlphaBar | alpha_flags);
-            ImGui::SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
-            ImGui::TextUnformatted(name);
-            ImGui::PopID();
+            PushID(i);
+            ColorEdit4((JsonPath(path) / i).to_string().c_str(), ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
+            TextUnformatted(name);
+            PopID();
         }
-        ImGui::PopItemWidth();
-        ImGui::EndChild();
+        PopItemWidth();
+        EndChild();
 
-        ImGui::EndTabItem();
+        EndTabItem();
     }
 }
 
 // Returns `true` if style changes.
 void Style::ImGuiStyleEditor() {
     static int style_idx = -1;
-    if (ImGui::Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
-//    ImGui::ShowFontSelector("Fonts##Selector"); // TODO
+    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
+//    ShowFontSelector("Fonts##Selector"); // TODO
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     // TODO match with imgui
-    if (fg::SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f")) {
+    if (SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f")) {
         q(set_value{"/style/imgui/GrabRounding", s.style.imgui.FrameRounding}); // Make GrabRounding always the same value as FrameRounding
     }
     {
         bool border = s.style.imgui.WindowBorderSize > 0.0f;
-        if (ImGui::Checkbox("WindowBorder", &border)) q(set_value{"/style/imgui/WindowBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("WindowBorder", &border)) q(set_value{"/style/imgui/WindowBorderSize", border ? 1.0f : 0.0f});
     }
-    ImGui::SameLine();
+    SameLine();
     {
         bool border = s.style.imgui.FrameBorderSize > 0.0f;
-        if (ImGui::Checkbox("FrameBorder", &border)) q(set_value{"/style/imgui/FrameBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("FrameBorder", &border)) q(set_value{"/style/imgui/FrameBorderSize", border ? 1.0f : 0.0f});
     }
-    ImGui::SameLine();
+    SameLine();
     {
         bool border = s.style.imgui.PopupBorderSize > 0.0f;
-        if (ImGui::Checkbox("PopupBorder", &border)) q(set_value{"/style/imgui/PopupBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("PopupBorder", &border)) q(set_value{"/style/imgui/PopupBorderSize", border ? 1.0f : 0.0f});
     }
 
-    ImGui::Separator();
+    Separator();
 
-    if (ImGui::BeginTabBar("##ImGuiStyleEditor", ImGuiTabBarFlags_None)) {
-        if (ImGui::BeginTabItem("Sizes")) {
-            ImGui::Text("Main");
-            fg::SliderFloat2("/style/imgui/WindowPadding", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/imgui/FramePadding", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/imgui/CellPadding", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/imgui/ItemSpacing", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/imgui/ItemInnerSpacing", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/imgui/TouchExtraPadding", 0.0f, 10.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/IndentSpacing", 0.0f, 30.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/ScrollbarSize", 1.0f, 20.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/GrabMinSize", 1.0f, 20.0f, "%.0f");
-            ImGui::Text("Borders");
-            fg::SliderFloat("/style/imgui/WindowBorderSize", 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/ChildBorderSize", 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/PopupBorderSize", 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/FrameBorderSize", 0.0f, 1.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/TabBorderSize", 0.0f, 1.0f, "%.0f");
-            ImGui::Text("Rounding");
-            fg::SliderFloat("/style/imgui/WindowRounding", 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/ChildRounding", 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/PopupRounding", 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/ScrollbarRounding", 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/GrabRounding", 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/LogSliderDeadzone", 0.0f, 12.0f, "%.0f");
-            fg::SliderFloat("/style/imgui/TabRounding", 0.0f, 12.0f, "%.0f");
-            ImGui::Text("Alignment");
-            fg::SliderFloat2("/style/imgui/WindowTitleAlign", 0.0f, 1.0f, "%.2f");
-            fg::Combo("/style/imgui/WindowMenuButtonPosition", "None\0Left\0Right\0");
-            fg::Combo("/style/imgui/ColorButtonPosition", "Left\0Right\0");
-            fg::SliderFloat2("/style/imgui/ButtonTextAlign", 0.0f, 1.0f, "%.2f");
-            ImGui::SameLine();
-            fg::HelpMarker("Alignment applies when a button is larger than its text content.");
-            fg::SliderFloat2("/style/imgui/SelectableTextAlign", 0.0f, 1.0f, "%.2f");
-            ImGui::SameLine();
-            fg::HelpMarker("Alignment applies when a selectable is larger than its text content.");
-            ImGui::Text("Safe Area Padding");
-            ImGui::SameLine();
-            fg::HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
-            fg::SliderFloat2("/style/imgui/DisplaySafeAreaPadding", 0.0f, 30.0f, "%.0f");
-            ImGui::EndTabItem();
+    if (BeginTabBar("##ImGuiStyleEditor", ImGuiTabBarFlags_None)) {
+        if (BeginTabItem("Sizes")) {
+            Text("Main");
+            SliderFloat2("/style/imgui/WindowPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/imgui/FramePadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/imgui/CellPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/imgui/ItemSpacing", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/imgui/ItemInnerSpacing", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/imgui/TouchExtraPadding", 0.0f, 10.0f, "%.0f");
+            SliderFloat("/style/imgui/IndentSpacing", 0.0f, 30.0f, "%.0f");
+            SliderFloat("/style/imgui/ScrollbarSize", 1.0f, 20.0f, "%.0f");
+            SliderFloat("/style/imgui/GrabMinSize", 1.0f, 20.0f, "%.0f");
+            Text("Borders");
+            SliderFloat("/style/imgui/WindowBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat("/style/imgui/ChildBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat("/style/imgui/PopupBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat("/style/imgui/FrameBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat("/style/imgui/TabBorderSize", 0.0f, 1.0f, "%.0f");
+            Text("Rounding");
+            SliderFloat("/style/imgui/WindowRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat("/style/imgui/ChildRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat("/style/imgui/PopupRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat("/style/imgui/ScrollbarRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat("/style/imgui/GrabRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat("/style/imgui/LogSliderDeadzone", 0.0f, 12.0f, "%.0f");
+            SliderFloat("/style/imgui/TabRounding", 0.0f, 12.0f, "%.0f");
+            Text("Alignment");
+            SliderFloat2("/style/imgui/WindowTitleAlign", 0.0f, 1.0f, "%.2f");
+            Combo("/style/imgui/WindowMenuButtonPosition", "None\0Left\0Right\0");
+            Combo("/style/imgui/ColorButtonPosition", "Left\0Right\0");
+            SliderFloat2("/style/imgui/ButtonTextAlign", 0.0f, 1.0f, "%.2f");
+            SameLine();
+            HelpMarker("Alignment applies when a button is larger than its text content.");
+            SliderFloat2("/style/imgui/SelectableTextAlign", 0.0f, 1.0f, "%.2f");
+            SameLine();
+            HelpMarker("Alignment applies when a selectable is larger than its text content.");
+            Text("Safe Area Padding");
+            SameLine();
+            HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
+            SliderFloat2("/style/imgui/DisplaySafeAreaPadding", 0.0f, 30.0f, "%.0f");
+            EndTabItem();
         }
 
-        ShowColorEditor("/style/imgui/Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName);
+        ShowColorEditor("/style/imgui/Colors", ImGuiCol_COUNT, GetStyleColorName);
 
-//        if (ImGui::BeginTabItem("Fonts")) {
-//            ImGuiIO &io = ImGui::GetIO();
+//        if (BeginTabItem("Fonts")) {
+//            ImGuiIO &io = GetIO();
 //            ImFontAtlas *atlas = io.Fonts;
 //            HelpMarker("Read FAQ and docs/FONTS.md for details on font loading.");
-//            ImGui::ShowFontAtlas(atlas);
+//            ShowFontAtlas(atlas);
 //
 //            // Post-baking font scaling. Note that this is NOT the nice way of scaling fonts, read below.
 //            // (we enforce hard clamping manually as by default DragFloat/SliderFloat allows CTRL+Click text to get out of bounds).
@@ -462,188 +466,188 @@ void Style::ImGuiStyleEditor() {
 //                "rebuild the font atlas, and call style.ScaleAllSizes() on a reference ImGuiStyle structure.\n"
 //                "Using those settings here will give you poor quality results.");
 //            static float window_scale = 1.0f;
-//            ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
-//            if (fg::DragFloat("window scale", &window_scale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp)) // Scale only this window
-//                ImGui::SetWindowFontScale(window_scale);
-//            fg::DragFloat("global scale", &io.FontGlobalScale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp); // Scale everything
-//            ImGui::PopItemWidth();
+//            PushItemWidth(GetFontSize() * 8);
+//            if (DragFloat("window scale", &window_scale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp)) // Scale only this window
+//                SetWindowFontScale(window_scale);
+//            DragFloat("global scale", &io.FontGlobalScale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp); // Scale everything
+//            PopItemWidth();
 //
-//            ImGui::EndTabItem();
+//            EndTabItem();
 //        }
 
-        if (ImGui::BeginTabItem("Rendering")) {
-            fg::Checkbox("/style/imgui/AntiAliasedLines", "Anti-aliased lines");
-            ImGui::SameLine();
-            fg::HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
+        if (BeginTabItem("Rendering")) {
+            Checkbox("/style/imgui/AntiAliasedLines", "Anti-aliased lines");
+            SameLine();
+            HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
 
-            fg::Checkbox("/style/imgui/AntiAliasedLinesUseTex", "Anti-aliased lines use texture");
-            ImGui::SameLine();
-            fg::HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
+            Checkbox("/style/imgui/AntiAliasedLinesUseTex", "Anti-aliased lines use texture");
+            SameLine();
+            HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
 
-            fg::Checkbox("/style/imgui/AntiAliasedFill", "Anti-aliased fill");
-            ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
-            fg::DragFloat("/style/imgui/CurveTessellationTol", 0.02f, 0.10f, 10.0f, "%.2f", ImGuiSliderFlags_None, "Curve Tessellation Tolerance");
+            Checkbox("/style/imgui/AntiAliasedFill", "Anti-aliased fill");
+            PushItemWidth(GetFontSize() * 8);
+            DragFloat("/style/imgui/CurveTessellationTol", 0.02f, 0.10f, 10.0f, "%.2f", ImGuiSliderFlags_None, "Curve Tessellation Tolerance");
 
             // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            fg::DragFloat("/style/imgui/CircleTessellationMaxError", 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-            if (ImGui::IsItemActive()) {
-                ImGui::SetNextWindowPos(ImGui::GetCursorScreenPos());
-                ImGui::BeginTooltip();
-                ImGui::TextUnformatted("(R = radius, N = number of segments)");
-                ImGui::Spacing();
-                ImDrawList *draw_list = ImGui::GetWindowDrawList();
-                const float min_widget_width = ImGui::CalcTextSize("N: MMM\nR: MMM").x;
+            DragFloat("/style/imgui/CircleTessellationMaxError", 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            if (IsItemActive()) {
+                SetNextWindowPos(GetCursorScreenPos());
+                BeginTooltip();
+                TextUnformatted("(R = radius, N = number of segments)");
+                Spacing();
+                ImDrawList *draw_list = GetWindowDrawList();
+                const float min_widget_width = CalcTextSize("N: MMM\nR: MMM").x;
                 for (int n = 0; n < 8; n++) {
                     const float RAD_MIN = 5.0f;
                     const float RAD_MAX = 70.0f;
                     const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * (float) n / (8.0f - 1.0f);
 
-                    ImGui::BeginGroup();
+                    BeginGroup();
 
-                    ImGui::Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
+                    Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
 
                     const float canvas_width = ImMax(min_widget_width, rad * 2.0f);
                     const float offset_x = floorf(canvas_width * 0.5f);
                     const float offset_y = floorf(RAD_MAX);
 
-                    const ImVec2 p1 = ImGui::GetCursorScreenPos();
-                    draw_list->AddCircle(ImVec2(p1.x + offset_x, p1.y + offset_y), rad, ImGui::GetColorU32(ImGuiCol_Text));
-                    ImGui::Dummy(ImVec2(canvas_width, RAD_MAX * 2));
+                    const ImVec2 p1 = GetCursorScreenPos();
+                    draw_list->AddCircle(ImVec2(p1.x + offset_x, p1.y + offset_y), rad, GetColorU32(ImGuiCol_Text));
+                    Dummy(ImVec2(canvas_width, RAD_MAX * 2));
 
-                    ImGui::EndGroup();
-                    ImGui::SameLine();
+                    EndGroup();
+                    SameLine();
                 }
-                ImGui::EndTooltip();
+                EndTooltip();
             }
-            ImGui::SameLine();
-            fg::HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
+            SameLine();
+            HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
             // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
-            fg::DragFloat("/style/imgui/Alpha", 0.005f, 0.20f, 1.0f, "%.2f");
-            fg::DragFloat("/style/imgui/DisabledAlpha", 0.005f, 0.0f, 1.0f, "%.2f");
-            ImGui::SameLine();
-            fg::HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
-            ImGui::PopItemWidth();
+            DragFloat("/style/imgui/Alpha", 0.005f, 0.20f, 1.0f, "%.2f");
+            DragFloat("/style/imgui/DisabledAlpha", 0.005f, 0.0f, 1.0f, "%.2f");
+            SameLine();
+            HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
+            PopItemWidth();
 
-            ImGui::EndTabItem();
+            EndTabItem();
         }
 
-        ImGui::EndTabBar();
+        EndTabBar();
     }
 }
 
 void Style::ImPlotStyleEditor() {
     static int style_idx = -1;
-    if (ImGui::Combo("Colors##Selector", &style_idx, "Auto\0Classic\0Dark\0Light\0")) q(set_implot_color_style{style_idx});
+    if (Combo("Colors##Selector", &style_idx, "Auto\0Classic\0Dark\0Light\0")) q(set_implot_color_style{style_idx});
 
-    if (ImGui::BeginTabBar("##ImPlotStyleEditor")) {
-        if (ImGui::BeginTabItem("Variables")) {
-            ImGui::Text("Item Styling");
-            fg::SliderFloat("/style/implot/LineWeight", 0.0f, 5.0f, "%.1f");
-            fg::SliderFloat("/style/implot/MarkerSize", 2.0f, 10.0f, "%.1f");
-            fg::SliderFloat("/style/implot/MarkerWeight", 0.0f, 5.0f, "%.1f");
-            fg::SliderFloat("/style/implot/FillAlpha", 0.0f, 1.0f, "%.2f");
-            fg::SliderFloat("/style/implot/ErrorBarSize", 0.0f, 10.0f, "%.1f");
-            fg::SliderFloat("/style/implot/ErrorBarWeight", 0.0f, 5.0f, "%.1f");
-            fg::SliderFloat("/style/implot/DigitalBitHeight", 0.0f, 20.0f, "%.1f");
-            fg::SliderFloat("/style/implot/DigitalBitGap", 0.0f, 20.0f, "%.1f");
+    if (BeginTabBar("##ImPlotStyleEditor")) {
+        if (BeginTabItem("Variables")) {
+            Text("Item Styling");
+            SliderFloat("/style/implot/LineWeight", 0.0f, 5.0f, "%.1f");
+            SliderFloat("/style/implot/MarkerSize", 2.0f, 10.0f, "%.1f");
+            SliderFloat("/style/implot/MarkerWeight", 0.0f, 5.0f, "%.1f");
+            SliderFloat("/style/implot/FillAlpha", 0.0f, 1.0f, "%.2f");
+            SliderFloat("/style/implot/ErrorBarSize", 0.0f, 10.0f, "%.1f");
+            SliderFloat("/style/implot/ErrorBarWeight", 0.0f, 5.0f, "%.1f");
+            SliderFloat("/style/implot/DigitalBitHeight", 0.0f, 20.0f, "%.1f");
+            SliderFloat("/style/implot/DigitalBitGap", 0.0f, 20.0f, "%.1f");
 
-            ImGui::Text("Plot Styling");
-            fg::SliderFloat("/style/implot/PlotBorderSize", 0.0f, 2.0f, "%.0f");
-            fg::SliderFloat("/style/implot/MinorAlpha", 0.0f, 1.0f, "%.2f");
-            fg::SliderFloat2("/style/implot/MajorTickLen", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/MinorTickLen", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/MajorTickSize", 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2("/style/implot/MinorTickSize", 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2("/style/implot/MajorGridSize", 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2("/style/implot/MinorGridSize", 0.0f, 2.0f, "%.1f");
-            fg::SliderFloat2("/style/implot/PlotDefaultSize", 0.0f, 1000, "%.0f");
-            fg::SliderFloat2("/style/implot/PlotMinSize", 0.0f, 300, "%.0f");
+            Text("Plot Styling");
+            SliderFloat("/style/implot/PlotBorderSize", 0.0f, 2.0f, "%.0f");
+            SliderFloat("/style/implot/MinorAlpha", 0.0f, 1.0f, "%.2f");
+            SliderFloat2("/style/implot/MajorTickLen", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/implot/MinorTickLen", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/implot/MajorTickSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2("/style/implot/MinorTickSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2("/style/implot/MajorGridSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2("/style/implot/MinorGridSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2("/style/implot/PlotDefaultSize", 0.0f, 1000, "%.0f");
+            SliderFloat2("/style/implot/PlotMinSize", 0.0f, 300, "%.0f");
 
-            ImGui::Text("Plot Padding");
-            fg::SliderFloat2("/style/implot/PlotPadding", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/LabelPadding", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/LegendPadding", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/LegendInnerPadding", 0.0f, 10.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/LegendSpacing", 0.0f, 5.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/MousePosPadding", 0.0f, 20.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/AnnotationPadding", 0.0f, 5.0f, "%.0f");
-            fg::SliderFloat2("/style/implot/FitPadding", 0, 0.2f, "%.2f");
+            Text("Plot Padding");
+            SliderFloat2("/style/implot/PlotPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/implot/LabelPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/implot/LegendPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/implot/LegendInnerPadding", 0.0f, 10.0f, "%.0f");
+            SliderFloat2("/style/implot/LegendSpacing", 0.0f, 5.0f, "%.0f");
+            SliderFloat2("/style/implot/MousePosPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2("/style/implot/AnnotationPadding", 0.0f, 5.0f, "%.0f");
+            SliderFloat2("/style/implot/FitPadding", 0, 0.2f, "%.2f");
 
-            ImGui::EndTabItem();
+            EndTabItem();
         }
-        if (ImGui::BeginTabItem("Colors")) {
+        if (BeginTabItem("Colors")) {
             static ImGuiTextFilter filter;
-            filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
+            filter.Draw("Filter colors", GetFontSize() * 16);
 
             static ImGuiColorEditFlags alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
-            if (ImGui::RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
-            ImGui::SameLine();
-            if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
-            ImGui::SameLine();
-            fg::HelpMarker(
+            if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
+            SameLine();
+            if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
+            SameLine();
+            if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
+            SameLine();
+            HelpMarker(
                 "In the color list:\n"
                 "Left-click on colored square to open color picker,\n"
                 "Right-click to open edit options menu.");
 
-            ImGui::Separator();
-            ImGui::PushItemWidth(-160);
+            Separator();
+            PushItemWidth(-160);
             const auto colors_path = JsonPath("/style/implot/Colors");
             for (int i = 0; i < ImPlotCol_COUNT; i++) {
                 const char *name = ImPlot::GetStyleColorName(i);
                 if (!filter.PassFilter(name)) continue;
 
-                ImGui::PushID(i);
+                PushID(i);
                 ImVec4 temp = ImPlot::GetStyleColorVec4(i);
                 const bool is_auto = ImPlot::IsColorAuto(i);
-                if (!is_auto) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.25f);
-                if (ImGui::Button("Auto")) q(set_value{colors_path / i, is_auto ? temp : IMPLOT_AUTO_COL});
-                if (!is_auto) ImGui::PopStyleVar();
-                ImGui::SameLine();
-                fg::ColorEdit4((colors_path / i).to_string().c_str(), ImGuiColorEditFlags_NoInputs | alpha_flags, name);
-                ImGui::PopID();
+                if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25f);
+                if (Button("Auto")) q(set_value{colors_path / i, is_auto ? temp : IMPLOT_AUTO_COL});
+                if (!is_auto) PopStyleVar();
+                SameLine();
+                ColorEdit4((colors_path / i).to_string().c_str(), ImGuiColorEditFlags_NoInputs | alpha_flags, name);
+                PopID();
             }
-            ImGui::PopItemWidth();
-            ImGui::Separator();
-            ImGui::Text("Colors that are set to Auto (i.e. IMPLOT_AUTO_COL) will\n"
-                        "be automatically deduced from your ImGui style or the\n"
-                        "current ImPlot Colormap. If you want to style individual\n"
-                        "plot items, use Push/PopStyleColor around its function.");
-            ImGui::EndTabItem();
+            PopItemWidth();
+            Separator();
+            Text("Colors that are set to Auto (i.e. IMPLOT_AUTO_COL) will\n"
+                 "be automatically deduced from your ImGui style or the\n"
+                 "current ImPlot Colormap. If you want to style individual\n"
+                 "plot items, use Push/PopStyleColor around its function.");
+            EndTabItem();
         }
         // TODO re-implement colormaps statefully
-        ImGui::EndTabBar();
+        EndTabBar();
     }
 }
 
 void Style::FlowGridStyleEditor() {
-    fg::SliderFloat("/style/flowgrid/FlashDurationSec", FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
+    SliderFloat("/style/flowgrid/FlashDurationSec", FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
     static int style_idx = -1;
-    if (ImGui::Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});
+    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});
 
-    if (ImGui::BeginTabBar("##FlowGridStyleEditor")) {
+    if (BeginTabBar("##FlowGridStyleEditor")) {
         ShowColorEditor("/style/flowgrid/Colors", FlowGridCol_COUNT, FlowGridStyle::GetColorName);
-        ImGui::EndTabBar();
+        EndTabBar();
     }
 }
 
 void Style::draw() const {
-    if (ImGui::BeginTabBar("##style")) {
-        if (ImGui::BeginTabItem("FlowGrid")) {
+    if (BeginTabBar("##style")) {
+        if (BeginTabItem("FlowGrid")) {
             FlowGridStyleEditor();
-            ImGui::EndTabItem();
+            EndTabItem();
         }
-        if (ImGui::BeginTabItem("ImGui")) {
+        if (BeginTabItem("ImGui")) {
             ImGuiStyleEditor();
-            ImGui::EndTabItem();
+            EndTabItem();
         }
-        if (ImGui::BeginTabItem("ImPlot")) {
+        if (BeginTabItem("ImPlot")) {
             ImPlotStyleEditor();
-            ImGui::EndTabItem();
+            EndTabItem();
         }
-        ImGui::EndTabBar();
+        EndTabBar();
     }
 }
 
@@ -656,7 +660,7 @@ void File::Dialog::draw() const {
         file_dialog->OpenDialog(file_dialog_key, title, filters.c_str(), path, default_file_name, max_num_selections, nullptr, flags);
 
         // TODO need to get custom vecs with math going
-        const ImVec2 min_dialog_size = {ImGui::GetMainViewport()->Size.x / 2.0f, ImGui::GetMainViewport()->Size.y / 2.0f};
+        const ImVec2 min_dialog_size = {GetMainViewport()->Size.x / 2.0f, GetMainViewport()->Size.y / 2.0f};
         if (file_dialog->Display(file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
             if (file_dialog->IsOk()) {
                 const fs::path &file_path = file_dialog->GetFilePathName();
@@ -679,4 +683,18 @@ void File::Dialog::draw() const {
     } else {
         file_dialog->Close();
     }
+}
+
+void State::draw() const {
+    DrawWindow(audio.settings);
+    DrawWindow(audio.faust.editor, ImGuiWindowFlags_MenuBar);
+    DrawWindow(audio.faust.log);
+    DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
+    DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
+    DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
+    DrawWindow(demo, ImGuiWindowFlags_MenuBar);
+    DrawWindow(metrics);
+    DrawWindow(style);
+    DrawWindow(tools);
+    file.dialog.draw();
 }

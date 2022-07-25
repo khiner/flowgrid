@@ -111,12 +111,12 @@ using Action = std::variant<
     set_ui_running
 >;
 
-// Default-construct an action by its variant index (which is also its `_id`).
+// Default-construct an action by its variant index (which is also its `ID`).
 // From https://stackoverflow.com/a/60567091/780425
 // TODO or just this instead?
 //  set_faust_code r = std::variant_alternative_t<action_type_index<set_faust_code>, Action>{"foo"};
-template<std::size_t I = 0>
-Action create(std::size_t index) {
+template<ID I = 0>
+Action create(ID index) {
     if constexpr(I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + std::to_string(I + index) + " out of bounds"};
     else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
 }

@@ -114,10 +114,13 @@ bool Context::is_user_project_path(const fs::path &path) {
 
 json Context::get_project_json(const ProjectFormat format) const {
     if (format == StateFormat) return sj;
-    return diffs;
+    return {
+        {"diffs",      diffs},
+        {"diff_index", diff_index},
+    };
 }
 
-bool Context::project_has_changes() const { return current_diff_index != current_project_saved_action_index; }
+bool Context::project_has_changes() const { return diff_index != current_project_saved_action_index; }
 
 bool Context::save_empty_project() { return save_project(EmptyProjectPath); }
 
@@ -136,14 +139,14 @@ void Context::set_state_json(const json &new_state_json) {
     update_faust_context();
 }
 
-void Context::set_diffs_json(const json &new_diffs_json) {
+void Context::set_diffs_json(const json &diffs_json) {
     open_project(EmptyProjectPath);
     clear_undo();
 
-    diffs = new_diffs_json;
-    while (current_diff_index < int(diffs.size() - 1)) {
-        apply_diff(++current_diff_index);
-    }
+    diffs = diffs_json["diffs"];
+    while (action_allowed(action::id<actions::redo>)) redo();
+    int new_diff_index = diffs_json["diff_index"];
+    while (diff_index > new_diff_index) undo();
 }
 
 void Context::enqueue_action(const Action &a) {
@@ -160,8 +163,8 @@ void Context::run_queued_actions(bool merge_gesture) {
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<undo>: return current_diff_index >= 0;
-        case action::id<redo>: return current_diff_index < (int) diffs.size() - 1;
+        case action::id<actions::undo>: return diff_index >= 0;
+        case action::id<actions::redo>: return diff_index < (int) diffs.size() - 1;
         case action::id<actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<actions::save_project>:
         case action::id<actions::show_save_project_dialog>:
@@ -216,8 +219,11 @@ void Context::update_processes() {
     }
 }
 
+void Context::undo() { apply_diff(diff_index--, Direction::Reverse); }
+void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
+
 void Context::clear_undo() {
-    current_diff_index = -1;
+    diff_index = -1;
     diffs.clear();
     gesture_action_names.clear();
     gesturing = false;
@@ -280,8 +286,8 @@ void Context::on_action(const Action &action) {
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
-        [&](const undo &) { apply_diff(current_diff_index--, Direction::Reverse); },
-        [&](const redo &) { apply_diff(++current_diff_index, Direction::Forward); },
+        [&](const actions::undo &) { undo(); },
+        [&](const actions::redo &) { redo(); },
 
         [&](const actions::open_project &a) { open_project(a.path); },
         [&](const open_empty_project &) { open_project(EmptyProjectPath); },
@@ -328,7 +334,7 @@ void Context::finalize_gesture(bool merge) {
     gesture_action_names.clear();
 
     const bool should_merge = merge && !diffs.empty();
-    if (should_merge && int(diffs.size()) != current_diff_index + 1) return; // Only allow merges for new gestures at the end of the undo chain.
+    if (should_merge && int(diffs.size()) != diff_index + 1) return; // Only allow merges for new gestures at the end of the undo chain.
 
     const json &compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;
     previous_state_json = s;
@@ -348,10 +354,10 @@ void Context::finalize_gesture(bool merge) {
 
     // If we're not already at the end of the undo stack, wind it back.
     // TODO use an undo _tree_ and keep this history
-    while (int(diffs.size()) > current_diff_index + 1) diffs.pop_back();
+    while (int(diffs.size()) > diff_index + 1) diffs.pop_back();
 
     diffs.emplace_back(diff);
-    current_diff_index = int(diffs.size()) - 1;
+    diff_index = int(diffs.size()) - 1;
 
     on_json_diff(diff, Forward);
 }
@@ -385,9 +391,9 @@ void Context::open_project(const fs::path &path) {
     const auto project_format = ProjectFormatForExtension.at(path.extension());
     if (project_format == None) return; // TODO log
 
-    const json &project_json = json::from_msgpack(File::read(path));
-    if (project_format == StateFormat) set_state_json(project_json);
-    else set_diffs_json(project_json);
+    const auto &project = json::from_msgpack(File::read(path));
+    if (project_format == StateFormat) set_state_json(project);
+    else set_diffs_json(project);
 
     if (is_user_project_path(path)) {
         set_current_project_path(path);
@@ -403,7 +409,10 @@ ProjectFormat get_project_format(const fs::path &path) {
 }
 
 bool Context::save_project(const fs::path &path) {
-    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !action_allowed(action::id<save_current_project>)) return false;
+    if (current_project_path.has_value() &&
+        fs::equivalent(path, current_project_path.value()) &&
+        !action_allowed(action::id<save_current_project>))
+        return false;
 
     const ProjectFormat format = get_project_format(path);
     if (format == None) return false; // TODO log
@@ -419,7 +428,7 @@ bool Context::save_project(const fs::path &path) {
 
 void Context::set_current_project_path(const fs::path &path) {
     current_project_path = path;
-    current_project_saved_action_index = current_diff_index;
+    current_project_saved_action_index = diff_index;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences_file();

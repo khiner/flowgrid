@@ -138,6 +138,8 @@ struct Context {
     bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;
 
+    void undo();
+    void redo();
     void clear_undo();
 
     // Audio
@@ -187,7 +189,7 @@ struct Context {
          and modify to taste.
     */
     std::vector<BidirectionalStateDiff> diffs;
-    int current_diff_index = -1;
+    int diff_index = -1;
 
     std::optional<fs::path> current_project_path;
     int current_project_saved_action_index = -1;

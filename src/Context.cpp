@@ -144,9 +144,8 @@ void Context::set_diffs_json(const json &diffs_json) {
     clear_undo();
 
     diffs = diffs_json["diffs"];
-    while (action_allowed(action::id<actions::redo>)) redo();
     int new_diff_index = diffs_json["diff_index"];
-    while (diff_index > new_diff_index) undo();
+    while (diff_index < new_diff_index) redo();
 }
 
 void Context::enqueue_action(const Action &a) {

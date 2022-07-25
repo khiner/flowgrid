@@ -80,6 +80,38 @@ struct save_faust_file { string path; };
 struct open_faust_file { string path; };
 struct set_faust_code { string text; };
 
+
+EmptyJsonType(undo)
+EmptyJsonType(redo)
+EmptyJsonType(open_empty_project)
+EmptyJsonType(open_default_project)
+EmptyJsonType(show_open_project_dialog)
+EmptyJsonType(close_file_dialog)
+EmptyJsonType(save_current_project)
+EmptyJsonType(save_default_project)
+EmptyJsonType(show_save_project_dialog)
+EmptyJsonType(close_application)
+EmptyJsonType(toggle_state_viewer_auto_select)
+EmptyJsonType(show_open_faust_file_dialog)
+EmptyJsonType(show_save_faust_file_dialog)
+
+JsonType(open_project, path)
+JsonType(open_file_dialog, dialog)
+JsonType(save_project, path)
+JsonType(set_value, state_path, value)
+JsonType(set_imgui_settings, settings)
+JsonType(set_imgui_color_style, id)
+JsonType(set_implot_color_style, id)
+JsonType(set_flowgrid_color_style, id)
+JsonType(close_window, name)
+JsonType(toggle_window, name)
+JsonType(set_state_viewer_label_mode, label_mode)
+JsonType(set_audio_sample_rate, sample_rate)
+JsonType(set_ui_running, running)
+JsonType(save_faust_file, path)
+JsonType(open_faust_file, path)
+JsonType(set_faust_code, text)
+
 }
 
 using namespace actions;

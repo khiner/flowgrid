@@ -367,9 +367,10 @@ void Context::apply_diff(const int index, const Direction direction) {
 }
 
 void Context::on_set_value(const JsonPath &path) {
-    if (path.to_string().rfind("/imgui_settings", 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path.to_string().rfind(s.style.imgui.path, 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
-    else if (path.to_string().rfind(s.style.implot.path, 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
+    const auto &path_str = path.to_string();
+    if (path_str.rfind("/imgui_settings", 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path_str.rfind(s.style.imgui.path, 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
+    else if (path_str.rfind(s.style.implot.path, 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
     else if (path == s.audio.faust.path / "code") update_faust_context();
 }
 

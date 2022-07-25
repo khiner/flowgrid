@@ -10,6 +10,20 @@
 using namespace ImGui;
 using namespace fg;
 
+void State::draw() const {
+    DrawWindow(audio.settings);
+    DrawWindow(audio.faust.editor, ImGuiWindowFlags_MenuBar);
+    DrawWindow(audio.faust.log);
+    DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
+    DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
+    DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
+    DrawWindow(demo, ImGuiWindowFlags_MenuBar);
+    DrawWindow(metrics);
+    DrawWindow(style);
+    DrawWindow(tools);
+    file.dialog.draw();
+}
+
 /**
  * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
  */
@@ -832,18 +846,4 @@ bool File::write(const fs::path &path, const MessagePackBytes &contents) {
     }
 
     return false;
-}
-
-void State::draw() const {
-    DrawWindow(audio.settings);
-    DrawWindow(audio.faust.editor, ImGuiWindowFlags_MenuBar);
-    DrawWindow(audio.faust.log);
-    DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
-    DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
-    DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
-    DrawWindow(demo, ImGuiWindowFlags_MenuBar);
-    DrawWindow(metrics);
-    DrawWindow(style);
-    DrawWindow(tools);
-    file.dialog.draw();
 }

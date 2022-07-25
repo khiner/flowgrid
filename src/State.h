@@ -7,6 +7,7 @@
 #include "imgui_internal.h"
 #include "implot.h"
 #include "implot_internal.h"
+#include "ImGuiFileDialog.h"
 
 #include "JsonType.h"
 #include "Helper/String.h"
@@ -170,12 +171,12 @@ using MessagePackBytes = std::vector<std::uint8_t>;
 
 struct File : StateMember {
     using StateMember::StateMember;
-    using ImGuiFileDialogFlags = int; // Declared in `lib/ImGuiFileDialog/ImGuiFileDialog.h`
 
     struct DialogData {
+        // Always open as a modal to avoid user activity outside the dialog.
         DialogData(string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "",
-                   const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
-            : save_mode(save_mode), max_num_selections(max_num_selections), flags(flags),
+                   const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_None)
+            : save_mode(save_mode), max_num_selections(max_num_selections), flags(flags | ImGuiFileDialogFlags_Modal),
               title(std::move(title)), filters(std::move(filters)), file_path(std::move(file_path)), default_file_name(std::move(default_file_name)) {};
 
         bool visible;

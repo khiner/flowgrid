@@ -6,7 +6,6 @@
 
 #include "../Context.h"
 #include "ImGuiFileDialogDemo.h"
-#include "ImGuiFileDialog.h"
 
 inline bool RadioButtonLabeled(const char *label, const char *help, bool active, bool disabled) {
     using namespace ImGui;
@@ -188,9 +187,6 @@ void IGFD::ShowDemo() {
     ImGui::Text("ImGuiFileDialog flags: ");
     ImGui::Indent();
     {
-        ImGui::Text("Commons:");
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Modal", "Open dialog in modal mode", &flags, ImGuiFileDialogFlags_Modal);
-        ImGui::SameLine();
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Overwrite", "Overwrite verification before dialog closing", &flags, ImGuiFileDialogFlags_ConfirmOverwrite);
         ImGui::SameLine();
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide hidden files", "Hide hidden files", &flags, ImGuiFileDialogFlags_DontShowHiddenFiles);
@@ -215,7 +211,6 @@ void IGFD::ShowDemo() {
     ImGui::Unindent();
 
     static string filePathName; // Keep track of the last chosen file. There's an option below to open this path.
-    static const char *chooseFileDialogKey = "ChooseFileDlgKey";
     static string chooseFile = ICON_IGFD_FOLDER_OPEN " Choose a file";
     static const char *chooseFileSave = ICON_IGFD_SAVE " Choose a file";
 
@@ -245,7 +240,7 @@ void IGFD::ShowDemo() {
 
     if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
         const string filters = "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}";
-        q(open_file_dialog{{chooseFile, filters, ".", filePathName, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}});
+        q(open_file_dialog{{chooseFileSave, filters, ".", filePathName, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}});
     }
 
     // Keeping this around to remind myself that custom panes & UserDatas are a thing.

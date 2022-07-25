@@ -229,12 +229,15 @@ extern const State &s;
 extern const json &sj;
 
 // This is the main action-queue method.
-inline bool q(Action &&a) {
+// Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
+// This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
+inline bool q(Action &&a, bool flush = false) {
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
     // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
     // return queue.enqueue(a);
 
     c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
+    if (flush) c.run_queued_actions(); // ... unless the `flush` flag is provided, in which case we just do it now.
     return true;
 }
 

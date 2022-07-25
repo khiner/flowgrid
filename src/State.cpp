@@ -132,8 +132,8 @@ void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
 }
 
 void Audio::Settings::draw() const {
-    Checkbox("/processes/audio/running");
-    Checkbox("/audio/settings/muted");
+    Checkbox(s.processes.audio.path / "running");
+    Checkbox(path / "muted");
 }
 
 typedef int JsonTreeNodeFlags;
@@ -160,35 +160,23 @@ bool is_number(const string &str) {
     return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
 }
 
-enum ColorPaths_ {
-    ColorPaths_ImGui,
-    ColorPaths_ImPlot,
-    ColorPaths_FlowGrid,
-};
-//using ColorPaths = int;
-
-static const fs::path color_paths[] = { // addressable by `ColorPaths`
-    "/style/imgui/Colors",
-    "/style/implot/Colors",
-    "/style/flowgrid/Colors",
-};
-
-static void show_json_state_value_node(const string &key, const json &value, const fs::path &path) {
+static void show_json_state_value_node(const string &key, const json &value, const JsonPath &path) {
     const bool auto_select = s.state_viewer.auto_select;
     const bool annotate_enabled = s.state_viewer.label_mode == StateViewer::LabelMode::annotated;
 
-    const string &file_name = path.filename();
-    const bool is_array_item = is_number(file_name);
-    const int array_index = is_array_item ? std::stoi(file_name) : -1;
+    const string &leaf_name = path == RootPath ? path : path.back();
+    const auto &parent_path = path == RootPath ? path : path.parent_pointer();
+    const bool is_array_item = is_number(leaf_name);
+    const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_color = string(path).find("Colors") != string::npos && is_array_item;
-    const bool is_imgui_color = path.parent_path() == color_paths[ColorPaths_ImGui];
-    const bool is_implot_color = path.parent_path() == color_paths[ColorPaths_ImPlot];
-    const bool is_flowgrid_color = path.parent_path() == color_paths[ColorPaths_FlowGrid];
+    const bool is_imgui_color = parent_path == s.style.imgui.path / "Colors";
+    const bool is_implot_color = parent_path == s.style.implot.path / "Colors";
+    const bool is_flowgrid_color = parent_path == s.style.flowgrid.path / "Colors";
     const auto &name = annotate_enabled ?
                        (is_imgui_color ?
                         GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
                                                          is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
-                                                         is_array_item ? file_name : key) : key;
+                                                         is_array_item ? leaf_name : key) : key;
 
     if (auto_select) {
         const auto &update_paths = c.state_stats.most_recent_update_paths;
@@ -313,7 +301,7 @@ void StateViewer::draw() const {
         EndMenuBar();
     }
 
-    show_json_state_value_node("State", sj, "/");
+    show_json_state_value_node("State", sj, RootPath);
 }
 
 void Demo::draw() const {
@@ -333,8 +321,6 @@ void Demo::draw() const {
         EndTabBar();
     }
 }
-
-namespace FlowGrid {
 
 void ShowJsonPatchOpMetrics(const JsonPatchOp &patch_op) {
     BulletText("Path: %s", patch_op.path.c_str());
@@ -384,7 +370,13 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
     TreePop();
 }
 
-void ShowMetrics(bool show_relative_paths) {
+void Metrics::ImGuiMetrics::draw() const {
+    ShowMetrics();
+}
+void Metrics::ImPlotMetrics::draw() const {
+    ImPlot::ShowMetrics();
+}
+void Metrics::FlowGridMetrics::draw() const {
     Text("Gesturing: %s", c.gesturing ? "true" : "false");
 
     const bool has_diffs = !c.diffs.empty();
@@ -403,7 +395,7 @@ void ShowMetrics(bool show_relative_paths) {
     if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (SmallButton("Clear")) c.clear_preferences();
         SameLine();
-        Checkbox("/metrics/show_relative_paths");
+        Checkbox(path / "show_relative_paths");
 
         if (!has_recently_opened_paths) BeginDisabled();
         if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -422,20 +414,18 @@ void ShowMetrics(bool show_relative_paths) {
                "Thus, it's important to keep action data small.");
 }
 
-}
-
 void Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
-        if (BeginTabItem("FlowGrid")) {
-            ShowMetrics(show_relative_paths);
-            EndTabItem();
-        }
         if (BeginTabItem("ImGui")) {
-            ShowMetrics();
+            imgui.draw();
             EndTabItem();
         }
         if (BeginTabItem("ImPlot")) {
-            ImPlot::ShowMetrics();
+            implot.draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("FlowGrid")) {
+            flowgrid.draw();
             EndTabItem();
         }
         EndTabBar();
@@ -462,7 +452,7 @@ void Tools::draw() const {
 // [SECTION] Style editors
 //-----------------------------------------------------------------------------
 
-void ShowColorEditor(const char *path, int color_count, const std::function<const char *(int)> &GetColorName) {
+void ShowColorEditor(const JsonPath &path, int color_count, const std::function<const char *(int)> &GetColorName) {
     if (BeginTabItem("Colors")) {
         static ImGuiTextFilter filter;
         filter.Draw("Filter colors", GetFontSize() * 16);
@@ -486,7 +476,7 @@ void ShowColorEditor(const char *path, int color_count, const std::function<cons
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
-            ColorEdit4((JsonPath(path) / i).to_string().c_str(), ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            ColorEdit4(JsonPath(path) / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
             SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
             TextUnformatted(name);
             PopID();
@@ -499,29 +489,29 @@ void ShowColorEditor(const char *path, int color_count, const std::function<cons
 }
 
 // Returns `true` if style changes.
-void Style::ImGuiStyleEditor() {
+void Style::ImGuiStyleMember::draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
 //    ShowFontSelector("Fonts##Selector"); // TODO
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     // TODO match with imgui
-    if (SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f")) {
-        q(set_value{"/style/imgui/GrabRounding", s.style.imgui.FrameRounding}); // Make GrabRounding always the same value as FrameRounding
+    if (SliderFloat(path / "FrameRounding", 0.0f, 12.0f, "%.0f")) {
+        q(set_value{path / "GrabRounding", s.style.imgui.FrameRounding}); // Make GrabRounding always the same value as FrameRounding
     }
     {
         bool border = s.style.imgui.WindowBorderSize > 0.0f;
-        if (Checkbox("WindowBorder", &border)) q(set_value{"/style/imgui/WindowBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("WindowBorder", &border)) q(set_value{path / "WindowBorderSize", border ? 1.0f : 0.0f});
     }
     SameLine();
     {
         bool border = s.style.imgui.FrameBorderSize > 0.0f;
-        if (Checkbox("FrameBorder", &border)) q(set_value{"/style/imgui/FrameBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("FrameBorder", &border)) q(set_value{path / "FrameBorderSize", border ? 1.0f : 0.0f});
     }
     SameLine();
     {
         bool border = s.style.imgui.PopupBorderSize > 0.0f;
-        if (Checkbox("PopupBorder", &border)) q(set_value{"/style/imgui/PopupBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("PopupBorder", &border)) q(set_value{path / "PopupBorderSize", border ? 1.0f : 0.0f});
     }
 
     Separator();
@@ -529,48 +519,48 @@ void Style::ImGuiStyleEditor() {
     if (BeginTabBar("##ImGuiStyleEditor", ImGuiTabBarFlags_None)) {
         if (BeginTabItem("Sizes")) {
             Text("Main");
-            SliderFloat2("/style/imgui/WindowPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/imgui/FramePadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/imgui/CellPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/imgui/ItemSpacing", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/imgui/ItemInnerSpacing", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/imgui/TouchExtraPadding", 0.0f, 10.0f, "%.0f");
-            SliderFloat("/style/imgui/IndentSpacing", 0.0f, 30.0f, "%.0f");
-            SliderFloat("/style/imgui/ScrollbarSize", 1.0f, 20.0f, "%.0f");
-            SliderFloat("/style/imgui/GrabMinSize", 1.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "WindowPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "FramePadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "CellPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "ItemSpacing", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "ItemInnerSpacing", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "TouchExtraPadding", 0.0f, 10.0f, "%.0f");
+            SliderFloat(path / "IndentSpacing", 0.0f, 30.0f, "%.0f");
+            SliderFloat(path / "ScrollbarSize", 1.0f, 20.0f, "%.0f");
+            SliderFloat(path / "GrabMinSize", 1.0f, 20.0f, "%.0f");
             Text("Borders");
-            SliderFloat("/style/imgui/WindowBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat("/style/imgui/ChildBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat("/style/imgui/PopupBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat("/style/imgui/FrameBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat("/style/imgui/TabBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat(path / "WindowBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat(path / "ChildBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat(path / "PopupBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat(path / "FrameBorderSize", 0.0f, 1.0f, "%.0f");
+            SliderFloat(path / "TabBorderSize", 0.0f, 1.0f, "%.0f");
             Text("Rounding");
-            SliderFloat("/style/imgui/WindowRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat("/style/imgui/ChildRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat("/style/imgui/FrameRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat("/style/imgui/PopupRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat("/style/imgui/ScrollbarRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat("/style/imgui/GrabRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat("/style/imgui/LogSliderDeadzone", 0.0f, 12.0f, "%.0f");
-            SliderFloat("/style/imgui/TabRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "WindowRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "ChildRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "FrameRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "PopupRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "ScrollbarRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "GrabRounding", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "LogSliderDeadzone", 0.0f, 12.0f, "%.0f");
+            SliderFloat(path / "TabRounding", 0.0f, 12.0f, "%.0f");
             Text("Alignment");
-            SliderFloat2("/style/imgui/WindowTitleAlign", 0.0f, 1.0f, "%.2f");
-            Combo("/style/imgui/WindowMenuButtonPosition", "None\0Left\0Right\0");
-            Combo("/style/imgui/ColorButtonPosition", "Left\0Right\0");
-            SliderFloat2("/style/imgui/ButtonTextAlign", 0.0f, 1.0f, "%.2f");
+            SliderFloat2(path / "WindowTitleAlign", 0.0f, 1.0f, "%.2f");
+            Combo(path / "WindowMenuButtonPosition", "None\0Left\0Right\0");
+            Combo(path / "ColorButtonPosition", "Left\0Right\0");
+            SliderFloat2(path / "ButtonTextAlign", 0.0f, 1.0f, "%.2f");
             SameLine();
             HelpMarker("Alignment applies when a button is larger than its text content.");
-            SliderFloat2("/style/imgui/SelectableTextAlign", 0.0f, 1.0f, "%.2f");
+            SliderFloat2(path / "SelectableTextAlign", 0.0f, 1.0f, "%.2f");
             SameLine();
             HelpMarker("Alignment applies when a selectable is larger than its text content.");
             Text("Safe Area Padding");
             SameLine();
             HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
-            SliderFloat2("/style/imgui/DisplaySafeAreaPadding", 0.0f, 30.0f, "%.0f");
+            SliderFloat2(path / "DisplaySafeAreaPadding", 0.0f, 30.0f, "%.0f");
             EndTabItem();
         }
 
-        ShowColorEditor("/style/imgui/Colors", ImGuiCol_COUNT, GetStyleColorName);
+        ShowColorEditor(path / "Colors", ImGuiCol_COUNT, GetStyleColorName);
 
 //        if (BeginTabItem("Fonts")) {
 //            ImGuiIO &io = GetIO();
@@ -598,20 +588,20 @@ void Style::ImGuiStyleEditor() {
 //        }
 
         if (BeginTabItem("Rendering")) {
-            Checkbox("/style/imgui/AntiAliasedLines", "Anti-aliased lines");
+            Checkbox(path / "AntiAliasedLines", "Anti-aliased lines");
             SameLine();
             HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
 
-            Checkbox("/style/imgui/AntiAliasedLinesUseTex", "Anti-aliased lines use texture");
+            Checkbox(path / "AntiAliasedLinesUseTex", "Anti-aliased lines use texture");
             SameLine();
             HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
 
-            Checkbox("/style/imgui/AntiAliasedFill", "Anti-aliased fill");
+            Checkbox(path / "AntiAliasedFill", "Anti-aliased fill");
             PushItemWidth(GetFontSize() * 8);
-            DragFloat("/style/imgui/CurveTessellationTol", 0.02f, 0.10f, 10.0f, "%.2f", ImGuiSliderFlags_None, "Curve Tessellation Tolerance");
+            DragFloat(path / "CurveTessellationTol", 0.02f, 0.10f, 10.0f, "%.2f", ImGuiSliderFlags_None, "Curve Tessellation Tolerance");
 
             // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            DragFloat("/style/imgui/CircleTessellationMaxError", 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            DragFloat(path / "CircleTessellationMaxError", 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
             if (IsItemActive()) {
                 SetNextWindowPos(GetCursorScreenPos());
                 BeginTooltip();
@@ -645,8 +635,8 @@ void Style::ImGuiStyleEditor() {
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
             // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
-            DragFloat("/style/imgui/Alpha", 0.005f, 0.20f, 1.0f, "%.2f");
-            DragFloat("/style/imgui/DisabledAlpha", 0.005f, 0.0f, 1.0f, "%.2f");
+            DragFloat(path / "Alpha", 0.005f, 0.20f, 1.0f, "%.2f");
+            DragFloat(path / "DisabledAlpha", 0.005f, 0.0f, 1.0f, "%.2f");
             SameLine();
             HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
             PopItemWidth();
@@ -658,43 +648,43 @@ void Style::ImGuiStyleEditor() {
     }
 }
 
-void Style::ImPlotStyleEditor() {
+void Style::ImPlotStyleMember::draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Auto\0Classic\0Dark\0Light\0")) q(set_implot_color_style{style_idx});
 
     if (BeginTabBar("##ImPlotStyleEditor")) {
         if (BeginTabItem("Variables")) {
             Text("Item Styling");
-            SliderFloat("/style/implot/LineWeight", 0.0f, 5.0f, "%.1f");
-            SliderFloat("/style/implot/MarkerSize", 2.0f, 10.0f, "%.1f");
-            SliderFloat("/style/implot/MarkerWeight", 0.0f, 5.0f, "%.1f");
-            SliderFloat("/style/implot/FillAlpha", 0.0f, 1.0f, "%.2f");
-            SliderFloat("/style/implot/ErrorBarSize", 0.0f, 10.0f, "%.1f");
-            SliderFloat("/style/implot/ErrorBarWeight", 0.0f, 5.0f, "%.1f");
-            SliderFloat("/style/implot/DigitalBitHeight", 0.0f, 20.0f, "%.1f");
-            SliderFloat("/style/implot/DigitalBitGap", 0.0f, 20.0f, "%.1f");
+            SliderFloat(path / "LineWeight", 0.0f, 5.0f, "%.1f");
+            SliderFloat(path / "MarkerSize", 2.0f, 10.0f, "%.1f");
+            SliderFloat(path / "MarkerWeight", 0.0f, 5.0f, "%.1f");
+            SliderFloat(path / "FillAlpha", 0.0f, 1.0f, "%.2f");
+            SliderFloat(path / "ErrorBarSize", 0.0f, 10.0f, "%.1f");
+            SliderFloat(path / "ErrorBarWeight", 0.0f, 5.0f, "%.1f");
+            SliderFloat(path / "DigitalBitHeight", 0.0f, 20.0f, "%.1f");
+            SliderFloat(path / "DigitalBitGap", 0.0f, 20.0f, "%.1f");
 
             Text("Plot Styling");
-            SliderFloat("/style/implot/PlotBorderSize", 0.0f, 2.0f, "%.0f");
-            SliderFloat("/style/implot/MinorAlpha", 0.0f, 1.0f, "%.2f");
-            SliderFloat2("/style/implot/MajorTickLen", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/implot/MinorTickLen", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/implot/MajorTickSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2("/style/implot/MinorTickSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2("/style/implot/MajorGridSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2("/style/implot/MinorGridSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2("/style/implot/PlotDefaultSize", 0.0f, 1000, "%.0f");
-            SliderFloat2("/style/implot/PlotMinSize", 0.0f, 300, "%.0f");
+            SliderFloat(path / "PlotBorderSize", 0.0f, 2.0f, "%.0f");
+            SliderFloat(path / "MinorAlpha", 0.0f, 1.0f, "%.2f");
+            SliderFloat2(path / "MajorTickLen", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "MinorTickLen", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "MajorTickSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2(path / "MinorTickSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2(path / "MajorGridSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2(path / "MinorGridSize", 0.0f, 2.0f, "%.1f");
+            SliderFloat2(path / "PlotDefaultSize", 0.0f, 1000, "%.0f");
+            SliderFloat2(path / "PlotMinSize", 0.0f, 300, "%.0f");
 
             Text("Plot Padding");
-            SliderFloat2("/style/implot/PlotPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/implot/LabelPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/implot/LegendPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/implot/LegendInnerPadding", 0.0f, 10.0f, "%.0f");
-            SliderFloat2("/style/implot/LegendSpacing", 0.0f, 5.0f, "%.0f");
-            SliderFloat2("/style/implot/MousePosPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2("/style/implot/AnnotationPadding", 0.0f, 5.0f, "%.0f");
-            SliderFloat2("/style/implot/FitPadding", 0, 0.2f, "%.2f");
+            SliderFloat2(path / "PlotPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "LabelPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "LegendPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "LegendInnerPadding", 0.0f, 10.0f, "%.0f");
+            SliderFloat2(path / "LegendSpacing", 0.0f, 5.0f, "%.0f");
+            SliderFloat2(path / "MousePosPadding", 0.0f, 20.0f, "%.0f");
+            SliderFloat2(path / "AnnotationPadding", 0.0f, 5.0f, "%.0f");
+            SliderFloat2(path / "FitPadding", 0, 0.2f, "%.2f");
 
             EndTabItem();
         }
@@ -716,7 +706,7 @@ void Style::ImPlotStyleEditor() {
 
             Separator();
             PushItemWidth(-160);
-            const auto colors_path = JsonPath("/style/implot/Colors");
+            const auto colors_path = JsonPath(path / "Colors");
             for (int i = 0; i < ImPlotCol_COUNT; i++) {
                 const char *name = ImPlot::GetStyleColorName(i);
                 if (!filter.PassFilter(name)) continue;
@@ -728,7 +718,7 @@ void Style::ImPlotStyleEditor() {
                 if (Button("Auto")) q(set_value{colors_path / i, is_auto ? temp : IMPLOT_AUTO_COL});
                 if (!is_auto) PopStyleVar();
                 SameLine();
-                ColorEdit4((colors_path / i).to_string().c_str(), ImGuiColorEditFlags_NoInputs | alpha_flags, name);
+                ColorEdit4(colors_path / i, ImGuiColorEditFlags_NoInputs | alpha_flags, name);
                 PopID();
             }
             PopItemWidth();
@@ -744,13 +734,13 @@ void Style::ImPlotStyleEditor() {
     }
 }
 
-void Style::FlowGridStyleEditor() {
-    SliderFloat("/style/flowgrid/FlashDurationSec", FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
+void FlowGridStyle::draw() const {
+    SliderFloat(path / "FlashDurationSec", FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});
 
     if (BeginTabBar("##FlowGridStyleEditor")) {
-        ShowColorEditor("/style/flowgrid/Colors", FlowGridCol_COUNT, FlowGridStyle::GetColorName);
+        ShowColorEditor(path / "Colors", FlowGridCol_COUNT, FlowGridStyle::GetColorName);
         EndTabBar();
     }
 }
@@ -758,15 +748,15 @@ void Style::FlowGridStyleEditor() {
 void Style::draw() const {
     if (BeginTabBar("##style")) {
         if (BeginTabItem("FlowGrid")) {
-            FlowGridStyleEditor();
+            flowgrid.draw();
             EndTabItem();
         }
         if (BeginTabItem("ImGui")) {
-            ImGuiStyleEditor();
+            imgui.draw();
             EndTabItem();
         }
         if (BeginTabItem("ImPlot")) {
-            ImPlotStyleEditor();
+            implot.draw();
             EndTabItem();
         }
         EndTabBar();

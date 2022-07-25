@@ -84,7 +84,23 @@ struct Metrics : Window {
     using Window::Window;
     void draw() const override;
 
-    bool show_relative_paths = true;
+    struct ImGuiMetrics : StateMember, Drawable {
+        using StateMember::StateMember;
+        void draw() const override;
+    };
+    struct ImPlotMetrics : StateMember, Drawable {
+        using StateMember::StateMember;
+        void draw() const override;
+    };
+    struct FlowGridMetrics : StateMember, Drawable {
+        using StateMember::StateMember;
+        void draw() const override;
+        bool show_relative_paths = true;
+    };
+
+    ImGuiMetrics imgui{path, "imgui", "ImGui"};
+    ImPlotMetrics implot{path, "implot", "ImPlot"};
+    FlowGridMetrics flowgrid{path, "flowgrid", "FlowGrid"};
 };
 
 struct Tools : Window {
@@ -205,11 +221,12 @@ typedef int FlowGridCol; // -> enum FlowGridCol_
 
 const DurationSec FlashDurationSecMin = 0.0, FlashDurationSecMax = 5.0;
 
-struct FlowGridStyle : StateMember {
-    using StateMember::StateMember;
+struct FlowGridStyle : StateMember, Drawable {
     FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
         StyleColorsDark(*this);
     }
+
+    void draw() const override;
 
     ImVec4 Colors[FlowGridCol_COUNT];
     DurationSec FlashDurationSec{0.6};
@@ -244,14 +261,18 @@ struct Style : Window {
 
     void draw() const override;
 
-    ImGuiStyle imgui;
-    ImPlotStyle implot;
-    FlowGridStyle flowgrid{path, "flowgrid"};
+    struct ImGuiStyleMember : StateMember, Drawable, ImGuiStyle {
+        using StateMember::StateMember;
+        void draw() const override;
+    };
+    struct ImPlotStyleMember : StateMember, Drawable, ImPlotStyle {
+        using StateMember::StateMember;
+        void draw() const override;
+    };
 
-private:
-    static void ImGuiStyleEditor();
-    static void ImPlotStyleEditor();
-    static void FlowGridStyleEditor();
+    ImGuiStyleMember imgui{path, "imgui"};
+    ImPlotStyleMember implot{path, "implot"};
+    FlowGridStyle flowgrid{path, "flowgrid"};
 };
 
 struct Processes : StateMember {
@@ -296,21 +317,21 @@ struct ImGuiSettings {
     void populate_context(ImGuiContext *ctx) const;
 };
 
-struct StateData : StateMember {
-    StateData() : StateMember(JsonPath("/"), "") {}
+const JsonPath RootPath{""};
 
+struct StateData {
     ImGuiSettings imgui_settings;
-    Style style{path, "style"};
-    Audio audio{path, "audio"};
-    Processes processes{path, "processes"};
-    File file{path, "file"};
+    Style style{RootPath, "style"};
+    Audio audio{RootPath, "audio"};
+    Processes processes{RootPath, "processes"};
+    File file{RootPath, "file"};
 
-    Demo demo{path, "demo"};
-    Metrics metrics{path, "metrics"};
-    Tools tools{path, "tools"};
-    StateViewer state_viewer{path, "state_viewer"};
-    StateMemoryEditor memory_editor{path, "state_memory_editor"};
-    StatePathUpdateFrequency path_update_frequency{path, "path_update_frequency", "State path update frequency"};
+    Demo demo{RootPath, "demo"};
+    Metrics metrics{RootPath, "metrics"};
+    Tools tools{RootPath, "tools"};
+    StateViewer state_viewer{RootPath, "state_viewer"};
+    StateMemoryEditor memory_editor{RootPath, "state_memory_editor"};
+    StatePathUpdateFrequency path_update_frequency{RootPath, "path_update_frequency", "State path update frequency"};
 };
 
 // Types for [json-patch](https://jsonpatch.com)
@@ -326,7 +347,7 @@ enum JsonPatchOpType {
     Test,
 };
 struct JsonPatchOp {
-    string path;
+    string path; // TODO as JsonPath, and remove casts
     JsonPatchOpType op{};
     std::optional<json> value; // Present for add/replace/test
     std::optional<string> from; // Present for copy/move
@@ -366,7 +387,8 @@ JsonType(Audio, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
 JsonType(StateViewer, visible, label_mode, auto_select)
-JsonType(Metrics, visible, show_relative_paths)
+JsonType(Metrics::FlowGridMetrics, show_relative_paths)
+JsonType(Metrics, visible, flowgrid)
 
 JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
     FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,

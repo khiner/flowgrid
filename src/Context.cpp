@@ -317,7 +317,7 @@ void Context::update(const Action &action) {
         [&](const set_implot_color_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
-        [&](const set_value &a) { on_set_value(a.state_path); },
+        [&](const set_value &a) { on_set_value(JsonPath(a.state_path)); },
 
         [&](const auto &) {}, // All actions without side effects (only state updates)
     }, action);
@@ -366,17 +366,17 @@ void Context::apply_diff(const int index, const Direction direction) {
     on_json_diff(diff, direction);
 }
 
-void Context::on_set_value(const string &path) {
-    if (path.rfind("/imgui_settings", 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path.rfind("/style/imgui", 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle);
-    else if (path.rfind("/style/implot", 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
-    else if (path == "/audio/faust/code") update_faust_context();
+void Context::on_set_value(const JsonPath &path) {
+    if (path.to_string().rfind("/imgui_settings", 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path.to_string().rfind(s.style.imgui.path, 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
+    else if (path.to_string().rfind(s.style.implot.path, 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
+    else if (path == s.audio.faust.path / "code") update_faust_context();
 }
 
 void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction) {
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
     state_stats.on_json_patch(patch, diff.system_time, direction);
-    for (const auto &patch_op: patch) on_set_value(patch_op.path);
+    for (const auto &patch_op: patch) on_set_value(JsonPath(patch_op.path));
     update_processes();
 }
 

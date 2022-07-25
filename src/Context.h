@@ -207,7 +207,7 @@ private:
     void finalize_gesture(bool merge = false); // If `merge = true`, this gesture's diff is rolled into the previous diff.
     void apply_diff(int index, Direction direction = Forward);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
-    void on_set_value(const string &path);
+    void on_set_value(const JsonPath &path);
 
     void open_project(const fs::path &);
     bool save_project(const fs::path &);

@@ -21,7 +21,7 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
 /**
  An `Action` is an immutable representation of a user interaction event.
- Each action stores all information needed for `update` to apply it to a given `State` instance.
+ Each action stores all information needed for `update` to apply it to the global `State` instance.
 
  Conventions:
  * Static members

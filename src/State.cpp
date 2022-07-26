@@ -670,15 +670,15 @@ void FlowGridStyle::draw() const {
 
 void Style::draw() const {
     if (BeginTabBar("##style")) {
-        if (BeginTabItem("FlowGrid")) {
+        if (BeginTabItem(flowgrid.name.c_str())) {
             flowgrid.draw();
             EndTabItem();
         }
-        if (BeginTabItem("ImGui")) {
+        if (BeginTabItem(imgui.name.c_str())) {
             imgui.draw();
             EndTabItem();
         }
-        if (BeginTabItem("ImPlot")) {
+        if (BeginTabItem(implot.name.c_str())) {
             implot.draw();
             EndTabItem();
         }
@@ -702,7 +702,7 @@ void Demo::draw() const {
             EndTabItem();
         }
         if (BeginTabItem("ImPlot")) {
-            ShowDemo();
+            ImPlot::ShowDemo();
             EndTabItem();
         }
         if (BeginTabItem("ImGuiFileDialog")) {
@@ -819,15 +819,15 @@ void Metrics::FlowGridMetrics::draw() const {
 
 void Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
-        if (BeginTabItem("ImGui")) {
+        if (BeginTabItem(imgui.name.c_str())) {
             imgui.draw();
             EndTabItem();
         }
-        if (BeginTabItem("ImPlot")) {
+        if (BeginTabItem(implot.name.c_str())) {
             implot.draw();
             EndTabItem();
         }
-        if (BeginTabItem("FlowGrid")) {
+        if (BeginTabItem(flowgrid.name.c_str())) {
             flowgrid.draw();
             EndTabItem();
         }

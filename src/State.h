@@ -262,9 +262,9 @@ struct Style : Window {
         void draw() const override;
     };
 
-    ImGuiStyleMember imgui{path, "imgui"};
-    ImPlotStyleMember implot{path, "implot"};
-    FlowGridStyle flowgrid{path, "flowgrid"};
+    ImGuiStyleMember imgui{path, "imgui", "ImGui"};
+    ImPlotStyleMember implot{path, "implot", "ImPlot"};
+    FlowGridStyle flowgrid{path, "flowgrid", "FlowGrid"};
 };
 
 struct Processes : StateMember {

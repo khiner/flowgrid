@@ -179,14 +179,14 @@ void State::update(const Action &action) {
     }, action);
 }
 
-ImGuiSettings::ImGuiSettings(ImGuiContext *c) {
+ImGuiSettings::ImGuiSettings(ImGuiContext *ctx) {
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
-    nodes = c->DockContext.NodesSettings; // already an ImVector
+    nodes = ctx->DockContext.NodesSettings; // already an ImVector
     // Convert `ImChunkStream`s to `ImVector`s.
-    for (auto *ws = c->SettingsWindows.begin(); ws != nullptr; ws = c->SettingsWindows.next_chunk(ws)) {
+    for (auto *ws = ctx->SettingsWindows.begin(); ws != nullptr; ws = ctx->SettingsWindows.next_chunk(ws)) {
         windows.push_back(*ws);
     }
-    for (auto *ts = c->SettingsTables.begin(); ts != nullptr; ts = c->SettingsTables.next_chunk(ts)) {
+    for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
         tables.push_back(*ts);
     }
 }
@@ -224,10 +224,9 @@ void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
     ctx->SettingsDirty = false;
 }
 
-void Audio::Settings::draw() const {
-    Checkbox(s.processes.audio.path / "running");
-    Checkbox(path / "muted");
-}
+//-----------------------------------------------------------------------------
+// [SECTION] State windows
+//-----------------------------------------------------------------------------
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
@@ -247,10 +246,6 @@ bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
     if (disabled) EndDisabled();
 
     return is_open;
-}
-
-bool is_number(const string &str) {
-    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
 }
 
 static void show_json_state_value_node(const string &key, const json &value, const JsonPath &path) {
@@ -331,42 +326,6 @@ static void show_json_state_value_node(const string &key, const json &value, con
     }
 }
 
-void StateMemoryEditor::draw() const {
-    static MemoryEditor memory_editor;
-    static bool first_render{true};
-    if (first_render) {
-        memory_editor.OptShowDataPreview = true;
-        first_render = false;
-    }
-
-    void *mem_data{&c.state};
-    size_t mem_size{sizeof(c.state)};
-    memory_editor.DrawContents(mem_data, mem_size);
-}
-
-void StatePathUpdateFrequency::draw() const {
-    if (c.state_stats.update_times_for_state_path.empty()) {
-        Text("No state updates yet.");
-        return;
-    }
-
-    auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
-
-    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
-        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
-
-        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
-        if (labels.size() == 1) labels.emplace_back("");
-
-        ImPlot::PushStyleColor(ImPlotCol_Fill, GetStyleColorVec4(ImGuiCol_PlotHistogram));
-        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
-        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
-        ImPlot::PlotBars("Number of updates", values.data(), int(values.size()), 0.75, 0, ImPlotBarsFlags_Horizontal);
-        ImPlot::EndPlot();
-        ImPlot::PopStyleColor();
-    }
-}
-
 static const string label_help = "The raw JSON state doesn't store keys for all items.\n"
                                  "For example, the main `ui.style.colors` state is a list.\n\n"
                                  "'Annotated' mode shows (highlighted) labels for such state items.\n"
@@ -395,168 +354,6 @@ void StateViewer::draw() const {
     }
 
     show_json_state_value_node("State", sj, RootPath);
-}
-
-void Demo::draw() const {
-    if (BeginTabBar("##demos")) {
-        if (BeginTabItem("ImGui")) {
-            ShowDemo();
-            EndTabItem();
-        }
-        if (BeginTabItem("ImPlot")) {
-            ShowDemo();
-            EndTabItem();
-        }
-        if (BeginTabItem("ImGuiFileDialog")) {
-            IGFD::ShowDemo();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
-}
-
-void ShowJsonPatchOpMetrics(const JsonPatchOp &patch_op) {
-    BulletText("Path: %s", patch_op.path.c_str());
-    BulletText("Op: %s", json(patch_op.op).dump().c_str());
-    if (patch_op.value.has_value()) {
-        BulletText("Value: %s", patch_op.value.value().dump().c_str());
-    }
-    if (patch_op.from.has_value()) {
-        BulletText("From: %s", patch_op.from.value().c_str());
-    }
-}
-
-void ShowJsonPatchMetrics(const JsonPatch &patch) {
-    if (patch.size() == 1) {
-        ShowJsonPatchOpMetrics(patch[0]);
-    } else {
-        for (size_t i = 0; i < patch.size(); i++) {
-            if (TreeNodeEx(std::to_string(i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                ShowJsonPatchOpMetrics(patch[i]);
-                TreePop();
-            }
-        }
-    }
-}
-
-void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
-    if (diff.action_names.size() == 1) {
-        BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
-    } else {
-        if (TreeNode("Action names", "%lu actions", diff.action_names.size())) {
-            for (const auto &action_name: diff.action_names) {
-                BulletText("%s", action_name.c_str());
-            }
-            TreePop();
-        }
-    }
-    if (TreeNode("Forward diff")) {
-        ShowJsonPatchMetrics(diff.forward_patch);
-        TreePop();
-    }
-    if (TreeNode("Reverse diff")) {
-        ShowJsonPatchMetrics(diff.reverse_patch);
-        TreePop();
-    }
-
-    BulletText("Time: %s", fmt::format("{}\n", diff.system_time).c_str());
-    TreePop();
-}
-
-void Metrics::ImGuiMetrics::draw() const {
-    ShowMetrics();
-}
-void Metrics::ImPlotMetrics::draw() const {
-    ImPlot::ShowMetrics();
-}
-void Metrics::FlowGridMetrics::draw() const {
-    Text("Gesturing: %s", c.gesturing ? "true" : "false");
-
-    const bool has_diffs = !c.diffs.empty();
-    if (!has_diffs) BeginDisabled();
-    if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.diff_index)) {
-        for (size_t i = 0; i < c.diffs.size(); i++) {
-            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.diff_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                ShowDiffMetrics(c.diffs[i]);
-            }
-        }
-        TreePop();
-    }
-    if (!has_diffs) EndDisabled();
-
-    const bool has_actions = !c.actions.empty();
-    if (!has_actions) BeginDisabled();
-    if (TreeNode("Actions")) {
-        for (size_t i = 0; i < c.actions.size(); i++) {
-            const auto &action = c.actions[i];
-            const auto &label = action::get_name(action);
-            if (TreeNodeEx((label + "_" + std::to_string(i)).c_str(), ImGuiTreeNodeFlags_None, "%s", label.c_str())) {
-                BulletText("Action index: %lu", action.index());
-                // todo make & use generic json tree display
-                json action_json(action);
-                show_json_state_value_node("Value", action_json.at("value"), JsonPath(""));
-                TreePop();
-            }
-        }
-        TreePop();
-    }
-    if (!has_actions) EndDisabled();
-
-    const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
-    if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (SmallButton("Clear")) c.clear_preferences();
-        SameLine();
-        Checkbox(path / "show_relative_paths");
-
-        if (!has_recently_opened_paths) BeginDisabled();
-        if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
-            for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
-                BulletText("%s", (show_relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
-            }
-            TreePop();
-        }
-        if (!has_recently_opened_paths) EndDisabled();
-
-        TreePop();
-    }
-    Text("Action variant size: %lu bytes", sizeof(Action));
-    SameLine();
-    HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
-               "Thus, it's important to keep action data small.");
-}
-
-void Metrics::draw() const {
-    if (BeginTabBar("##metrics")) {
-        if (BeginTabItem("ImGui")) {
-            imgui.draw();
-            EndTabItem();
-        }
-        if (BeginTabItem("ImPlot")) {
-            implot.draw();
-            EndTabItem();
-        }
-        if (BeginTabItem("FlowGrid")) {
-            flowgrid.draw();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
-}
-
-void Tools::draw() const {
-    if (BeginTabBar("##tools")) {
-        if (BeginTabItem("ImGui")) {
-            if (BeginTabBar("##imgui_tools")) {
-                if (BeginTabItem("Debug log")) {
-                    ShowDebugLog();
-                    EndTabItem();
-                }
-                EndTabBar();
-            }
-            EndTabItem();
-        }
-        EndTabBar();
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -599,6 +396,41 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
     }
 }
 
+void StateMemoryEditor::draw() const {
+    static MemoryEditor memory_editor;
+    static bool first_render{true};
+    if (first_render) {
+        memory_editor.OptShowDataPreview = true;
+        first_render = false;
+    }
+
+    void *mem_data{&c.state};
+    size_t mem_size{sizeof(c.state)};
+    memory_editor.DrawContents(mem_data, mem_size);
+}
+
+void StatePathUpdateFrequency::draw() const {
+    if (c.state_stats.update_times_for_state_path.empty()) {
+        Text("No state updates yet.");
+        return;
+    }
+
+    auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
+
+    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
+
+        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
+        if (labels.size() == 1) labels.emplace_back("");
+
+        ImPlot::PushStyleColor(ImPlotCol_Fill, GetStyleColorVec4(ImGuiCol_PlotHistogram));
+        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
+        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
+        ImPlot::PlotBars("Number of updates", values.data(), int(values.size()), 0.75, 0, ImPlotBarsFlags_Horizontal);
+        ImPlot::EndPlot();
+        ImPlot::PopStyleColor();
+    }
+}
 // Returns `true` if style changes.
 void Style::ImGuiStyleMember::draw() const {
     static int style_idx = -1;
@@ -608,7 +440,7 @@ void Style::ImGuiStyleMember::draw() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     // TODO match with imgui
     if (SliderFloat(path / "FrameRounding", 0.0f, 12.0f, "%.0f")) {
-        q(set_value{path / "GrabRounding", s.style.imgui.FrameRounding}); // Make GrabRounding always the same value as FrameRounding
+        q(set_value{path / "GrabRounding", FrameRounding}); // Make GrabRounding always the same value as FrameRounding
     }
     {
         bool border = s.style.imgui.WindowBorderSize > 0.0f;
@@ -868,6 +700,177 @@ void Style::draw() const {
         }
         if (BeginTabItem("ImPlot")) {
             implot.draw();
+            EndTabItem();
+        }
+        EndTabBar();
+    }
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] Other windows
+//-----------------------------------------------------------------------------
+
+void Audio::Settings::draw() const {
+    Checkbox(s.processes.audio.path / "running");
+    Checkbox(path / "muted");
+}
+
+void Demo::draw() const {
+    if (BeginTabBar("##demos")) {
+        if (BeginTabItem("ImGui")) {
+            ShowDemo();
+            EndTabItem();
+        }
+        if (BeginTabItem("ImPlot")) {
+            ShowDemo();
+            EndTabItem();
+        }
+        if (BeginTabItem("ImGuiFileDialog")) {
+            IGFD::ShowDemo();
+            EndTabItem();
+        }
+        EndTabBar();
+    }
+}
+
+void ShowJsonPatchOpMetrics(const JsonPatchOp &patch_op) {
+    BulletText("Path: %s", patch_op.path.c_str());
+    BulletText("Op: %s", json(patch_op.op).dump().c_str());
+    if (patch_op.value.has_value()) {
+        BulletText("Value: %s", patch_op.value.value().dump().c_str());
+    }
+    if (patch_op.from.has_value()) {
+        BulletText("From: %s", patch_op.from.value().c_str());
+    }
+}
+
+void ShowJsonPatchMetrics(const JsonPatch &patch) {
+    if (patch.size() == 1) {
+        ShowJsonPatchOpMetrics(patch[0]);
+    } else {
+        for (size_t i = 0; i < patch.size(); i++) {
+            if (TreeNodeEx(std::to_string(i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                ShowJsonPatchOpMetrics(patch[i]);
+                TreePop();
+            }
+        }
+    }
+}
+
+void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
+    if (diff.action_names.size() == 1) {
+        BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
+    } else {
+        if (TreeNode("Action names", "%lu actions", diff.action_names.size())) {
+            for (const auto &action_name: diff.action_names) {
+                BulletText("%s", action_name.c_str());
+            }
+            TreePop();
+        }
+    }
+    if (TreeNode("Forward diff")) {
+        ShowJsonPatchMetrics(diff.forward_patch);
+        TreePop();
+    }
+    if (TreeNode("Reverse diff")) {
+        ShowJsonPatchMetrics(diff.reverse_patch);
+        TreePop();
+    }
+
+    BulletText("Time: %s", fmt::format("{}\n", diff.system_time).c_str());
+    TreePop();
+}
+
+void Metrics::ImGuiMetrics::draw() const {
+    ShowMetrics();
+}
+void Metrics::ImPlotMetrics::draw() const {
+    ImPlot::ShowMetrics();
+}
+void Metrics::FlowGridMetrics::draw() const {
+    Text("Gesturing: %s", c.gesturing ? "true" : "false");
+
+    const bool has_diffs = !c.diffs.empty();
+    if (!has_diffs) BeginDisabled();
+    if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.diff_index)) {
+        for (size_t i = 0; i < c.diffs.size(); i++) {
+            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.diff_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                ShowDiffMetrics(c.diffs[i]);
+            }
+        }
+        TreePop();
+    }
+    if (!has_diffs) EndDisabled();
+
+    const bool has_actions = !c.actions.empty();
+    if (!has_actions) BeginDisabled();
+    if (TreeNode("Actions")) {
+        for (size_t i = 0; i < c.actions.size(); i++) {
+            const auto &action = c.actions[i];
+            const auto &label = action::get_name(action);
+            if (TreeNodeEx((label + "_" + std::to_string(i)).c_str(), ImGuiTreeNodeFlags_None, "%s", label.c_str())) {
+                BulletText("Action index: %lu", action.index());
+                // todo make & use generic json tree display
+                json action_json(action);
+                show_json_state_value_node("Value", action_json.at("value"), JsonPath(""));
+                TreePop();
+            }
+        }
+        TreePop();
+    }
+    if (!has_actions) EndDisabled();
+
+    const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
+    if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (SmallButton("Clear")) c.clear_preferences();
+        SameLine();
+        Checkbox(path / "show_relative_paths");
+
+        if (!has_recently_opened_paths) BeginDisabled();
+        if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
+            for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
+                BulletText("%s", (show_relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+            }
+            TreePop();
+        }
+        if (!has_recently_opened_paths) EndDisabled();
+
+        TreePop();
+    }
+    Text("Action variant size: %lu bytes", sizeof(Action));
+    SameLine();
+    HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
+               "Thus, it's important to keep action data small.");
+}
+
+void Metrics::draw() const {
+    if (BeginTabBar("##metrics")) {
+        if (BeginTabItem("ImGui")) {
+            imgui.draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("ImPlot")) {
+            implot.draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("FlowGrid")) {
+            flowgrid.draw();
+            EndTabItem();
+        }
+        EndTabBar();
+    }
+}
+
+void Tools::draw() const {
+    if (BeginTabBar("##tools")) {
+        if (BeginTabItem("ImGui")) {
+            if (BeginTabBar("##imgui_tools")) {
+                if (BeginTabItem("Debug log")) {
+                    ShowDebugLog();
+                    EndTabItem();
+                }
+                EndTabBar();
+            }
             EndTabItem();
         }
         EndTabBar();

@@ -19,3 +19,7 @@ inline string path_variable_name(const string &path) {
 }
 
 inline string path_label(const string &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
+
+inline bool is_number(const string &str) {
+    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+}

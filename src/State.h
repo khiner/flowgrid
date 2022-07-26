@@ -300,7 +300,7 @@ struct ImGuiSettings {
     ImVector<ImGuiTableSettings> tables;
 
     ImGuiSettings() = default;
-    explicit ImGuiSettings(ImGuiContext *c);
+    explicit ImGuiSettings(ImGuiContext *ctx);
 
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members

@@ -47,15 +47,11 @@ struct StateMember {
     string id, name;
 };
 
-struct WindowData : StateMember {
+struct Window : StateMember, Drawable {
     using StateMember::StateMember;
-    WindowData(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name), visible(visible) {}
+    Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name), visible(visible) {}
 
     bool visible{true};
-};
-
-struct Window : WindowData, Drawable {
-    using WindowData::WindowData;
 };
 
 struct StateViewer : Window {
@@ -377,7 +373,7 @@ JsonType(ImVec2, x, y)
 JsonType(ImVec4, w, x, y, z)
 JsonType(ImVec2ih, x, y)
 
-JsonType(WindowData, visible)
+JsonType(Window, visible)
 
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)

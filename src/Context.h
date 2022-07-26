@@ -63,16 +63,16 @@ struct State : StateData, Drawable {
     void draw() const override;
     void update(const Action &); // State is only updated via `context.on_action(action)`
 
-    std::vector<std::reference_wrapper<WindowData>> all_windows{
+    std::vector<std::reference_wrapper<Window>> all_windows{
         state_viewer, memory_editor, path_update_frequency,
         style, demo, metrics, tools,
         audio.settings, audio.faust.editor, audio.faust.log
     };
 
-    using WindowNamed = std::map<string, std::reference_wrapper<WindowData>>;
+    using WindowNamed = std::map<string, std::reference_wrapper<Window>>;
 
     WindowNamed window_named = all_windows | views::transform([](const auto &window_ref) {
-        return std::pair<string, std::reference_wrapper<WindowData>>(window_ref.get().name, window_ref);
+        return std::pair<string, std::reference_wrapper<Window>>(window_ref.get().name, window_ref);
     }) | ranges::to<WindowNamed>();
 };
 
@@ -126,7 +126,7 @@ struct Context {
 
     bool clear_preferences();
 
-    json get_project_json(const ProjectFormat format = StateFormat) const;
+    json get_project_json(ProjectFormat format = StateFormat) const;
 
     void enqueue_action(const Action &);
     // If `merge_gesture = true`, the gesture diff will be merged with the previous one when it's finalized.

@@ -282,7 +282,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     // The rest below is structurally identical to `fg::Widgets::JsonTree`.
     // Couldn't find an easy/clean way to inject the above in each recursive call.
     if (value.is_null()) {
-        Text("null");
+        ImGui::Text("%s", label.c_str());
     } else if (value.is_object()) {
         if (JsonTreeNode(label, flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {

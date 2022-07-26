@@ -215,12 +215,9 @@ void draw_frame() {
                 ImGui::EndMenu();
             }
             WindowToggleMenuItem(s.style);
-            if (ImGui::BeginMenu("ImGui/ImPlot")) {
-                WindowToggleMenuItem(s.demo);
-                WindowToggleMenuItem(s.metrics);
-                WindowToggleMenuItem(s.tools);
-                ImGui::EndMenu();
-            }
+            WindowToggleMenuItem(s.demo);
+            WindowToggleMenuItem(s.metrics);
+            WindowToggleMenuItem(s.tools);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();

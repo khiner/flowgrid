@@ -31,4 +31,14 @@ void MenuItem(ActionID);
 
 bool Combo(const JsonPath &path, const char *items_separated_by_zeros, int popup_max_height_in_items = -1);
 
+typedef int JsonTreeNodeFlags;
+enum JsonTreeNodeFlags_ {
+    JsonTreeNodeFlags_None = 0,
+    JsonTreeNodeFlags_Highlighted = 1 << 0,
+    JsonTreeNodeFlags_Disabled = 1 << 1,
+};
+
+bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None);
+void JsonTree(const string &label, const json &value, const JsonPath &path = RootPath);
+
 }

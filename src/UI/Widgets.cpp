@@ -107,3 +107,40 @@ bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int p
     if (edited) q(set_value{path, v});
     return edited;
 }
+
+bool fg::JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
+    bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
+    bool disabled = flags & JsonTreeNodeFlags_Disabled;
+
+    if (disabled) ImGui::BeginDisabled();
+    if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, s.style.flowgrid.Colors[FlowGridCol_HighlightText]);
+    bool is_open = ImGui::TreeNode(label);
+    if (highlighted) ImGui::PopStyleColor();
+    if (disabled) ImGui::EndDisabled();
+
+    return is_open;
+}
+
+void fg::JsonTree(const string &label, const json &value, const JsonPath &path) {
+    if (value.is_null()) {
+        ImGui::Text("null");
+    } else if (value.is_object()) {
+        if (JsonTreeNode(label.c_str())) {
+            for (auto it = value.begin(); it != value.end(); ++it) {
+                JsonTree(it.key(), it.value(), path / it.key());
+            }
+            ImGui::TreePop();
+        }
+    } else if (value.is_array()) {
+        if (JsonTreeNode(label.c_str())) {
+            int i = 0;
+            for (const auto &it: value) {
+                JsonTree(std::to_string(i), it, path / std::to_string(i));
+                i++;
+            }
+            ImGui::TreePop();
+        }
+    } else {
+        ImGui::Text("%s : %s", label.c_str(), value.dump().c_str());
+    }
+}

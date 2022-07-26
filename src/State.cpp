@@ -103,9 +103,7 @@ void State::draw() const {
     file.dialog.draw();
 }
 
-/**
- * Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
- */
+// Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
 void State::update(const Action &action) {
     std::visit(visitor{
         [&](const show_open_project_dialog &) { file.dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
@@ -228,43 +226,24 @@ void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
 // [SECTION] State windows
 //-----------------------------------------------------------------------------
 
-typedef int JsonTreeNodeFlags;
-enum JsonTreeNodeFlags_ {
-    JsonTreeNodeFlags_None = 0,
-    JsonTreeNodeFlags_Highlighted = 1 << 0,
-    JsonTreeNodeFlags_Disabled = 1 << 1,
-};
-
-bool JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
-    bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
-    bool disabled = flags & JsonTreeNodeFlags_Disabled;
-
-    if (disabled) BeginDisabled();
-    if (highlighted) PushStyleColor(ImGuiCol_Text, s.style.flowgrid.Colors[FlowGridCol_HighlightText]);
-    bool is_open = TreeNode(label);
-    if (highlighted) PopStyleColor();
-    if (disabled) EndDisabled();
-
-    return is_open;
-}
-
-static void show_json_state_value_node(const string &key, const json &value, const JsonPath &path) {
+// TODO option to indicate relative update-recency
+static void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) {
     const bool auto_select = s.state_viewer.auto_select;
     const bool annotate_enabled = s.state_viewer.label_mode == StateViewer::LabelMode::annotated;
 
     const string &leaf_name = path == RootPath ? path : path.back();
     const auto &parent_path = path == RootPath ? path : path.parent_pointer();
     const bool is_array_item = is_number(leaf_name);
-    const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_color = string(path).find("Colors") != string::npos && is_array_item;
+    const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_imgui_color = parent_path == s.style.imgui.path / "Colors";
     const bool is_implot_color = parent_path == s.style.implot.path / "Colors";
     const bool is_flowgrid_color = parent_path == s.style.flowgrid.path / "Colors";
-    const auto &name = annotate_enabled ?
-                       (is_imgui_color ?
-                        GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
-                                                         is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
-                                                         is_array_item ? leaf_name : key) : key;
+    const auto &label = annotate_enabled ?
+                        (is_imgui_color ?
+                         GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
+                                                          is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
+                                                          is_array_item ? leaf_name : key) : key;
 
     if (auto_select) {
         const auto &update_paths = c.state_stats.most_recent_update_paths;
@@ -273,15 +252,12 @@ static void show_json_state_value_node(const string &key, const json &value, con
         SetNextItemOpen(was_recently_updated);
     }
 
-    JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None;
-    if (annotate_enabled && is_color) node_flags |= JsonTreeNodeFlags_Highlighted;
-    if (auto_select) node_flags |= JsonTreeNodeFlags_Disabled;
-
     // Tree acts like a histogram, where rect length corresponds to relative update frequency, with `width => most frequently updated`.
     // Background color of nodes flashes on update.
     if (c.state_stats.update_times_for_state_path.contains(path)) {
         const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
 
+        // Draw histogram rect
         const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
         const float item_w = GetWindowWidth();
         const ImVec2 row_max = {row_min.x + item_w, row_min.y + GetFontSize()};
@@ -299,30 +275,34 @@ static void show_json_state_value_node(const string &key, const json &value, con
         auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
         flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
         GetWindowDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
-
-        // TODO indicate relative update-recency
     }
 
+    JsonTreeNodeFlags flags = JsonTreeNodeFlags_None;
+    if (annotate_enabled && is_color) flags |= JsonTreeNodeFlags_Highlighted;
+    if (auto_select) flags |= JsonTreeNodeFlags_Disabled;
+
+    // The rest below is structurally identical to `fg::Widgets::JsonTree`.
+    // Couldn't find an easy/clean way to inject the above in each recursive call.
     if (value.is_null()) {
         Text("null");
     } else if (value.is_object()) {
-        if (JsonTreeNode(name.c_str(), node_flags)) {
+        if (JsonTreeNode(label.c_str(), flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
-                show_json_state_value_node(it.key(), it.value(), path / it.key());
+                StateJsonTree(it.key(), it.value(), path / it.key());
             }
             TreePop();
         }
     } else if (value.is_array()) {
-        if (JsonTreeNode(name.c_str(), node_flags)) {
+        if (JsonTreeNode(label.c_str(), flags)) {
             int i = 0;
             for (const auto &it: value) {
-                show_json_state_value_node(std::to_string(i), it, path / std::to_string(i));
+                StateJsonTree(std::to_string(i), it, path / std::to_string(i));
                 i++;
             }
             TreePop();
         }
     } else {
-        Text("%s : %s", name.c_str(), value.dump().c_str());
+        Text("%s : %s", label.c_str(), value.dump().c_str());
     }
 }
 
@@ -353,7 +333,7 @@ void StateViewer::draw() const {
         EndMenuBar();
     }
 
-    show_json_state_value_node("State", sj, RootPath);
+    StateJsonTree("State", sj);
 }
 
 //-----------------------------------------------------------------------------
@@ -812,7 +792,7 @@ void Metrics::FlowGridMetrics::draw() const {
                 BulletText("Action index: %lu", action.index());
                 // todo make & use generic json tree display
                 json action_json(action);
-                show_json_state_value_node("Value", action_json.at("value"), JsonPath(""));
+                JsonTree("Value", action_json.at("value"));
                 TreePop();
             }
         }

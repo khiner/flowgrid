@@ -35,7 +35,7 @@ struct visitor : Ts ... {
 template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
 
-namespace actions {
+namespace Actions {
 
 struct end_gesture { bool merge; }; // This only exists as a gesture marker to allow saving/loading projects as a list of actions.
 
@@ -115,7 +115,7 @@ JsonType(set_faust_code, text)
 
 }
 
-using namespace actions;
+using namespace Actions;
 
 namespace action {
 

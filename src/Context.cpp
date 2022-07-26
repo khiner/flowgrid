@@ -145,16 +145,16 @@ void Context::run_queued_actions(bool merge_gesture) {
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<actions::undo>: return diff_index >= 0;
-        case action::id<actions::redo>: return diff_index < (int) diffs.size() - 1;
-        case action::id<actions::open_default_project>: return fs::exists(DefaultProjectPath);
-        case action::id<actions::save_project>:
-        case action::id<actions::show_save_project_dialog>:
-        case action::id<actions::save_default_project>: return project_has_changes();
-        case action::id<actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
+        case action::id<Actions::undo>: return diff_index >= 0;
+        case action::id<Actions::redo>: return diff_index < (int) diffs.size() - 1;
+        case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
+        case action::id<Actions::save_project>:
+        case action::id<Actions::show_save_project_dialog>:
+        case action::id<Actions::save_default_project>: return project_has_changes();
+        case action::id<Actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
 
-        case action::id<actions::open_file_dialog>: return !s.file.dialog.visible;
-        case action::id<actions::close_file_dialog>: return s.file.dialog.visible;
+        case action::id<Actions::open_file_dialog>: return !s.file.dialog.visible;
+        case action::id<Actions::close_file_dialog>: return s.file.dialog.visible;
         default: return true;
     }
 }
@@ -271,17 +271,17 @@ void Context::on_action(const Action &action) {
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
-        [&](const actions::end_gesture &a) { finalize_gesture(a.merge); },
-        [&](const actions::undo &) { undo(); },
-        [&](const actions::redo &) { redo(); },
+        [&](const Actions::end_gesture &a) { finalize_gesture(a.merge); },
+        [&](const Actions::undo &) { undo(); },
+        [&](const Actions::redo &) { redo(); },
 
-        [&](const actions::open_project &a) { open_project(a.path); },
+        [&](const Actions::open_project &a) { open_project(a.path); },
         [&](const open_empty_project &) { open_project(EmptyProjectPath); },
         [&](const open_default_project &) { open_project(DefaultProjectPath); },
 
-        [&](const actions::save_project &a) { save_project(a.path); },
+        [&](const Actions::save_project &a) { save_project(a.path); },
         [&](const save_default_project &) { save_project(DefaultProjectPath); },
-        [&](const actions::save_current_project &) { save_project(current_project_path.value()); },
+        [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
 
         // Remaining actions have a direct effect on the application state.
         [&](const auto &) { update(action); }

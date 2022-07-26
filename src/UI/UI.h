@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Context.h"
+#include "UIContext.h"
 
-UiContext create_ui();
+UIContext create_ui();
 void tick_ui();
 void destroy_ui();

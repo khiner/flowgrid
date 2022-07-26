@@ -166,12 +166,12 @@ bool Context::action_allowed(const Action &action) const { return action_allowed
 //  ```
 //  https://github.com/nlohmann/json/discussions/3396#discussioncomment-2513010
 
-void Context::update_ui_context(UiContextFlags flags) {
-    if (flags == UiContextFlags_None) return;
+void Context::update_ui_context(UIContextFlags flags) {
+    if (flags == UIContextFlags_None) return;
 
-    if (flags & UiContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (flags & UiContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
-    if (flags & UiContextFlags_ImPlotStyle) {
+    if (flags & UIContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
+    if (flags & UIContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
+    if (flags & UIContextFlags_ImPlotStyle) {
         ImPlot::BustItemCache();
         ui->implot_context->Style = s.style.implot;
     }
@@ -305,8 +305,8 @@ void Context::update(const Action &action) {
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
         // since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        [&](const set_imgui_color_style &) { update_ui_context(UiContextFlags_ImGuiStyle); },
-        [&](const set_implot_color_style &) { update_ui_context(UiContextFlags_ImPlotStyle); },
+        [&](const set_imgui_color_style &) { update_ui_context(UIContextFlags_ImGuiStyle); },
+        [&](const set_implot_color_style &) { update_ui_context(UIContextFlags_ImPlotStyle); },
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
         [&](const set_value &a) { on_set_value(JsonPath(a.state_path)); },
@@ -362,9 +362,9 @@ void Context::apply_diff(const int index, const Direction direction) {
 
 void Context::on_set_value(const JsonPath &path) {
     const auto &path_str = path.to_string();
-    if (path_str.rfind("/imgui_settings", 0) == 0) update_ui_context(UiContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path_str.rfind(s.style.imgui.path, 0) == 0) update_ui_context(UiContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
-    else if (path_str.rfind(s.style.implot.path, 0) == 0) update_ui_context(UiContextFlags_ImPlotStyle);
+    if (path_str.rfind("/imgui_settings", 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path_str.rfind(s.style.imgui.path, 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
+    else if (path_str.rfind(s.style.implot.path, 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
     else if (path == s.audio.faust.path / "code") update_faust_context();
 }
 
@@ -391,7 +391,7 @@ void Context::open_project(const fs::path &path) {
         state_json = previous_state_json = project;
         state = state_json.get<State>();
 
-        update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+        update_ui_context(UIContextFlags_ImGuiSettings | UIContextFlags_ImGuiStyle | UIContextFlags_ImPlotStyle);
         update_faust_context();
     } else if (format == DiffFormat) {
         open_project(EmptyProjectPath); // todo wasteful - need a `set_project_file` method or somesuch to avoid redoing other `open_project` side-effects.

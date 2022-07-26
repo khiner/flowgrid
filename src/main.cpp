@@ -1,5 +1,5 @@
-#include "Context.h"
 #include "UI/UI.h"
+#include "Context.h"
 
 // Initialize global variables, and convenient shorthand variables.
 Context context{};

@@ -76,19 +76,12 @@ struct State : StateData, Drawable {
     }) | ranges::to<WindowNamed>();
 };
 
-struct UiContext {
-    UiContext(ImGuiContext *imgui_context, ImPlotContext *implot_context) : imgui_context(imgui_context), implot_context(implot_context) {}
-
-    ImGuiContext *imgui_context;
-    ImPlotContext *implot_context;
-};
-
-using UiContextFlags = int;
-enum UiContextFlags_ {
-    UiContextFlags_None = 0,
-    UiContextFlags_ImGuiSettings = 1 << 0,
-    UiContextFlags_ImGuiStyle = 1 << 1,
-    UiContextFlags_ImPlotStyle = 1 << 2,
+using UIContextFlags = int;
+enum UIContextFlags_ {
+    UIContextFlags_None = 0,
+    UIContextFlags_ImGuiSettings = 1 << 0,
+    UIContextFlags_ImGuiStyle = 1 << 1,
+    UIContextFlags_ImPlotStyle = 1 << 2,
 };
 
 enum Direction { Forward, Reverse };
@@ -144,7 +137,7 @@ struct Context {
     void compute_frames(int frame_count) const;
     float get_sample(int channel, int frame) const;
 
-    void update_ui_context(UiContextFlags flags);
+    void update_ui_context(UIContextFlags flags);
     void update_faust_context();
     void update_processes();
 
@@ -174,7 +167,7 @@ struct Context {
  */
     State state{};
 //    diff_match_patch<string> dmp;
-    UiContext *ui{};
+    UIContext *ui{};
     StateStats state_stats;
 
     /**

@@ -6,6 +6,7 @@
 #include "zep/stringutils.h"
 
 #include "UI.h"
+#include "../Context.h"
 #include "FaustEditor.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 
@@ -93,7 +94,7 @@ void destroy_render_context(const RenderContext &rc) {
     SDL_Quit();
 }
 
-UiContext create_ui_context(const RenderContext &render_context) {
+UIContext create_ui_context(const RenderContext &render_context) {
     SDL_GL_MakeCurrent(render_context.window, render_context.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
@@ -186,7 +187,7 @@ bool is_shortcut_pressed(const KeyShortcut &key_shortcut) {
 
 RenderContext render_context;
 
-UiContext create_ui() {
+UIContext create_ui() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
 
     render_context = create_render_context();

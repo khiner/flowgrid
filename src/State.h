@@ -3,11 +3,8 @@
 #include <set>
 #include <filesystem>
 
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "implot.h"
-#include "implot_internal.h"
 #include "ImGuiFileDialog.h"
+#include "UI/UIContext.h"
 
 #include "JsonType.h"
 #include "Helper/String.h"

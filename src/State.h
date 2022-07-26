@@ -79,6 +79,11 @@ struct Metrics : Window {
     using Window::Window;
     void draw() const override;
 
+    struct FlowGridMetrics : StateMember, Drawable {
+        using StateMember::StateMember;
+        void draw() const override;
+        bool show_relative_paths = true;
+    };
     struct ImGuiMetrics : StateMember, Drawable {
         using StateMember::StateMember;
         void draw() const override;
@@ -87,15 +92,10 @@ struct Metrics : Window {
         using StateMember::StateMember;
         void draw() const override;
     };
-    struct FlowGridMetrics : StateMember, Drawable {
-        using StateMember::StateMember;
-        void draw() const override;
-        bool show_relative_paths = true;
-    };
 
+    FlowGridMetrics flowgrid{path, "flowgrid", "FlowGrid"};
     ImGuiMetrics imgui{path, "imgui", "ImGui"};
     ImPlotMetrics implot{path, "implot", "ImPlot"};
-    FlowGridMetrics flowgrid{path, "flowgrid", "FlowGrid"};
 };
 
 struct Tools : Window {

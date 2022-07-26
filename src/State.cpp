@@ -759,12 +759,6 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
     TreePop();
 }
 
-void Metrics::ImGuiMetrics::draw() const {
-    ShowMetrics();
-}
-void Metrics::ImPlotMetrics::draw() const {
-    ImPlot::ShowMetrics();
-}
 void Metrics::FlowGridMetrics::draw() const {
     Text("Gesturing: %s", c.gesturing ? "true" : "false");
 
@@ -814,19 +808,21 @@ void Metrics::FlowGridMetrics::draw() const {
     HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
                "Thus, it's important to keep action data small.");
 }
+void Metrics::ImGuiMetrics::draw() const { ShowMetrics(); }
+void Metrics::ImPlotMetrics::draw() const { ImPlot::ShowMetrics(); }
 
 void Metrics::draw() const {
     if (BeginTabBar("##metrics")) {
+        if (BeginTabItem(flowgrid.name.c_str())) {
+            flowgrid.draw();
+            EndTabItem();
+        }
         if (BeginTabItem(imgui.name.c_str())) {
             imgui.draw();
             EndTabItem();
         }
         if (BeginTabItem(implot.name.c_str())) {
             implot.draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(flowgrid.name.c_str())) {
-            flowgrid.draw();
             EndTabItem();
         }
         EndTabBar();

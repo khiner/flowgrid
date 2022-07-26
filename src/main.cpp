@@ -34,7 +34,7 @@ int main(int, const char **) {
         c.run_queued_actions();
     }
 
-    c.clear_undo(); // Make sure we don't start with any undo state.
+    c.init(); // Make sure we don't start with any undo state.
 
     // Keep the canonical "empty" project up-to-date.
     // This project is loaded before applying diffs when loading any .fgd (FlowGridDiff) project.

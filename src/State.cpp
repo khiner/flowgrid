@@ -363,7 +363,7 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
     if (diff.action_names.size() == 1) {
         BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
     } else {
-        if (TreeNode("Actions", "%lu actions", diff.action_names.size())) {
+        if (TreeNode("Action names", "%lu actions", diff.action_names.size())) {
             for (const auto &action_name: diff.action_names) {
                 BulletText("%s", action_name.c_str());
             }
@@ -403,6 +403,24 @@ void Metrics::FlowGridMetrics::draw() const {
         TreePop();
     }
     if (!has_diffs) EndDisabled();
+
+    const bool has_actions = !c.actions.empty();
+    if (!has_actions) BeginDisabled();
+    if (TreeNode("Actions")) {
+        for (size_t i = 0; i < c.actions.size(); i++) {
+            const auto &action = c.actions[i];
+            const auto &label = action::get_name(action);
+            if (TreeNodeEx((label + "_" + std::to_string(i)).c_str(), ImGuiTreeNodeFlags_None, "%s", label.c_str())) {
+                BulletText("Action index: %lu", action.index());
+                // todo make & use generic json tree display
+                json action_json(action);
+                show_json_state_value_node("Value", action_json.at("value"), JsonPath(""));
+                TreePop();
+            }
+        }
+        TreePop();
+    }
+    if (!has_actions) EndDisabled();
 
     const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
     if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {

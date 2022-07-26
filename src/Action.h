@@ -35,6 +35,8 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
 namespace actions {
 
+struct end_gesture { bool merge; }; // This only exists as a gesture marker to allow saving/loading projects as a list of actions.
+
 struct undo {};
 struct redo {};
 
@@ -95,6 +97,7 @@ EmptyJsonType(toggle_state_viewer_auto_select)
 EmptyJsonType(show_open_faust_file_dialog)
 EmptyJsonType(show_save_faust_file_dialog)
 
+JsonType(end_gesture, merge)
 JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
@@ -121,6 +124,7 @@ namespace action {
 using ID = size_t;
 
 using Action = std::variant<
+    end_gesture,
     undo, redo,
     open_project, open_empty_project, open_default_project, show_open_project_dialog,
     save_project, save_default_project, save_current_project, show_save_project_dialog,
@@ -169,6 +173,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 #define ActionName(action_var_name) snake_case_to_sentence_case(#action_var_name)
 
 static const std::map<ID, string> name_for_id{
+    {id<end_gesture>,                     ActionName(end_gesture)},
     {id<undo>,                            ActionName(undo)},
     {id<redo>,                            ActionName(redo)},
 

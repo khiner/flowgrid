@@ -176,7 +176,7 @@ struct File : StateMember {
         // Always open as a modal to avoid user activity outside the dialog.
         DialogData(string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "",
                    const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_None)
-            : save_mode(save_mode), max_num_selections(max_num_selections), flags(flags | ImGuiFileDialogFlags_Modal),
+            : visible{false}, save_mode(save_mode), max_num_selections(max_num_selections), flags(flags | ImGuiFileDialogFlags_Modal),
               title(std::move(title)), filters(std::move(filters)), file_path(std::move(file_path)), default_file_name(std::move(default_file_name)) {};
 
         bool visible;
@@ -190,11 +190,8 @@ struct File : StateMember {
     };
 
     // TODO window?
-    struct Dialog : StateMember, DialogData {
-        Dialog(const JsonPath &path, const string &id,
-               string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "", const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
-            : StateMember(path, id, title),
-              DialogData(std::move(title), std::move(filters), std::move(file_path), std::move(default_file_name), save_mode, max_num_selections, flags) {};
+    struct Dialog : DialogData, StateMember {
+        Dialog(const JsonPath &path, const string &id) : DialogData(), StateMember(path, id, title) {}
 
         Dialog &operator=(const DialogData &other) {
             DialogData::operator=(other);
@@ -385,6 +382,7 @@ JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio::Settings, visible, muted, backend, latency, sample_rate, out_raw)
 JsonType(Audio, settings, faust)
+JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
 JsonType(StateViewer, visible, label_mode, auto_select)

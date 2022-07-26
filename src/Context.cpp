@@ -3,7 +3,6 @@
 #include "faust/dsp/llvm-dsp.h"
 #include "UI/StatefulFaustUI.h"
 #include "Audio.h"
-//#include "generator/libfaust.h" // For the C++ backend
 
 // Used to initialize the static Faust buffer.
 // This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz.
@@ -112,14 +111,6 @@ bool Context::is_user_project_path(const fs::path &path) {
     return !fs::equivalent(fs::relative(path), EmptyProjectPath) && !fs::equivalent(fs::relative(path), DefaultProjectPath);
 }
 
-json Context::get_project_json(const ProjectFormat format) const {
-    if (format == StateFormat) return sj;
-    return {
-        {"diffs",      diffs},
-        {"diff_index", diff_index},
-    };
-}
-
 bool Context::project_has_changes() const { return diff_index != current_project_saved_action_index; }
 
 bool Context::save_empty_project() { return save_project(EmptyProjectPath); }
@@ -129,23 +120,15 @@ bool Context::clear_preferences() {
     return write_preferences_file();
 }
 
-void Context::set_state_json(const json &new_state_json) {
-    clear_undo();
-
-    state_json = previous_state_json = new_state_json;
-    state = state_json.get<State>();
-
-    update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
-    update_faust_context();
-}
-
-void Context::set_diffs_json(const json &diffs_json) {
-    open_project(EmptyProjectPath);
-    clear_undo();
-
-    diffs = diffs_json["diffs"];
-    int new_diff_index = diffs_json["diff_index"];
-    while (diff_index < new_diff_index) redo();
+json Context::get_project_json(const ProjectFormat format) const {
+    switch (format) {
+        case None: return nullptr;
+        case StateFormat: return sj;
+        case DiffFormat:
+            return {{"diffs",      diffs},
+                    {"diff_index", diff_index}};
+        case ActionFormat: return actions;
+    }
 }
 
 void Context::enqueue_action(const Action &a) {
@@ -221,9 +204,10 @@ void Context::update_processes() {
 void Context::undo() { apply_diff(diff_index--, Direction::Reverse); }
 void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
 
-void Context::clear_undo() {
+void Context::init() {
     diff_index = -1;
     diffs.clear();
+    actions.clear();
     gesture_action_names.clear();
     gesturing = false;
     state_stats = {};
@@ -283,8 +267,11 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
 
+    actions.emplace_back(action);
+
     std::visit(visitor{
         // Handle actions that don't directly update state.
+        [&](const actions::end_gesture &a) { finalize_gesture(a.merge); },
         [&](const actions::undo &) { undo(); },
         [&](const actions::redo &) { redo(); },
 
@@ -329,6 +316,8 @@ void Context::update(const Action &action) {
 }
 
 void Context::finalize_gesture(bool merge) {
+    actions.emplace_back(end_gesture{merge}); // Place a marker in the `actions` history
+
     const auto gesture_names_copy = gesture_action_names;
     gesture_action_names.clear();
 
@@ -386,13 +375,36 @@ void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction directi
     update_processes();
 }
 
+ProjectFormat get_project_format(const fs::path &path) {
+    const string &ext = path.extension();
+    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
+}
+
 void Context::open_project(const fs::path &path) {
-    const auto project_format = ProjectFormatForExtension.at(path.extension());
-    if (project_format == None) return; // TODO log
+    const auto format = ProjectFormatForExtension.at(path.extension());
+    if (format == None) return; // TODO log
+
+    init();
 
     const auto &project = json::from_msgpack(File::read(path));
-    if (project_format == StateFormat) set_state_json(project);
-    else set_diffs_json(project);
+    if (format == StateFormat) {
+        state_json = previous_state_json = project;
+        state = state_json.get<State>();
+
+        update_ui_context(UiContextFlags_ImGuiSettings | UiContextFlags_ImGuiStyle | UiContextFlags_ImPlotStyle);
+        update_faust_context();
+    } else if (format == DiffFormat) {
+        open_project(EmptyProjectPath); // todo wasteful - need a `set_project_file` method or somesuch to avoid redoing other `open_project` side-effects.
+
+        diffs = project["diffs"];
+        int new_diff_index = project["diff_index"];
+        while (diff_index < new_diff_index) redo();
+    } else if (format == ActionFormat) {
+        open_project(EmptyProjectPath);
+
+        const std::vector<Action> new_actions = project;
+        for (const auto &action: new_actions) on_action(action);
+    }
 
     if (is_user_project_path(path)) {
         set_current_project_path(path);
@@ -400,11 +412,6 @@ void Context::open_project(const fs::path &path) {
         current_project_path.reset();
         current_project_saved_action_index = -1;
     }
-}
-
-ProjectFormat get_project_format(const fs::path &path) {
-    const string &ext = path.extension();
-    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
 }
 
 bool Context::save_project(const fs::path &path) {

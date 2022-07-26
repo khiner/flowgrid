@@ -24,18 +24,22 @@ enum ProjectFormat {
     None,
     StateFormat,
     DiffFormat,
+    ActionFormat,
 };
 
 const std::map<ProjectFormat, string> ExtensionForProjectFormat{
-    {StateFormat, ".fls"},
-    {DiffFormat,  ".fld"},
+    {StateFormat,  ".fls"},
+    {DiffFormat,   ".fld"},
+    {ActionFormat, ".fla"},
 };
+// todo derive from above map
 const std::map<string, ProjectFormat> ProjectFormatForExtension{
-    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
-    {ExtensionForProjectFormat.at(DiffFormat),  DiffFormat},
+    {ExtensionForProjectFormat.at(StateFormat),  StateFormat},
+    {ExtensionForProjectFormat.at(DiffFormat),   DiffFormat},
+    {ExtensionForProjectFormat.at(ActionFormat), ActionFormat},
 };
 
-static const std::set<string> AllProjectExtensions = {".fls", ".fld"};
+static const std::set<string> AllProjectExtensions = {".fls", ".fld", ".fla"}; // todo derive from map
 static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>();
 static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";
@@ -117,18 +121,12 @@ struct Context {
 
     bool save_empty_project();
 
-    json get_project_json(ProjectFormat format = StateFormat) const;
     static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;
 
     bool clear_preferences();
 
-    // Takes care of all side effects needed to put the app into the provided application state json.
-    // This function can be run at any time, but it's not thread-safe.
-    // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
-    // This is especially the case when assigning to `state_json`, which is not an atomic operation like assigning to `_state` is.
-    void set_state_json(const json &);
-    void set_diffs_json(const json &);
+    json get_project_json(const ProjectFormat format = StateFormat) const;
 
     void enqueue_action(const Action &);
     // If `merge_gesture = true`, the gesture diff will be merged with the previous one when it's finalized.
@@ -140,7 +138,7 @@ struct Context {
 
     void undo();
     void redo();
-    void clear_undo();
+    void init();
 
     // Audio
     void compute_frames(int frame_count) const;
@@ -191,6 +189,10 @@ struct Context {
     std::vector<BidirectionalStateDiff> diffs;
     int diff_index = -1;
 
+    // This is only tracked for debugging purposes, and to support saving the project in an `Actions` format (.fga extension).
+    // todo Consider flushing to an append-only log on disk, rather than keeping the full action history in memory.
+    std::vector<Action> actions;
+
     std::optional<fs::path> current_project_path;
     int current_project_saved_action_index = -1;
 
@@ -211,6 +213,10 @@ private:
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
     void on_set_value(const JsonPath &path);
 
+    // Takes care of all side effects needed to put the app into the provided application state json.
+    // This function can be run at any time, but it's not thread-safe.
+    // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
+    // This is especially the case when assigning to `state_json`, which is not an atomic operation like assigning to `_state` is.
     void open_project(const fs::path &);
     bool save_project(const fs::path &);
     void set_current_project_path(const fs::path &path);

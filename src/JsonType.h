@@ -54,6 +54,7 @@ void extended_from_json(const char *key, const json &j, T &value) {
 // Serialize variants.
 // Based on https://github.com/nlohmann/json/issues/1261#issuecomment-426209912
 // todo should be able to simplify the switch part.
+namespace detail {
 template<std::size_t N>
 struct variant_switch {
     template<typename Variant>
@@ -71,6 +72,7 @@ struct variant_switch<0> {
         else throw std::runtime_error("while converting json to variant: invalid index");
     }
 };
+}
 
 namespace nlohmann {
 template<typename ...Args>
@@ -84,7 +86,7 @@ struct adl_serializer<std::variant<Args...>> {
 
     static void from_json(const json &j, std::variant<Args...> &v) {
         const auto index = j.at("index").get<int>();
-        variant_switch<sizeof...(Args) - 1>{}(index, j.at("value"), v);
+        ::detail::variant_switch<sizeof...(Args) - 1>{}(index, j.at("value"), v);
     }
 };
 }

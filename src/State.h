@@ -49,6 +49,7 @@ struct StateMember {
 
 struct WindowData : StateMember {
     using StateMember::StateMember;
+    WindowData(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name), visible(visible) {}
 
     bool visible{true};
 };
@@ -328,7 +329,7 @@ struct StateData {
     Metrics metrics{RootPath, "metrics"};
     Tools tools{RootPath, "tools"};
     StateViewer state_viewer{RootPath, "state_viewer"};
-    StateMemoryEditor memory_editor{RootPath, "state_memory_editor"};
+    StateMemoryEditor memory_editor{RootPath, "state_memory_editor", "", false};
     StatePathUpdateFrequency path_update_frequency{RootPath, "path_update_frequency", "State path update frequency"};
 };
 

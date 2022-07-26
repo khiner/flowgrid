@@ -115,7 +115,7 @@ void State::update(const Action &action) {
         },
         [&](const close_file_dialog &) { file.dialog.visible = false; },
 
-        [&](const set_imgui_settings &a) { imgui_settings = a.settings; },
+        [&](const change_imgui_settings &a) { imgui_settings = json(imgui_settings).patch(a.settings_diff); },
         [&](const set_imgui_color_style &a) {
             auto *dst = &style.imgui;
             switch (a.id) {

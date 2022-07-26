@@ -6,7 +6,23 @@
 #include "State.h"
 #include "Helper/String.h"
 
-/*!
+/**
+ An `Action` is an immutable representation of a user interaction event.
+ Each action stores all information needed for `update` to apply it to the global `State` instance.
+
+ Conventions:
+ * Static members
+   - _Not relevant as there aren't any static members atm, but note to future-self._
+   - Any static members should be prefixed with an underscore to avoid name collisions with data members.
+   - All such static members are declared _after_ data members, to allow for default construction using only non-static members.
+   - Note that adding static members does not increase the size of the parent `Action` variant.
+     (You can verify this by looking at the 'Action variant size' in the FlowGrid metrics window.)
+ * Large action structs
+   - Use JSON types for actions that hold very large structured data.
+     An `Action` is a `std::variant`, which can hold any type, and thus must be large enough to hold its largest type.
+*/
+
+/**
  * From [lager](https://github.com/arximboldi/lager/blob/c9d8b7d3c7dc7138913757d1624ab705866d791d/lager/util.hpp#L27-L49)
  * Utility to make a variant visitor out of lambdas, using the *overloaded pattern* as described
  * [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
@@ -18,20 +34,6 @@ struct visitor : Ts ... {
 
 template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
-
-/**
- An `Action` is an immutable representation of a user interaction event.
- Each action stores all information needed for `update` to apply it to the global `State` instance.
-
- Conventions:
- * Static members
-   - _Not relevant as there aren't any static members atm, but note to future-self._
-   - Any static members should be prefixed with an underscore to avoid name collisions with data members.
-   - All such static members are declared _after_ data members, to allow for default construction using only non-static members.
-
- Note that adding static members does not increase the size of the parent `Action` variant.
- (You can verify this by looking at the 'Action variant size' in the FlowGrid metrics window.)
-*/
 
 namespace actions {
 
@@ -45,7 +47,7 @@ struct open_empty_project {};
 struct open_default_project {};
 struct show_open_project_dialog {};
 
-struct open_file_dialog { File::DialogData dialog; };
+struct open_file_dialog { File::DialogData dialog; }; // todo store as json and check effect on action size
 struct close_file_dialog {};
 
 struct save_project { string path; };
@@ -57,11 +59,7 @@ struct close_application {};
 
 struct set_value { string state_path; json value; };
 
-// JSON types are used for actions that hold very large structured data.
-// This is because the `Action` `std::variant` below can hold any action type, and variants must be large enough to hold their largest type.
-// As of 5/24/2022, the largest raw action member type was `ImGuiStyle`, which resulted in an `Action` variant size of 1088 bytes.
-// That's pretty silly for a type that can also hold a single boolean value! Replacing with JSON types brought the size down to 32 bytes.
-struct set_imgui_settings { json settings; }; // ImGuiSettings
+struct change_imgui_settings { json settings_diff; };
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
 struct set_flowgrid_color_style { int id; };
@@ -102,7 +100,7 @@ JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
 JsonType(set_value, state_path, value)
-JsonType(set_imgui_settings, settings)
+JsonType(change_imgui_settings, settings_diff)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)
@@ -133,7 +131,7 @@ using Action = std::variant<
 
     set_value,
 
-    set_imgui_settings, set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
+    change_imgui_settings, set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
 
     close_window, toggle_window,
 
@@ -194,7 +192,7 @@ static const std::map<ID, string> name_for_id{
 
     {id<set_value>,                       ActionName(set_value)},
 
-    {id<set_imgui_settings>,          "Set ImGui settings"},
+    {id<change_imgui_settings>,       "Change ImGui settings"},
     {id<set_imgui_color_style>,       "Set ImGui color style"},
     {id<set_implot_color_style>,      "Set ImPlot color style"},
     {id<set_flowgrid_color_style>,    "Set FlowGrid color style"},

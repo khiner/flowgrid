@@ -9,7 +9,87 @@
 using namespace ImGui;
 using namespace fg;
 
+static bool first_draw = true;
+
 void State::draw() const {
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            MenuItem(action::id<open_empty_project>);
+            MenuItem(action::id<show_open_project_dialog>);
+
+            const auto &recently_opened_paths = c.preferences.recently_opened_paths;
+            if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
+                for (const auto &recently_opened_path: recently_opened_paths) {
+                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) {
+                        q(open_project{recently_opened_path});
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
+            MenuItem(action::id<save_current_project>);
+            MenuItem(action::id<show_save_project_dialog>);
+            MenuItem(action::id<open_default_project>);
+            MenuItem(action::id<save_default_project>);
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Edit")) {
+            MenuItem(action::id<undo>);
+            MenuItem(action::id<redo>);
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Windows")) {
+            if (ImGui::BeginMenu("State")) {
+                WindowToggleMenuItem(state_viewer);
+                WindowToggleMenuItem(memory_editor);
+                WindowToggleMenuItem(path_update_frequency);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Audio")) {
+                WindowToggleMenuItem(audio.settings);
+                if (ImGui::BeginMenu("Faust")) {
+                    WindowToggleMenuItem(audio.faust.editor);
+                    WindowToggleMenuItem(audio.faust.log);
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenu();
+            }
+            WindowToggleMenuItem(style);
+            WindowToggleMenuItem(demo);
+            WindowToggleMenuItem(metrics);
+            WindowToggleMenuItem(tools);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+
+    // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
+    auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+    if (first_draw) {
+        first_draw = false;
+
+        auto faust_editor_id = dockspace_id;
+        auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_id);
+        auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
+        auto state_memory_editor_id = ImGui::DockBuilderSplitNode(state_viewer_id, ImGuiDir_Down, 2.0f / 3.0f, nullptr, &state_viewer_id);
+        auto state_path_update_frequency_id = ImGui::DockBuilderSplitNode(state_memory_editor_id, ImGuiDir_Down, 0.4f, nullptr, &state_memory_editor_id);
+        auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
+        auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
+
+        DockWindow(audio.settings, controls_id);
+        DockWindow(audio.faust.editor, faust_editor_id);
+        DockWindow(audio.faust.log, faust_log_window_id);
+
+        DockWindow(state_viewer, state_viewer_id);
+        DockWindow(memory_editor, state_memory_editor_id);
+        DockWindow(path_update_frequency, state_path_update_frequency_id);
+
+        DockWindow(style, imgui_windows_id);
+        DockWindow(demo, imgui_windows_id);
+        DockWindow(metrics, imgui_windows_id);
+        DockWindow(tools, imgui_windows_id);
+    }
+
     DrawWindow(audio.settings);
     DrawWindow(audio.faust.editor, ImGuiWindowFlags_MenuBar);
     DrawWindow(audio.faust.log);

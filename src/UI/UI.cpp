@@ -1,12 +1,11 @@
+#include <Tracy.hpp>
 #include "SDL.h"
 #include "SDL_opengl.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO vulkan
-#include <Tracy.hpp>
 #include "zep/stringutils.h"
 
 #include "UI.h"
-#include "Widgets.h"
 #include "FaustEditor.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 
@@ -140,92 +139,6 @@ void render_frame(RenderContext &rc) {
     SDL_GL_SwapWindow(rc.window);
 }
 
-static bool first_draw = true;
-
-void draw_frame() {
-    ZoneScoped
-
-    // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
-    auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
-    if (first_draw) {
-        first_draw = false;
-
-        auto faust_editor_id = dockspace_id;
-        auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_id);
-        auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
-        auto state_memory_editor_id = ImGui::DockBuilderSplitNode(state_viewer_id, ImGuiDir_Down, 2.0f / 3.0f, nullptr, &state_viewer_id);
-        auto state_path_update_frequency_id = ImGui::DockBuilderSplitNode(state_memory_editor_id, ImGuiDir_Down, 0.4f, nullptr, &state_memory_editor_id);
-        auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
-        auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
-
-        DockWindow(s.audio.settings, controls_id);
-        DockWindow(s.audio.faust.editor, faust_editor_id);
-        DockWindow(s.audio.faust.log, faust_log_window_id);
-
-        DockWindow(s.state_viewer, state_viewer_id);
-        DockWindow(s.memory_editor, state_memory_editor_id);
-        DockWindow(s.path_update_frequency, state_path_update_frequency_id);
-
-        DockWindow(s.style, imgui_windows_id);
-        DockWindow(s.demo, imgui_windows_id);
-        DockWindow(s.metrics, imgui_windows_id);
-        DockWindow(s.tools, imgui_windows_id);
-    }
-
-    if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-            MenuItem(action::id<open_empty_project>);
-            MenuItem(action::id<show_open_project_dialog>);
-
-            const auto &recently_opened_paths = c.preferences.recently_opened_paths;
-            if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
-                for (const auto &recently_opened_path: recently_opened_paths) {
-                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) {
-                        q(open_project{recently_opened_path});
-                    }
-                }
-                ImGui::EndMenu();
-            }
-
-            MenuItem(action::id<save_current_project>);
-            MenuItem(action::id<show_save_project_dialog>);
-            MenuItem(action::id<open_default_project>);
-            MenuItem(action::id<save_default_project>);
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit")) {
-            MenuItem(action::id<undo>);
-            MenuItem(action::id<redo>);
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Windows")) {
-            if (ImGui::BeginMenu("State")) {
-                WindowToggleMenuItem(s.state_viewer);
-                WindowToggleMenuItem(s.memory_editor);
-                WindowToggleMenuItem(s.path_update_frequency);
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Audio")) {
-                WindowToggleMenuItem(s.audio.settings);
-                if (ImGui::BeginMenu("Faust")) {
-                    WindowToggleMenuItem(s.audio.faust.editor);
-                    WindowToggleMenuItem(s.audio.faust.log);
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMenu();
-            }
-            WindowToggleMenuItem(s.style);
-            WindowToggleMenuItem(s.demo);
-            WindowToggleMenuItem(s.metrics);
-            WindowToggleMenuItem(s.tools);
-            ImGui::EndMenu();
-        }
-        ImGui::EndMainMenuBar();
-    }
-
-    s.draw();
-}
-
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
 
 const std::map<string, ImGuiKeyModFlags> mod_keys{
@@ -309,7 +222,7 @@ void tick_ui() {
     }
 
     prepare_frame();
-    draw_frame();
+    s.draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `draw()` method.
     render_frame(render_context);
 
     auto &io = ImGui::GetIO();

@@ -322,7 +322,7 @@ struct StateData {
     Metrics metrics{RootPath, "metrics"};
     Tools tools{RootPath, "tools"};
     StateViewer state_viewer{RootPath, "state_viewer"};
-    StateMemoryEditor memory_editor{RootPath, "state_memory_editor", "", false};
+    StateMemoryEditor memory_editor{RootPath, "state_memory_editor"};
     StatePathUpdateFrequency path_update_frequency{RootPath, "path_update_frequency", "State path update frequency"};
 };
 

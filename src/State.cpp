@@ -70,9 +70,7 @@ void State::draw() const {
 
         auto faust_editor_id = dockspace_id;
         auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_id);
-        auto state_viewer_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
-        auto state_memory_editor_id = ImGui::DockBuilderSplitNode(state_viewer_id, ImGuiDir_Down, 2.0f / 3.0f, nullptr, &state_viewer_id);
-        auto state_path_update_frequency_id = ImGui::DockBuilderSplitNode(state_memory_editor_id, ImGuiDir_Down, 0.4f, nullptr, &state_memory_editor_id);
+        auto state_windows_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
         auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
         auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
 
@@ -80,9 +78,9 @@ void State::draw() const {
         DockWindow(audio.faust.editor, faust_editor_id);
         DockWindow(audio.faust.log, faust_log_window_id);
 
-        DockWindow(state_viewer, state_viewer_id);
-        DockWindow(memory_editor, state_memory_editor_id);
-        DockWindow(path_update_frequency, state_path_update_frequency_id);
+        DockWindow(state_viewer, state_windows_id);
+        DockWindow(memory_editor, state_windows_id);
+        DockWindow(path_update_frequency, state_windows_id);
 
         DockWindow(style, imgui_windows_id);
         DockWindow(demo, imgui_windows_id);
@@ -93,9 +91,9 @@ void State::draw() const {
     DrawWindow(audio.settings);
     DrawWindow(audio.faust.editor, ImGuiWindowFlags_MenuBar);
     DrawWindow(audio.faust.log);
-    DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
     DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
     DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
+    DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
     DrawWindow(demo, ImGuiWindowFlags_MenuBar);
     DrawWindow(metrics);
     DrawWindow(style);

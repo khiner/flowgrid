@@ -286,14 +286,14 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     if (value.is_null()) {
         Text("null");
     } else if (value.is_object()) {
-        if (JsonTreeNode(label.c_str(), flags)) {
+        if (JsonTreeNode(label, flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 StateJsonTree(it.key(), it.value(), path / it.key());
             }
             TreePop();
         }
     } else if (value.is_array()) {
-        if (JsonTreeNode(label.c_str(), flags)) {
+        if (JsonTreeNode(label, flags)) {
             int i = 0;
             for (const auto &it: value) {
                 StateJsonTree(std::to_string(i), it, path / std::to_string(i));
@@ -788,13 +788,7 @@ void Metrics::FlowGridMetrics::draw() const {
         for (size_t i = 0; i < c.actions.size(); i++) {
             const auto &action = c.actions[i];
             const auto &label = action::get_name(action);
-            if (TreeNodeEx((label + "_" + std::to_string(i)).c_str(), ImGuiTreeNodeFlags_None, "%s", label.c_str())) {
-                BulletText("Action index: %lu", action.index());
-                // todo make & use generic json tree display
-                json action_json(action);
-                JsonTree("Value", action_json.at("value"));
-                TreePop();
-            }
+            JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(i)).c_str());
         }
         TreePop();
     }

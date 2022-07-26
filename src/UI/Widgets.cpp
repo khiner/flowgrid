@@ -108,34 +108,34 @@ bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int p
     return edited;
 }
 
-bool fg::JsonTreeNode(const char *label, JsonTreeNodeFlags flags) {
-    bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
-    bool disabled = flags & JsonTreeNodeFlags_Disabled;
+bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
+    const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
+    const bool disabled = flags & JsonTreeNodeFlags_Disabled;
 
     if (disabled) ImGui::BeginDisabled();
     if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, s.style.flowgrid.Colors[FlowGridCol_HighlightText]);
-    bool is_open = ImGui::TreeNode(label);
+    const bool is_open = (id ? ImGui::TreeNodeEx(id, flags, "%s", label.c_str()) : ImGui::TreeNode(label.c_str()));
     if (highlighted) ImGui::PopStyleColor();
     if (disabled) ImGui::EndDisabled();
 
     return is_open;
 }
 
-void fg::JsonTree(const string &label, const json &value, const JsonPath &path) {
+void fg::JsonTree(const string &label, const json &value, const char *id) {
     if (value.is_null()) {
         ImGui::Text("null");
     } else if (value.is_object()) {
-        if (JsonTreeNode(label.c_str())) {
+        if (JsonTreeNode(label, JsonTreeNodeFlags_None, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
-                JsonTree(it.key(), it.value(), path / it.key());
+                JsonTree(it.key(), it.value());
             }
             ImGui::TreePop();
         }
     } else if (value.is_array()) {
-        if (JsonTreeNode(label.c_str())) {
+        if (JsonTreeNode(label, JsonTreeNodeFlags_None, id)) {
             int i = 0;
             for (const auto &it: value) {
-                JsonTree(std::to_string(i), it, path / std::to_string(i));
+                JsonTree(std::to_string(i), it);
                 i++;
             }
             ImGui::TreePop();

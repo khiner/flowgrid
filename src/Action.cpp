@@ -47,8 +47,8 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     }
 }
 
-GestureActions action::compress_gesture_actions(const GestureActions &actions) {
-    GestureActions compressed_actions;
+Gesture action::compress_gesture_actions(const Gesture &actions) {
+    Gesture compressed_actions;
 
     std::optional<const Action> active_action;
     for (size_t i = 0; i < actions.size(); i++) {

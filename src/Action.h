@@ -144,7 +144,8 @@ using Action = std::variant<
     set_ui_running
 >;
 
-using GestureActions = std::vector<Action>;
+using Gesture = std::vector<Action>;
+using Gestures = std::vector<Gesture>;
 
 // Default-construct an action by its variant index (which is also its `ID`).
 // From https://stackoverflow.com/a/60567091/780425
@@ -255,9 +256,10 @@ static const char *get_menu_label(ID action_id) {
  One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
  For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
 */
-GestureActions compress_gesture_actions(const GestureActions &actions);
+Gesture compress_gesture_actions(const Gesture &actions);
 
 }
 
 using ActionID = action::ID;
-using action::GestureActions;
+using action::Gesture;
+using action::Gestures;

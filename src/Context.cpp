@@ -102,7 +102,7 @@ Context::Context() : state_json(state), previous_state_json(state) {
     if (fs::exists(PreferencesPath)) {
         preferences = json::from_msgpack(File::read(PreferencesPath));
     } else {
-        write_preferences_file();
+        write_preferences();
     }
 }
 
@@ -117,7 +117,7 @@ bool Context::save_empty_project() { return save_project(EmptyProjectPath); }
 
 bool Context::clear_preferences() {
     preferences.recently_opened_paths.clear();
-    return write_preferences_file();
+    return write_preferences();
 }
 
 json Context::get_project_json(const ProjectFormat format) const {
@@ -127,7 +127,7 @@ json Context::get_project_json(const ProjectFormat format) const {
         case DiffFormat:
             return {{"diffs",      diffs},
                     {"diff_index", diff_index}};
-        case ActionFormat: return action_history;
+        case ActionFormat: return gestures;
     }
 }
 
@@ -203,13 +203,15 @@ void Context::update_processes() {
 void Context::undo() { apply_diff(diff_index--, Direction::Reverse); }
 void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
 
-void Context::init() {
+void Context::clear() {
     diff_index = -1;
     diffs.clear();
-    action_history.clear();
+    gestures.clear();
     gesture_action_names.clear();
     gesturing = false;
     state_stats = {};
+    current_project_path.reset();
+    current_project_saved_action_index = -1;
 }
 
 // StateStats
@@ -266,7 +268,7 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
 
-    gesture_actions.emplace_back(action);
+    active_gesture.emplace_back(action);
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
@@ -335,8 +337,8 @@ void Context::finalize_gesture(bool merge) {
         diff.action_names.insert(last_diff.action_names.begin(), last_diff.action_names.end());
         on_json_diff(last_diff, Reverse);
     } else {
-        action_history.emplace_back(action::compress_gesture_actions(gesture_actions));
-        gesture_actions.clear();
+        gestures.emplace_back(action::compress_gesture_actions(active_gesture));
+        active_gesture.clear();
     }
 
     // If we're not already at the end of the undo stack, wind it back.
@@ -380,10 +382,10 @@ ProjectFormat get_project_format(const fs::path &path) {
 }
 
 void Context::open_project(const fs::path &path) {
-    const auto format = ProjectFormatForExtension.at(path.extension());
+    const auto format = get_project_format(path);
     if (format == None) return; // TODO log
 
-    init();
+    clear();
 
     const auto &project = json::from_msgpack(File::read(path));
     if (format == StateFormat) {
@@ -401,19 +403,14 @@ void Context::open_project(const fs::path &path) {
     } else if (format == ActionFormat) {
         open_project(EmptyProjectPath);
 
-        const std::vector<GestureActions> gestures = project;
-        for (const auto &gesture: gestures) {
+        const Gestures project_gestures = project;
+        for (const auto &gesture: project_gestures) {
             for (const auto &action: gesture) on_action(action);
             finalize_gesture();
         }
     }
 
-    if (is_user_project_path(path)) {
-        set_current_project_path(path);
-    } else {
-        current_project_path.reset();
-        current_project_saved_action_index = -1;
-    }
+    if (is_user_project_path(path)) set_current_project_path(path);
 }
 
 bool Context::save_project(const fs::path &path) {
@@ -422,13 +419,11 @@ bool Context::save_project(const fs::path &path) {
         !action_allowed(action::id<save_current_project>))
         return false;
 
-    const ProjectFormat format = get_project_format(path);
+    const auto format = get_project_format(path);
     if (format == None) return false; // TODO log
 
     if (File::write(path, json::to_msgpack(get_project_json(format)))) {
-        if (is_user_project_path(path)) {
-            set_current_project_path(path);
-        }
+        if (is_user_project_path(path)) set_current_project_path(path);
         return true;
     }
     return false;
@@ -439,9 +434,9 @@ void Context::set_current_project_path(const fs::path &path) {
     current_project_saved_action_index = diff_index;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
-    write_preferences_file();
+    write_preferences();
 }
 
-bool Context::write_preferences_file() const {
+bool Context::write_preferences() const {
     return File::write(PreferencesPath, json::to_msgpack(preferences));
 }

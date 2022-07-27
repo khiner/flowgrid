@@ -130,7 +130,7 @@ struct Context {
 
     void undo();
     void redo();
-    void init();
+    void clear();
 
     // Audio
     void compute_frames(int frame_count) const;
@@ -181,10 +181,10 @@ struct Context {
     Diffs diffs;
     int diff_index = -1;
 
-    // This is only tracked for debugging purposes, and to support saving the project in an `Actions` format (.fga extension).
-    // todo Consider flushing to an append-only log on disk, rather than keeping the full action history in memory.
-    GestureActions gesture_actions;
-    std::vector<GestureActions> action_history;
+    Gesture active_gesture; // uncompressed gesture
+    // This gesture history is only tracked for debugging purposes, and to support saving the project in an `Actions` format (.fga extension).
+    // todo Consider flushing to an append-only log on disk, rather than keeping the full gesture history in memory.
+    Gestures gestures; // compressed gesture history
 
     std::optional<fs::path> current_project_path;
     int current_project_saved_action_index = -1;
@@ -198,6 +198,7 @@ struct Context {
     // Read-only public shorthand state references:
     const State &s = state;
     const json &sj = state_json;
+
 private:
     void on_action(const Action &); // Immediately execute the action
     void update(const Action &); // State is only updated via `context.on_action(action)`
@@ -213,7 +214,7 @@ private:
     void open_project(const fs::path &);
     bool save_project(const fs::path &);
     void set_current_project_path(const fs::path &path);
-    bool write_preferences_file() const;
+    bool write_preferences() const;
 
     Threads threads;
     std::queue<const Action> queued_actions;

@@ -8,8 +8,10 @@ _Still actively building this._
 
 I eventually hope to use FlowGrid to create artful/(self-)educational/useful interactive audiovisual programs.
 
-However, I am currently focused on making FlowGrid a development and debugging environment specialized to the needs of developing FlowGrid (yo dawg).
-This is because any feature that increases overall development velocity will have a greater impact on total development time the earlier it is done.
+At this early stage, however, I'm currently focused on making FlowGrid a development and debugging environment specialized to the needs of developing the FlowGrid application itself.
+
+I'm prioritizing features that will make it easier to get things done - meta-features rather than domain-features.
+My rational for this approach is that any feature which increases development velocity will have a greater impact on reducing the total development time the earlier it's done.
 
 ## Current development goals
 
@@ -21,8 +23,8 @@ Here are some of my current development thoughts/goals, roughly broken up into a
 ### Abstract development goals
 
 * Focus on making it fun to use _and create_ this application.
-* Spend more time upfront trying to get simple and flexible foundations right
-* Try to keep (re-)build times low.
+* Spend more time up front getting the foundations right (simple, transparent, flexible, powerful)
+* Keep (re-)build times low.
 * Early on, the main function of the app should be to _facilitate the development of the app_.
   Invest early in things like debugging capabilities, making the application state transparent, providing metrics, measuring performance, etc.
 * Let myself optimize to some extent.
@@ -30,7 +32,7 @@ Here are some of my current development thoughts/goals, roughly broken up into a
 * Prioritize learning over development velocity.
   Dig into, and take ownership over, low-level concerns where appropriate.
   Feed curiosity.
-  Bias towards reinventing wheels over accepting bloated/complex/overly-featured dependencies.
+  Bias towards reinventing wheels over accepting bloated/complex dependencies.
 
 ### Concrete development goals
 
@@ -38,6 +40,7 @@ Here are some of my current development thoughts/goals, roughly broken up into a
 * Perform all actions that affect the application state in one place.
 * Provide global read access to all application runtime state
 * Make _everything_ undo/redo-able.
+* As much as possible, make the UI a pure function of the application state.
 
 The main architecture patterns for this app are inspired by [Lager's](https://github.com/arximboldi/lager) value-oriented design and unidirectional data-flow architecture.
 Lager, in turn, is inspired by frameworks like [Elm](https://guide.elm-lang.org/architecture) and [Redux](https://redux.js.org/introduction/getting-started).
@@ -45,6 +48,7 @@ I don't actually use lager in this project, however, since I find it to be too c
 Given how fundamental state management is, I'd prefer to understand as much as possible about how it's implemented, and I want to avoid any layers of abstraction.
 
 Rather than using proper [persistent data structures](https://github.com/arximboldi/immer), FlowGrid uses regular old C++ data types & `std` data structures, and records state diffs by [computing a JSON diff](https://github.com/nlohmann/json#json-pointer-and-json-patch) after each action.
+This achieves basically the same thing, and trades lower complexity for (generally) more expensive state updates.
 
 ## Build and run
 
@@ -198,26 +202,30 @@ Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https:
   - As a special case, the project file `./flowgrid/empty.fgs` (relative to the project build folder) is used internally to load projects.
     This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
     FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
-    This approach provides a pretty strong guarantee that if state-loading is implemented correctly, loading a new project will always produce the same, valid empty-project state.
+    This approach provides a pretty strong guarantee that loading a new project will always produce the same, valid empty-project state.
 * `.fgd`: _FlowGrid**Diffs**_
   - Instead of saving the full application state, `.fgd` project files store a JSON object with two properties:
-    - `diffs`: A list of _project state diffs_ (deltas, patches), in [JSON Patch](https://jsonpatch.com/) format, corresponding to the application-state effects of every action that has effected the application's state since its launch
-    - `position`: The project's position in the list of diffs. (Or, equivalently, action position or position in the undo-stack).
-      When you save your project as an `.fgd` file, your current undo-position is stored here.
+    *`diffs`: A list of _bidirectional project state diffs_ (each with forward- and reverse-patches), in [JSON Patch](https://jsonpatch.com/) format, corresponding to the application-state effects of every action that has effected the application's state since its launch
+    *`diff_index`: The project's position in the list of diffs. (Or, equivalently, action position or position in the undo-stack)
+    When you save your project as an `.fgd` file, your current undo-position is stored here.
   - FlowGrid loads `.fgd` project files by:
     * Running the `open_empty_project` action (explained above) to clear the current application and load a fresh empty one
-    * Applying each diff (patch) in the `diff` list to the application state
-    * Setting the application's undo position to the non-negative integer stored in `position`
+    * Setting the application context's `diffs` list to the one stored in the file
+    * Executing each (forward-)diff up to the stored `diff_index`
 * `.fga`: _FlowGrid**Actions**_
-  - Finally, FlowGrid can save and load projects as a list of _actions_.
-    This file stores an ordered record of _every action_ that affected the app state up to the time it was saved.
+  - Finally, FlowGrid can save and load projects as a list of _action gestures_.
+    This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.
     More accurately, an `.fga` file is a list _of lists_ of actions.
-    Each top-level list represents a _gesture_, composed of a list of actions.
+    Each top-level list represents a logical _gesture_, composed of a list of actions.
     Each action item contains all the information needed to carry out its effect on the application state.
     Contrast this with `.fgd` project files, which store the _results_ of each action over the application session.
-    Each list of actions in a `.fga` file tells you, in application-domain semantics, "what happened in a single gesture".
-    A diff item in a `.fgd` file tells you "what changed as a result of a single gesture".
-    _Actions within each gesture are compressed to maintain the same effect on application state, while keeping the same application-domain semantics._
+    Each list of actions in a `.fga` file tells you, in application-domain semantics, what _happened_.
+    A diff item in a `.fgd` file tells you what _changed_ as a result.
+  - **Gesture compression:** Actions within each gesture are compressed to a potentially smaller set of actions.
+    This compression is done in a way that retains the same application-state effects, while keeping the same application-domain semantics.
+  - FlowGrid loads `.fga` project files by:
+    * Running the `open_empty_project` action
+    * Executing each action stored in the file, finalizing the gesture after each sub-list.
 
 TODO: Tradeoffs between project types
 

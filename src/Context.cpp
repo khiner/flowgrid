@@ -401,8 +401,8 @@ void Context::open_project(const fs::path &path) {
     } else if (format == ActionFormat) {
         open_project(EmptyProjectPath);
 
-        const std::vector<GestureActions> new_action_history = project;
-        for (const auto &gesture: new_action_history) {
+        const std::vector<GestureActions> gestures = project;
+        for (const auto &gesture: gestures) {
             for (const auto &action: gesture) on_action(action);
             finalize_gesture();
         }

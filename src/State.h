@@ -353,6 +353,7 @@ struct BidirectionalStateDiff {
     JsonPatch reverse_patch;
     TimePoint system_time;
 };
+using Diffs = std::vector<BidirectionalStateDiff>;
 
 NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
     { Add, "add" },

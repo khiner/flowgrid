@@ -127,7 +127,7 @@ json Context::get_project_json(const ProjectFormat format) const {
         case DiffFormat:
             return {{"diffs",      diffs},
                     {"diff_index", diff_index}};
-        case ActionFormat: return actions;
+        case ActionFormat: return action_history;
     }
 }
 
@@ -152,7 +152,6 @@ bool Context::action_allowed(const ActionID action_id) const {
         case action::id<Actions::show_save_project_dialog>:
         case action::id<Actions::save_default_project>: return project_has_changes();
         case action::id<Actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
-
         case action::id<Actions::open_file_dialog>: return !s.file.dialog.visible;
         case action::id<Actions::close_file_dialog>: return s.file.dialog.visible;
         default: return true;
@@ -207,7 +206,7 @@ void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
 void Context::init() {
     diff_index = -1;
     diffs.clear();
-    actions.clear();
+    action_history.clear();
     gesture_action_names.clear();
     gesturing = false;
     state_stats = {};
@@ -267,11 +266,10 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
 
-    actions.emplace_back(action);
+    gesture_actions.emplace_back(action);
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
-        [&](const Actions::end_gesture &a) { finalize_gesture(a.merge); },
         [&](const Actions::undo &) { undo(); },
         [&](const Actions::redo &) { redo(); },
 
@@ -284,7 +282,7 @@ void Context::on_action(const Action &action) {
         [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
 
         // Remaining actions have a direct effect on the application state.
-        [&](const auto &) { update(action); }
+        [&](const auto &) { update(action); },
     }, action);
 }
 
@@ -316,8 +314,6 @@ void Context::update(const Action &action) {
 }
 
 void Context::finalize_gesture(bool merge) {
-    actions.emplace_back(end_gesture{merge}); // Place a marker in the `actions` history
-
     const auto gesture_names_copy = gesture_action_names;
     gesture_action_names.clear();
 
@@ -338,6 +334,9 @@ void Context::finalize_gesture(bool merge) {
         diffs.pop_back();
         diff.action_names.insert(last_diff.action_names.begin(), last_diff.action_names.end());
         on_json_diff(last_diff, Reverse);
+    } else {
+        action_history.emplace_back(action::compress_gesture_actions(gesture_actions));
+        gesture_actions.clear();
     }
 
     // If we're not already at the end of the undo stack, wind it back.
@@ -402,8 +401,11 @@ void Context::open_project(const fs::path &path) {
     } else if (format == ActionFormat) {
         open_project(EmptyProjectPath);
 
-        const std::vector<Action> new_actions = project;
-        for (const auto &action: new_actions) on_action(action);
+        const std::vector<GestureActions> new_action_history = project;
+        for (const auto &gesture: new_action_history) {
+            for (const auto &action: gesture) on_action(action);
+            finalize_gesture();
+        }
     }
 
     if (is_user_project_path(path)) {

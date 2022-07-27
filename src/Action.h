@@ -37,8 +37,6 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
 namespace Actions {
 
-struct end_gesture { bool merge; }; // This only exists as a gesture marker to allow saving/loading projects as a list of actions.
-
 struct undo {};
 struct redo {};
 
@@ -59,6 +57,7 @@ struct close_application {};
 
 struct set_value { string state_path; json value; };
 
+struct set_imgui_settings { json settings; };
 struct change_imgui_settings { json settings_diff; };
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
@@ -95,11 +94,11 @@ EmptyJsonType(toggle_state_viewer_auto_select)
 EmptyJsonType(show_open_faust_file_dialog)
 EmptyJsonType(show_save_faust_file_dialog)
 
-JsonType(end_gesture, merge)
 JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
 JsonType(set_value, state_path, value)
+JsonType(set_imgui_settings, settings)
 JsonType(change_imgui_settings, settings_diff)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
@@ -122,7 +121,6 @@ namespace action {
 using ID = size_t;
 
 using Action = std::variant<
-    end_gesture,
     undo, redo,
     open_project, open_empty_project, open_default_project, show_open_project_dialog,
     save_project, save_default_project, save_current_project, show_save_project_dialog,
@@ -131,7 +129,8 @@ using Action = std::variant<
 
     set_value,
 
-    change_imgui_settings, set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
+    set_imgui_settings, change_imgui_settings,
+    set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
 
     close_window, toggle_window,
 
@@ -144,6 +143,8 @@ using Action = std::variant<
 
     set_ui_running
 >;
+
+using GestureActions = std::vector<Action>;
 
 // Default-construct an action by its variant index (which is also its `ID`).
 // From https://stackoverflow.com/a/60567091/780425
@@ -170,8 +171,9 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 #define ActionName(action_var_name) snake_case_to_sentence_case(#action_var_name)
 
+// todo find a performant way to not compile if not exhaustive.
+//  Could use a visitor on the action...
 static const std::map<ID, string> name_for_id{
-    {id<end_gesture>,                     ActionName(end_gesture)},
     {id<undo>,                            ActionName(undo)},
     {id<redo>,                            ActionName(redo)},
 
@@ -192,6 +194,7 @@ static const std::map<ID, string> name_for_id{
 
     {id<set_value>,                       ActionName(set_value)},
 
+    {id<set_imgui_settings>,          "Set ImGui settings"},
     {id<change_imgui_settings>,       "Change ImGui settings"},
     {id<set_imgui_color_style>,       "Set ImGui color style"},
     {id<set_implot_color_style>,      "Set ImPlot color style"},
@@ -232,7 +235,7 @@ const std::map<ID, string> shortcut_for_id = {
     {id<save_default_project>,     "shift+cmd+s"},
 };
 
-static ID get_id(const Action &action) { return action.index(); }
+static constexpr ID get_id(const Action &action) { return action.index(); }
 static string get_name(const Action &action) { return name_for_id.at(get_id(action)); }
 
 static const char *get_menu_label(ID action_id) {
@@ -240,6 +243,21 @@ static const char *get_menu_label(ID action_id) {
     return name_for_id.at(action_id).c_str();
 }
 
+/**
+ Provided actions are assumed to be chronologically consecutive.
+
+ Cases:
+ * `b` can be merged into `a`: return the merged action
+ * `b` cancels out `a` (e.g. two consecutive boolean toggles on the same value): return `true`
+ * `b` cannot be merged into `a`: return `false`
+
+ Only handling cases where merges can be determined from two consecutive actions.
+ One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
+ For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
+*/
+GestureActions compress_gesture_actions(const GestureActions &actions);
+
 }
 
 using ActionID = action::ID;
+using action::GestureActions;

@@ -228,8 +228,9 @@ void tick_ui() {
 
     auto &io = ImGui::GetIO();
     if (io.WantSaveIniSettings) {
-        json new_settings(ImGuiSettings(c.ui->imgui_context));
-        q(change_imgui_settings{json::diff(s.imgui_settings, new_settings)});
+//        json new_settings(ImGuiSettings(c.ui->imgui_context));
+//        q(change_imgui_settings{json::diff(s.imgui_settings, new_settings)});
+        q(set_imgui_settings{ImGuiSettings(c.ui->imgui_context)});
         io.WantSaveIniSettings = false;
     }
 

@@ -115,6 +115,7 @@ void State::update(const Action &action) {
         },
         [&](const close_file_dialog &) { file.dialog.visible = false; },
 
+        [&](const set_imgui_settings &a) { imgui_settings = a.settings; },
         [&](const change_imgui_settings &a) { imgui_settings = json(imgui_settings).patch(a.settings_diff); },
         [&](const set_imgui_color_style &a) {
             auto *dst = &style.imgui;
@@ -739,10 +740,8 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
     if (diff.action_names.size() == 1) {
         BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
     } else {
-        if (TreeNode("Action names", "%lu actions", diff.action_names.size())) {
-            for (const auto &action_name: diff.action_names) {
-                BulletText("%s", action_name.c_str());
-            }
+        if (TreeNodeEx("Action names", ImGuiTreeNodeFlags_DefaultOpen, "%lu actions", diff.action_names.size())) {
+            for (const auto &action_name: diff.action_names) BulletText("%s", action_name.c_str());
             TreePop();
         }
     }
@@ -774,13 +773,17 @@ void Metrics::FlowGridMetrics::draw() const {
     }
     if (!has_diffs) EndDisabled();
 
-    const bool has_actions = !c.actions.empty();
+    const bool has_actions = !c.action_history.empty();
     if (!has_actions) BeginDisabled();
     if (TreeNode("Actions")) {
-        for (size_t i = 0; i < c.actions.size(); i++) {
-            const auto &action = c.actions[i];
-            const auto &label = action::get_name(action);
-            JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(i)).c_str());
+        for (const auto &gesture_actions: c.action_history) {
+            // todo show gesture groupings
+            // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
+            for (size_t i = 0; i < gesture_actions.size(); i++) {
+                const auto &action = gesture_actions[i];
+                const auto &label = action::get_name(action);
+                JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(i)).c_str());
+            }
         }
         TreePop();
     }

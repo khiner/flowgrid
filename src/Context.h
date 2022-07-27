@@ -13,7 +13,6 @@ struct Preferences {
 
 JsonType(Preferences, recently_opened_paths)
 
-namespace views = ranges::views;
 using std::string;
 
 namespace FlowGrid {}
@@ -179,12 +178,13 @@ struct Context {
          [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
          and modify to taste.
     */
-    std::vector<BidirectionalStateDiff> diffs;
+    Diffs diffs;
     int diff_index = -1;
 
     // This is only tracked for debugging purposes, and to support saving the project in an `Actions` format (.fga extension).
     // todo Consider flushing to an append-only log on disk, rather than keeping the full action history in memory.
-    std::vector<Action> actions;
+    GestureActions gesture_actions;
+    std::vector<GestureActions> action_history;
 
     std::optional<fs::path> current_project_path;
     int current_project_saved_action_index = -1;
@@ -217,7 +217,11 @@ private:
 
     Threads threads;
     std::queue<const Action> queued_actions;
-    std::set<string> gesture_action_names; // TODO change to `gesture_actions` (IDs)
+    // TODO get rid of this in favor of using `c.gesture_actions`.
+    //  each `c.diffs` element will correspond to a `c.gesture_actions` element.
+    //  however, some `c.gesture_actions` elements will not have a corresponding diff
+    //  (e.g. each `undo` action will be in a single group on its own, without a resulting diff).
+    std::set<string> gesture_action_names;
     json state_json, previous_state_json; // `state_json` always reflects `state`. `previous_state_json` is only updated on gesture-end (for diff calculation).
 };
 

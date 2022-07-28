@@ -323,7 +323,8 @@ void Context::finalize_gesture(bool merge) {
         active_gesture.insert(active_gesture.begin(), previous_gesture.begin(), previous_gesture.end()); // prepend previous gesture to active gesture
         gestures.pop_back();
     }
-    gestures.emplace_back(action::compress_gesture(active_gesture));
+    const auto &compressed_gesture = action::compress_gesture(active_gesture);
+    if (!compressed_gesture.empty()) gestures.emplace_back(compressed_gesture);
     active_gesture.clear();
 
     const json compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;

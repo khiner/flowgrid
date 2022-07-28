@@ -148,7 +148,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<Actions::undo>: return diff_index >= 0;
+        case action::id<Actions::undo>: return !active_gesture.empty() || diff_index >= 0;
         case action::id<Actions::redo>: return diff_index < (int) diffs.size() - 1;
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
@@ -273,7 +273,10 @@ void Context::on_action(const Action &action) {
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
-        [&](const Actions::undo &) { undo(); },
+        [&](const Actions::undo &) {
+            if (!active_gesture.empty()) finalize_gesture();
+            undo();
+        },
         [&](const Actions::redo &) { redo(); },
 
         [&](const Actions::open_project &a) { open_project(a.path); },

@@ -128,29 +128,6 @@ struct Context {
 
     Preferences preferences;
 
-/**md
- * # Writing directly to state
- *
- * For now at least, feel free to write directly to state for events that are internally generated,
- * but with potential side effects that can affect the audiovisual output. (`internal_action` as a thing?)
- *
- * By using the more verbose `c._state`, rather than the conventional `s` global const-reference,
- * you signal that you know what you're doing, and that this event should not be considered an undoable
- * user action.
- *
- * ## Example
- *
- * An example use case is setting an error message.
- *
- * An error message should be stored in `s`, since that object should fully specify the UI.
- * However, there shouldn't also be a `set_faust_error_message` `Action`, since that isn't
- * something a user should ever be allowed to change, as it would violate the reasonable
- * expectation that a variable called `faust_error_message` would only be populated with
- * _actual_ Faust errors.
- *
- * Also, we don't want setting the error messages to pollute the undo tree with its own action.
- */
-    State state{};
 //    diff_match_patch<string> dmp;
     UIContext *ui{};
     StateStats state_stats;
@@ -202,6 +179,8 @@ private:
     bool save_project(const fs::path &);
     void set_current_project_path(const fs::path &path);
     bool write_preferences() const;
+
+    State state{};
 
     Threads threads;
     std::queue<const Action> queued_actions;

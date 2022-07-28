@@ -166,8 +166,9 @@ The following modules are [forked by me](https://github.com/khiner?tab=repositor
 * `implot:master`
 * `libsoundio:master`
 * `zep:master`
+* `imgui_club:master`
 
-I like to keep my changes rebased on top of the original repo branches.
+I keep my changes rebased on top of the original repo branches.
 Here's my process:
 
 ```sh

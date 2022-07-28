@@ -38,7 +38,7 @@
 	branch = master
 [submodule "lib/imgui_club"]
 	path = lib/imgui_club
-	url = git@github.com:ocornut/imgui_club.git
+	url = git@github.com:khiner/imgui_club.git
 [submodule "lib/fmt"]
 	path = lib/fmt
 	url = git@github.com:fmtlib/fmt.git

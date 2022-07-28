@@ -388,12 +388,12 @@ void StateMemoryEditor::draw() const {
     static bool first_render{true};
     if (first_render) {
         memory_editor.OptShowDataPreview = true;
+//        memory_editor.WriteFn = ...; todo write_state_bytes action
         first_render = false;
     }
 
-    void *mem_data{&c.state};
-    size_t mem_size{sizeof(c.state)};
-    memory_editor.DrawContents(mem_data, mem_size);
+    const void *mem_data{&s};
+    memory_editor.DrawContents(mem_data, sizeof(s));
 }
 
 void StatePathUpdateFrequency::draw() const {

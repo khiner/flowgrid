@@ -424,6 +424,7 @@ bool Context::save_project(const fs::path &path) {
     const auto format = get_project_format(path);
     if (format == None) return false; // TODO log
 
+    finalize_gesture(); // Just in case we're in the middle of a gesture, make sure any pending actions/diffs are committed.
     if (File::write(path, json::to_msgpack(get_project_json(format)))) {
         if (is_user_project_path(path)) set_current_project_path(path);
         return true;

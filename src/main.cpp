@@ -47,7 +47,7 @@ int main(int, const char **) {
 
     // Merge actions that happen within very short succession.
     // This is needed e.g. to roll window size adjustments that get processed by ImGui shortly after a neighboring docked window is closed.
-    static const int num_action_frames_to_merge = 3;
+    static const int num_action_frames_to_merge = 100; // todo time-based rather than frame-based
     static int num_action_frames = 0;
     while (s.processes.ui.running) {
         tick_ui();

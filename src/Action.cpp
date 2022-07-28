@@ -56,32 +56,30 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     }
 }
 
-Gesture action::compress_gesture_actions(const Gesture &actions) {
-    Gesture compressed_actions;
+Gesture action::compress_gesture(const Gesture &gesture) {
+    Gesture compressed_gesture;
 
     std::optional<const Action> active_action;
-    for (size_t i = 0; i < actions.size(); i++) {
-        if (!active_action.has_value()) active_action.emplace(actions[i]);
+    for (size_t i = 0; i < gesture.size(); i++) {
+        if (!active_action.has_value()) active_action.emplace(gesture[i]);
         const auto &a = active_action.value();
-        const auto &b = actions[i + 1];
+        const auto &b = gesture[i + 1];
         const auto merged = merge(a, b);
         std::visit(visitor{
             // `true` result means the actions cancel out, so we add neither.
             // `false` result means they can't be merged, so we add both to the result.
             // `Action` result is a merged action.
             [&](const bool result) {
-                if (result) {
-                    i++;
-                    active_action.reset();
-                } else {
-                    compressed_actions.emplace_back(active_action.value());
-                    active_action.reset();
-                }
+                if (result) i++;
+                else compressed_gesture.emplace_back(active_action.value());
+                active_action.reset();
             },
-            [&](const Action &result) { active_action.emplace(result); },
+            [&](const Action &result) {
+                active_action.emplace(result);
+            },
         }, merged);
     }
-    if (active_action.has_value()) compressed_actions.emplace_back(active_action.value());
+    if (active_action.has_value()) compressed_gesture.emplace_back(active_action.value());
 
-    return compressed_actions;
+    return compressed_gesture;
 }

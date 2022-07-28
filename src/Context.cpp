@@ -315,13 +315,13 @@ void Context::update(const Action &action) {
 
 void Context::finalize_gesture(bool merge) {
     // Merges are only allowed at the end of the undo chain.
-    const bool should_merge = merge && !diffs.empty() && int(diffs.size()) == diff_index + 1;
+    const bool should_merge = merge && !diffs.empty() && !gestures.empty() && int(diffs.size()) == diff_index + 1;
     if (should_merge) {
         const auto &previous_gesture = gestures.back();
         active_gesture.insert(active_gesture.begin(), previous_gesture.begin(), previous_gesture.end()); // prepend previous gesture to active gesture
         gestures.pop_back();
     }
-    gestures.emplace_back(action::compress_gesture_actions(active_gesture));
+    gestures.emplace_back(action::compress_gesture(active_gesture));
     active_gesture.clear();
 
     const json &compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;

@@ -245,7 +245,7 @@ static const char *get_menu_label(ID action_id) {
 }
 
 
-Gesture compress_gesture_actions(const Gesture &actions);
+Gesture compress_gesture(const Gesture &);
 
 }
 

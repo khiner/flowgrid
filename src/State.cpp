@@ -756,7 +756,6 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
     }
 
     BulletText("Time: %s", fmt::format("{}\n", diff.system_time).c_str());
-    TreePop();
 }
 
 void Metrics::FlowGridMetrics::draw() const {
@@ -768,6 +767,7 @@ void Metrics::FlowGridMetrics::draw() const {
         for (size_t i = 0; i < c.diffs.size(); i++) {
             if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.diff_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                 ShowDiffMetrics(c.diffs[i]);
+                TreePop();
             }
         }
         TreePop();
@@ -776,14 +776,18 @@ void Metrics::FlowGridMetrics::draw() const {
 
     const bool has_actions = !c.gestures.empty();
     if (!has_actions) BeginDisabled();
-    if (TreeNode("Actions")) {
-        for (const auto &gesture_actions: c.gestures) {
-            // todo show gesture groupings
-            // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
-            for (size_t i = 0; i < gesture_actions.size(); i++) {
-                const auto &action = gesture_actions[i];
-                const auto &label = action::get_name(action);
-                JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(i)).c_str());
+    if (TreeNode("Gestures")) {
+        for (size_t gesture_i = 0; gesture_i < c.gestures.size(); gesture_i++) {
+            if (TreeNode(std::to_string(gesture_i).c_str())) {
+                const auto &gesture = c.gestures[gesture_i];
+                // todo expand most recent gesture
+                // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
+                for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
+                    const auto &action = gesture[action_i];
+                    const auto &label = action::get_name(action);
+                    JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(action_i)).c_str());
+                }
+                TreePop();
             }
         }
         TreePop();

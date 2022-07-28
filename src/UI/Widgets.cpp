@@ -114,7 +114,7 @@ bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *
 
     if (disabled) ImGui::BeginDisabled();
     if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, s.style.flowgrid.Colors[FlowGridCol_HighlightText]);
-    const bool is_open = (id ? ImGui::TreeNodeEx(id, flags, "%s", label.c_str()) : ImGui::TreeNode(label.c_str()));
+    const bool is_open = id ? ImGui::TreeNodeEx(id, flags, "%s", label.c_str()) : ImGui::TreeNode(label.c_str());
     if (highlighted) ImGui::PopStyleColor();
     if (disabled) ImGui::EndDisabled();
 

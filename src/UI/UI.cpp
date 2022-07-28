@@ -211,7 +211,7 @@ void tick_ui() {
         if (event.type == SDL_QUIT ||
             (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
                 event.window.windowID == SDL_GetWindowID(render_context.window))) {
-            q(close_application{});
+            q(close_application{}, true);
         }
     }
 

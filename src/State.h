@@ -294,13 +294,22 @@ struct ImGuiDockNodeSettings {
     ImVec2ih SizeRef{};
 };
 
-struct ImGuiSettings {
+struct ImGuiSettingsData {
+    ImGuiSettingsData() = default;
+    explicit ImGuiSettingsData(ImGuiContext *ctx);
+
     ImVector<ImGuiDockNodeSettings> nodes;
     ImVector<ImGuiWindowSettings> windows;
     ImVector<ImGuiTableSettings> tables;
+};
 
-    ImGuiSettings() = default;
-    explicit ImGuiSettings(ImGuiContext *ctx);
+struct ImGuiSettings : StateMember, ImGuiSettingsData {
+    ImGuiSettings(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name), ImGuiSettingsData() {}
+
+    ImGuiSettings &operator=(const ImGuiSettingsData &other) {
+        ImGuiSettingsData::operator=(other);
+        return *this;
+    }
 
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
@@ -312,7 +321,7 @@ struct ImGuiSettings {
 const JsonPath RootPath{""};
 
 struct StateData {
-    ImGuiSettings imgui_settings;
+    ImGuiSettings imgui_settings{RootPath, "imgui_settings", "ImGui settings"};
     Style style{RootPath, "style"};
     Audio audio{RootPath, "audio"};
     Processes processes{RootPath, "processes"};
@@ -397,7 +406,7 @@ JsonType(Style, visible, imgui, implot, flowgrid)
 JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
 JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
 JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
-JsonType(ImGuiSettings, nodes, windows, tables)
+JsonType(ImGuiSettingsData, nodes, windows, tables)
 
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)

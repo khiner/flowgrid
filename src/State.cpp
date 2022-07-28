@@ -176,7 +176,7 @@ void State::update(const Action &action) {
     }, action);
 }
 
-ImGuiSettings::ImGuiSettings(ImGuiContext *ctx) {
+ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
     nodes = ctx->DockContext.NodesSettings; // already an ImVector
     // Convert `ImChunkStream`s to `ImVector`s.

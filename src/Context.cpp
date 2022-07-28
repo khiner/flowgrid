@@ -140,7 +140,7 @@ void Context::run_queued_actions(bool merge_gesture) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if (!gesturing && !active_gesture.empty()) finalize_gesture(merge_gesture);
+    if (!gesturing) finalize_gesture(merge_gesture);
 }
 
 bool Context::action_allowed(const ActionID action_id) const {
@@ -314,6 +314,8 @@ void Context::update(const Action &action) {
 }
 
 void Context::finalize_gesture(bool merge) {
+    if (active_gesture.empty()) return;
+
     // Merges are only allowed at the end of the undo chain.
     const bool should_merge = merge && !diffs.empty() && !gestures.empty() && int(diffs.size()) == diff_index + 1;
     if (should_merge) {
@@ -324,7 +326,7 @@ void Context::finalize_gesture(bool merge) {
     gestures.emplace_back(action::compress_gesture(active_gesture));
     active_gesture.clear();
 
-    const json &compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;
+    const json compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;
     previous_state_json = sj;
 
     const JsonPatch patch = json::diff(compare_with_state_json, sj);

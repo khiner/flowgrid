@@ -66,16 +66,13 @@ Gesture action::compress_gesture(const Gesture &gesture) {
         const auto &b = gesture[i + 1];
         const auto merged = merge(a, b);
         std::visit(visitor{
-            // `true` result means the actions cancel out, so we add neither.
-            // `false` result means they can't be merged, so we add both to the result.
-            // `Action` result is a merged action.
             [&](const bool result) {
-                if (result) i++;
-                else compressed_gesture.emplace_back(active_action.value());
-                active_action.reset();
+                if (result) i++; // The two actions in consideration (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
+                else compressed_gesture.emplace_back(a); // The left-side action (`a`) can't be merged into any further - nothing more we can do for it!
+                active_action.reset(); // No merge in either case. Move on to try compressing the next action.
             },
             [&](const Action &result) {
-                active_action.emplace(result);
+                active_action.emplace(result); // `Action` result is a merged action. Don't add it yet - maybe we can merge more actions into it.
             },
         }, merged);
     }

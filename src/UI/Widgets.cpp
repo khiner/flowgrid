@@ -35,7 +35,7 @@ void gestured() {
 
 bool fg::WindowToggleMenuItem(const Window &window) {
     const bool edited = ImGui::MenuItem(window.name.c_str(), nullptr, window.visible);
-    if (edited) q(toggle_window{window.name});
+    if (edited) q(set_value{window.path / "visible", !window.visible});
     return edited;
 }
 

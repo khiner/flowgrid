@@ -15,7 +15,7 @@ void Window::draw_window(ImGuiWindowFlags flags) const {
     bool visible_copy = visible;
     if (ImGui::Begin(name.c_str(), &visible_copy, flags)) {
         if (visible_copy) draw();
-        else q(close_window{name});
+        else q(set_value{path / "visible", false});
     }
     ImGui::End();
 }
@@ -164,9 +164,6 @@ void State::update(const Action &action) {
                 default:break;
             }
         },
-
-        [&](const close_window &a) { window_named.at(a.name).get().visible = false; },
-        [&](const toggle_window &a) { window_named.at(a.name).get().visible = !window_named.at(a.name).get().visible; },
 
         [&](const toggle_state_viewer_auto_select &) { state_viewer.auto_select = !state_viewer.auto_select; },
         [&](const set_state_viewer_label_mode &a) { state_viewer.label_mode = a.label_mode; },

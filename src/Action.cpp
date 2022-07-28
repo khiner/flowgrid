@@ -21,7 +21,6 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     switch (a_id) {
         case id<undo>: return b_id == id<redo>;
         case id<redo>: return b_id == id<undo>;
-        case id<toggle_window>: return a_id == b_id && std::get<toggle_window>(a).name == std::get<toggle_window>(b).name;
         case id<toggle_state_viewer_auto_select>: return a_id == b_id;
         case id<open_empty_project>:
         case id<open_default_project>:
@@ -34,7 +33,6 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<set_imgui_color_style>:
         case id<set_implot_color_style>:
         case id<set_flowgrid_color_style>:
-        case id<close_window>:
         case id<set_state_viewer_label_mode>:
         case id<set_audio_sample_rate>:
         case id<set_faust_code>:

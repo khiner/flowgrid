@@ -63,9 +63,6 @@ struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
 struct set_flowgrid_color_style { int id; };
 
-struct close_window { string name; };
-struct toggle_window { string name; };
-
 struct toggle_state_viewer_auto_select {};
 struct set_state_viewer_label_mode { StateViewer::LabelMode label_mode; };
 
@@ -103,8 +100,6 @@ JsonType(change_imgui_settings, settings_diff)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)
-JsonType(close_window, name)
-JsonType(toggle_window, name)
 JsonType(set_state_viewer_label_mode, label_mode)
 JsonType(set_audio_sample_rate, sample_rate)
 JsonType(set_ui_running, running)
@@ -131,8 +126,6 @@ using Action = std::variant<
 
     set_imgui_settings, change_imgui_settings,
     set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
-
-    close_window, toggle_window,
 
     toggle_state_viewer_auto_select, set_state_viewer_label_mode,
 
@@ -200,9 +193,6 @@ static const std::map<ID, string> name_for_id{
     {id<set_imgui_color_style>,       "Set ImGui color style"},
     {id<set_implot_color_style>,      "Set ImPlot color style"},
     {id<set_flowgrid_color_style>,    "Set FlowGrid color style"},
-
-    {id<close_window>,                    ActionName(close_window)},
-    {id<toggle_window>,                   ActionName(toggle_window)},
 
     {id<toggle_state_viewer_auto_select>, ActionName(toggle_state_viewer_auto_select)},
     {id<set_state_viewer_label_mode>, "Set state-viewer label-mode"},

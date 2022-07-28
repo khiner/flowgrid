@@ -140,7 +140,7 @@ void Context::run_queued_actions(bool merge_gesture) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if (!gesturing && !gesture_action_names.empty()) finalize_gesture(merge_gesture);
+    if (!gesturing && !active_gesture.empty()) finalize_gesture(merge_gesture);
 }
 
 bool Context::action_allowed(const ActionID action_id) const {
@@ -207,7 +207,6 @@ void Context::clear() {
     diff_index = -1;
     diffs.clear();
     gestures.clear();
-    gesture_action_names.clear();
     gesturing = false;
     state_stats = {};
     current_project_path.reset();
@@ -300,7 +299,6 @@ void Context::update(const Action &action) {
     }
 
     // Execute side effects.
-    gesture_action_names.emplace(action::get_name(action));
     std::visit(visitor{
         // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
         // since the action will be initiated by ImGui itself,
@@ -316,29 +314,29 @@ void Context::update(const Action &action) {
 }
 
 void Context::finalize_gesture(bool merge) {
-    const auto gesture_names_copy = gesture_action_names;
-    gesture_action_names.clear();
-
-    const bool should_merge = merge && !diffs.empty();
-    if (should_merge && int(diffs.size()) != diff_index + 1) return; // Only allow merges for new gestures at the end of the undo chain.
+    // Merges are only allowed at the end of the undo chain.
+    const bool should_merge = merge && !diffs.empty() && int(diffs.size()) == diff_index + 1;
+    if (should_merge) {
+        const auto &previous_gesture = gestures.back();
+        active_gesture.insert(active_gesture.begin(), previous_gesture.begin(), previous_gesture.end()); // prepend previous gesture to active gesture
+        gestures.pop_back();
+    }
+    gestures.emplace_back(action::compress_gesture_actions(active_gesture));
+    active_gesture.clear();
 
     const json &compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;
-    previous_state_json = s;
+    previous_state_json = sj;
 
     const JsonPatch patch = json::diff(compare_with_state_json, sj);
     if (patch.empty()) return;
 
     const JsonPatch reverse_patch = json::diff(sj, compare_with_state_json);
-    BidirectionalStateDiff diff{gesture_names_copy, patch, reverse_patch, Clock::now()};
+    BidirectionalStateDiff diff{patch, reverse_patch, Clock::now()};
 
     if (should_merge) {
         const auto last_diff = diffs.back();
         diffs.pop_back();
-        diff.action_names.insert(last_diff.action_names.begin(), last_diff.action_names.end());
         on_json_diff(last_diff, Reverse);
-    } else {
-        gestures.emplace_back(action::compress_gesture_actions(active_gesture));
-        active_gesture.clear();
     }
 
     // If we're not already at the end of the undo stack, wind it back.
@@ -401,6 +399,7 @@ void Context::open_project(const fs::path &path) {
         int new_diff_index = project["diff_index"];
         while (diff_index < new_diff_index) redo();
     } else if (format == ActionFormat) {
+        // todo shouldn't replay any actions that write to disk (or have other non-application side-effects), e.g. any `save_...` actions.
         open_project(EmptyProjectPath);
 
         const Gestures project_gestures = project;

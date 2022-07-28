@@ -737,14 +737,15 @@ void ShowJsonPatchMetrics(const JsonPatch &patch) {
 }
 
 void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
-    if (diff.action_names.size() == 1) {
-        BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
-    } else {
-        if (TreeNodeEx("Action names", ImGuiTreeNodeFlags_DefaultOpen, "%lu actions", diff.action_names.size())) {
-            for (const auto &action_name: diff.action_names) BulletText("%s", action_name.c_str());
-            TreePop();
-        }
-    }
+    // todo link to gesture corresponding to diff
+//    if (diff.action_names.size() == 1) {
+//        BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
+//    } else {
+//        if (TreeNodeEx("Action names", ImGuiTreeNodeFlags_DefaultOpen, "%lu actions", diff.action_names.size())) {
+//            for (const auto &action_name: diff.action_names) BulletText("%s", action_name.c_str());
+//            TreePop();
+//        }
+//    }
     if (TreeNode("Forward diff")) {
         ShowJsonPatchMetrics(diff.forward_patch);
         TreePop();

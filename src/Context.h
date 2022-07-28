@@ -222,7 +222,6 @@ private:
     //  each `c.diffs` element will correspond to a `c.gesture_actions` element.
     //  however, some `c.gesture_actions` elements will not have a corresponding diff
     //  (e.g. each `undo` action will be in a single group on its own, without a resulting diff).
-    std::set<string> gesture_action_names;
     json state_json, previous_state_json; // `state_json` always reflects `state`. `previous_state_json` is only updated on gesture-end (for diff calculation).
 };
 

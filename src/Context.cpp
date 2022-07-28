@@ -111,7 +111,7 @@ bool Context::is_user_project_path(const fs::path &path) {
     return !fs::equivalent(fs::relative(path), EmptyProjectPath) && !fs::equivalent(fs::relative(path), DefaultProjectPath);
 }
 
-bool Context::project_has_changes() const { return diff_index != current_project_saved_action_index; }
+bool Context::project_has_changes() const { return diff_index != current_project_saved_diff_index; }
 
 bool Context::save_empty_project() { return save_project(EmptyProjectPath); }
 
@@ -207,13 +207,12 @@ void Context::undo() { apply_diff(diff_index--, Direction::Reverse); }
 void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
 
 void Context::clear() {
-    diff_index = -1;
+    diff_index = current_project_saved_diff_index = -1;
+    current_project_path.reset();
     diffs.clear();
     gestures.clear();
     gesturing = false;
     state_stats = {};
-    current_project_path.reset();
-    current_project_saved_action_index = -1;
 }
 
 // StateStats
@@ -427,7 +426,7 @@ bool Context::save_project(const fs::path &path) {
 
 void Context::set_current_project_path(const fs::path &path) {
     current_project_path = path;
-    current_project_saved_action_index = diff_index;
+    current_project_saved_diff_index = diff_index;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences();

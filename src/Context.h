@@ -173,7 +173,7 @@ struct Context {
     Gestures gestures; // compressed gesture history
 
     std::optional<fs::path> current_project_path;
-    int current_project_saved_action_index = -1;
+    int current_project_saved_diff_index = diff_index;
 
     ImFont *defaultFont{};
     ImFont *fixedWidthFont{};

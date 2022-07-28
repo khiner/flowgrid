@@ -48,6 +48,8 @@ struct Window : StateMember, Drawable {
     using StateMember::StateMember;
     Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name), visible(visible) {}
 
+    void draw_window(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
+
     bool visible{true};
 };
 

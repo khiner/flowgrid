@@ -12,7 +12,6 @@ bool BeginMenuWithHelp(const char *label, const char *help, bool enabled = true)
 bool MenuItemWithHelp(const char *label, const char *help, const char *shortcut = nullptr, bool selected = false, bool enabled = true);
 
 void DockWindow(const Window &window, ImGuiID node_id);
-void DrawWindow(const Window &window, ImGuiWindowFlags flags = ImGuiWindowFlags_None);
 bool WindowToggleMenuItem(const Window &);
 
 bool Checkbox(const JsonPath &path, const char *label = nullptr);

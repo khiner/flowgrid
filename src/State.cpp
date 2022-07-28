@@ -9,6 +9,17 @@
 using namespace ImGui;
 using namespace fg;
 
+void Window::draw_window(ImGuiWindowFlags flags) const {
+    if (!visible) return;
+
+    bool visible_copy = visible;
+    if (ImGui::Begin(name.c_str(), &visible_copy, flags)) {
+        if (visible_copy) draw();
+        else q(close_window{name});
+    }
+    ImGui::End();
+}
+
 static bool first_draw = true;
 
 void State::draw() const {
@@ -88,16 +99,16 @@ void State::draw() const {
         DockWindow(tools, imgui_windows_id);
     }
 
-    DrawWindow(audio.settings);
-    DrawWindow(audio.faust.editor, ImGuiWindowFlags_MenuBar);
-    DrawWindow(audio.faust.log);
-    DrawWindow(state_viewer, ImGuiWindowFlags_MenuBar);
-    DrawWindow(path_update_frequency, ImGuiWindowFlags_None);
-    DrawWindow(memory_editor, ImGuiWindowFlags_NoScrollbar);
-    DrawWindow(demo, ImGuiWindowFlags_MenuBar);
-    DrawWindow(metrics);
-    DrawWindow(style);
-    DrawWindow(tools);
+    audio.settings.draw_window();
+    audio.faust.editor.draw_window(ImGuiWindowFlags_MenuBar);
+    audio.faust.log.draw_window();
+    state_viewer.draw_window(ImGuiWindowFlags_MenuBar);
+    path_update_frequency.draw_window(ImGuiWindowFlags_None);
+    memory_editor.draw_window(ImGuiWindowFlags_NoScrollbar);
+    demo.draw_window(ImGuiWindowFlags_MenuBar);
+    metrics.draw_window();
+    style.draw_window();
+    tools.draw_window();
     file.dialog.draw();
 }
 

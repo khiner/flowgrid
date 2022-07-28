@@ -28,17 +28,6 @@ void fg::DockWindow(const Window &window, ImGuiID node_id) {
     ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
 }
 
-void fg::DrawWindow(const Window &window, ImGuiWindowFlags flags) {
-    if (!window.visible) return;
-
-    bool visible = window.visible;
-    if (ImGui::Begin(window.name.c_str(), &visible, flags)) {
-        if (visible) window.draw();
-        else q(close_window{window.name});
-    }
-    ImGui::End();
-}
-
 void gestured() {
     if (ImGui::IsItemActivated()) c.gesturing = true;
     if (ImGui::IsItemDeactivated()) c.gesturing = false;

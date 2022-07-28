@@ -121,9 +121,7 @@ struct Context {
     json get_project_json(ProjectFormat format = StateFormat) const;
 
     void enqueue_action(const Action &);
-    // If `merge_gesture = true`, the gesture diff will be merged with the previous one when it's finalized.
-    void run_queued_actions(bool merge_gesture = false);
-    size_t num_queued_actions() { return queued_actions.size(); }
+    void run_queued_actions(bool force_finalize_gesture = false);
 
     bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;
@@ -194,6 +192,7 @@ struct Context {
 
     bool gesturing{};
     bool has_new_faust_code{};
+    int gesture_frames_remaining = 0; // Merge actions that happen within short succession into a single gesture
 
     // Read-only public shorthand state references:
     const State &s = state;
@@ -202,7 +201,7 @@ struct Context {
 private:
     void on_action(const Action &); // Immediately execute the action
     void update(const Action &); // State is only updated via `context.on_action(action)`
-    void finalize_gesture(bool merge = false); // If `merge = true`, this gesture's diff is rolled into the previous diff.
+    void finalize_gesture();
     void apply_diff(int index, Direction direction = Forward);
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
     void on_set_value(const JsonPath &path);
@@ -241,8 +240,8 @@ inline bool q(Action &&a, bool flush = false) {
     // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
     // return queue.enqueue(a);
 
-    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
-    if (flush) c.run_queued_actions(); // ... unless the `flush` flag is provided, in which case we just do it now.
+    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame (see `main.cpp`).
+    if (flush) c.run_queued_actions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
     return true;
 }
 

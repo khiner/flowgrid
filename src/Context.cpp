@@ -135,12 +135,15 @@ void Context::enqueue_action(const Action &a) {
     queued_actions.push(a);
 }
 
-void Context::run_queued_actions(bool merge_gesture) {
+static const int gesture_frames = 50; // todo time-based rather than frame-based
+void Context::run_queued_actions(bool force_finalize_gesture) {
+    if (!queued_actions.empty()) gesture_frames_remaining = gesture_frames;
     while (!queued_actions.empty()) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if (!gesturing) finalize_gesture(merge_gesture);
+    if ((!gesturing && gesture_frames_remaining == 0) || force_finalize_gesture) finalize_gesture();
+    gesture_frames_remaining = std::max(0, gesture_frames_remaining - 1);
 }
 
 bool Context::action_allowed(const ActionID action_id) const {
@@ -313,34 +316,19 @@ void Context::update(const Action &action) {
     }, action);
 }
 
-void Context::finalize_gesture(bool merge) {
+void Context::finalize_gesture() {
     if (active_gesture.empty()) return;
 
-    // Merges are only allowed at the end of the undo chain.
-    const bool should_merge = merge && !diffs.empty() && !gestures.empty() && int(diffs.size()) == diff_index + 1;
-    if (should_merge) {
-        const auto &previous_gesture = gestures.back();
-        active_gesture.insert(active_gesture.begin(), previous_gesture.begin(), previous_gesture.end()); // prepend previous gesture to active gesture
-        gestures.pop_back();
-    }
     const auto &compressed_gesture = action::compress_gesture(active_gesture);
     if (!compressed_gesture.empty()) gestures.emplace_back(compressed_gesture);
     active_gesture.clear();
 
-    const json compare_with_state_json = should_merge ? previous_state_json.patch(diffs.back().reverse_patch) : previous_state_json;
-    previous_state_json = sj;
-
-    const JsonPatch patch = json::diff(compare_with_state_json, sj);
+    const JsonPatch patch = json::diff(previous_state_json, sj);
     if (patch.empty()) return;
 
-    const JsonPatch reverse_patch = json::diff(sj, compare_with_state_json);
+    const JsonPatch reverse_patch = json::diff(sj, previous_state_json);
     BidirectionalStateDiff diff{patch, reverse_patch, Clock::now()};
-
-    if (should_merge) {
-        const auto last_diff = diffs.back();
-        diffs.pop_back();
-        on_json_diff(last_diff, Reverse);
-    }
+    previous_state_json = sj;
 
     // If we're not already at the end of the undo stack, wind it back.
     // TODO use an undo _tree_ and keep this history

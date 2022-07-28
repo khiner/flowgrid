@@ -31,7 +31,7 @@ int main(int, const char **) {
         tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         tick_ui(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        c.run_queued_actions();
+        c.run_queued_actions(true);
     }
 
     c.clear(); // Make sure we don't start with any undo state.
@@ -45,16 +45,9 @@ int main(int, const char **) {
     // since any further state changes would show up in the undo stack.
     c.update_faust_context();
 
-    // Merge actions that happen within very short succession.
-    // This is needed e.g. to roll window size adjustments that get processed by ImGui shortly after a neighboring docked window is closed.
-    static const int num_action_frames_to_merge = 100; // todo time-based rather than frame-based
-    static int num_action_frames = 0;
     while (s.processes.ui.running) {
         tick_ui();
-        const bool frame_has_queued_actions = c.num_queued_actions() > 0;
-        c.run_queued_actions(num_action_frames > 0);
-        if (frame_has_queued_actions) num_action_frames = num_action_frames_to_merge + 1;
-        num_action_frames = std::max(0, num_action_frames - 1);
+        c.run_queued_actions();
     }
 
     destroy_ui();

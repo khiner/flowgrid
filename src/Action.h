@@ -244,18 +244,7 @@ static const char *get_menu_label(ID action_id) {
     return name_for_id.at(action_id).c_str();
 }
 
-/**
- Provided actions are assumed to be chronologically consecutive.
 
- Cases:
- * `b` can be merged into `a`: return the merged action
- * `b` cancels out `a` (e.g. two consecutive boolean toggles on the same value): return `true`
- * `b` cannot be merged into `a`: return `false`
-
- Only handling cases where merges can be determined from two consecutive actions.
- One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
- For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
-*/
 Gesture compress_gesture_actions(const Gesture &actions);
 
 }

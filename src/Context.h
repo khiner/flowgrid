@@ -61,18 +61,6 @@ struct State : StateData, Drawable {
 
     void draw() const override;
     void update(const Action &); // State is only updated via `context.on_action(action)`
-
-    std::vector<std::reference_wrapper<Window>> all_windows{
-        state_viewer, memory_editor, path_update_frequency,
-        style, demo, metrics, tools,
-        audio.settings, audio.faust.editor, audio.faust.log
-    };
-
-    using WindowNamed = std::map<string, std::reference_wrapper<Window>>;
-
-    WindowNamed window_named = all_windows | views::transform([](const auto &window_ref) {
-        return std::pair<string, std::reference_wrapper<Window>>(window_ref.get().name, window_ref);
-    }) | ranges::to<WindowNamed>();
 };
 
 using UIContextFlags = int;

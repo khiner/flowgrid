@@ -320,31 +320,37 @@ void Context::finalize_gesture() {
     if (active_gesture.empty()) return;
 
     const auto &compressed_gesture = action::compress_gesture(active_gesture);
-    if (!compressed_gesture.empty()) gestures.emplace_back(compressed_gesture);
     active_gesture.clear();
 
     const JsonPatch patch = json::diff(previous_state_json, sj);
+
+    // If state hasn't changed, we don't even append the gesture to history.
+    // Gesture history is there to replay the session, and we don't want to re-execute any gestures with non-state-affecting side effects.
+    // E.g. a gesture with only a project-save action has no effect on state;
+    // It _only_ has the non-state-affecting side effect of writing to disk, and we don't want to re-execute this side effect in playback.
+    // This also catches any cases where the compressed gesture (list of actions) is _not_ empty, but it really should be.
+    // E.g. compressing `undo,undo,undo,redo,redo,redo` will currently result in `undo,undo,redo,redo`,
+    // since compression only considers two actions at a time for simplicity.
+    // todo this doesn't currently guarantee actions with non-state side-effect won't get saved to history! They could sneak into gestures with other state effects.
     if (patch.empty()) return;
+    else if (compressed_gesture.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
     const JsonPatch reverse_patch = json::diff(sj, previous_state_json);
-    BidirectionalStateDiff diff{patch, reverse_patch, Clock::now()};
     previous_state_json = sj;
-
-    // If we're not already at the end of the undo stack, wind it back.
-    // TODO use an undo _tree_ and keep this history
+    // If we're not already at the end of the undo stack, wind it back. TODO use an undo _tree_ and keep this history
     while (int(diffs.size()) > diff_index + 1) diffs.pop_back();
-
-    diffs.emplace_back(diff);
+    gestures.emplace_back(compressed_gesture);
+    diffs.push_back({patch, reverse_patch, Clock::now()});
     diff_index = int(diffs.size()) - 1;
 
-    on_json_diff(diff, Forward);
+    on_json_diff(diffs.back(), Forward);
 }
 
 void Context::apply_diff(const int index, const Direction direction) {
     const auto &diff = diffs[index];
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
 
-    state_json = previous_state_json = state_json.patch(patch);
+    state_json = state_json.patch(patch);
     state = state_json.get<State>();
 
     on_json_diff(diff, direction);
@@ -390,7 +396,6 @@ void Context::open_project(const fs::path &path) {
         int new_diff_index = project["diff_index"];
         while (diff_index < new_diff_index) redo();
     } else if (format == ActionFormat) {
-        // todo shouldn't replay any actions that write to disk (or have other non-application side-effects), e.g. any `save_...` actions.
         open_project(EmptyProjectPath);
 
         const Gestures project_gestures = project;

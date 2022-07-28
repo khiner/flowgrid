@@ -202,7 +202,7 @@ private:
     void on_action(const Action &); // Immediately execute the action
     void update(const Action &); // State is only updated via `context.on_action(action)`
     void finalize_gesture();
-    void apply_diff(int index, Direction direction = Forward);
+    void apply_diff(int index, Direction direction = Forward); // Only used for undo/redo
     void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
     void on_set_value(const JsonPath &path);
 

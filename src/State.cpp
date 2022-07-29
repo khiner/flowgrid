@@ -9,6 +9,21 @@
 using namespace ImGui;
 using namespace fg;
 
+ImRect RowItemRect() {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, {row_min.x + GetWindowWidth(), row_min.y + GetFontSize()}};
+}
+
+ImRect RowItemRatioRect(float ratio) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, {row_min.x + GetWindowWidth() * std::clamp(ratio, 0.0f, 1.0f), row_min.y + GetFontSize()}};
+}
+
+void FillRowItemBg(const ImVec4 &col = s.style.imgui.Colors[ImGuiCol_FrameBgActive]) {
+    const auto &rect = RowItemRect();
+    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, ImColor(col));
+}
+
 void Window::draw_window(ImGuiWindowFlags flags) const {
     if (!visible) return;
 
@@ -265,15 +280,8 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
         const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
 
         // Draw histogram rect
-        const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-        const float item_w = GetWindowWidth();
-        const ImVec2 row_max = {row_min.x + item_w, row_min.y + GetFontSize()};
-        const float max_ratio = float(update_times.size()) / float(c.state_stats.max_num_updates);
-        GetWindowDrawList()->AddRectFilled(
-            row_min, {row_min.x + item_w * max_ratio, row_max.y},
-            ImColor(GetStyleColorVec4(ImGuiCol_PlotHistogram)),
-            0.0f, ImDrawFlags_None
-        );
+        const auto row_item_ratio_rect = RowItemRatioRect(float(update_times.size()) / float(c.state_stats.max_num_updates));
+        GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.imgui.Colors[ImGuiCol_PlotHistogram]));
 
         // Flash background on update
         const auto most_recent_update_time = update_times.back();
@@ -281,7 +289,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
         const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
         auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
         flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
-        GetWindowDrawList()->AddRectFilled(row_min, row_max, ImColor(flash_color), 0.0f, ImDrawFlags_None);
+        FillRowItemBg(flash_color);
     }
 
     JsonTreeNodeFlags flags = JsonTreeNodeFlags_None;
@@ -782,11 +790,14 @@ void Metrics::FlowGridMetrics::draw() const {
         const bool widget_gesture = c.gesturing;
         const bool active_gesture_present = !c.active_gesture.empty();
         if (active_gesture_present || widget_gesture) {
+            // Gesture completion progress bar
+            const auto row_item_ratio_rect = RowItemRatioRect(float(c.gesture_frames - c.gesture_frames_remaining) / float(c.gesture_frames));
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.imgui.Colors[ImGuiCol_PlotHistogram]));
+
             const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, s.style.imgui.Colors[ImGuiCol_FrameBg]);
-            if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Selected)) {
-                // todo gesture timeout progress bar
-                if (!widget_gesture) BeginDisabled();
+            if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (widget_gesture) FillRowItemBg();
+                else BeginDisabled();
                 Text("Widget gesture: %s", widget_gesture ? "true" : "false");
                 if (!widget_gesture) EndDisabled();
 
@@ -794,7 +805,6 @@ void Metrics::FlowGridMetrics::draw() const {
                 else Text("No actions yet");
                 TreePop();
             }
-            ImGui::PopStyleColor();
         } else {
             BeginDisabled();
             Text("No active gesture");

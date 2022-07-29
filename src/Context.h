@@ -157,6 +157,7 @@ struct Context {
 
     bool gesturing{};
     bool has_new_faust_code{};
+    int gesture_frames = 50; // todo time-based rather than frame-based
     int gesture_frames_remaining = 0; // Merge actions that happen within short succession into a single gesture
 
     // Read-only public shorthand state references:

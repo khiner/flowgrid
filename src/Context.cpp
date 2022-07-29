@@ -135,7 +135,6 @@ void Context::enqueue_action(const Action &a) {
     queued_actions.push(a);
 }
 
-static const int gesture_frames = 50; // todo time-based rather than frame-based
 void Context::run_queued_actions(bool force_finalize_gesture) {
     if (!queued_actions.empty()) gesture_frames_remaining = gesture_frames;
     while (!queued_actions.empty()) {

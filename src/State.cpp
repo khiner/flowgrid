@@ -766,63 +766,102 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
     BulletText("Time: %s", fmt::format("{}\n", diff.system_time).c_str());
 }
 
+void ShowGesture(const Gesture &gesture) {
+    for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
+        const auto &action = gesture[action_i];
+        const auto &label = action::get_name(action);
+        JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(action_i)).c_str());
+    }
+}
+
 void Metrics::FlowGridMetrics::draw() const {
-    Text("Gesturing: %s", c.gesturing ? "true" : "false");
+    {
+        // Gestures (semantically grouped lists of actions)
 
-    const bool has_diffs = !c.diffs.empty();
-    if (!has_diffs) BeginDisabled();
-    if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.diff_index)) {
-        for (size_t i = 0; i < c.diffs.size(); i++) {
-            if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.diff_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                ShowDiffMetrics(c.diffs[i]);
+        // Active (uncompressed) gesture
+        const bool widget_gesture = c.gesturing;
+        const bool active_gesture_present = !c.active_gesture.empty();
+        if (active_gesture_present || widget_gesture) {
+            const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, s.style.imgui.Colors[ImGuiCol_FrameBg]);
+            if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Selected)) {
+                // todo gesture timeout progress bar
+                if (!widget_gesture) BeginDisabled();
+                Text("Widget gesture: %s", widget_gesture ? "true" : "false");
+                if (!widget_gesture) EndDisabled();
+
+                if (active_gesture_present) ShowGesture(c.active_gesture);
+                else Text("No actions yet");
                 TreePop();
             }
+            ImGui::PopStyleColor();
+        } else {
+            BeginDisabled();
+            Text("No active gesture");
+            EndDisabled();
         }
-        TreePop();
-    }
-    if (!has_diffs) EndDisabled();
 
-    const bool has_actions = !c.gestures.empty();
-    if (!has_actions) BeginDisabled();
-    if (TreeNode("Gestures")) {
-        for (size_t gesture_i = 0; gesture_i < c.gestures.size(); gesture_i++) {
-            if (TreeNode(std::to_string(gesture_i).c_str())) {
-                const auto &gesture = c.gestures[gesture_i];
-                // todo expand most recent gesture
-                // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
-                for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
-                    const auto &action = gesture[action_i];
-                    const auto &label = action::get_name(action);
-                    JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(action_i)).c_str());
+        // Committed gestures
+        const bool has_gestures = !c.gestures.empty();
+        if (!has_gestures) BeginDisabled();
+        if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%lu)", c.gestures.size())) {
+            for (size_t gesture_i = 0; gesture_i < c.gestures.size(); gesture_i++) {
+                if (TreeNodeEx("Gesture", gesture_i == c.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None, "%lu", gesture_i)) {
+                    // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
+                    const auto &gesture = c.gestures[gesture_i];
+                    ShowGesture(gesture);
+                    TreePop();
                 }
-                TreePop();
-            }
-        }
-        TreePop();
-    }
-    if (!has_actions) EndDisabled();
-
-    const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
-    if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (SmallButton("Clear")) c.clear_preferences();
-        SameLine();
-        Checkbox(path / "show_relative_paths");
-
-        if (!has_recently_opened_paths) BeginDisabled();
-        if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
-            for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
-                BulletText("%s", (show_relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
             }
             TreePop();
         }
-        if (!has_recently_opened_paths) EndDisabled();
-
-        TreePop();
+        if (!has_gestures) EndDisabled();
     }
-    Text("Action variant size: %lu bytes", sizeof(Action));
-    SameLine();
-    HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
-               "Thus, it's important to keep action data small.");
+    Separator();
+    {
+        // Diffs
+        const bool has_diffs = !c.diffs.empty();
+        if (!has_diffs) BeginDisabled();
+        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.diff_index)) {
+            for (size_t i = 0; i < c.diffs.size(); i++) {
+                if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.diff_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    ShowDiffMetrics(c.diffs[i]);
+                    TreePop();
+                }
+            }
+            TreePop();
+        }
+        if (!has_diffs) EndDisabled();
+    }
+    Separator();
+    {
+        // Preferences
+        const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
+        if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (SmallButton("Clear")) c.clear_preferences();
+            SameLine();
+            Checkbox(path / "show_relative_paths");
+
+            if (!has_recently_opened_paths) BeginDisabled();
+            if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
+                for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
+                    BulletText("%s", (show_relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                }
+                TreePop();
+            }
+            if (!has_recently_opened_paths) EndDisabled();
+
+            TreePop();
+        }
+    }
+    Separator();
+    {
+        // Various internals
+        Text("Action variant size: %lu bytes", sizeof(Action));
+        SameLine();
+        HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
+                   "Thus, it's important to keep action data small.");
+    }
 }
 void Metrics::ImGuiMetrics::draw() const { ShowMetrics(); }
 void Metrics::ImPlotMetrics::draw() const { ImPlot::ShowMetrics(); }

@@ -70,7 +70,9 @@ $ brew link llvm --force
 #### IDE clean/build/run
 
 * **CLion:** I use CLion to develop this application, so that's the only IDE I can attest to working smoothly.
-* **TODO:** anything needed for a VSCode project? would be nice to be able to assess it since most refactoring seems weirdly slow in CLion, and doesn't support many features in other JetBrains products.
+  You should be able to just open the project in CLion and run the saved `FlowGrid | Debug` configuration.
+* **VSCode:** I don't actively use VSCode for FlowGrid (although I would if its refactoring capabilities were stronger).
+  However, last I tried, I was able to build and ran the app just fine by simply opening the project in the usual way, and using the CMake extension.
 
 #### Manual clean/build/run
 
@@ -133,7 +135,7 @@ $ ./FlowGrid
 
 ### C++ extensions
 
-* [range-v3](https://github.com/ericniebler/range-v3), since ranges are only partially supported in Clang 13.x
+* [range-v3](https://github.com/ericniebler/range-v3), since ranges are only partially supported in Clang 14
 * [fmt](https://github.com/fmtlib/fmt) for C++20-style string formatting. Currently, only used for time-formatting.
 
 ### Debugging

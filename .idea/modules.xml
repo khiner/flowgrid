@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/flowgrid2.iml" filepath="$PROJECT_DIR$/.idea/flowgrid2.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/flowgrid.iml" filepath="$PROJECT_DIR$/.idea/flowgrid.iml" />
     </modules>
   </component>
 </project>

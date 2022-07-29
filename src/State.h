@@ -40,7 +40,7 @@ struct StateMember {
     StateMember(const JsonPath &parent_path, const string &id, const string &name = "")
         : path(parent_path / id), id(id), name(name.empty() ? snake_case_to_sentence_case(id) : name) {}
 
-    JsonPath path;
+    JsonPath path; // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
     string id, name;
 };
 

@@ -22,11 +22,14 @@ Here are some of my current development thoughts/goals, roughly broken up into a
 
 ### Abstract development goals
 
-* Focus on making it fun to use _and create_ this application.
-* Spend more time up front getting the foundations right (simple, transparent, flexible, powerful)
+* **Keep it as simple as I possibly can.**
+* Focus on making it fun to use _and create_ the application.
+* Spend more time up front getting the foundation right (simple, transparent, flexible, powerful)
 * Keep (re-)build times low.
-* Early on, the main function of the app should be to _facilitate the development of the app_.
-  Invest early in things like debugging capabilities, making the application state transparent, providing metrics, measuring performance, etc.
+* At this early stage, my main application goal is to _facilitate the development of the app_.
+  - Invest early in things like adding debugging capabilities
+  - Make the application state and context transparent and easily modifiable
+  - Provide performance metrics in real-time
 * Let myself optimize to some extent.
   In computers, fast things are good and always more fun than slow things.
 * Prioritize learning over development velocity.
@@ -79,20 +82,19 @@ $ cmake -B cmake-build-debug # create
 $ cmake --build cmake-build-debug --target FlowGrid -- -j 8 # make
 ```
 
-Or, you could just run the `rebuild` script for the same effect:
+The `rebuild` script does exactly this:
 
 ```sh
 $ ./rebuild
 ```
 
 The application should now be fully rebuilt and ready to run.
-If this isn't the case for you, please report it to me along with your environment and any other relevant details!
+If this isn't the case for you, please [file an issue](https://github.com/khiner/flowgrid/issues/new), providing your environment and any other relevant details, and I will try and fix it!
 
 To run the freshly (re-)built application:
 
 ```sh
-# The application assumes it's being run from the build directory,
-# and makes assumptions about the locations of its resource files (e.g. font files).
+# The application assumes it's being run from the build directory when locating its resource files (e.g. font files).
 $ cd make-build-debug
 $ ./FlowGrid
 ```
@@ -110,11 +112,16 @@ $ ./FlowGrid
 * [ImPlot](https://github.com/epezent/implot) for plotting
 * [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for file selection
 * [zep](https://github.com/Rezonality/zep) for code/text editing
-* [fmt](https://github.com/fmtlib/fmt) for C++20-style string formatting. Currently, only used for time-formatting.
+* [ImGui memory_editor](https://github.com/ocornut/imgui_club) for viewing/editing memory directly
 
 ### Backend
 
-* [json](https://github.com/nlohmann/json) for state serialization, and for the diff-patching mechanism behind undo/redo
+* [json](https://github.com/nlohmann/json) for
+  - State serialization
+  - A path-addressable state-mirror, and
+  - The diff-patching mechanism behind undo/redo
+  - Probably other things.
+    Look for usages of the `json Context::state_json` variable, or the global `const json &sj`.
 * ~~[ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main event queue~~
   -For now just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to complex structures like JSON)
 * ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
@@ -127,6 +134,7 @@ $ ./FlowGrid
 ### C++ extensions
 
 * [range-v3](https://github.com/ericniebler/range-v3), since ranges are only partially supported in Clang 13.x
+* [fmt](https://github.com/fmtlib/fmt) for C++20-style string formatting. Currently, only used for time-formatting.
 
 ### Debugging
 
@@ -148,6 +156,8 @@ $ ./Tracy-release
 ```
 
 ### Updating submodules
+
+All submodules are in the `lib` directory.
 
 #### Non-forked submodules
 
@@ -179,7 +189,7 @@ $ git push --force
 ```
 
 A notable exception is my zep fork, which has so many changes that almost no upstream commits will rebase successfully.
-The way I handle rebasing against zep is to rebase one commit at a time, using `--strategy-option theirs` (`-Xtheirs`), and then manually verifying & porting what the merge missed:
+The way I handle rebasing against zep is to rebase one commit at a time, using `--strategy-option theirs` (`-Xtheirs`), manually resolving any rebase conflicts:
 
 ```sh
 $ cd lib/zep
@@ -194,7 +204,7 @@ $ git push --force
 
 FlowGrid supports three project formats.
 When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file dialog.
-Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https://github.com/nlohmann/json#binary-formats-bson-cbor-messagepack-ubjson-and-bjdata).
+Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https://github.com/nlohmann/json#binary-formats-bson-cbor-messagepack-ubjson-and-bjdata) _(TODO: provide preferences toggle for MessagePack-encoding)_:
 
 * `.fgs`: _FlowGrid**State**_
   - The full application state.
@@ -228,7 +238,7 @@ Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https:
     * Running the `open_empty_project` action
     * Executing each action stored in the file, finalizing the gesture after each sub-list.
 
-TODO: Tradeoffs between project types
+_TODO: Tradeoffs between project types_
 
 ## License
 
@@ -239,12 +249,13 @@ GPL v3 is a strong copyleft license, which basically means any copy or modificat
 ### Why copyleft?
 
 The audio world has lots of high quality open-source code, educational resources, libraries, and other software resources.
-However, the commercial audio industry is also full of protected IP.
-This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in the audio software industry, in which it's notoriously hard to do so.
+However, the commercial audio software industry is also full of protected IP.
+This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in an industry where that's a hard thing to do.
 
-Choosing a permissive license allowing for closed-source commercial usage stands to benefit more end users (musicians, artists, creators) in the short-term, since companies producing closed-source software could freely put the code right into their products.
+Choosing a permissive license allowing for closed-source commercial usage may stand to benefit more end users (musicians, artists, creators) in the short-term, since companies producing closed-source software could freely put the code right directly their products without violating copyright.
 
-In my experience, it's very easy, and always getting easier, to find the music software or hardware you need, while it's much harder to find the right tools and methods for creating new audio software.
+I usually find it pretty easy to find the music software or hardware I need as a _music producer_.
+As a _developer_, I've found it much harder to find the resources, tooling, and methodologies I need to easily create effective new audio software.
 
-Although this project is first and foremost a creative tool, the intention and spirit is much more about hacking, learning, education and research than it is about creating end media products.
-For these purposes, it's more important to keep the information open than to make the functionality freely and widely available.
+Although this project is first and foremost a creative tool, the intention and spirit is much more about hacking, learning, educating and researching than it is about creating end media products.
+For these purposes, it's more important to keep the information open than it is to make the functionality freely and widely available.

@@ -13,6 +13,11 @@ void DockWindow(const Window &window, ImGuiID node_id) {
     ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
 }
 
+// Janky `SelectedTabId` approach from https://github.com/ocornut/imgui/issues/5005#issuecomment-1047913490
+void SelectWindowTab(const Window &window) {
+    window.get_imgui_window().DockNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(window.name.c_str(), 0, 0));
+}
+
 ImRect RowItemRect() {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
     return {row_min, {row_min.x + GetWindowWidth(), row_min.y + GetFontSize()}};
@@ -40,6 +45,7 @@ void Window::draw_window(ImGuiWindowFlags flags) const {
 }
 
 static bool first_draw = true;
+static bool second_draw = false;
 
 void State::draw() const {
     if (ImGui::BeginMainMenuBar()) {
@@ -96,8 +102,6 @@ void State::draw() const {
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     if (first_draw) {
-        first_draw = false;
-
         auto faust_editor_node_id = dockspace_id;
         auto audio_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
         auto state_node_id = ImGui::DockBuilderSplitNode(audio_node_id, ImGuiDir_Down, 0.9f, nullptr, &audio_node_id);
@@ -117,8 +121,14 @@ void State::draw() const {
         DockWindow(tools, utilities_node_id);
         DockWindow(demo, utilities_node_id);
 
-//        DockBuilderGetNode(imgui_windows_id)->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(metrics.name.c_str(), 0, 0));
-//        ImGui::SetWindowFocus(metrics.name.c_str());
+        first_draw = false;
+        second_draw = true;
+    } else if (second_draw) {
+        // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
+        SelectWindowTab(state_viewer);
+        SelectWindowTab(metrics);
+
+        second_draw = false;
     }
 
     audio.settings.draw_window();

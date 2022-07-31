@@ -9,6 +9,10 @@
 using namespace ImGui;
 using namespace fg;
 
+void DockWindow(const Window &window, ImGuiID node_id) {
+    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
+}
+
 ImRect RowItemRect() {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
     return {row_min, {row_min.x + GetWindowWidth(), row_min.y + GetFontSize()}};
@@ -80,10 +84,10 @@ void State::draw() const {
                 }
                 ImGui::EndMenu();
             }
-            WindowToggleMenuItem(style);
-            WindowToggleMenuItem(demo);
             WindowToggleMenuItem(metrics);
+            WindowToggleMenuItem(style);
             WindowToggleMenuItem(tools);
+            WindowToggleMenuItem(demo);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -94,24 +98,27 @@ void State::draw() const {
     if (first_draw) {
         first_draw = false;
 
-        auto faust_editor_id = dockspace_id;
-        auto controls_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_id);
-        auto state_windows_id = ImGui::DockBuilderSplitNode(controls_id, ImGuiDir_Down, 0.9f, nullptr, &controls_id);
-        auto imgui_windows_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_id);
-        auto faust_log_window_id = ImGui::DockBuilderSplitNode(faust_editor_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_id);
+        auto faust_editor_node_id = dockspace_id;
+        auto audio_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
+        auto state_node_id = ImGui::DockBuilderSplitNode(audio_node_id, ImGuiDir_Down, 0.9f, nullptr, &audio_node_id);
+        auto utilities_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
+        auto faust_log_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
 
-        DockWindow(audio.settings, controls_id);
-        DockWindow(audio.faust.editor, faust_editor_id);
-        DockWindow(audio.faust.log, faust_log_window_id);
+        DockWindow(audio.settings, audio_node_id);
+        DockWindow(audio.faust.editor, faust_editor_node_id);
+        DockWindow(audio.faust.log, faust_log_node_id);
 
-        DockWindow(state_viewer, state_windows_id);
-        DockWindow(memory_editor, state_windows_id);
-        DockWindow(path_update_frequency, state_windows_id);
+        DockWindow(state_viewer, state_node_id);
+        DockWindow(memory_editor, state_node_id);
+        DockWindow(path_update_frequency, state_node_id);
 
-        DockWindow(style, imgui_windows_id);
-        DockWindow(demo, imgui_windows_id);
-        DockWindow(metrics, imgui_windows_id);
-        DockWindow(tools, imgui_windows_id);
+        DockWindow(metrics, utilities_node_id);
+        DockWindow(style, utilities_node_id);
+        DockWindow(tools, utilities_node_id);
+        DockWindow(demo, utilities_node_id);
+
+//        DockBuilderGetNode(imgui_windows_id)->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(metrics.name.c_str(), 0, 0));
+//        ImGui::SetWindowFocus(metrics.name.c_str());
     }
 
     audio.settings.draw_window();
@@ -120,10 +127,11 @@ void State::draw() const {
     state_viewer.draw_window(ImGuiWindowFlags_MenuBar);
     path_update_frequency.draw_window(ImGuiWindowFlags_None);
     memory_editor.draw_window(ImGuiWindowFlags_NoScrollbar);
-    demo.draw_window(ImGuiWindowFlags_MenuBar);
+
     metrics.draw_window();
     style.draw_window();
     tools.draw_window();
+    demo.draw_window(ImGuiWindowFlags_MenuBar);
     file.dialog.draw();
 }
 

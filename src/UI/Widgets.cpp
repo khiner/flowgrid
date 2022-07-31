@@ -24,10 +24,6 @@ bool fg::MenuItemWithHelp(const char *label, const char *help, const char *short
     return ImGui::MenuItem(label, shortcut, selected, enabled);
 }
 
-void fg::DockWindow(const Window &window, ImGuiID node_id) {
-    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
-}
-
 void gestured() {
     if (ImGui::IsItemActivated()) c.gesturing = true;
     if (ImGui::IsItemDeactivated()) c.gesturing = false;

@@ -132,19 +132,11 @@ struct Context {
     UIContext *ui{};
     StateStats state_stats;
 
-    /**
-     This is a placeholder for the main in-memory data structure for action history.
-     Undo should have similar functionality to [Vim's undotree](https://github.com/mbbill/undotree/blob/master/autoload/undotree.vim)
-       - Consider the Hash Array Mapped Trie (HAMT) data structure for state, diff, and/or actions (fast keyed access and fast-ish updates,
-         exploiting the state's natural tree structure.
-       - Probably just copy (with MIT copyright notice as required)
-         [this header](https://github.com/chaelim/HAMT/tree/bf7621d1ef3dfe63214db6a9293ce019fde99bcf/include),
-         and modify to taste.
-    */
+    Gesture active_gesture; // uncompressed gesture
+
     Diffs diffs;
     int diff_index = -1;
 
-    Gesture active_gesture; // uncompressed gesture
     // This gesture history is only tracked for debugging purposes, and to support saving the project in an `Actions` format (.fga extension).
     // todo Consider flushing to an append-only log on disk, rather than keeping the full gesture history in memory.
     Gestures gestures; // compressed gesture history

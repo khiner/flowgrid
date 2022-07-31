@@ -202,7 +202,10 @@ void Context::update_processes() {
     }
 }
 
-void Context::undo() { apply_diff(diff_index--, Direction::Reverse); }
+void Context::undo() {
+    if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
+    apply_diff(diff_index--, Direction::Reverse);
+}
 void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
 
 void Context::clear() {
@@ -272,10 +275,7 @@ void Context::on_action(const Action &action) {
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
-        [&](const Actions::undo &) {
-            if (!active_gesture.empty()) finalize_gesture();
-            undo();
-        },
+        [&](const Actions::undo &) { undo(); },
         [&](const Actions::redo &) { redo(); },
 
         [&](const Actions::open_project &a) { open_project(a.path); },
@@ -321,10 +321,14 @@ void Context::finalize_gesture() {
     if (active_gesture.empty()) return;
 
     const auto &compressed_gesture = action::compress_gesture(active_gesture);
+    const JsonPatch patch = json::diff(previous_state_json, sj);
+    if (!patch.empty() && compressed_gesture.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
+
+    gestures.emplace_back(compressed_gesture);
     active_gesture.clear();
 
-    const JsonPatch patch = json::diff(previous_state_json, sj);
-
+    // todo this doesn't currently guarantee actions with non-state side-effect won't get saved to history! They could sneak into gestures with other state effects.
+    // todo also not up-to-date comment. need to address this side-effect issue
     // If state hasn't changed, we don't even append the gesture to history.
     // Gesture history is there to replay the session, and we don't want to re-execute any gestures with non-state-affecting side effects.
     // E.g. a gesture with only a project-save action has no effect on state;
@@ -332,15 +336,12 @@ void Context::finalize_gesture() {
     // This also catches any cases where the compressed gesture (list of actions) is _not_ empty, but it really should be.
     // E.g. compressing `undo,undo,undo,redo,redo,redo` will currently result in `undo,undo,redo,redo`,
     // since compression only considers two actions at a time for simplicity.
-    // todo this doesn't currently guarantee actions with non-state side-effect won't get saved to history! They could sneak into gestures with other state effects.
     if (patch.empty()) return;
-    else if (compressed_gesture.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
     const JsonPatch reverse_patch = json::diff(sj, previous_state_json);
     previous_state_json = sj;
     // If we're not already at the end of the undo stack, wind it back. TODO use an undo _tree_ and keep this history
     while (int(diffs.size()) > diff_index + 1) diffs.pop_back();
-    gestures.emplace_back(compressed_gesture);
     diffs.push_back({patch, reverse_patch, Clock::now()});
     diff_index = int(diffs.size()) - 1;
 
@@ -351,7 +352,7 @@ void Context::apply_diff(const int index, const Direction direction) {
     const auto &diff = diffs[index];
     const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
 
-    state_json = state_json.patch(patch);
+    state_json = previous_state_json = state_json.patch(patch);
     state = state_json.get<State>();
 
     on_json_diff(diff, direction);
@@ -418,7 +419,7 @@ bool Context::save_project(const fs::path &path) {
     const auto format = get_project_format(path);
     if (format == None) return false; // TODO log
 
-    finalize_gesture(); // Just in case we're in the middle of a gesture, make sure any pending actions/diffs are committed.
+    finalize_gesture(); // Make sure any pending actions/diffs are committed.
     if (File::write(path, json::to_msgpack(get_project_json(format)))) {
         if (is_user_project_path(path)) set_current_project_path(path);
         return true;

@@ -136,6 +136,7 @@ struct Context {
 
     Gesture active_gesture; // uncompressed, uncommitted
     Gestures gestures; // compressed, committed gesture history
+    JsonPatch active_gesture_patch;
 
     std::optional<fs::path> current_project_path;
     int current_project_saved_diff_index = diff_index;

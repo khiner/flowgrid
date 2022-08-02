@@ -147,7 +147,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<Actions::undo>: return !active_gesture.empty() || diff_index >= 0;
+        case action::id<Actions::undo>: return !active_gesture_patch.empty() || diff_index >= 0;
         case action::id<Actions::redo>: return diff_index < (int) diffs.size() - 1;
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
@@ -203,7 +203,7 @@ void Context::update_processes() {
 }
 
 void Context::undo() {
-    if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
+    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
     apply_diff(diff_index--, Direction::Reverse);
 }
 void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
@@ -215,6 +215,9 @@ void Context::clear() {
     gestures.clear();
     is_widget_gesturing = false;
     state_stats = {};
+    // todo finalize?
+    active_gesture = {};
+    active_gesture_patch = {};
 }
 
 // StateStats
@@ -247,7 +250,6 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
     }
 
     if (is_full_gesture) gesture_update_times_for_path.clear();
-
     path_update_frequency = create_path_update_frequency_plottable();
 }
 
@@ -305,6 +307,7 @@ void Context::on_action(const Action &action) {
     }, action);
 
     active_gesture.emplace_back(action);
+    active_gesture_patch = json::diff(gesture_begin_state_json, sj);
 }
 
 void Context::apply_action(const Action &action) {
@@ -331,15 +334,9 @@ void Context::apply_action(const Action &action) {
 }
 
 void Context::finalize_gesture() {
-    if (active_gesture.empty()) return;
-
-    const auto &compressed_gesture = action::compress_gesture(active_gesture);
-    const JsonPatch patch = json::diff(gesture_begin_state_json, sj);
-    if (!patch.empty() && compressed_gesture.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
-
-    if (!compressed_gesture.empty()) gestures.emplace_back(compressed_gesture);
+    const auto active_gesture_compressed = action::compress_gesture(active_gesture);
     active_gesture.clear();
-    state_stats.apply_patch(patch, Clock::now(), Forward, true);
+    state_stats.apply_patch(active_gesture_patch, Clock::now(), Forward, true);
 
     // todo this doesn't currently guarantee actions with non-state side-effect won't get saved to history! They could sneak into gestures with other state effects.
     // todo also not up-to-date comment. need to address this side-effect issue
@@ -350,13 +347,15 @@ void Context::finalize_gesture() {
     // This also catches any cases where the compressed gesture (list of actions) is _not_ empty, but it really should be.
     // E.g. compressing `undo,undo,undo,redo,redo,redo` will currently result in `undo,undo,redo,redo`,
     // since compression only considers two actions at a time for simplicity.
-    if (patch.empty()) return;
+    if (active_gesture_patch.empty()) return;
+    if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
-    // If we're not already at the end of the undo stack, wind it back. TODO use an undo _tree_ and keep this history
-    while (int(diffs.size()) > diff_index + 1) diffs.pop_back();
-    diffs.push_back({patch, json::diff(sj, gesture_begin_state_json), Clock::now()});
+    gestures.emplace_back(active_gesture_compressed);
+    while (int(diffs.size()) > diff_index + 1) diffs.pop_back(); // TODO use an undo _tree_ and keep this history
+    diffs.push_back({active_gesture_patch, json::diff(sj, gesture_begin_state_json), Clock::now()});
     diff_index = int(diffs.size()) - 1;
     gesture_begin_state_json = sj;
+    active_gesture_patch.clear();
 }
 
 void Context::apply_diff(const int index, const Direction direction) {

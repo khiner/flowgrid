@@ -86,9 +86,7 @@ struct StateStats {
     std::vector<string> latest_update_paths{};
     std::map<string, std::vector<TimePoint>> gesture_update_times_for_path{};
     std::map<string, std::vector<TimePoint>> committed_update_times_for_path{};
-    std::map<string, ImU32> num_updates_for_path{};
     std::map<string, TimePoint> latest_update_time_for_path{};
-    ImU32 max_num_updates{0};
     Plottable path_update_frequency;
 
     void apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_gesture);

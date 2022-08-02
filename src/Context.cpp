@@ -241,18 +241,14 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
         const bool path_in_committed = committed_update_times_for_path.contains(path);
         if (path_in_gesture || path_in_committed) {
             latest_update_time_for_path[path] = path_in_gesture ? gesture_update_times_for_path.at(path).back() : committed_update_times_for_path.at(path).back();
-            num_updates_for_path[path] = (path_in_gesture ? gesture_update_times_for_path.at(path).size() : 0) + (path_in_committed ? committed_update_times_for_path.at(path).size() : 0);
         } else {
             latest_update_time_for_path.erase(path);
-            num_updates_for_path.erase(path);
         }
     }
 
     if (is_full_gesture) gesture_update_times_for_path.clear();
 
     path_update_frequency = create_path_update_frequency_plottable();
-    const auto &num_updates = views::values(num_updates_for_path);
-    max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
 }
 
 // Convert `string` to char array, removing first character of the path, which is a '/'.

@@ -292,15 +292,9 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
         SetNextItemOpen(was_recently_updated);
     }
 
-    // Tree acts like a histogram, where rect length corresponds to relative update frequency, with `width => most frequently updated`.
     // Background color of nodes flashes on update.
-    if (c.state_stats.num_updates_for_path.contains(path)) {
-        const auto num_updates = c.state_stats.num_updates_for_path.at(path);
+    if (c.state_stats.latest_update_time_for_path.contains(path)) {
         const auto latest_update_time = c.state_stats.latest_update_time_for_path.contains(path) ? c.state_stats.latest_update_time_for_path.at(path) : TimePoint{};
-
-        // Draw histogram rect
-        const auto row_item_ratio_rect = RowItemRatioRect(float(num_updates) / float(c.state_stats.max_num_updates));
-        GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.imgui.Colors[ImGuiCol_PlotHistogram]));
 
         // Flash background on update
         const fsec flash_remaining_sec = Clock::now() - latest_update_time;
@@ -433,8 +427,6 @@ void StatePathUpdateFrequency::draw() const {
 
         // todo add an axis flag to exclude non-integer ticks
         // todo add an axis flag to show last tick
-        // This is me getting the above 2 todos, but commenting out since I'd rather have auto-scale than the above.
-//        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *item_labels[] = {"Committed updates", "Active updates"};
         const bool has_gesture = !c.state_stats.gesture_update_times_for_path.empty();

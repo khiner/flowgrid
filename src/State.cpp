@@ -803,7 +803,8 @@ void Metrics::FlowGridMetrics::draw() const {
         if (active_gesture_present || widget_gesture) {
             // Gesture completion progress bar
             const auto row_item_ratio_rect = RowItemRatioRect(float(c.gesture_frames - c.gesture_frames_remaining) / float(c.gesture_frames));
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.imgui.Colors[ImGuiCol_PlotHistogram]));
+            // Using 2nd item of default colormap as the progress bar to match the gesture histogram color in `StatePathUpdateFrequency`
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImPlot::GetColormapColorU32(1, 0));
 
             const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

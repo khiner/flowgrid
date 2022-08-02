@@ -159,8 +159,6 @@ void State::update(const Action &action) {
         },
         [&](const close_file_dialog &) { file.dialog.visible = false; },
 
-        [&](const set_imgui_settings &a) { imgui_settings = a.settings; },
-        [&](const change_imgui_settings &a) { imgui_settings = json(imgui_settings).patch(a.settings_diff); },
         [&](const set_imgui_color_style &a) {
             auto *dst = &style.imgui;
             switch (a.id) {
@@ -198,15 +196,8 @@ void State::update(const Action &action) {
             }
         },
 
-        [&](const toggle_state_viewer_auto_select &) { state_viewer.auto_select = !state_viewer.auto_select; },
-        [&](const set_state_viewer_label_mode &a) { state_viewer.label_mode = a.label_mode; },
-
         // Audio
         [&](const open_faust_file &a) { audio.faust.code = ::File::read(a.path); },
-        [&](const set_faust_code &a) { audio.faust.code = a.text; },
-        [&](const set_audio_sample_rate &a) { audio.settings.sample_rate = a.sample_rate; },
-
-        [&](const set_ui_running &a) { processes.ui.running = a.running; },
 
         [&](const close_application &) {
             processes.ui.running = false;
@@ -344,10 +335,10 @@ static const string auto_select_help = "When auto-select is enabled, state chang
 void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) q(toggle_state_viewer_auto_select{});
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, auto_select)) q(set_value{path / "auto_select", !auto_select});
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
-                if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) q(set_state_viewer_label_mode{LabelMode::annotated});
-                else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) q(set_state_viewer_label_mode{LabelMode::raw});
+                if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) q(set_value{path / "label_mode", LabelMode::annotated});
+                else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) q(set_value{path / "label_mode", LabelMode::raw});
                 EndMenu();
             }
             EndMenu();

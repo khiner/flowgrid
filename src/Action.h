@@ -57,25 +57,14 @@ struct close_application {};
 
 struct set_value { string state_path; json value; };
 
-struct set_imgui_settings { json settings; };
-struct change_imgui_settings { json settings_diff; };
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
 struct set_flowgrid_color_style { int id; };
-
-struct toggle_state_viewer_auto_select {};
-struct set_state_viewer_label_mode { StateViewer::LabelMode label_mode; };
-
-struct set_audio_sample_rate { int sample_rate; };
-
-struct set_ui_running { bool running; };
 
 struct show_open_faust_file_dialog {};
 struct show_save_faust_file_dialog {};
 struct save_faust_file { string path; };
 struct open_faust_file { string path; };
-struct set_faust_code { string text; };
-
 
 EmptyJsonType(undo)
 EmptyJsonType(redo)
@@ -87,7 +76,6 @@ EmptyJsonType(save_current_project)
 EmptyJsonType(save_default_project)
 EmptyJsonType(show_save_project_dialog)
 EmptyJsonType(close_application)
-EmptyJsonType(toggle_state_viewer_auto_select)
 EmptyJsonType(show_open_faust_file_dialog)
 EmptyJsonType(show_save_faust_file_dialog)
 
@@ -95,17 +83,11 @@ JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
 JsonType(set_value, state_path, value)
-JsonType(set_imgui_settings, settings)
-JsonType(change_imgui_settings, settings_diff)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)
-JsonType(set_state_viewer_label_mode, label_mode)
-JsonType(set_audio_sample_rate, sample_rate)
-JsonType(set_ui_running, running)
 JsonType(save_faust_file, path)
 JsonType(open_faust_file, path)
-JsonType(set_faust_code, text)
 
 }
 
@@ -124,17 +106,10 @@ using Action = std::variant<
 
     set_value,
 
-    set_imgui_settings, change_imgui_settings,
     set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
 
-    toggle_state_viewer_auto_select, set_state_viewer_label_mode,
-
-    set_audio_sample_rate,
-    set_faust_code,
     open_faust_file, save_faust_file,
-    show_open_faust_file_dialog, show_save_faust_file_dialog,
-
-    set_ui_running
+    show_open_faust_file_dialog, show_save_faust_file_dialog
 >;
 
 using Gesture = std::vector<Action>;
@@ -142,8 +117,6 @@ using Gestures = std::vector<Gesture>;
 
 // Default-construct an action by its variant index (which is also its `ID`).
 // From https://stackoverflow.com/a/60567091/780425
-// TODO or just this instead?
-//  set_faust_code r = std::variant_alternative_t<action_type_index<set_faust_code>, Action>{"foo"};
 template<ID I = 0>
 Action create(ID index) {
     if constexpr(I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + std::to_string(I + index) + " out of bounds"};
@@ -168,42 +141,34 @@ constexpr size_t id = mp_find<Action, T>::value;
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
 static const std::map<ID, string> name_for_id{
-    {id<undo>,                            ActionName(undo)},
-    {id<redo>,                            ActionName(redo)},
+    {id<undo>,                     ActionName(undo)},
+    {id<redo>,                     ActionName(redo)},
 
-    {id<open_project>,                    ActionName(open_project)},
-    {id<open_empty_project>,              ActionName(open_empty_project)},
-    {id<open_default_project>,            ActionName(open_default_project)},
-    {id<show_open_project_dialog>,        ActionName(show_open_project_dialog)},
+    {id<open_project>,             ActionName(open_project)},
+    {id<open_empty_project>,       ActionName(open_empty_project)},
+    {id<open_default_project>,     ActionName(open_default_project)},
+    {id<show_open_project_dialog>, ActionName(show_open_project_dialog)},
 
-    {id<open_file_dialog>,                ActionName(open_file_dialog)},
-    {id<close_file_dialog>,               ActionName(close_file_dialog)},
+    {id<open_file_dialog>,         ActionName(open_file_dialog)},
+    {id<close_file_dialog>,        ActionName(close_file_dialog)},
 
-    {id<save_project>,                    ActionName(save_project)},
-    {id<save_default_project>,            ActionName(save_default_project)},
-    {id<save_current_project>,            ActionName(save_current_project)},
-    {id<show_save_project_dialog>,        ActionName(show_save_project_dialog)},
+    {id<save_project>,             ActionName(save_project)},
+    {id<save_default_project>,     ActionName(save_default_project)},
+    {id<save_current_project>,     ActionName(save_current_project)},
+    {id<show_save_project_dialog>, ActionName(show_save_project_dialog)},
 
-    {id<close_application>,               ActionName(close_application)},
+    {id<close_application>,        ActionName(close_application)},
 
-    {id<set_value>,                       ActionName(set_value)},
+    {id<set_value>,                ActionName(set_value)},
 
-    {id<set_imgui_settings>,          "Set ImGui settings"},
-    {id<change_imgui_settings>,       "Change ImGui settings"},
     {id<set_imgui_color_style>,       "Set ImGui color style"},
     {id<set_implot_color_style>,      "Set ImPlot color style"},
     {id<set_flowgrid_color_style>,    "Set FlowGrid color style"},
 
-    {id<toggle_state_viewer_auto_select>, ActionName(toggle_state_viewer_auto_select)},
-    {id<set_state_viewer_label_mode>, "Set state-viewer label-mode"},
-    {id<set_audio_sample_rate>,           ActionName(set_audio_sample_rate)},
-    {id<set_faust_code>,              "Set Faust code"},
     {id<show_open_faust_file_dialog>, "Show open Faust file dialog"},
     {id<show_save_faust_file_dialog>, "Show save Faust file dialog"},
     {id<open_faust_file>,             "Open Faust file"},
     {id<save_faust_file>,             "Save Faust file"},
-
-    {id<set_ui_running>,              "Set UI running"},
 };
 
 // An action's menu label is its name, except for a few exceptions.

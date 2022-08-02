@@ -21,7 +21,6 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     switch (a_id) {
         case id<undo>: return b_id == id<redo>;
         case id<redo>: return b_id == id<undo>;
-        case id<toggle_state_viewer_auto_select>: return a_id == b_id;
         case id<open_empty_project>:
         case id<open_default_project>:
         case id<show_open_project_dialog>:
@@ -29,16 +28,11 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<close_file_dialog>:
         case id<show_save_project_dialog>:
         case id<close_application>:
-        case id<set_imgui_settings>:
         case id<set_imgui_color_style>:
         case id<set_implot_color_style>:
         case id<set_flowgrid_color_style>:
-        case id<set_state_viewer_label_mode>:
-        case id<set_audio_sample_rate>:
-        case id<set_faust_code>:
         case id<show_open_faust_file_dialog>:
         case id<show_save_faust_file_dialog>:
-        case id<set_ui_running>:
             if (a_id == b_id) return b;
             else return false;
         case id<open_project>:
@@ -49,7 +43,6 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<set_value>:
             if (a_id == b_id && std::get<set_value>(a).state_path == std::get<set_value>(b).state_path) return b;
             else return false;
-        case id<change_imgui_settings>: // Can't combine diffs currently.
         default: return false;
     }
 }

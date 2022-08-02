@@ -132,7 +132,7 @@ int audio() {
     if (*format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
 
     write_sample = write_sample_for_format(*format);
-    q(set_audio_sample_rate{outstream->sample_rate});
+    q(set_value{s.audio.path / "sample_rate", outstream->sample_rate});
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
         struct SoundIoChannelArea *areas;

@@ -176,7 +176,7 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 const auto key_map = action::shortcut_for_id | views::transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
-}) | ranges::to<std::map<KeyShortcut, ActionID>>();
+}) | ranges::to<std::map<KeyShortcut, ActionID>>;
 
 // TODO what about going the other way? Get list of pressed KeyShortcuts.
 //  Then map from action_id to KeyShortcut. See `faust_editor::HandleInput`.

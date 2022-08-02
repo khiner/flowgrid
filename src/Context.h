@@ -39,7 +39,7 @@ const std::map<string, ProjectFormat> ProjectFormatForExtension{
 };
 
 static const std::set<string> AllProjectExtensions = {".fls", ".fld", ".fla"}; // todo derive from map
-static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>();
+static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>;
 static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";
 
@@ -83,15 +83,17 @@ struct StateStats {
         std::vector<ImU64> values;
     };
 
-    std::map<string, std::vector<TimePoint>> update_times_for_state_path{};
-    Plottable path_update_frequency_plottable;
+    std::vector<string> latest_update_paths{};
+    std::map<string, std::vector<TimePoint>> gesture_update_times_for_path{};
+    std::map<string, std::vector<TimePoint>> committed_update_times_for_path{};
+    std::map<string, ImU32> num_updates_for_path{};
+    std::map<string, TimePoint> latest_update_time_for_path{};
     ImU32 max_num_updates{0};
-    std::vector<string> most_recent_update_paths{};
+    Plottable path_update_frequency;
 
-    void on_json_patch(const JsonPatch &patch, TimePoint time, Direction direction);
+    void apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_gesture);
 
 private:
-    void on_json_patch_op(const string &path, TimePoint time, Direction direction);
     Plottable create_path_update_frequency_plottable();
 };
 
@@ -110,7 +112,6 @@ struct Context {
 
     void enqueue_action(const Action &);
     void run_queued_actions(bool force_finalize_gesture = false);
-
     bool action_allowed(ActionID) const;
     bool action_allowed(const Action &) const;
 
@@ -132,14 +133,11 @@ struct Context {
     UIContext *ui{};
     StateStats state_stats;
 
-    Gesture active_gesture; // uncompressed gesture
-
     Diffs diffs;
     int diff_index = -1;
 
-    // This gesture history is only tracked for debugging purposes, and to support saving the project in an `Actions` format (.fga extension).
-    // todo Consider flushing to an append-only log on disk, rather than keeping the full gesture history in memory.
-    Gestures gestures; // compressed gesture history
+    Gesture active_gesture; // uncompressed, uncommitted
+    Gestures gestures; // compressed, committed gesture history
 
     std::optional<fs::path> current_project_path;
     int current_project_saved_diff_index = diff_index;
@@ -147,7 +145,7 @@ struct Context {
     ImFont *defaultFont{};
     ImFont *fixedWidthFont{};
 
-    bool gesturing{};
+    bool is_widget_gesturing{};
     bool has_new_faust_code{};
     int gesture_frames = 50; // todo time-based rather than frame-based
     int gesture_frames_remaining = 0; // Merge actions that happen within short succession into a single gesture
@@ -158,10 +156,10 @@ struct Context {
 
 private:
     void on_action(const Action &); // Immediately execute the action
-    void update(const Action &); // State is only updated via `context.on_action(action)`
+    void apply_action(const Action &); // This is the only method that modifies `state`.
     void finalize_gesture();
     void apply_diff(int index, Direction direction = Forward); // Only used for undo/redo
-    void on_json_diff(const BidirectionalStateDiff &diff, Direction direction);
+    void on_diff(const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture);
     void on_set_value(const JsonPath &path);
 
     // Takes care of all side effects needed to put the app into the provided application state json.
@@ -177,11 +175,7 @@ private:
 
     Threads threads;
     std::queue<const Action> queued_actions;
-    // TODO get rid of this in favor of using `c.gesture_actions`.
-    //  each `c.diffs` element will correspond to a `c.gesture_actions` element.
-    //  however, some `c.gesture_actions` elements will not have a corresponding diff
-    //  (e.g. each `undo` action will be in a single group on its own, without a resulting diff).
-    json state_json, previous_state_json; // `state_json` always reflects `state`. `previous_state_json` is only updated on gesture-end (for diff calculation).
+    json state_json, gesture_begin_state_json; // `state_json` always reflects `state`. `gesture_begin_state_json` is only updated on gesture-end (for diff calculation).
 };
 
 /**
@@ -209,12 +203,7 @@ inline bool q(Action &&a, bool flush = false) {
 # Usage
 
 ```cpp
-// Declare an explicitly typed local reference to the global `Context` instance `c`
-Context &local_context = c;
-// ...and one for global `State` instance `s` inside the global context:
-State &local_state = c.s;
-
-// Or just access the (read-only) `state` members directly
-Audio audio = s.audio;
+State &state = c.s;
+Audio audio = s.audio; // Or just access the (read-only) `state` members directly
 ```
  */

@@ -25,8 +25,8 @@ bool fg::MenuItemWithHelp(const char *label, const char *help, const char *short
 }
 
 void gestured() {
-    if (ImGui::IsItemActivated()) c.gesturing = true;
-    if (ImGui::IsItemDeactivated()) c.gesturing = false;
+    if (ImGui::IsItemActivated()) c.is_widget_gesturing = true;
+    if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
 }
 
 bool fg::WindowToggleMenuItem(const Window &window) {

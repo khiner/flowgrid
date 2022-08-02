@@ -8,13 +8,13 @@ namespace views = ranges::views;
 using std::string;
 
 inline string snake_case_to_sentence_case(const string &snake_case) {
-    auto spaced = snake_case | views::split('_') | views::join(' ') | ranges::to<std::string>();
+    auto spaced = snake_case | views::split('_') | views::join(' ') | ranges::to<std::string>;
     spaced[0] = toupper(spaced[0]);
     return spaced;
 }
 
 inline string path_variable_name(const string &path) {
-    const auto res = path | views::split('/') | ranges::to<std::vector<string>>();
+    const auto res = path | views::split('/') | ranges::to<std::vector<string>>;
     return res.back();
 }
 

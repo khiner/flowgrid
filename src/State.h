@@ -360,9 +360,9 @@ using JsonPatch = std::vector<JsonPatchOp>;
 
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
-    JsonPatch forward_patch;
-    JsonPatch reverse_patch;
-    TimePoint system_time;
+    JsonPatch forward;
+    JsonPatch reverse;
+    TimePoint time;
 };
 using Diffs = std::vector<BidirectionalStateDiff>;
 
@@ -376,7 +376,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
 })
 
 JsonType(JsonPatchOp, path, op, value)
-JsonType(BidirectionalStateDiff, forward_patch, reverse_patch, system_time)
+JsonType(BidirectionalStateDiff, forward, reverse, time)
 
 JsonType(ImVec2, x, y)
 JsonType(ImVec4, w, x, y, z)

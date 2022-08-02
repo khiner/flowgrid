@@ -98,7 +98,7 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || s.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
 }
 
-Context::Context() : state_json(state), previous_state_json(state) {
+Context::Context() : state_json(state), gesture_begin_state_json(state) {
     if (fs::exists(PreferencesPath)) {
         preferences = json::from_msgpack(File::read(PreferencesPath));
     } else {
@@ -141,7 +141,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if ((!gesturing && gesture_frames_remaining == 0) || force_finalize_gesture) finalize_gesture();
+    if (!(is_widget_gesturing || gesture_frames_remaining > 0) || force_finalize_gesture) finalize_gesture();
     gesture_frames_remaining = std::max(0, gesture_frames_remaining - 1);
 }
 
@@ -213,35 +213,45 @@ void Context::clear() {
     current_project_path.reset();
     diffs.clear();
     gestures.clear();
-    gesturing = false;
+    is_widget_gesturing = false;
     state_stats = {};
 }
 
 // StateStats
 
-void StateStats::on_json_patch(const JsonPatch &patch, TimePoint time, Direction direction) {
-    most_recent_update_paths = {};
+void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
+    latest_update_paths = {};
+
     for (const JsonPatchOp &patch_op: patch) {
         // For add/remove ops, the thing being updated is the _parent_.
-        const string &changed_path = patch_op.op == Add || patch_op.op == Remove ?
-                                     patch_op.path.substr(0, patch_op.path.find_last_of('/')) :
-                                     patch_op.path;
-        on_json_patch_op(changed_path, time, direction);
-        most_recent_update_paths.emplace_back(changed_path);
-    }
-}
+        const string &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.substr(0, patch_op.path.find_last_of('/')) : patch_op.path;
+        latest_update_paths.emplace_back(path);
 
-void StateStats::on_json_patch_op(const string &path, TimePoint time, Direction direction) {
-    if (direction == Forward) {
-        auto &update_times = update_times_for_state_path[path];
-        update_times.emplace_back(time);
-    } else {
-        auto &update_times = update_times_for_state_path.at(path);
-        update_times.pop_back();
-        if (update_times.empty()) update_times_for_state_path.erase(path);
+        if (direction == Forward) {
+            auto &update_times_for_path = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
+            update_times_for_path[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
+        } else {
+            // Undo never applies to `gesture_update_times_for_path`
+            auto &update_times = committed_update_times_for_path.at(path);
+            update_times.pop_back();
+            if (update_times.empty()) committed_update_times_for_path.erase(path);
+        }
+
+        const bool path_in_gesture = gesture_update_times_for_path.contains(path);
+        const bool path_in_committed = committed_update_times_for_path.contains(path);
+        if (path_in_gesture || path_in_committed) {
+            latest_update_time_for_path[path] = path_in_gesture ? gesture_update_times_for_path.at(path).back() : committed_update_times_for_path.at(path).back();
+            num_updates_for_path[path] = (path_in_gesture ? gesture_update_times_for_path.at(path).size() : 0) + (path_in_committed ? committed_update_times_for_path.at(path).size() : 0);
+        } else {
+            latest_update_time_for_path.erase(path);
+            num_updates_for_path.erase(path);
+        }
     }
-    path_update_frequency_plottable = create_path_update_frequency_plottable();
-    const auto &num_updates = path_update_frequency_plottable.values;
+
+    if (is_full_gesture) gesture_update_times_for_path.clear();
+
+    path_update_frequency = create_path_update_frequency_plottable();
+    const auto &num_updates = views::values(num_updates_for_path);
     max_num_updates = num_updates.empty() ? 0 : *std::max_element(num_updates.begin(), num_updates.end());
 }
 
@@ -254,16 +264,25 @@ const char *convert_path(const string &str) {
 
 StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
     std::vector<string> paths;
-    std::vector<ImU64> values;
-    for (const auto &[path, action_times]: update_times_for_state_path) {
-        paths.push_back(path);
-        values.push_back(action_times.size());
+    for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
+    for (const auto &path: views::keys(gesture_update_times_for_path)) {
+        if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
     }
 
-    std::vector<const char *> labels;
-    std::transform(paths.begin(), paths.end(), std::back_inserter(labels), convert_path);
+    const bool has_gesture = !gesture_update_times_for_path.empty();
+    std::vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
+    int i = 0;
+    for (const auto &path: paths) {
+        values[i++] = committed_update_times_for_path.contains(path) ? committed_update_times_for_path.at(path).size() : 0;
+    }
+    // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
+    if (has_gesture) {
+        for (const auto &path: paths) {
+            values[i++] = gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).size() : 0;
+        }
+    }
 
-    return {labels, values};
+    return {paths | views::transform(convert_path) | ranges::to<std::vector<const char *>>, values};
 }
 
 // Private methods
@@ -285,13 +304,15 @@ void Context::on_action(const Action &action) {
         [&](const Actions::save_project &a) { save_project(a.path); },
         [&](const save_default_project &) { save_project(DefaultProjectPath); },
         [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
+        [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
         // Remaining actions have a direct effect on the application state.
-        [&](const auto &) { update(action); },
+        [&](const auto &) { apply_action(action); },
     }, action);
 }
 
-void Context::update(const Action &action) {
+void Context::apply_action(const Action &action) {
+    const auto action_begin_state_json = state_json;
     // Update state. Keep JSON & struct versions of state in sync.
     if (std::holds_alternative<set_value>(action)) {
         const auto &a = std::get<set_value>(action);
@@ -302,30 +323,20 @@ void Context::update(const Action &action) {
         state_json = state;
     }
 
-    // Execute side effects.
-    std::visit(visitor{
-        // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
-        // since the action will be initiated by ImGui itself,
-        // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        [&](const set_imgui_color_style &) { update_ui_context(UIContextFlags_ImGuiStyle); },
-        [&](const set_implot_color_style &) { update_ui_context(UIContextFlags_ImPlotStyle); },
-        [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
-
-        [&](const set_value &a) { on_set_value(JsonPath(a.state_path)); },
-
-        [&](const auto &) {}, // All actions without side effects (only state updates)
-    }, action);
+    const auto patch = json::diff(action_begin_state_json, state_json);
+    on_diff({patch, {}, Clock::now()}, Forward, false);
 }
 
 void Context::finalize_gesture() {
     if (active_gesture.empty()) return;
 
     const auto &compressed_gesture = action::compress_gesture(active_gesture);
-    const JsonPatch patch = json::diff(previous_state_json, sj);
+    const JsonPatch patch = json::diff(gesture_begin_state_json, sj);
     if (!patch.empty() && compressed_gesture.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
-    gestures.emplace_back(compressed_gesture);
+    if (!compressed_gesture.empty()) gestures.emplace_back(compressed_gesture);
     active_gesture.clear();
+    state_stats.apply_patch(patch, Clock::now(), Forward, true);
 
     // todo this doesn't currently guarantee actions with non-state side-effect won't get saved to history! They could sneak into gestures with other state effects.
     // todo also not up-to-date comment. need to address this side-effect issue
@@ -338,37 +349,38 @@ void Context::finalize_gesture() {
     // since compression only considers two actions at a time for simplicity.
     if (patch.empty()) return;
 
-    const JsonPatch reverse_patch = json::diff(sj, previous_state_json);
-    previous_state_json = sj;
     // If we're not already at the end of the undo stack, wind it back. TODO use an undo _tree_ and keep this history
     while (int(diffs.size()) > diff_index + 1) diffs.pop_back();
-    diffs.push_back({patch, reverse_patch, Clock::now()});
+    diffs.push_back({patch, json::diff(sj, gesture_begin_state_json), Clock::now()});
     diff_index = int(diffs.size()) - 1;
-
-    on_json_diff(diffs.back(), Forward);
+    gesture_begin_state_json = sj;
 }
 
 void Context::apply_diff(const int index, const Direction direction) {
     const auto &diff = diffs[index];
-    const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
+    const auto &patch = direction == Forward ? diff.forward : diff.reverse;
 
-    state_json = previous_state_json = state_json.patch(patch);
+    state_json = gesture_begin_state_json = state_json.patch(patch);
     state = state_json.get<State>();
 
-    on_json_diff(diff, direction);
+    on_diff(diff, direction, true);
 }
 
 void Context::on_set_value(const JsonPath &path) {
     const auto &path_str = path.to_string();
+
+    // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
+    // since the action will be initiated by ImGui itself,
+    // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
     if (path_str.rfind(s.imgui_settings.path, 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
     else if (path_str.rfind(s.style.imgui.path, 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
     else if (path_str.rfind(s.style.implot.path, 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
     else if (path == s.audio.faust.path / "code") update_faust_context();
 }
 
-void Context::on_json_diff(const BidirectionalStateDiff &diff, Direction direction) {
-    const auto &patch = direction == Forward ? diff.forward_patch : diff.reverse_patch;
-    state_stats.on_json_patch(patch, diff.system_time, direction);
+void Context::on_diff(const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture) {
+    const auto &patch = direction == Forward ? diff.forward : diff.reverse;
+    state_stats.apply_patch(patch, diff.time, direction, is_full_gesture);
     for (const auto &patch_op: patch) on_set_value(JsonPath(patch_op.path));
     update_processes();
 }
@@ -386,7 +398,7 @@ void Context::open_project(const fs::path &path) {
 
     const auto &project = json::from_msgpack(File::read(path));
     if (format == StateFormat) {
-        state_json = previous_state_json = project;
+        state_json = gesture_begin_state_json = project;
         state = state_json.get<State>();
 
         update_ui_context(UIContextFlags_ImGuiSettings | UIContextFlags_ImGuiStyle | UIContextFlags_ImPlotStyle);

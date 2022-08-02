@@ -286,7 +286,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
                                                           is_array_item ? leaf_name : key) : key;
 
     if (auto_select) {
-        const auto &update_paths = c.state_stats.most_recent_update_paths;
+        const auto &update_paths = c.state_stats.latest_update_paths;
         const auto is_ancestor_path = [path](const string &candidate_path) { return candidate_path.rfind(path, 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
@@ -294,16 +294,16 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
 
     // Tree acts like a histogram, where rect length corresponds to relative update frequency, with `width => most frequently updated`.
     // Background color of nodes flashes on update.
-    if (c.state_stats.update_times_for_state_path.contains(path)) {
-        const auto &update_times = c.state_stats.update_times_for_state_path.at(path);
+    if (c.state_stats.num_updates_for_path.contains(path)) {
+        const auto num_updates = c.state_stats.num_updates_for_path.at(path);
+        const auto latest_update_time = c.state_stats.latest_update_time_for_path.contains(path) ? c.state_stats.latest_update_time_for_path.at(path) : TimePoint{};
 
         // Draw histogram rect
-        const auto row_item_ratio_rect = RowItemRatioRect(float(update_times.size()) / float(c.state_stats.max_num_updates));
+        const auto row_item_ratio_rect = RowItemRatioRect(float(num_updates) / float(c.state_stats.max_num_updates));
         GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.imgui.Colors[ImGuiCol_PlotHistogram]));
 
         // Flash background on update
-        const auto most_recent_update_time = update_times.back();
-        const fsec flash_remaining_sec = Clock::now() - most_recent_update_time;
+        const fsec flash_remaining_sec = Clock::now() - latest_update_time;
         const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
         auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
         flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
@@ -315,7 +315,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     if (auto_select) flags |= JsonTreeNodeFlags_Disabled;
 
     // The rest below is structurally identical to `fg::Widgets::JsonTree`.
-    // Couldn't find an easy/clean way to inject the above in each recursive call.
+    // Couldn't find an easy/clean way to inject the above into each recursive call.
     if (value.is_null()) {
         ImGui::Text("%s", label.c_str());
     } else if (value.is_object()) {
@@ -350,15 +350,10 @@ static const string auto_select_help = "When auto-select is enabled, state chang
 void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) {
-                q(toggle_state_viewer_auto_select{});
-            }
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, s.state_viewer.auto_select)) q(toggle_state_viewer_auto_select{});
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
-                if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) {
-                    q(set_state_viewer_label_mode{LabelMode::annotated});
-                } else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) {
-                    q(set_state_viewer_label_mode{LabelMode::raw});
-                }
+                if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) q(set_state_viewer_label_mode{LabelMode::annotated});
+                else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) q(set_state_viewer_label_mode{LabelMode::raw});
                 EndMenu();
             }
             EndMenu();
@@ -423,25 +418,31 @@ void StateMemoryEditor::draw() const {
 }
 
 void StatePathUpdateFrequency::draw() const {
-    if (c.state_stats.update_times_for_state_path.empty()) {
+    if (c.state_stats.committed_update_times_for_path.empty() && c.state_stats.gesture_update_times_for_path.empty()) {
         Text("No state updates yet.");
         return;
     }
 
-    auto &[labels, values] = c.state_stats.path_update_frequency_plottable;
-
+    auto &[labels, values] = c.state_stats.path_update_frequency;
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
         // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
+        // todo fix in ImPlot
         if (labels.size() == 1) labels.emplace_back("");
 
-        ImPlot::PushStyleColor(ImPlotCol_Fill, GetStyleColorVec4(ImGuiCol_PlotHistogram));
-        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
+        // todo add an axis flag to exclude non-integer ticks
+        // todo add an axis flag to show last tick
+        // This is me getting the above 2 todos, but commenting out since I'd rather have auto-scale than the above.
+//        ImPlot::SetupAxisTicks(ImAxis_X1, 0, double(c.state_stats.max_num_updates), int(c.state_stats.max_num_updates) + 1, nullptr, false);
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
-        ImPlot::PlotBars("Number of updates", values.data(), int(values.size()), 0.75, 0, ImPlotBarsFlags_Horizontal);
+        static const char *item_labels[] = {"Committed updates", "Active updates"};
+        const bool has_gesture = !c.state_stats.gesture_update_times_for_path.empty();
+        const int item_count = has_gesture ? 2 : 1;
+        const int group_count = has_gesture ? int(values.size()) / 2 : int(values.size());
+        ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
+
         ImPlot::EndPlot();
-        ImPlot::PopStyleColor();
     }
 }
 // Returns `true` if style changes.
@@ -781,15 +782,15 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
 //        }
 //    }
     if (TreeNode("Forward diff")) {
-        ShowJsonPatchMetrics(diff.forward_patch);
+        ShowJsonPatchMetrics(diff.forward);
         TreePop();
     }
     if (TreeNode("Reverse diff")) {
-        ShowJsonPatchMetrics(diff.reverse_patch);
+        ShowJsonPatchMetrics(diff.reverse);
         TreePop();
     }
 
-    BulletText("Time: %s", fmt::format("{}\n", diff.system_time).c_str());
+    BulletText("Time: %s", fmt::format("{}\n", diff.time).c_str());
 }
 
 void ShowGesture(const Gesture &gesture) {
@@ -805,7 +806,7 @@ void Metrics::FlowGridMetrics::draw() const {
         // Gestures (semantically grouped lists of actions)
 
         // Active (uncompressed) gesture
-        const bool widget_gesture = c.gesturing;
+        const bool widget_gesture = c.is_widget_gesturing;
         const bool active_gesture_present = !c.active_gesture.empty();
         if (active_gesture_present || widget_gesture) {
             // Gesture completion progress bar

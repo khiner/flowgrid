@@ -251,13 +251,6 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
     path_update_frequency = create_path_update_frequency_plottable();
 }
 
-// Convert `string` to char array, removing first character of the path, which is a '/'.
-const char *convert_path(const string &str) {
-    char *pc = new char[str.size()];
-    std::strcpy(pc, string{str.begin() + 1, str.end()}.c_str());
-    return pc;
-}
-
 StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
     std::vector<string> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
@@ -278,7 +271,14 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
         }
     }
 
-    return {paths | views::transform(convert_path) | ranges::to<std::vector<const char *>>, values};
+    const auto labels = paths | views::transform([](const string &path) {
+        // Convert `string` to char array, removing first character of the path, which is a '/'.
+        char *label = new char[path.size()];
+        std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
+        return label;
+    }) | to<std::vector<const char *>>;
+
+    return {labels, values};
 }
 
 // Private methods

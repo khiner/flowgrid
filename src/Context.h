@@ -39,7 +39,7 @@ const std::map<string, ProjectFormat> ProjectFormatForExtension{
 };
 
 static const std::set<string> AllProjectExtensions = {".fls", ".fld", ".fla"}; // todo derive from map
-static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>;
+static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<std::string>;
 static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";
 

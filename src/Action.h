@@ -56,6 +56,7 @@ struct show_save_project_dialog {};
 struct close_application {};
 
 struct set_value { string path; json value; };
+struct toggle_value { string path; };
 
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
@@ -83,6 +84,7 @@ JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
 JsonType(set_value, path, value)
+JsonType(toggle_value, path)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)
@@ -104,7 +106,7 @@ using Action = std::variant<
     open_file_dialog, close_file_dialog,
     close_application,
 
-    set_value,
+    set_value, toggle_value,
 
     set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
 
@@ -160,6 +162,7 @@ static const std::map<ID, string> name_for_id{
     {id<close_application>,        ActionName(close_application)},
 
     {id<set_value>,                ActionName(set_value)},
+    {id<toggle_value>,             ActionName(toggle_value)},
 
     {id<set_imgui_color_style>,       "Set ImGui color style"},
     {id<set_implot_color_style>,      "Set ImPlot color style"},

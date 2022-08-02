@@ -49,7 +49,7 @@ void Window::Dock(ImGuiID node_id) const {
 
 bool Window::ToggleMenuItem() const {
     const bool edited = ImGui::MenuItem(name.c_str(), nullptr, visible);
-    if (edited) q(set_value{path / "visible", !visible});
+    if (edited) q(toggle_value{path / "visible"});
     return edited;
 }
 
@@ -347,7 +347,7 @@ static const string auto_select_help = "When auto-select is enabled, state chang
 void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, auto_select)) q(set_value{path / "auto_select", !auto_select});
+            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, auto_select)) q(toggle_value{path / "auto_select"});
             if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
                 if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) q(set_value{path / "label_mode", LabelMode::annotated});
                 else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) q(set_value{path / "label_mode", LabelMode::raw});

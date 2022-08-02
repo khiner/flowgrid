@@ -11,7 +11,7 @@ void HelpMarker(const char *desc);
 bool BeginMenuWithHelp(const char *label, const char *help, bool enabled = true);
 bool MenuItemWithHelp(const char *label, const char *help, const char *shortcut = nullptr, bool selected = false, bool enabled = true);
 
-bool Checkbox(const JsonPath &path, const char *label = nullptr);
+void Checkbox(const JsonPath &path, const char *label = nullptr);
 bool SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0, const char *label = nullptr);
 bool SliderFloat2(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
 bool SliderInt(const char *label, int *v, int v_min, int v_max, const char *format = "%d", ImGuiSliderFlags flags = 0);

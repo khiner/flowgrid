@@ -310,9 +310,16 @@ void Context::on_action(const Action &action) {
 void Context::apply_action(const Action &action) {
     const auto action_begin_state_json = state_json;
     // Update state. Keep JSON & struct versions of state in sync.
-    if (std::holds_alternative<set_value>(action)) {
-        const auto &a = std::get<set_value>(action);
-        state_json[JsonPath(a.path)] = a.value;
+    const bool is_set_value = std::holds_alternative<set_value>(action);
+    const bool is_toggle_value = std::holds_alternative<toggle_value>(action);
+    if (is_set_value || is_toggle_value) {
+        if (is_set_value) {
+            const auto &a = std::get<set_value>(action);
+            state_json[JsonPath(a.path)] = a.value;
+        } else {
+            const auto &a = std::get<toggle_value>(action);
+            state_json[JsonPath(a.path)] = !state_json[JsonPath(a.path)];
+        }
         state = state_json;
     } else {
         state.update(action);

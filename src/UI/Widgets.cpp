@@ -29,11 +29,9 @@ void gestured() {
     if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
 }
 
-bool fg::Checkbox(const JsonPath &path, const char *label) {
+void fg::Checkbox(const JsonPath &path, const char *label) {
     bool v = sj[path];
-    const bool edited = ImGui::Checkbox(label ? label : path_label(path).c_str(), &v);
-    if (edited) q(set_value{path, v});
-    return edited;
+    if (ImGui::Checkbox(label ? label : path_label(path).c_str(), &v)) q(toggle_value{path});
 }
 
 bool fg::SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format, ImGuiSliderFlags flags, const char *label) {

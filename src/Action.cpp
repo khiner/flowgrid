@@ -40,6 +40,7 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
             return false;
         case id<set_value>:if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
             return false;
+        case id<toggle_value>: return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
         default: return false;
     }
 }

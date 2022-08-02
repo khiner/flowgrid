@@ -276,7 +276,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
 
     const string &leaf_name = path == RootPath ? path : path.back();
     const auto &parent_path = path == RootPath ? path : path.parent_pointer();
-    const bool is_array_item = is_number(leaf_name);
+    const bool is_array_item = is_integer(leaf_name);
     const bool is_color = string(path).find("Colors") != string::npos && is_array_item;
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_imgui_color = parent_path == s.style.imgui.path / "Colors";

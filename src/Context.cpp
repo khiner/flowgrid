@@ -273,7 +273,7 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
         }
     }
 
-    const auto labels = paths | views::transform([](const string &path) {
+    const auto labels = paths | transform([](const string &path) {
         // Convert `string` to char array, removing first character of the path, which is a '/'.
         char *label = new char[path.size()];
         std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());

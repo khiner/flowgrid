@@ -13,8 +13,6 @@ struct Preferences {
 
 JsonType(Preferences, recently_opened_paths)
 
-using std::string;
-
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 using Action = action::Action;
@@ -39,7 +37,7 @@ const std::map<string, ProjectFormat> ProjectFormatForExtension{
 };
 
 static const std::set<string> AllProjectExtensions = {".fls", ".fld", ".fla"}; // todo derive from map
-static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<std::string>;
+static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
 static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";
 

@@ -9,14 +9,9 @@
 using namespace ImGui;
 using namespace fg;
 
-void DockWindow(const Window &window, ImGuiID node_id) {
-    ImGui::DockBuilderDockWindow(window.name.c_str(), node_id);
-}
-
-// Janky `SelectedTabId` approach from https://github.com/ocornut/imgui/issues/5005#issuecomment-1047913490
-void SelectWindowTab(const Window &window) {
-    window.get_imgui_window().DockNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(window.name.c_str(), 0, 0));
-}
+//-----------------------------------------------------------------------------
+// [SECTION] Helpers
+//-----------------------------------------------------------------------------
 
 ImRect RowItemRect() {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
@@ -33,7 +28,11 @@ void FillRowItemBg(const ImVec4 &col = s.style.imgui.Colors[ImGuiCol_FrameBgActi
     GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, ImColor(col));
 }
 
-void Window::draw_window(ImGuiWindowFlags flags) const {
+//-----------------------------------------------------------------------------
+// [SECTION] Window methods
+//-----------------------------------------------------------------------------
+
+void Window::DrawWindow(ImGuiWindowFlags flags) const {
     if (!visible) return;
 
     bool visible_copy = visible;
@@ -42,6 +41,21 @@ void Window::draw_window(ImGuiWindowFlags flags) const {
         else q(set_value{path / "visible", false});
     }
     ImGui::End();
+}
+
+void Window::Dock(ImGuiID node_id) const {
+    ImGui::DockBuilderDockWindow(name.c_str(), node_id);
+}
+
+bool Window::ToggleMenuItem() const {
+    const bool edited = ImGui::MenuItem(name.c_str(), nullptr, visible);
+    if (edited) q(set_value{path / "visible", !visible});
+    return edited;
+}
+
+void Window::SelectTab() const {
+    // Janky `SelectedTabId` approach from https://github.com/ocornut/imgui/issues/5005#issuecomment-1047913490
+    FindImGuiWindow().DockNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(name.c_str(), 0, 0));
 }
 
 static bool first_draw = true;
@@ -76,24 +90,24 @@ void State::draw() const {
         }
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
-                WindowToggleMenuItem(state_viewer);
-                WindowToggleMenuItem(memory_editor);
-                WindowToggleMenuItem(path_update_frequency);
+                state_viewer.ToggleMenuItem();
+                memory_editor.ToggleMenuItem();
+                path_update_frequency.ToggleMenuItem();
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
-                WindowToggleMenuItem(audio.settings);
+                audio.settings.ToggleMenuItem();
                 if (ImGui::BeginMenu("Faust")) {
-                    WindowToggleMenuItem(audio.faust.editor);
-                    WindowToggleMenuItem(audio.faust.log);
+                    audio.faust.editor.ToggleMenuItem();
+                    audio.faust.log.ToggleMenuItem();
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
             }
-            WindowToggleMenuItem(metrics);
-            WindowToggleMenuItem(style);
-            WindowToggleMenuItem(tools);
-            WindowToggleMenuItem(demo);
+            metrics.ToggleMenuItem();
+            style.ToggleMenuItem();
+            tools.ToggleMenuItem();
+            demo.ToggleMenuItem();
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -108,40 +122,38 @@ void State::draw() const {
         auto utilities_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
         auto faust_log_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
 
-        DockWindow(audio.settings, audio_node_id);
-        DockWindow(audio.faust.editor, faust_editor_node_id);
-        DockWindow(audio.faust.log, faust_log_node_id);
-
-        DockWindow(state_viewer, state_node_id);
-        DockWindow(memory_editor, state_node_id);
-        DockWindow(path_update_frequency, state_node_id);
-
-        DockWindow(metrics, utilities_node_id);
-        DockWindow(style, utilities_node_id);
-        DockWindow(tools, utilities_node_id);
-        DockWindow(demo, utilities_node_id);
+        audio.settings.Dock(audio_node_id);
+        audio.faust.editor.Dock(faust_editor_node_id);
+        audio.faust.log.Dock(faust_log_node_id);
+        state_viewer.Dock(state_node_id);
+        memory_editor.Dock(state_node_id);
+        path_update_frequency.Dock(state_node_id);
+        metrics.Dock(utilities_node_id);
+        style.Dock(utilities_node_id);
+        tools.Dock(utilities_node_id);
+        demo.Dock(utilities_node_id);
 
         first_draw = false;
         second_draw = true;
     } else if (second_draw) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
-        SelectWindowTab(state_viewer);
-        SelectWindowTab(metrics);
+        state_viewer.SelectTab();
+        metrics.SelectTab();
 
         second_draw = false;
     }
 
-    audio.settings.draw_window();
-    audio.faust.editor.draw_window(ImGuiWindowFlags_MenuBar);
-    audio.faust.log.draw_window();
-    state_viewer.draw_window(ImGuiWindowFlags_MenuBar);
-    path_update_frequency.draw_window(ImGuiWindowFlags_None);
-    memory_editor.draw_window(ImGuiWindowFlags_NoScrollbar);
+    audio.settings.DrawWindow();
+    audio.faust.editor.DrawWindow(ImGuiWindowFlags_MenuBar);
+    audio.faust.log.DrawWindow();
+    state_viewer.DrawWindow(ImGuiWindowFlags_MenuBar);
+    path_update_frequency.DrawWindow(ImGuiWindowFlags_None);
+    memory_editor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
 
-    metrics.draw_window();
-    style.draw_window();
-    tools.draw_window();
-    demo.draw_window(ImGuiWindowFlags_MenuBar);
+    metrics.DrawWindow();
+    style.DrawWindow();
+    tools.DrawWindow();
+    demo.DrawWindow(ImGuiWindowFlags_MenuBar);
     file.dialog.draw();
 }
 

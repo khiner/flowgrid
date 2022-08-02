@@ -29,12 +29,6 @@ void gestured() {
     if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
 }
 
-bool fg::WindowToggleMenuItem(const Window &window) {
-    const bool edited = ImGui::MenuItem(window.name.c_str(), nullptr, window.visible);
-    if (edited) q(set_value{window.path / "visible", !window.visible});
-    return edited;
-}
-
 bool fg::Checkbox(const JsonPath &path, const char *label) {
     bool v = sj[path];
     const bool edited = ImGui::Checkbox(label ? label : path_label(path).c_str(), &v);

@@ -48,10 +48,13 @@ struct Window : StateMember, Drawable {
     using StateMember::StateMember;
     Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name), visible(visible) {}
 
-    void draw_window(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
-    ImGuiWindow &get_imgui_window() const { return *ImGui::FindWindowByName(name.c_str()); }
-
     bool visible{true};
+
+    ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(name.c_str()); }
+    void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
+    void Dock(ImGuiID node_id) const;
+    bool ToggleMenuItem() const;
+    void SelectTab() const;
 };
 
 struct StateViewer : Window {

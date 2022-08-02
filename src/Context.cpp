@@ -203,7 +203,7 @@ void Context::update_processes() {
 }
 
 void Context::undo() {
-    if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
+    if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
     apply_diff(diff_index--, Direction::Reverse);
 }
 void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
@@ -286,8 +286,6 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
 
-    active_gesture.emplace_back(action);
-
     std::visit(visitor{
         // Handle actions that don't directly update state.
         [&](const Actions::undo &) { undo(); },
@@ -305,6 +303,8 @@ void Context::on_action(const Action &action) {
         // Remaining actions have a direct effect on the application state.
         [&](const auto &) { apply_action(action); },
     }, action);
+
+    active_gesture.emplace_back(action);
 }
 
 void Context::apply_action(const Action &action) {
@@ -312,7 +312,7 @@ void Context::apply_action(const Action &action) {
     // Update state. Keep JSON & struct versions of state in sync.
     if (std::holds_alternative<set_value>(action)) {
         const auto &a = std::get<set_value>(action);
-        state_json[JsonPath(a.state_path)] = a.value;
+        state_json[JsonPath(a.path)] = a.value;
         state = state_json;
     } else {
         state.update(action);

@@ -55,7 +55,7 @@ struct show_save_project_dialog {};
 
 struct close_application {};
 
-struct set_value { string state_path; json value; };
+struct set_value { string path; json value; };
 
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
@@ -82,7 +82,7 @@ EmptyJsonType(show_save_faust_file_dialog)
 JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
-JsonType(set_value, state_path, value)
+JsonType(set_value, path, value)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)

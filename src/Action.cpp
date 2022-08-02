@@ -32,17 +32,14 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<set_implot_color_style>:
         case id<set_flowgrid_color_style>:
         case id<show_open_faust_file_dialog>:
-        case id<show_save_faust_file_dialog>:
-            if (a_id == b_id) return b;
-            else return false;
+        case id<show_save_faust_file_dialog>:if (a_id == b_id) return b;
+            return false;
         case id<open_project>:
         case id<open_faust_file>:
-        case id<save_faust_file>:
-            if (a_id == b_id && json(a) == json(b)) return a;
-            else return false;
-        case id<set_value>:
-            if (a_id == b_id && std::get<set_value>(a).state_path == std::get<set_value>(b).state_path) return b;
-            else return false;
+        case id<save_faust_file>:if (a_id == b_id && json(a) == json(b)) return a;
+            return false;
+        case id<set_value>:if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
+            return false;
         default: return false;
     }
 }

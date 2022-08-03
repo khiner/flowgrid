@@ -91,7 +91,7 @@ void State::draw() const {
         if (ImGui::BeginMenu("Windows")) {
             if (ImGui::BeginMenu("State")) {
                 state_viewer.ToggleMenuItem();
-                memory_editor.ToggleMenuItem();
+                state_memory_editor.ToggleMenuItem();
                 path_update_frequency.ToggleMenuItem();
                 ImGui::EndMenu();
             }
@@ -126,7 +126,7 @@ void State::draw() const {
         audio.faust.editor.Dock(faust_editor_node_id);
         audio.faust.log.Dock(faust_log_node_id);
         state_viewer.Dock(state_node_id);
-        memory_editor.Dock(state_node_id);
+        state_memory_editor.Dock(state_node_id);
         path_update_frequency.Dock(state_node_id);
         metrics.Dock(utilities_node_id);
         style.Dock(utilities_node_id);
@@ -148,7 +148,7 @@ void State::draw() const {
     audio.faust.log.DrawWindow();
     state_viewer.DrawWindow(ImGuiWindowFlags_MenuBar);
     path_update_frequency.DrawWindow(ImGuiWindowFlags_None);
-    memory_editor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
+    state_memory_editor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
 
     metrics.DrawWindow();
     style.DrawWindow();

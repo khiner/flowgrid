@@ -337,7 +337,7 @@ struct StateData {
     Metrics metrics{RootPath, "metrics"};
     Tools tools{RootPath, "tools"};
     StateViewer state_viewer{RootPath, "state_viewer"};
-    StateMemoryEditor memory_editor{RootPath, "state_memory_editor"};
+    StateMemoryEditor state_memory_editor{RootPath, "state_memory_editor"};
     StatePathUpdateFrequency path_update_frequency{RootPath, "path_update_frequency", "State path update frequency"};
 };
 
@@ -417,4 +417,4 @@ JsonType(ImGuiSettingsData, nodes, windows, tables)
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)
 
-JsonType(StateData, audio, file, style, imgui_settings, processes, state_viewer, memory_editor, path_update_frequency, demo, metrics, tools);
+JsonType(StateData, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, demo, metrics, tools);

@@ -136,13 +136,13 @@ void Context::enqueue_action(const Action &a) {
 }
 
 void Context::run_queued_actions(bool force_finalize_gesture) {
-    if (!queued_actions.empty()) gesture_frames_remaining = gesture_frames;
+    if (!queued_actions.empty()) gesture_start_time = Clock::now();
     while (!queued_actions.empty()) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if (!(is_widget_gesturing || gesture_frames_remaining > 0) || force_finalize_gesture) finalize_gesture();
-    gesture_frames_remaining = std::max(0, gesture_frames_remaining - 1);
+    gesture_time_remaining_sec = std::max(0.0f, s.application_settings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
+    if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) finalize_gesture();
 }
 
 bool Context::action_allowed(const ActionID action_id) const {

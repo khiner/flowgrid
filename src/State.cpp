@@ -118,12 +118,13 @@ void State::draw() const {
     auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     if (first_draw) {
         auto faust_editor_node_id = dockspace_id;
-        auto audio_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
-        auto state_node_id = ImGui::DockBuilderSplitNode(audio_node_id, ImGuiDir_Down, 0.9f, nullptr, &audio_node_id);
+        auto settings_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
+        auto state_node_id = ImGui::DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.9f, nullptr, &settings_node_id);
         auto utilities_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
         auto faust_log_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
 
-        audio.settings.Dock(audio_node_id);
+        application_settings.Dock(settings_node_id);
+        audio.settings.Dock(settings_node_id);
         audio.faust.editor.Dock(faust_editor_node_id);
         audio.faust.log.Dock(faust_log_node_id);
         state_viewer.Dock(state_node_id);
@@ -144,6 +145,7 @@ void State::draw() const {
         second_draw = false;
     }
 
+    application_settings.DrawWindow();
     audio.settings.DrawWindow();
     audio.faust.editor.DrawWindow(ImGuiWindowFlags_MenuBar);
     audio.faust.log.DrawWindow();
@@ -296,15 +298,12 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
         if (was_recently_updated) FillRowItemBg(s.style.imgui.Colors[ImGuiCol_FrameBg]);
     }
 
-    // Background color of nodes flashes on update.
+    // Flash background color of nodes when its corresponding path updates.
     if (c.state_stats.latest_update_time_for_path.contains(path)) {
         const auto latest_update_time = c.state_stats.latest_update_time_for_path.contains(path) ? c.state_stats.latest_update_time_for_path.at(path) : TimePoint{};
-
-        // Flash background on update
-        const fsec flash_remaining_sec = Clock::now() - latest_update_time;
-        const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
+        const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time).count() / s.style.flowgrid.FlashDurationSec;
         auto flash_color = s.style.flowgrid.Colors[FlowGridCol_GestureIndicator];
-        flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
+        flash_color.w = std::max(0.0f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
 
@@ -689,6 +688,7 @@ void Style::ImPlotStyleMember::draw() const {
 
 void FlowGridStyle::draw() const {
     SliderFloat(path / "FlashDurationSec", FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
+
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});
 
@@ -719,6 +719,10 @@ void Style::draw() const {
 //-----------------------------------------------------------------------------
 // [SECTION] Other windows
 //-----------------------------------------------------------------------------
+
+void ApplicationSettings::draw() const {
+    SliderFloat(path / "GestureDurationSec", GestureDurationSecMin, GestureDurationSecMax, "%.3f s");
+}
 
 void Audio::Settings::draw() const {
     Checkbox(s.processes.audio.path / "running");
@@ -806,7 +810,7 @@ void Metrics::FlowGridMetrics::draw() const {
         const bool active_gesture_present = !c.active_gesture.empty();
         if (active_gesture_present || widget_gesture) {
             // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(float(c.gesture_frames - c.gesture_frames_remaining) / float(c.gesture_frames));
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - c.gesture_time_remaining_sec / s.application_settings.GestureDurationSec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.flowgrid.Colors[FlowGridCol_GestureIndicator]));
 
             const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");

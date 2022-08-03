@@ -144,8 +144,8 @@ struct Context {
 
     bool is_widget_gesturing{};
     bool has_new_faust_code{};
-    int gesture_frames = 50; // todo time-based rather than frame-based
-    int gesture_frames_remaining = 0; // Merge actions that happen within short succession into a single gesture
+    TimePoint gesture_start_time{};
+    float gesture_time_remaining_sec;
 
     // Read-only public shorthand state references:
     const State &s = state;

@@ -57,6 +57,14 @@ struct Window : StateMember, Drawable {
     void SelectTab() const;
 };
 
+const DurationSec GestureDurationSecMin = 0.0, GestureDurationSecMax = 5.0;
+struct ApplicationSettings : Window {
+    using Window::Window;
+    void draw() const override;
+
+    DurationSec GestureDurationSec{0.5}; // Merge actions occurring in short succession into a single gesture
+};
+
 struct StateViewer : Window {
     using Window::Window;
     void draw() const override;
@@ -324,6 +332,7 @@ const JsonPath RootPath{""};
 struct StateData {
     ImGuiSettings imgui_settings{RootPath, "imgui_settings", "ImGui settings"};
     Style style{RootPath, "style"};
+    ApplicationSettings application_settings{RootPath, "application_settings"};
     Audio audio{RootPath, "audio"};
     Processes processes{RootPath, "processes"};
     File file{RootPath, "file"};
@@ -382,6 +391,7 @@ JsonType(ImVec2ih, x, y)
 
 JsonType(Window, visible)
 
+JsonType(ApplicationSettings, visible, GestureDurationSec)
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio::Settings, visible, muted, backend, latency, sample_rate, out_raw)
@@ -412,4 +422,4 @@ JsonType(ImGuiSettingsData, nodes, windows, tables)
 JsonType(Processes::Process, running)
 JsonType(Processes, audio, ui)
 
-JsonType(StateData, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, demo, metrics, tools);
+JsonType(StateData, application_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, demo, metrics, tools);

@@ -832,7 +832,7 @@ void Metrics::FlowGridMetrics::draw() const {
         if (!has_gestures) BeginDisabled();
         if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%lu)", c.gestures.size())) {
             for (size_t gesture_i = 0; gesture_i < c.gestures.size(); gesture_i++) {
-                if (TreeNodeEx("Gesture", gesture_i == c.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None, "%lu", gesture_i)) {
+                if (TreeNodeEx(std::to_string(gesture_i).c_str(), gesture_i == c.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
                     // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
                     const auto &gesture = c.gestures[gesture_i];
                     ShowGesture(gesture);

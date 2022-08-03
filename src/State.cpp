@@ -197,13 +197,12 @@ void State::update(const Action &action) {
             }
         },
         [&](const set_flowgrid_color_style &a) {
-            auto &dst = style.flowgrid;
             switch (a.id) {
-                case 0: FlowGridStyle::StyleColorsDark(dst);
+                case 0: style.flowgrid.StyleColorsDark();
                     break;
-                case 1: FlowGridStyle::StyleColorsLight(dst);
+                case 1: style.flowgrid.StyleColorsLight();
                     break;
-                case 2: FlowGridStyle::StyleColorsClassic(dst);
+                case 2: style.flowgrid.StyleColorsClassic();
                     break;
                 default:break;
             }
@@ -304,7 +303,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
         // Flash background on update
         const fsec flash_remaining_sec = Clock::now() - latest_update_time;
         const float flash_complete_ratio = flash_remaining_sec.count() / s.style.flowgrid.FlashDurationSec;
-        auto flash_color = s.style.flowgrid.Colors[FlowGridCol_Flash];
+        auto flash_color = s.style.flowgrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.w = std::max(0.0f, 1 - flash_complete_ratio);
         FillRowItemBg(flash_color);
     }
@@ -808,8 +807,7 @@ void Metrics::FlowGridMetrics::draw() const {
         if (active_gesture_present || widget_gesture) {
             // Gesture completion progress bar
             const auto row_item_ratio_rect = RowItemRatioRect(float(c.gesture_frames - c.gesture_frames_remaining) / float(c.gesture_frames));
-            // Using 2nd item of default colormap as the progress bar to match the gesture histogram color in `StatePathUpdateFrequency`
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImPlot::GetColormapColorU32(1, 0));
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.flowgrid.Colors[FlowGridCol_GestureIndicator]));
 
             const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

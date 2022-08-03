@@ -210,7 +210,7 @@ struct File : StateMember {
 };
 
 enum FlowGridCol_ {
-    FlowGridCol_Flash, // ImGuiCol_TitleBgActive
+    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now)
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
     FlowGridCol_COUNT
 };
@@ -220,34 +220,29 @@ typedef int FlowGridCol; // -> enum FlowGridCol_
 const DurationSec FlashDurationSecMin = 0.0, FlashDurationSecMax = 5.0;
 
 struct FlowGridStyle : StateMember, Drawable {
-    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
-        StyleColorsDark(*this);
-    }
+    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {}
 
     void draw() const override;
 
     ImVec4 Colors[FlowGridCol_COUNT];
     DurationSec FlashDurationSec{0.6};
 
-    static void StyleColorsDark(FlowGridStyle &style) {
-        auto *colors = style.Colors;
-        colors[FlowGridCol_Flash] = ImVec4(0.16f, 0.29f, 0.48f, 1.00f);
-        colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    void StyleColorsDark() {
+        Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+        Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
     }
-    static void StyleColorsClassic(FlowGridStyle &style) {
-        auto *colors = style.Colors;
-        colors[FlowGridCol_Flash] = ImVec4(0.32f, 0.32f, 0.63f, 0.87f);
-        colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+    void StyleColorsClassic() {
+        Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+        Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
     }
-    static void StyleColorsLight(FlowGridStyle &style) {
-        auto *colors = style.Colors;
-        colors[FlowGridCol_Flash] = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
-        colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
+    void StyleColorsLight() {
+        Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
+        Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
     }
 
     static const char *GetColorName(FlowGridCol idx) {
         switch (idx) {
-            case FlowGridCol_Flash: return "Flash";
+            case FlowGridCol_GestureIndicator: return "GestureIndicator";
             case FlowGridCol_HighlightText: return "HighlightText";
             default: return "Unknown";
         }

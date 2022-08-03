@@ -81,7 +81,7 @@ struct StateStats {
         std::vector<ImU64> values;
     };
 
-    std::vector<string> latest_update_paths{};
+    std::vector<string> latest_updated_paths{};
     std::map<string, std::vector<TimePoint>> gesture_update_times_for_path{};
     std::map<string, std::vector<TimePoint>> committed_update_times_for_path{};
     std::map<string, TimePoint> latest_update_time_for_path{};

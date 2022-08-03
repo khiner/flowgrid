@@ -290,7 +290,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
                                                           is_array_item ? leaf_name : key) : key;
 
     if (auto_select) {
-        const auto &update_paths = c.state_stats.latest_update_paths;
+        const auto &update_paths = c.state_stats.latest_updated_paths;
         const auto is_ancestor_path = [path](const string &candidate_path) { return candidate_path.rfind(path, 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);

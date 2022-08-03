@@ -223,12 +223,12 @@ void Context::clear() {
 // StateStats
 
 void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
-    latest_update_paths = {};
+    if (!patch.empty()) latest_updated_paths = {};
 
     for (const JsonPatchOp &patch_op: patch) {
         // For add/remove ops, the thing being updated is the _parent_.
         const string &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.substr(0, patch_op.path.find_last_of('/')) : patch_op.path;
-        latest_update_paths.emplace_back(path);
+        latest_updated_paths.emplace_back(path);
 
         if (direction == Forward) {
             auto &update_times_for_path = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
@@ -334,6 +334,8 @@ void Context::apply_action(const Action &action) {
 }
 
 void Context::finalize_gesture() {
+    if (active_gesture.empty()) return;
+
     const auto active_gesture_compressed = action::compress_gesture(active_gesture);
     active_gesture.clear();
     state_stats.apply_patch(active_gesture_patch, Clock::now(), Forward, true);

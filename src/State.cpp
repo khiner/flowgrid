@@ -35,12 +35,13 @@ void FillRowItemBg(const ImVec4 &col = s.style.imgui.Colors[ImGuiCol_FrameBgActi
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
     if (!visible) return;
 
-    bool visible_copy = visible;
-    if (ImGui::Begin(name.c_str(), &visible_copy, flags)) {
-        if (visible_copy) draw();
-        else q(set_value{path / "visible", false});
+    bool open = visible;
+    if (ImGui::Begin(name.c_str(), &open, flags)) {
+        if (open) draw();
     }
     ImGui::End();
+
+    if (visible && !open) q(set_value{path / "visible", false});
 }
 
 void Window::Dock(ImGuiID node_id) const {

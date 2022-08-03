@@ -337,6 +337,7 @@ void Context::finalize_gesture() {
     const auto active_gesture_compressed = action::compress_gesture(active_gesture);
     active_gesture.clear();
     state_stats.apply_patch(active_gesture_patch, Clock::now(), Forward, true);
+    if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
 
     // todo this doesn't currently guarantee actions with non-state side-effect won't get saved to history! They could sneak into gestures with other state effects.
     // todo also not up-to-date comment. need to address this side-effect issue
@@ -350,7 +351,6 @@ void Context::finalize_gesture() {
     if (active_gesture_patch.empty()) return;
     if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
-    gestures.emplace_back(active_gesture_compressed);
     while (int(diffs.size()) > diff_index + 1) diffs.pop_back(); // TODO use an undo _tree_ and keep this history
     diffs.push_back({active_gesture_patch, json::diff(sj, gesture_begin_state_json), Clock::now()});
     diff_index = int(diffs.size()) - 1;

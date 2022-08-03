@@ -55,12 +55,8 @@ bool Window::ToggleMenuItem() const {
 }
 
 void Window::SelectTab() const {
-    // Janky `SelectedTabId` approach from https://github.com/ocornut/imgui/issues/5005#issuecomment-1047913490
-    FindImGuiWindow().DockNode->SelectedTabId = ImHashStr("#TAB", 0, ImHashStr(name.c_str(), 0, 0));
+    FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
-
-static bool first_draw = true;
-static bool second_draw = false;
 
 void State::draw() const {
     if (ImGui::BeginMainMenuBar()) {
@@ -71,9 +67,7 @@ void State::draw() const {
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
                 for (const auto &recently_opened_path: recently_opened_paths) {
-                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) {
-                        q(open_project{recently_opened_path});
-                    }
+                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(open_project{recently_opened_path});
                 }
                 ImGui::EndMenu();
             }
@@ -116,7 +110,8 @@ void State::draw() const {
 
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
-    if (first_draw) {
+    int frame_count = ImGui::GetCurrentContext()->FrameCount;
+    if (frame_count == 1) {
         auto faust_editor_node_id = dockspace_id;
         auto settings_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
         auto state_node_id = ImGui::DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.9f, nullptr, &settings_node_id);
@@ -134,15 +129,10 @@ void State::draw() const {
         style.Dock(utilities_node_id);
         tools.Dock(utilities_node_id);
         demo.Dock(utilities_node_id);
-
-        first_draw = false;
-        second_draw = true;
-    } else if (second_draw) {
+    } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
         state_viewer.SelectTab();
         metrics.SelectTab();
-
-        second_draw = false;
     }
 
     application_settings.DrawWindow();

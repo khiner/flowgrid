@@ -55,8 +55,8 @@ struct show_save_project_dialog {};
 
 struct close_application {};
 
-struct set_value { string path; json value; };
-struct toggle_value { string path; };
+struct set_value { JsonPath path; json value; };
+struct toggle_value { JsonPath path; };
 
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };

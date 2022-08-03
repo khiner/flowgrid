@@ -227,7 +227,7 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
 
     for (const JsonPatchOp &patch_op: patch) {
         // For add/remove ops, the thing being updated is the _parent_.
-        const string &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.substr(0, patch_op.path.find_last_of('/')) : patch_op.path;
+        const JsonPath &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.parent_pointer() : patch_op.path;
         latest_updated_paths.emplace_back(path);
 
         if (direction == Forward) {
@@ -254,7 +254,7 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
 }
 
 StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
-    std::vector<string> paths;
+    std::vector<JsonPath> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
     for (const auto &path: views::keys(gesture_update_times_for_path)) {
         if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
@@ -318,10 +318,10 @@ void Context::apply_action(const Action &action) {
     if (is_set_value || is_toggle_value) {
         if (is_set_value) {
             const auto &a = std::get<set_value>(action);
-            state_json[JsonPath(a.path)] = a.value;
+            state_json[a.path] = a.value;
         } else {
             const auto &a = std::get<toggle_value>(action);
-            state_json[JsonPath(a.path)] = !state_json[JsonPath(a.path)];
+            state_json[a.path] = !state_json[a.path];
         }
         state = state_json;
     } else {
@@ -376,16 +376,16 @@ void Context::on_set_value(const JsonPath &path) {
     // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
     // since the action will be initiated by ImGui itself,
     // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-    if (path_str.rfind(s.imgui_settings.path, 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path_str.rfind(s.style.imgui.path, 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
-    else if (path_str.rfind(s.style.implot.path, 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
+    if (path_str.rfind(s.imgui_settings.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path_str.rfind(s.style.imgui.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
+    else if (path_str.rfind(s.style.implot.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
     else if (path == s.audio.faust.path / "code") update_faust_context();
 }
 
 void Context::on_diff(const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture) {
     const auto &patch = direction == Forward ? diff.forward : diff.reverse;
     state_stats.apply_patch(patch, diff.time, direction, is_full_gesture);
-    for (const auto &patch_op: patch) on_set_value(JsonPath(patch_op.path));
+    for (const auto &patch_op: patch) on_set_value(patch_op.path);
     update_processes();
 }
 

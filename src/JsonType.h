@@ -7,15 +7,17 @@ using namespace nlohmann;
 using std::nullopt;
 using JsonPath = json::json_pointer;
 
+namespace nlohmann {
+inline void to_json(json &j, const JsonPath &path) { j = path.to_string(); }
+inline void from_json(const json &j, JsonPath &path) { path = JsonPath(j.get<std::string>()); }
+
 // Convert `std::chrono::time_point`s to/from JSON.
 // From https://github.com/nlohmann/json/issues/2159#issuecomment-638104529
-namespace nlohmann {
 template<typename Clock, typename Duration>
 struct adl_serializer<std::chrono::time_point<Clock, Duration>> {
     static constexpr inline void to_json(json &j, const std::chrono::time_point<Clock, Duration> &tp) {
         j = tp.time_since_epoch().count();
     }
-
     static constexpr inline void from_json(const json &j, std::chrono::time_point<Clock, Duration> &tp) {
         Duration duration(j);
         tp = std::chrono::time_point<Clock, Duration>{duration};

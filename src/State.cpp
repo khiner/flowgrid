@@ -266,10 +266,11 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     const bool auto_select = s.state_viewer.auto_select;
     const bool annotate_enabled = s.state_viewer.label_mode == StateViewer::LabelMode::annotated;
 
-    const string &leaf_name = path == RootPath ? path : path.back();
+    const auto path_string = path.to_string();
+    const string &leaf_name = path == RootPath ? path_string : path.back();
     const auto &parent_path = path == RootPath ? path : path.parent_pointer();
     const bool is_array_item = is_integer(leaf_name);
-    const bool is_color = string(path).find("Colors") != string::npos && is_array_item;
+    const bool is_color = path_string.find("Colors") != string::npos && is_array_item;
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_imgui_color = parent_path == s.style.imgui.path / "Colors";
     const bool is_implot_color = parent_path == s.style.implot.path / "Colors";
@@ -282,7 +283,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
 
     if (auto_select) {
         const auto &update_paths = c.state_stats.latest_updated_paths;
-        const auto is_ancestor_path = [path](const string &candidate_path) { return candidate_path.rfind(path, 0) == 0; };
+        const auto is_ancestor_path = [path_string](const string &candidate_path) { return candidate_path.rfind(path_string, 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
         if (was_recently_updated) FillRowItemBg(s.style.imgui.Colors[ImGuiCol_FrameBg]);
@@ -379,7 +380,7 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
-            ColorEdit4(JsonPath(path) / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            ColorEdit4(path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
             SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
             TextUnformatted(name);
             PopID();
@@ -738,7 +739,7 @@ void Demo::draw() const {
 }
 
 void ShowJsonPatchOpMetrics(const JsonPatchOp &patch_op) {
-    BulletText("Path: %s", patch_op.path.c_str());
+    BulletText("Path: %s", patch_op.path.to_string().c_str());
     BulletText("Op: %s", json(patch_op.op).dump().c_str());
     if (patch_op.value.has_value()) {
         BulletText("Value: %s", patch_op.value.value().dump().c_str());

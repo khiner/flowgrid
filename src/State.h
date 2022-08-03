@@ -358,7 +358,7 @@ enum JsonPatchOpType {
     Test,
 };
 struct JsonPatchOp {
-    string path; // TODO as JsonPath, and remove casts
+    JsonPath path;
     JsonPatchOpType op{};
     std::optional<json> value; // Present for add/replace/test
     std::optional<string> from; // Present for copy/move

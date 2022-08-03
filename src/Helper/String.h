@@ -16,10 +16,8 @@ inline string snake_case_to_sentence_case(const string &snake_case) {
 }
 
 // E.g. '/foo/bar/baz' => 'baz'
-inline string path_variable_name(const string &path) {
-    return (path | views::split('/') | to<std::vector<string>>).back();
-}
+inline string path_variable_name(const JsonPath &path) { return path.back(); }
 
-inline string path_label(const string &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
+inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
 
 constexpr inline bool is_integer(const string &str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }

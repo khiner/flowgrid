@@ -174,6 +174,7 @@ $ git add .
 #### Forked submodules
 
 The following modules are [forked by me](https://github.com/khiner?tab=repositories&q=&type=fork), along with the upstream branch the fork is based on:
+* `json:develop` (temporarily until [this PR](https://github.com/nlohmann/json/pull/3667) merges)
 * `imgui:docking`
 * `implot:master`
 * `libsoundio:master`

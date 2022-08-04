@@ -205,7 +205,7 @@ void State::update(const Action &action) {
 
         [&](const close_application &) {
             processes.ui.running = false;
-            processes.audio.running = false;
+            audio.running = false;
         },
 
         [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
@@ -718,9 +718,7 @@ void ApplicationSettings::draw() const {
 const std::vector<int> Audio::SampleRateOptionsPrioritized = {48000, 44100, 96000};
 
 void Audio::Settings::draw() const {
-    const auto &process = s.processes.audio;
-    const auto process_running_path = process.path / "running";
-    Checkbox(process_running_path);
+    Checkbox(s.audio.path / "running");
     Checkbox(path / "muted");
     Combo(path / "sample_rate", SampleRateOptionsPrioritized);
 }

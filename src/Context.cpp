@@ -191,21 +191,6 @@ void Context::update_faust_context() {
     }
 }
 
-bool audio_running = false;
-int active_audio_sample_rate = 0;
-
-void Context::update_processes() {
-    if (audio_running != s.processes.audio.running) {
-        if (s.processes.audio.running) threads.audio_thread = std::thread(audio);
-        else threads.audio_thread.join();
-        audio_running = s.processes.audio.running;
-    } else if (audio_running && active_audio_sample_rate != s.audio.settings.sample_rate) {
-        threads.audio_thread.join();
-        threads.audio_thread = std::thread(audio);
-    }
-    active_audio_sample_rate = s.audio.settings.sample_rate;
-}
-
 void Context::undo() {
     if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
     apply_diff(diff_index--, Direction::Reverse);
@@ -390,7 +375,7 @@ void Context::on_diff(const BidirectionalStateDiff &diff, Direction direction, b
     const auto &patch = direction == Forward ? diff.forward : diff.reverse;
     state_stats.apply_patch(patch, diff.time, direction, is_full_gesture);
     for (const auto &patch_op: patch) on_set_value(patch_op.path);
-    update_processes();
+    s.audio.update_process();
 }
 
 ProjectFormat get_project_format(const fs::path &path) {

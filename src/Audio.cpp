@@ -60,6 +60,8 @@ auto write_sample_for_format(const SoundIoFormat format) {
 
 static void (*write_sample)(char *ptr, double sample); // Determined at runtime below.
 
+int sample_rate = 0;
+
 int audio() {
     auto *soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
@@ -102,7 +104,7 @@ int audio() {
     std::cout << "Output device: " << out_device->name << std::endl;
     outstream->software_latency = settings.latency;
 
-    int sample_rate = settings.sample_rate;
+    sample_rate = settings.sample_rate;
     if (sample_rate != 0) {
         if (!soundio_device_supports_sample_rate(out_device, sample_rate)) {
             throw std::runtime_error("Output audio device does not support the configured sample rate of " + std::to_string(sample_rate));
@@ -117,8 +119,8 @@ int audio() {
         if (!sample_rate) throw std::runtime_error("Output audio device does not support any of the sample rates in `prioritized_sample_rates`.");
     }
 
-    outstream->sample_rate = sample_rate;
     if (sample_rate != settings.sample_rate) q(set_value{s.audio.settings.path / "sample_rate", sample_rate});
+    outstream->sample_rate = sample_rate;
 
     enum SoundIoFormat *format;
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format += 1) {
@@ -178,7 +180,7 @@ int audio() {
 
     std::cout << "Software latency (s): " << outstream->software_latency << std::endl;
 
-    while (s.processes.audio.running && s.audio.settings.sample_rate == sample_rate) {}
+    while (s.audio.running && s.audio.settings.sample_rate == sample_rate) {}
 
     // SoundIO cleanup
     soundio_outstream_destroy(outstream);
@@ -186,4 +188,19 @@ int audio() {
     soundio_destroy(soundio);
 
     return 0;
+}
+
+std::thread audio_thread;
+bool thread_running = false;
+
+void Audio::update_process() const {
+    if (thread_running != running) {
+        if (running) audio_thread = std::thread(audio);
+        else audio_thread.join();
+        thread_running = running;
+    } else if (thread_running && sample_rate != s.audio.settings.sample_rate) {
+        audio_thread.join();
+        audio_thread = std::thread(audio);
+    }
+    sample_rate = s.audio.settings.sample_rate;
 }

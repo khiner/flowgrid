@@ -21,7 +21,7 @@ const json &sj = c.sj;
 int main(int, const char **) {
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
-    c.update_processes(); // Currently has a state side effect of setting audio sample rate.
+    s.audio.update_process();
 
     auto ui_context = create_ui();
     c.ui = &ui_context;

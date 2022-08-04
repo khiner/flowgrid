@@ -3,7 +3,6 @@
 #include <iostream>
 #include <list>
 #include <queue>
-#include <thread>
 
 #include "Action.h"
 
@@ -71,10 +70,6 @@ enum UIContextFlags_ {
 
 enum Direction { Forward, Reverse };
 
-struct Threads {
-    std::thread audio_thread;
-};
-
 struct StateStats {
     struct Plottable {
         std::vector<const char *> labels;
@@ -121,7 +116,6 @@ struct Context {
 
     void update_ui_context(UIContextFlags flags);
     void update_faust_context();
-    void update_processes();
 
     Preferences preferences;
 
@@ -170,7 +164,6 @@ private:
 
     State state{};
 
-    Threads threads;
     std::queue<const Action> queued_actions;
     json state_json, gesture_begin_state_json; // `state_json` always reflects `state`. `gesture_begin_state_json` is only updated on gesture-end (for diff calculation).
 };

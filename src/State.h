@@ -32,16 +32,24 @@ using DurationSec = float; // floats used for main duration type
 using fsec = std::chrono::duration<DurationSec>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
 
-struct Drawable {
-    virtual void draw() const = 0;
-};
-
 struct StateMember {
     StateMember(const JsonPath &parent_path, const string &id, const string &name = "")
         : path(parent_path / id), id(id), name(name.empty() ? snake_case_to_sentence_case(id) : name) {}
 
     JsonPath path; // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
     string id, name;
+};
+
+struct Drawable {
+    virtual void draw() const = 0;
+};
+
+struct Process : StateMember {
+    using StateMember::StateMember;
+
+    virtual void update_process() const {}; // Start/stop the thread based on the current `running` state, and any other needed housekeeping.
+
+    bool running = true;
 };
 
 struct Window : StateMember, Drawable {
@@ -117,9 +125,8 @@ struct Tools : Window {
     void draw() const override;
 };
 
-
-struct Audio : StateMember {
-    using StateMember::StateMember;
+struct Audio : Process {
+    using Process::Process;
 
     enum Backend {
         none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
@@ -172,6 +179,8 @@ struct Audio : StateMember {
         string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
         string error{};
     };
+
+    void update_process() const override;
 
     Settings settings{path, "settings", "Audio settings"};
     Faust faust{path, "faust"};
@@ -282,13 +291,7 @@ struct Style : Window {
 struct Processes : StateMember {
     using StateMember::StateMember;
 
-    struct Process : StateMember {
-        using StateMember::StateMember;
-        bool running = true;
-    };
-
     Process ui{path, "ui", "UI"};
-    Process audio{path, "audio"};
 };
 
 // The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).
@@ -393,12 +396,13 @@ JsonType(ImVec4, w, x, y, z)
 JsonType(ImVec2ih, x, y)
 
 JsonType(Window, visible)
+JsonType(Process, running)
 
 JsonType(ApplicationSettings, visible, GestureDurationSec)
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio::Settings, visible, muted, backend, latency, sample_rate, out_raw)
-JsonType(Audio, settings, faust)
+JsonType(Audio, running, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
@@ -422,7 +426,6 @@ JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, Cl
 JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
 JsonType(ImGuiSettingsData, nodes, windows, tables)
 
-JsonType(Processes::Process, running)
-JsonType(Processes, audio, ui)
+JsonType(Processes, ui)
 
 JsonType(StateData, application_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, demo, metrics, tools);

@@ -85,6 +85,18 @@ bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int p
     return edited;
 }
 
+bool fg::Combo(const JsonPath &path, const std::vector<int> &options) {
+    int v = sj[path];
+    auto it = std::find(options.begin(), options.end(), v);
+    if (it == options.end()) throw std::runtime_error("Value " + std::to_string(v) + " not found in options");
+
+    auto index = int(it - options.begin());
+    auto items = options | transform([](int option) { return std::to_string(option); }) | views::join('\0') | to<string>;
+    const bool edited = ImGui::Combo(path_label(path).c_str(), &index, items.c_str());
+    if (edited) q(set_value{path, options[index]});
+    return edited;
+}
+
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
     const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
     const bool disabled = flags & JsonTreeNodeFlags_Disabled;

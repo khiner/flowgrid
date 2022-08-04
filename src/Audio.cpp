@@ -110,20 +110,23 @@ int audio() {
     std::cout << "Output device: " << out_device->name << std::endl;
     outstream->software_latency = settings.latency;
 
-    int default_sample_rate = settings.sample_rate;
-    int *sample_rate = &default_sample_rate;
-    if (*sample_rate != 0) {
-        if (!soundio_device_supports_sample_rate(out_device, *sample_rate)) {
-            throw std::runtime_error("Output audio device does not support the provided sample rate of " + std::to_string(*sample_rate));
+    int sample_rate = settings.sample_rate;
+    if (sample_rate != 0) {
+        if (!soundio_device_supports_sample_rate(out_device, sample_rate)) {
+            throw std::runtime_error("Output audio device does not support the configured sample rate of " + std::to_string(sample_rate));
         }
     } else {
-        for (sample_rate = prioritized_sample_rates; *sample_rate; sample_rate += 1) {
-            if (soundio_device_supports_sample_rate(out_device, *sample_rate)) break;
+        for (const int sr: prioritized_sample_rates) {
+            if (soundio_device_supports_sample_rate(out_device, sr)) {
+                sample_rate = sr;
+                break;
+            }
         }
-        if (!*sample_rate) throw std::runtime_error("Output audio device does not support any of the sample rates in `prioritized_sample_rates`.");
+        if (!sample_rate) throw std::runtime_error("Output audio device does not support any of the sample rates in `prioritized_sample_rates`.");
     }
 
-    outstream->sample_rate = *sample_rate;
+    outstream->sample_rate = sample_rate;
+    if (sample_rate != settings.sample_rate) q(set_value{s.audio.settings.path / "sample_rate", sample_rate});
 
     enum SoundIoFormat *format;
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format += 1) {
@@ -132,7 +135,6 @@ int audio() {
     if (*format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
 
     write_sample = write_sample_for_format(*format);
-    q(set_value{s.audio.path / "sample_rate", outstream->sample_rate});
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
         struct SoundIoChannelArea *areas;

@@ -131,9 +131,7 @@ json Context::get_project_json(const ProjectFormat format) const {
     }
 }
 
-void Context::enqueue_action(const Action &a) {
-    queued_actions.push(a);
-}
+void Context::enqueue_action(const Action &a) { queued_actions.push(a); }
 
 void Context::run_queued_actions(bool force_finalize_gesture) {
     if (!queued_actions.empty()) gesture_start_time = Clock::now();

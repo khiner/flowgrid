@@ -6,14 +6,6 @@
 
 #include "Context.h"
 
-static int prioritized_sample_rates[] = {
-    48000,
-    44100,
-    96000,
-    24000,
-    0,
-};
-
 static enum SoundIoFormat prioritized_formats[] = {
     SoundIoFormatFloat32NE,
     SoundIoFormatFloat64NE,
@@ -22,15 +14,15 @@ static enum SoundIoFormat prioritized_formats[] = {
     SoundIoFormatInvalid,
 };
 
-SoundIoBackend getSoundIOBackend(AudioBackend backend) {
+SoundIoBackend getSoundIOBackend(Audio::Backend backend) {
     switch (backend) {
-        case dummy: return SoundIoBackendDummy;
-        case alsa: return SoundIoBackendAlsa;
-        case pulseaudio: return SoundIoBackendPulseAudio;
-        case jack: return SoundIoBackendJack;
-        case coreaudio: return SoundIoBackendCoreAudio;
-        case wasapi: return SoundIoBackendWasapi;
-        case none:
+        case Audio::Backend::dummy: return SoundIoBackendDummy;
+        case Audio::Backend::alsa: return SoundIoBackendAlsa;
+        case Audio::Backend::pulseaudio: return SoundIoBackendPulseAudio;
+        case Audio::Backend::jack: return SoundIoBackendJack;
+        case Audio::Backend::coreaudio: return SoundIoBackendCoreAudio;
+        case Audio::Backend::wasapi: return SoundIoBackendWasapi;
+        case Audio::Backend::none:
         default:std::cerr << "Invalid backend: " << backend << ". Defaulting to `SoundIoBackendNone`." << std::endl;
             return SoundIoBackendNone;
     }
@@ -73,7 +65,7 @@ int audio() {
     if (!soundio) throw std::runtime_error("Out of memory");
 
     auto &settings = s.audio.settings;
-    int err = (settings.backend == none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(settings.backend));
+    int err = (settings.backend == Audio::Backend::none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(settings.backend));
     if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
 
     std::cout << "Backend: " << soundio_backend_name(soundio->current_backend) << std::endl;
@@ -116,7 +108,7 @@ int audio() {
             throw std::runtime_error("Output audio device does not support the configured sample rate of " + std::to_string(sample_rate));
         }
     } else {
-        for (const int sr: prioritized_sample_rates) {
+        for (const int sr: Audio::SampleRateOptionsPrioritized) {
             if (soundio_device_supports_sample_rate(out_device, sr)) {
                 sample_rate = sr;
                 break;
@@ -186,7 +178,7 @@ int audio() {
 
     std::cout << "Software latency (s): " << outstream->software_latency << std::endl;
 
-    while (s.processes.audio.running) {}
+    while (s.processes.audio.running && s.audio.settings.sample_rate == sample_rate) {}
 
     // SoundIO cleanup
     soundio_outstream_destroy(outstream);

@@ -145,7 +145,7 @@ struct Context {
     bool is_widget_gesturing{};
     bool has_new_faust_code{};
     TimePoint gesture_start_time{};
-    float gesture_time_remaining_sec;
+    float gesture_time_remaining_sec{};
 
     // Read-only public shorthand state references:
     const State &s = state;

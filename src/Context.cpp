@@ -5,9 +5,10 @@
 #include "Audio.h"
 
 // Used to initialize the static Faust buffer.
-// This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz.
+// This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
+// AND switching between different sample rates, which seems to make for high peak frame sizes at the transition frame.
 // If it needs bumping up, bump away!
-static const int MAX_EXPECTED_FRAME_COUNT = 2048;
+static const int MAX_EXPECTED_FRAME_COUNT = 8192;
 
 struct FaustBuffers {
     const int num_frames = MAX_EXPECTED_FRAME_COUNT;
@@ -191,13 +192,18 @@ void Context::update_faust_context() {
 }
 
 bool audio_running = false;
+int active_audio_sample_rate = 0;
 
 void Context::update_processes() {
     if (audio_running != s.processes.audio.running) {
         if (s.processes.audio.running) threads.audio_thread = std::thread(audio);
         else threads.audio_thread.join();
         audio_running = s.processes.audio.running;
+    } else if (audio_running && active_audio_sample_rate != s.audio.settings.sample_rate) {
+        threads.audio_thread.join();
+        threads.audio_thread = std::thread(audio);
     }
+    active_audio_sample_rate = s.audio.settings.sample_rate;
 }
 
 void Context::undo() {

@@ -715,9 +715,14 @@ void ApplicationSettings::draw() const {
     SliderFloat(path / "GestureDurationSec", GestureDurationSecMin, GestureDurationSecMax, "%.3f s");
 }
 
+const std::vector<int> Audio::SampleRateOptionsPrioritized = {48000, 44100, 96000};
+
 void Audio::Settings::draw() const {
-    Checkbox(s.processes.audio.path / "running");
+    const auto &process = s.processes.audio;
+    const auto process_running_path = process.path / "running";
+    Checkbox(process_running_path);
     Checkbox(path / "muted");
+    Combo(path / "sample_rate", SampleRateOptionsPrioritized);
 }
 
 void Demo::draw() const {

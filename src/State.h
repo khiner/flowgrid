@@ -117,23 +117,26 @@ struct Tools : Window {
     void draw() const override;
 };
 
-enum AudioBackend {
-    none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
-};
 
 struct Audio : StateMember {
     using StateMember::StateMember;
+
+    enum Backend {
+        none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
+    };
+
+    static const std::vector<int> SampleRateOptionsPrioritized;
 
     struct Settings : Window {
         using Window::Window;
         void draw() const override;
 
-        AudioBackend backend = none;
+        Backend backend = none;
         char *in_device_id = nullptr;
         char *out_device_id = nullptr;
         bool muted = true;
         bool out_raw = false;
-        int sample_rate = 48000;
+        int sample_rate = SampleRateOptionsPrioritized[0];
         double latency = 0.0;
     };
 

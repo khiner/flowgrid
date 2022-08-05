@@ -87,7 +87,7 @@ int audio() {
         bool found = false;
         for (int i = 0; i < soundio_output_device_count(soundio); i += 1) {
             auto *device = soundio_get_output_device(soundio, i);
-            if (device->is_raw == settings.out_raw && settings.out_device_id.value() == device->id) {
+            if (settings.out_device_id.value() == device->id) {
                 out_device_index = i;
                 found = true;
                 soundio_device_unref(device);
@@ -104,8 +104,6 @@ int audio() {
 
     outstream = soundio_outstream_create(out_device);
     if (!outstream) throw std::runtime_error("Out of memory");
-
-    outstream->software_latency = settings.software_latency; // todo this does nothing. delete this setting.
 
     device_sample_rates.clear();
     for (int i = 0; i < out_device->sample_rate_count; i++) device_sample_rates.push_back(out_device->sample_rates[i].max);

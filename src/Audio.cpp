@@ -300,23 +300,23 @@ void ShowStreams() {
 }
 
 void Audio::Settings::draw() const {
-    if (!soundio_ready) {
-        Text("No audio context created yet");
-        return;
-    }
-
-//    soundio_outstream_set_volume() // todo
     Checkbox(s.audio.path / "running");
     Checkbox(path / "muted");
+
+//    soundio_outstream_set_volume() // todo
     if (!device_sample_rates.empty()) Combo(path / "sample_rate", device_sample_rates);
     NewLine();
-    Text("Backend: %s", soundio_backend_name(soundio->current_backend));
-    if (TreeNode("Devices")) {
-        ShowDevices();
-        TreePop();
-    }
-    if (TreeNode("Streams")) {
-        ShowStreams();
-        TreePop();
+    if (!soundio_ready) {
+        Text("No audio context created yet");
+    } else {
+        Text("Backend: %s", soundio_backend_name(soundio->current_backend));
+        if (TreeNode("Devices")) {
+            ShowDevices();
+            TreePop();
+        }
+        if (TreeNode("Streams")) {
+            ShowStreams();
+            TreePop();
+        }
     }
 }

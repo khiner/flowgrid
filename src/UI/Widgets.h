@@ -26,7 +26,7 @@ using ActionID = size_t; // duplicate definition to avoid importing `Action.h`
 void MenuItem(ActionID);
 
 bool Combo(const JsonPath &path, const char *items_separated_by_zeros, int popup_max_height_in_items = -1);
-bool Combo(const JsonPath &path, const std::vector<int> &options);
+void Combo(const JsonPath &path, const std::vector<int> &options);
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {

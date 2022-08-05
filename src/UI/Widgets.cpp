@@ -85,16 +85,16 @@ bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int p
     return edited;
 }
 
-bool fg::Combo(const JsonPath &path, const std::vector<int> &options) {
-    int v = sj[path];
-    auto it = std::find(options.begin(), options.end(), v);
-    if (it == options.end()) throw std::runtime_error("Value " + std::to_string(v) + " not found in options");
-
-    auto index = int(it - options.begin());
-    auto items = options | transform([](int option) { return std::to_string(option); }) | views::join('\0') | to<string>;
-    const bool edited = ImGui::Combo(path_label(path).c_str(), &index, items.c_str());
-    if (edited) q(set_value{path, options[index]});
-    return edited;
+void fg::Combo(const JsonPath &path, const std::vector<int> &options) {
+    const int v = sj[path];
+    if (ImGui::BeginCombo(path_label(path).c_str(), std::to_string(v).c_str())) {
+        for (const int option: options) {
+            const bool is_selected = option == v;
+            if (ImGui::Selectable(std::to_string(option).c_str(), is_selected)) q(set_value{path, option});
+            if (is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
 }
 
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {

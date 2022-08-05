@@ -60,7 +60,7 @@ auto write_sample_for_format(const SoundIoFormat format) {
 
 static void (*write_sample)(char *ptr, double sample); // Determined at runtime below.
 
-int sample_rate = 0;
+bool thread_running = false;
 
 int audio() {
     auto *soundio = soundio_create();
@@ -104,7 +104,7 @@ int audio() {
     std::cout << "Output device: " << out_device->name << std::endl;
     outstream->software_latency = settings.latency;
 
-    sample_rate = settings.sample_rate;
+    int sample_rate = settings.sample_rate;
     if (sample_rate != 0) {
         if (!soundio_device_supports_sample_rate(out_device, sample_rate)) {
             throw std::runtime_error("Output audio device does not support the configured sample rate of " + std::to_string(sample_rate));
@@ -180,7 +180,7 @@ int audio() {
 
     std::cout << "Software latency (s): " << outstream->software_latency << std::endl;
 
-    while (s.audio.running && s.audio.settings.sample_rate == sample_rate) {}
+    while (thread_running) {}
 
     // SoundIO cleanup
     soundio_outstream_destroy(outstream);
@@ -191,16 +191,22 @@ int audio() {
 }
 
 std::thread audio_thread;
-bool thread_running = false;
 
 void Audio::update_process() const {
+    static int previous_sample_rate = s.audio.settings.sample_rate;
+
     if (thread_running != running) {
+        thread_running = running;
         if (running) audio_thread = std::thread(audio);
         else audio_thread.join();
-        thread_running = running;
-    } else if (thread_running && sample_rate != s.audio.settings.sample_rate) {
+    }
+
+    // Reset the audio thread to make any sample rate change take effect.
+    if (thread_running && previous_sample_rate != s.audio.settings.sample_rate) {
+        thread_running = false;
         audio_thread.join();
+        thread_running = true;
         audio_thread = std::thread(audio);
     }
-    sample_rate = s.audio.settings.sample_rate;
+    previous_sample_rate = s.audio.settings.sample_rate;
 }

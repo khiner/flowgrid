@@ -96,6 +96,17 @@ void fg::Combo(const JsonPath &path, const std::vector<int> &options) {
         ImGui::EndCombo();
     }
 }
+void fg::Combo(const JsonPath &path, const std::vector<string> &options) {
+    const string v = sj.contains(path) ? sj[path] : "";
+    if (ImGui::BeginCombo(path_label(path).c_str(), v.c_str())) {
+        for (const string &option: options) {
+            const bool is_selected = option == v;
+            if (ImGui::Selectable(option.c_str(), is_selected)) q(set_value{path, option});
+            if (is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+}
 
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
     const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;

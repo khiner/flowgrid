@@ -129,7 +129,6 @@ struct Audio : Process {
     using Process::Process;
 
     enum Backend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
-
     static const std::vector<int> PrioritizedDefaultSampleRates;
 
     struct Settings : Window {
@@ -140,6 +139,7 @@ struct Audio : Process {
         std::optional<string> in_device_id;
         std::optional<string> out_device_id;
         bool muted = true;
+        float device_volume = 1.0;
         int sample_rate = PrioritizedDefaultSampleRates[0];
     };
 
@@ -397,7 +397,7 @@ JsonType(Process, running)
 JsonType(ApplicationSettings, visible, GestureDurationSec)
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
-JsonType(Audio::Settings, visible, muted, backend, sample_rate)
+JsonType(Audio::Settings, visible, muted, backend, sample_rate, device_volume)
 JsonType(Audio, running, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)

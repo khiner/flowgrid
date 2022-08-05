@@ -207,6 +207,8 @@ void Audio::update_process() const {
         audio_thread = std::thread(audio);
     }
     previous_sample_rate = s.audio.settings.sample_rate;
+
+    if (outstream && outstream->volume != settings.device_volume) soundio_outstream_set_volume(outstream, settings.device_volume);
 }
 
 #include "UI/Widgets.h"
@@ -313,10 +315,10 @@ void ShowBackends() {
 
 }
 void Audio::Settings::draw() const {
-    Checkbox(s.audio.path / "running");
+    Checkbox(path.parent_pointer() / "running");
     Checkbox(path / "muted");
+    SliderFloat(path / "device_volume", 0.0f, 1.0f);
 
-//    soundio_outstream_set_volume() // todo
     if (!out_device_ids.empty()) Combo(path / "out_device_id", out_device_ids);
     if (!device_sample_rates.empty()) Combo(path / "sample_rate", device_sample_rates);
     NewLine();

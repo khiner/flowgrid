@@ -128,9 +128,7 @@ struct Tools : Window {
 struct Audio : Process {
     using Process::Process;
 
-    enum Backend {
-        none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
-    };
+    enum Backend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
 
     static const std::vector<int> PrioritizedDefaultSampleRates;
 

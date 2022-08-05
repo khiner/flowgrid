@@ -62,6 +62,7 @@ static void (*write_sample)(char *ptr, double sample); // Determined at runtime 
 
 SoundIo *soundio = nullptr;
 SoundIoOutStream *outstream = nullptr;
+std::vector<string> out_device_ids;
 std::vector<int> device_sample_rates;
 
 bool soundio_ready = false;
@@ -81,6 +82,9 @@ int audio() {
     // Output device setup
     int default_out_device_index = soundio_default_output_device_index(soundio);
     if (default_out_device_index < 0) throw std::runtime_error("No output device found");
+
+    out_device_ids.clear();
+    for (int i = 0; i < soundio_output_device_count(soundio); i++) out_device_ids.emplace_back(soundio_get_output_device(soundio, i)->id);
 
     int out_device_index = default_out_device_index;
     if (settings.out_device_id) {
@@ -313,6 +317,7 @@ void Audio::Settings::draw() const {
     Checkbox(path / "muted");
 
 //    soundio_outstream_set_volume() // todo
+    if (!out_device_ids.empty()) Combo(path / "out_device_id", out_device_ids);
     if (!device_sample_rates.empty()) Combo(path / "sample_rate", device_sample_rates);
     NewLine();
     if (!soundio_ready) {

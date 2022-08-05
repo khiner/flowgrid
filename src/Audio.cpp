@@ -85,7 +85,7 @@ int audio() {
     int out_device_index = default_out_device_index;
     if (settings.out_device_id) {
         bool found = false;
-        for (int i = 0; i < soundio_output_device_count(soundio); i += 1) {
+        for (int i = 0; i < soundio_output_device_count(soundio); i++) {
             auto *device = soundio_get_output_device(soundio, i);
             if (settings.out_device_id.value() == device->id) {
                 out_device_index = i;
@@ -124,7 +124,7 @@ int audio() {
     if (outstream->sample_rate != settings.sample_rate) q(set_value{s.audio.settings.path / "sample_rate", outstream->sample_rate});
 
     enum SoundIoFormat *format;
-    for (format = prioritized_formats; *format != SoundIoFormatInvalid; format += 1) {
+    for (format = prioritized_formats; *format != SoundIoFormatInvalid; format++) {
         if (soundio_device_supports_format(out_device, *format)) break;
     }
     if (*format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
@@ -147,8 +147,8 @@ int audio() {
             c.compute_frames(frame_count);
 
             const auto *layout = &outstream->layout;
-            for (int frame = 0; frame < frame_count; frame += 1) {
-                for (int channel = 0; channel < layout->channel_count; channel += 1) {
+            for (int frame = 0; frame < frame_count; frame++) {
+                for (int channel = 0; channel < layout->channel_count; channel++) {
                     write_sample(areas[channel].ptr, c.get_sample(channel, frame));
                     areas[channel].ptr += areas[channel].step;
                 }
@@ -241,7 +241,7 @@ void ShowDevice(const SoundIoDevice &device, bool is_default) {
         }
 
         if (TreeNodeEx("Formats", ImGuiTreeNodeFlags_DefaultOpen)) {
-            for (int i = 0; i < device.format_count; i += 1) BulletText("%s", soundio_format_string(device.formats[i]));
+            for (int i = 0; i < device.format_count; i++) BulletText("%s", soundio_format_string(device.formats[i]));
             TreePop();
         }
 
@@ -258,7 +258,7 @@ void ShowDevices() {
     const auto input_count = soundio_input_device_count(soundio);
     if (TreeNodeEx("Input devices", ImGuiTreeNodeFlags_DefaultOpen, "Input devices (%d)", input_count)) {
         const auto default_input = soundio_default_input_device_index(soundio);
-        for (int i = 0; i < input_count; i += 1) {
+        for (int i = 0; i < input_count; i++) {
             auto *device = soundio_get_input_device(soundio, i);
             ShowDevice(*device, default_input == i);
             soundio_device_unref(device);
@@ -269,7 +269,7 @@ void ShowDevices() {
     const auto output_count = soundio_output_device_count(soundio);
     if (TreeNodeEx("Output devices", ImGuiTreeNodeFlags_DefaultOpen, "Output devices (%d)", output_count)) {
         const auto default_output = soundio_default_output_device_index(soundio);
-        for (int i = 0; i < output_count; i += 1) {
+        for (int i = 0; i < output_count; i++) {
             auto *device = soundio_get_output_device(soundio, i);
             ShowDevice(*device, default_output == i);
             soundio_device_unref(device);
@@ -297,6 +297,17 @@ void ShowStreams() {
     }
 }
 
+void ShowBackends() {
+    const auto backend_count = soundio_backend_count(soundio);
+    if (TreeNodeEx("Backends", ImGuiTreeNodeFlags_None, "Available backends (%d)", backend_count)) {
+        for (int i = 0; i < backend_count; i++) {
+            const auto backend = soundio_get_backend(soundio, i);
+            BulletText("%s%s", soundio_backend_name(backend), backend == soundio->current_backend ? " (current)" : "");
+        }
+        TreePop();
+    }
+
+}
 void Audio::Settings::draw() const {
     Checkbox(s.audio.path / "running");
     Checkbox(path / "muted");
@@ -307,7 +318,6 @@ void Audio::Settings::draw() const {
     if (!soundio_ready) {
         Text("No audio context created yet");
     } else {
-        Text("Backend: %s", soundio_backend_name(soundio->current_backend));
         if (TreeNode("Devices")) {
             ShowDevices();
             TreePop();
@@ -316,5 +326,6 @@ void Audio::Settings::draw() const {
             ShowStreams();
             TreePop();
         }
+        ShowBackends();
     }
 }

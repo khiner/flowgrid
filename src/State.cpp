@@ -715,7 +715,7 @@ void ApplicationSettings::draw() const {
     SliderFloat(path / "GestureDurationSec", GestureDurationSecMin, GestureDurationSecMax, "%.3f s");
 }
 
-const std::vector<int> Audio::SampleRateOptionsPrioritized = {48000, 44100, 96000};
+const std::vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
 
 void Demo::draw() const {
     if (BeginTabBar("##demos")) {

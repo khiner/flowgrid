@@ -62,6 +62,8 @@ static void (*write_sample)(char *ptr, double sample); // Determined at runtime 
 
 SoundIo *soundio = nullptr;
 SoundIoOutStream *outstream = nullptr;
+std::vector<int> device_sample_rates;
+
 bool soundio_ready = false;
 bool thread_running = false;
 int underflow_count = 0;
@@ -103,25 +105,25 @@ int audio() {
     outstream = soundio_outstream_create(out_device);
     if (!outstream) throw std::runtime_error("Out of memory");
 
-    outstream->software_latency = settings.software_latency;
+    outstream->software_latency = settings.software_latency; // todo this does nothing. delete this setting.
 
-    int sample_rate = settings.sample_rate;
-    if (sample_rate != 0) {
-        if (!soundio_device_supports_sample_rate(out_device, sample_rate)) {
-            throw std::runtime_error("Output audio device does not support the configured sample rate of " + std::to_string(sample_rate));
-        }
+    device_sample_rates.clear();
+    for (int i = 0; i < out_device->sample_rate_count; i++) device_sample_rates.push_back(out_device->sample_rates[i].max);
+    if (device_sample_rates.empty()) throw std::runtime_error("Output audio stream has no supported sample rates");
+
+    // Could just check `device_sample_rates` populated above, but this `supports_sample_rate` function handles devices supporting ranges.
+    if (soundio_device_supports_sample_rate(out_device, settings.sample_rate)) {
+        outstream->sample_rate = settings.sample_rate;
     } else {
-        for (const auto sr: Audio::SampleRateOptionsPrioritized) {
-            if (soundio_device_supports_sample_rate(out_device, sr)) {
-                sample_rate = sr;
+        for (const auto &preferred_sample_rate: Audio::PrioritizedDefaultSampleRates) {
+            if (soundio_device_supports_sample_rate(out_device, preferred_sample_rate)) {
+                outstream->sample_rate = preferred_sample_rate;
                 break;
             }
         }
-        if (!sample_rate) throw std::runtime_error("Output audio device does not support any of the sample rates in `prioritized_sample_rates`.");
     }
-
-    if (sample_rate != settings.sample_rate) q(set_value{s.audio.settings.path / "sample_rate", sample_rate});
-    outstream->sample_rate = sample_rate;
+    if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates.back(); // Fall back to the highest supported sample rate.
+    if (outstream->sample_rate != settings.sample_rate) q(set_value{s.audio.settings.path / "sample_rate", outstream->sample_rate});
 
     enum SoundIoFormat *format;
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format += 1) {
@@ -295,7 +297,6 @@ void ShowStreams() {
 
         TreePop();
     }
-
 }
 
 void Audio::Settings::draw() const {
@@ -307,7 +308,7 @@ void Audio::Settings::draw() const {
 //    soundio_outstream_set_volume() // todo
     Checkbox(s.audio.path / "running");
     Checkbox(path / "muted");
-    Combo(path / "sample_rate", SampleRateOptionsPrioritized);
+    if (!device_sample_rates.empty()) Combo(path / "sample_rate", device_sample_rates);
     NewLine();
     Text("Backend: %s", soundio_backend_name(soundio->current_backend));
     if (TreeNode("Devices")) {

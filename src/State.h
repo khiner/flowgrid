@@ -132,7 +132,7 @@ struct Audio : Process {
         none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi
     };
 
-    static const std::vector<int> SampleRateOptionsPrioritized;
+    static const std::vector<int> PrioritizedDefaultSampleRates;
 
     struct Settings : Window {
         using Window::Window;
@@ -143,7 +143,7 @@ struct Audio : Process {
         char *out_device_id = nullptr;
         bool muted = true;
         bool out_raw = false;
-        int sample_rate = SampleRateOptionsPrioritized[0];
+        int sample_rate = PrioritizedDefaultSampleRates[0];
         double software_latency = 0.0;
     };
 

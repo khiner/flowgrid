@@ -139,8 +139,8 @@ struct Audio : Process {
         void draw() const override;
 
         Backend backend = none;
-        char *in_device_id = nullptr;
-        char *out_device_id = nullptr;
+        std::optional<string> in_device_id;
+        std::optional<string> out_device_id;
         bool muted = true;
         bool out_raw = false;
         int sample_rate = PrioritizedDefaultSampleRates[0];

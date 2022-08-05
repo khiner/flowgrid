@@ -14,7 +14,7 @@ static enum SoundIoFormat prioritized_formats[] = {
     SoundIoFormatInvalid,
 };
 
-SoundIoBackend getSoundIOBackend(Audio::Backend backend) {
+SoundIoBackend soundio_backend(const Audio::Backend backend) {
     switch (backend) {
         case Audio::Backend::dummy: return SoundIoBackendDummy;
         case Audio::Backend::alsa: return SoundIoBackendAlsa;
@@ -73,7 +73,7 @@ int audio() {
     if (!soundio) throw std::runtime_error("Out of memory");
 
     const auto &settings = s.audio.settings;
-    int err = (settings.backend == Audio::Backend::none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(settings.backend));
+    int err = (settings.backend == Audio::Backend::none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, soundio_backend(settings.backend));
     if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
 
     soundio_flush_events(soundio);
@@ -86,8 +86,8 @@ int audio() {
     if (settings.out_device_id) {
         bool found = false;
         for (int i = 0; i < soundio_output_device_count(soundio); i += 1) {
-            struct SoundIoDevice *device = soundio_get_output_device(soundio, i);
-            if (device->is_raw == settings.out_raw && strcmp(device->id, settings.out_device_id) == 0) {
+            auto *device = soundio_get_output_device(soundio, i);
+            if (device->is_raw == settings.out_raw && settings.out_device_id.value() == device->id) {
                 out_device_index = i;
                 found = true;
                 soundio_device_unref(device);
@@ -95,7 +95,7 @@ int audio() {
             }
             soundio_device_unref(device);
         }
-        if (!found) throw std::runtime_error(string("Invalid output device id: ") + settings.out_device_id);
+        if (!found) throw std::runtime_error(string("Invalid output device id: ") + settings.out_device_id.value());
     }
 
     auto *out_device = soundio_get_output_device(soundio, out_device_index);
@@ -135,7 +135,7 @@ int audio() {
     write_sample = write_sample_for_format(*format);
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-        struct SoundIoChannelArea *areas;
+        SoundIoChannelArea *areas;
         int err;
 
         int frames_left = frame_count_max;

@@ -60,16 +60,17 @@ auto write_sample_for_format(const SoundIoFormat format) {
 
 static void (*write_sample)(char *ptr, double sample); // Determined at runtime below.
 
-bool thread_running = false;
-
 SoundIo *soundio = nullptr;
-bool soundio_instance_ready = false;
+SoundIoOutStream *outstream = nullptr;
+bool soundio_ready = false;
+bool thread_running = false;
+int underflow_count = 0;
 
 int audio() {
     soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
-    auto &settings = s.audio.settings;
+    const auto &settings = s.audio.settings;
     int err = (settings.backend == Audio::Backend::none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(settings.backend));
     if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
 
@@ -95,11 +96,11 @@ int audio() {
         if (!found) throw std::runtime_error(string("Invalid output device id: ") + settings.out_device_id);
     }
 
-    struct SoundIoDevice *out_device = soundio_get_output_device(soundio, out_device_index);
+    auto *out_device = soundio_get_output_device(soundio, out_device_index);
     if (!out_device) throw std::runtime_error("Could not get output device: out of memory");
     if (out_device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(out_device->probe_error));
 
-    auto *outstream = soundio_outstream_create(out_device);
+    outstream = soundio_outstream_create(out_device);
     if (!outstream) throw std::runtime_error("Out of memory");
 
     outstream->software_latency = settings.software_latency;
@@ -110,7 +111,7 @@ int audio() {
             throw std::runtime_error("Output audio device does not support the configured sample rate of " + std::to_string(sample_rate));
         }
     } else {
-        for (const int sr: Audio::SampleRateOptionsPrioritized) {
+        for (const auto sr: Audio::SampleRateOptionsPrioritized) {
             if (soundio_device_supports_sample_rate(out_device, sr)) {
                 sample_rate = sr;
                 break;
@@ -127,6 +128,7 @@ int audio() {
         if (soundio_device_supports_format(out_device, *format)) break;
     }
     if (*format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
+    outstream->format = *format;
 
     write_sample = write_sample_for_format(*format);
 
@@ -163,26 +165,17 @@ int audio() {
         }
     };
 
-    outstream->underflow_callback = [](SoundIoOutStream *) {
-        static int underflow_count = 0;
-        std::cerr << "Underflow #" << underflow_count++ << std::endl;
-    };
+    outstream->underflow_callback = [](SoundIoOutStream *) { std::cerr << "Underflow #" << underflow_count++ << std::endl; };
 
-    if ((err = soundio_outstream_open(outstream))) {
-        throw std::runtime_error(string("Unable to open device: ") + soundio_strerror(err));
-    }
-    if (outstream->layout_error) {
-        std::cerr << "Unable to set channel layout: " << soundio_strerror(outstream->layout_error);
-    }
-    if ((err = soundio_outstream_start(outstream))) {
-        throw std::runtime_error(string("Unable to start device: ") + soundio_strerror(err));
-    }
+    if ((err = soundio_outstream_open(outstream))) { throw std::runtime_error(string("Unable to open device: ") + soundio_strerror(err)); }
+    if (outstream->layout_error) { std::cerr << "Unable to set channel layout: " << soundio_strerror(outstream->layout_error); }
+    if ((err = soundio_outstream_start(outstream))) { throw std::runtime_error(string("Unable to start device: ") + soundio_strerror(err)); }
 
-    soundio_instance_ready = true;
+    soundio_ready = true;
     while (thread_running) {}
 
-    // SoundIO cleanup
-    soundio_instance_ready = false;
+    // Cleanup
+    soundio_ready = false;
     soundio_outstream_destroy(outstream);
     soundio_device_unref(out_device);
     soundio_destroy(soundio);
@@ -247,15 +240,10 @@ void ShowDevice(const SoundIoDevice &device, bool is_default) {
             TreePop();
         }
 
-        if (device.sample_rate_current) Text("Current sample rate: %d", device.sample_rate_current);
-        else Text("No current sample rate");
-
         if (TreeNodeEx("Formats", ImGuiTreeNodeFlags_DefaultOpen)) {
             for (int i = 0; i < device.format_count; i += 1) BulletText("%s", soundio_format_string(device.formats[i]));
             TreePop();
         }
-
-        Text("Current format: %s", soundio_format_string(device.current_format));
 
         Text("Min software latency: %0.8f sec", device.software_latency_min);
         Text("Max software latency: %0.8f sec", device.software_latency_max);
@@ -267,14 +255,9 @@ void ShowDevice(const SoundIoDevice &device, bool is_default) {
 
 // Based on https://github.com/andrewrk/libsoundio/blob/master/example/sio_list_devices.c
 void ShowDevices() {
-    const auto output_count = soundio_output_device_count(soundio);
     const auto input_count = soundio_input_device_count(soundio);
-    const auto default_output = soundio_default_output_device_index(soundio);
-    const auto default_input = soundio_default_input_device_index(soundio);
-
-    Text("%d devices found", input_count + output_count);
-
-    if (TreeNode("Input devices")) {
+    if (TreeNodeEx("Input devices", ImGuiTreeNodeFlags_DefaultOpen, "Input devices (%d)", input_count)) {
+        const auto default_input = soundio_default_input_device_index(soundio);
         for (int i = 0; i < input_count; i += 1) {
             auto *device = soundio_get_input_device(soundio, i);
             ShowDevice(*device, default_input == i);
@@ -283,7 +266,9 @@ void ShowDevices() {
         TreePop();
     }
 
-    if (TreeNode("Output devices")) {
+    const auto output_count = soundio_output_device_count(soundio);
+    if (TreeNodeEx("Output devices", ImGuiTreeNodeFlags_DefaultOpen, "Output devices (%d)", output_count)) {
+        const auto default_output = soundio_default_output_device_index(soundio);
         for (int i = 0; i < output_count; i += 1) {
             auto *device = soundio_get_output_device(soundio, i);
             ShowDevice(*device, default_output == i);
@@ -293,19 +278,44 @@ void ShowDevices() {
     }
 }
 
+void ShowStreams() {
+    if (TreeNodeEx("Output stream", ImGuiTreeNodeFlags_DefaultOpen)) {
+        BulletText("Name: %s", outstream->name);
+        BulletText("Device ID: %s", outstream->device->id);
+        BulletText("Format: %s", soundio_format_string(outstream->format));
+        BulletText("Sample rate: %d", outstream->sample_rate);
+        if (TreeNodeEx("Channel layout", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ShowChannelLayout(outstream->layout, false);
+            TreePop();
+        }
+        BulletText("Volume: %0.8f", outstream->volume);
+        BulletText("Software latency: %0.8f sec", outstream->software_latency);
+        BulletText("Bytes per frame: %d", outstream->bytes_per_frame);
+        BulletText("Bytes per sample: %d", outstream->bytes_per_sample);
+
+        TreePop();
+    }
+
+}
+
 void Audio::Settings::draw() const {
-    if (!soundio_instance_ready) {
+    if (!soundio_ready) {
         Text("No audio context created yet");
         return;
     }
 
+//    soundio_outstream_set_volume() // todo
     Checkbox(s.audio.path / "running");
     Checkbox(path / "muted");
     Combo(path / "sample_rate", SampleRateOptionsPrioritized);
     NewLine();
     Text("Backend: %s", soundio_backend_name(soundio->current_backend));
-    if (TreeNode("Device info")) {
+    if (TreeNode("Devices")) {
         ShowDevices();
+        TreePop();
+    }
+    if (TreeNode("Streams")) {
+        ShowStreams();
         TreePop();
     }
 }

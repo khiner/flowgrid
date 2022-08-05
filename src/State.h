@@ -144,7 +144,7 @@ struct Audio : Process {
         bool muted = true;
         bool out_raw = false;
         int sample_rate = SampleRateOptionsPrioritized[0];
-        double latency = 0.0;
+        double software_latency = 0.0;
     };
 
     struct Faust : StateMember {
@@ -401,7 +401,7 @@ JsonType(Process, running)
 JsonType(ApplicationSettings, visible, GestureDurationSec)
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
-JsonType(Audio::Settings, visible, muted, backend, latency, sample_rate, out_raw)
+JsonType(Audio::Settings, visible, muted, backend, software_latency, sample_rate, out_raw)
 JsonType(Audio, running, settings, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)

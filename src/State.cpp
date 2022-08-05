@@ -114,7 +114,7 @@ void State::draw() const {
     if (frame_count == 1) {
         auto faust_editor_node_id = dockspace_id;
         auto settings_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
-        auto state_node_id = ImGui::DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.9f, nullptr, &settings_node_id);
+        auto state_node_id = ImGui::DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.6f, nullptr, &settings_node_id);
         auto utilities_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
         auto faust_log_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
 
@@ -716,12 +716,6 @@ void ApplicationSettings::draw() const {
 }
 
 const std::vector<int> Audio::SampleRateOptionsPrioritized = {48000, 44100, 96000};
-
-void Audio::Settings::draw() const {
-    Checkbox(s.audio.path / "running");
-    Checkbox(path / "muted");
-    Combo(path / "sample_rate", SampleRateOptionsPrioritized);
-}
 
 void Demo::draw() const {
     if (BeginTabBar("##demos")) {

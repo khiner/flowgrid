@@ -62,15 +62,16 @@ static void (*write_sample)(char *ptr, double sample); // Determined at runtime 
 
 bool thread_running = false;
 
+SoundIo *soundio = nullptr;
+bool soundio_instance_ready = false;
+
 int audio() {
-    auto *soundio = soundio_create();
+    soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
     auto &settings = s.audio.settings;
     int err = (settings.backend == Audio::Backend::none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, getSoundIOBackend(settings.backend));
     if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
-
-    std::cout << "Backend: " << soundio_backend_name(soundio->current_backend) << std::endl;
 
     soundio_flush_events(soundio);
 
@@ -101,8 +102,7 @@ int audio() {
     auto *outstream = soundio_outstream_create(out_device);
     if (!outstream) throw std::runtime_error("Out of memory");
 
-    std::cout << "Output device: " << out_device->name << std::endl;
-    outstream->software_latency = settings.latency;
+    outstream->software_latency = settings.software_latency;
 
     int sample_rate = settings.sample_rate;
     if (sample_rate != 0) {
@@ -178,14 +178,15 @@ int audio() {
         throw std::runtime_error(string("Unable to start device: ") + soundio_strerror(err));
     }
 
-    std::cout << "Software latency (s): " << outstream->software_latency << std::endl;
-
+    soundio_instance_ready = true;
     while (thread_running) {}
 
     // SoundIO cleanup
+    soundio_instance_ready = false;
     soundio_outstream_destroy(outstream);
     soundio_device_unref(out_device);
     soundio_destroy(soundio);
+    soundio = nullptr;
 
     return 0;
 }
@@ -209,4 +210,102 @@ void Audio::update_process() const {
         audio_thread = std::thread(audio);
     }
     previous_sample_rate = s.audio.settings.sample_rate;
+}
+
+#include "UI/Widgets.h"
+
+using namespace fg;
+using namespace ImGui;
+
+void ShowChannelLayout(const SoundIoChannelLayout &layout, bool is_current) {
+    const char *current_str = is_current ? " (current)" : "";
+    if (layout.name) Text("%s%s", layout.name, current_str);
+    for (int i = 0; i < layout.channel_count; i++) {
+        BulletText("%s", soundio_get_channel_name(layout.channels[i]));
+    }
+}
+
+void ShowDevice(const SoundIoDevice &device, bool is_default) {
+    const char *default_str = is_default ? " (default)" : "";
+    const char *raw_str = device.is_raw ? " (raw)" : "";
+    if (TreeNode("%s%s%s", device.name, default_str, raw_str)) {
+        Text("ID: %s", device.id);
+        if (device.probe_error) {
+            Text("Probe error: %s", soundio_strerror(device.probe_error));
+            return;
+        }
+        if (TreeNodeEx("Channel layouts", ImGuiTreeNodeFlags_DefaultOpen, "Channel layouts (%d)", device.layout_count)) {
+            for (int i = 0; i < device.layout_count; i++) ShowChannelLayout(device.layouts[i], device.layouts[i].name == device.current_layout.name);
+            TreePop();
+        }
+        if (TreeNodeEx("Sample rates", ImGuiTreeNodeFlags_DefaultOpen)) {
+            for (int i = 0; i < device.sample_rate_count; i++) {
+                const auto &range = device.sample_rates[i];
+                if (range.min == range.max) BulletText("%d", range.min);
+                else BulletText("Range: %d - %d", range.min, range.max);
+            }
+            TreePop();
+        }
+
+        if (device.sample_rate_current) Text("Current sample rate: %d", device.sample_rate_current);
+        else Text("No current sample rate");
+
+        if (TreeNodeEx("Formats", ImGuiTreeNodeFlags_DefaultOpen)) {
+            for (int i = 0; i < device.format_count; i += 1) BulletText("%s", soundio_format_string(device.formats[i]));
+            TreePop();
+        }
+
+        Text("Current format: %s", soundio_format_string(device.current_format));
+
+        Text("Min software latency: %0.8f sec", device.software_latency_min);
+        Text("Max software latency: %0.8f sec", device.software_latency_max);
+        if (device.software_latency_current != 0.0) Text("Current software latency: %0.8f sec", device.software_latency_current);
+
+        TreePop();
+    }
+}
+
+// Based on https://github.com/andrewrk/libsoundio/blob/master/example/sio_list_devices.c
+void ShowDevices() {
+    const auto output_count = soundio_output_device_count(soundio);
+    const auto input_count = soundio_input_device_count(soundio);
+    const auto default_output = soundio_default_output_device_index(soundio);
+    const auto default_input = soundio_default_input_device_index(soundio);
+
+    Text("%d devices found", input_count + output_count);
+
+    if (TreeNode("Input devices")) {
+        for (int i = 0; i < input_count; i += 1) {
+            auto *device = soundio_get_input_device(soundio, i);
+            ShowDevice(*device, default_input == i);
+            soundio_device_unref(device);
+        }
+        TreePop();
+    }
+
+    if (TreeNode("Output devices")) {
+        for (int i = 0; i < output_count; i += 1) {
+            auto *device = soundio_get_output_device(soundio, i);
+            ShowDevice(*device, default_output == i);
+            soundio_device_unref(device);
+        }
+        TreePop();
+    }
+}
+
+void Audio::Settings::draw() const {
+    if (!soundio_instance_ready) {
+        Text("No audio context created yet");
+        return;
+    }
+
+    Checkbox(s.audio.path / "running");
+    Checkbox(path / "muted");
+    Combo(path / "sample_rate", SampleRateOptionsPrioritized);
+    NewLine();
+    Text("Backend: %s", soundio_backend_name(soundio->current_backend));
+    if (TreeNode("Device info")) {
+        ShowDevices();
+        TreePop();
+    }
 }

@@ -293,14 +293,14 @@ void Context::on_action(const Action &action) {
             const auto &diff = diffs[diff_index--];
             const auto &patch = diff.reverse;
             state_json = gesture_begin_state_json = state_json.patch(patch);
-            state = state_json.get<State>();
+            state = state_json;
             on_diff(a, diff, Reverse, true);
         },
         [&](const redo &a) {
             const auto &diff = diffs[++diff_index];
             const auto &patch = diff.forward;
             state_json = gesture_begin_state_json = state_json.patch(patch);
-            state = state_json.get<State>();
+            state = state_json;
             on_diff(a, diff, Forward, true);
         },
         [&](const set_value &a) {

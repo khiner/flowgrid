@@ -103,8 +103,8 @@ struct Context {
 
     void enqueue_action(const Action &);
     void run_queued_actions(bool force_finalize_gesture = false);
-    bool action_allowed(ActionID, bool user_initiated = true) const;
-    bool action_allowed(const Action &, bool user_initiated = true) const;
+    bool action_allowed(ActionID) const;
+    bool action_allowed(const Action &) const;
 
     void clear();
 
@@ -144,10 +144,10 @@ struct Context {
     const json &sj = state_json;
 
 private:
-    void on_action(const Action &, bool user_initiated = true); // This is the only method that modifies `state`.
+    void on_action(const Action &); // This is the only method that modifies `state`.
     void finalize_gesture();
-    void on_diff(const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture);
-    void on_patch(const JsonPatch &patch);
+    void on_diff(const Action &action, const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture);
+    void on_patch(const Action &action, const JsonPatch &patch);
     void on_set_value(const JsonPath &path);
 
     // Takes care of all side effects needed to put the app into the provided application state json.

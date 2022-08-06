@@ -146,21 +146,21 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
     if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) finalize_gesture();
 }
 
-bool Context::action_allowed(const ActionID action_id, bool user_initiated) const {
+bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
         case action::id<undo>: return !active_gesture_patch.empty() || diff_index >= 0;
         case action::id<redo>: return diff_index < (int) diffs.size() - 1;
-        case action::id<Actions::open_default_project>: return user_initiated && fs::exists(DefaultProjectPath);
+        case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
         case action::id<Actions::show_save_project_dialog>:
-        case action::id<Actions::save_default_project>: return user_initiated && project_has_changes();
-        case action::id<Actions::save_current_project>: return user_initiated && current_project_path.has_value() && project_has_changes();
-        case action::id<Actions::open_file_dialog>: return user_initiated && !s.file.dialog.visible;
-        case action::id<Actions::close_file_dialog>: return user_initiated && s.file.dialog.visible;
+        case action::id<Actions::save_default_project>: return project_has_changes();
+        case action::id<Actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
+        case action::id<Actions::open_file_dialog>: return !s.file.dialog.visible;
+        case action::id<Actions::close_file_dialog>: return s.file.dialog.visible;
         default: return true;
     }
 }
-bool Context::action_allowed(const Action &action, bool user_initiated) const { return action_allowed(action::get_id(action), user_initiated); }
+bool Context::action_allowed(const Action &action) const { return action_allowed(action::get_id(action)); }
 
 // TODO Implement
 //  ```cpp
@@ -270,14 +270,13 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 
 // Private methods
 
-void Context::on_action(const Action &action, bool user_initiated) {
-    // todo if not allowed, still track in gesture history with some kind of 'not-applied' flag?
-    //  problem I'm trying to solve: can save e.g. save-project action in history, for posterity,
-    //  and when loading an `.fga` file, show it in history but don't replay it.
-    if (!action_allowed(action, user_initiated)) return; // Safeguard against actions running in an invalid state.
+void Context::on_action(const Action &action) {
+    if (!action_allowed(action)) return; // Safeguard against actions running in an invalid state.
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
+        // These options don't get added to the action/gesture history, since they only have non-application side effects,
+        // and we don't want them replayed when loading a saved `.fga` project.
         [&](const Actions::open_project &a) { open_project(a.path); },
         [&](const open_empty_project &) { open_project(EmptyProjectPath); },
         [&](const open_default_project &) { open_project(DefaultProjectPath); },
@@ -289,43 +288,40 @@ void Context::on_action(const Action &action, bool user_initiated) {
 
         // Remaining actions have a direct effect on the application state.
         // Keep JSON & struct versions of state in sync.
-        [&](const undo &) {
+        [&](const undo &a) {
             if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
             const auto &diff = diffs[diff_index--];
             const auto &patch = diff.reverse;
             state_json = gesture_begin_state_json = state_json.patch(patch);
             state = state_json.get<State>();
-            on_diff(diff, Reverse, true);
+            on_diff(a, diff, Reverse, true);
         },
-        [&](const redo &) {
+        [&](const redo &a) {
             const auto &diff = diffs[++diff_index];
             const auto &patch = diff.forward;
             state_json = gesture_begin_state_json = state_json.patch(patch);
             state = state_json.get<State>();
-            on_diff(diff, Forward, true);
+            on_diff(a, diff, Forward, true);
         },
         [&](const set_value &a) {
             const auto before_json = state_json;
             state_json[a.path] = a.value;
             state = state_json;
-            on_patch(json::diff(before_json, state_json));
+            on_patch(a, json::diff(before_json, state_json));
         },
         [&](const toggle_value &a) {
             const auto before_json = state_json;
             state_json[a.path] = !state_json[a.path];
             state = state_json;
-            on_patch(json::diff(before_json, state_json));
+            on_patch(a, json::diff(before_json, state_json));
         },
         [&](const auto &a) {
             const auto before_json = state_json;
             state.update(a);
             state_json = state;
-            on_patch(json::diff(before_json, state_json));
+            on_patch(a, json::diff(before_json, state_json));
         },
     }, action);
-
-    active_gesture.emplace_back(action);
-    active_gesture_patch = json::diff(gesture_begin_state_json, sj);
 }
 
 void Context::finalize_gesture() {
@@ -358,15 +354,18 @@ void Context::on_set_value(const JsonPath &path) {
     else if (path == s.audio.faust.path / "code") update_faust_context();
 }
 
-void Context::on_diff(const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture) {
+void Context::on_diff(const Action &action, const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture) {
     const auto &patch = direction == Forward ? diff.forward : diff.reverse;
     state_stats.apply_patch(patch, diff.time, direction, is_full_gesture);
     for (const auto &patch_op: patch) on_set_value(patch_op.path);
     s.audio.update_process();
+
+    active_gesture.emplace_back(action);
+    active_gesture_patch = json::diff(gesture_begin_state_json, sj);
 }
 
-void Context::on_patch(const JsonPatch &patch) {
-    on_diff({patch, {}, Clock::now()}, Forward, false);
+void Context::on_patch(const Action &action, const JsonPatch &patch) {
+    on_diff(action, {patch, {}, Clock::now()}, Forward, false);
 }
 
 ProjectFormat get_project_format(const fs::path &path) {
@@ -392,13 +391,13 @@ void Context::open_project(const fs::path &path) {
 
         diffs = project["diffs"];
         int new_diff_index = project["diff_index"];
-        while (diff_index < new_diff_index) on_action(redo{}, false);
+        while (diff_index < new_diff_index) on_action(redo{});
     } else if (format == ActionFormat) {
         open_project(EmptyProjectPath);
 
         const Gestures project_gestures = project;
         for (const auto &gesture: project_gestures) {
-            for (const auto &action: gesture) on_action(action, false);
+            for (const auto &action: gesture) on_action(action);
             finalize_gesture();
         }
     }

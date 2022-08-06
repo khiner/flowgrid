@@ -409,8 +409,13 @@ void ProjectPreview::draw() const {
         }
         ImGui::EndCombo();
     }
+    Checkbox(path / "raw");
 
-    JsonTree("", c.get_project_json(format), JsonTreeNodeFlags_DefaultOpen);
+    Separator();
+
+    const json project_json = c.get_project_json(format);
+    if (raw) Text("%s", project_json.dump().c_str());
+    else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
 
 //-----------------------------------------------------------------------------

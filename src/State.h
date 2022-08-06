@@ -100,6 +100,7 @@ struct ProjectPreview : Window {
     void draw() const override;
 
     ProjectFormat format = StateFormat;
+    bool raw = false;
 };
 
 struct Demo : Window {
@@ -415,7 +416,7 @@ JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_fi
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
 JsonType(StateViewer, visible, label_mode, auto_select)
-JsonType(ProjectPreview, visible, format)
+JsonType(ProjectPreview, visible, format, raw)
 JsonType(Metrics::FlowGridMetrics, show_relative_paths)
 JsonType(Metrics, visible, flowgrid)
 

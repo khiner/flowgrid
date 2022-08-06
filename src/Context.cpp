@@ -2,7 +2,6 @@
 
 #include "faust/dsp/llvm-dsp.h"
 #include "UI/StatefulFaustUI.h"
-#include "Audio.h"
 
 // Used to initialize the static Faust buffer.
 // This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
@@ -144,21 +143,21 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
     if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) finalize_gesture();
 }
 
-bool Context::action_allowed(const ActionID action_id) const {
+bool Context::action_allowed(const ActionID action_id, bool user_initiated) const {
     switch (action_id) {
-        case action::id<Actions::undo>: return !active_gesture_patch.empty() || diff_index >= 0;
-        case action::id<Actions::redo>: return diff_index < (int) diffs.size() - 1;
-        case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
+        case action::id<undo>: return !active_gesture_patch.empty() || diff_index >= 0;
+        case action::id<redo>: return diff_index < (int) diffs.size() - 1;
+        case action::id<Actions::open_default_project>: return user_initiated && fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
         case action::id<Actions::show_save_project_dialog>:
-        case action::id<Actions::save_default_project>: return project_has_changes();
-        case action::id<Actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
-        case action::id<Actions::open_file_dialog>: return !s.file.dialog.visible;
-        case action::id<Actions::close_file_dialog>: return s.file.dialog.visible;
+        case action::id<Actions::save_default_project>: return user_initiated && project_has_changes();
+        case action::id<Actions::save_current_project>: return user_initiated && current_project_path.has_value() && project_has_changes();
+        case action::id<Actions::open_file_dialog>: return user_initiated && !s.file.dialog.visible;
+        case action::id<Actions::close_file_dialog>: return user_initiated && s.file.dialog.visible;
         default: return true;
     }
 }
-bool Context::action_allowed(const Action &action) const { return action_allowed(action::get_id(action)); }
+bool Context::action_allowed(const Action &action, bool user_initiated) const { return action_allowed(action::get_id(action), user_initiated); }
 
 // TODO Implement
 //  ```cpp
@@ -190,12 +189,6 @@ void Context::update_faust_context() {
 //                _s.audio.faust.json = "";
     }
 }
-
-void Context::undo() {
-    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
-    apply_diff(diff_index--, Direction::Reverse);
-}
-void Context::redo() { apply_diff(++diff_index, Direction::Forward); }
 
 void Context::clear() {
     diff_index = current_project_saved_diff_index = -1;
@@ -274,14 +267,14 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 
 // Private methods
 
-void Context::on_action(const Action &action) {
-    if (!action_allowed(action)) return; // safeguard against actions running in an invalid state
+void Context::on_action(const Action &action, bool user_initiated) {
+    // todo if not allowed, still track in gesture history with some kind of 'not-applied' flag?
+    //  problem I'm trying to solve: can save e.g. save-project action in history, for posterity,
+    //  and when loading an `.fga` file, show it in history but don't replay it.
+    if (!action_allowed(action, user_initiated)) return; // Safeguard against actions running in an invalid state.
 
     std::visit(visitor{
         // Handle actions that don't directly update state.
-        [&](const Actions::undo &) { undo(); },
-        [&](const Actions::redo &) { redo(); },
-
         [&](const Actions::open_project &a) { open_project(a.path); },
         [&](const open_empty_project &) { open_project(EmptyProjectPath); },
         [&](const open_default_project &) { open_project(DefaultProjectPath); },
@@ -292,34 +285,44 @@ void Context::on_action(const Action &action) {
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
         // Remaining actions have a direct effect on the application state.
-        [&](const auto &) { apply_action(action); },
+        // Keep JSON & struct versions of state in sync.
+        [&](const undo &) {
+            if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
+            const auto &diff = diffs[diff_index--];
+            const auto &patch = diff.reverse;
+            state_json = gesture_begin_state_json = state_json.patch(patch);
+            state = state_json.get<State>();
+            on_diff(diff, Reverse, true);
+        },
+        [&](const redo &) {
+            const auto &diff = diffs[++diff_index];
+            const auto &patch = diff.forward;
+            state_json = gesture_begin_state_json = state_json.patch(patch);
+            state = state_json.get<State>();
+            on_diff(diff, Forward, true);
+        },
+        [&](const set_value &a) {
+            const auto before_json = state_json;
+            state_json[a.path] = a.value;
+            state = state_json;
+            on_patch(json::diff(before_json, state_json));
+        },
+        [&](const toggle_value &a) {
+            const auto before_json = state_json;
+            state_json[a.path] = !state_json[a.path];
+            state = state_json;
+            on_patch(json::diff(before_json, state_json));
+        },
+        [&](const auto &a) {
+            const auto before_json = state_json;
+            state.update(a);
+            state_json = state;
+            on_patch(json::diff(before_json, state_json));
+        },
     }, action);
 
     active_gesture.emplace_back(action);
     active_gesture_patch = json::diff(gesture_begin_state_json, sj);
-}
-
-void Context::apply_action(const Action &action) {
-    const auto action_begin_state_json = state_json;
-    // Update state. Keep JSON & struct versions of state in sync.
-    const bool is_set_value = std::holds_alternative<set_value>(action);
-    const bool is_toggle_value = std::holds_alternative<toggle_value>(action);
-    if (is_set_value || is_toggle_value) {
-        if (is_set_value) {
-            const auto &a = std::get<set_value>(action);
-            state_json[a.path] = a.value;
-        } else {
-            const auto &a = std::get<toggle_value>(action);
-            state_json[a.path] = !state_json[a.path];
-        }
-        state = state_json;
-    } else {
-        state.update(action);
-        state_json = state;
-    }
-
-    const auto patch = json::diff(action_begin_state_json, state_json);
-    on_diff({patch, {}, Clock::now()}, Forward, false);
 }
 
 void Context::finalize_gesture() {
@@ -330,15 +333,6 @@ void Context::finalize_gesture() {
     state_stats.apply_patch(active_gesture_patch, Clock::now(), Forward, true);
     if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
 
-    // todo this doesn't currently guarantee actions with non-state side-effect won't get saved to history! They could sneak into gestures with other state effects.
-    // todo also not up-to-date comment. need to address this side-effect issue
-    // If state hasn't changed, we don't even append the gesture to history.
-    // Gesture history is there to replay the session, and we don't want to re-execute any gestures with non-state-affecting side effects.
-    // E.g. a gesture with only a project-save action has no effect on state;
-    // It _only_ has the non-state-affecting side effect of writing to disk, and we don't want to re-execute this side effect in playback.
-    // This also catches any cases where the compressed gesture (list of actions) is _not_ empty, but it really should be.
-    // E.g. compressing `undo,undo,undo,redo,redo,redo` will currently result in `undo,undo,redo,redo`,
-    // since compression only considers two actions at a time for simplicity.
     if (active_gesture_patch.empty()) return;
     if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
@@ -347,16 +341,6 @@ void Context::finalize_gesture() {
     diff_index = int(diffs.size()) - 1;
     gesture_begin_state_json = sj;
     active_gesture_patch.clear();
-}
-
-void Context::apply_diff(const int index, const Direction direction) {
-    const auto &diff = diffs[index];
-    const auto &patch = direction == Forward ? diff.forward : diff.reverse;
-
-    state_json = gesture_begin_state_json = state_json.patch(patch);
-    state = state_json.get<State>();
-
-    on_diff(diff, direction, true);
 }
 
 void Context::on_set_value(const JsonPath &path) {
@@ -376,6 +360,10 @@ void Context::on_diff(const BidirectionalStateDiff &diff, Direction direction, b
     state_stats.apply_patch(patch, diff.time, direction, is_full_gesture);
     for (const auto &patch_op: patch) on_set_value(patch_op.path);
     s.audio.update_process();
+}
+
+void Context::on_patch(const JsonPatch &patch) {
+    on_diff({patch, {}, Clock::now()}, Forward, false);
 }
 
 ProjectFormat get_project_format(const fs::path &path) {
@@ -401,13 +389,13 @@ void Context::open_project(const fs::path &path) {
 
         diffs = project["diffs"];
         int new_diff_index = project["diff_index"];
-        while (diff_index < new_diff_index) redo();
+        while (diff_index < new_diff_index) on_action(redo{}, false);
     } else if (format == ActionFormat) {
         open_project(EmptyProjectPath);
 
         const Gestures project_gestures = project;
         for (const auto &gesture: project_gestures) {
-            for (const auto &action: gesture) on_action(action);
+            for (const auto &action: gesture) on_action(action, false);
             finalize_gesture();
         }
     }

@@ -82,14 +82,13 @@ template<typename ...Args>
 struct adl_serializer<std::variant<Args...>> {
     static constexpr inline void to_json(json &j, const std::variant<Args...> &v) {
         std::visit([&](auto &&value) {
-            j["index"] = v.index();
-            j["value"] = std::forward<decltype(value)>(value);
+            j = {v.index(), std::forward<decltype(value)>(value)};
         }, v);
     }
 
     static constexpr inline void from_json(const json &j, std::variant<Args...> &v) {
-        const auto index = j.at("index").get<int>();
-        ::detail::variant_switch < sizeof...(Args) - 1 > {}(index, j.at("value"), v);
+        const auto index = j[0].get<int>();
+        ::detail::variant_switch < sizeof...(Args) - 1 > {}(index, j[1], v);
     }
 };
 }

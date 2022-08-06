@@ -124,24 +124,25 @@ bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *
 
 void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
     if (value.is_null()) {
-        ImGui::Text("%s", label.c_str());
+        ImGui::Text("%s", label.empty() ? label.c_str() : "(null)");
     } else if (value.is_object()) {
-        if (JsonTreeNode(label, node_flags, id)) {
+        if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 JsonTree(it.key(), it.value(), node_flags);
             }
-            ImGui::TreePop();
+            if (!label.empty()) ImGui::TreePop();
         }
     } else if (value.is_array()) {
-        if (JsonTreeNode(label, node_flags, id)) {
+        if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             int i = 0;
             for (const auto &it: value) {
                 JsonTree(std::to_string(i), it, node_flags);
                 i++;
             }
-            ImGui::TreePop();
+            if (!label.empty()) ImGui::TreePop();
         }
     } else {
-        ImGui::Text("%s : %s", label.c_str(), value.dump().c_str());
+        if (label.empty()) ImGui::Text("%s", value.dump().c_str());
+        else ImGui::Text("%s: %s", label.c_str(), value.dump().c_str());
     }
 }

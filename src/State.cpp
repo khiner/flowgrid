@@ -330,7 +330,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
             TreePop();
         }
     } else {
-        Text("%s : %s", label.c_str(), value.dump().c_str());
+        Text("%s: %s", label.c_str(), value.dump().c_str());
     }
 }
 
@@ -410,8 +410,7 @@ void ProjectPreview::draw() const {
         ImGui::EndCombo();
     }
 
-    const json project_json = c.get_project_json(format);
-    JsonTree("Project", project_json, JsonTreeNodeFlags_DefaultOpen);
+    JsonTree("", c.get_project_json(format), JsonTreeNodeFlags_DefaultOpen);
 }
 
 //-----------------------------------------------------------------------------
@@ -808,7 +807,7 @@ void ShowGesture(const Gesture &gesture) {
     for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
         const auto &action = gesture[action_i];
         const auto &label = action::get_name(action);
-        JsonTree(label, json(action).at("value"), JsonTreeNodeFlags_None, (label + "_" + std::to_string(action_i)).c_str());
+        JsonTree(label, json(action)[1], JsonTreeNodeFlags_None, (label + "_" + std::to_string(action_i)).c_str());
     }
 }
 

@@ -113,7 +113,10 @@ bool Context::is_user_project_path(const fs::path &path) {
 
 bool Context::project_has_changes() const { return diff_index != current_project_saved_diff_index; }
 
-bool Context::save_empty_project() { return save_project(EmptyProjectPath); }
+void Context::save_empty_project() {
+    save_project(EmptyProjectPath);
+    if (!fs::exists(DefaultProjectPath)) save_project(DefaultProjectPath);
+}
 
 bool Context::clear_preferences() {
     preferences.recently_opened_paths.clear();

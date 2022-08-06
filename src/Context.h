@@ -92,7 +92,7 @@ struct Context {
     Context();
     ~Context() = default;
 
-    bool save_empty_project();
+    void save_empty_project();
 
     static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;

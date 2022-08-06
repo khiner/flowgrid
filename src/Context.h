@@ -16,13 +16,6 @@ namespace FlowGrid {}
 namespace fg = FlowGrid;
 using Action = action::Action;
 
-enum ProjectFormat {
-    None,
-    StateFormat,
-    DiffFormat,
-    ActionFormat,
-};
-
 const std::map<ProjectFormat, string> ExtensionForProjectFormat{
     {StateFormat,  ".fls"},
     {DiffFormat,   ".fld"},
@@ -99,7 +92,7 @@ struct Context {
 
     bool clear_preferences();
 
-    json get_project_json(ProjectFormat format = StateFormat) const;
+    json get_project_json(ProjectFormat format = StateFormat);
 
     void enqueue_action(const Action &);
     void run_queued_actions(bool force_finalize_gesture = false);

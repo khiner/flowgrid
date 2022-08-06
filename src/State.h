@@ -92,6 +92,16 @@ struct StatePathUpdateFrequency : Window {
     void draw() const override;
 };
 
+enum ProjectFormat { None = 0, StateFormat, DiffFormat, ActionFormat, };
+static const string ProjectFormatLabels[] = {"None", "StateFormat", "DiffFormat", "ActionFormat"};
+
+struct ProjectPreview : Window {
+    using Window::Window;
+    void draw() const override;
+
+    ProjectFormat format = StateFormat;
+};
+
 struct Demo : Window {
     using Window::Window;
     void draw() const override;
@@ -342,9 +352,11 @@ struct StateData {
     Demo demo{RootPath, "demo"};
     Metrics metrics{RootPath, "metrics"};
     Tools tools{RootPath, "tools"};
+
     StateViewer state_viewer{RootPath, "state_viewer"};
     StateMemoryEditor state_memory_editor{RootPath, "state_memory_editor"};
     StatePathUpdateFrequency path_update_frequency{RootPath, "path_update_frequency", "State path update frequency"};
+    ProjectPreview project_preview{RootPath, "project_preview"};
 };
 
 // Types for [json-patch](https://jsonpatch.com)
@@ -403,6 +415,7 @@ JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_fi
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)
 JsonType(StateViewer, visible, label_mode, auto_select)
+JsonType(ProjectPreview, visible, format)
 JsonType(Metrics::FlowGridMetrics, show_relative_paths)
 JsonType(Metrics, visible, flowgrid)
 
@@ -424,4 +437,4 @@ JsonType(ImGuiSettingsData, nodes, windows, tables)
 
 JsonType(Processes, ui)
 
-JsonType(StateData, application_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, demo, metrics, tools);
+JsonType(StateData, application_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, project_preview, demo, metrics, tools);

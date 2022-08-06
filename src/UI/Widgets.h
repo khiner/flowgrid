@@ -35,9 +35,10 @@ enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None = 0,
     JsonTreeNodeFlags_Highlighted = 1 << 0,
     JsonTreeNodeFlags_Disabled = 1 << 1,
+    JsonTreeNodeFlags_DefaultOpen = 1 << 2,
 };
 
 bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr);
-void JsonTree(const string &label, const json &value, const char *id = nullptr);
+void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
 
 }

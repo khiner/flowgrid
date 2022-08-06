@@ -120,11 +120,15 @@ void State::draw() const {
 
         application_settings.Dock(settings_node_id);
         audio.settings.Dock(settings_node_id);
+
         audio.faust.editor.Dock(faust_editor_node_id);
         audio.faust.log.Dock(faust_log_node_id);
+
         state_viewer.Dock(state_node_id);
         state_memory_editor.Dock(state_node_id);
         path_update_frequency.Dock(state_node_id);
+        project_preview.Dock(state_node_id);
+
         metrics.Dock(utilities_node_id);
         style.Dock(utilities_node_id);
         tools.Dock(utilities_node_id);
@@ -137,11 +141,14 @@ void State::draw() const {
 
     application_settings.DrawWindow();
     audio.settings.DrawWindow();
+
     audio.faust.editor.DrawWindow(ImGuiWindowFlags_MenuBar);
     audio.faust.log.DrawWindow();
+
     state_viewer.DrawWindow(ImGuiWindowFlags_MenuBar);
-    path_update_frequency.DrawWindow(ImGuiWindowFlags_None);
+    path_update_frequency.DrawWindow();
     state_memory_editor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
+    project_preview.DrawWindow();
 
     metrics.DrawWindow();
     style.DrawWindow();
@@ -352,6 +359,61 @@ void StateViewer::draw() const {
     StateJsonTree("State", sj);
 }
 
+void StateMemoryEditor::draw() const {
+    static MemoryEditor memory_editor;
+    static bool first_render{true};
+    if (first_render) {
+        memory_editor.OptShowDataPreview = true;
+//        memory_editor.WriteFn = ...; todo write_state_bytes action
+        first_render = false;
+    }
+
+    const void *mem_data{&s};
+    memory_editor.DrawContents(mem_data, sizeof(s));
+}
+
+void StatePathUpdateFrequency::draw() const {
+    if (c.state_stats.committed_update_times_for_path.empty() && c.state_stats.gesture_update_times_for_path.empty()) {
+        Text("No state updates yet.");
+        return;
+    }
+
+    auto &[labels, values] = c.state_stats.path_update_frequency;
+    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
+
+        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
+        // todo fix in ImPlot
+        if (labels.size() == 1) labels.emplace_back("");
+
+        // todo add an axis flag to exclude non-integer ticks
+        // todo add an axis flag to show last tick
+        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
+        static const char *item_labels[] = {"Committed updates", "Active updates"};
+        const bool has_gesture = !c.state_stats.gesture_update_times_for_path.empty();
+        const int item_count = has_gesture ? 2 : 1;
+        const int group_count = has_gesture ? int(values.size()) / 2 : int(values.size());
+        ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
+
+        ImPlot::EndPlot();
+    }
+}
+
+void ProjectPreview::draw() const {
+    const auto value_path = path / "format";
+    if (ImGui::BeginCombo(path_label(value_path).c_str(), ProjectFormatLabels[format].c_str())) {
+        for (int f = 0; f <= ActionFormat; f++) { // xxx breaks if `ActionFormat` is not the last format.
+            const bool is_selected = format == f;
+            if (ImGui::Selectable(ProjectFormatLabels[f].c_str(), is_selected)) q(set_value{value_path, f});
+            if (is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    const json project_json = c.get_project_json(format);
+    JsonTree("Project", project_json, JsonTreeNodeFlags_DefaultOpen);
+}
+
 //-----------------------------------------------------------------------------
 // [SECTION] Style editors
 //-----------------------------------------------------------------------------
@@ -392,45 +454,6 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
     }
 }
 
-void StateMemoryEditor::draw() const {
-    static MemoryEditor memory_editor;
-    static bool first_render{true};
-    if (first_render) {
-        memory_editor.OptShowDataPreview = true;
-//        memory_editor.WriteFn = ...; todo write_state_bytes action
-        first_render = false;
-    }
-
-    const void *mem_data{&s};
-    memory_editor.DrawContents(mem_data, sizeof(s));
-}
-
-void StatePathUpdateFrequency::draw() const {
-    if (c.state_stats.committed_update_times_for_path.empty() && c.state_stats.gesture_update_times_for_path.empty()) {
-        Text("No state updates yet.");
-        return;
-    }
-
-    auto &[labels, values] = c.state_stats.path_update_frequency;
-    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
-        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
-
-        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
-        // todo fix in ImPlot
-        if (labels.size() == 1) labels.emplace_back("");
-
-        // todo add an axis flag to exclude non-integer ticks
-        // todo add an axis flag to show last tick
-        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
-        static const char *item_labels[] = {"Committed updates", "Active updates"};
-        const bool has_gesture = !c.state_stats.gesture_update_times_for_path.empty();
-        const int item_count = has_gesture ? 2 : 1;
-        const int group_count = has_gesture ? int(values.size()) / 2 : int(values.size());
-        ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
-
-        ImPlot::EndPlot();
-    }
-}
 // Returns `true` if style changes.
 void Style::ImGuiStyleMember::draw() const {
     static int style_idx = -1;
@@ -785,7 +808,7 @@ void ShowGesture(const Gesture &gesture) {
     for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
         const auto &action = gesture[action_i];
         const auto &label = action::get_name(action);
-        JsonTree(label, json(action).at("value"), (label + "_" + std::to_string(action_i)).c_str());
+        JsonTree(label, json(action).at("value"), JsonTreeNodeFlags_None, (label + "_" + std::to_string(action_i)).c_str());
     }
 }
 

@@ -123,7 +123,7 @@ bool Context::clear_preferences() {
     return write_preferences();
 }
 
-json Context::get_project_json(const ProjectFormat format) const {
+json Context::get_project_json(const ProjectFormat format) {
     switch (format) {
         case None: return nullptr;
         case StateFormat: return sj;

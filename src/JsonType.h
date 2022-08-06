@@ -79,6 +79,7 @@ struct variant_switch<0> {
 
 namespace nlohmann {
 template<typename ...Args>
+// Serialize variants as two-element arrays, [index, value]. Value element can possibly be null.
 struct adl_serializer<std::variant<Args...>> {
     static constexpr inline void to_json(json &j, const std::variant<Args...> &v) {
         std::visit([&](auto &&value) {
@@ -87,8 +88,7 @@ struct adl_serializer<std::variant<Args...>> {
     }
 
     static constexpr inline void from_json(const json &j, std::variant<Args...> &v) {
-        const auto index = j[0].get<int>();
-        ::detail::variant_switch < sizeof...(Args) - 1 > {}(index, j[1], v);
+        ::detail::variant_switch < sizeof...(Args) - 1 > {}(j[0].get<int>(), j[1], v);
     }
 };
 }

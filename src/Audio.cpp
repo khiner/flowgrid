@@ -208,7 +208,7 @@ void Audio::update_process() const {
     }
     previous_sample_rate = s.audio.settings.sample_rate;
 
-    if (outstream && outstream->volume != settings.device_volume) soundio_outstream_set_volume(outstream, settings.device_volume);
+    if (soundio_ready && outstream && outstream->volume != settings.device_volume) soundio_outstream_set_volume(outstream, settings.device_volume);
 }
 
 #include "UI/Widgets.h"

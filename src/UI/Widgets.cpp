@@ -124,7 +124,7 @@ bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *
 
 void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
     if (value.is_null()) {
-        ImGui::Text("%s", label.empty() ? label.c_str() : "(null)");
+        ImGui::Text("%s", label.empty() ? "(null)" : label.c_str());
     } else if (value.is_object()) {
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {

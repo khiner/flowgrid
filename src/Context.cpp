@@ -111,7 +111,7 @@ bool Context::is_user_project_path(const fs::path &path) {
     return !fs::equivalent(fs::relative(path), EmptyProjectPath) && !fs::equivalent(fs::relative(path), DefaultProjectPath);
 }
 
-bool Context::project_has_changes() const { return diff_index != current_project_saved_diff_index; }
+bool Context::project_has_changes() const { return gestures.size() != project_start_gesture_count; }
 
 void Context::save_empty_project() {
     save_project(EmptyProjectPath);
@@ -194,10 +194,11 @@ void Context::update_faust_context() {
 }
 
 void Context::clear() {
-    diff_index = current_project_saved_diff_index = -1;
+    diff_index = -1;
     current_project_path.reset();
     diffs.clear();
     gestures.clear();
+    project_start_gesture_count = gestures.size();
     is_widget_gesturing = false;
     state_stats = {};
     // todo finalize?
@@ -286,23 +287,13 @@ void Context::on_action(const Action &action) {
         [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
+        // `diff_index`-changing actions:
+        [&](const undo &) { set_diff_index(diff_index - 1); },
+        [&](const redo &) { set_diff_index(diff_index + 1); },
+        [&](const Actions::set_diff_index &a) { set_diff_index(a.diff_index); },
+
         // Remaining actions have a direct effect on the application state.
         // Keep JSON & struct versions of state in sync.
-        [&](const undo &a) {
-            if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. todo this prevents merging redo,undo
-            const auto &diff = diffs[diff_index--];
-            const auto &patch = diff.reverse;
-            state_json = gesture_begin_state_json = state_json.patch(patch);
-            state = state_json;
-            on_diff(a, diff, Reverse, true);
-        },
-        [&](const redo &a) {
-            const auto &diff = diffs[++diff_index];
-            const auto &patch = diff.forward;
-            state_json = gesture_begin_state_json = state_json.patch(patch);
-            state = state_json;
-            on_diff(a, diff, Forward, true);
-        },
         [&](const set_value &a) {
             const auto before_json = state_json;
             state_json[a.path] = a.value;
@@ -327,45 +318,87 @@ void Context::on_action(const Action &action) {
 void Context::finalize_gesture() {
     if (active_gesture.empty()) return;
 
-    const auto active_gesture_compressed = action::compress_gesture(active_gesture);
-    active_gesture.clear();
     state_stats.apply_patch(active_gesture_patch, Clock::now(), Forward, true);
+
+    const auto merged_gesture = action::merge_gesture(active_gesture);
+    active_gesture.clear();
+
+    const auto merged_gesture_size = merged_gesture.size();
+    // Apply context-dependent transformations to actions with large data members to compress them before committing them to the gesture history.
+    const auto active_gesture_compressed = merged_gesture | transform([this, merged_gesture_size](const auto &action) -> Action {
+        const auto id = action::get_id(action);
+        if (id == action::id<Actions::set_diff_index> && merged_gesture_size == 1) {
+            const auto new_diff_index = std::get<Actions::set_diff_index>(action).diff_index;
+            if (new_diff_index == gesture_begin_diff_index - 1) return undo{};
+            else if (new_diff_index == gesture_begin_diff_index + 1) return redo{};
+        }
+        return action;
+    }) | views::filter([this](const auto &action) {
+        // Filter out any resulting `diff_index` actions that don't actually result in a `diff_index` change.
+        return action::get_id(action) != action::id<Actions::set_diff_index> || std::get<Actions::set_diff_index>(action).diff_index != gesture_begin_diff_index;
+    }) | to<const Gesture>();
     if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
 
+    gesture_begin_diff_index = diff_index;
     if (active_gesture_patch.empty()) return;
     if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
     while (int(diffs.size()) > diff_index + 1) diffs.pop_back(); // TODO use an undo _tree_ and keep this history
     diffs.push_back({active_gesture_patch, json::diff(sj, gesture_begin_state_json), Clock::now()});
     diff_index = int(diffs.size()) - 1;
+    gesture_begin_diff_index = diff_index;
     gesture_begin_state_json = sj;
     active_gesture_patch.clear();
+}
+
+void Context::on_patch(const Action &action, const JsonPatch &patch) {
+//    // Apply context-dependent transformations on actions to make them more easily merge-able.
+//    // (Merge only sees two consecutive actions at a time.)
+//    const auto transform_action_pre_merge = [this](const Action &action) -> Action {
+//        switch (action::get_id(action)) {
+//            case action::id<undo>: return Actions::set_diff_index{diff_index - 1};
+//            case action::id<redo>: return Actions::set_diff_index{diff_index + 1};
+//            default: return action;
+//        }
+//    };
+
+    active_gesture.emplace_back(action);
+    active_gesture_patch = json::diff(gesture_begin_state_json, sj);
+
+    state_stats.apply_patch(patch, Clock::now(), Forward, false);
+    for (const auto &patch_op: patch) on_set_value(patch_op.path);
+    s.audio.update_process();
+}
+
+void Context::set_diff_index(int new_diff_index) {
+    if (new_diff_index == diff_index || new_diff_index < -1 || new_diff_index >= int(diffs.size())) return;
+
+    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
+
+    active_gesture.emplace_back(Actions::set_diff_index{new_diff_index});
+
+    const auto direction = new_diff_index > diff_index ? Forward : Reverse;
+
+    while (diff_index != new_diff_index) {
+        const auto &diff = diffs[direction == Reverse ? diff_index-- : ++diff_index];
+        const auto &patch = direction == Reverse ? diff.reverse : diff.forward;
+        state_json = gesture_begin_state_json = state_json.patch(patch);
+        state = state_json;
+        state_stats.apply_patch(patch, diff.time, direction, true);
+        for (const auto &patch_op: patch) on_set_value(patch_op.path);
+    }
+    s.audio.update_process();
 }
 
 void Context::on_set_value(const JsonPath &path) {
     const auto &path_str = path.to_string();
 
-    // Setting `imgui_settings` does not require a `c.update_ui_context` on the action,
-    // since the action will be initiated by ImGui itself,
+    // Setting `imgui_settings` does not require a `c.update_ui_context` on the action, since the action will be initiated by ImGui itself,
     // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
     if (path_str.rfind(s.imgui_settings.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
     else if (path_str.rfind(s.style.imgui.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
     else if (path_str.rfind(s.style.implot.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
     else if (path == s.audio.faust.path / "code") update_faust_context();
-}
-
-void Context::on_diff(const Action &action, const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture) {
-    const auto &patch = direction == Forward ? diff.forward : diff.reverse;
-    state_stats.apply_patch(patch, diff.time, direction, is_full_gesture);
-    for (const auto &patch_op: patch) on_set_value(patch_op.path);
-    s.audio.update_process();
-
-    active_gesture.emplace_back(action);
-    active_gesture_patch = json::diff(gesture_begin_state_json, sj);
-}
-
-void Context::on_patch(const Action &action, const JsonPatch &patch) {
-    on_diff(action, {patch, {}, Clock::now()}, Forward, false);
 }
 
 ProjectFormat get_project_format(const fs::path &path) {
@@ -391,7 +424,7 @@ void Context::open_project(const fs::path &path) {
 
         diffs = project["diffs"];
         int new_diff_index = project["diff_index"];
-        while (diff_index < new_diff_index) on_action(redo{});
+        on_action(Actions::set_diff_index{new_diff_index});
     } else if (format == ActionFormat) {
         open_project(EmptyProjectPath);
 
@@ -424,7 +457,7 @@ bool Context::save_project(const fs::path &path) {
 
 void Context::set_current_project_path(const fs::path &path) {
     current_project_path = path;
-    current_project_saved_diff_index = diff_index;
+    project_start_gesture_count = gestures.size();
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences();

@@ -85,10 +85,9 @@ struct Context {
     Context();
     ~Context() = default;
 
-    void save_empty_project();
-
     static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;
+    void save_empty_project();
 
     bool clear_preferences();
 
@@ -122,7 +121,7 @@ struct Context {
     JsonPatch active_gesture_patch;
 
     std::optional<fs::path> current_project_path;
-    int current_project_saved_diff_index = diff_index;
+    size_t project_start_gesture_count = gestures.size();
 
     ImFont *defaultFont{};
     ImFont *fixedWidthFont{};
@@ -139,8 +138,8 @@ struct Context {
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
     void finalize_gesture();
-    void on_diff(const Action &action, const BidirectionalStateDiff &diff, Direction direction, bool is_full_gesture);
-    void on_patch(const Action &action, const JsonPatch &patch);
+    void on_patch(const Action &action, const JsonPatch &patch); // Called after every state-changing action
+    void set_diff_index(int);
     void on_set_value(const JsonPath &path);
 
     // Takes care of all side effects needed to put the app into the provided application state json.
@@ -153,9 +152,9 @@ private:
     bool write_preferences() const;
 
     State state{};
-
     std::queue<const Action> queued_actions;
     json state_json, gesture_begin_state_json; // `state_json` always reflects `state`. `gesture_begin_state_json` is only updated on gesture-end (for diff calculation).
+    int gesture_begin_diff_index = -1;
 };
 
 /**

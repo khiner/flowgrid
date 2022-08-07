@@ -739,6 +739,8 @@ void Style::draw() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::draw() const {
+    int v = c.diff_index;
+    if (ImGui::SliderInt("Diff index", &v, -1, int(c.diffs.size()) - 1)) q(set_diff_index{v});
     SliderFloat(path / "GestureDurationSec", GestureDurationSecMin, GestureDurationSecMax, "%.3f s");
 }
 
@@ -812,7 +814,7 @@ void ShowGesture(const Gesture &gesture) {
     for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
         const auto &action = gesture[action_i];
         const auto &label = action::get_name(action);
-        JsonTree(label, json(action)[1], JsonTreeNodeFlags_None, (label + "_" + std::to_string(action_i)).c_str());
+        JsonTree(label, json(action)[1], JsonTreeNodeFlags_None, std::to_string(action_i).c_str());
     }
 }
 

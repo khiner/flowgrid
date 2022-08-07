@@ -19,8 +19,11 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     const ID b_id = get_id(b);
 
     switch (a_id) {
-        case id<undo>: return b_id == id<redo>;
-        case id<redo>: return b_id == id<undo>;
+        case id<undo>:if (b_id == id<set_diff_index>) return b;
+            return b_id == id<redo>;
+        case id<redo>:if (b_id == id<set_diff_index>) return b;
+            return b_id == id<undo>;
+        case id<set_diff_index>:
         case id<open_empty_project>:
         case id<open_default_project>:
         case id<show_open_project_dialog>:
@@ -40,12 +43,12 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
             return false;
         case id<set_value>:if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
             return false;
-        case id<toggle_value>: return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
+        case id<toggle_value>:return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
         default: return false;
     }
 }
 
-Gesture action::compress_gesture(const Gesture &gesture) {
+Gesture action::merge_gesture(const Gesture &gesture) {
     Gesture compressed_gesture;
 
     std::optional<const Action> active_action;

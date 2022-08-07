@@ -39,6 +39,7 @@ namespace Actions {
 
 struct undo {};
 struct redo {};
+struct set_diff_index { int diff_index; };
 
 struct open_project { string path; };
 struct open_empty_project {};
@@ -56,6 +57,7 @@ struct show_save_project_dialog {};
 struct close_application {};
 
 struct set_value { JsonPath path; json value; };
+//struct patch_value { JsonPatch patch; };
 struct toggle_value { JsonPath path; };
 
 struct set_imgui_color_style { int id; };
@@ -80,10 +82,12 @@ EmptyJsonType(close_application)
 EmptyJsonType(show_open_faust_file_dialog)
 EmptyJsonType(show_save_faust_file_dialog)
 
+JsonType(set_diff_index, diff_index)
 JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
 JsonType(set_value, path, value)
+//JsonType(patch_value, patch)
 JsonType(toggle_value, path)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
@@ -100,7 +104,7 @@ namespace action {
 using ID = size_t;
 
 using Action = std::variant<
-    undo, redo,
+    undo, redo, set_diff_index,
     open_project, open_empty_project, open_default_project, show_open_project_dialog,
     save_project, save_default_project, save_current_project, show_save_project_dialog,
     open_file_dialog, close_file_dialog,
@@ -121,7 +125,7 @@ using Gestures = std::vector<Gesture>;
 // From https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
 Action create(ID index) {
-    if constexpr(I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + std::to_string(I + index) + " out of bounds"};
+    if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + std::to_string(I + index) + " out of bounds"};
     else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
 }
 
@@ -145,6 +149,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 static const std::map<ID, string> name_for_id{
     {id<undo>,                     ActionName(undo)},
     {id<redo>,                     ActionName(redo)},
+    {id<set_diff_index>,           ActionName(set_diff_index)},
 
     {id<open_project>,             ActionName(open_project)},
     {id<open_empty_project>,       ActionName(open_empty_project)},
@@ -163,6 +168,7 @@ static const std::map<ID, string> name_for_id{
 
     {id<set_value>,                ActionName(set_value)},
     {id<toggle_value>,             ActionName(toggle_value)},
+//    {id<patch_value>,              ActionName(patch_value)},
 
     {id<set_imgui_color_style>,       "Set ImGui color style"},
     {id<set_implot_color_style>,      "Set ImPlot color style"},
@@ -202,8 +208,7 @@ static const char *get_menu_label(ID action_id) {
     return name_for_id.at(action_id).c_str();
 }
 
-
-Gesture compress_gesture(const Gesture &);
+Gesture merge_gesture(const Gesture &);
 
 }
 

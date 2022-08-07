@@ -308,6 +308,8 @@ void Context::on_action(const Action &action) {
             state_json[a.path] = !state_json[a.path];
             state = state_json;
             on_patch(a, json::diff(before_json, state_json));
+            // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row and undoing does nothing, since they're compressed into nothing.
+            finalize_gesture();
         },
         [&](const auto &a) {
             const auto before_json = state_json;

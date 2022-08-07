@@ -414,7 +414,7 @@ void ProjectPreview::draw() const {
     Separator();
 
     const json project_json = c.get_project_json(format);
-    if (raw) Text("%s", project_json.dump().c_str());
+    if (raw) Text("%s", project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
 

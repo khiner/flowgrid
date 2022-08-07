@@ -288,9 +288,12 @@ void Context::on_action(const Action &action) {
         [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
 
         // `diff_index`-changing actions:
-        [&](const undo &) { set_diff_index(diff_index - 1); },
-        [&](const redo &) { set_diff_index(diff_index + 1); },
-        [&](const Actions::set_diff_index &a) { set_diff_index(a.diff_index); },
+        [&](const undo &) { increment_diff_index(-1); },
+        [&](const redo &) { increment_diff_index(1); },
+        [&](const Actions::set_diff_index &a) {
+            if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
+            set_diff_index(a.diff_index);
+        },
 
         // Remaining actions have a direct effect on the application state.
         // Keep JSON & struct versions of state in sync.
@@ -373,8 +376,6 @@ void Context::on_patch(const Action &action, const JsonPatch &patch) {
 void Context::set_diff_index(int new_diff_index) {
     if (new_diff_index == diff_index || new_diff_index < -1 || new_diff_index >= int(diffs.size())) return;
 
-    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
-
     active_gesture.emplace_back(Actions::set_diff_index{new_diff_index});
 
     const auto direction = new_diff_index > diff_index ? Forward : Reverse;
@@ -388,6 +389,11 @@ void Context::set_diff_index(int new_diff_index) {
         for (const auto &patch_op: patch) on_set_value(patch_op.path);
     }
     s.audio.update_process();
+}
+
+void Context::increment_diff_index(int diff_index_delta) {
+    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. _This can change `diff_index`!_
+    set_diff_index(diff_index + diff_index_delta);
 }
 
 void Context::on_set_value(const JsonPath &path) {

@@ -139,7 +139,8 @@ private:
     void on_action(const Action &); // This is the only method that modifies `state`.
     void finalize_gesture();
     void on_patch(const Action &action, const JsonPatch &patch); // Called after every state-changing action
-    void set_diff_index(int);
+    void set_diff_index(int diff_index);
+    void increment_diff_index(int diff_index_delta);
     void on_set_value(const JsonPath &path);
 
     // Takes care of all side effects needed to put the app into the provided application state json.

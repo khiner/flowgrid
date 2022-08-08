@@ -50,9 +50,11 @@ bool fg::SliderFloat2(const JsonPath &path, float v_min, float v_max, const char
     return edited;
 }
 
-bool fg::SliderInt(const char *label, int *v, int v_min, int v_max, const char *format, ImGuiSliderFlags flags) {
-    const bool edited = ImGui::SliderInt(label, v, v_min, v_max, format, flags);
+bool fg::SliderInt(const JsonPath &path, int v_min, int v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
+    int v = sj[path];
+    const bool edited = ImGui::SliderInt(label ? label : path_label(path).c_str(), &v, v_min, v_max, format, flags);
     gestured();
+    if (edited) q(set_value{path, v});
     return edited;
 }
 
@@ -85,17 +87,6 @@ bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int p
     return edited;
 }
 
-void fg::Combo(const JsonPath &path, const std::vector<int> &options) {
-    const int v = sj[path];
-    if (ImGui::BeginCombo(path_label(path).c_str(), std::to_string(v).c_str())) {
-        for (const int option: options) {
-            const bool is_selected = option == v;
-            if (ImGui::Selectable(std::to_string(option).c_str(), is_selected)) q(set_value{path, option});
-            if (is_selected) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
-}
 void fg::Combo(const JsonPath &path, const std::vector<string> &options) {
     const string v = sj.contains(path) ? sj[path] : "";
     if (ImGui::BeginCombo(path_label(path).c_str(), v.c_str())) {

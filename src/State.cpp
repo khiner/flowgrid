@@ -24,6 +24,21 @@ void Field::Bool::DrawMenu() const {
     if (ImGui::MenuItem(name.c_str(), nullptr, value)) q(toggle_value{path});
 }
 
+void Field::Int::draw() const {
+    SliderInt(path, min, max, "%d", ImGuiSliderFlags_None, name.c_str());
+}
+void Field::Int::draw(const std::vector<int> &options) const {
+    const int v = sj[path];
+    if (ImGui::BeginCombo(path_label(path).c_str(), std::to_string(v).c_str())) {
+        for (const int option: options) {
+            const bool is_selected = option == v;
+            if (ImGui::Selectable(std::to_string(option).c_str(), is_selected)) q(set_value{path, option});
+            if (is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+}
+
 void Field::Float::draw() const {
     SliderFloat(path, min, max, "%.1f", ImGuiSliderFlags_None, name.c_str());
 }

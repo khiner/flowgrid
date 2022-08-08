@@ -319,7 +319,7 @@ void Audio::draw() const {
     device_volume.draw();
 
     if (!out_device_ids.empty()) Combo(path / "out_device_id", out_device_ids);
-    if (!device_sample_rates.empty()) Combo(path / "sample_rate", device_sample_rates);
+    if (!device_sample_rates.empty()) sample_rate.draw(device_sample_rates);
     NewLine();
     if (!soundio_ready) {
         Text("No audio context created yet");

@@ -66,9 +66,10 @@ struct Bool : Base {
         return *this;
     }
 
-    bool value;
     void draw() const override;
     void DrawMenu() const;
+
+    bool value;
 };
 struct Int : Base {
     Int(const JsonPath &parent_path, const string &id, const string &name = "", int value = 0, int min = 0, int max = 100)
@@ -76,9 +77,13 @@ struct Int : Base {
     Int(const JsonPath &parent_path, const string &id, int value, int min = 0, int max = 100)
         : Int(parent_path, id, "", value, min, max) {}
 
-    int value, min, max;
+    operator int() const { return value; }
     void draw() const override;
+    void draw(const std::vector<int> &choices) const;
+
+    int value, min, max;
 };
+
 struct Float : Base {
     Float(const JsonPath &parent_path, const string &id, const string &name = "", float value = 0, float min = 0, float max = 1)
         : Base(parent_path, id, name), value(value), min(min), max(max) {}
@@ -86,16 +91,17 @@ struct Float : Base {
         : Float(parent_path, id, "", value, min, max) {}
 
     operator float() const { return value; }
+    void draw() const override;
 
     float value, min, max;
-    void draw() const override;
 };
 struct String : Base {
     String(const JsonPath &parent_path, const string &id, const string &name = "", string value = "")
         : Base(parent_path, id, name), value(std::move(value)) {}
 
-    string value;
     void draw() const override;
+
+    string value;
 };
 struct Enum : Base {
     Enum(const JsonPath &parent_path, const string &id, std::vector<string> options, int value = 0, const string &name = "", const string &help = "")
@@ -103,14 +109,14 @@ struct Enum : Base {
         this->help = help;
     }
     Enum(const JsonPath &parent_path, const string &id, std::vector<string> options, const string &help = "")
-        : Enum(parent_path, id, options, 0, "", help) {}
+        : Enum(parent_path, id, std::move(options), 0, "", help) {}
 
     operator int() const { return value; }
+    void draw() const override;
+    void DrawMenu() const;
 
     int value;
     std::vector<string> options;
-    void draw() const override;
-    void DrawMenu() const;
 };
 }
 
@@ -287,7 +293,7 @@ struct Audio : Process {
     std::optional<string> in_device_id;
     std::optional<string> out_device_id;
     Float device_volume{path, "device_volume", 1.0};
-    int sample_rate = PrioritizedDefaultSampleRates[0];
+    Int sample_rate{path, "sample_rate"};
     Faust faust{path, "faust"};
 };
 

@@ -61,6 +61,10 @@ struct Bool : Base {
         : Bool(parent_path, id, "", value, help) {}
 
     operator bool() const { return value; }
+    Bool &operator=(bool v) {
+        value = v;
+        return *this;
+    }
 
     bool value;
     void draw() const override;
@@ -129,14 +133,6 @@ inline void to_json(json &j, const Enum &field) { j = field.value; }
 inline void from_json(const json &j, Enum &field) { field.value = j; }
 }
 
-struct Process : StateMember {
-    using StateMember::StateMember;
-
-    virtual void update_process() const {}; // Start/stop the thread based on the current `running` state, and any other needed housekeeping.
-
-    bool running = true;
-};
-
 struct Window : StateMember, Drawable {
     using StateMember::StateMember;
     Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name) {
@@ -150,6 +146,15 @@ struct Window : StateMember, Drawable {
     void Dock(ImGuiID node_id) const;
     bool ToggleMenuItem() const;
     void SelectTab() const;
+};
+
+struct Process : Window {
+    using Window::Window;
+
+    void draw() const override;
+    virtual void update_process() const {}; // Start/stop the thread based on the current `running` state, and any other needed housekeeping.
+
+    Bool running{path, "running", true};
 };
 
 const DurationSec GestureDurationSecMin = 0.0, GestureDurationSecMax = 5.0;
@@ -240,17 +245,7 @@ struct Audio : Process {
     enum Backend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
     static const std::vector<int> PrioritizedDefaultSampleRates;
 
-    struct Settings : Window {
-        using Window::Window;
-        void draw() const override;
-
-        Bool muted{path, "muted", true};
-        Backend backend = none;
-        std::optional<string> in_device_id;
-        std::optional<string> out_device_id;
-        Float device_volume{path, "device_volume", 1.0};
-        int sample_rate = PrioritizedDefaultSampleRates[0];
-    };
+    void draw() const override;
 
     struct Faust : StateMember {
         using StateMember::StateMember;
@@ -287,7 +282,12 @@ struct Audio : Process {
 
     void update_process() const override;
 
-    Settings settings{path, "settings", "Audio settings"};
+    Bool muted{path, "muted", true};
+    Backend backend = none;
+    std::optional<string> in_device_id;
+    std::optional<string> out_device_id;
+    Float device_volume{path, "device_volume", 1.0};
+    int sample_rate = PrioritizedDefaultSampleRates[0];
     Faust faust{path, "faust"};
 };
 
@@ -508,8 +508,7 @@ JsonType(Process, running)
 JsonType(ApplicationSettings, visible, GestureDurationSec)
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
-JsonType(Audio::Settings, visible, muted, backend, sample_rate, device_volume)
-JsonType(Audio, running, settings, faust)
+JsonType(Audio, running, visible, muted, backend, sample_rate, device_volume, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
 JsonType(File, dialog)

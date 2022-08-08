@@ -73,8 +73,7 @@ int audio() {
     soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
-    const auto &settings = s.audio.settings;
-    int err = (settings.backend == Audio::Backend::none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, soundio_backend(settings.backend));
+    int err = (s.audio.backend == Audio::Backend::none) ? soundio_connect(soundio) : soundio_connect_backend(soundio, soundio_backend(s.audio.backend));
     if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
 
     soundio_flush_events(soundio);
@@ -87,11 +86,11 @@ int audio() {
     for (int i = 0; i < soundio_output_device_count(soundio); i++) out_device_ids.emplace_back(soundio_get_output_device(soundio, i)->id);
 
     int out_device_index = default_out_device_index;
-    if (settings.out_device_id) {
+    if (s.audio.out_device_id) {
         bool found = false;
         for (int i = 0; i < soundio_output_device_count(soundio); i++) {
             auto *device = soundio_get_output_device(soundio, i);
-            if (settings.out_device_id.value() == device->id) {
+            if (s.audio.out_device_id.value() == device->id) {
                 out_device_index = i;
                 found = true;
                 soundio_device_unref(device);
@@ -99,7 +98,7 @@ int audio() {
             }
             soundio_device_unref(device);
         }
-        if (!found) throw std::runtime_error(string("Invalid output device id: ") + settings.out_device_id.value());
+        if (!found) throw std::runtime_error(string("Invalid output device id: ") + s.audio.out_device_id.value());
     }
 
     auto *out_device = soundio_get_output_device(soundio, out_device_index);
@@ -114,8 +113,8 @@ int audio() {
     if (device_sample_rates.empty()) throw std::runtime_error("Output audio stream has no supported sample rates");
 
     // Could just check `device_sample_rates` populated above, but this `supports_sample_rate` function handles devices supporting ranges.
-    if (soundio_device_supports_sample_rate(out_device, settings.sample_rate)) {
-        outstream->sample_rate = settings.sample_rate;
+    if (soundio_device_supports_sample_rate(out_device, s.audio.sample_rate)) {
+        outstream->sample_rate = s.audio.sample_rate;
     } else {
         for (const auto &preferred_sample_rate: Audio::PrioritizedDefaultSampleRates) {
             if (soundio_device_supports_sample_rate(out_device, preferred_sample_rate)) {
@@ -125,7 +124,7 @@ int audio() {
         }
     }
     if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates.back(); // Fall back to the highest supported sample rate.
-    if (outstream->sample_rate != settings.sample_rate) q(set_value{s.audio.settings.path / "sample_rate", outstream->sample_rate});
+    if (outstream->sample_rate != s.audio.sample_rate) q(set_value{s.audio.path / "sample_rate", outstream->sample_rate});
 
     enum SoundIoFormat *format;
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format++) {
@@ -191,7 +190,7 @@ int audio() {
 std::thread audio_thread;
 
 void Audio::update_process() const {
-    static int previous_sample_rate = s.audio.settings.sample_rate;
+    static int previous_sample_rate = s.audio.sample_rate;
 
     if (thread_running != running) {
         thread_running = running;
@@ -200,15 +199,15 @@ void Audio::update_process() const {
     }
 
     // Reset the audio thread to make any sample rate change take effect.
-    if (thread_running && previous_sample_rate != s.audio.settings.sample_rate) {
+    if (thread_running && previous_sample_rate != s.audio.sample_rate) {
         thread_running = false;
         audio_thread.join();
         thread_running = true;
         audio_thread = std::thread(audio);
     }
-    previous_sample_rate = s.audio.settings.sample_rate;
+    previous_sample_rate = s.audio.sample_rate;
 
-    if (soundio_ready && outstream && outstream->volume != settings.device_volume) soundio_outstream_set_volume(outstream, settings.device_volume);
+    if (soundio_ready && outstream && outstream->volume != device_volume) soundio_outstream_set_volume(outstream, device_volume);
 }
 
 #include "UI/Widgets.h"
@@ -314,8 +313,8 @@ void ShowBackends() {
     }
 
 }
-void Audio::Settings::draw() const {
-    Checkbox(path.parent_pointer() / "running");
+void Audio::draw() const {
+    running.draw();
     muted.draw();
     device_volume.draw();
 

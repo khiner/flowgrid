@@ -95,7 +95,7 @@ void Context::compute_frames(int frame_count) const { // NOLINT(readability-conv
 }
 
 FAUSTFLOAT Context::get_sample(int channel, int frame) const {
-    return !faust || s.audio.settings.muted ? 0 : faust->get_sample(channel, frame);
+    return !faust || s.audio.muted ? 0 : faust->get_sample(channel, frame);
 }
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
@@ -182,7 +182,7 @@ void Context::update_ui_context(UIContextFlags flags) {
 void Context::update_faust_context() {
     has_new_faust_code = true;
 
-    faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.settings.sample_rate, state.audio.faust.error);
+    faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.sample_rate, state.audio.faust.error);
     if (faust->dsp) {
         StatefulFaustUI faust_ui;
         faust->dsp->buildUserInterface(&faust_ui);

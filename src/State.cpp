@@ -104,6 +104,10 @@ void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
 
+void Process::draw() const {
+    running.draw();
+}
+
 void State::draw() const {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
@@ -137,7 +141,7 @@ void State::draw() const {
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Audio")) {
-                audio.settings.ToggleMenuItem();
+                audio.ToggleMenuItem();
                 if (ImGui::BeginMenu("Faust")) {
                     audio.faust.editor.ToggleMenuItem();
                     audio.faust.log.ToggleMenuItem();
@@ -165,7 +169,7 @@ void State::draw() const {
         auto faust_log_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
 
         application_settings.Dock(settings_node_id);
-        audio.settings.Dock(settings_node_id);
+        audio.Dock(settings_node_id);
 
         audio.faust.editor.Dock(faust_editor_node_id);
         audio.faust.log.Dock(faust_log_node_id);
@@ -186,7 +190,7 @@ void State::draw() const {
     }
 
     application_settings.DrawWindow();
-    audio.settings.DrawWindow();
+    audio.DrawWindow();
 
     audio.faust.editor.DrawWindow(ImGuiWindowFlags_MenuBar);
     audio.faust.log.DrawWindow();

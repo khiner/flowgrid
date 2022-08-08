@@ -87,7 +87,7 @@ void Window::DrawWindow(ImGuiWindowFlags flags) const {
     }
     ImGui::End();
 
-    if (visible && !open) q(set_value{path / "visible", false});
+    if (visible && !open) q(set_value{visible.path, false});
 }
 
 void Window::Dock(ImGuiID node_id) const {
@@ -96,7 +96,7 @@ void Window::Dock(ImGuiID node_id) const {
 
 bool Window::ToggleMenuItem() const {
     const bool edited = ImGui::MenuItem(name.c_str(), nullptr, visible);
-    if (edited) q(toggle_value{path / "visible"});
+    if (edited) q(toggle_value{visible.path});
     return edited;
 }
 
@@ -317,7 +317,7 @@ void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
 // TODO option to indicate relative update-recency
 static void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) {
     const bool auto_select = s.state_viewer.auto_select;
-    const bool annotate_enabled = s.state_viewer.label_mode == StateViewer::LabelMode::annotated;
+    const bool annotate_enabled = s.state_viewer.label_mode == StateViewer::LabelMode::Annotated;
 
     const auto path_string = path.to_string();
     const string &leaf_name = path == RootPath ? path_string : path.back();
@@ -380,23 +380,11 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     }
 }
 
-static const string label_help = "The raw JSON state doesn't store keys for all items.\n"
-                                 "For example, the main `ui.style.colors` state is a list.\n\n"
-                                 "'Annotated' mode shows (highlighted) labels for such state items.\n"
-                                 "'Raw' mode shows the state exactly as it is in the raw JSON state.";
-static const string auto_select_help = "When auto-select is enabled, state changes automatically open.\n"
-                                       "The state viewer to the changed state node(s), closing all other state nodes.\n"
-                                       "State menu items can only be opened or closed manually if auto-select is disabled.";
-
 void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            if (MenuItemWithHelp("Auto-select", auto_select_help.c_str(), nullptr, auto_select)) q(toggle_value{path / "auto_select"});
-            if (BeginMenuWithHelp("Label mode", label_help.c_str())) {
-                if (MenuItem("Annotated", nullptr, label_mode == LabelMode::annotated)) q(set_value{path / "label_mode", LabelMode::annotated});
-                else if (MenuItem("Raw", nullptr, label_mode == LabelMode::raw)) q(set_value{path / "label_mode", LabelMode::raw});
-                EndMenu();
-            }
+            auto_select.DrawMenu();
+            label_mode.DrawMenu();
             EndMenu();
         }
         EndMenuBar();

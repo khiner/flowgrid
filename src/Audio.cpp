@@ -317,7 +317,7 @@ void ShowBackends() {
 void Audio::Settings::draw() const {
     Checkbox(path.parent_pointer() / "running");
     muted.draw();
-    SliderFloat(path / "device_volume", 0.0f, 1.0f);
+    device_volume.draw();
 
     if (!out_device_ids.empty()) Combo(path / "out_device_id", out_device_ids);
     if (!device_sample_rates.empty()) Combo(path / "sample_rate", device_sample_rates);

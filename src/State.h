@@ -139,9 +139,11 @@ struct Process : StateMember {
 
 struct Window : StateMember, Drawable {
     using StateMember::StateMember;
-    Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name), visible(visible) {}
+    Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name) {
+        this->visible.value = visible;
+    }
 
-    bool visible{true};
+    Bool visible{path, "visible", true};
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(name.c_str()); }
     void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -162,9 +164,20 @@ struct StateViewer : Window {
     using Window::Window;
     void draw() const override;
 
-    enum LabelMode { annotated, raw };
-    LabelMode label_mode{annotated};
-    bool auto_select{true};
+    enum LabelMode { Annotated, Raw };
+    Enum label_mode{
+        path, "label_mode", {"Annotated", "Raw"},
+        "The raw JSON state doesn't store keys for all items.\n"
+        "For example, the main `ui.style.colors` state is a list.\n\n"
+        "'Annotated' mode shows (highlighted) labels for such state items.\n"
+        "'Raw' mode shows the state exactly as it is in the raw JSON state."
+    };
+    Bool auto_select{
+        path, "auto_select", "Auto-select", true,
+        "When auto-select is enabled, state changes automatically open.\n"
+        "The state viewer to the changed state node(s), closing all other state nodes.\n"
+        "State menu items can only be opened or closed manually if auto-select is disabled."
+    };
 };
 
 struct StateMemoryEditor : Window {
@@ -235,7 +248,7 @@ struct Audio : Process {
         Backend backend = none;
         std::optional<string> in_device_id;
         std::optional<string> out_device_id;
-        float device_volume = 1.0;
+        Float device_volume{path, "device_volume", 1.0};
         int sample_rate = PrioritizedDefaultSampleRates[0];
     };
 

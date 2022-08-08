@@ -16,6 +16,44 @@ using namespace fg;
 void Field::Bool::draw() const {
     Checkbox(path, name.c_str());
 }
+void Field::Bool::DrawMenu() const {
+    if (!help.empty()) {
+        HelpMarker(help.c_str());
+        ImGui::SameLine();
+    }
+    if (ImGui::MenuItem(name.c_str(), nullptr, value)) q(toggle_value{path});
+}
+
+void Field::Float::draw() const {
+    SliderFloat(path, min, max, "%.1f", ImGuiSliderFlags_None, name.c_str());
+}
+
+void Field::Enum::draw() const {
+    if (ImGui::BeginCombo(name.c_str(), options[value].c_str())) {
+        for (int i = 0; i < int(options.size()); i++) {
+            const bool is_selected = i == value;
+            const auto &option = options[i];
+            if (ImGui::Selectable(option.c_str(), is_selected)) q(set_value{path, i});
+            if (is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+}
+void Field::Enum::DrawMenu() const {
+    if (!help.empty()) {
+        HelpMarker(help.c_str());
+        ImGui::SameLine();
+    }
+    if (ImGui::BeginMenu(name.c_str())) {
+        for (int i = 0; i < int(options.size()); i++) {
+            if (MenuItem(options[i].c_str(), nullptr, value == i)) {
+                q(set_value{path, i});
+                break;
+            }
+        }
+        EndMenu();
+    }
+}
 
 //-----------------------------------------------------------------------------
 // [SECTION] Helpers

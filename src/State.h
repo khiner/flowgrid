@@ -48,18 +48,23 @@ struct Drawable {
 namespace Field {
 struct Base : StateMember, Drawable {
     using StateMember::StateMember;
+
+    string help;
 };
 
 struct Bool : Base {
-    Bool(const JsonPath &parent_path, const string &id, const string &name = "", bool value = false)
-        : Base(parent_path, id, name), value(value) {}
-    Bool(const JsonPath &parent_path, const string &id, bool value)
-        : Bool(parent_path, id, "", value) {}
+    Bool(const JsonPath &parent_path, const string &id, const string &name = "", bool value = false, const string &help = "")
+        : Base(parent_path, id, name), value(value) {
+        this->help = help;
+    }
+    Bool(const JsonPath &parent_path, const string &id, bool value, const string &help = "")
+        : Bool(parent_path, id, "", value, help) {}
 
     operator bool() const { return value; }
 
     bool value;
     void draw() const override;
+    void DrawMenu() const;
 };
 struct Int : Base {
     Int(const JsonPath &parent_path, const string &id, const string &name = "", int value = 0, int min = 0, int max = 100)
@@ -76,6 +81,8 @@ struct Float : Base {
     Float(const JsonPath &parent_path, const string &id, float value, float min = 0, float max = 1)
         : Float(parent_path, id, "", value, min, max) {}
 
+    operator float() const { return value; }
+
     float value, min, max;
     void draw() const override;
 };
@@ -85,6 +92,21 @@ struct String : Base {
 
     string value;
     void draw() const override;
+};
+struct Enum : Base {
+    Enum(const JsonPath &parent_path, const string &id, std::vector<string> options, int value = 0, const string &name = "", const string &help = "")
+        : Base(parent_path, id, name), value(value), options(std::move(options)) {
+        this->help = help;
+    }
+    Enum(const JsonPath &parent_path, const string &id, std::vector<string> options, const string &help = "")
+        : Enum(parent_path, id, options, 0, "", help) {}
+
+    operator int() const { return value; }
+
+    int value;
+    std::vector<string> options;
+    void draw() const override;
+    void DrawMenu() const;
 };
 }
 
@@ -102,6 +124,9 @@ inline void from_json(const json &j, Int &field) { field.value = j; }
 
 inline void to_json(json &j, const String &field) { j = field.value; }
 inline void from_json(const json &j, String &field) { field.value = j; }
+
+inline void to_json(json &j, const Enum &field) { j = field.value; }
+inline void from_json(const json &j, Enum &field) { field.value = j; }
 }
 
 struct Process : StateMember {

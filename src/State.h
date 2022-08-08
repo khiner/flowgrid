@@ -206,10 +206,10 @@ struct Audio : Process {
         using Window::Window;
         void draw() const override;
 
+        Bool muted{path, "muted", true};
         Backend backend = none;
         std::optional<string> in_device_id;
         std::optional<string> out_device_id;
-        bool muted = true;
         float device_volume = 1.0;
         int sample_rate = PrioritizedDefaultSampleRates[0];
     };

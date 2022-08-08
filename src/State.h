@@ -44,6 +44,66 @@ struct Drawable {
     virtual void draw() const = 0;
 };
 
+// A `Field` is a drawable state-member that wraps around a primitive type.
+namespace Field {
+struct Base : StateMember, Drawable {
+    using StateMember::StateMember;
+};
+
+struct Bool : Base {
+    Bool(const JsonPath &parent_path, const string &id, const string &name = "", bool value = false)
+        : Base(parent_path, id, name), value(value) {}
+    Bool(const JsonPath &parent_path, const string &id, bool value)
+        : Bool(parent_path, id, "", value) {}
+
+    operator bool() const { return value; }
+
+    bool value;
+    void draw() const override;
+};
+struct Int : Base {
+    Int(const JsonPath &parent_path, const string &id, const string &name = "", int value = 0, int min = 0, int max = 100)
+        : Base(parent_path, id, name), value(value), min(min), max(max) {}
+    Int(const JsonPath &parent_path, const string &id, int value, int min = 0, int max = 100)
+        : Int(parent_path, id, "", value, min, max) {}
+
+    int value, min, max;
+    void draw() const override;
+};
+struct Float : Base {
+    Float(const JsonPath &parent_path, const string &id, const string &name = "", float value = 0, float min = 0, float max = 1)
+        : Base(parent_path, id, name), value(value), min(min), max(max) {}
+    Float(const JsonPath &parent_path, const string &id, float value, float min = 0, float max = 1)
+        : Float(parent_path, id, "", value, min, max) {}
+
+    float value, min, max;
+    void draw() const override;
+};
+struct String : Base {
+    String(const JsonPath &parent_path, const string &id, const string &name = "", string value = "")
+        : Base(parent_path, id, name), value(std::move(value)) {}
+
+    string value;
+    void draw() const override;
+};
+}
+
+using namespace Field;
+
+namespace nlohmann {
+inline void to_json(json &j, const Bool &field) { j = field.value; }
+inline void from_json(const json &j, Bool &field) { field.value = j; }
+
+inline void to_json(json &j, const Float &field) { j = field.value; }
+inline void from_json(const json &j, Float &field) { field.value = j; }
+
+inline void to_json(json &j, const Int &field) { j = field.value; }
+inline void from_json(const json &j, Int &field) { field.value = j; }
+
+inline void to_json(json &j, const String &field) { j = field.value; }
+inline void from_json(const json &j, String &field) { field.value = j; }
+}
+
 struct Process : StateMember {
     using StateMember::StateMember;
 

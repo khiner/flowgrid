@@ -7,7 +7,7 @@ namespace FlowGrid {
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void HelpMarker(const char *desc);
 
-void Checkbox(const JsonPath &path, const char *label = nullptr);
+bool Checkbox(const JsonPath &path, const char *label = nullptr);
 bool SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0, const char *label = nullptr);
 bool SliderFloat2(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
 bool SliderInt(const JsonPath &path, int v_min, int v_max, const char *format = "%d", ImGuiSliderFlags flags = 0, const char *label = nullptr);

@@ -314,9 +314,9 @@ void ShowBackends() {
 
 }
 void Audio::draw() const {
-    running.draw();
-    muted.draw();
-    device_volume.draw();
+    running.Draw();
+    muted.Draw();
+    device_volume.Draw();
 
     if (!out_device_ids.empty()) out_device_id.draw(out_device_ids);
     if (!device_sample_rates.empty()) sample_rate.draw(device_sample_rates);

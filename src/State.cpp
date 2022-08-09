@@ -13,75 +13,101 @@ using namespace fg;
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
-void Field::Bool::draw() const {
-    Checkbox(path, name.c_str());
+bool Field::Bool::Draw() const {
+    return Checkbox(path, name.c_str());
 }
-void Field::Bool::DrawMenu() const {
+bool Field::Bool::DrawMenu() const {
     if (!help.empty()) {
         HelpMarker(help.c_str());
         ImGui::SameLine();
     }
-    if (ImGui::MenuItem(name.c_str(), nullptr, value)) q(toggle_value{path});
+    bool edited = ImGui::MenuItem(name.c_str(), nullptr, value);
+    if (edited) q(toggle_value{path});
+    return edited;
 }
 
-void Field::Int::draw() const {
-    SliderInt(path, min, max, "%d", ImGuiSliderFlags_None, name.c_str());
+bool Field::Int::Draw() const {
+    return SliderInt(path, min, max, "%d", ImGuiSliderFlags_None, name.c_str());
 }
-void Field::Int::draw(const std::vector<int> &options) const {
+bool Field::Int::draw(const std::vector<int> &options) const {
+    bool edited = false;
     if (ImGui::BeginCombo(name.c_str(), std::to_string(value).c_str())) {
         for (const auto option: options) {
             const bool is_selected = option == value;
-            if (ImGui::Selectable(std::to_string(option).c_str(), is_selected)) q(set_value{path, option});
+            if (ImGui::Selectable(std::to_string(option).c_str(), is_selected)) {
+                q(set_value{path, option});
+                edited = true;
+            }
             if (is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
+    return edited;
 }
 
-void Field::Float::draw() const {
-    SliderFloat(path, min, max, "%.1f", ImGuiSliderFlags_None, name.c_str());
+bool Field::Float::draw(const char *fmt, ImGuiSliderFlags flags) const {
+    return SliderFloat(path, min, max, fmt, flags, name.c_str());
 }
+bool Field::Float::draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
+    return DragFloat(path, v_speed, min, max, fmt, flags, name.c_str());
+}
+bool Field::Float::Draw() const { return draw("%.3f"); }
 
-void Field::Enum::draw() const {
+bool Field::Enum::Draw() const {
+    bool edited = false;
     if (ImGui::BeginCombo(name.c_str(), options[value].c_str())) {
         for (int i = 0; i < int(options.size()); i++) {
             const bool is_selected = i == value;
             const auto &option = options[i];
-            if (ImGui::Selectable(option.c_str(), is_selected)) q(set_value{path, i});
+            if (ImGui::Selectable(option.c_str(), is_selected)) {
+                q(set_value{path, i});
+                edited = true;
+            }
             if (is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
+    return edited;
 }
-void Field::Enum::DrawMenu() const {
+bool Field::Enum::DrawMenu() const {
     if (!help.empty()) {
         HelpMarker(help.c_str());
         ImGui::SameLine();
     }
+    bool edited = false;
     if (ImGui::BeginMenu(name.c_str())) {
         for (int i = 0; i < int(options.size()); i++) {
-            if (MenuItem(options[i].c_str(), nullptr, value == i)) {
+            const bool is_selected = value == i;
+            if (MenuItem(options[i].c_str(), nullptr, is_selected)) {
                 q(set_value{path, i});
-                break;
+                edited = true;
             }
+            if (is_selected) ImGui::SetItemDefaultFocus();
         }
         EndMenu();
     }
+    return edited;
 }
 
-void Field::String::draw() const {
+bool Field::String::Draw() const {
     ImGui::Text("%s", value.c_str());
+    return false;
 }
 
-void Field::String::draw(const std::vector<string> &options) const {
+bool Field::String::draw(const std::vector<string> &options) const {
+    bool edited = false;
     if (ImGui::BeginCombo(name.c_str(), value.c_str())) {
         for (const auto &option: options) {
             const bool is_selected = option == value;
-            if (ImGui::Selectable(option.c_str(), is_selected)) q(set_value{path, option});
+            if (ImGui::Selectable(option.c_str(), is_selected)) {
+                q(set_value{path, option});
+                edited = true;
+            };
             if (is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
+    return edited;
 }
 
 //-----------------------------------------------------------------------------
@@ -134,7 +160,7 @@ void Window::SelectTab() const {
 }
 
 void Process::draw() const {
-    running.draw();
+    running.Draw();
 }
 
 void State::draw() const {
@@ -512,8 +538,8 @@ void StatePathUpdateFrequency::draw() const {
 }
 
 void ProjectPreview::draw() const {
-    format.draw();
-    raw.draw();
+    format.Draw();
+    raw.Draw();
 
     Separator();
 
@@ -569,23 +595,19 @@ void Style::ImGuiStyleMember::draw() const {
 //    ShowFontSelector("Fonts##Selector"); // TODO
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
-    // TODO match with imgui
-    if (SliderFloat(path / "FrameRounding", 0.0f, 12.0f, "%.0f")) {
-        q(set_value{path / "GrabRounding", FrameRounding}); // Make GrabRounding always the same value as FrameRounding
-    }
     {
         bool border = s.style.imgui.WindowBorderSize > 0.0f;
-        if (Checkbox("WindowBorder", &border)) q(set_value{path / "WindowBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.path, border ? 1.0f : 0.0f});
     }
     SameLine();
     {
         bool border = s.style.imgui.FrameBorderSize > 0.0f;
-        if (Checkbox("FrameBorder", &border)) q(set_value{path / "FrameBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.path, border ? 1.0f : 0.0f});
     }
     SameLine();
     {
         bool border = s.style.imgui.PopupBorderSize > 0.0f;
-        if (Checkbox("PopupBorder", &border)) q(set_value{path / "PopupBorderSize", border ? 1.0f : 0.0f});
+        if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.path, border ? 1.0f : 0.0f});
     }
 
     Separator();
@@ -599,24 +621,24 @@ void Style::ImGuiStyleMember::draw() const {
             SliderFloat2(path / "ItemSpacing", 0.0f, 20.0f, "%.0f");
             SliderFloat2(path / "ItemInnerSpacing", 0.0f, 20.0f, "%.0f");
             SliderFloat2(path / "TouchExtraPadding", 0.0f, 10.0f, "%.0f");
-            SliderFloat(path / "IndentSpacing", 0.0f, 30.0f, "%.0f");
-            SliderFloat(path / "ScrollbarSize", 1.0f, 20.0f, "%.0f");
-            SliderFloat(path / "GrabMinSize", 1.0f, 20.0f, "%.0f");
+            IndentSpacing.draw("%.0f");
+            ScrollbarSize.draw("%.0f");
+            GrabMinSize.draw("%.0f");
             Text("Borders");
-            SliderFloat(path / "WindowBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat(path / "ChildBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat(path / "PopupBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat(path / "FrameBorderSize", 0.0f, 1.0f, "%.0f");
-            SliderFloat(path / "TabBorderSize", 0.0f, 1.0f, "%.0f");
+            WindowBorderSize.draw("%.0f");
+            ChildBorderSize.draw("%.0f");
+            PopupBorderSize.draw("%.0f");
+            FrameBorderSize.draw("%.0f");
+            TabBorderSize.draw("%.0f");
             Text("Rounding");
-            SliderFloat(path / "WindowRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat(path / "ChildRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat(path / "FrameRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat(path / "PopupRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat(path / "ScrollbarRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat(path / "GrabRounding", 0.0f, 12.0f, "%.0f");
-            SliderFloat(path / "LogSliderDeadzone", 0.0f, 12.0f, "%.0f");
-            SliderFloat(path / "TabRounding", 0.0f, 12.0f, "%.0f");
+            WindowRounding.draw("%.0f");
+            ChildRounding.draw("%.0f");
+            FrameRounding.draw("%.0f");
+            PopupRounding.draw("%.0f");
+            ScrollbarRounding.draw("%.0f");
+            GrabRounding.draw("%.0f");
+            LogSliderDeadzone.draw("%.0f");
+            TabRounding.draw("%.0f");
             Text("Alignment");
             SliderFloat2(path / "WindowTitleAlign", 0.0f, 1.0f, "%.2f");
             Combo(path / "WindowMenuButtonPosition", "None\0Left\0Right\0");
@@ -662,20 +684,20 @@ void Style::ImGuiStyleMember::draw() const {
 //        }
 
         if (BeginTabItem("Rendering")) {
-            Checkbox(path / "AntiAliasedLines", "Anti-aliased lines");
+            AntiAliasedLines.Draw();
             SameLine();
             HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
 
-            Checkbox(path / "AntiAliasedLinesUseTex", "Anti-aliased lines use texture");
+            AntiAliasedLinesUseTex.Draw();
             SameLine();
             HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
 
-            Checkbox(path / "AntiAliasedFill", "Anti-aliased fill");
+            AntiAliasedFill.Draw();
             PushItemWidth(GetFontSize() * 8);
-            DragFloat(path / "CurveTessellationTol", 0.02f, 0.10f, 10.0f, "%.2f", ImGuiSliderFlags_None, "Curve Tessellation Tolerance");
+            CurveTessellationTol.draw(0.02f, "%.2f");
 
             // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            DragFloat(path / "CircleTessellationMaxError", 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            CircleTessellationMaxError.draw(0.005f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
             if (IsItemActive()) {
                 SetNextWindowPos(GetCursorScreenPos());
                 BeginTooltip();
@@ -708,9 +730,8 @@ void Style::ImGuiStyleMember::draw() const {
             SameLine();
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
-            // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
-            DragFloat(path / "Alpha", 0.005f, 0.20f, 1.0f, "%.2f");
-            DragFloat(path / "DisabledAlpha", 0.005f, 0.0f, 1.0f, "%.2f");
+            Alpha.draw(0.005f, "%.2f");
+            DisabledAlpha.draw(0.005f, "%.2f");
             SameLine();
             HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
             PopItemWidth();
@@ -990,7 +1011,7 @@ void Metrics::FlowGridMetrics::draw() const {
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) c.clear_preferences();
             SameLine();
-            show_relative_paths.draw();
+            show_relative_paths.Draw();
 
             if (!has_recently_opened_paths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {

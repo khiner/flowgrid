@@ -46,8 +46,10 @@ struct Drawable {
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
-struct Base : StateMember, Drawable {
+struct Base : StateMember {
     using StateMember::StateMember;
+
+    virtual bool Draw() const = 0;
 
     string help;
 };
@@ -66,8 +68,8 @@ struct Bool : Base {
         return *this;
     }
 
-    void draw() const override;
-    void DrawMenu() const;
+    bool Draw() const override;
+    bool DrawMenu() const;
 
     bool value;
 };
@@ -83,8 +85,8 @@ struct Int : Base {
         return *this;
     }
 
-    void draw() const override;
-    void draw(const std::vector<int> &options) const;
+    bool Draw() const override;
+    bool draw(const std::vector<int> &options) const;
 
     int value, min, max;
 };
@@ -101,7 +103,9 @@ struct Float : Base {
         return *this;
     }
 
-    void draw() const override;
+    bool Draw() const override;
+    bool draw(const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
+    bool draw(float v_speed, const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
 
     float value, min, max;
 };
@@ -118,8 +122,8 @@ struct String : Base {
     }
     bool operator==(const string &v) const { return value == v; }
 
-    void draw() const override;
-    void draw(const std::vector<string> &options) const;
+    bool Draw() const override;
+    bool draw(const std::vector<string> &options) const;
 
     string value;
 };
@@ -132,8 +136,8 @@ struct Enum : Base {
         : Enum(parent_path, id, std::move(options), 0, "", help) {}
 
     operator int() const { return value; }
-    void draw() const override;
-    void DrawMenu() const;
+    bool Draw() const override;
+    bool DrawMenu() const;
 
     int value;
     std::vector<string> options;
@@ -406,47 +410,20 @@ struct Style : Window {
 
     struct ImGuiStyleMember : StateMember, Drawable {
         ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
-            // Copied from `ImGuiStyle()` default constructor. Double-check this is up-to-date from time to time!
-            Alpha = 1.0f;
-            DisabledAlpha = 0.60f;
             WindowPadding = ImVec2(8, 8);
-            WindowRounding = 0.0f;
-            WindowBorderSize = 1.0f;
             WindowMinSize = ImVec2(32, 32);
             WindowTitleAlign = ImVec2(0.0f, 0.5f);
             WindowMenuButtonPosition = ImGuiDir_Left;
-            ChildRounding = 0.0f;
-            ChildBorderSize = 1.0f;
-            PopupRounding = 0.0f;
-            PopupBorderSize = 1.0f;
             FramePadding = ImVec2(4, 3);
-            FrameRounding = 0.0f;
-            FrameBorderSize = 0.0f;
             ItemSpacing = ImVec2(8, 4);
             ItemInnerSpacing = ImVec2(4, 4);
             CellPadding = ImVec2(4, 2);
             TouchExtraPadding = ImVec2(0, 0);
-            IndentSpacing = 21.0f;
-            ColumnsMinSpacing = 6.0f;
-            ScrollbarSize = 14.0f;
-            ScrollbarRounding = 9.0f;
-            GrabMinSize = 12.0f;
-            GrabRounding = 0.0f;
-            LogSliderDeadzone = 4.0f;
-            TabRounding = 4.0f;
-            TabBorderSize = 0.0f;
-            TabMinWidthForCloseButton = 0.0f;
             ColorButtonPosition = ImGuiDir_Right;
             ButtonTextAlign = ImVec2(0.5f, 0.5f);
             SelectableTextAlign = ImVec2(0.0f, 0.0f);
             DisplayWindowPadding = ImVec2(19, 19);
             DisplaySafeAreaPadding = ImVec2(3, 3);
-            MouseCursorScale = 1.0f;
-            AntiAliasedLines = true;
-            AntiAliasedLinesUseTex = true;
-            AntiAliasedFill = true;
-            CurveTessellationTol = 1.25f;
-            CircleTessellationMaxError = 0.30f;
 
             ImGui::StyleColorsDark(Colors);
         }
@@ -455,46 +432,49 @@ struct Style : Window {
         void draw() const override;
 
         // See `ImGuiStyle` for field descriptions.
-        float Alpha;
-        float DisabledAlpha;
+        // Initial values opied from `ImGuiStyle()` default constructor.
+        // Ranges copied from `StyleEditor`.
+        // Double-check everything's up-to-date from time to time!
+        Float Alpha{path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
+        Float DisabledAlpha{path, "DisabledAlpha", 0.6, 0, 1};
         ImVec2 WindowPadding;
-        float WindowRounding;
-        float WindowBorderSize;
+        Float WindowRounding{path, "WindowRounding", 0, 0, 12};
+        Float WindowBorderSize{path, "WindowBorderSize", 1};
         ImVec2 WindowMinSize;
         ImVec2 WindowTitleAlign;
         ImGuiDir WindowMenuButtonPosition;
-        float ChildRounding;
-        float ChildBorderSize;
-        float PopupRounding;
-        float PopupBorderSize;
+        Float ChildRounding{path, "ChildRounding", 0, 0, 12};
+        Float ChildBorderSize{path, "ChildBorderSize", 1};
+        Float PopupRounding{path, "PopupRounding", 0, 0, 12};
+        Float PopupBorderSize{path, "PopupBorderSize", 1};
         ImVec2 FramePadding;
-        float FrameRounding;
-        float FrameBorderSize;
+        Float FrameRounding{path, "FrameRounding", 0, 0, 12};
+        Float FrameBorderSize{path, "FrameBorderSize", 0};
         ImVec2 ItemSpacing;
         ImVec2 ItemInnerSpacing;
         ImVec2 CellPadding;
         ImVec2 TouchExtraPadding;
-        float IndentSpacing;
-        float ColumnsMinSpacing;
-        float ScrollbarSize;
-        float ScrollbarRounding;
-        float GrabMinSize;
-        float GrabRounding;
-        float LogSliderDeadzone;
-        float TabRounding;
-        float TabBorderSize;
-        float TabMinWidthForCloseButton;
+        Float IndentSpacing{path, "IndentSpacing", 21, 0, 30};
+        Float ColumnsMinSpacing{path, "ColumnsMinSpacing", 6};
+        Float ScrollbarSize{path, "ScrollbarSize", 14, 1, 20};
+        Float ScrollbarRounding{path, "ScrollbarRounding", 9, 0, 12};
+        Float GrabMinSize{path, "GrabMinSize", 12, 1, 20};
+        Float GrabRounding{path, "GrabRounding", 0, 0, 12};
+        Float LogSliderDeadzone{path, "LogSliderDeadzone", 4, 0, 12};
+        Float TabRounding{path, "TabRounding", 4, 0, 12};
+        Float TabBorderSize{path, "TabBorderSize", 0};
+        Float TabMinWidthForCloseButton{path, "TabMinWidthForCloseButton", 0};
         ImGuiDir ColorButtonPosition;
         ImVec2 ButtonTextAlign;
         ImVec2 SelectableTextAlign;
         ImVec2 DisplayWindowPadding;
         ImVec2 DisplaySafeAreaPadding;
-        float MouseCursorScale;
-        bool AntiAliasedLines;
-        bool AntiAliasedLinesUseTex;
-        bool AntiAliasedFill;
-        float CurveTessellationTol;
-        float CircleTessellationMaxError;
+        Float MouseCursorScale{path, "MouseCursorScale", 1};
+        Bool AntiAliasedLines{path, "AntiAliasedLines", "Anti-aliased lines", true};
+        Bool AntiAliasedLinesUseTex{path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture", true};
+        Bool AntiAliasedFill{path, "AntiAliasedFill", "Anti-aliased fill", true};
+        Float CurveTessellationTol{path, "CurveTessellationTol", "Curve tesselation tolerance", 1.25, 0.1, 10};
+        Float CircleTessellationMaxError{path, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
     };
     struct ImPlotStyleMember : StateMember, Drawable, ImPlotStyle {

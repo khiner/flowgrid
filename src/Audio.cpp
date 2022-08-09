@@ -90,7 +90,7 @@ int audio() {
         bool found = false;
         for (int i = 0; i < soundio_output_device_count(soundio); i++) {
             auto *device = soundio_get_output_device(soundio, i);
-            if (s.audio.out_device_id.value() == device->id) {
+            if (s.audio.out_device_id == device->id) {
                 out_device_index = i;
                 found = true;
                 soundio_device_unref(device);
@@ -98,7 +98,7 @@ int audio() {
             }
             soundio_device_unref(device);
         }
-        if (!found) throw std::runtime_error(string("Invalid output device id: ") + s.audio.out_device_id.value());
+        if (!found) throw std::runtime_error(string("Invalid output device id: ") + string(s.audio.out_device_id));
     }
 
     auto *out_device = soundio_get_output_device(soundio, out_device_index);
@@ -124,7 +124,7 @@ int audio() {
         }
     }
     if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates.back(); // Fall back to the highest supported sample rate.
-    if (outstream->sample_rate != s.audio.sample_rate) q(set_value{s.audio.path / "sample_rate", outstream->sample_rate});
+    if (outstream->sample_rate != s.audio.sample_rate) q(set_value{s.audio.sample_rate.path, outstream->sample_rate});
 
     enum SoundIoFormat *format;
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format++) {
@@ -318,7 +318,7 @@ void Audio::draw() const {
     muted.draw();
     device_volume.draw();
 
-    if (!out_device_ids.empty()) Combo(path / "out_device_id", out_device_ids);
+    if (!out_device_ids.empty()) out_device_id.draw(out_device_ids);
     if (!device_sample_rates.empty()) sample_rate.draw(device_sample_rates);
     NewLine();
     if (!soundio_ready) {

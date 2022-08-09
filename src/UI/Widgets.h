@@ -7,10 +7,6 @@ namespace FlowGrid {
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void HelpMarker(const char *desc);
 
-// Show a help marker with the provided `help` text in a hovered tooltip marker before the menu item
-bool BeginMenuWithHelp(const char *label, const char *help, bool enabled = true);
-bool MenuItemWithHelp(const char *label, const char *help, const char *shortcut = nullptr, bool selected = false, bool enabled = true);
-
 void Checkbox(const JsonPath &path, const char *label = nullptr);
 bool SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0, const char *label = nullptr);
 bool SliderFloat2(const JsonPath &path, float v_min, float v_max, const char *format = "%.3f", ImGuiSliderFlags flags = 0);
@@ -26,7 +22,6 @@ using ActionID = size_t; // duplicate definition to avoid importing `Action.h`
 void MenuItem(ActionID);
 
 bool Combo(const JsonPath &path, const char *items_separated_by_zeros, int popup_max_height_in_items = -1);
-void Combo(const JsonPath &path, const std::vector<string> &options);
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {

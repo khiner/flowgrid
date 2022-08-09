@@ -28,10 +28,9 @@ void Field::Int::draw() const {
     SliderInt(path, min, max, "%d", ImGuiSliderFlags_None, name.c_str());
 }
 void Field::Int::draw(const std::vector<int> &options) const {
-    const int v = sj[path];
-    if (ImGui::BeginCombo(path_label(path).c_str(), std::to_string(v).c_str())) {
-        for (const int option: options) {
-            const bool is_selected = option == v;
+    if (ImGui::BeginCombo(name.c_str(), std::to_string(value).c_str())) {
+        for (const auto option: options) {
+            const bool is_selected = option == value;
             if (ImGui::Selectable(std::to_string(option).c_str(), is_selected)) q(set_value{path, option});
             if (is_selected) ImGui::SetItemDefaultFocus();
         }
@@ -67,6 +66,21 @@ void Field::Enum::DrawMenu() const {
             }
         }
         EndMenu();
+    }
+}
+
+void Field::String::draw() const {
+    ImGui::Text("%s", value.c_str());
+}
+
+void Field::String::draw(const std::vector<string> &options) const {
+    if (ImGui::BeginCombo(name.c_str(), value.c_str())) {
+        for (const auto &option: options) {
+            const bool is_selected = option == value;
+            if (ImGui::Selectable(option.c_str(), is_selected)) q(set_value{path, option});
+            if (is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
     }
 }
 

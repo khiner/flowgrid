@@ -78,8 +78,13 @@ struct Int : Base {
         : Int(parent_path, id, "", value, min, max) {}
 
     operator int() const { return value; }
+    Int &operator=(int v) {
+        value = v;
+        return *this;
+    }
+
     void draw() const override;
-    void draw(const std::vector<int> &choices) const;
+    void draw(const std::vector<int> &options) const;
 
     int value, min, max;
 };
@@ -91,6 +96,11 @@ struct Float : Base {
         : Float(parent_path, id, "", value, min, max) {}
 
     operator float() const { return value; }
+    Float &operator=(float v) {
+        value = v;
+        return *this;
+    }
+
     void draw() const override;
 
     float value, min, max;
@@ -99,7 +109,17 @@ struct String : Base {
     String(const JsonPath &parent_path, const string &id, const string &name = "", string value = "")
         : Base(parent_path, id, name), value(std::move(value)) {}
 
+    operator string() const { return value; }
+    operator bool() const { return !value.empty(); }
+
+    String &operator=(string v) {
+        value = std::move(v);
+        return *this;
+    }
+    bool operator==(const string &v) const { return value == v; }
+
     void draw() const override;
+    void draw(const std::vector<string> &options) const;
 
     string value;
 };
@@ -291,7 +311,7 @@ struct Audio : Process {
     Bool muted{path, "muted", true};
     Backend backend = none;
     std::optional<string> in_device_id;
-    std::optional<string> out_device_id;
+    String out_device_id{path, "out_device_id", "Out device ID"};
     Float device_volume{path, "device_volume", 1.0};
     Int sample_rate{path, "sample_rate"};
     Faust faust{path, "faust"};

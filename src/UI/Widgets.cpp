@@ -12,18 +12,6 @@ void fg::HelpMarker(const char *desc) {
     }
 }
 
-bool fg::BeginMenuWithHelp(const char *label, const char *help, bool enabled) {
-    HelpMarker(help);
-    ImGui::SameLine();
-    return ImGui::BeginMenu(label, enabled);
-}
-
-bool fg::MenuItemWithHelp(const char *label, const char *help, const char *shortcut, bool selected, bool enabled) {
-    HelpMarker(help);
-    ImGui::SameLine();
-    return ImGui::MenuItem(label, shortcut, selected, enabled);
-}
-
 void gestured() {
     if (ImGui::IsItemActivated()) c.is_widget_gesturing = true;
     if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
@@ -85,18 +73,6 @@ bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int p
     const bool edited = ImGui::Combo(path_label(path).c_str(), &v, items_separated_by_zeros, popup_max_height_in_items);
     if (edited) q(set_value{path, v});
     return edited;
-}
-
-void fg::Combo(const JsonPath &path, const std::vector<string> &options) {
-    const string v = sj.contains(path) ? sj[path] : "";
-    if (ImGui::BeginCombo(path_label(path).c_str(), v.c_str())) {
-        for (const string &option: options) {
-            const bool is_selected = option == v;
-            if (ImGui::Selectable(option.c_str(), is_selected)) q(set_value{path, option});
-            if (is_selected) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
 }
 
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {

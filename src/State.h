@@ -404,9 +404,98 @@ struct Style : Window {
 
     void draw() const override;
 
-    struct ImGuiStyleMember : StateMember, Drawable, ImGuiStyle {
-        using StateMember::StateMember;
+    struct ImGuiStyleMember : StateMember, Drawable {
+        ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
+            // Copied from `ImGuiStyle()` default constructor. Double-check this is up-to-date from time to time!
+            Alpha = 1.0f;
+            DisabledAlpha = 0.60f;
+            WindowPadding = ImVec2(8, 8);
+            WindowRounding = 0.0f;
+            WindowBorderSize = 1.0f;
+            WindowMinSize = ImVec2(32, 32);
+            WindowTitleAlign = ImVec2(0.0f, 0.5f);
+            WindowMenuButtonPosition = ImGuiDir_Left;
+            ChildRounding = 0.0f;
+            ChildBorderSize = 1.0f;
+            PopupRounding = 0.0f;
+            PopupBorderSize = 1.0f;
+            FramePadding = ImVec2(4, 3);
+            FrameRounding = 0.0f;
+            FrameBorderSize = 0.0f;
+            ItemSpacing = ImVec2(8, 4);
+            ItemInnerSpacing = ImVec2(4, 4);
+            CellPadding = ImVec2(4, 2);
+            TouchExtraPadding = ImVec2(0, 0);
+            IndentSpacing = 21.0f;
+            ColumnsMinSpacing = 6.0f;
+            ScrollbarSize = 14.0f;
+            ScrollbarRounding = 9.0f;
+            GrabMinSize = 12.0f;
+            GrabRounding = 0.0f;
+            LogSliderDeadzone = 4.0f;
+            TabRounding = 4.0f;
+            TabBorderSize = 0.0f;
+            TabMinWidthForCloseButton = 0.0f;
+            ColorButtonPosition = ImGuiDir_Right;
+            ButtonTextAlign = ImVec2(0.5f, 0.5f);
+            SelectableTextAlign = ImVec2(0.0f, 0.0f);
+            DisplayWindowPadding = ImVec2(19, 19);
+            DisplaySafeAreaPadding = ImVec2(3, 3);
+            MouseCursorScale = 1.0f;
+            AntiAliasedLines = true;
+            AntiAliasedLinesUseTex = true;
+            AntiAliasedFill = true;
+            CurveTessellationTol = 1.25f;
+            CircleTessellationMaxError = 0.30f;
+
+            ImGui::StyleColorsDark(Colors);
+        }
+
+        void populate_context(ImGuiContext *ctx) const;
         void draw() const override;
+
+        // See `ImGuiStyle` for field descriptions.
+        float Alpha;
+        float DisabledAlpha;
+        ImVec2 WindowPadding;
+        float WindowRounding;
+        float WindowBorderSize;
+        ImVec2 WindowMinSize;
+        ImVec2 WindowTitleAlign;
+        ImGuiDir WindowMenuButtonPosition;
+        float ChildRounding;
+        float ChildBorderSize;
+        float PopupRounding;
+        float PopupBorderSize;
+        ImVec2 FramePadding;
+        float FrameRounding;
+        float FrameBorderSize;
+        ImVec2 ItemSpacing;
+        ImVec2 ItemInnerSpacing;
+        ImVec2 CellPadding;
+        ImVec2 TouchExtraPadding;
+        float IndentSpacing;
+        float ColumnsMinSpacing;
+        float ScrollbarSize;
+        float ScrollbarRounding;
+        float GrabMinSize;
+        float GrabRounding;
+        float LogSliderDeadzone;
+        float TabRounding;
+        float TabBorderSize;
+        float TabMinWidthForCloseButton;
+        ImGuiDir ColorButtonPosition;
+        ImVec2 ButtonTextAlign;
+        ImVec2 SelectableTextAlign;
+        ImVec2 DisplayWindowPadding;
+        ImVec2 DisplaySafeAreaPadding;
+        float MouseCursorScale;
+        bool AntiAliasedLines;
+        bool AntiAliasedLinesUseTex;
+        bool AntiAliasedFill;
+        float CurveTessellationTol;
+        float CircleTessellationMaxError;
+        ImVec4 Colors[ImGuiCol_COUNT];
     };
     struct ImPlotStyleMember : StateMember, Drawable, ImPlotStyle {
         using StateMember::StateMember;
@@ -542,10 +631,10 @@ JsonType(ProjectPreview, visible, format, raw)
 JsonType(Metrics::FlowGridMetrics, show_relative_paths)
 JsonType(Metrics, visible, flowgrid)
 
-JsonType(ImGuiStyle, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding, PopupBorderSize,
-    FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize, GrabRounding,
-    LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale, AntiAliasedLines,
-    AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
+JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding,
+    PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize,
+    GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale,
+    AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
 JsonType(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, UseLocalTime, UseISO8601, Use24HourClock)

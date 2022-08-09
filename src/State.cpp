@@ -251,7 +251,7 @@ void State::update(const Action &action) {
         [&](const close_file_dialog &) { file.dialog.visible = false; },
 
         [&](const set_imgui_color_style &a) {
-            auto *dst = &style.imgui;
+            auto *dst = style.imgui.Colors;
             switch (a.id) {
                 case 0: ImGui::StyleColorsDark(dst);
                     break;
@@ -326,6 +326,51 @@ static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settin
     window->Collapsed = settings->Collapsed;
     window->DockId = settings->DockId;
     window->DockOrder = settings->DockOrder;
+}
+
+void Style::ImGuiStyleMember::populate_context(ImGuiContext *ctx) const {
+    auto &style = ctx->Style;
+    style.Alpha = Alpha;
+    style.DisabledAlpha = DisabledAlpha;
+    style.WindowPadding = WindowPadding;
+    style.WindowRounding = WindowRounding;
+    style.WindowBorderSize = WindowBorderSize;
+    style.WindowMinSize = WindowMinSize;
+    style.WindowTitleAlign = WindowTitleAlign;
+    style.WindowMenuButtonPosition = WindowMenuButtonPosition;
+    style.ChildRounding = ChildRounding;
+    style.ChildBorderSize = ChildBorderSize;
+    style.PopupRounding = PopupRounding;
+    style.PopupBorderSize = PopupBorderSize;
+    style.FramePadding = FramePadding;
+    style.FrameRounding = FrameRounding;
+    style.FrameBorderSize = FrameBorderSize;
+    style.ItemSpacing = ItemSpacing;
+    style.ItemInnerSpacing = ItemInnerSpacing;
+    style.CellPadding = CellPadding;
+    style.TouchExtraPadding = TouchExtraPadding;
+    style.IndentSpacing = IndentSpacing;
+    style.ColumnsMinSpacing = ColumnsMinSpacing;
+    style.ScrollbarSize = ScrollbarSize;
+    style.ScrollbarRounding = ScrollbarRounding;
+    style.GrabMinSize = GrabMinSize;
+    style.GrabRounding = GrabRounding;
+    style.LogSliderDeadzone = LogSliderDeadzone;
+    style.TabRounding = TabRounding;
+    style.TabBorderSize = TabBorderSize;
+    style.TabMinWidthForCloseButton = TabMinWidthForCloseButton;
+    style.ColorButtonPosition = ColorButtonPosition;
+    style.ButtonTextAlign = ButtonTextAlign;
+    style.SelectableTextAlign = SelectableTextAlign;
+    style.DisplayWindowPadding = DisplayWindowPadding;
+    style.DisplaySafeAreaPadding = DisplaySafeAreaPadding;
+    style.MouseCursorScale = MouseCursorScale;
+    style.AntiAliasedLines = AntiAliasedLines;
+    style.AntiAliasedLinesUseTex = AntiAliasedLinesUseTex;
+    style.AntiAliasedFill = AntiAliasedFill;
+    style.CurveTessellationTol = CurveTessellationTol;
+    style.CircleTessellationMaxError = CircleTessellationMaxError;
+    for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = Colors[i];
 }
 
 void ImGuiSettings::populate_context(ImGuiContext *ctx) const {

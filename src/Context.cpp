@@ -172,7 +172,7 @@ void Context::update_ui_context(UIContextFlags flags) {
     if (flags == UIContextFlags_None) return;
 
     if (flags & UIContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (flags & UIContextFlags_ImGuiStyle) ui->imgui_context->Style = s.style.imgui;
+    if (flags & UIContextFlags_ImGuiStyle) s.style.imgui.populate_context(ui->imgui_context);
     if (flags & UIContextFlags_ImPlotStyle) {
         ImPlot::BustItemCache();
         ui->implot_context->Style = s.style.implot;

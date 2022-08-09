@@ -14,22 +14,32 @@ using namespace fg;
 //-----------------------------------------------------------------------------
 
 bool Field::Bool::Draw() const {
-    return Checkbox(path, name.c_str());
+    const bool edited = Checkbox(path, name.c_str());
+    if (!help.empty()) {
+        ImGui::SameLine();
+        HelpMarker(help.c_str());
+    }
+    return edited;
 }
 bool Field::Bool::DrawMenu() const {
     if (!help.empty()) {
         HelpMarker(help.c_str());
         ImGui::SameLine();
     }
-    bool edited = ImGui::MenuItem(name.c_str(), nullptr, value);
+    const bool edited = ImGui::MenuItem(name.c_str(), nullptr, value);
     if (edited) q(toggle_value{path});
     return edited;
 }
 
 bool Field::Int::Draw() const {
-    return SliderInt(path, min, max, "%d", ImGuiSliderFlags_None, name.c_str());
+    const bool edited = SliderInt(path, min, max, "%d", ImGuiSliderFlags_None, name.c_str());
+    if (!help.empty()) {
+        SameLine();
+        HelpMarker(help.c_str());
+    }
+    return edited;
 }
-bool Field::Int::draw(const std::vector<int> &options) const {
+bool Field::Int::Draw(const std::vector<int> &options) const {
     bool edited = false;
     if (ImGui::BeginCombo(name.c_str(), std::to_string(value).c_str())) {
         for (const auto option: options) {
@@ -46,10 +56,20 @@ bool Field::Int::draw(const std::vector<int> &options) const {
 }
 
 bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
-    return SliderFloat(path, min, max, fmt, flags, name.c_str());
+    const bool edited = SliderFloat(path, min, max, fmt, flags, name.c_str());
+    if (!help.empty()) {
+        ImGui::SameLine();
+        HelpMarker(help.c_str());
+    }
+    return edited;
 }
 bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
-    return DragFloat(path, v_speed, min, max, fmt, flags, name.c_str());
+    const bool edited = DragFloat(path, v_speed, min, max, fmt, flags, name.c_str());
+    if (!help.empty()) {
+        ImGui::SameLine();
+        HelpMarker(help.c_str());
+    }
+    return edited;
 }
 bool Field::Float::Draw() const { return Draw("%.3f"); }
 
@@ -58,6 +78,10 @@ bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     const bool edited = ImGui::SliderFloat2(name.c_str(), (float *) &v, min, max, fmt, flags);
     gestured();
     if (edited) q(set_value{path, v});
+    if (!help.empty()) {
+        SameLine();
+        HelpMarker(help.c_str());
+    }
     return edited;
 }
 
@@ -76,6 +100,10 @@ bool Field::Enum::Draw() const {
             if (is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
+    }
+    if (!help.empty()) {
+        SameLine();
+        HelpMarker(help.c_str());
     }
     return edited;
 }
@@ -104,7 +132,7 @@ bool Field::String::Draw() const {
     return false;
 }
 
-bool Field::String::draw(const std::vector<string> &options) const {
+bool Field::String::Draw(const std::vector<string> &options) const {
     bool edited = false;
     if (ImGui::BeginCombo(name.c_str(), value.c_str())) {
         for (const auto &option: options) {
@@ -116,6 +144,10 @@ bool Field::String::draw(const std::vector<string> &options) const {
             if (is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
+    }
+    if (!help.empty()) {
+        SameLine();
+        HelpMarker(help.c_str());
     }
     return edited;
 }
@@ -675,12 +707,14 @@ void Style::ImGuiStyleMember::draw() const {
             IndentSpacing.Draw("%.0f");
             ScrollbarSize.Draw("%.0f");
             GrabMinSize.Draw("%.0f");
+
             Text("Borders");
             WindowBorderSize.Draw("%.0f");
             ChildBorderSize.Draw("%.0f");
             PopupBorderSize.Draw("%.0f");
             FrameBorderSize.Draw("%.0f");
             TabBorderSize.Draw("%.0f");
+
             Text("Rounding");
             WindowRounding.Draw("%.0f");
             ChildRounding.Draw("%.0f");
@@ -690,20 +724,17 @@ void Style::ImGuiStyleMember::draw() const {
             GrabRounding.Draw("%.0f");
             LogSliderDeadzone.Draw("%.0f");
             TabRounding.Draw("%.0f");
+
             Text("Alignment");
             WindowTitleAlign.Draw("%.2f");
             WindowMenuButtonPosition.Draw();
             ColorButtonPosition.Draw();
             ButtonTextAlign.Draw("%.2f");
-            SameLine();
-            HelpMarker("Alignment applies when a button is larger than its text content.");
             SelectableTextAlign.Draw("%.2f");
-            SameLine();
-            HelpMarker("Alignment applies when a selectable is larger than its text content.");
+
             Text("Safe Area Padding");
-            SameLine();
-            HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
             DisplaySafeAreaPadding.Draw("%.0f");
+
             EndTabItem();
         }
 
@@ -736,13 +767,7 @@ void Style::ImGuiStyleMember::draw() const {
 
         if (BeginTabItem("Rendering")) {
             AntiAliasedLines.Draw();
-            SameLine();
-            HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
-
             AntiAliasedLinesUseTex.Draw();
-            SameLine();
-            HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
-
             AntiAliasedFill.Draw();
             PushItemWidth(GetFontSize() * 8);
             CurveTessellationTol.Draw(0.02f, "%.2f");
@@ -783,8 +808,6 @@ void Style::ImGuiStyleMember::draw() const {
 
             Alpha.Draw(0.005f, "%.2f");
             DisabledAlpha.Draw(0.005f, "%.2f");
-            SameLine();
-            HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
             PopItemWidth();
 
             EndTabItem();

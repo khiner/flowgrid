@@ -89,16 +89,18 @@ struct Int : Base {
     }
 
     bool Draw() const override;
-    bool draw(const std::vector<int> &options) const;
+    bool Draw(const std::vector<int> &options) const;
 
     int value, min, max;
 };
 
 struct Float : Base {
-    Float(const JsonPath &parent_path, const string &id, const string &name = "", float value = 0, float min = 0, float max = 1)
-        : Base(parent_path, id, name), value(value), min(min), max(max) {}
-    Float(const JsonPath &parent_path, const string &id, float value, float min = 0, float max = 1)
-        : Float(parent_path, id, "", value, min, max) {}
+    Float(const JsonPath &parent_path, const string &id, const string &name = "", float value = 0, float min = 0, float max = 1, const string &help = "")
+        : Base(parent_path, id, name), value(value), min(min), max(max) {
+        this->help = help;
+    }
+    Float(const JsonPath &parent_path, const string &id, float value, float min = 0, float max = 1, const string &help = "")
+        : Float(parent_path, id, "", value, min, max, help) {}
 
     operator float() const { return value; }
     Float &operator=(float v) {
@@ -113,10 +115,12 @@ struct Float : Base {
     float value, min, max;
 };
 struct Vec2 : Base {
-    Vec2(const JsonPath &parent_path, const string &id, const string &name = "", ImVec2 value = {0, 0}, float min = 0, float max = 1)
-        : Base(parent_path, id, name), value(value), min(min), max(max) {}
-    Vec2(const JsonPath &parent_path, const string &id, ImVec2 value, float min = 0, float max = 1)
-        : Vec2(parent_path, id, "", value, min, max) {}
+    Vec2(const JsonPath &parent_path, const string &id, const string &name = "", ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &help = "")
+        : Base(parent_path, id, name), value(value), min(min), max(max) {
+        this->help = help;
+    }
+    Vec2(const JsonPath &parent_path, const string &id, ImVec2 value, float min = 0, float max = 1, const string &help = "")
+        : Vec2(parent_path, id, "", value, min, max, help) {}
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v) {
@@ -144,7 +148,7 @@ struct String : Base {
     bool operator==(const string &v) const { return value == v; }
 
     bool Draw() const override;
-    bool draw(const std::vector<string> &options) const;
+    bool Draw(const std::vector<string> &options) const;
 
     string value;
 };
@@ -442,7 +446,7 @@ struct Style : Window {
         // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
         Float Alpha{path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Float DisabledAlpha{path, "DisabledAlpha", 0.6, 0, 1};
+        Float DisabledAlpha{path, "DisabledAlpha", 0.6, 0, 1, "Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
         Vec2 WindowPadding{path, "WindowPadding", ImVec2(8, 8), 0, 20};
         Float WindowRounding{path, "WindowRounding", 0, 0, 12};
         Float WindowBorderSize{path, "WindowBorderSize", 1};
@@ -471,13 +475,14 @@ struct Style : Window {
         Float TabBorderSize{path, "TabBorderSize", 0};
         Float TabMinWidthForCloseButton{path, "TabMinWidthForCloseButton", 0};
         Enum ColorButtonPosition{path, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
-        Vec2 ButtonTextAlign{path, "ButtonTextAlign", ImVec2(0.5, 0.5)};
-        Vec2 SelectableTextAlign{path, "SelectableTextAlign", ImVec2(0, 0)};
+        Vec2 ButtonTextAlign{path, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "Alignment applies when a button is larger than its text content."};
+        Vec2 SelectableTextAlign{path, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "Alignment applies when a selectable is larger than its text content."};
         Vec2 DisplayWindowPadding{path, "DisplayWindowPadding", ImVec2(19, 19)};
-        Vec2 DisplaySafeAreaPadding{path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30};
+        Vec2 DisplaySafeAreaPadding{path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
         Float MouseCursorScale{path, "MouseCursorScale", 1};
-        Bool AntiAliasedLines{path, "AntiAliasedLines", "Anti-aliased lines", true};
-        Bool AntiAliasedLinesUseTex{path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture", true};
+        Bool AntiAliasedLines{path, "AntiAliasedLines", "Anti-aliased lines", true, "When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
+        Bool AntiAliasedLinesUseTex{path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture", true,
+                                    "Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering)."};
         Bool AntiAliasedFill{path, "AntiAliasedFill", "Anti-aliased fill", true};
         Float CurveTessellationTol{path, "CurveTessellationTol", "Curve tesselation tolerance", 1.25, 0.1, 10};
         Float CircleTessellationMaxError{path, "CircleTessellationMaxError", 0.3, 0.1, 5};

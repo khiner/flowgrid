@@ -318,8 +318,8 @@ void Audio::draw() const {
     muted.Draw();
     device_volume.Draw();
 
-    if (!out_device_ids.empty()) out_device_id.draw(out_device_ids);
-    if (!device_sample_rates.empty()) sample_rate.draw(device_sample_rates);
+    if (!out_device_ids.empty()) out_device_id.Draw(out_device_ids);
+    if (!device_sample_rates.empty()) sample_rate.Draw(device_sample_rates);
     NewLine();
     if (!soundio_ready) {
         Text("No audio context created yet");

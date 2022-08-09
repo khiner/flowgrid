@@ -9,9 +9,7 @@ void gestured();
 bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
 
 using ActionID = size_t; // duplicate definition to avoid importing `Action.h`
-
-// For actions with no data members.
-void MenuItem(ActionID);
+void MenuItem(ActionID); // For actions with no data members.
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {

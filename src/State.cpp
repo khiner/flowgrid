@@ -13,33 +13,35 @@ using namespace fg;
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
-// Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
-void HelpMarker(const char *desc) {
+void HelpMarker(const char *help) {
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
+        ImGui::TextUnformatted(help);
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
     }
+}
+
+// Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
+void Field::Base::HelpMarker(const bool after) const {
+    if (help.empty()) return;
+
+    if (after) ImGui::SameLine();
+    ::HelpMarker(help.c_str());
+    if (!after) ImGui::SameLine();
 }
 
 bool Field::Bool::Draw() const {
     bool v = value;
     const bool edited = ImGui::Checkbox(name.c_str(), &v);
     if (edited) q(toggle_value{path});
-    if (!help.empty()) {
-        ImGui::SameLine();
-        HelpMarker(help.c_str());
-    }
+    HelpMarker();
     return edited;
 }
 bool Field::Bool::DrawMenu() const {
-    if (!help.empty()) {
-        HelpMarker(help.c_str());
-        ImGui::SameLine();
-    }
+    HelpMarker(false);
     const bool edited = ImGui::MenuItem(name.c_str(), nullptr, value);
     if (edited) q(toggle_value{path});
     return edited;
@@ -50,10 +52,7 @@ bool Field::Int::Draw() const {
     const bool edited = ImGui::SliderInt(name.c_str(), &v, min, max, "%d", ImGuiSliderFlags_None);
     gestured();
     if (edited) q(set_value{path, v});
-    if (!help.empty()) {
-        SameLine();
-        HelpMarker(help.c_str());
-    }
+    HelpMarker();
     return edited;
 }
 bool Field::Int::Draw(const std::vector<int> &options) const {
@@ -69,6 +68,7 @@ bool Field::Int::Draw(const std::vector<int> &options) const {
         }
         ImGui::EndCombo();
     }
+    HelpMarker();
     return edited;
 }
 
@@ -77,10 +77,7 @@ bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     const bool edited = ImGui::SliderFloat(name.c_str(), &v, min, max, fmt, flags);
     gestured();
     if (edited) q(set_value{path, v});
-    if (!help.empty()) {
-        ImGui::SameLine();
-        HelpMarker(help.c_str());
-    }
+    HelpMarker();
     return edited;
 }
 
@@ -89,10 +86,7 @@ bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) 
     const bool edited = ImGui::DragFloat(name.c_str(), &v, v_speed, min, max, fmt, flags);
     gestured();
     if (edited) q(set_value{path, v});
-    if (!help.empty()) {
-        ImGui::SameLine();
-        HelpMarker(help.c_str());
-    }
+    HelpMarker();
     return edited;
 }
 bool Field::Float::Draw() const { return Draw("%.3f"); }
@@ -102,10 +96,7 @@ bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     const bool edited = ImGui::SliderFloat2(name.c_str(), (float *) &v, min, max, fmt, flags);
     gestured();
     if (edited) q(set_value{path, v});
-    if (!help.empty()) {
-        SameLine();
-        HelpMarker(help.c_str());
-    }
+    HelpMarker();
     return edited;
 }
 
@@ -125,17 +116,11 @@ bool Field::Enum::Draw() const {
         }
         ImGui::EndCombo();
     }
-    if (!help.empty()) {
-        SameLine();
-        HelpMarker(help.c_str());
-    }
+    HelpMarker();
     return edited;
 }
 bool Field::Enum::DrawMenu() const {
-    if (!help.empty()) {
-        HelpMarker(help.c_str());
-        ImGui::SameLine();
-    }
+    HelpMarker(false);
     bool edited = false;
     if (ImGui::BeginMenu(name.c_str())) {
         for (int i = 0; i < int(options.size()); i++) {
@@ -169,10 +154,7 @@ bool Field::String::Draw(const std::vector<string> &options) const {
         }
         ImGui::EndCombo();
     }
-    if (!help.empty()) {
-        SameLine();
-        HelpMarker(help.c_str());
-    }
+    HelpMarker();
     return edited;
 }
 

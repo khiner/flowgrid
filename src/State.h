@@ -55,6 +55,10 @@ struct Base : StateMember {
     virtual bool Draw() const = 0;
 
     string help;
+
+protected:
+    // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
+    void HelpMarker(const bool after = true) const;
 };
 
 struct Bool : Base {

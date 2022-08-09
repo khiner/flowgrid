@@ -881,7 +881,7 @@ void Style::ImPlotStyleMember::draw() const {
 }
 
 void FlowGridStyle::draw() const {
-    SliderFloat(path / "FlashDurationSec", FlashDurationSecMin, FlashDurationSecMax, "%.3f s");
+    FlashDurationSec.Draw("%.3f s");
 
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});

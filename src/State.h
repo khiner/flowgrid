@@ -28,8 +28,7 @@ namespace fs = std::filesystem;
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 using Clock = std::chrono::system_clock; // Main system clock
-using DurationSec = float; // floats used for main duration type
-using fsec = std::chrono::duration<DurationSec>; // float seconds as a std::chrono::duration
+using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
 
 JsonType(ImVec2, x, y)
@@ -212,12 +211,12 @@ struct Process : Window {
     Bool running{path, "running", true};
 };
 
-const DurationSec GestureDurationSecMin = 0.0, GestureDurationSecMax = 5.0;
+const float GestureDurationSecMin = 0.0, GestureDurationSecMax = 5.0;
 struct ApplicationSettings : Window {
     using Window::Window;
     void draw() const override;
 
-    DurationSec GestureDurationSec{0.5}; // Merge actions occurring in short succession into a single gesture
+    float GestureDurationSec{0.5}; // Merge actions occurring in short succession into a single gesture
 };
 
 struct StateViewer : Window {
@@ -396,15 +395,13 @@ enum FlowGridCol_ {
 
 typedef int FlowGridCol; // -> enum FlowGridCol_
 
-const DurationSec FlashDurationSecMin = 0.0, FlashDurationSecMax = 5.0;
-
 struct FlowGridStyle : StateMember, Drawable {
     FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {}
 
     void draw() const override;
 
     ImVec4 Colors[FlowGridCol_COUNT];
-    DurationSec FlashDurationSec{0.6};
+    Float FlashDurationSec{path, "FlashDurationSec", 0.6, 0, 5};
 
     void StyleColorsDark() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);

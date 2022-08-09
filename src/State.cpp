@@ -13,8 +13,22 @@ using namespace fg;
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
+// Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
+void HelpMarker(const char *desc) {
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 bool Field::Bool::Draw() const {
-    const bool edited = Checkbox(path, name.c_str());
+    bool v = value;
+    const bool edited = ImGui::Checkbox(name.c_str(), &v);
+    if (edited) q(toggle_value{path});
     if (!help.empty()) {
         ImGui::SameLine();
         HelpMarker(help.c_str());
@@ -32,7 +46,10 @@ bool Field::Bool::DrawMenu() const {
 }
 
 bool Field::Int::Draw() const {
-    const bool edited = SliderInt(path, min, max, "%d", ImGuiSliderFlags_None, name.c_str());
+    int v = value;
+    const bool edited = ImGui::SliderInt(name.c_str(), &v, min, max, "%d", ImGuiSliderFlags_None);
+    gestured();
+    if (edited) q(set_value{path, v});
     if (!help.empty()) {
         SameLine();
         HelpMarker(help.c_str());
@@ -56,15 +73,22 @@ bool Field::Int::Draw(const std::vector<int> &options) const {
 }
 
 bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
-    const bool edited = SliderFloat(path, min, max, fmt, flags, name.c_str());
+    float v = value;
+    const bool edited = ImGui::SliderFloat(name.c_str(), &v, min, max, fmt, flags);
+    gestured();
+    if (edited) q(set_value{path, v});
     if (!help.empty()) {
         ImGui::SameLine();
         HelpMarker(help.c_str());
     }
     return edited;
 }
+
 bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
-    const bool edited = DragFloat(path, v_speed, min, max, fmt, flags, name.c_str());
+    float v = value;
+    const bool edited = ImGui::DragFloat(name.c_str(), &v, v_speed, min, max, fmt, flags);
+    gestured();
+    if (edited) q(set_value{path, v});
     if (!help.empty()) {
         ImGui::SameLine();
         HelpMarker(help.c_str());

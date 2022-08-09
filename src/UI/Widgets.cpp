@@ -1,59 +1,9 @@
 #include "Widgets.h"
 #include "../Context.h"
 
-void fg::HelpMarker(const char *desc) {
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
-}
-
 void fg::gestured() {
     if (ImGui::IsItemActivated()) c.is_widget_gesturing = true;
     if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
-}
-
-bool fg::Checkbox(const JsonPath &path, const char *label) {
-    bool v = sj[path];
-    bool edited = ImGui::Checkbox(label ? label : path_label(path).c_str(), &v);
-    if (edited) q(toggle_value{path});
-    return edited;
-}
-
-bool fg::SliderFloat(const JsonPath &path, float v_min, float v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
-    float v = sj[path];
-    const bool edited = ImGui::SliderFloat(label ? label : path_label(path).c_str(), &v, v_min, v_max, format, flags);
-    gestured();
-    if (edited) q(set_value{path, v});
-    return edited;
-}
-
-bool fg::SliderFloat2(const JsonPath &path, float v_min, float v_max, const char *format, ImGuiSliderFlags flags) {
-    ImVec2 v = sj[path];
-    const bool edited = ImGui::SliderFloat2(path_label(path).c_str(), (float *) &v, v_min, v_max, format, flags);
-    gestured();
-    if (edited) q(set_value{path, v});
-    return edited;
-}
-
-bool fg::SliderInt(const JsonPath &path, int v_min, int v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
-    int v = sj[path];
-    const bool edited = ImGui::SliderInt(label ? label : path_label(path).c_str(), &v, v_min, v_max, format, flags);
-    gestured();
-    if (edited) q(set_value{path, v});
-    return edited;
-}
-
-bool fg::DragFloat(const JsonPath &path, float v_speed, float v_min, float v_max, const char *format, ImGuiSliderFlags flags, const char *label) {
-    float v = sj[path];
-    const bool edited = ImGui::DragFloat(label ? label : path_label(path).c_str(), &v, v_speed, v_min, v_max, format, flags);
-    gestured();
-    if (edited) q(set_value{path, v});
-    return edited;
 }
 
 bool fg::ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags, const char *label) {
@@ -68,13 +18,6 @@ void fg::MenuItem(ActionID action_id) {
     const char *menu_label = action::get_menu_label(action_id);
     const char *shortcut = action::shortcut_for_id.contains(action_id) ? action::shortcut_for_id.at(action_id).c_str() : nullptr;
     if (ImGui::MenuItem(menu_label, shortcut, false, c.action_allowed(action_id))) q(action::create(action_id));
-}
-
-bool fg::Combo(const JsonPath &path, const char *items_separated_by_zeros, int popup_max_height_in_items) {
-    int v = sj[path];
-    const bool edited = ImGui::Combo(path_label(path).c_str(), &v, items_separated_by_zeros, popup_max_height_in_items);
-    if (edited) q(set_value{path, v});
-    return edited;
 }
 
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {

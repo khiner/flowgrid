@@ -298,15 +298,19 @@ void State::update(const Action &action) {
             }
         },
         [&](const set_implot_color_style &a) {
-            auto *dst = &style.implot;
+            auto *dst = style.implot.Colors;
             switch (a.id) {
                 case 0: ImPlot::StyleColorsAuto(dst);
+                    style.implot.MinorAlpha = 0.25f;
                     break;
                 case 1: ImPlot::StyleColorsClassic(dst);
+                    style.implot.MinorAlpha = 0.5f;
                     break;
                 case 2: ImPlot::StyleColorsDark(dst);
+                    style.implot.MinorAlpha = 0.25f;
                     break;
                 case 3: ImPlot::StyleColorsLight(dst);
+                    style.implot.MinorAlpha = 1.0f;
                     break;
             }
         },
@@ -407,6 +411,43 @@ void Style::ImGuiStyleMember::populate_context(ImGuiContext *ctx) const {
     style.CurveTessellationTol = CurveTessellationTol;
     style.CircleTessellationMaxError = CircleTessellationMaxError;
     for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = Colors[i];
+}
+
+void Style::ImPlotStyleMember::populate_context(ImPlotContext *ctx) const {
+    auto &style = ctx->Style;
+    style.LineWeight = LineWeight;
+    style.Marker = Marker;
+    style.MarkerSize = MarkerSize;
+    style.MarkerWeight = MarkerWeight;
+    style.FillAlpha = FillAlpha;
+    style.ErrorBarSize = ErrorBarSize;
+    style.ErrorBarWeight = ErrorBarWeight;
+    style.DigitalBitHeight = DigitalBitHeight;
+    style.DigitalBitGap = DigitalBitGap;
+    style.PlotBorderSize = PlotBorderSize;
+    style.MinorAlpha = MinorAlpha;
+    style.MajorTickLen = MajorTickLen;
+    style.MinorTickLen = MinorTickLen;
+    style.MajorTickSize = MajorTickSize;
+    style.MinorTickSize = MinorTickSize;
+    style.MajorGridSize = MajorGridSize;
+    style.MinorGridSize = MinorGridSize;
+    style.PlotPadding = PlotPadding;
+    style.LabelPadding = LabelPadding;
+    style.LegendPadding = LegendPadding;
+    style.LegendInnerPadding = LegendInnerPadding;
+    style.LegendSpacing = LegendSpacing;
+    style.MousePosPadding = MousePosPadding;
+    style.AnnotationPadding = AnnotationPadding;
+    style.FitPadding = FitPadding;
+    style.PlotDefaultSize = PlotDefaultSize;
+    style.PlotMinSize = PlotMinSize;
+    style.Colormap = Colormap;
+    style.UseLocalTime = UseLocalTime;
+    style.UseISO8601 = UseISO8601;
+    style.Use24HourClock = Use24HourClock;
+    for (int i = 0; i < ImPlotCol_COUNT; i++) style.Colors[i] = Colors[i];
+    ImPlot::BustItemCache();
 }
 
 void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
@@ -760,36 +801,36 @@ void Style::ImPlotStyleMember::draw() const {
     if (BeginTabBar("##ImPlotStyleEditor")) {
         if (BeginTabItem("Variables")) {
             Text("Item Styling");
-            SliderFloat(path / "LineWeight", 0.0f, 5.0f, "%.1f");
-            SliderFloat(path / "MarkerSize", 2.0f, 10.0f, "%.1f");
-            SliderFloat(path / "MarkerWeight", 0.0f, 5.0f, "%.1f");
-            SliderFloat(path / "FillAlpha", 0.0f, 1.0f, "%.2f");
-            SliderFloat(path / "ErrorBarSize", 0.0f, 10.0f, "%.1f");
-            SliderFloat(path / "ErrorBarWeight", 0.0f, 5.0f, "%.1f");
-            SliderFloat(path / "DigitalBitHeight", 0.0f, 20.0f, "%.1f");
-            SliderFloat(path / "DigitalBitGap", 0.0f, 20.0f, "%.1f");
+            LineWeight.Draw("%.1f");
+            MarkerSize.Draw("%.1f");
+            MarkerWeight.Draw("%.1f");
+            FillAlpha.Draw("%.2f");
+            ErrorBarSize.Draw("%.1f");
+            ErrorBarWeight.Draw("%.1f");
+            DigitalBitHeight.Draw("%.1f");
+            DigitalBitGap.Draw("%.1f");
 
             Text("Plot Styling");
-            SliderFloat(path / "PlotBorderSize", 0.0f, 2.0f, "%.0f");
-            SliderFloat(path / "MinorAlpha", 0.0f, 1.0f, "%.2f");
-            SliderFloat2(path / "MajorTickLen", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "MinorTickLen", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "MajorTickSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2(path / "MinorTickSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2(path / "MajorGridSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2(path / "MinorGridSize", 0.0f, 2.0f, "%.1f");
-            SliderFloat2(path / "PlotDefaultSize", 0.0f, 1000, "%.0f");
-            SliderFloat2(path / "PlotMinSize", 0.0f, 300, "%.0f");
+            PlotBorderSize.Draw("%.0f");
+            MinorAlpha.Draw("%.2f");
+            MajorTickLen.Draw("%.0f");
+            MinorTickLen.Draw("%.0f");
+            MajorTickSize.Draw("%.1f");
+            MinorTickSize.Draw("%.1f");
+            MajorGridSize.Draw("%.1f");
+            MinorGridSize.Draw("%.1f");
+            PlotDefaultSize.Draw("%.0f");
+            PlotMinSize.Draw("%.0f");
 
             Text("Plot Padding");
-            SliderFloat2(path / "PlotPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "LabelPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "LegendPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "LegendInnerPadding", 0.0f, 10.0f, "%.0f");
-            SliderFloat2(path / "LegendSpacing", 0.0f, 5.0f, "%.0f");
-            SliderFloat2(path / "MousePosPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "AnnotationPadding", 0.0f, 5.0f, "%.0f");
-            SliderFloat2(path / "FitPadding", 0, 0.2f, "%.2f");
+            PlotPadding.Draw("%.0f");
+            LabelPadding.Draw("%.0f");
+            LegendPadding.Draw("%.0f");
+            LegendInnerPadding.Draw("%.0f");
+            LegendSpacing.Draw("%.0f");
+            MousePosPadding.Draw("%.0f");
+            AnnotationPadding.Draw("%.0f");
+            FitPadding.Draw("%.2f");
 
             EndTabItem();
         }

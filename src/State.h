@@ -446,7 +446,7 @@ struct Style : Window {
 
         // See `ImGuiStyle` for field descriptions.
         // Initial values copied from `ImGuiStyle()` default constructor.
-        // Ranges copied from `StyleEditor`.
+        // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
         Float Alpha{path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
         Float DisabledAlpha{path, "DisabledAlpha", 0.6, 0, 1};
@@ -490,9 +490,51 @@ struct Style : Window {
         Float CircleTessellationMaxError{path, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
     };
-    struct ImPlotStyleMember : StateMember, Drawable, ImPlotStyle {
-        using StateMember::StateMember;
+    struct ImPlotStyleMember : StateMember, Drawable {
+        ImPlotStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
+            Colormap = ImPlotColormap_Deep;
+            ImPlot::StyleColorsAuto(Colors);
+        }
+
+        void populate_context(ImPlotContext *ctx) const;
         void draw() const override;
+
+        // See `ImPlotStyle` for field descriptions.
+        // Initial values copied from `ImPlotStyle()` default constructor.
+        // Ranges copied from `ImPlot::StyleEditor`.
+        // Double-check everything's up-to-date from time to time!
+        Float LineWeight{path, "LineWeight", 1, 0, 5};
+        Int Marker{path, "Marker", ImPlotMarker_None};
+        Float MarkerSize{path, "MarkerSize", 4, 2, 10};
+        Float MarkerWeight{path, "MarkerWeight", 1, 0, 5};
+        Float FillAlpha{path, "FillAlpha", 1};
+        Float ErrorBarSize{path, "ErrorBarSize", 5, 0, 10};
+        Float ErrorBarWeight{path, "ErrorBarWeight", 1.5, 0, 5};
+        Float DigitalBitHeight{path, "DigitalBitHeight", 8, 0, 20};
+        Float DigitalBitGap{path, "DigitalBitGap", 4, 0, 20};
+        Float PlotBorderSize{path, "PlotBorderSize", 1, 0, 2};
+        Float MinorAlpha{path, "MinorAlpha", 0.25};
+        Vec2 MajorTickLen{path, "MajorTickLen", ImVec2(10, 10), 0, 20};
+        Vec2 MinorTickLen{path, "MinorTickLen", ImVec2(5, 5), 0, 20};
+        Vec2 MajorTickSize{path, "MajorTickSize", ImVec2(1, 1), 0, 2};
+        Vec2 MinorTickSize{path, "MinorTickSize", ImVec2(1, 1), 0, 2};
+        Vec2 MajorGridSize{path, "MajorGridSize", ImVec2(1, 1), 0, 2};
+        Vec2 MinorGridSize{path, "MinorGridSize", ImVec2(1, 1), 0, 2};
+        Vec2 PlotPadding{path, "PlotPadding", ImVec2(10, 10), 0, 20};
+        Vec2 LabelPadding{path, "LabelPadding", ImVec2(5, 5), 0, 20};
+        Vec2 LegendPadding{path, "LegendPadding", ImVec2(10, 10), 0, 20};
+        Vec2 LegendInnerPadding{path, "LegendInnerPadding", ImVec2(5, 5), 0, 10};
+        Vec2 LegendSpacing{path, "LegendSpacing", ImVec2(5, 0), 0, 5};
+        Vec2 MousePosPadding{path, "MousePosPadding", ImVec2(10, 10), 0, 20};
+        Vec2 AnnotationPadding{path, "AnnotationPadding", ImVec2(2, 2), 0, 5};
+        Vec2 FitPadding{path, "FitPadding", ImVec2(0, 0), 0, 0.2};
+        Vec2 PlotDefaultSize{path, "PlotDefaultSize", ImVec2(400, 300), 0, 1000};
+        Vec2 PlotMinSize{path, "PlotMinSize", ImVec2(200, 150), 0, 300};
+        ImVec4 Colors[ImPlotCol_COUNT];
+        ImPlotColormap Colormap;
+        Bool UseLocalTime{path, "UseLocalTime"};
+        Bool UseISO8601{path, "UseISO8601"};
+        Bool Use24HourClock{path, "Use24HourClock"};
     };
 
     ImGuiStyleMember imgui{path, "imgui", "ImGui"};
@@ -624,7 +666,8 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
     PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize,
     GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale,
     AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
-JsonType(ImPlotStyle, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen, MajorTickSize,
+JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
+    MajorTickSize,
     MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
     Colormap, UseLocalTime, UseISO8601, Use24HourClock)
 JsonType(FlowGridStyle, Colors, FlashDurationSec)

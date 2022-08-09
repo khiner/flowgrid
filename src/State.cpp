@@ -467,20 +467,12 @@ void StatePathUpdateFrequency::draw() const {
 }
 
 void ProjectPreview::draw() const {
-    const auto value_path = path / "format";
-    if (ImGui::BeginCombo(path_label(value_path).c_str(), ProjectFormatLabels[format].c_str())) {
-        for (int f = 0; f <= ActionFormat; f++) { // xxx breaks if `ActionFormat` is not the last format.
-            const bool is_selected = format == f;
-            if (ImGui::Selectable(ProjectFormatLabels[f].c_str(), is_selected)) q(set_value{value_path, f});
-            if (is_selected) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
-    Checkbox(path / "raw");
+    format.draw();
+    raw.draw();
 
     Separator();
 
-    const json project_json = c.get_project_json(format);
+    const json project_json = c.get_project_json(ProjectFormat(format.value));
     if (raw) Text("%s", project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
@@ -953,7 +945,7 @@ void Metrics::FlowGridMetrics::draw() const {
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) c.clear_preferences();
             SameLine();
-            Checkbox(path / "show_relative_paths");
+            show_relative_paths.draw();
 
             if (!has_recently_opened_paths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {

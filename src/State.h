@@ -221,15 +221,14 @@ struct StatePathUpdateFrequency : Window {
     void draw() const override;
 };
 
-enum ProjectFormat { None = 0, StateFormat, DiffFormat, ActionFormat, };
-static const string ProjectFormatLabels[] = {"None", "StateFormat", "DiffFormat", "ActionFormat"};
+enum ProjectFormat { None = 0, StateFormat, DiffFormat, ActionFormat };
 
 struct ProjectPreview : Window {
     using Window::Window;
     void draw() const override;
 
-    ProjectFormat format = StateFormat;
-    bool raw = false;
+    Enum format{path, "format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
+    Bool raw{path, "raw"};
 };
 
 struct Demo : Window {
@@ -244,7 +243,7 @@ struct Metrics : Window {
     struct FlowGridMetrics : StateMember, Drawable {
         using StateMember::StateMember;
         void draw() const override;
-        bool show_relative_paths = true;
+        Bool show_relative_paths{path, "show_relative_paths", true};
     };
     struct ImGuiMetrics : StateMember, Drawable {
         using StateMember::StateMember;
@@ -302,7 +301,7 @@ struct Audio : Process {
 //                     ");\n"
 //                     "\n"
 //                     "process = no.noise : pitchshifter;\n"};
-        string code{"import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+        String code{path, "code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
         string error{};
     };
 

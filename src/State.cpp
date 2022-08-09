@@ -45,13 +45,23 @@ bool Field::Int::draw(const std::vector<int> &options) const {
     return edited;
 }
 
-bool Field::Float::draw(const char *fmt, ImGuiSliderFlags flags) const {
+bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     return SliderFloat(path, min, max, fmt, flags, name.c_str());
 }
-bool Field::Float::draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
+bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
     return DragFloat(path, v_speed, min, max, fmt, flags, name.c_str());
 }
-bool Field::Float::Draw() const { return draw("%.3f"); }
+bool Field::Float::Draw() const { return Draw("%.3f"); }
+
+bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
+    ImVec2 v = value;
+    const bool edited = ImGui::SliderFloat2(name.c_str(), (float *) &v, min, max, fmt, flags);
+    gestured();
+    if (edited) q(set_value{path, v});
+    return edited;
+}
+
+bool Field::Vec2::Draw() const { return Draw("%.3f"); }
 
 bool Field::Enum::Draw() const {
     bool edited = false;
@@ -577,7 +587,7 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
 
             PushID(i);
             ColorEdit4(path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
-            SameLine(0.0f, s.style.imgui.ItemInnerSpacing.x);
+            SameLine(0.0f, s.style.imgui.ItemInnerSpacing.value.x);
             TextUnformatted(name);
             PopID();
         }
@@ -615,44 +625,44 @@ void Style::ImGuiStyleMember::draw() const {
     if (BeginTabBar("##ImGuiStyleEditor", ImGuiTabBarFlags_None)) {
         if (BeginTabItem("Sizes")) {
             Text("Main");
-            SliderFloat2(path / "WindowPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "FramePadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "CellPadding", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "ItemSpacing", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "ItemInnerSpacing", 0.0f, 20.0f, "%.0f");
-            SliderFloat2(path / "TouchExtraPadding", 0.0f, 10.0f, "%.0f");
-            IndentSpacing.draw("%.0f");
-            ScrollbarSize.draw("%.0f");
-            GrabMinSize.draw("%.0f");
+            WindowPadding.Draw("%.0f");
+            FramePadding.Draw("%.0f");
+            CellPadding.Draw("%.0f");
+            ItemSpacing.Draw("%.0f");
+            ItemInnerSpacing.Draw("%.0f");
+            TouchExtraPadding.Draw("%.0f");
+            IndentSpacing.Draw("%.0f");
+            ScrollbarSize.Draw("%.0f");
+            GrabMinSize.Draw("%.0f");
             Text("Borders");
-            WindowBorderSize.draw("%.0f");
-            ChildBorderSize.draw("%.0f");
-            PopupBorderSize.draw("%.0f");
-            FrameBorderSize.draw("%.0f");
-            TabBorderSize.draw("%.0f");
+            WindowBorderSize.Draw("%.0f");
+            ChildBorderSize.Draw("%.0f");
+            PopupBorderSize.Draw("%.0f");
+            FrameBorderSize.Draw("%.0f");
+            TabBorderSize.Draw("%.0f");
             Text("Rounding");
-            WindowRounding.draw("%.0f");
-            ChildRounding.draw("%.0f");
-            FrameRounding.draw("%.0f");
-            PopupRounding.draw("%.0f");
-            ScrollbarRounding.draw("%.0f");
-            GrabRounding.draw("%.0f");
-            LogSliderDeadzone.draw("%.0f");
-            TabRounding.draw("%.0f");
+            WindowRounding.Draw("%.0f");
+            ChildRounding.Draw("%.0f");
+            FrameRounding.Draw("%.0f");
+            PopupRounding.Draw("%.0f");
+            ScrollbarRounding.Draw("%.0f");
+            GrabRounding.Draw("%.0f");
+            LogSliderDeadzone.Draw("%.0f");
+            TabRounding.Draw("%.0f");
             Text("Alignment");
-            SliderFloat2(path / "WindowTitleAlign", 0.0f, 1.0f, "%.2f");
+            WindowTitleAlign.Draw("%.2f");
             Combo(path / "WindowMenuButtonPosition", "None\0Left\0Right\0");
             Combo(path / "ColorButtonPosition", "Left\0Right\0");
-            SliderFloat2(path / "ButtonTextAlign", 0.0f, 1.0f, "%.2f");
+            ButtonTextAlign.Draw("%.2f");
             SameLine();
             HelpMarker("Alignment applies when a button is larger than its text content.");
-            SliderFloat2(path / "SelectableTextAlign", 0.0f, 1.0f, "%.2f");
+            SelectableTextAlign.Draw("%.2f");
             SameLine();
             HelpMarker("Alignment applies when a selectable is larger than its text content.");
             Text("Safe Area Padding");
             SameLine();
             HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
-            SliderFloat2(path / "DisplaySafeAreaPadding", 0.0f, 30.0f, "%.0f");
+            DisplaySafeAreaPadding.Draw("%.0f");
             EndTabItem();
         }
 
@@ -694,10 +704,10 @@ void Style::ImGuiStyleMember::draw() const {
 
             AntiAliasedFill.Draw();
             PushItemWidth(GetFontSize() * 8);
-            CurveTessellationTol.draw(0.02f, "%.2f");
+            CurveTessellationTol.Draw(0.02f, "%.2f");
 
             // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            CircleTessellationMaxError.draw(0.005f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            CircleTessellationMaxError.Draw(0.005f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
             if (IsItemActive()) {
                 SetNextWindowPos(GetCursorScreenPos());
                 BeginTooltip();
@@ -730,8 +740,8 @@ void Style::ImGuiStyleMember::draw() const {
             SameLine();
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
-            Alpha.draw(0.005f, "%.2f");
-            DisabledAlpha.draw(0.005f, "%.2f");
+            Alpha.Draw(0.005f, "%.2f");
+            DisabledAlpha.Draw(0.005f, "%.2f");
             SameLine();
             HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
             PopItemWidth();

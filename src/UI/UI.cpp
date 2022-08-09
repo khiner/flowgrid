@@ -215,8 +215,7 @@ void tick_ui() {
         }
     }
 
-    for (const auto &item: key_map) {
-        const auto &[shortcut, action_id] = item;
+    for (const auto &[shortcut, action_id]: key_map) {
         if (is_shortcut_pressed(shortcut) && c.action_allowed(action_id)) {
             q(action::create(action_id));
         }

@@ -32,6 +32,10 @@ using DurationSec = float; // floats used for main duration type
 using fsec = std::chrono::duration<DurationSec>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
 
+JsonType(ImVec2, x, y)
+JsonType(ImVec4, w, x, y, z)
+JsonType(ImVec2ih, x, y)
+
 struct StateMember {
     StateMember(const JsonPath &parent_path, const string &id, const string &name = "")
         : path(parent_path / id), id(id), name(name.empty() ? snake_case_to_sentence_case(id) : name) {}
@@ -104,10 +108,28 @@ struct Float : Base {
     }
 
     bool Draw() const override;
-    bool draw(const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
-    bool draw(float v_speed, const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
+    bool Draw(const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
+    bool Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
 
     float value, min, max;
+};
+struct Vec2 : Base {
+    Vec2(const JsonPath &parent_path, const string &id, const string &name = "", ImVec2 value = {0, 0}, float min = 0, float max = 1)
+        : Base(parent_path, id, name), value(value), min(min), max(max) {}
+    Vec2(const JsonPath &parent_path, const string &id, ImVec2 value, float min = 0, float max = 1)
+        : Vec2(parent_path, id, "", value, min, max) {}
+
+    operator ImVec2() const { return value; }
+    Vec2 &operator=(const ImVec2 &v) {
+        value = v;
+        return *this;
+    }
+
+    bool Draw() const override;
+    bool Draw(const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
+
+    ImVec2 value;
+    float min, max;
 };
 struct String : Base {
     String(const JsonPath &parent_path, const string &id, const string &name = "", string value = "")
@@ -152,6 +174,9 @@ inline void from_json(const json &j, Bool &field) { field.value = j; }
 
 inline void to_json(json &j, const Float &field) { j = field.value; }
 inline void from_json(const json &j, Float &field) { field.value = j; }
+
+inline void to_json(json &j, const Vec2 &field) { j = field.value; }
+inline void from_json(const json &j, Vec2 &field) { field.value = j; }
 
 inline void to_json(json &j, const Int &field) { j = field.value; }
 inline void from_json(const json &j, Int &field) { field.value = j; }
@@ -410,20 +435,8 @@ struct Style : Window {
 
     struct ImGuiStyleMember : StateMember, Drawable {
         ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
-            WindowPadding = ImVec2(8, 8);
-            WindowMinSize = ImVec2(32, 32);
-            WindowTitleAlign = ImVec2(0.0f, 0.5f);
             WindowMenuButtonPosition = ImGuiDir_Left;
-            FramePadding = ImVec2(4, 3);
-            ItemSpacing = ImVec2(8, 4);
-            ItemInnerSpacing = ImVec2(4, 4);
-            CellPadding = ImVec2(4, 2);
-            TouchExtraPadding = ImVec2(0, 0);
             ColorButtonPosition = ImGuiDir_Right;
-            ButtonTextAlign = ImVec2(0.5f, 0.5f);
-            SelectableTextAlign = ImVec2(0.0f, 0.0f);
-            DisplayWindowPadding = ImVec2(19, 19);
-            DisplaySafeAreaPadding = ImVec2(3, 3);
 
             ImGui::StyleColorsDark(Colors);
         }
@@ -432,28 +445,28 @@ struct Style : Window {
         void draw() const override;
 
         // See `ImGuiStyle` for field descriptions.
-        // Initial values opied from `ImGuiStyle()` default constructor.
+        // Initial values copied from `ImGuiStyle()` default constructor.
         // Ranges copied from `StyleEditor`.
         // Double-check everything's up-to-date from time to time!
         Float Alpha{path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
         Float DisabledAlpha{path, "DisabledAlpha", 0.6, 0, 1};
-        ImVec2 WindowPadding;
+        Vec2 WindowPadding{path, "WindowPadding", ImVec2(8, 8), 0, 20};
         Float WindowRounding{path, "WindowRounding", 0, 0, 12};
         Float WindowBorderSize{path, "WindowBorderSize", 1};
-        ImVec2 WindowMinSize;
-        ImVec2 WindowTitleAlign;
+        Vec2 WindowMinSize{path, "WindowMinSize", ImVec2(32, 32)};
+        Vec2 WindowTitleAlign{path, "WindowTitleAlign", ImVec2(0, 0.5)};
         ImGuiDir WindowMenuButtonPosition;
         Float ChildRounding{path, "ChildRounding", 0, 0, 12};
         Float ChildBorderSize{path, "ChildBorderSize", 1};
         Float PopupRounding{path, "PopupRounding", 0, 0, 12};
         Float PopupBorderSize{path, "PopupBorderSize", 1};
-        ImVec2 FramePadding;
+        Vec2 FramePadding{path, "FramePadding", ImVec2(4, 3), 0, 20};
         Float FrameRounding{path, "FrameRounding", 0, 0, 12};
         Float FrameBorderSize{path, "FrameBorderSize", 0};
-        ImVec2 ItemSpacing;
-        ImVec2 ItemInnerSpacing;
-        ImVec2 CellPadding;
-        ImVec2 TouchExtraPadding;
+        Vec2 ItemSpacing{path, "ItemSpacing", ImVec2(8, 4), 0, 20};
+        Vec2 ItemInnerSpacing{path, "ItemInnerSpacing", ImVec2(4, 4), 0, 20};
+        Vec2 CellPadding{path, "CellPadding", ImVec2(4, 2), 0, 20};
+        Vec2 TouchExtraPadding{path, "TouchExtraPadding", ImVec2(0, 0), 0, 10};
         Float IndentSpacing{path, "IndentSpacing", 21, 0, 30};
         Float ColumnsMinSpacing{path, "ColumnsMinSpacing", 6};
         Float ScrollbarSize{path, "ScrollbarSize", 14, 1, 20};
@@ -465,10 +478,10 @@ struct Style : Window {
         Float TabBorderSize{path, "TabBorderSize", 0};
         Float TabMinWidthForCloseButton{path, "TabMinWidthForCloseButton", 0};
         ImGuiDir ColorButtonPosition;
-        ImVec2 ButtonTextAlign;
-        ImVec2 SelectableTextAlign;
-        ImVec2 DisplayWindowPadding;
-        ImVec2 DisplaySafeAreaPadding;
+        Vec2 ButtonTextAlign{path, "ButtonTextAlign", ImVec2(0.5, 0.5)};
+        Vec2 SelectableTextAlign{path, "SelectableTextAlign", ImVec2(0, 0)};
+        Vec2 DisplayWindowPadding{path, "DisplayWindowPadding", ImVec2(19, 19)};
+        Vec2 DisplaySafeAreaPadding{path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30};
         Float MouseCursorScale{path, "MouseCursorScale", 1};
         Bool AntiAliasedLines{path, "AntiAliasedLines", "Anti-aliased lines", true};
         Bool AntiAliasedLinesUseTex{path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture", true};
@@ -591,10 +604,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
 
 JsonType(JsonPatchOp, path, op, value)
 JsonType(BidirectionalStateDiff, forward, reverse, time)
-
-JsonType(ImVec2, x, y)
-JsonType(ImVec4, w, x, y, z)
-JsonType(ImVec2ih, x, y)
 
 JsonType(Window, visible)
 JsonType(Process, running)

@@ -12,7 +12,7 @@ void fg::HelpMarker(const char *desc) {
     }
 }
 
-void gestured() {
+void fg::gestured() {
     if (ImGui::IsItemActivated()) c.is_widget_gesturing = true;
     if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
 }

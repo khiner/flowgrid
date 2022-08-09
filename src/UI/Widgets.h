@@ -4,6 +4,8 @@
 
 namespace FlowGrid {
 
+void gestured();
+
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void HelpMarker(const char *desc);
 

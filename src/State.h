@@ -211,12 +211,11 @@ struct Process : Window {
     Bool running{path, "running", true};
 };
 
-const float GestureDurationSecMin = 0.0, GestureDurationSecMax = 5.0;
 struct ApplicationSettings : Window {
     using Window::Window;
     void draw() const override;
 
-    float GestureDurationSec{0.5}; // Merge actions occurring in short succession into a single gesture
+    Float GestureDurationSec{path, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
 };
 
 struct StateViewer : Window {
@@ -432,9 +431,6 @@ struct Style : Window {
 
     struct ImGuiStyleMember : StateMember, Drawable {
         ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
-            WindowMenuButtonPosition = ImGuiDir_Left;
-            ColorButtonPosition = ImGuiDir_Right;
-
             ImGui::StyleColorsDark(Colors);
         }
 
@@ -452,7 +448,7 @@ struct Style : Window {
         Float WindowBorderSize{path, "WindowBorderSize", 1};
         Vec2 WindowMinSize{path, "WindowMinSize", ImVec2(32, 32)};
         Vec2 WindowTitleAlign{path, "WindowTitleAlign", ImVec2(0, 0.5)};
-        ImGuiDir WindowMenuButtonPosition;
+        Enum WindowMenuButtonPosition{path, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
         Float ChildRounding{path, "ChildRounding", 0, 0, 12};
         Float ChildBorderSize{path, "ChildBorderSize", 1};
         Float PopupRounding{path, "PopupRounding", 0, 0, 12};
@@ -474,7 +470,7 @@ struct Style : Window {
         Float TabRounding{path, "TabRounding", 4, 0, 12};
         Float TabBorderSize{path, "TabBorderSize", 0};
         Float TabMinWidthForCloseButton{path, "TabMinWidthForCloseButton", 0};
-        ImGuiDir ColorButtonPosition;
+        Enum ColorButtonPosition{path, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
         Vec2 ButtonTextAlign{path, "ButtonTextAlign", ImVec2(0.5, 0.5)};
         Vec2 SelectableTextAlign{path, "SelectableTextAlign", ImVec2(0, 0)};
         Vec2 DisplayWindowPadding{path, "DisplayWindowPadding", ImVec2(19, 19)};

@@ -692,8 +692,8 @@ void Style::ImGuiStyleMember::draw() const {
             TabRounding.Draw("%.0f");
             Text("Alignment");
             WindowTitleAlign.Draw("%.2f");
-            Combo(path / "WindowMenuButtonPosition", "None\0Left\0Right\0");
-            Combo(path / "ColorButtonPosition", "Left\0Right\0");
+            WindowMenuButtonPosition.Draw();
+            ColorButtonPosition.Draw();
             ButtonTextAlign.Draw("%.2f");
             SameLine();
             HelpMarker("Alignment applies when a button is larger than its text content.");
@@ -917,7 +917,7 @@ void Style::draw() const {
 void ApplicationSettings::draw() const {
     int v = c.diff_index;
     if (ImGui::SliderInt("Diff index", &v, -1, int(c.diffs.size()) - 1)) q(set_diff_index{v});
-    SliderFloat(path / "GestureDurationSec", GestureDurationSecMin, GestureDurationSecMax, "%.3f s");
+    GestureDurationSec.Draw("%.3f s");
 }
 
 const std::vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};

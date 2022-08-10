@@ -46,7 +46,7 @@ struct FaustContext {
 //        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
 
         createLibContext();
-        box = DSPToBoxes(code, &num_inputs, &num_outputs, error_msg);
+        box = DSPToBoxes("FlowGrid", code, &num_inputs, &num_outputs, error_msg);
         if (box && error_msg.empty()) {
             static const int optimize_level = -1;
             dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);

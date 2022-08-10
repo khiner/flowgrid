@@ -336,7 +336,9 @@ struct Audio : Process {
 //                     ");\n"
 //                     "\n"
 //                     "process = no.noise : pitchshifter;\n"};
-        String code{path, "code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+//        String code{path, "code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+        String code{path, "code", "Code",
+                    "import(\"stdfaust.lib\");\nctFreq = hslider(\"cutoffFrequency\",500,50,10000,0.01);\nq = hslider(\"q\",5,1,30,0.1);\ngain = hslider(\"gain\",1,0,1,0.01);\nprocess = no.noise : fi.resonlp(ctFreq,q,gain);"};
         string error{};
     };
 

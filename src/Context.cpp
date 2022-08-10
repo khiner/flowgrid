@@ -1,7 +1,7 @@
 #include "Context.h"
 
 #include "faust/dsp/llvm-dsp.h"
-#include "UI/StatefulFaustUI.h"
+#include "UI/Faust/DrawBox.hh"
 
 // Used to initialize the static Faust buffer.
 // This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
@@ -53,6 +53,7 @@ struct FaustContext {
             if (dsp_factory && error_msg.empty()) {
                 dsp = dsp_factory->createDSPInstance();
                 dsp->init(sample_rate);
+                drawBox(box);
             }
         }
         destroyLibContext();
@@ -181,8 +182,8 @@ void Context::update_faust_context() {
 
     faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.sample_rate, state.audio.faust.error);
     if (faust->dsp) {
-        StatefulFaustUI faust_ui;
-        faust->dsp->buildUserInterface(&faust_ui);
+//        StatefulFaustUI faust_ui;
+//        faust->dsp->buildUserInterface(&faust_ui);
 //                faust->dsp->metadata(&faust_ui); // version/author/licence/etc
 //                _s.audio.faust.json = faust_ui.
     } else {

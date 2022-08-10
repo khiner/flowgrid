@@ -36,26 +36,26 @@ struct FaustContext {
     int num_inputs{0}, num_outputs{0};
     llvm_dsp_factory *dsp_factory;
     dsp *dsp = nullptr;
+    Box box; // already a pointer
     std::unique_ptr<FaustBuffers> buffers;
 
     FaustContext(const string &code, int sample_rate, string &error_msg) {
-        int argc = 0;
-        const char **argv = new const char *[8];
-        argv[argc++] = "-I";
-        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-        // Consider additional args: "-vec", "-vs", "128", "-dfs"
+//        The only arg that's strictly needed is the faust library path.
+//        However, we currently use an environment variable for this: `FAUST_LIB_PATH=../lib/faust/libraries`
+//        argv[argc++] = "-I";
+//        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
 
-        const int optimize_level = -1;
-        dsp_factory = createDSPFactoryFromString("FlowGrid", code, argc, argv, "", error_msg, optimize_level);
-
-        for (int i = 0; i < argc; i++) argv[i] = nullptr;
-
-        if (dsp_factory && s.audio.faust.error.empty()) {
-            dsp = dsp_factory->createDSPInstance();
-            dsp->init(sample_rate);
+        createLibContext();
+        box = DSPToBoxes(code, &num_inputs, &num_outputs, error_msg);
+        if (box && error_msg.empty()) {
+            static const int optimize_level = -1;
+            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);
+            if (dsp_factory && error_msg.empty()) {
+                dsp = dsp_factory->createDSPInstance();
+                dsp->init(sample_rate);
+            }
         }
-        num_inputs = dsp ? dsp->getNumInputs() : 0;
-        num_outputs = dsp ? dsp->getNumOutputs() : 0;
+        destroyLibContext();
         buffers = std::make_unique<FaustBuffers>(num_inputs, num_outputs);
     }
 

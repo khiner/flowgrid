@@ -24,14 +24,8 @@ using namespace std;
 
 #define FAUST_PATH_MAX 1024
 
-/**
- * property Key used to store box complexity
- */
-static int computeBoxComplexity(Tree box);
-static int boxComplexity(Tree box);
-
 struct DrawContext {
-    DrawContext(Box box) {
+    DrawContext() {
         pureRoutingProperty = new property<bool>();
         inverter[0] = boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul));
         inverter[1] = boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul));
@@ -39,16 +33,14 @@ struct DrawContext {
         inverter[3] = boxSeq(boxPar(boxReal(-1.0), boxWire()), boxPrim2(sigMul));
         inverter[4] = boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub));
         inverter[5] = boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub));
-        foldingFlag = boxComplexity(box) > foldThreshold;
-        foldThreshold = 25;
-        foldComplexity = 2;
     }
 
+    Tree boxComplexityMemo{}; // Avoid recomputing box complexity
     string currentDir; // Save current directory name
     property<bool> *pureRoutingProperty;
-    bool foldingFlag; // true with complex block-diagrams
-    int foldThreshold; // global complexity threshold before activating folding
-    int foldComplexity;  // individual complexity threshold before folding
+    bool foldingFlag = false; // true with complex block-diagrams
+    int foldThreshold = 25; // global complexity threshold before activating folding
+    int foldComplexity = 2;  // individual complexity threshold before folding
     set<Tree> drawnExp; // Expressions drawn or scheduled so far
     map<Tree, string> backLink; // Link to enclosing file for sub schema
     stack<Tree> pendingExp; // Expressions that need to be drawn
@@ -56,38 +48,28 @@ struct DrawContext {
     Tree inverter[6]{};
 };
 
-Tree BCOMPLEXITY; // Node used for memoization purposes
+std::unique_ptr<DrawContext> dc;
 
-/**
- * Return the complexity property of a box expression tree.
- * If no complexity property exist, it is created and computeBoxComplexity is called do to the job.
- *
- * @param box an evaluated box expression tree
- * @return the complexity of box
- *
- * @see computeBoxComplexity
- */
-int boxComplexity(Tree box) {
-    Tree prop = box->getProperty(BCOMPLEXITY);
+static int computeComplexity(Box box);
+
+// Memoized version of `computeComplexity(Box)`
+int boxComplexity(Box box) {
+    Tree prop = box->getProperty(dc->boxComplexityMemo);
     if (prop) return tree2int(prop);
 
-    int v = computeBoxComplexity(box);
-    box->setProperty(BCOMPLEXITY, tree(v));
+    int v = computeComplexity(box);
+    box->setProperty(dc->boxComplexityMemo, tree(v));
     return v;
 }
 
 /**
- * internal shortcut to simplify computeBoxComplexity code
- */
-#define BC boxComplexity
-
-/**
  * Compute the complexity of a box expression tree according to the complexity of its subexpressions.
  * Basically, it counts the number of boxes to be drawn.
- * The box-diagram expression is supposed to be evaluated.
- * It will exit with an error if it is not the case.
+ * If the box-diagram expression is not evaluated, it will throw an error.
  */
-int computeBoxComplexity(Tree box) {
+int computeComplexity(Box box) {
+    if (isBoxCut(box) || isBoxWire(box)) return 0;
+
     int i;
     double r;
     prim0 p0;
@@ -97,67 +79,71 @@ int computeBoxComplexity(Tree box) {
     prim4 p4;
     prim5 p5;
 
-    Tree t1, t2, t3, ff, label, cur, min, max, step, type, name, file, chan;
+    const auto *xt = getUserData(box);
 
-    auto *xt = getUserData(box);
+    // simple elements / slot
+    if (xt ||
+        isBoxInt(box, &i) ||
+        isBoxReal(box, &r) ||
+        isBoxWaveform(box) ||
+        isBoxPrim0(box, &p0) ||
+        isBoxPrim1(box, &p1) ||
+        isBoxPrim2(box, &p2) ||
+        isBoxPrim3(box, &p3) ||
+        isBoxPrim4(box, &p4) ||
+        isBoxPrim5(box, &p5) ||
+        isBoxSlot(box, &i))
+        return 1;
 
-    // simple elements
-    if (xt) return 1;
-    if (isBoxInt(box, &i)) return 1;
-    if (isBoxReal(box, &r)) return 1;
-    if (isBoxWaveform(box)) return 1;
-    if (isBoxCut(box)) return 0;
-    if (isBoxWire(box)) return 0;
-    if (isBoxPrim0(box, &p0)) return 1;
-    if (isBoxPrim1(box, &p1)) return 1;
-    if (isBoxPrim2(box, &p2)) return 1;
-    if (isBoxPrim3(box, &p3)) return 1;
-    if (isBoxPrim4(box, &p4)) return 1;
-    if (isBoxPrim5(box, &p5)) return 1;
-
+    Tree ff, type, name, file;
     // foreign elements
-    if (isBoxFFun(box, ff)) return 1;
-    if (isBoxFConst(box, type, name, file)) return 1;
-    if (isBoxFVar(box, type, name, file)) return 1;
+    if (isBoxFFun(box, ff) ||
+        isBoxFConst(box, type, name, file) ||
+        isBoxFVar(box, type, name, file))
+        return 1;
 
-    // slots and symbolic boxes
-    if (isBoxSlot(box, &i)) return 1;
-    if (isBoxSymbolic(box, t1, t2)) return 1 + BC(t2);
+    Tree t1, t2;
 
-    // block diagram binary operator
-    if (isBoxSeq(box, t1, t2)) return BC(t1) + BC(t2);
-    if (isBoxSplit(box, t1, t2)) return BC(t1) + BC(t2);
-    if (isBoxMerge(box, t1, t2)) return BC(t1) + BC(t2);
-    if (isBoxPar(box, t1, t2)) return BC(t1) + BC(t2);
-    if (isBoxRec(box, t1, t2)) return BC(t1) + BC(t2);
+    // symbolic boxes
+    if (isBoxSymbolic(box, t1, t2)) return 1 + boxComplexity(t2);
+
+    // binary operators
+    if (isBoxSeq(box, t1, t2) ||
+        isBoxSplit(box, t1, t2) ||
+        isBoxMerge(box, t1, t2) ||
+        isBoxPar(box, t1, t2) ||
+        isBoxRec(box, t1, t2))
+        return boxComplexity(t1) + boxComplexity(t2);
+
+    Tree label, cur, min, max, step, chan;
 
     // user interface widgets
-    if (isBoxButton(box, label)) return 1;
-    if (isBoxCheckbox(box, label)) return 1;
-    if (isBoxVSlider(box, label, cur, min, max, step)) return 1;
-    if (isBoxHSlider(box, label, cur, min, max, step)) return 1;
-    if (isBoxHBargraph(box, label, min, max)) return 1;
-    if (isBoxVBargraph(box, label, min, max)) return 1;
-    if (isBoxSoundfile(box, label, chan)) return 1;
-    if (isBoxNumEntry(box, label, cur, min, max, step)) return 1;
+    if (isBoxButton(box, label) ||
+        isBoxCheckbox(box, label) ||
+        isBoxVSlider(box, label, cur, min, max, step) ||
+        isBoxHSlider(box, label, cur, min, max, step) ||
+        isBoxHBargraph(box, label, min, max) ||
+        isBoxVBargraph(box, label, min, max) ||
+        isBoxSoundfile(box, label, chan) ||
+        isBoxNumEntry(box, label, cur, min, max, step))
+        return 1;
 
     // user interface groups
-    if (isBoxVGroup(box, label, t1)) return BC(t1);
-    if (isBoxHGroup(box, label, t1)) return BC(t1);
-    if (isBoxTGroup(box, label, t1)) return BC(t1);
+    if (isBoxVGroup(box, label, t1) ||
+        isBoxHGroup(box, label, t1) ||
+        isBoxTGroup(box, label, t1) ||
+        isBoxMetadata(box, t1, t2))
+        return boxComplexity(t1);
 
-    // environment
-    if (isBoxEnvironment(box)) return 0;
-    if (isBoxMetadata(box, t1, t2)) return BC(t1);
-    if (isBoxRoute(box, t1, t2, t3)) return 0;
+    Tree t3;
+    // environment/route
+    if (isBoxEnvironment(box) || isBoxRoute(box, t1, t2, t3)) return 0;
 
-    // to complete
     stringstream error;
     error << "ERROR in boxComplexity : not an evaluated box [[ " << *box << " ]]\n";
-    throw faustexception(error.str());
+    throw runtime_error(error.str());
 }
 
-std::unique_ptr<DrawContext> dc;
 namespace fs = std::filesystem;
 
 void getCurrentDir() {
@@ -208,8 +194,8 @@ static schema *addSchemaInputs(int ins, schema *x);
 static schema *addSchemaOutputs(int outs, schema *x);
 
 void drawBox(Box box) {
-    dc = std::make_unique<DrawContext>(box);
-    BCOMPLEXITY = {};
+    dc = std::make_unique<DrawContext>();
+    dc->foldingFlag = boxComplexity(box) > dc->foldThreshold;
     mkchDir("FaustDiagrams"); // create a directory to store files
 
     scheduleDrawing(box); // schedule the initial drawing

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "faust/dsp/libfaust-box.h"
+#include <cstdio>
 
 class device {
 public:

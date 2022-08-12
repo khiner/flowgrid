@@ -6,18 +6,18 @@ void collector::computeVisibleTraits() {
 
     do {
         modified = false;
-        for (const auto &fTrait: fTraits) {
-            if (fWithInput.count(fTrait) == 0) { // not connected to a real output
-                if (fOutputs.count(fTrait.start) > 0) {
-                    fWithInput.insert(fTrait); // the cable is connected to a real output
-                    fOutputs.insert(fTrait.end); // end become a real output too
+        for (const auto &fTrait: traits) {
+            if (withInput.count(fTrait) == 0) { // not connected to a real output
+                if (outputs.count(fTrait.start) > 0) {
+                    withInput.insert(fTrait); // the cable is connected to a real output
+                    outputs.insert(fTrait.end); // end become a real output too
                     modified = true;
                 }
             }
-            if (fWithOutput.count(fTrait) == 0) { // not connected to a real input
-                if (fInputs.count(fTrait.end) > 0) {
-                    fWithOutput.insert(fTrait); // the cable is connected to a real input
-                    fInputs.insert(fTrait.start); // start become a real input too
+            if (withOutput.count(fTrait) == 0) { // not connected to a real input
+                if (inputs.count(fTrait.end) > 0) {
+                    withOutput.insert(fTrait); // the cable is connected to a real input
+                    inputs.insert(fTrait.start); // start become a real input too
                     modified = true;
                 }
             }
@@ -25,11 +25,11 @@ void collector::computeVisibleTraits() {
     } while (modified);
 }
 
-bool collector::isVisible(const trait &t) { return fWithInput.count(t) && fWithOutput.count(t); }
+bool collector::isVisible(const trait &t) { return withInput.count(t) && withOutput.count(t); }
 
 void collector::draw(device &dev) {
     computeVisibleTraits();
-    for (const auto &fTrait: fTraits) {
+    for (const auto &fTrait: traits) {
         if (isVisible(fTrait)) fTrait.draw(dev);
     }
 }
@@ -114,13 +114,13 @@ void blockSchema::place(double x, double y, int orientation) {
 
 point blockSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < inputs());
+    faustassert(i < inputs);
     return fInputPoint[i];
 }
 
 point blockSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < outputs());
+    faustassert(i < outputs);
     return fOutputPoint[i];
 }
 
@@ -128,18 +128,18 @@ point blockSchema::outputPoint(unsigned int i) const {
  * Computes the input points according to the position and the orientation of the `blockSchema`.
  */
 void blockSchema::placeInputPoints() {
-    int N = inputs();
+    int N = inputs;
 
-    if (orientation() == kLeftRight) {
-        double px = x();
-        double py = y() + (height() - dWire * (N - 1)) / 2;
+    if (orientation == kLeftRight) {
+        double px = x;
+        double py = y + (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fInputPoint[i] = point(px, py + i * dWire);
         }
     } else {
-        double px = x() + width();
-        double py = y() + height() - (height() - dWire * (N - 1)) / 2;
+        double px = x + width;
+        double py = y + height - (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fInputPoint[i] = point(px, py - i * dWire);
@@ -151,19 +151,19 @@ void blockSchema::placeInputPoints() {
  * Computes the output points according to the position and the orientation of the `blockSchema`.
  */
 void blockSchema::placeOutputPoints() {
-    int N = outputs();
+    int N = outputs;
 
-    if (orientation() == kLeftRight) {
-        double px = x() + width();
-        double py = y() + (height() - dWire * (N - 1)) / 2;
+    if (orientation == kLeftRight) {
+        double px = x + width;
+        double py = y + (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fOutputPoint[i] = point(px, py + i * dWire);
         }
 
     } else {
-        double px = x();
-        double py = y() + height() - (height() - dWire * (N - 1)) / 2;
+        double px = x;
+        double py = y + height - (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fOutputPoint[i] = point(px, py - i * dWire);
@@ -188,14 +188,14 @@ void blockSchema::draw(device &dev) {
  * Draw the colored rectangle with the optional link.
  */
 void blockSchema::drawRectangle(device &dev) {
-    dev.rect(x() + dHorz, y() + dVert, width() - 2 * dHorz, height() - 2 * dVert, fColor.c_str(), fLink.c_str());
+    dev.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, fColor.c_str(), fLink.c_str());
 }
 
 /**
  * Draw the text centered on the box.
  */
 void blockSchema::drawText(device &dev) {
-    dev.text(x() + width() / 2, y() + height() / 2, fText.c_str(), fLink.c_str());
+    dev.text(x + width / 2, y + height / 2, fText.c_str(), fLink.c_str());
 }
 
 /**
@@ -204,26 +204,26 @@ void blockSchema::drawText(device &dev) {
 void blockSchema::drawOrientationMark(device &dev) {
     double px, py;
 
-    if (orientation() == kLeftRight) {
-        px = x() + dHorz;
-        py = y() + dVert;
+    if (orientation == kLeftRight) {
+        px = x + dHorz;
+        py = y + dVert;
     } else {
-        px = x() + width() - dHorz;
-        py = y() + height() - dVert;
+        px = x + width - dHorz;
+        py = y + height - dVert;
     }
 
-    dev.markSens(px, py, orientation());
+    dev.markSens(px, py, orientation);
 }
 
 /**
  * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
  */
 void blockSchema::drawInputArrows(device &dev) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = fInputPoint[i];
-        dev.fleche(p.x + dx, p.y, 0, orientation());
+        dev.fleche(p.x + dx, p.y, 0, orientation);
     }
 }
 
@@ -239,9 +239,9 @@ void blockSchema::collectTraits(collector &c) {
  * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
  */
 void blockSchema::collectInputWires(collector &c) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = fInputPoint[i];
         c.addTrait(trait(point(p.x, p.y), point(p.x + dx, p.y)));  // in->out direction
         c.addInput(point(p.x + dx, p.y));
@@ -253,9 +253,9 @@ void blockSchema::collectInputWires(collector &c) {
  * output points
  */
 void blockSchema::collectOutputWires(collector &c) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point p = fOutputPoint[i];
         c.addTrait(trait(point(p.x - dx, p.y), point(p.x, p.y)));  // in->out direction
         c.addOutput(point(p.x - dx, p.y));
@@ -305,12 +305,12 @@ cableSchema::cableSchema(unsigned int n) : schema(n, n, 0, n * dWire) {
 void cableSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
     if (orientation == kLeftRight) {
-        for (unsigned int i = 0; i < inputs(); i++) {
+        for (unsigned int i = 0; i < inputs; i++) {
             fPoint[i] = point(ox, oy + dWire / 2.0 + i * dWire);
         }
     } else {
-        for (unsigned int i = 0; i < inputs(); i++) {
-            fPoint[i] = point(ox, oy + height() - dWire / 2.0 - i * dWire);
+        for (unsigned int i = 0; i < inputs; i++) {
+            fPoint[i] = point(ox, oy + height - dWire / 2.0 - i * dWire);
         }
     }
     endPlace();
@@ -332,7 +332,7 @@ void cableSchema::collectTraits(collector &) {}
  * Input and output points are the same if the width is 0.
  */
 point cableSchema::inputPoint(unsigned int i) const {
-    faustassert(i < inputs());
+    faustassert(i < inputs);
     return fPoint[i];
 }
 
@@ -340,7 +340,7 @@ point cableSchema::inputPoint(unsigned int i) const {
  * Input and output points are the same if the width is 0.
  */
 point cableSchema::outputPoint(unsigned int i) const {
-    faustassert(i < outputs());
+    faustassert(i < outputs);
     return fPoint[i];
 }
 
@@ -371,7 +371,7 @@ inverterSchema::inverterSchema(const string &color) : blockSchema(1, 1, 2.5 * dW
  * Actual drawing will take place when the wires are enlargered.
  */
 void inverterSchema::draw(device &dev) {
-    dev.triangle(x() + dHorz, y() + 0.5, width() - 2 * dHorz, height() - 1, fColor.c_str(), fLink.c_str(), orientation() == kLeftRight);
+    dev.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, fColor.c_str(), fLink.c_str(), orientation == kLeftRight);
 }
 
 /**
@@ -410,7 +410,7 @@ cutSchema::cutSchema() : schema(1, 0, 0, dWire / 100.0), fPoint(0, 0) {}
  */
 void cutSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
-    fPoint = point(ox, oy + height() * 0.5);  //, -1);
+    fPoint = point(ox, oy + height * 0.5);  //, -1);
     endPlace();
 }
 
@@ -459,7 +459,7 @@ public:
  * That is, if the required width is greater that the schema width.
  */
 schema *makeEnlargedSchema(schema *s, double width) {
-    return width > s->width() ? new enlargedSchema(s, width) : s;
+    return width > s->width ? new enlargedSchema(s, width) : s;
 }
 
 /**
@@ -467,9 +467,9 @@ schema *makeEnlargedSchema(schema *s, double width) {
  * The wires are prolonged accordingly.
  */
 enlargedSchema::enlargedSchema(schema *s, double width)
-    : schema(s->inputs(), s->outputs(), width, s->height()), fSchema(s) {
-    for (unsigned int i = 0; i < inputs(); i++) fInputPoint.emplace_back(0, 0);
-    for (unsigned int i = 0; i < outputs(); i++) fOutputPoint.emplace_back(0, 0);
+    : schema(s->inputs, s->outputs, width, s->height), fSchema(s) {
+    for (unsigned int i = 0; i < inputs; i++) fInputPoint.emplace_back(0, 0);
+    for (unsigned int i = 0; i < outputs; i++) fOutputPoint.emplace_back(0, 0);
 }
 
 /**
@@ -480,17 +480,17 @@ enlargedSchema::enlargedSchema(schema *s, double width)
 void enlargedSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double dx = (width() - fSchema->width()) / 2;
+    double dx = (width - fSchema->width) / 2;
     fSchema->place(ox + dx, oy, orientation);
 
     if (orientation == kRightLeft) dx = -dx;
 
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = fSchema->inputPoint(i);
         fInputPoint[i] = point(p.x - dx, p.y);  //, p.z);
     }
 
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point p = fSchema->outputPoint(i);
         fOutputPoint[i] = point(p.x + dx, p.y);  //, p.z);
     }
@@ -500,13 +500,13 @@ void enlargedSchema::place(double ox, double oy, int orientation) {
 
 point enlargedSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < inputs());
+    faustassert(i < inputs);
     return fInputPoint[i];
 }
 
 point enlargedSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < outputs());
+    faustassert(i < outputs);
     return fOutputPoint[i];
 }
 
@@ -520,14 +520,14 @@ void enlargedSchema::draw(device &dev) {
     fSchema->draw(dev);
 #if 0
     // draw enlarge input wires
-    for (unsigned int i=0; i<inputs(); i++) {
+    for (unsigned int i=0; i<fInputs; i++) {
         point p = inputPoint(i);
         point q = fSchema->inputPoint(i);
         if ( (p.z>=0) && (q.z>=0) ) dev.trait(p.x, p.y, q.x, q.y);
     }
 
     // draw enlarge output wires
-    for (unsigned int i=0; i<outputs(); i++) {
+    for (unsigned int i=0; i<fOutputs; i++) {
         point p = outputPoint(i);
         point q = fSchema->outputPoint(i);
         if ( (p.z>=0) && (q.z>=0) ) dev.trait(p.x, p.y, q.x, q.y);
@@ -545,14 +545,14 @@ void enlargedSchema::collectTraits(collector &c) {
     fSchema->collectTraits(c);
 
     // draw enlarge input wires
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = inputPoint(i);
         point q = fSchema->inputPoint(i);
         c.addTrait(trait(p, q));  // in->out direction
     }
 
     // draw enlarge output wires
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point q = fSchema->outputPoint(i);
         point p = outputPoint(i);
         c.addTrait(trait(q, p));  // in->out direction
@@ -580,13 +580,13 @@ public:
 
 schema *makeParSchema(schema *s1, schema *s2) {
     // make sure s1 and s2 have same width
-    return new parSchema(makeEnlargedSchema(s1, s2->width()), makeEnlargedSchema(s2, s1->width()));
+    return new parSchema(makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width));
 }
 
 parSchema::parSchema(schema *s1, schema *s2)
-    : schema(s1->inputs() + s2->inputs(), s1->outputs() + s2->outputs(), s1->width(), s1->height() + s2->height()),
-      fSchema1(s1), fSchema2(s2), fInputFrontier(s1->inputs()), fOutputFrontier(s1->outputs()) {
-    faustassert(s1->width() == s2->width());
+    : schema(s1->inputs + s2->inputs, s1->outputs + s2->outputs, s1->width, s1->height + s2->height),
+      fSchema1(s1), fSchema2(s2), fInputFrontier(s1->inputs), fOutputFrontier(s1->outputs) {
+    faustassert(s1->width == s2->width);
 }
 
 void parSchema::place(double ox, double oy, int orientation) {
@@ -594,10 +594,10 @@ void parSchema::place(double ox, double oy, int orientation) {
 
     if (orientation == kLeftRight) {
         fSchema1->place(ox, oy, orientation);
-        fSchema2->place(ox, oy + fSchema1->height(), orientation);
+        fSchema2->place(ox, oy + fSchema1->height, orientation);
     } else {
         fSchema2->place(ox, oy, orientation);
-        fSchema1->place(ox, oy + fSchema2->height(), orientation);
+        fSchema1->place(ox, oy + fSchema2->height, orientation);
     }
 
     endPlace();
@@ -657,17 +657,17 @@ static int direction(const point &a, const point &b) {
  * It depends on the largest group of connections that go in the same direction.
  */
 static double computeHorzGap(schema *a, schema *b) {
-    faustassert(a->outputs() == b->inputs());
+    faustassert(a->outputs == b->inputs);
 
-    if (a->outputs() == 0) return 0;
+    if (a->outputs == 0) return 0;
 
     // store the size of the largest group for each direction
     int MaxGroupSize[3];
     for (int &i: MaxGroupSize) i = 0;
 
     // place a and b to have valid connection points
-    double ya = max(0.0, 0.5 * (b->height() - a->height()));
-    double yb = max(0.0, 0.5 * (a->height() - b->height()));
+    double ya = max(0.0, 0.5 * (b->height - a->height));
+    double yb = max(0.0, 0.5 * (a->height - b->height));
     a->place(0, ya, kLeftRight);
     b->place(0, yb, kLeftRight);
 
@@ -676,7 +676,7 @@ static double computeHorzGap(schema *a, schema *b) {
     int gsize = 1;
 
     // analyze direction of remaining points
-    for (unsigned int i = 1; i < a->outputs(); i++) {
+    for (unsigned int i = 1; i < a->outputs; i++) {
         int d = direction(a->outputPoint(i), b->inputPoint(i));
         if (d == gdir) {
             gsize++;
@@ -701,8 +701,8 @@ static double computeHorzGap(schema *a, schema *b) {
  * Compute an horizontal gap based on the number of upward and downward connections.
  */
 schema *makeSeqSchema(schema *s1, schema *s2) {
-    unsigned int o = s1->outputs();
-    unsigned int i = s2->inputs();
+    unsigned int o = s1->outputs;
+    unsigned int i = s2->inputs;
 
     schema *a = (o < i) ? makeParSchema(s1, makeCableSchema(i - o)) : s1;
     schema *b = (o > i) ? makeParSchema(s2, makeCableSchema(o - i)) : s2;
@@ -715,11 +715,11 @@ schema *makeSeqSchema(schema *s1, schema *s2) {
  * The components s1 and s2 are supposed to be "compatible" (s1 : n->m and s2 : m->q).
  */
 seqSchema::seqSchema(schema *s1, schema *s2, double hgap)
-    : schema(s1->inputs(), s2->outputs(), s1->width() + hgap + s2->width(), max(s1->height(), s2->height())),
+    : schema(s1->inputs, s2->outputs, s1->width + hgap + s2->width, max(s1->height, s2->height)),
       fSchema1(s1),
       fSchema2(s2),
       fHorzGap(hgap) {
-    faustassert(s1->outputs() == s2->inputs());
+    faustassert(s1->outputs == s2->inputs);
 }
 
 //-----------------------placement------------------------------
@@ -730,15 +730,15 @@ seqSchema::seqSchema(schema *s1, schema *s2, double hgap)
 void seqSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double y1 = max(0.0, 0.5 * (fSchema2->height() - fSchema1->height()));
-    double y2 = max(0.0, 0.5 * (fSchema1->height() - fSchema2->height()));
+    double y1 = max(0.0, 0.5 * (fSchema2->height - fSchema1->height));
+    double y2 = max(0.0, 0.5 * (fSchema1->height - fSchema2->height));
 
     if (orientation == kLeftRight) {
         fSchema1->place(ox, oy + y1, orientation);
-        fSchema2->place(ox + fSchema1->width() + fHorzGap, oy + y2, orientation);
+        fSchema2->place(ox + fSchema1->width + fHorzGap, oy + y2, orientation);
     } else {
         fSchema2->place(ox, oy + y2, orientation);
-        fSchema1->place(ox + fSchema2->width() + fHorzGap, oy + y1, orientation);
+        fSchema1->place(ox + fSchema2->width + fHorzGap, oy + y1, orientation);
     }
     endPlace();
 }
@@ -763,7 +763,7 @@ point seqSchema::outputPoint(unsigned int i) const {
  */
 void seqSchema::draw(device &dev) {
     faustassert(placed());
-    faustassert(fSchema1->outputs() == fSchema2->inputs());
+    faustassert(fSchema1->outputs == fSchema2->inputs);
 
     fSchema1->draw(dev);
     fSchema2->draw(dev);
@@ -775,7 +775,7 @@ void seqSchema::draw(device &dev) {
  */
 void seqSchema::collectTraits(collector &c) {
     faustassert(placed());
-    faustassert(fSchema1->outputs() == fSchema2->inputs());
+    faustassert(fSchema1->outputs == fSchema2->inputs);
 
     fSchema1->collectTraits(c);
     fSchema2->collectTraits(c);
@@ -788,14 +788,14 @@ void seqSchema::collectTraits(collector &c) {
  */
 
 void seqSchema::drawInternalWires(device &dev) {
-    faustassert(fSchema1->outputs() == fSchema2->inputs());
+    faustassert(fSchema1->outputs == fSchema2->inputs);
 
-    const int N = fSchema1->outputs();
+    const int N = fSchema1->outputs;
     double dx = 0;
     double mx = 0;
     int dir = -1;
 
-    if (orientation() == kLeftRight) {
+    if (orientation == kLeftRight) {
         // draw left right cables
         for (int i = 0; i < N; i++) {
             point src = fSchema1->outputPoint(i);
@@ -874,14 +874,14 @@ void seqSchema::drawInternalWires(device &dev) {
  */
 
 void seqSchema::collectInternalWires(collector &c) {
-    faustassert(fSchema1->outputs() == fSchema2->inputs());
+    faustassert(fSchema1->outputs == fSchema2->inputs);
 
-    const int N = fSchema1->outputs();
+    const int N = fSchema1->outputs;
     double dx = 0;
     double mx = 0;
     int dir = -1;
 
-    if (orientation() == kLeftRight) {
+    if (orientation == kLeftRight) {
         // draw left right cables
         for (int i = 0; i < N; i++) {
             point src = fSchema1->outputPoint(i);
@@ -984,7 +984,7 @@ schema *makeMergeSchema(schema *s1, schema *s2) {
     // avoid ugly diagram by ensuring at least dWire width
     schema *a = makeEnlargedSchema(s1, dWire);
     schema *b = makeEnlargedSchema(s2, dWire);
-    double hgap = (a->height() + b->height()) / 4;
+    double hgap = (a->height + b->height) / 4;
     return new mergeSchema(a, b, hgap);
 }
 
@@ -993,7 +993,7 @@ schema *makeMergeSchema(schema *s1, schema *s2) {
  * The constructor is private in order to enforce the usage of `makeMergeSchema`.
  */
 mergeSchema::mergeSchema(schema *s1, schema *s2, double hgap)
-    : schema(s1->inputs(), s2->outputs(), s1->width() + s2->width() + hgap, max(s1->height(), s2->height())), fSchema1(s1), fSchema2(s2), fHorzGap(hgap) {}
+    : schema(s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), fSchema1(s1), fSchema2(s2), fHorzGap(hgap) {}
 
 /**
  * Place the two subschema horizontaly, centered, with enough gap for the connections.
@@ -1001,15 +1001,15 @@ mergeSchema::mergeSchema(schema *s1, schema *s2, double hgap)
 void mergeSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double dy1 = max(0.0, fSchema2->height() - fSchema1->height()) / 2.0;
-    double dy2 = max(0.0, fSchema1->height() - fSchema2->height()) / 2.0;
+    double dy1 = max(0.0, fSchema2->height - fSchema1->height) / 2.0;
+    double dy2 = max(0.0, fSchema1->height - fSchema2->height) / 2.0;
 
     if (orientation == kLeftRight) {
         fSchema1->place(ox, oy + dy1, orientation);
-        fSchema2->place(ox + fSchema1->width() + fHorzGap, oy + dy2, orientation);
+        fSchema2->place(ox + fSchema1->width + fHorzGap, oy + dy2, orientation);
     } else {
         fSchema2->place(ox, oy + dy2, orientation);
-        fSchema1->place(ox + fSchema2->width() + fHorzGap, oy + dy1, orientation);
+        fSchema1->place(ox + fSchema2->width + fHorzGap, oy + dy1, orientation);
     }
     endPlace();
 }
@@ -1035,11 +1035,11 @@ void mergeSchema::draw(device &dev) {
     fSchema2->draw(dev);
 
 #if 0
-    unsigned int r = fSchema2->inputs();
+    unsigned int r = fSchema2->fInputs;
     faustassert(r>0);
 
     // draw the connections between them
-    for (unsigned int i=0; i<fSchema1->outputs(); i++) {
+    for (unsigned int i=0; i<fSchema1->fOutputs; i++) {
         point p = fSchema1->outputPoint(i);
         point q = fSchema2->inputPoint(i%r);
         dev.trait(p.x, p.y, q.x, q.y);
@@ -1057,11 +1057,11 @@ void mergeSchema::collectTraits(collector &c) {
     fSchema1->collectTraits(c);
     fSchema2->collectTraits(c);
 
-    unsigned int r = fSchema2->inputs();
+    unsigned int r = fSchema2->inputs;
     faustassert(r > 0);
 
     // draw the connections between them
-    for (unsigned int i = 0; i < fSchema1->outputs(); i++) {
+    for (unsigned int i = 0; i < fSchema1->outputs; i++) {
         point p = fSchema1->outputPoint(i);
         point q = fSchema2->inputPoint(i % r);
         c.addTrait(trait(p, q));
@@ -1100,7 +1100,7 @@ schema *makeSplitSchema(schema *s1, schema *s2) {
     schema *b = makeEnlargedSchema(s2, dWire);
 
     // horizontal gap to avoid too sloppy connections
-    double hgap = (a->height() + b->height()) / 4;
+    double hgap = (a->height + b->height) / 4;
 
     return new splitSchema(a, b, hgap);
 }
@@ -1110,7 +1110,7 @@ schema *makeSplitSchema(schema *s1, schema *s2) {
  * The constructor is private in order to enforce the usage of `makeSplitSchema`.
  */
 splitSchema::splitSchema(schema *s1, schema *s2, double hgap)
-    : schema(s1->inputs(), s2->outputs(), s1->width() + s2->width() + hgap, max(s1->height(), s2->height())),
+    : schema(s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)),
       fSchema1(s1),
       fSchema2(s2),
       fHorzGap(hgap) {
@@ -1123,15 +1123,15 @@ splitSchema::splitSchema(schema *s1, schema *s2, double hgap)
 void splitSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double dy1 = max(0.0, fSchema2->height() - fSchema1->height()) / 2.0;
-    double dy2 = max(0.0, fSchema1->height() - fSchema2->height()) / 2.0;
+    double dy1 = max(0.0, fSchema2->height - fSchema1->height) / 2.0;
+    double dy2 = max(0.0, fSchema1->height - fSchema2->height) / 2.0;
 
     if (orientation == kLeftRight) {
         fSchema1->place(ox, oy + dy1, orientation);
-        fSchema2->place(ox + fSchema1->width() + fHorzGap, oy + dy2, orientation);
+        fSchema2->place(ox + fSchema1->width + fHorzGap, oy + dy2, orientation);
     } else {
         fSchema2->place(ox, oy + dy2, orientation);
-        fSchema1->place(ox + fSchema2->width() + fHorzGap, oy + dy1, orientation);
+        fSchema1->place(ox + fSchema2->width + fHorzGap, oy + dy1, orientation);
     }
     endPlace();
 }
@@ -1156,11 +1156,11 @@ void splitSchema::draw(device &dev) {
     fSchema1->draw(dev);
     fSchema2->draw(dev);
 
-    unsigned int r = fSchema1->outputs();
+    unsigned int r = fSchema1->outputs;
     faustassert(r > 0);
 #if 0
     // draw the connections between them
-    for (unsigned int i=0; i<fSchema2->inputs(); i++) {
+    for (unsigned int i=0; i<fSchema2->fInputs; i++) {
         point p = fSchema1->outputPoint(i%r);
         point q = fSchema2->inputPoint(i);
         if(p.z>0) {
@@ -1180,11 +1180,11 @@ void splitSchema::collectTraits(collector &c) {
     fSchema1->collectTraits(c);
     fSchema2->collectTraits(c);
 
-    unsigned int r = fSchema1->outputs();
+    unsigned int r = fSchema1->outputs;
     faustassert(r > 0);
 
     // draw the connections between them
-    for (unsigned int i = 0; i < fSchema2->inputs(); i++) {
+    for (unsigned int i = 0; i < fSchema2->inputs; i++) {
         point p = fSchema1->outputPoint(i % r);
         point q = fSchema2->inputPoint(i);
         c.addTrait(trait(point(p.x, p.y), point(q.x, q.y)));
@@ -1224,10 +1224,10 @@ private:
  * The left and right horizontal margins are computed according to the number of internal connections.
  */
 schema *makeRecSchema(schema *s1, schema *s2) {
-    schema *a = makeEnlargedSchema(s1, s2->width());
-    schema *b = makeEnlargedSchema(s2, s1->width());
-    double m = dWire * max(b->inputs(), b->outputs());
-    double w = a->width() + 2 * m;
+    schema *a = makeEnlargedSchema(s1, s2->width);
+    schema *b = makeEnlargedSchema(s2, s1->width);
+    double m = dWire * max(b->inputs, b->outputs);
+    double w = a->width + 2 * m;
 
     return new recSchema(a, b, w);
 }
@@ -1237,17 +1237,17 @@ schema *makeRecSchema(schema *s1, schema *s2) {
  * The two components are supposed to have the same width.
  */
 recSchema::recSchema(schema *s1, schema *s2, double width)
-    : schema(s1->inputs() - s2->outputs(), s1->outputs(), width, s1->height() + s2->height()),
+    : schema(s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height),
       fSchema1(s1),
       fSchema2(s2) {
     // this version only accepts legal expressions of same width
-    faustassert(s1->inputs() >= s2->outputs());
-    faustassert(s1->outputs() >= s2->inputs());
-    faustassert(s1->width() >= s2->width());
+    faustassert(s1->inputs >= s2->outputs);
+    faustassert(s1->outputs >= s2->inputs);
+    faustassert(s1->width >= s2->width);
 
     // create the input and output points
-    for (unsigned int i = 0; i < inputs(); i++) fInputPoint.emplace_back(0, 0);
-    for (unsigned int i = 0; i < outputs(); i++) fOutputPoint.emplace_back(0, 0);
+    for (unsigned int i = 0; i < inputs; i++) fInputPoint.emplace_back(0, 0);
+    for (unsigned int i = 0; i < outputs; i++) fOutputPoint.emplace_back(0, 0);
 }
 
 /**
@@ -1257,16 +1257,16 @@ recSchema::recSchema(schema *s1, schema *s2, double width)
 void recSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double dx1 = (width() - fSchema1->width()) / 2;
-    double dx2 = (width() - fSchema2->width()) / 2;
+    double dx1 = (width - fSchema1->width) / 2;
+    double dx2 = (width - fSchema2->width) / 2;
 
     // place the two sub diagrams
     if (orientation == kLeftRight) {
         fSchema2->place(ox + dx2, oy, kRightLeft);
-        fSchema1->place(ox + dx1, oy + fSchema2->height(), kLeftRight);
+        fSchema1->place(ox + dx1, oy + fSchema2->height, kLeftRight);
     } else {
         fSchema1->place(ox + dx1, oy, kRightLeft);
-        fSchema2->place(ox + dx2, oy + fSchema1->height(), kLeftRight);
+        fSchema2->place(ox + dx2, oy + fSchema1->height, kLeftRight);
     }
 
     // adjust delta space to orientation
@@ -1275,13 +1275,13 @@ void recSchema::place(double ox, double oy, int orientation) {
     }
 
     // place input points
-    for (unsigned int i = 0; i < inputs(); i++) {
-        point p = fSchema1->inputPoint(i + fSchema2->outputs());
+    for (unsigned int i = 0; i < inputs; i++) {
+        point p = fSchema1->inputPoint(i + fSchema2->outputs);
         fInputPoint[i] = point(p.x - dx1, p.y);
     }
 
     // place output points
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point p = fSchema1->outputPoint(i);
         fOutputPoint[i] = point(p.x + dx1, p.y);
     }
@@ -1311,8 +1311,8 @@ void recSchema::draw(device &dev) {
     fSchema2->draw(dev);
 
     // draw the implicit feedback delay to each fSchema2 input
-    double dw = (orientation() == kLeftRight) ? dWire : -dWire;
-    for (unsigned int i = 0; i < fSchema2->inputs(); i++) {
+    double dw = (orientation == kLeftRight) ? dWire : -dWire;
+    for (unsigned int i = 0; i < fSchema2->inputs; i++) {
         const point &p = fSchema1->outputPoint(i);
         drawDelaySign(dev, p.x + i * dw, p.y, dw / 2);
     }
@@ -1340,27 +1340,27 @@ void recSchema::collectTraits(collector &c) {
     fSchema2->collectTraits(c);
 
     // draw the feedback connections to each fSchema2 input
-    for (unsigned int i = 0; i < fSchema2->inputs(); i++) {
+    for (unsigned int i = 0; i < fSchema2->inputs; i++) {
         collectFeedback(c, fSchema1->outputPoint(i), fSchema2->inputPoint(i), i * dWire, outputPoint(i));
     }
 
     // draw the non recursive output lines
-    for (unsigned int i = fSchema2->inputs(); i < outputs(); i++) {
+    for (unsigned int i = fSchema2->inputs; i < outputs; i++) {
         point p = fSchema1->outputPoint(i);
         point q = outputPoint(i);
         c.addTrait(trait(p, q));  // in->out order
     }
 
     // draw the input lines
-    unsigned int skip = fSchema2->outputs();
-    for (unsigned int i = 0; i < inputs(); i++) {
+    unsigned int skip = fSchema2->outputs;
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = inputPoint(i);
         point q = fSchema1->inputPoint(i + skip);
         c.addTrait(trait(p, q));  // in->out order
     }
 
     // draw the feedfront connections from each fSchema2 output
-    for (unsigned int i = 0; i < fSchema2->outputs(); i++) {
+    for (unsigned int i = 0; i < fSchema2->outputs; i++) {
         collectFeedfront(c, fSchema2->outputPoint(i), fSchema1->inputPoint(i), i * dWire);
     }
 }
@@ -1370,8 +1370,8 @@ void recSchema::collectTraits(collector &c) {
  * displacement dx
  */
 void recSchema::collectFeedback(collector &c, const point &src, const point &dst, double dx, const point &out) {
-    double ox = src.x + ((orientation() == kLeftRight) ? dx : -dx);
-    double ct = (orientation() == kLeftRight) ? dWire / 2 : -dWire / 2;
+    double ox = src.x + ((orientation == kLeftRight) ? dx : -dx);
+    double ct = (orientation == kLeftRight) ? dWire / 2 : -dWire / 2;
 
     point up(ox, src.y - ct);
     point br(ox + ct / 2.0, src.y);
@@ -1391,7 +1391,7 @@ void recSchema::collectFeedback(collector &c, const point &src, const point &dst
  * displacement dx
  */
 void recSchema::collectFeedfront(collector &c, const point &src, const point &dst, double dx) {
-    double ox = src.x + ((orientation() == kLeftRight) ? -dx : dx);
+    double ox = src.x + ((orientation == kLeftRight) ? -dx : dx);
 
     c.addTrait(trait(point(src.x, src.y), point(ox, src.y)));
     c.addTrait(trait(point(ox, src.y), point(ox, dst.y)));
@@ -1439,7 +1439,7 @@ schema *makeTopSchema(schema *s, double margin, const string &text, const string
  * The constructor is made private to enforce the usage of `makeTopSchema`.
  */
 topSchema::topSchema(schema *s, double margin, const string &text, const string &link)
-    : schema(0, 0, s->width() + 2 * margin, s->height() + 2 * margin), fSchema(s), fMargin(margin), fText(text), fLink(link) {
+    : schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), fSchema(s), fMargin(margin), fText(text), fLink(link) {
 }
 
 /**
@@ -1459,7 +1459,7 @@ void topSchema::place(double ox, double oy, int orientation) {
  */
 point topSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < inputs());
+    faustassert(i < inputs);
     throw faustexception("ERROR : topSchema::inputPoint\n");
 }
 
@@ -1468,7 +1468,7 @@ point topSchema::inputPoint(unsigned int i) const {
  */
 point topSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < outputs());
+    faustassert(i < outputs);
     throw faustexception("ERROR : topSchema::outputPoint\n");
 }
 
@@ -1480,16 +1480,16 @@ void topSchema::draw(device &dev) {
     faustassert(placed());
 
     // draw a background white rectangle
-    dev.rect(x(), y(), width() - 1, height() - 1, "#ffffff", fLink.c_str());
+    dev.rect(x, y, width - 1, height - 1, "#ffffff", fLink.c_str());
     // draw the label
-    dev.label(x() + fMargin, y() + fMargin / 2, fText.c_str());
+    dev.label(x + fMargin, y + fMargin / 2, fText.c_str());
 
     fSchema->draw(dev);
 
     // draw arrows at output points of schema
-    for (unsigned int i = 0; i < fSchema->outputs(); i++) {
+    for (unsigned int i = 0; i < fSchema->outputs; i++) {
         point p = fSchema->outputPoint(i);
-        dev.fleche(p.x, p.y, 0, orientation());
+        dev.fleche(p.x, p.y, 0, orientation);
     }
 }
 
@@ -1502,13 +1502,13 @@ void topSchema::collectTraits(collector &c) {
     fSchema->collectTraits(c);
 
     // draw arrows at output points of schema
-    for (unsigned int i = 0; i < fSchema->inputs(); i++) {
+    for (unsigned int i = 0; i < fSchema->inputs; i++) {
         point p = fSchema->inputPoint(i);
         c.addOutput(p);
     }
 
     // draw arrows at output points of schema
-    for (unsigned int i = 0; i < fSchema->outputs(); i++) {
+    for (unsigned int i = 0; i < fSchema->outputs; i++) {
         point p = fSchema->outputPoint(i);
         c.addInput(p);
     }
@@ -1549,9 +1549,9 @@ schema *makeDecorateSchema(schema *s, double margin, const string &text) { retur
  * The constructor is made private to enforce the usage of `makeDecorateSchema`
  */
 decorateSchema::decorateSchema(schema *s, double margin, const string &text)
-    : schema(s->inputs(), s->outputs(), s->width() + 2 * margin, s->height() + 2 * margin), fSchema(s), fMargin(margin), fText(text) {
-    for (unsigned int i = 0; i < inputs(); i++) fInputPoint.emplace_back(0, 0);
-    for (unsigned int i = 0; i < outputs(); i++) fOutputPoint.emplace_back(0, 0);
+    : schema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), fSchema(s), fMargin(margin), fText(text) {
+    for (unsigned int i = 0; i < inputs; i++) fInputPoint.emplace_back(0, 0);
+    for (unsigned int i = 0; i < outputs; i++) fOutputPoint.emplace_back(0, 0);
 }
 
 /**
@@ -1567,12 +1567,12 @@ void decorateSchema::place(double ox, double oy, int orientation) {
     double m = fMargin;
     if (orientation == kRightLeft) m = -m;
 
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = fSchema->inputPoint(i);
         fInputPoint[i] = point(p.x - m, p.y);  //, p.z);
     }
 
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point p = fSchema->outputPoint(i);
         fOutputPoint[i] = point(p.x + m, p.y);  //, p.z);
     }
@@ -1585,7 +1585,7 @@ void decorateSchema::place(double ox, double oy, int orientation) {
  */
 point decorateSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < inputs());
+    faustassert(i < inputs);
     return fInputPoint[i];
 }
 
@@ -1594,7 +1594,7 @@ point decorateSchema::inputPoint(unsigned int i) const {
  */
 point decorateSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < outputs());
+    faustassert(i < outputs);
     return fOutputPoint[i];
 }
 
@@ -1608,14 +1608,14 @@ void decorateSchema::draw(device &dev) {
     fSchema->draw(dev);
 #if 0
     // draw enlarge input wires
-    for (unsigned int i=0; i<inputs(); i++) {
+    for (unsigned int i=0; i<fInputs; i++) {
         point p = inputPoint(i);
         point q = fSchema->inputPoint(i);
         dev.trait(p.x, p.y, q.x, q.y);
     }
 
     // draw enlarge output wires
-    for (unsigned int i=0; i<outputs(); i++) {
+    for (unsigned int i=0; i<fOutputs; i++) {
         point p = outputPoint(i);
         point q = fSchema->outputPoint(i);
         dev.trait(p.x, p.y, q.x, q.y);
@@ -1623,12 +1623,12 @@ void decorateSchema::draw(device &dev) {
 #endif
     // define the coordinates of the frame
     double tw = (2 + fText.size()) * dLetter * 0.75;
-    double x0 = x() + fMargin / 2;             // left
-    double y0 = y() + fMargin / 2;             // top
-    double x1 = x() + width() - fMargin / 2;   // right
-    double y1 = y() + height() - fMargin / 2;  // bottom
+    double x0 = x + fMargin / 2;             // left
+    double y0 = y + fMargin / 2;             // top
+    double x1 = x + width - fMargin / 2;   // right
+    double y1 = y + height - fMargin / 2;  // bottom
     // double tl = x0 + 2*dWire;					// left of text zone
-    double tl = x() + fMargin;     // left of text zone
+    double tl = x + fMargin;     // left of text zone
     double tr = min(tl + tw, x1);  // right of text zone
 
     // draw the surronding frame
@@ -1652,14 +1652,14 @@ void decorateSchema::collectTraits(collector &c) {
     fSchema->collectTraits(c);
 
     // draw enlarge input wires
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = inputPoint(i);
         point q = fSchema->inputPoint(i);
         c.addTrait(trait(p, q));  // in->out direction
     }
 
     // draw enlarge output wires
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point p = fSchema->outputPoint(i);
         point q = outputPoint(i);
         c.addTrait(trait(p, q));  // in->out direction
@@ -1728,7 +1728,7 @@ void connectorSchema::place(double x, double y, int orientation) {
  */
 point connectorSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < inputs());
+    faustassert(i < inputs);
     return fInputPoint[i];
 }
 
@@ -1737,7 +1737,7 @@ point connectorSchema::inputPoint(unsigned int i) const {
  */
 point connectorSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < outputs());
+    faustassert(i < outputs);
     return fOutputPoint[i];
 }
 
@@ -1746,18 +1746,18 @@ point connectorSchema::outputPoint(unsigned int i) const {
  * orientation of the connectorSchema
  */
 void connectorSchema::placeInputPoints() {
-    int N = inputs();
+    int N = inputs;
 
-    if (orientation() == kLeftRight) {
-        double px = x();
-        double py = y() + (height() - dWire * (N - 1)) / 2;
+    if (orientation == kLeftRight) {
+        double px = x;
+        double py = y + (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fInputPoint[i] = point(px, py + i * dWire);
         }
     } else {
-        double px = x() + width();
-        double py = y() + height() - (height() - dWire * (N - 1)) / 2;
+        double px = x + width;
+        double py = y + height - (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fInputPoint[i] = point(px, py - i * dWire);
@@ -1770,19 +1770,19 @@ void connectorSchema::placeInputPoints() {
  * orientation of the connectorSchema
  */
 void connectorSchema::placeOutputPoints() {
-    int N = outputs();
+    int N = outputs;
 
-    if (orientation() == kLeftRight) {
-        double px = x() + width();
-        double py = y() + (height() - dWire * (N - 1)) / 2;
+    if (orientation == kLeftRight) {
+        double px = x + width;
+        double py = y + (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fOutputPoint[i] = point(px, py + i * dWire);
         }
 
     } else {
-        double px = x();
-        double py = y() + height() - (height() - dWire * (N - 1)) / 2;
+        double px = x;
+        double py = y + height - (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fOutputPoint[i] = point(px, py - i * dWire);
@@ -1810,9 +1810,9 @@ void connectorSchema::collectTraits(collector &c) {
  * connectorSchema rectangle
  */
 void connectorSchema::collectInputWires(collector &c) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = fInputPoint[i];
         c.addTrait(trait(point(p.x, p.y), point(p.x + dx, p.y)));  // in->out direction
         c.addInput(point(p.x + dx, p.y));
@@ -1824,9 +1824,9 @@ void connectorSchema::collectInputWires(collector &c) {
  * output points
  */
 void connectorSchema::collectOutputWires(collector &c) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point p = fOutputPoint[i];
         c.addTrait(trait(point(p.x - dx, p.y), point(p.x, p.y)));  // in->out direction
         c.addOutput(point(p.x - dx, p.y));
@@ -1914,7 +1914,7 @@ void routeSchema::place(double x, double y, int orientation) {
  */
 point routeSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < inputs());
+    faustassert(i < inputs);
     return fInputPoint[i];
 }
 
@@ -1923,7 +1923,7 @@ point routeSchema::inputPoint(unsigned int i) const {
  */
 point routeSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
-    faustassert(i < outputs());
+    faustassert(i < outputs);
     return fOutputPoint[i];
 }
 
@@ -1931,18 +1931,18 @@ point routeSchema::outputPoint(unsigned int i) const {
  * Computes the input points according to the position and the orientation of the `routeSchema`.
  */
 void routeSchema::placeInputPoints() {
-    int N = inputs();
+    int N = inputs;
 
-    if (orientation() == kLeftRight) {
-        double px = x();
-        double py = y() + (height() - dWire * (N - 1)) / 2;
+    if (orientation == kLeftRight) {
+        double px = x;
+        double py = y + (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fInputPoint[i] = point(px, py + i * dWire);
         }
     } else {
-        double px = x() + width();
-        double py = y() + height() - (height() - dWire * (N - 1)) / 2;
+        double px = x + width;
+        double py = y + height - (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fInputPoint[i] = point(px, py - i * dWire);
@@ -1954,18 +1954,18 @@ void routeSchema::placeInputPoints() {
  * Computes the output points according to the position and the orientation of the `routeSchema`.
  */
 void routeSchema::placeOutputPoints() {
-    int N = outputs();
+    int N = outputs;
 
-    if (orientation() == kLeftRight) {
-        double px = x() + width();
-        double py = y() + (height() - dWire * (N - 1)) / 2;
+    if (orientation == kLeftRight) {
+        double px = x + width;
+        double py = y + (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fOutputPoint[i] = point(px, py + i * dWire);
         }
     } else {
-        double px = x();
-        double py = y() + height() - (height() - dWire * (N - 1)) / 2;
+        double px = x;
+        double py = y + height - (height - dWire * (N - 1)) / 2;
 
         for (int i = 0; i < N; i++) {
             fOutputPoint[i] = point(px, py - i * dWire);
@@ -1992,14 +1992,14 @@ void routeSchema::draw(device &dev) {
  * Draw the colored rectangle with the optional link
  */
 void routeSchema::drawRectangle(device &dev) {
-    dev.rect(x() + dHorz, y() + dVert, width() - 2 * dHorz, height() - 2 * dVert, fColor.c_str(), fLink.c_str());
+    dev.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, fColor.c_str(), fLink.c_str());
 }
 
 /**
  * Draw the text centered on the box
  */
 void routeSchema::drawText(device &dev) {
-    dev.text(x() + width() / 2, y() + height() / 2, fText.c_str(), fLink.c_str());
+    dev.text(x + width / 2, y + height / 2, fText.c_str(), fLink.c_str());
 }
 
 /**
@@ -2009,26 +2009,26 @@ void routeSchema::drawText(device &dev) {
 void routeSchema::drawOrientationMark(device &dev) {
     double px, py;
 
-    if (orientation() == kLeftRight) {
-        px = x() + dHorz;
-        py = y() + dVert;
+    if (orientation == kLeftRight) {
+        px = x + dHorz;
+        py = y + dVert;
     } else {
-        px = x() + width() - dHorz;
-        py = y() + height() - dVert;
+        px = x + width - dHorz;
+        py = y + height - dVert;
     }
 
-    dev.markSens(px, py, orientation());
+    dev.markSens(px, py, orientation);
 }
 
 /**
  * Draw horizontal arrows from the input points to the `routeSchema` rectangle.
  */
 void routeSchema::drawInputArrows(device &dev) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = fInputPoint[i];
-        dev.fleche(p.x + dx, p.y, 0, orientation());
+        dev.fleche(p.x + dx, p.y, 0, orientation);
     }
 }
 
@@ -2045,7 +2045,7 @@ void routeSchema::collectTraits(collector &c) {
         point p1 = fInputPoint[src];
         point p2 = fOutputPoint[dst];
         // cerr << "add traits: " << p1.x << 'x' << p1.y << " -> " << p2.x << "x" << p2.y << endl;
-        double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+        double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
         c.addTrait(trait(point(p1.x + dx, p1.y), point(p2.x - dx, p2.y)));
     }
 }
@@ -2054,9 +2054,9 @@ void routeSchema::collectTraits(collector &c) {
  * Draw horizontal arrows from the input points to the `routeSchema` rectangle.
  */
 void routeSchema::collectInputWires(collector &c) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < inputs(); i++) {
+    for (unsigned int i = 0; i < inputs; i++) {
         point p = fInputPoint[i];
         c.addTrait(trait(point(p.x, p.y), point(p.x + dx, p.y)));  // in->out direction
         c.addInput(point(p.x + dx, p.y));
@@ -2067,9 +2067,9 @@ void routeSchema::collectInputWires(collector &c) {
  * Draw horizontal line from the `routeSchema` rectangle to the output points.
  */
 void routeSchema::collectOutputWires(collector &c) {
-    double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
+    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
 
-    for (unsigned int i = 0; i < outputs(); i++) {
+    for (unsigned int i = 0; i < outputs; i++) {
         point p = fOutputPoint[i];
         c.addTrait(trait(point(p.x - dx, p.y), point(p.x, p.y)));  // in->out direction
         c.addOutput(point(p.x - dx, p.y));

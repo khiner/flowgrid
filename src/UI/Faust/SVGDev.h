@@ -2,7 +2,7 @@
 
 #include "Device.h"
 
-class LIBFAUST_API SVGDev : public device {
+class SVGDev : public device {
 public:
     SVGDev(const char *, double, double);
     ~SVGDev() override;

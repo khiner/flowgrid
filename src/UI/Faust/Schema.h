@@ -29,12 +29,9 @@ struct point {
 };
 
 struct trait {
-    point start;
-    point end;
-    bool hasRealInput;
-    bool hasRealOutput;
+    point start, end;
 
-    trait(const point &p1, const point &p2) : start(p1), end(p2), hasRealInput(false), hasRealOutput(false) {}
+    trait(const point &p1, const point &p2) : start(p1), end(p2) {}
     void draw(device &dev) const { dev.trait(start.x, start.y, end.x, end.y); }
 
     bool operator<(const trait &t) const {
@@ -46,15 +43,15 @@ struct trait {
 };
 
 struct collector {
-    set<point> fOutputs;     // collect real outputs
-    set<point> fInputs;      // collect real inputs
-    set<trait> fTraits;      // collect traits to draw
-    set<trait> fWithInput;   // collect traits with a real input
-    set<trait> fWithOutput;  // collect traits with a real output
+    set<point> outputs;     // collect real outputs
+    set<point> inputs;      // collect real inputs
+    set<trait> traits;      // collect traits to draw
+    set<trait> withInput;   // collect traits with a real input
+    set<trait> withOutput;  // collect traits with a real output
 
-    void addOutput(const point &p) { fOutputs.insert(p); }
-    void addInput(const point &p) { fInputs.insert(p); }
-    void addTrait(const trait &t) { fTraits.insert(t); }
+    void addOutput(const point &p) { outputs.insert(p); }
+    void addInput(const point &p) { inputs.insert(p); }
+    void addTrait(const trait &t) { traits.insert(t); }
     void computeVisibleTraits();
     bool isVisible(const trait &t);
     void draw(device &dev);
@@ -65,43 +62,29 @@ enum { kLeftRight = 1, kRightLeft = -1 };
 /**
  * An abstract block diagram schema
  */
-class schema {
-private:
-    const unsigned int fInputs;
-    const unsigned int fOutputs;
-    const double fWidth;
-    const double fHeight;
+struct schema {
+    const unsigned int inputs, outputs;
+    const double width, height;
 
     // fields only defined after `place()` is called
-    bool fPlaced;  // `false` until `place()` is called
-    double fX;
-    double fY;
-    int fOrientation;
+    bool fPlaced; // `false` until `place()` is called
+    double x, y;
+    int orientation;
 
-public:
     schema(unsigned int inputs, unsigned int outputs, double width, double height)
-        : fInputs(inputs), fOutputs(outputs), fWidth(width), fHeight(height), fPlaced(false), fX(0), fY(0), fOrientation(0) {}
+        : inputs(inputs), outputs(outputs), width(width), height(height), fPlaced(false), x(0), y(0), orientation(0) {}
     virtual ~schema() = default;
 
-    // constant fields
-    double width() const { return fWidth; }
-    double height() const { return fHeight; }
-    unsigned int inputs() const { return fInputs; }
-    unsigned int outputs() const { return fOutputs; }
-
     // starts and end placement
-    void beginPlace(double x, double y, int orientation) {
-        fX = x;
-        fY = y;
-        fOrientation = orientation;
+    void beginPlace(double new_x, double new_y, int new_orientation) {
+        x = new_x;
+        y = new_y;
+        orientation = new_orientation;
     }
     void endPlace() { fPlaced = true; }
 
     // fields available after placement
     bool placed() const { return fPlaced; }
-    double x() const { return fX; }
-    double y() const { return fY; }
-    int orientation() const { return fOrientation; }
 
     // abstract interface for subclasses
     virtual void place(double x, double y, int orientation) = 0;

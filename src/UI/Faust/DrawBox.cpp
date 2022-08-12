@@ -276,7 +276,7 @@ static void writeSchemaFile(Tree bd) {
     // generate the label of the schema
     string link = dc->backLink[bd];
     ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), link);
-    SVGDev dev(res1.c_str(), ts->width(), ts->height());
+    SVGDev dev(res1.c_str(), ts->width, ts->height);
     ts->place(0, 0, kLeftRight);
     ts->draw(dev);
     {

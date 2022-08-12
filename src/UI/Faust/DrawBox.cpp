@@ -190,20 +190,6 @@ void faustassertaux(bool cond, const string &file, int line) {
     }
 }
 
-bool getProperty(Tree t, Tree key, Tree &val) {
-    if (auto pl = t->getProperty(key)) {
-        val = pl;
-        return true;
-    }
-
-    return false;
-}
-
-bool getDefNameProperty(Tree t, Tree &id) {
-    static Tree DEFNAMEPROPERTY = tree(symbol("DEFNAMEPROPERTY"));
-    return getProperty(t, DEFNAMEPROPERTY, id);
-}
-
 // prototypes of internal functions
 static void writeSchemaFile(Tree bd);
 static schema *generateDiagramSchema(Tree t);
@@ -226,14 +212,14 @@ void drawBox(Box box) {
     BCOMPLEXITY = {};
     mkchDir("FaustDiagrams"); // create a directory to store files
 
-    scheduleDrawing(box);    // schedule the initial drawing
+    scheduleDrawing(box); // schedule the initial drawing
 
     Tree t;
     while (pendingDrawing(t)) {
         writeSchemaFile(t); // generate all the pending drawing
     }
 
-    choldDir();  // return to current directory
+    choldDir(); // return to original directory
 }
 
 // Collect the leaf numbers of tree l into vector v.

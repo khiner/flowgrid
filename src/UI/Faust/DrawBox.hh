@@ -1,6 +1,6 @@
 #pragma once
 
 class CTree;
-typedef CTree *Tree;
+typedef CTree *Box;
 
-void drawBox(Tree bd);
+void drawBox(Box box);

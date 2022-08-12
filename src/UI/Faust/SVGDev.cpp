@@ -5,13 +5,12 @@
 using namespace std;
 
 bool gScaledSVG = false; // Draw scaled SVG files
-bool gShadowBlur = false; // note: svg2pdf doesn't like the blur filter
+bool gShadowBlur = false; // Note: `svg2pdf` doesn't like the blur filter
 
 static char *xmlcode(const char *name, char *name2) {
     int i, j;
 
-    // SUBSTITUTION DES CARACTeRES INTERDITS EN XML
-
+    // Substitute characters prohibited in XML:
     for (i = 0, j = 0; (name[i] != 0) && (j < 250); i++) {
         switch (name[i]) {
             case '<':name2[j++] = '&';
@@ -94,7 +93,7 @@ SVGDev::~SVGDev() {
 
 void SVGDev::rect(double x, double y, double l, double h, const char *color, const char *link) {
     char buf[512];
-    if (link != 0 && link[0] != 0) {
+    if (link != nullptr && link[0] != 0) {
         // open the optional link tag
         fprintf(fic_repr, "<a xlink:href=\"%s\">\n", xmlcode(link, buf));
     }
@@ -115,7 +114,7 @@ void SVGDev::rect(double x, double y, double l, double h, const char *color, con
     fprintf(fic_repr,
         "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" rx=\"0\" ry=\"0\" style=\"stroke:none;fill:%s;\"/>\n",
         x, y, l, h, color);
-    if (link != 0 && link[0] != 0) {
+    if (link != nullptr && link[0] != 0) {
         // close the optional link tag
         fprintf(fic_repr, "</a>\n");
     }
@@ -127,7 +126,7 @@ void SVGDev::rect(double x, double y, double l, double h, const char *color, con
 
 void SVGDev::triangle(double x, double y, double l, double h, const char *color, const char *link, bool leftright) {
     char buf[512];
-    if (link != 0 && link[0] != 0) {
+    if (link != nullptr && link[0] != 0) {
         // open the optional link tag
         fprintf(fic_repr, "<a xlink:href=\"%s\">\n", xmlcode(link, buf));
     }
@@ -202,7 +201,7 @@ void SVGDev::dasharray(double x1, double y1, double x2, double y2) {
 
 void SVGDev::text(double x, double y, const char *name, const char *link) {
     char buf[512];
-    if (link != 0 && link[0] != 0) {
+    if (link != nullptr && link[0] != 0) {
         // open the optional link tag
         fprintf(fic_repr, "<a xlink:href=\"%s\">\n", xmlcode(link, buf));
     }
@@ -211,7 +210,7 @@ void SVGDev::text(double x, double y, const char *name, const char *link) {
         "<text x=\"%f\" y=\"%f\" font-family=\"Arial\" font-size=\"7\" text-anchor=\"middle\" "
         "fill=\"#FFFFFF\">%s</text>\n",
         x, y + 2, xmlcode(name, name2));
-    if (link != 0 && link[0] != 0) {
+    if (link != nullptr && link[0] != 0) {
         // close the optional link tag
         fprintf(fic_repr, "</a>\n");
     }

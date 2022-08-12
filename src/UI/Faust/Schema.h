@@ -65,7 +65,6 @@ enum { kLeftRight = 1, kRightLeft = -1 };
 /**
  * An abstract block diagram schema
  */
-
 class schema {
 private:
     const unsigned int fInputs;
@@ -73,8 +72,8 @@ private:
     const double fWidth;
     const double fHeight;
 
-    // fields only defined after place() is called
-    bool fPlaced;  ///< false until place() is called
+    // fields only defined after `place()` is called
+    bool fPlaced;  // `false` until `place()` is called
     double fX;
     double fY;
     int fOrientation;

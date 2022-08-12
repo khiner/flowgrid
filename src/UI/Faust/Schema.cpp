@@ -38,8 +38,7 @@ bool gDrawRouteFrame = false;
 
 /**
  * A simple rectangular box with a text and inputs and outputs.
- * The constructor is private in order to make sure
- * makeBlockSchema is used instead
+ * The constructor is private in order to make sure `makeBlockSchema` is used instead
  */
 class blockSchema : public schema {
 protected:
@@ -81,10 +80,8 @@ static double quantize(int n) {
 }
 
 /**
- * Build a simple colored blockSchema with a certain number of
- * inputs and outputs, a text to be displayed, and an optional link.
- * Computes the size of the box according to the length of the text
- * and the maximum number of ports.
+ * Build a simple colored `blockSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
+ * Computes the size of the box according to the length of the text and the maximum number of ports.
  */
 schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link) {
     // determine the optimal size of the box
@@ -95,12 +92,6 @@ schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string 
     return new blockSchema(inputs, outputs, w, h, text, color, link);
 }
 
-/**
- * Build a simple colored blockSchema with a certain number of
- * inputs and outputs, a text to be displayed, and an optional link.
- * The length of the text as well as th number of inputs and outputs
- * are used to compute the size of the blockSchema
- */
 blockSchema::blockSchema(unsigned int inputs, unsigned int outputs, double width, double height, const string &text, const string &color, const string &link)
     : schema(inputs, outputs, width, height), fText(text), fColor(color), fLink(link) {
     for (unsigned int i = 0; i < inputs; i++) fInputPoint.emplace_back(0, 0);
@@ -108,9 +99,9 @@ blockSchema::blockSchema(unsigned int inputs, unsigned int outputs, double width
 }
 
 /**
- * Define the graphic position of the blockSchema. Computes the graphic
- * position of all the elements, in particular the inputs and outputs.
- * This method must be called before draw(), otherwise draw is not allowed
+ * Define the graphic position of the `blockSchema`.
+ * Computes the graphic position of all the elements, in particular the inputs and outputs.
+ * This method must be called before `draw()`.
  */
 void blockSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
@@ -121,18 +112,12 @@ void blockSchema::place(double x, double y, int orientation) {
     endPlace();
 }
 
-/**
- * Returns an input point
- */
 point blockSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
     faustassert(i < inputs());
     return fInputPoint[i];
 }
 
-/**
- * Returns an output point
- */
 point blockSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
     faustassert(i < outputs());
@@ -140,8 +125,7 @@ point blockSchema::outputPoint(unsigned int i) const {
 }
 
 /**
- * Computes the input points according to the position and the
- * orientation of the blockSchema
+ * Computes the input points according to the position and the orientation of the `blockSchema`.
  */
 void blockSchema::placeInputPoints() {
     int N = inputs();
@@ -164,8 +148,7 @@ void blockSchema::placeInputPoints() {
 }
 
 /**
- * Computes the output points according to the position and the
- * orientation of the blockSchema
+ * Computes the output points according to the position and the orientation of the `blockSchema`.
  */
 void blockSchema::placeOutputPoints() {
     int N = outputs();
@@ -189,8 +172,8 @@ void blockSchema::placeOutputPoints() {
 }
 
 /**
- * Draw the blockSchema on the device. This methos can only
- * be called after the blockSchema have been placed
+ * Draw the `blockSchema` on the device.
+ * This method can only be called after the `blockSchema` has been placed.
  */
 void blockSchema::draw(device &dev) {
     faustassert(placed());
@@ -202,22 +185,21 @@ void blockSchema::draw(device &dev) {
 }
 
 /**
- * Draw the colored rectangle with the optional link
+ * Draw the colored rectangle with the optional link.
  */
 void blockSchema::drawRectangle(device &dev) {
     dev.rect(x() + dHorz, y() + dVert, width() - 2 * dHorz, height() - 2 * dVert, fColor.c_str(), fLink.c_str());
 }
 
 /**
- * Draw the text centered on the box
+ * Draw the text centered on the box.
  */
 void blockSchema::drawText(device &dev) {
     dev.text(x() + width() / 2, y() + height() / 2, fText.c_str(), fLink.c_str());
 }
 
 /**
- * Draw the orientation mark, a small point that indicates
- * the first input (like integrated circuits)
+ * Draw the orientation mark, a small point that indicates the first input (like an integrated circuits).
  */
 void blockSchema::drawOrientationMark(device &dev) {
     double px, py;
@@ -234,8 +216,7 @@ void blockSchema::drawOrientationMark(device &dev) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the
- * blockSchema rectangle
+ * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
  */
 void blockSchema::drawInputArrows(device &dev) {
     double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
@@ -247,8 +228,7 @@ void blockSchema::drawInputArrows(device &dev) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the
- * blockSchema rectangle
+ * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
  */
 void blockSchema::collectTraits(collector &c) {
     collectInputWires(c);
@@ -256,8 +236,7 @@ void blockSchema::collectTraits(collector &c) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the
- * blockSchema rectangle
+ * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
  */
 void blockSchema::collectInputWires(collector &c) {
     double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
@@ -284,10 +263,10 @@ void blockSchema::collectOutputWires(collector &c) {
 }
 
 /**
- * Simple cables (identity box) in parallel. The width of a cable
- * is null. Therefore input and output connection points are the
- * same. The constructor is private to enforce the use of
- * makeCableSchema.
+ * Simple cables (identity box) in parallel.
+ * The width of a cable is null.
+ * Therefore input and output connection points are the same.
+ * The constructor is private to enforce the use of `makeCableSchema`.
  */
 class cableSchema : public schema {
     vector<point> fPoint;
@@ -306,7 +285,7 @@ private:
 };
 
 /**
- * Build n cables in parallel
+ * Build n cables in parallel.
  */
 schema *makeCableSchema(unsigned int n) {
     faustassert(n > 0);
@@ -314,14 +293,14 @@ schema *makeCableSchema(unsigned int n) {
 }
 
 /**
- * Build n cables in parallel
+ * Build n cables in parallel.
  */
 cableSchema::cableSchema(unsigned int n) : schema(n, n, 0, n * dWire) {
     for (unsigned int i = 0; i < n; i++) fPoint.emplace_back(0, 0);
 }
 
 /**
- * Place the communication points vertically spaced by dWire
+ * Place the communication points vertically spaced by `dWire`.
  */
 void cableSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
@@ -338,19 +317,19 @@ void cableSchema::place(double ox, double oy, int orientation) {
 }
 
 /**
- * Nothing to draw. Actual drawing will take place when the wires
- * are enlargered
+ * Nothing to draw.
+ * Actual drawing will take place when the wires are enlarged.
  */
 void cableSchema::draw(device &) {}
 
 /**
- * Nothing to collect. Actual collect will take place when the wires
- * are enlargered
+ * Nothing to collect.
+ * Actual collect will take place when the wires are enlarged.
  */
 void cableSchema::collectTraits(collector &) {}
 
 /**
- *input and output points are the same as the width is 0
+ * Input and output points are the same if the width is 0.
  */
 point cableSchema::inputPoint(unsigned int i) const {
     faustassert(i < inputs());
@@ -358,7 +337,7 @@ point cableSchema::inputPoint(unsigned int i) const {
 }
 
 /**
- *input and output points are the same as the width is 0
+ * Input and output points are the same if the width is 0.
  */
 point cableSchema::outputPoint(unsigned int i) const {
     faustassert(i < outputs());
@@ -366,8 +345,7 @@ point cableSchema::outputPoint(unsigned int i) const {
 }
 
 /**
- * An inverter : a special symbol corresponding to '*(-1)'
- * to create more compact diagrams
+ * An inverter is a special symbol corresponding to '*(-1)' to create more compact diagrams.
  */
 class inverterSchema : public blockSchema {
 public:
@@ -379,25 +357,25 @@ private:
 };
 
 /**
- * Build n cables in parallel
+ * Build n cables in parallel.
  */
 schema *makeInverterSchema(const string &color) { return new inverterSchema(color); }
 
 /**
- * Build n cables in parallel
+ * Build n cables in parallel.
  */
 inverterSchema::inverterSchema(const string &color) : blockSchema(1, 1, 2.5 * dWire, dWire, "-1", color, "") {}
 
 /**
- * Nothing to draw. Actual drawing will take place when the wires
- * are enlargered
+ * Nothing to draw.
+ * Actual drawing will take place when the wires are enlargered.
  */
 void inverterSchema::draw(device &dev) {
     dev.triangle(x() + dHorz, y() + 0.5, width() - 2 * dHorz, height() - 1, fColor.c_str(), fLink.c_str(), orientation() == kLeftRight);
 }
 
 /**
- * Terminate a cable (cut box)
+ * Terminate a cable (cut box).
  */
 class cutSchema : public schema {
     point fPoint;
@@ -420,15 +398,15 @@ private:
 schema *makeCutSchema() { return new cutSchema(); }
 
 /**
- * A Cut is represented by a small black dot. It has 1 input
- * and no outputs. It has a 0 width and a 1 wire height. The
- * constructor is private in order to enforce the usage of
- * makeCutSchema.
+ * A Cut is represented by a small black dot.
+ * It has 1 input and no outputs.
+ * It has a 0 width and a 1 wire height.
+ * The constructor is private in order to enforce the usage of `makeCutSchema`.
  */
 cutSchema::cutSchema() : schema(1, 0, 0, dWire / 100.0), fPoint(0, 0) {}
 
 /**
- * The input point is placed in the middle
+ * The input point is placed in the middle.
  */
 void cutSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
@@ -437,7 +415,7 @@ void cutSchema::place(double ox, double oy, int orientation) {
 }
 
 /**
- * A cut is represented by a small black dot
+ * A cut is represented by a small black dot.
  */
 void cutSchema::draw(device &) {
     // dev.rond(fPoint.x, fPoint.y, dWire/8.0);
@@ -446,7 +424,7 @@ void cutSchema::draw(device &) {
 void cutSchema::collectTraits(collector &) {}
 
 /**
- * By definition a Cut has only one input point
+ * By definition, a Cut has only one input point.
  */
 point cutSchema::inputPoint(unsigned int i) const {
     faustassert(i == 0);
@@ -454,7 +432,7 @@ point cutSchema::inputPoint(unsigned int i) const {
 }
 
 /**
- * By definition a Cut has no output point
+ * By definition, a Cut has no output point.
  */
 point cutSchema::outputPoint(unsigned int) const {
     faustassert(false);
@@ -477,16 +455,16 @@ public:
 };
 
 /**
- * Returns an enlarged schema, but only if really needed
- * that is if the requiered width is greater that the schema width.
+ * Returns an enlarged schema, but only if really needed.
+ * That is, if the required width is greater that the schema width.
  */
 schema *makeEnlargedSchema(schema *s, double width) {
     return width > s->width() ? new enlargedSchema(s, width) : s;
 }
 
 /**
- * Put additional space left and right of a schema so that the result has
- * a certain width. The wires are prolonged accordingly.
+ * Put additional space left and right of a schema so that the result has a certain width.
+ * The wires are prolonged accordingly.
  */
 enlargedSchema::enlargedSchema(schema *s, double width)
     : schema(s->inputs(), s->outputs(), width, s->height()), fSchema(s) {
@@ -495,9 +473,9 @@ enlargedSchema::enlargedSchema(schema *s, double width)
 }
 
 /**
- * Define the graphic position of the schema. Computes the graphic
- * position of all the elements, in particular the inputs and outputs.
- * This method must be called before draw(), otherwise draw is not allowed
+ * Define the graphic position of the schema.
+ * Computes the graphic position of all the elements, in particular the inputs and outputs.
+ * This method must be called before `draw()`.
  */
 void enlargedSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
@@ -520,18 +498,12 @@ void enlargedSchema::place(double ox, double oy, int orientation) {
     endPlace();
 }
 
-/**
- * Returns an input point
- */
 point enlargedSchema::inputPoint(unsigned int i) const {
     faustassert(placed());
     faustassert(i < inputs());
     return fInputPoint[i];
 }
 
-/**
- * Returns an output point
- */
 point enlargedSchema::outputPoint(unsigned int i) const {
     faustassert(placed());
     faustassert(i < outputs());
@@ -539,8 +511,8 @@ point enlargedSchema::outputPoint(unsigned int i) const {
 }
 
 /**
- * Draw the enlarged schema. This methos can only
- * be called after the block have been placed
+ * Draw the enlarged schema.
+ * This method can only be called after the block have been placed.
  */
 void enlargedSchema::draw(device &dev) {
     faustassert(placed());
@@ -564,8 +536,8 @@ void enlargedSchema::draw(device &dev) {
 }
 
 /**
- * Draw the enlarged schema. This methos can only
- * be called after the block have been placed
+ * Draw the enlarged schema.
+ * This method can only be called after the block have been placed.
  */
 void enlargedSchema::collectTraits(collector &c) {
     faustassert(placed());
@@ -588,7 +560,7 @@ void enlargedSchema::collectTraits(collector &c) {
 }
 
 /**
- * place two schemi in parallel
+ * Place two schemi in parallel.
  */
 class parSchema : public schema {
     schema *fSchema1;
@@ -682,55 +654,51 @@ static int direction(const point &a, const point &b) {
 }
 /**
  * Compute the horizontal gap needed to draw the internal wires.
- * It depends on the largest group of connections that go in the same
- * direction.
+ * It depends on the largest group of connections that go in the same direction.
  */
 static double computeHorzGap(schema *a, schema *b) {
     faustassert(a->outputs() == b->inputs());
 
-    if (a->outputs() == 0) {
-        return 0;
-    } else {
-        // store here the size of the largest group for each direction
-        int MaxGroupSize[3];
-        for (int &i: MaxGroupSize) i = 0;
+    if (a->outputs() == 0) return 0;
 
-        // place a and b to have valid connection points
-        double ya = max(0.0, 0.5 * (b->height() - a->height()));
-        double yb = max(0.0, 0.5 * (a->height() - b->height()));
-        a->place(0, ya, kLeftRight);
-        b->place(0, yb, kLeftRight);
+    // store the size of the largest group for each direction
+    int MaxGroupSize[3];
+    for (int &i: MaxGroupSize) i = 0;
 
-        // init current group direction and size
-        int gdir = direction(a->outputPoint(0), b->inputPoint(0));
-        int gsize = 1;
+    // place a and b to have valid connection points
+    double ya = max(0.0, 0.5 * (b->height() - a->height()));
+    double yb = max(0.0, 0.5 * (a->height() - b->height()));
+    a->place(0, ya, kLeftRight);
+    b->place(0, yb, kLeftRight);
 
-        // analyze direction of remaining points
-        for (unsigned int i = 1; i < a->outputs(); i++) {
-            int d = direction(a->outputPoint(i), b->inputPoint(i));
-            if (d == gdir) {
-                gsize++;
-            } else {
-                if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
-                gsize = 1;
-                gdir = d;
-            }
+    // init current group direction and size
+    int gdir = direction(a->outputPoint(0), b->inputPoint(0));
+    int gsize = 1;
+
+    // analyze direction of remaining points
+    for (unsigned int i = 1; i < a->outputs(); i++) {
+        int d = direction(a->outputPoint(i), b->inputPoint(i));
+        if (d == gdir) {
+            gsize++;
+        } else {
+            if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
+            gsize = 1;
+            gdir = d;
         }
-
-        // update for last group
-        if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
-
-        // the gap required for the connections
-        return dWire * max(MaxGroupSize[kUpDir], MaxGroupSize[kDownDir]);
     }
+
+    // update for last group
+    if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
+
+    // the gap required for the connections
+    return dWire * max(MaxGroupSize[kUpDir], MaxGroupSize[kDownDir]);
 }
 
 
 /**
- * Make a sequential schema. May add cables to ensure the internal
- * connections are between the same number of outputs and inputs.
- * Compute an horizontal gap based on the number of upward and
- * downward connections.
+ * Make a sequential schema.
+ * May add cables to ensure the internal connections are between the same number of outputs and inputs.
+ * Compute an horizontal gap based on the number of upward and downward connections.
  */
 schema *makeSeqSchema(schema *s1, schema *s2) {
     unsigned int o = s1->outputs();
@@ -742,11 +710,9 @@ schema *makeSeqSchema(schema *s1, schema *s2) {
     return new seqSchema(a, b, computeHorzGap(a, b));
 }
 
-//-----------------------IMPLEMENTATION------------------------------
-
 /**
- * Constructor for a sequential schema (s1:s2). The components s1 and s2
- * are supposed to be "compatible" (s1 : n->m and s2 : m->q)
+ * Constructor for a sequential schema (s1:s2).
+ * The components s1 and s2 are supposed to be "compatible" (s1 : n->m and s2 : m->q).
  */
 seqSchema::seqSchema(schema *s1, schema *s2, double hgap)
     : schema(s1->inputs(), s2->outputs(), s1->width() + hgap + s2->width(), max(s1->height(), s2->height())),
@@ -759,8 +725,7 @@ seqSchema::seqSchema(schema *s1, schema *s2, double hgap)
 //-----------------------placement------------------------------
 
 /**
- * Place the two components horizontally with enough space
- * for the connections
+ * Place the two components horizontally with enough space for the connections.
  */
 void seqSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
@@ -779,14 +744,14 @@ void seqSchema::place(double ox, double oy, int orientation) {
 }
 
 /**
- * The input points are the input points of the first component
+ * The input points are the input points of the first component.
  */
 point seqSchema::inputPoint(unsigned int i) const {
     return fSchema1->inputPoint(i);
 }
 
 /**
- * The output points are the output points of the second component
+ * The output points are the output points of the second component.
  */
 point seqSchema::outputPoint(unsigned int i) const {
     return fSchema2->outputPoint(i);
@@ -990,7 +955,7 @@ void seqSchema::collectInternalWires(collector &c) {
 }
 
 /**
- * Place and connect two diagrams in merge composition
+ * Place and connect two diagrams in merge composition.
  */
 class mergeSchema : public schema {
     schema *fSchema1;
@@ -1011,9 +976,9 @@ private:
 };
 
 /**
- * Creates a new merge schema. Cables are enlarged to dWire.
- * The horizontal gap between the two subschema is such that
- * the connections are not too sloppy.
+ * Creates a new merge schema.
+ * Cables are enlarged to `dWire`.
+ * The horizontal gap between the two subschema is such that the connections are not too sloppy.
  */
 schema *makeMergeSchema(schema *s1, schema *s2) {
     // avoid ugly diagram by ensuring at least dWire width
@@ -1024,16 +989,14 @@ schema *makeMergeSchema(schema *s1, schema *s2) {
 }
 
 /**
- * Constructor for a merge schema s1 :> s2 where the outputs
- * of s1 are merged to the inputs of s2. The constructor is
- * private in order to enforce the usage of makeMergeSchema
+ * Constructor for a merge schema s1 :> s2 where the outputs of s1 are merged to the inputs of s2.
+ * The constructor is private in order to enforce the usage of `makeMergeSchema`.
  */
 mergeSchema::mergeSchema(schema *s1, schema *s2, double hgap)
     : schema(s1->inputs(), s2->outputs(), s1->width() + s2->width() + hgap, max(s1->height(), s2->height())), fSchema1(s1), fSchema2(s2), fHorzGap(hgap) {}
 
 /**
- * Places the two subschema horizontaly, centered, with enough gap for
- * the connections
+ * Place the two subschema horizontaly, centered, with enough gap for the connections.
  */
 void mergeSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
@@ -1052,17 +1015,17 @@ void mergeSchema::place(double ox, double oy, int orientation) {
 }
 
 /**
- * The inputs of s1 :> s2 are the inputs of s1
+ * The inputs of s1 :> s2 are the inputs of s1.
  */
 point mergeSchema::inputPoint(unsigned int i) const { return fSchema1->inputPoint(i); }
 
 /**
- * The outputs of s1 :> s2 are the outputs of s2
+ * The outputs of s1 :> s2 are the outputs of s2.
  */
 point mergeSchema::outputPoint(unsigned int i) const { return fSchema2->outputPoint(i); }
 
 /**
- * Draw the two sub schema and the connections between them
+ * Draw the two subschema and the connections between them.
  */
 void mergeSchema::draw(device &dev) {
     faustassert(placed());
@@ -1085,7 +1048,7 @@ void mergeSchema::draw(device &dev) {
 }
 
 /**
- * Draw the two sub schema and the connections between them
+ * Draw the two subschema and the connections between them.
  */
 void mergeSchema::collectTraits(collector &c) {
     faustassert(placed());
@@ -1106,7 +1069,7 @@ void mergeSchema::collectTraits(collector &c) {
 }
 
 /**
- * place and connect two diagrams in split composition
+ * Place and connect two diagrams in split composition.
  */
 class splitSchema : public schema {
     schema *fSchema1;
@@ -1127,9 +1090,9 @@ private:
 };
 
 /**
- * Creates a new split schema. Cables are enlarged to dWire.
- * The horizontal gap between the two subschema is such that
- * the connections are not too sloppy.
+ * Creates a new split schema.
+ * Cables are enlarged to `dWire`.
+ * The horizontal gap between the two subschema is such that the connections are not too sloppy.
  */
 schema *makeSplitSchema(schema *s1, schema *s2) {
     // make sure a and b are at least dWire large
@@ -1143,9 +1106,8 @@ schema *makeSplitSchema(schema *s1, schema *s2) {
 }
 
 /**
- * Constructor for a split schema s1 <: s2 where the outputs
- * of s1 are distributed to the inputs of s2. The constructor is
- * private in order to enforce the usage of makeSplitSchema
+ * Constructor for a split schema s1 <: s2, where the outputs of s1 are distributed to the inputs of s2.
+ * The constructor is private in order to enforce the usage of `makeSplitSchema`.
  */
 splitSchema::splitSchema(schema *s1, schema *s2, double hgap)
     : schema(s1->inputs(), s2->outputs(), s1->width() + s2->width() + hgap, max(s1->height(), s2->height())),
@@ -1175,17 +1137,17 @@ void splitSchema::place(double ox, double oy, int orientation) {
 }
 
 /**
- * The inputs of s1 <: s2 are the inputs of s1
+ * The inputs of s1 <: s2 are the inputs of s1.
  */
 point splitSchema::inputPoint(unsigned int i) const { return fSchema1->inputPoint(i); }
 
 /**
- * The outputs of s1 <: s2 are the outputs of s2
+ * The outputs of s1 <: s2 are the outputs of s2.
  */
 point splitSchema::outputPoint(unsigned int i) const { return fSchema2->outputPoint(i); }
 
 /**
- * Draw the two sub schema and the connections between them
+ * Draw the two sub schema and the connections between them.
  */
 void splitSchema::draw(device &dev) {
     faustassert(placed());
@@ -1209,7 +1171,7 @@ void splitSchema::draw(device &dev) {
 }
 
 /**
- * Draw the two sub schema and the connections between them
+ * Draw the two subschema and the connections between them.
  */
 void splitSchema::collectTraits(collector &c) {
     faustassert(placed());
@@ -1231,9 +1193,8 @@ void splitSchema::collectTraits(collector &c) {
 
 
 /**
- * place and connect two diagrams in recursive composition
+ * Place and connect two diagrams in recursive composition
  */
-
 class recSchema : public schema {
     schema *fSchema1;
     schema *fSchema2;
@@ -1258,9 +1219,9 @@ private:
 };
 
 /**
- * Creates a new recursive schema (s1 ~ s2). The smallest component is
- * enlarged to the width of the other. The left and right horizontal
- * margins are computed according to the number of internal connections.
+ * Creates a new recursive schema (s1 ~ s2).
+ * The smallest component is enlarged to the width of the other.
+ * The left and right horizontal margins are computed according to the number of internal connections.
  */
 schema *makeRecSchema(schema *s1, schema *s2) {
     schema *a = makeEnlargedSchema(s1, s2->width());
@@ -1272,8 +1233,8 @@ schema *makeRecSchema(schema *s1, schema *s2) {
 }
 
 /**
- * Constructor of a recursive schema (s1 ~ s2). The two components
- * are supposed to have the same width.
+ * Constructor of a recursive schema (s1 ~ s2).
+ * The two components are supposed to have the same width.
  */
 recSchema::recSchema(schema *s1, schema *s2, double width)
     : schema(s1->inputs() - s2->outputs(), s1->outputs(), width, s1->height() + s2->height()),
@@ -1438,9 +1399,9 @@ void recSchema::collectFeedfront(collector &c, const point &src, const point &ds
 }
 
 /**
- * A topSchema is a schema surrounded by a dashed rectangle with a
- * label on the top left. The rectangle is placed at half the margin
- * parameter. Arrows are added to all the outputs
+ * A topSchema is a schema surrounded by a dashed rectangle with a label on the top left.
+ * The rectangle is placed at half the margin parameter.
+ * Arrows are added to all the outputs.
  */
 
 class topSchema : public schema {
@@ -1472,19 +1433,19 @@ schema *makeTopSchema(schema *s, double margin, const string &text, const string
 }
 
 /**
- * A topSchema is a schema surrounded by a dashed rectangle with a
- * label on the top left. The rectangle is placed at half the margin
- * parameter. Arrows are added to the outputs. The constructor is
- * made private to enforce the usage of makeTopSchema.
+ * A topSchema is a schema surrounded by a dashed rectangle with a label on the top left.
+ * The rectangle is placed at half the margin parameter.
+ * Arrows are added to the outputs.
+ * The constructor is made private to enforce the usage of `makeTopSchema`.
  */
 topSchema::topSchema(schema *s, double margin, const string &text, const string &link)
     : schema(0, 0, s->width() + 2 * margin, s->height() + 2 * margin), fSchema(s), fMargin(margin), fText(text), fLink(link) {
 }
 
 /**
- * Define the graphic position of the schema. Computes the graphic
- * position of all the elements, in particular the inputs and outputs.
- * This method must be called before draw(), otherwise draw is not allowed
+ * Define the graphic position of the schema.
+ * Computes the graphic position of all the elements, in particular the inputs and outputs.
+ * This method must be called before `draw()`.
  */
 void topSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
@@ -1554,9 +1515,8 @@ void topSchema::collectTraits(collector &c) {
 }
 
 /**
- * A decorateSchema is a schema surrounded by a dashed rectangle with a
- * label on the top left. The rectangle is placed at half the margin
- * parameter
+ * A `decorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
+ * The rectangle is placed at half the margin parameter.
  */
 class decorateSchema : public schema {
     schema *fSchema;
@@ -1584,10 +1544,9 @@ private:
 schema *makeDecorateSchema(schema *s, double margin, const string &text) { return new decorateSchema(s, margin, text); }
 
 /**
- * A decorateSchema is a schema surrounded by a dashed rectangle with a
- * label on the top left. The rectangle is placed at half the margin
- * parameter. The constructor is made private to enforce the usage of
- * makeDecorateSchema
+ * A decorateSchema is a schema surrounded by a dashed rectangle with a label on the top left.
+ * The rectangle is placed at half the margin parameter.
+ * The constructor is made private to enforce the usage of `makeDecorateSchema`
  */
 decorateSchema::decorateSchema(schema *s, double margin, const string &text)
     : schema(s->inputs(), s->outputs(), s->width() + 2 * margin, s->height() + 2 * margin), fSchema(s), fMargin(margin), fText(text) {
@@ -1596,9 +1555,9 @@ decorateSchema::decorateSchema(schema *s, double margin, const string &text)
 }
 
 /**
- * Define the graphic position of the schema. Computes the graphic
- * position of all the elements, in particular the inputs and outputs.
- * This method must be called before draw(), otherwise draw is not allowed
+ * Define the graphic position of the schema.
+ * Computes the graphic position of all the elements, in particular the inputs and outputs.
+ * This method must be called before `draw()`.
  */
 void decorateSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
@@ -1709,8 +1668,7 @@ void decorateSchema::collectTraits(collector &c) {
 
 /**
  * A simple rectangular box with a text and inputs and outputs.
- * The constructor is private in order to make sure
- * makeconnectorSchema is used instead
+ * The constructor is private in order to make sure `makeconnectorSchema` is used instead.
  */
 class connectorSchema : public schema {
 protected:
@@ -1752,9 +1710,9 @@ connectorSchema::connectorSchema() : schema(1, 1, dWire, dWire) {
 }
 
 /**
- * Define the graphic position of the connectorSchema. Computes the graphic
- * position of all the elements, in particular the inputs and outputs.
- * This method must be called before draw(), otherwise draw is not allowed
+ * Define the graphic position of the connectorSchema.
+ * Computes the graphic position of all the elements, in particular the inputs and outputs.
+ * This method must be called before `draw()`.
  */
 void connectorSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
@@ -1833,8 +1791,8 @@ void connectorSchema::placeOutputPoints() {
 }
 
 /**
- * Draw the connectorSchema on the device. This methos can only
- * be called after the connectorSchema have been placed
+ * Draw the connectorSchema on the device.
+ * This method can only be called after the `connectorSchema` has been placed.
  */
 void connectorSchema::draw(device &) { faustassert(placed()); }
 
@@ -1877,8 +1835,7 @@ void connectorSchema::collectOutputWires(collector &c) {
 
 /**
  * A simple rectangular box with a text and inputs and outputs.
- * The constructor is private in order to make sure
- * makeBlockSchema is used instead
+ * The constructor is private in order to make sure `makeBlockSchema` is used instead.
  */
 class routeSchema : public schema {
 protected:
@@ -1929,22 +1886,19 @@ schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::ve
 }
 
 /**
- * Build a simple colored routeSchema with a certain number of
- * inputs and outputs, a text to be displayed, and an optional link.
- * The length of the text as well as the number of inputs and outputs
- * are used to compute the size of the routeSchema
+ * Build a simple colored `routeSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
+ * The length of the text as well as the number of inputs and outputs are used to compute the size of the `routeSchema`
  */
-routeSchema::routeSchema(unsigned int inputs, unsigned int outputs, double width, double height,
-                         const std::vector<int> &routes)
+routeSchema::routeSchema(unsigned int inputs, unsigned int outputs, double width, double height, const std::vector<int> &routes)
     : schema(inputs, outputs, width, height), fText(""), fColor("#EEEEAA"), fLink(""), fRoutes(routes) {
-    for (unsigned int i = 0; i < inputs; i++) fInputPoint.push_back(point(0, 0));
-    for (unsigned int i = 0; i < outputs; i++) fOutputPoint.push_back(point(0, 0));
+    for (unsigned int i = 0; i < inputs; i++) fInputPoint.emplace_back(point(0, 0));
+    for (unsigned int i = 0; i < outputs; i++) fOutputPoint.emplace_back(0, 0);
 }
 
 /**
- * Define the graphic position of the routeSchema. Computes the graphic
- * position of all the elements, in particular the inputs and outputs.
- * This method must be called before draw(), otherwise draw is not allowed
+ * Define the graphic position of the `routeSchema`.
+ * Computes the graphic position of all the elements, in particular the inputs and outputs.
+ * This method must be called before `draw()`.
  */
 void routeSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
@@ -1974,8 +1928,7 @@ point routeSchema::outputPoint(unsigned int i) const {
 }
 
 /**
- * Computes the input points according to the position and the
- * orientation of the routeSchema
+ * Computes the input points according to the position and the orientation of the `routeSchema`.
  */
 void routeSchema::placeInputPoints() {
     int N = inputs();
@@ -1998,8 +1951,7 @@ void routeSchema::placeInputPoints() {
 }
 
 /**
- * Computes the output points according to the position and the
- * orientation of the routeSchema
+ * Computes the output points according to the position and the orientation of the `routeSchema`.
  */
 void routeSchema::placeOutputPoints() {
     int N = outputs();
@@ -2022,8 +1974,8 @@ void routeSchema::placeOutputPoints() {
 }
 
 /**
- * Draw the routeSchema on the device. This method can only
- * be called after the routeSchema have been placed
+ * Draw the `routeSchema` on the device.
+ * This method can only be called after the `routeSchema` have been placed.
  */
 void routeSchema::draw(device &dev) {
     faustassert(placed());
@@ -2069,8 +2021,7 @@ void routeSchema::drawOrientationMark(device &dev) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the
- * routeSchema rectangle
+ * Draw horizontal arrows from the input points to the `routeSchema` rectangle.
  */
 void routeSchema::drawInputArrows(device &dev) {
     double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
@@ -2082,8 +2033,7 @@ void routeSchema::drawInputArrows(device &dev) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the
- * routeSchema rectangle
+ * Draw horizontal arrows from the input points to the `routeSchema` rectangle.
  */
 void routeSchema::collectTraits(collector &c) {
     collectInputWires(c);
@@ -2101,8 +2051,7 @@ void routeSchema::collectTraits(collector &c) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the
- * routeSchema rectangle
+ * Draw horizontal arrows from the input points to the `routeSchema` rectangle.
  */
 void routeSchema::collectInputWires(collector &c) {
     double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;
@@ -2115,8 +2064,7 @@ void routeSchema::collectInputWires(collector &c) {
 }
 
 /**
- * Draw horizontal line from the routeSchema rectangle to the
- * output points
+ * Draw horizontal line from the `routeSchema` rectangle to the output points.
  */
 void routeSchema::collectOutputWires(collector &c) {
     double dx = (orientation() == kLeftRight) ? dHorz : -dHorz;

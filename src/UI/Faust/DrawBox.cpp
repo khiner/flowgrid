@@ -23,67 +23,44 @@
 using namespace std;
 
 #define FAUST_PATH_MAX 1024
-string gCurrentDir; // Save current directory name
-namespace fs = std::filesystem;
-
-void getCurrentDir() {
-    char buffer[FAUST_PATH_MAX];
-    char *current_dir = getcwd(buffer, FAUST_PATH_MAX);
-    gCurrentDir = current_dir ? current_dir : "";
-}
-
-void mkchDir(const string &dirname) {
-    getCurrentDir();
-    if (!gCurrentDir.empty()) {
-        fs::remove_all("FaustDiagrams");
-        if (fs::create_directory(dirname) && chdir(dirname.c_str()) == 0) {
-            return;
-        }
-    }
-
-    throw std::runtime_error((stringstream("ERROR : mkchDir : ") << strerror(errno)).str());
-}
-
-void choldDir() {
-    if (chdir(gCurrentDir.c_str()) != 0) throw std::runtime_error((stringstream("ERROR : choldDir : ") << strerror(errno)).str());
-}
-
-void faustassertaux(bool cond, const string &file, int line) {
-    if (!cond) {
-        stringstream str;
-        str << "file: " << file.substr(file.find_last_of('/') + 1) << ", line: " << line << ", ";
-        str << "version: " << FAUSTVERSION;
-        stacktrace(str, 20);
-        throw faustexception(str.str());
-    }
-}
-
-bool getProperty(Tree t, Tree key, Tree &val) {
-    if (CTree *pl = t->getProperty(key)) {
-        val = pl;
-        return true;
-    }
-
-    return false;
-}
-
-bool getDefNameProperty(Tree t, Tree &id) {
-    static Tree DEFNAMEPROPERTY = tree(symbol("DEFNAMEPROPERTY"));
-    return getProperty(t, DEFNAMEPROPERTY, id);
-}
 
 /**
  * property Key used to store box complexity
  */
-
 static int computeBoxComplexity(Tree box);
+static int boxComplexity(Tree box);
+
+struct DrawContext {
+    DrawContext(Box box) {
+        pureRoutingProperty = new property<bool>();
+        inverter[0] = boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul));
+        inverter[1] = boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul));
+        inverter[2] = boxSeq(boxPar(boxWire(), boxReal(-1.0)), boxPrim2(sigMul));
+        inverter[3] = boxSeq(boxPar(boxReal(-1.0), boxWire()), boxPrim2(sigMul));
+        inverter[4] = boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub));
+        inverter[5] = boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub));
+        foldingFlag = boxComplexity(box) > foldThreshold;
+        foldThreshold = 25;
+        foldComplexity = 2;
+    }
+
+    string currentDir; // Save current directory name
+    property<bool> *pureRoutingProperty;
+    bool foldingFlag; // true with complex block-diagrams
+    int foldThreshold; // global complexity threshold before activating folding
+    int foldComplexity;  // individual complexity threshold before folding
+    set<Tree> drawnExp; // Expressions drawn or scheduled so far
+    map<Tree, string> backLink; // Link to enclosing file for sub schema
+    stack<Tree> pendingExp; // Expressions that need to be drawn
+    string schemaFileName;  // Name of schema file being generated
+    Tree inverter[6]{};
+};
 
 Tree BCOMPLEXITY; // Node used for memoization purposes
 
 /**
  * Return the complexity property of a box expression tree.
- * If no complexity property exist, it is created and computeBoxComplexity
- * is called do to the job.
+ * If no complexity property exist, it is created and computeBoxComplexity is called do to the job.
  *
  * @param box an evaluated box expression tree
  * @return the complexity of box
@@ -105,15 +82,10 @@ int boxComplexity(Tree box) {
 #define BC boxComplexity
 
 /**
- * Compute the complexity of a box expression.
- *
- * Compute the complexity of a box expression tree according to the
- * complexity of its subexpressions. Basically it counts the number
- * of boxes to be drawn. The box-diagram expression is supposed
- * to be evaluated. It will exit with an error if it is not the case.
- *
- * @param box an evaluated box expression tree
- * @return the complexity of box
+ * Compute the complexity of a box expression tree according to the complexity of its subexpressions.
+ * Basically, it counts the number of boxes to be drawn.
+ * The box-diagram expression is supposed to be evaluated.
+ * It will exit with an error if it is not the case.
  */
 int computeBoxComplexity(Tree box) {
     int i;
@@ -185,6 +157,53 @@ int computeBoxComplexity(Tree box) {
     throw faustexception(error.str());
 }
 
+std::unique_ptr<DrawContext> dc;
+namespace fs = std::filesystem;
+
+void getCurrentDir() {
+    char buffer[FAUST_PATH_MAX];
+    char *current_dir = getcwd(buffer, FAUST_PATH_MAX);
+    dc->currentDir = current_dir ? current_dir : "";
+}
+
+void mkchDir(const string &dirname) {
+    getCurrentDir();
+    if (!dc->currentDir.empty()) {
+        fs::remove_all("FaustDiagrams");
+        if (fs::create_directory(dirname) && chdir(dirname.c_str()) == 0) return;
+    }
+
+    throw std::runtime_error((stringstream("ERROR : mkchDir : ") << strerror(errno)).str());
+}
+
+void choldDir() {
+    if (chdir(dc->currentDir.c_str()) != 0) throw std::runtime_error((stringstream("ERROR : choldDir : ") << strerror(errno)).str());
+}
+
+void faustassertaux(bool cond, const string &file, int line) {
+    if (!cond) {
+        stringstream str;
+        str << "file: " << file.substr(file.find_last_of('/') + 1) << ", line: " << line << ", ";
+        str << "version: " << FAUSTVERSION;
+        stacktrace(str, 20);
+        throw faustexception(str.str());
+    }
+}
+
+bool getProperty(Tree t, Tree key, Tree &val) {
+    if (auto pl = t->getProperty(key)) {
+        val = pl;
+        return true;
+    }
+
+    return false;
+}
+
+bool getDefNameProperty(Tree t, Tree &id) {
+    static Tree DEFNAMEPROPERTY = tree(symbol("DEFNAMEPROPERTY"));
+    return getProperty(t, DEFNAMEPROPERTY, id);
+}
+
 // prototypes of internal functions
 static void writeSchemaFile(Tree bd);
 static schema *generateDiagramSchema(Tree t);
@@ -197,42 +216,17 @@ static schema *generateInputSlotSchema(Tree a);
 static schema *generateBargraphSchema(Tree t);
 static schema *generateUserInterfaceSchema(Tree t);
 static schema *generateSoundfileSchema(Tree t);
-static char *legalFileName(Tree t, int n, char *dst);
+static char *legalFileName(Tree t, char *dst);
 
 static schema *addSchemaInputs(int ins, schema *x);
 static schema *addSchemaOutputs(int outs, schema *x);
 
-property<bool> *gPureRoutingProperty;
-bool gFoldingFlag; // true with complex block-diagrams
-int gFoldThreshold; // global complexity threshold before activating folding
-int gFoldComplexity;  // individual complexity threshold before folding
-set<Tree> gDrawnExp; // Expressions drawn or scheduled so far
-map<Tree, string> gBackLink; // Link to enclosing file for sub schema
-stack<Tree> gPendingExp; // Expressions that need to be drawn
-string gSchemaFileName;  // Name of schema file being generated
-Tree gInverter[6];
-
-/**
- *The entry point to generate from a block diagram as a set of
- *svg files stored in the directory "<projname>-svg/" or
- *"<projname>-ps/" depending of <dev>.
- */
-void drawBox(Box bd) {
-    // Setup
-    gPureRoutingProperty = new property<bool>();
-    gInverter[0] = boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul));
-    gInverter[1] = boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul));
-    gInverter[2] = boxSeq(boxPar(boxWire(), boxReal(-1.0)), boxPrim2(sigMul));
-    gInverter[3] = boxSeq(boxPar(boxReal(-1.0), boxWire()), boxPrim2(sigMul));
-    gInverter[4] = boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub));
-    gInverter[5] = boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub));
-    gFoldingFlag = boxComplexity(bd) > gFoldThreshold;
-    gFoldThreshold = 25;
-    gFoldComplexity = 2;
-
+void drawBox(Box box) {
+    dc = std::make_unique<DrawContext>(box);
+    BCOMPLEXITY = {};
     mkchDir("FaustDiagrams"); // create a directory to store files
 
-    scheduleDrawing(bd);    // schedule the initial drawing
+    scheduleDrawing(box);    // schedule the initial drawing
 
     Tree t;
     while (pendingDrawing(t)) {
@@ -242,14 +236,8 @@ void drawBox(Box bd) {
     choldDir();  // return to current directory
 }
 
-/************************************************************************
- ************************************************************************
-                            IMPLEMENTATION
- ************************************************************************
- ************************************************************************/
-
 // Collect the leaf numbers of tree l into vector v.
-// return true if l a number or a parallel tree of numbers.
+// Return true if l a number or a parallel tree of numbers.
 static bool isIntTree(Tree l, vector<int> &v) {
     int n;
     double r;
@@ -270,16 +258,14 @@ static bool isIntTree(Tree l, vector<int> &v) {
     throw std::runtime_error(error.str());
 }
 
-//------------------- to schedule and retrieve drawing ------------------
-
 /**
- * Schedule a makeBlockSchema diagram to be drawn.
+ * Schedule a block diagram to be drawn.
  */
 static void scheduleDrawing(Tree t) {
-    if (gDrawnExp.find(t) == gDrawnExp.end()) {
-        gDrawnExp.insert(t);
-        gBackLink.insert(make_pair(t, gSchemaFileName));  // remember the enclosing filename
-        gPendingExp.push(t);
+    if (dc->drawnExp.find(t) == dc->drawnExp.end()) {
+        dc->drawnExp.insert(t);
+        dc->backLink.insert(make_pair(t, dc->schemaFileName));  // remember the enclosing filename
+        dc->pendingExp.push(t);
     }
 }
 
@@ -287,25 +273,22 @@ static void scheduleDrawing(Tree t) {
  * Retrieve next block diagram that must be drawn.
  */
 static bool pendingDrawing(Tree &t) {
-    if (gPendingExp.empty()) return false;
-    t = gPendingExp.top();
-    gPendingExp.pop();
+    if (dc->pendingExp.empty()) return false;
+    t = dc->pendingExp.top();
+    dc->pendingExp.pop();
     return true;
 }
 
-//------------------------ dealing with files -------------------------
-
 /**
- * Write a top level diagram. A top level diagram
- * is decorated with its definition name property
- * and is drawn in an individual file.
+ * Write a top level diagram.
+ * A top level diagram is decorated with its definition name property and is drawn in an individual file.
  */
 static void writeSchemaFile(Tree bd) {
     Tree id;
     schema *ts;
     int ins, outs;
 
-    char temp[1024];
+    char temp[FAUST_PATH_MAX];
 
     getBoxType(bd, &ins, &outs);
 
@@ -314,12 +297,12 @@ static void writeSchemaFile(Tree bd) {
 
     // generate legal file name for the schema
     stringstream s1;
-    s1 << legalFileName(bd, 1024, temp) << ".svg";
+    s1 << legalFileName(bd, temp) << ".svg";
     string res1 = s1.str();
-    gSchemaFileName = res1;
+    dc->schemaFileName = res1;
 
     // generate the label of the schema
-    string link = gBackLink[bd];
+    string link = dc->backLink[bd];
     ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), link);
     SVGDev dev(res1.c_str(), ts->width(), ts->height());
     ts->place(0, 0, kLeftRight);
@@ -332,12 +315,12 @@ static void writeSchemaFile(Tree bd) {
 }
 
 /**
- * Transform the definition name property of tree <t> into a
- * legal file name.  The resulting file name is stored in
- * <dst> a table of at least <n> chars. Returns the <dst> pointer
- * for convenience.
+ * Transform the definition name property of tree <t> into a legal file name.
+ * The resulting file name is stored in <dst> a table of at least <n> chars.
+ * Returns the <dst> pointer for convenience.
  */
-static char *legalFileName(Tree t, int n, char *dst) {
+static char *legalFileName(Tree t, char *dst) {
+    static int n = FAUST_PATH_MAX;
     Tree id;
     int i = 0;
     if (getDefNameProperty(t, id)) {
@@ -354,40 +337,37 @@ static char *legalFileName(Tree t, int n, char *dst) {
     return dst;
 }
 
-//------------------------ generating the schema -------------------------
-
 /**
- * isInverter(t) returns true if t == '*(-1)'. This test is used
- * to simplify diagram by using a special symbol for inverters.
+ * Returns `true` if t == '*(-1)'.
+ * This test is used to simplify diagram by using a special symbol for inverters.
  */
 static bool isInverter(Tree t) {
-    for (const auto &i: gInverter) if (t == i) return true;
+    for (const auto &i: dc->inverter) if (t == i) return true;
     return false;
 }
 
 /**
- * Compute the Pure Routing property, that is expressions
- * only made of cut, wires and slots. No labels will be
- * dispayed for pure routing expressions.
+ * Compute the Pure Routing property.
+ * That is, expressions only made of cut, wires and slots.
+ * No labels will be displayed for pure routing expressions.
  */
-
 static bool isPureRouting(Tree t) {
     bool r;
     int ID;
     Tree x, y;
 
-    if (gPureRoutingProperty->get(t, r)) return r;
+    if (dc->pureRoutingProperty->get(t, r)) return r;
 
     if (isBoxCut(t) || isBoxWire(t) || isInverter(t) || isBoxSlot(t, &ID) ||
         (isBoxPar(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
         (isBoxSeq(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
         (isBoxSplit(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
         (isBoxMerge(t, x, y) && isPureRouting(x) && isPureRouting(y))) {
-        gPureRoutingProperty->set(t, true);
+        dc->pureRoutingProperty->set(t, true);
         return true;
     }
 
-    gPureRoutingProperty->set(t, false);
+    dc->pureRoutingProperty->set(t, false);
     return false;
 }
 
@@ -399,16 +379,17 @@ static schema *generateDiagramSchema(Tree t) {
     int ins, outs;
 
     const bool hasname = getDefNameProperty(t, id);
-    if (gFoldingFlag && boxComplexity(t) >= gFoldComplexity && hasname) {
-        char temp[1024];
+    if (dc->foldingFlag && boxComplexity(t) >= dc->foldComplexity && hasname) {
+        char temp[FAUST_PATH_MAX];
         getBoxType(t, &ins, &outs);
         stringstream l;
-        l << legalFileName(t, 1024, temp) << ".svg";
+        l << legalFileName(t, temp) << ".svg";
         scheduleDrawing(t);
         return makeBlockSchema(ins, outs, tree2str(id), linkcolor, l.str());
     }
-        // Not a slot, with a name. Draw a line around the object with its name.
-    else if (hasname && !isPureRouting(t)) return makeDecorateSchema(generateInsideSchema(t), 10, tree2str(id));
+
+    // Not a slot, with a name. Draw a line around the object with its name.
+    if (hasname && !isPureRouting(t)) return makeDecorateSchema(generateInsideSchema(t), 10, tree2str(id));
 
     return generateInsideSchema(t); // normal case
 }

@@ -14,11 +14,10 @@ const double dHorz = 4;
 const double dVert = 4;
 
 struct Point {
-    double x;
-    double y;
+    double x, y;
 
     Point() : x(0.0), y(0.0) {}
-    Point(double u, double v) : x(u), y(v) {}
+    Point(double x, double y) : x(x), y(y) {}
 
     bool operator<(const Point &p) const {
         if (x < p.x) return true;

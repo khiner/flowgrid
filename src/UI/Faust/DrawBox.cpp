@@ -178,20 +178,20 @@ void faustassertaux(bool cond, const string &file, int line) {
 
 // prototypes of internal functions
 static void writeSchemaFile(Tree bd);
-static schema *generateDiagramSchema(Tree t);
-static schema *generateInsideSchema(Tree t);
+static Schema *generateDiagramSchema(Tree t);
+static Schema *generateInsideSchema(Tree t);
 static void scheduleDrawing(Tree t);
 static bool pendingDrawing(Tree &t);
-static schema *generateAbstractionSchema(schema *x, Tree t);
-static schema *generateOutputSlotSchema(Tree a);
-static schema *generateInputSlotSchema(Tree a);
-static schema *generateBargraphSchema(Tree t);
-static schema *generateUserInterfaceSchema(Tree t);
-static schema *generateSoundfileSchema(Tree t);
+static Schema *generateAbstractionSchema(Schema *x, Tree t);
+static Schema *generateOutputSlotSchema(Tree a);
+static Schema *generateInputSlotSchema(Tree a);
+static Schema *generateBargraphSchema(Tree t);
+static Schema *generateUserInterfaceSchema(Tree t);
+static Schema *generateSoundfileSchema(Tree t);
 static char *legalFileName(Tree t, char *dst);
 
-static schema *addSchemaInputs(int ins, schema *x);
-static schema *addSchemaOutputs(int outs, schema *x);
+static Schema *addSchemaInputs(int ins, Schema *x);
+static Schema *addSchemaOutputs(int outs, Schema *x);
 
 void drawBox(Box box) {
     dc = std::make_unique<DrawContext>();
@@ -257,7 +257,7 @@ static bool pendingDrawing(Tree &t) {
  */
 static void writeSchemaFile(Tree bd) {
     Tree id;
-    schema *ts;
+    Schema *ts;
     int ins, outs;
 
     char temp[FAUST_PATH_MAX];
@@ -280,7 +280,7 @@ static void writeSchemaFile(Tree bd) {
     ts->place(0, 0, kLeftRight);
     ts->draw(dev);
     {
-        collector c;
+        Collector c;
         ts->collectTraits(c);
         c.draw(dev);
     }
@@ -346,7 +346,7 @@ static bool isPureRouting(Tree t) {
 /**
  * Generate an appropriate schema according to the type of block diagram.
  */
-static schema *generateDiagramSchema(Tree t) {
+static Schema *generateDiagramSchema(Tree t) {
     Tree id;
     int ins, outs;
 
@@ -370,7 +370,7 @@ static schema *generateDiagramSchema(Tree t) {
  * Generate the inside schema of a block diagram
  * according to its type.
  */
-static schema *generateInsideSchema(Tree t) {
+static Schema *generateInsideSchema(Tree t) {
     Tree a, b, c, ff, l, type, name, file;
     int i;
     double r;
@@ -418,15 +418,15 @@ static schema *generateInsideSchema(Tree t) {
 
     // Don't draw group rectangle when labels are empty (ie "")
     if (isBoxVGroup(t, l, a)) {
-        schema *s1 = generateDiagramSchema(a);
+        Schema *s1 = generateDiagramSchema(a);
         return makeDecorateSchema(s1, 10, "vgroup(" + extractName(l) + ")");
     }
     if (isBoxHGroup(t, l, a)) {
-        schema *s1 = generateDiagramSchema(a);
+        Schema *s1 = generateDiagramSchema(a);
         return makeDecorateSchema(s1, 10, "hgroup(" + extractName(l) + ")");
     }
     if (isBoxTGroup(t, l, a)) {
-        schema *s1 = generateDiagramSchema(a);
+        Schema *s1 = generateDiagramSchema(a);
         return makeDecorateSchema(s1, 10, "tgroup(" + extractName(l) + ")");
     }
     if (isBoxSeq(t, a, b)) return makeSeqSchema(generateDiagramSchema(a), generateDiagramSchema(b));
@@ -477,21 +477,21 @@ static string userInterfaceDescription(Tree box) {
 /**
  * Generate a 0->1 block schema for a user interface element.
  */
-static schema *generateUserInterfaceSchema(Tree t) {
+static Schema *generateUserInterfaceSchema(Tree t) {
     return makeBlockSchema(0, 1, userInterfaceDescription(t), uicolor, "");
 }
 
 /**
  * Generate a 1->1 block schema for a user interface bargraph.
  */
-static schema *generateBargraphSchema(Tree t) {
+static Schema *generateBargraphSchema(Tree t) {
     return makeBlockSchema(1, 1, userInterfaceDescription(t), uicolor, "");
 }
 
 /**
  * Generate a 2->3+c block schema for soundfile("toto",c).
  */
-static schema *generateSoundfileSchema(Tree t) {
+static Schema *generateSoundfileSchema(Tree t) {
     Tree label, chan;
     if (isBoxSoundfile(t, label, chan)) {
         int n = tree2int(chan);
@@ -503,7 +503,7 @@ static schema *generateSoundfileSchema(Tree t) {
 /**
  * Generate a 1->0 block schema for an input slot.
  */
-static schema *generateInputSlotSchema(Tree a) {
+static Schema *generateInputSlotSchema(Tree a) {
     Tree id;
     getDefNameProperty(a, id);
     return makeBlockSchema(1, 0, tree2str(id), slotcolor, "");
@@ -512,7 +512,7 @@ static schema *generateInputSlotSchema(Tree a) {
 /**
  * Generate a 0->1 block schema for an output slot.
  */
-static schema *generateOutputSlotSchema(Tree a) {
+static Schema *generateOutputSlotSchema(Tree a) {
     Tree id;
     getDefNameProperty(a, id);
     return makeBlockSchema(0, 1, tree2str(id), slotcolor, "");
@@ -522,7 +522,7 @@ static schema *generateOutputSlotSchema(Tree a) {
  * Generate an abstraction schema by placing in sequence
  * the input slots and the body.
  */
-static schema *generateAbstractionSchema(schema *x, Tree t) {
+static Schema *generateAbstractionSchema(Schema *x, Tree t) {
     Tree a, b;
 
     while (isBoxSymbolic(t, a, b)) {
@@ -532,24 +532,24 @@ static schema *generateAbstractionSchema(schema *x, Tree t) {
     return makeSeqSchema(x, generateDiagramSchema(t));
 }
 
-static schema *addSchemaInputs(int ins, schema *x) {
+static Schema *addSchemaInputs(int ins, Schema *x) {
     if (ins == 0) return x;
 
-    schema *y = nullptr;
+    Schema *y = nullptr;
     do {
-        schema *z = makeConnectorSchema();
+        Schema *z = makeConnectorSchema();
         y = y != nullptr ? makeParSchema(y, z) : z;
     } while (--ins);
 
     return makeSeqSchema(y, x);
 }
 
-static schema *addSchemaOutputs(int outs, schema *x) {
+static Schema *addSchemaOutputs(int outs, Schema *x) {
     if (outs == 0) return x;
 
-    schema *y = nullptr;
+    Schema *y = nullptr;
     do {
-        schema *z = makeConnectorSchema();
+        Schema *z = makeConnectorSchema();
         y = y != nullptr ? makeParSchema(y, z) : z;
     } while (--outs);
 

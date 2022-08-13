@@ -176,22 +176,122 @@ void faustassertaux(bool cond, const string &file, int line) {
     }
 }
 
-// prototypes of internal functions
-static void writeSchemaFile(Tree bd);
 static Schema *generateDiagramSchema(Tree t);
 static Schema *generateInsideSchema(Tree t);
-static void scheduleDrawing(Tree t);
-static bool pendingDrawing(Tree &t);
-static Schema *generateAbstractionSchema(Schema *x, Tree t);
-static Schema *generateOutputSlotSchema(Tree a);
-static Schema *generateInputSlotSchema(Tree a);
-static Schema *generateBargraphSchema(Tree t);
-static Schema *generateUserInterfaceSchema(Tree t);
-static Schema *generateSoundfileSchema(Tree t);
-static char *legalFileName(Tree t, char *dst);
 
-static Schema *addSchemaInputs(int ins, Schema *x);
-static Schema *addSchemaOutputs(int outs, Schema *x);
+// Generate a 1->0 block schema for an input slot.
+static Schema *generateInputSlotSchema(Tree a) {
+    Tree id;
+    getDefNameProperty(a, id);
+    return makeBlockSchema(1, 0, tree2str(id), slotcolor, "");
+}
+// Generate an abstraction schema by placing in sequence the input slots and the body.
+static Schema *generateAbstractionSchema(Schema *x, Tree t) {
+    Tree a, b;
+    while (isBoxSymbolic(t, a, b)) {
+        x = makeParSchema(x, generateInputSlotSchema(a));
+        t = b;
+    }
+    return makeSeqSchema(x, generateDiagramSchema(t));
+}
+
+static Schema *addSchemaInputs(int ins, Schema *x) {
+    if (ins == 0) return x;
+
+    Schema *y = nullptr;
+    do {
+        Schema *z = makeConnectorSchema();
+        y = y != nullptr ? makeParSchema(y, z) : z;
+    } while (--ins);
+
+    return makeSeqSchema(y, x);
+}
+static Schema *addSchemaOutputs(int outs, Schema *x) {
+    if (outs == 0) return x;
+
+    Schema *y = nullptr;
+    do {
+        Schema *z = makeConnectorSchema();
+        y = y != nullptr ? makeParSchema(y, z) : z;
+    } while (--outs);
+
+    return makeSeqSchema(x, y);
+}
+
+/**
+ * Transform the definition name property of tree <t> into a legal file name.
+ * The resulting file name is stored in <dst> a table of at least <n> chars.
+ * Returns the <dst> pointer for convenience.
+ */
+static char *legalFileName(Tree t, char *dst) {
+    static int n = FAUST_PATH_MAX;
+    Tree id;
+    int i = 0;
+    if (getDefNameProperty(t, id)) {
+        const char *src = tree2str(id);
+        for (i = 0; isalnum(src[i]) && i < 16; i++) {
+            dst[i] = src[i];
+        }
+    }
+    dst[i] = 0;
+    if (strcmp(dst, "process") != 0) {
+        // if it is not process add the hex address to make the name unique
+        snprintf(&dst[i], n - i, "-%p", (void *) t);
+    }
+    return dst;
+}
+
+/**
+ * Write a top level diagram.
+ * A top level diagram is decorated with its definition name property and is drawn in an individual file.
+ */
+static void writeSchemaFile(Tree bd) {
+    Tree id;
+    Schema *ts;
+    int ins, outs;
+
+    char temp[FAUST_PATH_MAX];
+
+    getBoxType(bd, &ins, &outs);
+
+    bool hasname = getDefNameProperty(bd, id);
+    if (!hasname) id = tree(Node(unique("diagram_"))); // create an arbitrary name
+
+    // generate legal file name for the schema
+    stringstream s1;
+    s1 << legalFileName(bd, temp) << ".svg";
+    string res1 = s1.str();
+    dc->schemaFileName = res1;
+
+    // generate the label of the schema
+    string link = dc->backLink[bd];
+    ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), link);
+    SVGDev dev(res1.c_str(), ts->width, ts->height);
+    ts->place(0, 0, kLeftRight);
+    ts->draw(dev);
+    {
+        Collector c;
+        ts->collectTraits(c);
+        c.draw(dev);
+    }
+}
+
+// Schedule a block diagram to be drawn.
+static void scheduleDrawing(Tree t) {
+    if (dc->drawnExp.find(t) == dc->drawnExp.end()) {
+        dc->drawnExp.insert(t);
+        dc->backLink.insert(make_pair(t, dc->schemaFileName));  // remember the enclosing filename
+        dc->pendingExp.push(t);
+    }
+}
+
+// Retrieve next block diagram that must be drawn.
+static bool pendingDrawing(Tree &t) {
+    if (dc->pendingExp.empty()) return false;
+    t = dc->pendingExp.top();
+    dc->pendingExp.pop();
+    return true;
+}
 
 void drawBox(Box box) {
     dc = std::make_unique<DrawContext>();
@@ -230,99 +330,16 @@ static bool isIntTree(Tree l, vector<int> &v) {
     throw std::runtime_error(error.str());
 }
 
-/**
- * Schedule a block diagram to be drawn.
- */
-static void scheduleDrawing(Tree t) {
-    if (dc->drawnExp.find(t) == dc->drawnExp.end()) {
-        dc->drawnExp.insert(t);
-        dc->backLink.insert(make_pair(t, dc->schemaFileName));  // remember the enclosing filename
-        dc->pendingExp.push(t);
-    }
-}
-
-/**
- * Retrieve next block diagram that must be drawn.
- */
-static bool pendingDrawing(Tree &t) {
-    if (dc->pendingExp.empty()) return false;
-    t = dc->pendingExp.top();
-    dc->pendingExp.pop();
-    return true;
-}
-
-/**
- * Write a top level diagram.
- * A top level diagram is decorated with its definition name property and is drawn in an individual file.
- */
-static void writeSchemaFile(Tree bd) {
-    Tree id;
-    Schema *ts;
-    int ins, outs;
-
-    char temp[FAUST_PATH_MAX];
-
-    getBoxType(bd, &ins, &outs);
-
-    bool hasname = getDefNameProperty(bd, id);
-    if (!hasname) id = tree(Node(unique("diagram_"))); // create an arbitrary name
-
-    // generate legal file name for the schema
-    stringstream s1;
-    s1 << legalFileName(bd, temp) << ".svg";
-    string res1 = s1.str();
-    dc->schemaFileName = res1;
-
-    // generate the label of the schema
-    string link = dc->backLink[bd];
-    ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), link);
-    SVGDev dev(res1.c_str(), ts->width, ts->height);
-    ts->place(0, 0, kLeftRight);
-    ts->draw(dev);
-    {
-        Collector c;
-        ts->collectTraits(c);
-        c.draw(dev);
-    }
-}
-
-/**
- * Transform the definition name property of tree <t> into a legal file name.
- * The resulting file name is stored in <dst> a table of at least <n> chars.
- * Returns the <dst> pointer for convenience.
- */
-static char *legalFileName(Tree t, char *dst) {
-    static int n = FAUST_PATH_MAX;
-    Tree id;
-    int i = 0;
-    if (getDefNameProperty(t, id)) {
-        const char *src = tree2str(id);
-        for (i = 0; isalnum(src[i]) && i < 16; i++) {
-            dst[i] = src[i];
-        }
-    }
-    dst[i] = 0;
-    if (strcmp(dst, "process") != 0) {
-        // if it is not process add the hex address to make the name unique
-        snprintf(&dst[i], n - i, "-%p", (void *) t);
-    }
-    return dst;
-}
-
-/**
- * Returns `true` if t == '*(-1)'.
- * This test is used to simplify diagram by using a special symbol for inverters.
- */
+// Returns `true` if `t == '*(-1)'`.
+// This test is used to simplify diagram by using a special symbol for inverters.
 static bool isInverter(Tree t) {
     for (const auto &i: dc->inverter) if (t == i) return true;
     return false;
 }
 
-/**
- * Compute the Pure Routing property.
- * That is, expressions only made of cut, wires and slots.
- * No labels will be displayed for pure routing expressions.
- */
+// Compute the Pure Routing property.
+// That is, expressions only made of cut, wires and slots.
+// No labels will be displayed for pure routing expressions.
 static bool isPureRouting(Tree t) {
     bool r;
     int ID;
@@ -343,9 +360,7 @@ static bool isPureRouting(Tree t) {
     return false;
 }
 
-/**
- * Generate an appropriate schema according to the type of block diagram.
- */
+// Generate an appropriate schema according to the type of block diagram.
 static Schema *generateDiagramSchema(Tree t) {
     Tree id;
     int ins, outs;
@@ -366,81 +381,7 @@ static Schema *generateDiagramSchema(Tree t) {
     return generateInsideSchema(t); // normal case
 }
 
-/**
- * Generate the inside schema of a block diagram
- * according to its type.
- */
-static Schema *generateInsideSchema(Tree t) {
-    Tree a, b, c, ff, l, type, name, file;
-    int i;
-    double r;
-    prim0 p0;
-    prim1 p1;
-    prim2 p2;
-    prim3 p3;
-    prim4 p4;
-    prim5 p5;
-
-    if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), normalcolor, "");
-    if (isInverter(t)) return makeInverterSchema(invcolor);
-
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) {
-        stringstream s;
-        s << i;
-        return makeBlockSchema(0, 1, s.str(), numcolor, "");
-    }
-    if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", normalcolor, "");
-    if (isBoxWire(t)) return makeCableSchema();
-    if (isBoxCut(t)) return makeCutSchema();
-    if (isBoxPrim0(t, &p0)) return makeBlockSchema(0, 1, prim0name(p0), normalcolor, "");
-    if (isBoxPrim1(t, &p1)) return makeBlockSchema(1, 1, prim1name(p1), normalcolor, "");
-    if (isBoxPrim2(t, &p2)) return makeBlockSchema(2, 1, prim2name(p2), normalcolor, "");
-    if (isBoxPrim3(t, &p3)) return makeBlockSchema(3, 1, prim3name(p3), normalcolor, "");
-    if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), normalcolor, "");
-    if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), normalcolor, "");
-    if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), normalcolor, "");
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), normalcolor, "");
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return generateUserInterfaceSchema(t);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return generateBargraphSchema(t);
-    if (isBoxSoundfile(t)) return generateSoundfileSchema(t);
-    if (isBoxMetadata(t, a, b)) return generateDiagramSchema(a);
-
-    const bool isVGroup = isBoxVGroup(t, l, a);
-    const bool isHGroup = isBoxHGroup(t, l, a);
-    const bool isTGroup = isBoxTGroup(t, l, a);
-    if (isVGroup || isHGroup || isTGroup) {
-        const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
-        auto *s1 = generateDiagramSchema(a);
-        return makeDecorateSchema(s1, 10, groupId + "group(" + extractName(l) + ")");
-    }
-    if (isBoxSeq(t, a, b)) return makeSeqSchema(generateDiagramSchema(a), generateDiagramSchema(b));
-    if (isBoxPar(t, a, b)) return makeParSchema(generateDiagramSchema(a), generateDiagramSchema(b));
-    if (isBoxSplit(t, a, b)) return makeSplitSchema(generateDiagramSchema(a), generateDiagramSchema(b));
-    if (isBoxMerge(t, a, b)) return makeMergeSchema(generateDiagramSchema(a), generateDiagramSchema(b));
-    if (isBoxRec(t, a, b)) return makeRecSchema(generateDiagramSchema(a), generateDiagramSchema(b));
-    if (isBoxSlot(t, &i)) return generateOutputSlotSchema(t);
-    if (isBoxSymbolic(t, a, b)) {
-        Tree id;
-        if (getDefNameProperty(t, id)) return generateAbstractionSchema(generateInputSlotSchema(a), b);
-        return makeDecorateSchema(generateAbstractionSchema(generateInputSlotSchema(a), b), 10, "Abstraction");
-    }
-    if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", normalcolor, "");
-    if (isBoxRoute(t, a, b, c)) {
-        int ins, outs;
-        vector<int> route;
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) return makeRouteSchema(ins, outs, route);
-
-        stringstream error;
-        error << "ERROR in file " << __FILE__ << ':' << __LINE__ << ", invalid route expression : " << boxpp(t) << endl;
-        throw std::runtime_error(error.str());
-    }
-
-    throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
-}
-
-/**
- * Convert User interface element into a textual representation
- */
+// Convert user interface element into a textual representation
 static string userInterfaceDescription(Tree box) {
     Tree t1, label, cur, min, max, step, chan;
     if (isBoxButton(box, label)) return "button(" + extractName(label) + ')';
@@ -458,84 +399,86 @@ static string userInterfaceDescription(Tree box) {
     throw std::runtime_error("ERROR : unknown user interface element");
 }
 
-/**
- * Generate a 0->1 block schema for a user interface element.
- */
-static Schema *generateUserInterfaceSchema(Tree t) {
-    return makeBlockSchema(0, 1, userInterfaceDescription(t), uicolor, "");
-}
+// Generate the inside schema of a block diagram according to its type.
+static Schema *generateInsideSchema(Tree t) {
+    if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), normalcolor, "");
+    if (isInverter(t)) return makeInverterSchema(invcolor);
 
-/**
- * Generate a 1->1 block schema for a user interface bargraph.
- */
-static Schema *generateBargraphSchema(Tree t) {
-    return makeBlockSchema(1, 1, userInterfaceDescription(t), uicolor, "");
-}
-
-/**
- * Generate a 2->3+c block schema for soundfile("toto",c).
- */
-static Schema *generateSoundfileSchema(Tree t) {
-    Tree label, chan;
-    if (isBoxSoundfile(t, label, chan)) {
-        int n = tree2int(chan);
-        return makeBlockSchema(2, 2 + n, userInterfaceDescription(t), uicolor, "");
+    int i;
+    double r;
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) {
+        stringstream s;
+        if (isBoxInt(t)) s << i;
+        else s << r;
+        return makeBlockSchema(0, 1, s.str(), numcolor, "");
     }
-    throw std::runtime_error("ERROR : soundfile");
-}
 
-/**
- * Generate a 1->0 block schema for an input slot.
- */
-static Schema *generateInputSlotSchema(Tree a) {
-    Tree id;
-    getDefNameProperty(a, id);
-    return makeBlockSchema(1, 0, tree2str(id), slotcolor, "");
-}
+    if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", normalcolor, "");
+    if (isBoxWire(t)) return makeCableSchema();
+    if (isBoxCut(t)) return makeCutSchema();
 
-/**
- * Generate a 0->1 block schema for an output slot.
- */
-static Schema *generateOutputSlotSchema(Tree a) {
-    Tree id;
-    getDefNameProperty(a, id);
-    return makeBlockSchema(0, 1, tree2str(id), slotcolor, "");
-}
+    prim0 p0;
+    prim1 p1;
+    prim2 p2;
+    prim3 p3;
+    prim4 p4;
+    prim5 p5;
+    if (isBoxPrim0(t, &p0)) return makeBlockSchema(0, 1, prim0name(p0), normalcolor, "");
+    if (isBoxPrim1(t, &p1)) return makeBlockSchema(1, 1, prim1name(p1), normalcolor, "");
+    if (isBoxPrim2(t, &p2)) return makeBlockSchema(2, 1, prim2name(p2), normalcolor, "");
+    if (isBoxPrim3(t, &p3)) return makeBlockSchema(3, 1, prim3name(p3), normalcolor, "");
+    if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), normalcolor, "");
+    if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), normalcolor, "");
 
-/**
- * Generate an abstraction schema by placing in sequence
- * the input slots and the body.
- */
-static Schema *generateAbstractionSchema(Schema *x, Tree t) {
+    Tree ff;
+    if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), normalcolor, "");
+
+    Tree label, chan, type, name, file;
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), normalcolor, "");
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return makeBlockSchema(0, 1, userInterfaceDescription(t), uicolor, "");
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return makeBlockSchema(1, 1, userInterfaceDescription(t), uicolor, "");
+    if (isBoxSoundfile(t, label, chan)) return makeBlockSchema(2, 2 + tree2int(chan), userInterfaceDescription(t), uicolor, "");
+
     Tree a, b;
+    if (isBoxMetadata(t, a, b)) return generateDiagramSchema(a);
 
-    while (isBoxSymbolic(t, a, b)) {
-        x = makeParSchema(x, generateInputSlotSchema(a));
-        t = b;
+    const bool isVGroup = isBoxVGroup(t, label, a);
+    const bool isHGroup = isBoxHGroup(t, label, a);
+    const bool isTGroup = isBoxTGroup(t, label, a);
+    if (isVGroup || isHGroup || isTGroup) {
+        const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
+        auto *s1 = generateDiagramSchema(a);
+        return makeDecorateSchema(s1, 10, groupId + "group(" + extractName(label) + ")");
     }
-    return makeSeqSchema(x, generateDiagramSchema(t));
-}
+    if (isBoxSeq(t, a, b)) return makeSeqSchema(generateDiagramSchema(a), generateDiagramSchema(b));
+    if (isBoxPar(t, a, b)) return makeParSchema(generateDiagramSchema(a), generateDiagramSchema(b));
+    if (isBoxSplit(t, a, b)) return makeSplitSchema(generateDiagramSchema(a), generateDiagramSchema(b));
+    if (isBoxMerge(t, a, b)) return makeMergeSchema(generateDiagramSchema(a), generateDiagramSchema(b));
+    if (isBoxRec(t, a, b)) return makeRecSchema(generateDiagramSchema(a), generateDiagramSchema(b));
+    if (isBoxSlot(t, &i)) {
+        Tree id;
+        getDefNameProperty(t, id);
+        return makeBlockSchema(0, 1, tree2str(id), slotcolor, "");
+    }
+    if (isBoxSymbolic(t, a, b)) {
+        auto *inputSlotSchema = generateInputSlotSchema(a);
+        auto *abstractionSchema = generateAbstractionSchema(inputSlotSchema, b);
+        Tree id;
+        if (getDefNameProperty(t, id)) return abstractionSchema;
+        return makeDecorateSchema(abstractionSchema, 10, "Abstraction");
+    }
+    if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", normalcolor, "");
 
-static Schema *addSchemaInputs(int ins, Schema *x) {
-    if (ins == 0) return x;
+    Tree c;
+    if (isBoxRoute(t, a, b, c)) {
+        int ins, outs;
+        vector<int> route;
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) return makeRouteSchema(ins, outs, route);
 
-    Schema *y = nullptr;
-    do {
-        Schema *z = makeConnectorSchema();
-        y = y != nullptr ? makeParSchema(y, z) : z;
-    } while (--ins);
+        stringstream error;
+        error << "ERROR in file " << __FILE__ << ':' << __LINE__ << ", invalid route expression : " << boxpp(t) << endl;
+        throw std::runtime_error(error.str());
+    }
 
-    return makeSeqSchema(y, x);
-}
-
-static Schema *addSchemaOutputs(int outs, Schema *x) {
-    if (outs == 0) return x;
-
-    Schema *y = nullptr;
-    do {
-        Schema *z = makeConnectorSchema();
-        y = y != nullptr ? makeParSchema(y, z) : z;
-    } while (--outs);
-
-    return makeSeqSchema(x, y);
+    throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
 }

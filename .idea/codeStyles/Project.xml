@@ -14,6 +14,7 @@
       <option name="KEEP_STRUCTURES_IN_ONE_LINE" value="true" />
       <option name="KEEP_CASE_EXPRESSIONS_IN_ONE_LINE" value="true" />
       <option name="FUNCTION_CALL_ARGUMENTS_ALIGN_MULTILINE" value="false" />
+      <option name="ALIGN_INIT_LIST_IN_COLUMNS" value="false" />
     </Objective-C>
     <codeStyleSettings language="CMake">
       <indentOptions>

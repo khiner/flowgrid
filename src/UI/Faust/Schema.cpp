@@ -87,7 +87,6 @@ Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string 
     double minimal = 3 * dWire;
     double w = 2 * dHorz + max(minimal, quantize((int) text.size()));
     double h = 2 * dVert + max(minimal, max(inputs, outputs) * dWire);
-
     return new blockSchema(inputs, outputs, w, h, text, color, link);
 }
 
@@ -121,13 +120,13 @@ void blockSchema::placeInputPoints() {
         double px = x;
         double py = y + (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = Point(px, py + i * dWire);
+            inputPoints[i] = {px, py + i * dWire};
         }
     } else {
         double px = x + width;
         double py = y + height - (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = Point(px, py - i * dWire);
+            inputPoints[i] = {px, py - i * dWire};
         }
     }
 }
@@ -141,13 +140,13 @@ void blockSchema::placeOutputPoints() {
         double px = x + width;
         double py = y + (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = Point(px, py + i * dWire);
+            outputPoints[i] = {px, py + i * dWire};
         }
     } else {
         double px = x;
         double py = y + height - (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = Point(px, py - i * dWire);
+            outputPoints[i] = {px, py - i * dWire};
         }
     }
 }
@@ -181,15 +180,12 @@ void blockSchema::drawText(device &dev) {
  * Draw the orientation mark, a small Point that indicates the first input (like an integrated circuits).
  */
 void blockSchema::drawOrientationMark(device &dev) {
-    double px, py;
-    if (orientation == kLeftRight) {
-        px = x + dHorz;
-        py = y + dVert;
-    } else {
-        px = x + width - dHorz;
-        py = y + height - dVert;
-    }
-    dev.markSens(px, py, orientation);
+    const bool isHorz = orientation == kLeftRight;
+    dev.markSens(
+        x + (isHorz ? dHorz : (width - dHorz)),
+        y + (isHorz ? dVert : (height - dVert)),
+        orientation
+    );
 }
 
 /**
@@ -219,8 +215,8 @@ void blockSchema::collectInputWires(Collector &c) {
 
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoints[i];
-        c.addTrait(Trait(Point(p.x, p.y), Point(p.x + dx, p.y)));  // in->out direction
-        c.addInput(Point(p.x + dx, p.y));
+        c.addTrait({p, {p.x + dx, p.y}});  // in->out direction
+        c.addInput({p.x + dx, p.y});
     }
 }
 
@@ -232,8 +228,8 @@ void blockSchema::collectOutputWires(Collector &c) {
     double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = outputPoints[i];
-        c.addTrait(Trait(Point(p.x - dx, p.y), Point(p.x, p.y)));  // in->out direction
-        c.addOutput(Point(p.x - dx, p.y));
+        c.addTrait({{p.x - dx, p.y}, p});  // in->out direction
+        c.addOutput({p.x - dx, p.y});
     }
 }
 
@@ -278,11 +274,11 @@ void cableSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
     if (orientation == kLeftRight) {
         for (unsigned int i = 0; i < inputs; i++) {
-            points[i] = Point(ox, oy + dWire / 2.0 + i * dWire);
+            points[i] = {ox, oy + dWire / 2.0 + i * dWire};
         }
     } else {
         for (unsigned int i = 0; i < inputs; i++) {
-            points[i] = Point(ox, oy + height - dWire / 2.0 - i * dWire);
+            points[i] = {ox, oy + height - dWire / 2.0 - i * dWire};
         }
     }
 }
@@ -372,7 +368,7 @@ cutSchema::cutSchema() : Schema(1, 0, 0, dWire / 100.0), point(0, 0) {}
  */
 void cutSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
-    point = Point(ox, oy + height * 0.5);  //, -1);
+    point = {ox, oy + height * 0.5};  //, -1);
 }
 
 /**
@@ -445,11 +441,11 @@ void enlargedSchema::place(double ox, double oy, int orientation) {
 
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = schema->inputPoint(i);
-        inputPoints[i] = Point(p.x - dx, p.y);
+        inputPoints[i] = {p.x - dx, p.y};
     }
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = schema->outputPoint(i);
-        outputPoints[i] = Point(p.x + dx, p.y);
+        outputPoints[i] = {p.x + dx, p.y};
     }
 }
 
@@ -475,13 +471,13 @@ void enlargedSchema::collectTraits(Collector &c) {
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoint(i);
         auto q = schema->inputPoint(i);
-        c.addTrait(Trait(p, q));  // in->out direction
+        c.addTrait({p, q});  // in->out direction
     }
     // draw enlarge output wires
     for (unsigned int i = 0; i < outputs; i++) {
         auto q = schema->outputPoint(i);
         auto p = outputPoint(i);
-        c.addTrait(Trait(q, p));  // in->out direction
+        c.addTrait({q, p});  // in->out direction
     }
 }
 
@@ -733,19 +729,19 @@ void seqSchema::collectInternalWires(Collector &c) {
             }
             if (src.y == dst.y) {
                 // draw straight cable
-                c.addTrait(Trait(Point(src.x, src.y), Point(dst.x, dst.y)));
+                c.addTrait({src, dst});
             } else {
                 // draw zizag cable
-                c.addTrait(Trait(Point(src.x, src.y), Point(src.x + mx, src.y)));
-                c.addTrait(Trait(Point(src.x + mx, src.y), Point(src.x + mx, dst.y)));
-                c.addTrait(Trait(Point(src.x + mx, dst.y), Point(dst.x, dst.y)));
+                c.addTrait({src, {src.x + mx, src.y}});
+                c.addTrait({{src.x + mx, src.y}, {src.x + mx, dst.y}});
+                c.addTrait({{src.x + mx, dst.y}, dst});
             }
         }
     } else {
         // draw right left cables
         for (unsigned int i = 0; i < N; i++) {
-            Point src = schema1->outputPoint(i);
-            Point dst = schema2->inputPoint(i);
+            auto src = schema1->outputPoint(i);
+            auto dst = schema2->inputPoint(i);
 
             int d = direction(src, dst);
             if (d != dir) {
@@ -768,12 +764,12 @@ void seqSchema::collectInternalWires(Collector &c) {
             }
             if (src.y == dst.y) {
                 // draw straight cable
-                c.addTrait(Trait(Point(src.x, src.y), Point(dst.x, dst.y)));
+                c.addTrait({src, dst});
             } else {
                 // draw zizag cable
-                c.addTrait(Trait(Point(src.x, src.y), Point(src.x + mx, src.y)));
-                c.addTrait(Trait(Point(src.x + mx, src.y), Point(src.x + mx, dst.y)));
-                c.addTrait(Trait(Point(src.x + mx, dst.y), Point(dst.x, dst.y)));
+                c.addTrait({src, {src.x + mx, src.y}});
+                c.addTrait({{src.x + mx, src.y}, {src.x + mx, dst.y}});
+                c.addTrait({{src.x + mx, dst.y}, dst});
             }
         }
     }
@@ -865,7 +861,7 @@ void mergeSchema::collectTraits(Collector &c) {
     for (unsigned int i = 0; i < schema1->outputs; i++) {
         auto p = schema1->outputPoint(i);
         auto q = schema2->inputPoint(i % r);
-        c.addTrait(Trait(p, q));
+        c.addTrait({p, q});
     }
 }
 
@@ -901,7 +897,6 @@ Schema *makeSplitSchema(Schema *s1, Schema *s2) {
 
     // horizontal gap to avoid too sloppy connections
     double hgap = (a->height + b->height) / 4;
-
     return new splitSchema(a, b, hgap);
 }
 
@@ -960,7 +955,7 @@ void splitSchema::collectTraits(Collector &c) {
     for (unsigned int i = 0; i < schema2->inputs; i++) {
         auto p = schema1->outputPoint(i % r);
         auto q = schema2->inputPoint(i);
-        c.addTrait(Trait(Point(p.x, p.y), Point(q.x, q.y)));
+        c.addTrait({p, q});
     }
 }
 
@@ -1015,7 +1010,6 @@ recSchema::recSchema(Schema *s1, Schema *s2, double width)
     faustassert(s1->outputs >= s2->inputs);
     faustassert(s1->width >= s2->width);
 
-    // create the input and output Points
     for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
@@ -1042,11 +1036,11 @@ void recSchema::place(double ox, double oy, int orientation) {
 
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = schema1->inputPoint(i + schema2->outputs);
-        inputPoints[i] = Point(p.x - dx1, p.y);
+        inputPoints[i] = {p.x - dx1, p.y};
     }
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = schema1->outputPoint(i);
-        outputPoints[i] = Point(p.x + dx1, p.y);
+        outputPoints[i] = {p.x + dx1, p.y};
     }
 }
 
@@ -1080,7 +1074,7 @@ void recSchema::draw(device &dev) {
     // draw the implicit feedback delay to each schema2 input
     double dw = (orientation == kLeftRight) ? dWire : -dWire;
     for (unsigned int i = 0; i < schema2->inputs; i++) {
-        const Point &p = schema1->outputPoint(i);
+        const auto &p = schema1->outputPoint(i);
         drawDelaySign(dev, p.x + i * dw, p.y, dw / 2);
     }
 }
@@ -1102,7 +1096,7 @@ void recSchema::collectTraits(Collector &c) {
     for (unsigned int i = schema2->inputs; i < outputs; i++) {
         auto p = schema1->outputPoint(i);
         auto q = outputPoint(i);
-        c.addTrait(Trait(p, q));  // in->out order
+        c.addTrait({p, q});  // in->out order
     }
 
     // draw the input lines
@@ -1110,7 +1104,7 @@ void recSchema::collectTraits(Collector &c) {
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoint(i);
         auto q = schema1->inputPoint(i + skip);
-        c.addTrait(Trait(p, q));  // in->out order
+        c.addTrait({p, q});  // in->out order
     }
 
     // draw the feedfront connections from each schema2 output
@@ -1134,10 +1128,10 @@ void recSchema::collectFeedback(Collector &c, const Point &src, const Point &dst
     c.addOutput(br);
     c.addInput(br);
 
-    c.addTrait(Trait(up, Point(ox, dst.y)));
-    c.addTrait(Trait(Point(ox, dst.y), Point(dst.x, dst.y)));
-    c.addTrait(Trait(src, br));
-    c.addTrait(Trait(br, out));
+    c.addTrait({up, {ox, dst.y}});
+    c.addTrait({{ox, dst.y}, dst});
+    c.addTrait({src, br});
+    c.addTrait({br, out});
 }
 
 /**
@@ -1147,9 +1141,9 @@ void recSchema::collectFeedback(Collector &c, const Point &src, const Point &dst
 void recSchema::collectFeedfront(Collector &c, const Point &src, const Point &dst, double dx) {
     double ox = src.x + ((orientation == kLeftRight) ? -dx : dx);
 
-    c.addTrait(Trait(Point(src.x, src.y), Point(ox, src.y)));
-    c.addTrait(Trait(Point(ox, src.y), Point(ox, dst.y)));
-    c.addTrait(Trait(Point(ox, dst.y), Point(dst.x, dst.y)));
+    c.addTrait({{src.x, src.y}, {ox, src.y}});
+    c.addTrait({{ox, src.y}, {ox, dst.y}});
+    c.addTrait({{ox, dst.y}, {dst.x, dst.y}});
 }
 
 /**
@@ -1301,11 +1295,11 @@ void decorateSchema::place(double ox, double oy, int orientation) {
 
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = schema->inputPoint(i);
-        inputPoints[i] = Point(p.x - m, p.y);  //, p.z);
+        inputPoints[i] = {p.x - m, p.y};
     }
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = schema->outputPoint(i);
-        outputPoints[i] = Point(p.x + m, p.y);  //, p.z);
+        outputPoints[i] = {p.x + m, p.y};
     }
 }
 
@@ -1350,13 +1344,13 @@ void decorateSchema::collectTraits(Collector &c) {
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoint(i);
         auto q = schema->inputPoint(i);
-        c.addTrait(Trait(p, q));  // in->out direction
+        c.addTrait({p, q});  // in->out direction
     }
     // draw enlarge output wires
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = schema->outputPoint(i);
         auto q = outputPoint(i);
-        c.addTrait(Trait(p, q));  // in->out direction
+        c.addTrait({p, q});  // in->out direction
     }
 }
 
@@ -1367,8 +1361,8 @@ void decorateSchema::collectTraits(Collector &c) {
 class connectorSchema : public Schema {
 protected:
     // fields only defined after place() is called
-    vector<Point> inputPoints;   ///< input connection Points
-    vector<Point> outputPoints;  ///< output connection Points
+    vector<Point> inputPoints;
+    vector<Point> outputPoints;
 
 public:
     friend Schema *makeConnectorSchema();
@@ -1428,13 +1422,13 @@ void connectorSchema::placeInputPoints() {
         double px = x;
         double py = y + (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = Point(px, py + i * dWire);
+            inputPoints[i] = {px, py + i * dWire};
         }
     } else {
         double px = x + width;
         double py = y + height - (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = Point(px, py - i * dWire);
+            inputPoints[i] = {px, py - i * dWire};
         }
     }
 }
@@ -1449,13 +1443,13 @@ void connectorSchema::placeOutputPoints() {
         double px = x + width;
         double py = y + (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = Point(px, py + i * dWire);
+            outputPoints[i] = {px, py + i * dWire};
         }
     } else {
         double px = x;
         double py = y + height - (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = Point(px, py - i * dWire);
+            outputPoints[i] = {px, py - i * dWire};
         }
     }
 }
@@ -1483,8 +1477,8 @@ void connectorSchema::collectInputWires(Collector &c) {
     double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoints[i];
-        c.addTrait(Trait(Point(p.x, p.y), Point(p.x + dx, p.y)));  // in->out direction
-        c.addInput(Point(p.x + dx, p.y));
+        c.addTrait({p, {p.x + dx, p.y}});  // in->out direction
+        c.addInput({p.x + dx, p.y});
     }
 }
 
@@ -1496,8 +1490,8 @@ void connectorSchema::collectOutputWires(Collector &c) {
     double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = outputPoints[i];
-        c.addTrait(Trait(Point(p.x - dx, p.y), Point(p.x, p.y)));  // in->out direction
-        c.addOutput(Point(p.x - dx, p.y));
+        c.addTrait({{p.x - dx, p.y}, p});  // in->out direction
+        c.addOutput({p.x - dx, p.y});
     }
 }
 
@@ -1586,13 +1580,13 @@ void routeSchema::placeInputPoints() {
         double px = x;
         double py = y + (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = Point(px, py + i * dWire);
+            inputPoints[i] = {px, py + i * dWire};
         }
     } else {
         double px = x + width;
         double py = y + height - (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = Point(px, py - i * dWire);
+            inputPoints[i] = {px, py - i * dWire};
         }
     }
 }
@@ -1606,13 +1600,13 @@ void routeSchema::placeOutputPoints() {
         double px = x + width;
         double py = y + (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = Point(px, py + i * dWire);
+            outputPoints[i] = {px, py + i * dWire};
         }
     } else {
         double px = x;
         double py = y + height - (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = Point(px, py - i * dWire);
+            outputPoints[i] = {px, py - i * dWire};
         }
     }
 }
@@ -1680,9 +1674,8 @@ void routeSchema::collectTraits(Collector &c) {
         int dst = routes[i + 1] - 1;
         auto p1 = inputPoints[src];
         auto p2 = outputPoints[dst];
-        // cerr << "add traits: " << p1.x << 'x' << p1.y << " -> " << p2.x << "x" << p2.y << endl;
         double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
-        c.addTrait(Trait(Point(p1.x + dx, p1.y), Point(p2.x - dx, p2.y)));
+        c.addTrait({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
     }
 }
 
@@ -1693,8 +1686,8 @@ void routeSchema::collectInputWires(Collector &c) {
     double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoints[i];
-        c.addTrait(Trait(Point(p.x, p.y), Point(p.x + dx, p.y)));  // in->out direction
-        c.addInput(Point(p.x + dx, p.y));
+        c.addTrait({p, {p.x + dx, p.y}});  // in->out direction
+        c.addInput({p.x + dx, p.y});
     }
 }
 
@@ -1705,7 +1698,7 @@ void routeSchema::collectOutputWires(Collector &c) {
     double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = outputPoints[i];
-        c.addTrait(Trait(Point(p.x - dx, p.y), Point(p.x, p.y)));  // in->out direction
-        c.addOutput(Point(p.x - dx, p.y));
+        c.addTrait({{p.x - dx, p.y}, p});  // in->out direction
+        c.addOutput({p.x - dx, p.y});
     }
 }

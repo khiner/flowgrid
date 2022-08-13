@@ -39,7 +39,7 @@ bool gDrawRouteFrame = false;
  * A simple rectangular box with a text and inputs and outputs.
  * The constructor is private in order to make sure `makeBlockSchema` is used instead
  */
-class blockSchema : public Schema {
+class BlockSchema : public Schema {
 protected:
     const string text;
     const string color;
@@ -59,7 +59,7 @@ public:
     void collectTraits(Collector &c) override;
 
 protected:
-    blockSchema(unsigned int inputs, unsigned int outputs, double width, double height, const string &name, const string &color, const string &link);
+    BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, const string &name, const string &color, const string &link);
 
     void placeInputPoints();
     void placeOutputPoints();
@@ -79,7 +79,7 @@ static double quantize(int n) {
 }
 
 /**
- * Build a simple colored `blockSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
+ * Build a simple colored `BlockSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
  * Computes the size of the box according to the length of the text and the maximum number of ports.
  */
 Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link) {
@@ -87,34 +87,34 @@ Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string 
     double minimal = 3 * dWire;
     double w = 2 * dHorz + max(minimal, quantize((int) text.size()));
     double h = 2 * dVert + max(minimal, max(inputs, outputs) * dWire);
-    return new blockSchema(inputs, outputs, w, h, text, color, link);
+    return new BlockSchema(inputs, outputs, w, h, text, color, link);
 }
 
-blockSchema::blockSchema(unsigned int inputs, unsigned int outputs, double width, double height, const string &text, const string &color, const string &link)
+BlockSchema::BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, const string &text, const string &color, const string &link)
     : Schema(inputs, outputs, width, height), text(text), color(color), link(link) {
     for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
 /**
- * Define the graphic position of the `blockSchema`.
+ * Define the graphic position of the `BlockSchema`.
  * Computes the graphic position of all the elements, in particular the inputs and outputs.
  * This method must be called before `draw()`.
  */
-void blockSchema::place(double x, double y, int orientation) {
+void BlockSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
 
     placeInputPoints();
     placeOutputPoints();
 }
 
-Point blockSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point blockSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
+Point BlockSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
+Point BlockSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 /**
- * Computes the input points according to the position and the orientation of the `blockSchema`.
+ * Computes the input points according to the position and the orientation of the `BlockSchema`.
  */
-void blockSchema::placeInputPoints() {
+void BlockSchema::placeInputPoints() {
     unsigned int N = inputs;
     if (orientation == kLeftRight) {
         double px = x;
@@ -132,9 +132,9 @@ void blockSchema::placeInputPoints() {
 }
 
 /**
- * Computes the output points according to the position and the orientation of the `blockSchema`.
+ * Computes the output points according to the position and the orientation of the `BlockSchema`.
  */
-void blockSchema::placeOutputPoints() {
+void BlockSchema::placeOutputPoints() {
     unsigned int N = outputs;
     if (orientation == kLeftRight) {
         double px = x + width;
@@ -152,28 +152,28 @@ void blockSchema::placeOutputPoints() {
 }
 
 /**
- * Draw the `blockSchema` on the device.
- * This method can only be called after the `blockSchema` has been placed.
+ * Draw the `BlockSchema` on the device.
+ * This method can only be called after the `BlockSchema` has been placed.
  */
-void blockSchema::draw(device &dev) {
+void BlockSchema::draw(device &dev) {
     drawRectangle(dev);
     drawText(dev);
     drawOrientationMark(dev);
     drawInputArrows(dev);
 }
 
-void blockSchema::drawRectangle(device &dev) {
+void BlockSchema::drawRectangle(device &dev) {
     dev.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
 }
 
-void blockSchema::drawText(device &dev) {
+void BlockSchema::drawText(device &dev) {
     dev.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
 }
 
 /**
  * Draw a small point that indicates the first input (like an integrated circuits).
  */
-void blockSchema::drawOrientationMark(device &dev) {
+void BlockSchema::drawOrientationMark(device &dev) {
     const bool isHorz = orientation == kLeftRight;
     dev.markSens(
         x + (isHorz ? dHorz : (width - dHorz)),
@@ -183,9 +183,9 @@ void blockSchema::drawOrientationMark(device &dev) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
+ * Draw horizontal arrows from the input points to the `BlockSchema` rectangle.
  */
-void blockSchema::drawInputArrows(device &dev) {
+void BlockSchema::drawInputArrows(device &dev) {
     double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoints[i];
@@ -194,17 +194,17 @@ void blockSchema::drawInputArrows(device &dev) {
 }
 
 /**
- * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
+ * Draw horizontal arrows from the input points to the `BlockSchema` rectangle.
  */
-void blockSchema::collectTraits(Collector &c) {
+void BlockSchema::collectTraits(Collector &c) {
     collectInputWires(c);
     collectOutputWires(c);
 }
 
 /**
- * Draw horizontal arrows from the input points to the `blockSchema` rectangle.
+ * Draw horizontal arrows from the input points to the `BlockSchema` rectangle.
  */
-void blockSchema::collectInputWires(Collector &c) {
+void BlockSchema::collectInputWires(Collector &c) {
     double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoints[i];
@@ -214,9 +214,9 @@ void blockSchema::collectInputWires(Collector &c) {
 }
 
 /**
- * Draw horizontal line from the `blockSchema` rectangle to the output points
+ * Draw horizontal line from the `BlockSchema` rectangle to the output points
  */
-void blockSchema::collectOutputWires(Collector &c) {
+void BlockSchema::collectOutputWires(Collector &c) {
     double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = outputPoints[i];
@@ -231,7 +231,7 @@ void blockSchema::collectOutputWires(Collector &c) {
  * Therefore input and output connection points are the same.
  * The constructor is private to enforce the use of `makeCableSchema`.
  */
-class cableSchema : public Schema {
+class CableSchema : public Schema {
     vector<Point> points;
 
 public:
@@ -244,22 +244,22 @@ public:
     void collectTraits(Collector &c) override;
 
 private:
-    cableSchema(unsigned int n);
+    CableSchema(unsigned int n);
 };
 
 /**
  * Build n cables in parallel.
  */
-Schema *makeCableSchema(unsigned int n) { return new cableSchema(n); }
+Schema *makeCableSchema(unsigned int n) { return new CableSchema(n); }
 
-cableSchema::cableSchema(unsigned int n) : Schema(n, n, 0, n * dWire) {
+CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, n * dWire) {
     for (unsigned int i = 0; i < n; i++) points.emplace_back(0, 0);
 }
 
 /**
  * Place the communication points vertically spaced by `dWire`.
  */
-void cableSchema::place(double ox, double oy, int orientation) {
+void CableSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
     if (orientation == kLeftRight) {
         for (unsigned int i = 0; i < inputs; i++) {
@@ -276,48 +276,48 @@ void cableSchema::place(double ox, double oy, int orientation) {
  * Nothing to draw.
  * Actual drawing will take place when the wires are enlarged.
  */
-void cableSchema::draw(device &) {}
+void CableSchema::draw(device &) {}
 
 /**
  * Nothing to collect.
  * Actual collect will take place when the wires are enlarged.
  */
-void cableSchema::collectTraits(Collector &) {}
+void CableSchema::collectTraits(Collector &) {}
 
 /**
  * Input and output points are the same if the width is 0.
  */
-Point cableSchema::inputPoint(unsigned int i) const { return points[i]; }
+Point CableSchema::inputPoint(unsigned int i) const { return points[i]; }
 
 /**
  * Input and output points are the same if the width is 0.
  */
-Point cableSchema::outputPoint(unsigned int i) const { return points[i]; }
+Point CableSchema::outputPoint(unsigned int i) const { return points[i]; }
 
 /**
  * An inverter is a special symbol corresponding to '*(-1)' to create more compact diagrams.
  */
-class inverterSchema : public blockSchema {
+class InverterSchema : public BlockSchema {
 public:
     friend Schema *makeInverterSchema(const string &color);
     void draw(device &dev) override;
 
 private:
-    inverterSchema(const string &color);
+    InverterSchema(const string &color);
 };
 
 /**
  * Build n cables in parallel.
  */
-Schema *makeInverterSchema(const string &color) { return new inverterSchema(color); }
+Schema *makeInverterSchema(const string &color) { return new InverterSchema(color); }
 
-inverterSchema::inverterSchema(const string &color) : blockSchema(1, 1, 2.5 * dWire, dWire, "-1", color, "") {}
+InverterSchema::InverterSchema(const string &color) : BlockSchema(1, 1, 2.5 * dWire, dWire, "-1", color, "") {}
 
 /**
  * Nothing to draw.
  * Actual drawing will take place when the wires are enlarged.
  */
-void inverterSchema::draw(device &dev) {
+void InverterSchema::draw(device &dev) {
     dev.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, color.c_str(), link.c_str(), orientation == kLeftRight);
 }
 
@@ -1225,10 +1225,10 @@ void TopSchema::collectTraits(Collector &c) {
 }
 
 /**
- * A `decorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
+ * A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
  * The rectangle is placed at half the margin parameter.
  */
-class decorateSchema : public Schema {
+class DecorateSchema : public Schema {
     Schema *schema;
     double fMargin;
     string text;
@@ -1245,17 +1245,17 @@ public:
     void collectTraits(Collector &c) override;
 
 private:
-    decorateSchema(Schema *s1, double margin, const string &text);
+    DecorateSchema(Schema *s1, double margin, const string &text);
 };
 
-Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { return new decorateSchema(s, margin, text); }
+Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { return new DecorateSchema(s, margin, text); }
 
 /**
- * A decorateSchema is a schema surrounded by a dashed rectangle with a label on the top left.
+ * A DecorateSchema is a schema surrounded by a dashed rectangle with a label on the top left.
  * The rectangle is placed at half the margin parameter.
  * The constructor is made private to enforce the usage of `makeDecorateSchema`
  */
-decorateSchema::decorateSchema(Schema *s, double margin, const string &text)
+DecorateSchema::DecorateSchema(Schema *s, double margin, const string &text)
     : Schema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(text) {
     for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
@@ -1266,7 +1266,7 @@ decorateSchema::decorateSchema(Schema *s, double margin, const string &text)
  * Computes the graphic position of all the elements, in particular the inputs and outputs.
  * This method must be called before `draw()`.
  */
-void decorateSchema::place(double ox, double oy, int orientation) {
+void DecorateSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
     schema->place(ox + fMargin, oy + fMargin, orientation);
@@ -1284,10 +1284,10 @@ void decorateSchema::place(double ox, double oy, int orientation) {
     }
 }
 
-Point decorateSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point decorateSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
+Point DecorateSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
+Point DecorateSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
-void decorateSchema::draw(device &dev) {
+void DecorateSchema::draw(device &dev) {
     schema->draw(dev);
 
     // define the coordinates of the frame
@@ -1310,7 +1310,7 @@ void decorateSchema::draw(device &dev) {
     dev.label(tl, y0, text.c_str());  //
 }
 
-void decorateSchema::collectTraits(Collector &c) {
+void DecorateSchema::collectTraits(Collector &c) {
     schema->collectTraits(c);
 
     // draw enlarge input wires

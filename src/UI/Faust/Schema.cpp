@@ -673,87 +673,34 @@ void SeqSchema::collectTraits(Collector &c) {
 }
 
 /**
- * Draw the internal wires aligning the vertical segments in
- * a symetric way when possible.
+ * Draw the internal wires aligning the vertical segments in a symmetric way when possible.
  */
-
 void SeqSchema::collectInternalWires(Collector &c) {
-    faustassert(schema1->outputs == schema2->inputs);
-
     const unsigned int N = schema1->outputs;
-    double dx = 0;
-    double mx = 0;
+    faustassert(N == schema2->inputs);
+
+    double dx = 0, mx = 0;
     int dir = -1;
-
-    if (orientation == kLeftRight) {
-        // draw left right cables
-        for (unsigned int i = 0; i < N; i++) {
-            Point src = schema1->outputPoint(i);
-            Point dst = schema2->inputPoint(i);
-
-            int d = direction(src, dst);
-            if (d != dir) {
-                // compute attributes of new direction
-                switch (d) {
-                    case kUpDir:mx = 0;
-                        dx = dWire;
-                        break;
-                    case kDownDir:mx = horzGap;
-                        dx = -dWire;
-                        break;
-                    default:mx = 0;
-                        dx = 0;
-                        break;
-                }
-                dir = d;
-            } else {
-                // move in same direction
-                mx = mx + dx;
-            }
-            if (src.y == dst.y) {
-                // draw straight cable
-                c.addTrait({src, dst});
-            } else {
-                // draw zizag cable
-                c.addTrait({src, {src.x + mx, src.y}});
-                c.addTrait({{src.x + mx, src.y}, {src.x + mx, dst.y}});
-                c.addTrait({{src.x + mx, dst.y}, dst});
-            }
+    for (unsigned int i = 0; i < N; i++) {
+        const auto src = schema1->outputPoint(i);
+        const auto dst = schema2->inputPoint(i);
+        const int d = direction(src, dst);
+        if (d == dir) {
+            mx += dx; // move in same direction
+        } else {
+            mx = orientation == kLeftRight ? (d == kDownDir ? horzGap : 0) : (d == kUpDir ? -horzGap : 0);
+            dx = d == kUpDir ? dWire : d == kDownDir ? -dWire : 0;
+            dir = d;
         }
-    } else {
-        // draw right left cables
-        for (unsigned int i = 0; i < N; i++) {
-            auto src = schema1->outputPoint(i);
-            auto dst = schema2->inputPoint(i);
-
-            int d = direction(src, dst);
-            if (d != dir) {
-                // compute attributes of new direction
-                switch (d) {
-                    case kUpDir:mx = -horzGap;
-                        dx = dWire;
-                        break;
-                    case kDownDir:mx = 0;
-                        dx = -dWire;
-                        break;
-                    default:mx = 0;
-                        dx = 0;
-                        break;
-                }
-                dir = d;
-            } else {
-                // move in same direction
-                mx = mx + dx;
-            }
-            if (src.y == dst.y) {
-                // draw straight cable
-                c.addTrait({src, dst});
-            } else {
-                // draw zizag cable
-                c.addTrait({src, {src.x + mx, src.y}});
-                c.addTrait({{src.x + mx, src.y}, {src.x + mx, dst.y}});
-                c.addTrait({{src.x + mx, dst.y}, dst});
-            }
+        // todo add a toggle to always draw the straight cable - I tried this and it can look better imo (diagonal lines instead of manhatten)
+        if (src.y == dst.y) {
+            // Draw a straight, potentially diagonal cable.
+            c.addTrait({src, dst});
+        } else {
+            // Draw a zigzag cable by traversing half the distance between, taking a sharp turn, then turning back and finishing.
+            c.addTrait({src, {src.x + mx, src.y}});
+            c.addTrait({{src.x + mx, src.y}, {src.x + mx, dst.y}});
+            c.addTrait({{src.x + mx, dst.y}, dst});
         }
     }
 }

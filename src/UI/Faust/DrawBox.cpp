@@ -384,14 +384,9 @@ static Schema *generateInsideSchema(Tree t) {
     if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), normalcolor, "");
     if (isInverter(t)) return makeInverterSchema(invcolor);
 
-    if (isBoxInt(t, &i)) {
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) {
         stringstream s;
         s << i;
-        return makeBlockSchema(0, 1, s.str(), numcolor, "");
-    }
-    if (isBoxReal(t, &r)) {
-        stringstream s;
-        s << r;
         return makeBlockSchema(0, 1, s.str(), numcolor, "");
     }
     if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", normalcolor, "");
@@ -404,30 +399,19 @@ static Schema *generateInsideSchema(Tree t) {
     if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), normalcolor, "");
     if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), normalcolor, "");
     if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), normalcolor, "");
-    if (isBoxFConst(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), normalcolor, "");
-    if (isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), normalcolor, "");
-    if (isBoxButton(t)) return generateUserInterfaceSchema(t);
-    if (isBoxCheckbox(t)) return generateUserInterfaceSchema(t);
-    if (isBoxVSlider(t)) return generateUserInterfaceSchema(t);
-    if (isBoxHSlider(t)) return generateUserInterfaceSchema(t);
-    if (isBoxNumEntry(t)) return generateUserInterfaceSchema(t);
-    if (isBoxVBargraph(t)) return generateBargraphSchema(t);
-    if (isBoxHBargraph(t)) return generateBargraphSchema(t);
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), normalcolor, "");
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return generateUserInterfaceSchema(t);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return generateBargraphSchema(t);
     if (isBoxSoundfile(t)) return generateSoundfileSchema(t);
     if (isBoxMetadata(t, a, b)) return generateDiagramSchema(a);
 
-    // Don't draw group rectangle when labels are empty (ie "")
-    if (isBoxVGroup(t, l, a)) {
-        Schema *s1 = generateDiagramSchema(a);
-        return makeDecorateSchema(s1, 10, "vgroup(" + extractName(l) + ")");
-    }
-    if (isBoxHGroup(t, l, a)) {
-        Schema *s1 = generateDiagramSchema(a);
-        return makeDecorateSchema(s1, 10, "hgroup(" + extractName(l) + ")");
-    }
-    if (isBoxTGroup(t, l, a)) {
-        Schema *s1 = generateDiagramSchema(a);
-        return makeDecorateSchema(s1, 10, "tgroup(" + extractName(l) + ")");
+    const bool isVGroup = isBoxVGroup(t, l, a);
+    const bool isHGroup = isBoxHGroup(t, l, a);
+    const bool isTGroup = isBoxTGroup(t, l, a);
+    if (isVGroup || isHGroup || isTGroup) {
+        const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
+        auto *s1 = generateDiagramSchema(a);
+        return makeDecorateSchema(s1, 10, groupId + "group(" + extractName(l) + ")");
     }
     if (isBoxSeq(t, a, b)) return makeSeqSchema(generateDiagramSchema(a), generateDiagramSchema(b));
     if (isBoxPar(t, a, b)) return makeParSchema(generateDiagramSchema(a), generateDiagramSchema(b));

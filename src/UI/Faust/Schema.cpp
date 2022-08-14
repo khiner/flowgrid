@@ -85,23 +85,18 @@ void BlockSchema::draw(Device &device) {
 
     // Input arrows
     const double dx = isLR ? dHorz : -dHorz;
-    for (unsigned int i = 0; i < inputs; i++) {
-        const auto p = inputPoints[i];
-        device.fleche(p.x + dx, p.y, 0, orientation);
-    }
+    for (const auto &p: inputPoints) device.fleche(p.x + dx, p.y, 0, orientation);
 }
 
 void BlockSchema::collectTraits(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     // Input wires
-    for (unsigned int i = 0; i < inputs; i++) {
-        const auto p = inputPoints[i];
-        c.addTrait({p, {p.x + dx, p.y}}); // in->out direction
+    for (const auto &p: inputPoints) {
+        c.addTrait({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
     // Output wires
-    for (unsigned int i = 0; i < outputs; i++) {
-        const auto p = outputPoints[i];
+    for (const auto &p: outputPoints) {
         c.addTrait({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
     }
@@ -135,10 +130,9 @@ CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, n * dWire) {
 // Place the communication points vertically spaced by `dWire`.
 void CableSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
-    if (orientation == kLeftRight) {
-        for (unsigned int i = 0; i < inputs; i++) points[i] = {ox, oy + dWire / 2.0 + i * dWire};
-    } else {
-        for (unsigned int i = 0; i < inputs; i++) points[i] = {ox, oy + height - dWire / 2.0 - i * dWire};
+    for (unsigned int i = 0; i < inputs; i++) {
+        const double dx = dWire * (i + 0.5);
+        points[i] = {ox, oy + (orientation == kLeftRight ? dx : (height - dx))};
     }
 }
 
@@ -256,11 +250,11 @@ void EnlargedSchema::place(double ox, double oy, int orientation) {
     if (orientation == kRightLeft) dx = -dx;
 
     for (unsigned int i = 0; i < inputs; i++) {
-        auto p = schema->inputPoint(i);
+        const auto p = schema->inputPoint(i);
         inputPoints[i] = {p.x - dx, p.y};
     }
     for (unsigned int i = 0; i < outputs; i++) {
-        auto p = schema->outputPoint(i);
+        const auto p = schema->outputPoint(i);
         outputPoints[i] = {p.x + dx, p.y};
     }
 }
@@ -372,10 +366,8 @@ static double computeHorzGap(Schema *a, Schema *b) {
     for (int &i: MaxGroupSize) i = 0;
 
     // place a and b to have valid connection points
-    double ya = max(0.0, 0.5 * (b->height - a->height));
-    double yb = max(0.0, 0.5 * (a->height - b->height));
-    a->place(0, ya, kLeftRight);
-    b->place(0, yb, kLeftRight);
+    a->place(0, max(0.0, 0.5 * (b->height - a->height)), kLeftRight);
+    b->place(0, max(0.0, 0.5 * (a->height - b->height)), kLeftRight);
 
     // init current group direction and size
     int gdir = direction(a->outputPoint(0), b->inputPoint(0));
@@ -932,14 +924,13 @@ void ConnectorSchema::draw(Device &) {}
 void ConnectorSchema::collectTraits(Collector &c) {
     const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     // Input wires
-    for (unsigned int i = 0; i < inputs; i++) {
-        auto p = inputPoints[i];
+    for (const auto &p: inputPoints) {
         c.addTrait({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
-    for (unsigned int i = 0; i < outputs; i++) {
-        auto p = outputPoints[i];
-        c.addTrait({{p.x - dx, p.y}, p});  // in->out direction
+    // Output wires
+    for (const auto &p: outputPoints) {
+        c.addTrait({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
     }
 }
@@ -1004,8 +995,7 @@ void RouteSchema::draw(Device &device) {
 
         // Input arrows
         const double dx = isLR ? dHorz : -dHorz;
-        for (unsigned int i = 0; i < inputs; i++) {
-            const auto p = inputPoints[i];
+        for (const auto &p: inputPoints) {
             device.fleche(p.x + dx, p.y, 0, orientation);
         }
     }
@@ -1014,14 +1004,12 @@ void RouteSchema::draw(Device &device) {
 void RouteSchema::collectTraits(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     // Input wires
-    for (unsigned int i = 0; i < inputs; i++) {
-        const auto p = inputPoints[i];
+    for (const auto &p: inputPoints) {
         c.addTrait({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
     // Output wires
-    for (unsigned int i = 0; i < outputs; i++) {
-        const auto p = outputPoints[i];
+    for (const auto &p: outputPoints) {
         c.addTrait({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
     }

@@ -1124,15 +1124,8 @@ void TopSchema::draw(device &dev) {
 
 void TopSchema::collectTraits(Collector &c) {
     schema->collectTraits(c);
-
-    for (unsigned int i = 0; i < schema->inputs; i++) {
-        auto p = schema->inputPoint(i);
-        c.addOutput(p);
-    }
-    for (unsigned int i = 0; i < schema->outputs; i++) {
-        auto p = schema->outputPoint(i);
-        c.addInput(p);
-    }
+    for (unsigned int i = 0; i < schema->inputs; i++) c.addOutput(schema->inputPoint(i));
+    for (unsigned int i = 0; i < schema->outputs; i++) c.addInput(schema->outputPoint(i));
 }
 
 /**
@@ -1172,26 +1165,21 @@ DecorateSchema::DecorateSchema(Schema *s, double margin, string text)
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
-/**
- * Define the graphic position of the schema.
- * Computes the graphic position of all the elements, in particular the inputs and outputs.
- * This method must be called before `draw()`.
- */
+// Define the graphic position of the schema.
+// Computes the graphic position of all the elements, in particular the inputs and outputs.
+// This method must be called before `draw()`.
 void DecorateSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
-
     schema->place(ox + fMargin, oy + fMargin, orientation);
 
-    double m = fMargin;
-    if (orientation == kRightLeft) m = -m;
-
+    const double m = orientation == kRightLeft ? -fMargin : fMargin;
     for (unsigned int i = 0; i < inputs; i++) {
-        auto p = schema->inputPoint(i);
-        inputPoints[i] = {p.x - m, p.y};
+        const auto p = schema->inputPoint(i);
+        inputPoints[i] = {p.x - m, p.y}; // todo inline with a new `subX(double)` method and vectorize
     }
     for (unsigned int i = 0; i < outputs; i++) {
-        auto p = schema->outputPoint(i);
-        outputPoints[i] = {p.x + m, p.y};
+        const auto p = schema->outputPoint(i);
+        outputPoints[i] = {p.x + m, p.y}; // todo inline with a new `addX(double)` method and vectorize
     }
 }
 

@@ -62,11 +62,9 @@ int boxComplexity(Box box) {
     return v;
 }
 
-/**
- * Compute the complexity of a box expression tree according to the complexity of its subexpressions.
- * Basically, it counts the number of boxes to be drawn.
- * If the box-diagram expression is not evaluated, it will throw an error.
- */
+// Compute the complexity of a box expression tree according to the complexity of its subexpressions.
+// Basically, it counts the number of boxes to be drawn.
+// If the box-diagram expression is not evaluated, it will throw an error.
 int computeComplexity(Box box) {
     if (isBoxCut(box) || isBoxWire(box)) return 0;
 
@@ -208,11 +206,9 @@ static Schema *addSchemaOutputs(int outs, Schema *x) {
     return makeSeqSchema(x, y);
 }
 
-/**
- * Transform the definition name property of tree <t> into a legal file name.
- * The resulting file name is stored in <dst> a table of at least <n> chars.
- * Returns the <dst> pointer for convenience.
- */
+// Transform the definition name property of tree <t> into a legal file name.
+// The resulting file name is stored in <dst> a table of at least <n> chars.
+// Returns the <dst> pointer for convenience.
 static char *legalFileName(Tree t, char *dst) {
     static int n = FAUST_PATH_MAX;
     Tree id;
@@ -231,10 +227,8 @@ static char *legalFileName(Tree t, char *dst) {
     return dst;
 }
 
-/**
- * Write a top level diagram.
- * A top level diagram is decorated with its definition name property and is drawn in an individual file.
- */
+// Write a top level diagram.
+// A top level diagram is decorated with its definition name property and is drawn in an individual file.
 static void writeSchemaFile(Tree bd) {
     Tree id;
     Schema *ts;

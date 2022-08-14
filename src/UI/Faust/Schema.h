@@ -58,9 +58,7 @@ struct Collector {
 
 enum { kLeftRight = 1, kRightLeft = -1 };
 
-/**
- * An abstract block diagram schema
- */
+// An abstract block diagram schema
 struct Schema {
     const unsigned int inputs, outputs;
     const double width, height;

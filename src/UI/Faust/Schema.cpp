@@ -37,17 +37,6 @@ struct BlockSchema : Schema {
 protected:
     BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link);
 
-    void placeInputPoints();
-    void placeOutputPoints();
-
-    void drawRectangle(Device &);
-    void drawText(Device &);
-    void drawOrientationMark(Device &);
-    void drawInputArrows(Device &);
-
-    void collectInputWires(Collector &);
-    void collectOutputWires(Collector &);
-
     const string text;
     const string color;
     const string link;
@@ -76,56 +65,26 @@ BlockSchema::BlockSchema(unsigned int inputs, unsigned int outputs, double width
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
-// Define the graphic position of the `BlockSchema`.
-// Computes the graphic position of all the elements, in particular the inputs and outputs.
 void BlockSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
-    placeInputPoints();
-    placeOutputPoints();
+    const bool isLR = orientation == kLeftRight;
+    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
+    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
 }
 
 Point BlockSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
 Point BlockSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
-void BlockSchema::placeInputPoints() {
-    const unsigned int N = inputs;
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < N; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((N - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
-void BlockSchema::placeOutputPoints() {
-    const unsigned int N = outputs;
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < N; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((N - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
 void BlockSchema::draw(Device &device) {
-    drawRectangle(device);
-    drawText(device);
-    drawOrientationMark(device);
-    drawInputArrows(device);
-}
-
-void BlockSchema::drawRectangle(Device &device) {
     device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
-}
-
-void BlockSchema::drawText(Device &device) {
     device.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
-}
 
-// Draw a small point that indicates the first input (like an integrated circuits).
-void BlockSchema::drawOrientationMark(Device &device) {
+    // Draw a small point that indicates the first input (like an integrated circuits).
     const bool isLR = orientation == kLeftRight;
-    device.markSens(
-        x + (isLR ? dHorz : (width - dHorz)),
-        y + (isLR ? dVert : (height - dVert)),
-        orientation
-    );
-}
+    device.markSens(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
 
-void BlockSchema::drawInputArrows(Device &device) {
-    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
+    // Input arrows
+    const double dx = isLR ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
         const auto p = inputPoints[i];
         device.fleche(p.x + dx, p.y, 0, orientation);
@@ -133,21 +92,14 @@ void BlockSchema::drawInputArrows(Device &device) {
 }
 
 void BlockSchema::collectTraits(Collector &c) {
-    collectInputWires(c);
-    collectOutputWires(c);
-}
-
-void BlockSchema::collectInputWires(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
+    // Input wires
     for (unsigned int i = 0; i < inputs; i++) {
         const auto p = inputPoints[i];
         c.addTrait({p, {p.x + dx, p.y}}); // in->out direction
         c.addInput({p.x + dx, p.y});
     }
-}
-
-void BlockSchema::collectOutputWires(Collector &c) {
-    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
+    // Output wires
     for (unsigned int i = 0; i < outputs; i++) {
         const auto p = outputPoints[i];
         c.addTrait({{p.x - dx, p.y}, p});
@@ -174,7 +126,6 @@ private:
     vector<Point> points;
 };
 
-// Build n cables in parallel.
 Schema *makeCableSchema(unsigned int n) { return new CableSchema(n); }
 
 CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, n * dWire) {
@@ -296,8 +247,6 @@ EnlargedSchema::EnlargedSchema(Schema *s, double width)
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
-// Define the graphic position of the schema.
-// Computes the graphic position of all the elements, in particular the inputs and outputs.
 void EnlargedSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
@@ -955,11 +904,6 @@ struct ConnectorSchema : Schema {
 protected:
     ConnectorSchema();
 
-    void placeInputPoints();
-    void placeOutputPoints();
-    void collectInputWires(Collector &);
-    void collectOutputWires(Collector &);
-
     vector<Point> inputPoints;
     vector<Point> outputPoints;
 };
@@ -975,43 +919,24 @@ ConnectorSchema::ConnectorSchema() : Schema(1, 1, dWire, dWire) {
 
 void ConnectorSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
-    placeInputPoints();
-    placeOutputPoints();
+    const bool isLR = orientation == kLeftRight;
+    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? Schema::x : Schema::x + width, Schema::y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
+    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
 }
 
 Point ConnectorSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
 Point ConnectorSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
-void ConnectorSchema::placeInputPoints() {
-    const unsigned int N = inputs;
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < N; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((N - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
-void ConnectorSchema::placeOutputPoints() {
-    const unsigned int N = outputs;
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < N; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((N - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
 void ConnectorSchema::draw(Device &) {}
 
 void ConnectorSchema::collectTraits(Collector &c) {
-    collectInputWires(c);
-    collectOutputWires(c);
-}
-
-void ConnectorSchema::collectInputWires(Collector &c) {
     const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
+    // Input wires
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoints[i];
         c.addTrait({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
-}
-
-void ConnectorSchema::collectOutputWires(Collector &c) {
-    const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = outputPoints[i];
         c.addTrait({{p.x - dx, p.y}, p});  // in->out direction
@@ -1031,17 +956,6 @@ struct RouteSchema : Schema {
 
 protected:
     RouteSchema(unsigned int inputs, unsigned int outputs, double width, double height, std::vector<int> routes);
-
-    void placeInputPoints();
-    void placeOutputPoints();
-
-    void drawRectangle(Device &);
-    void drawText(Device &);
-    void drawOrientationMark(Device &);
-    void drawInputArrows(Device &);
-
-    void collectInputWires(Collector &);
-    void collectOutputWires(Collector &);
 
     const string text;
     const string color;
@@ -1070,86 +984,51 @@ RouteSchema::RouteSchema(unsigned int inputs, unsigned int outputs, double width
 
 void RouteSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
-    placeInputPoints();
-    placeOutputPoints();
+    const bool isLR = orientation == kLeftRight;
+    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
+    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
 }
 
 Point RouteSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
 Point RouteSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
-void RouteSchema::placeInputPoints() {
-    const unsigned int N = inputs;
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < N; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((N - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
-void RouteSchema::placeOutputPoints() {
-    const unsigned int N = outputs;
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < N; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((N - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
 void RouteSchema::draw(Device &device) {
     static bool drawRouteFrame = false; // todo provide toggle
     if (drawRouteFrame) {
-        drawRectangle(device);
-        // drawText(device);
-        drawOrientationMark(device);
-        drawInputArrows(device);
-    }
-}
+        device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
+        // device.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
 
-void RouteSchema::drawRectangle(Device &device) {
-    device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
-}
+        // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
+        const bool isLR = orientation == kLeftRight;
+        device.markSens(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
 
-void RouteSchema::drawText(Device &device) {
-    device.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
-}
-
-// Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
-void RouteSchema::drawOrientationMark(Device &device) {
-    const bool isLR = orientation == kLeftRight;
-    device.markSens(
-        x + (isLR ? dHorz : (width - dHorz)),
-        y + (isLR ? dVert : (height - dVert)),
-        orientation
-    );
-}
-
-void RouteSchema::drawInputArrows(Device &device) {
-    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
-    for (unsigned int i = 0; i < inputs; i++) {
-        const auto p = inputPoints[i];
-        device.fleche(p.x + dx, p.y, 0, orientation);
+        // Input arrows
+        const double dx = isLR ? dHorz : -dHorz;
+        for (unsigned int i = 0; i < inputs; i++) {
+            const auto p = inputPoints[i];
+            device.fleche(p.x + dx, p.y, 0, orientation);
+        }
     }
 }
 
 void RouteSchema::collectTraits(Collector &c) {
-    collectInputWires(c);
-    collectOutputWires(c);
-    for (unsigned int i = 0; i < routes.size() - 1; i += 2) {
-        const auto p1 = inputPoints[routes[i] - 1];
-        const auto p2 = outputPoints[routes[i + 1] - 1];
-        const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
-        c.addTrait({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
-    }
-}
-
-void RouteSchema::collectInputWires(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
+    // Input wires
     for (unsigned int i = 0; i < inputs; i++) {
         const auto p = inputPoints[i];
         c.addTrait({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
-}
-
-void RouteSchema::collectOutputWires(Collector &c) {
-    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
+    // Output wires
     for (unsigned int i = 0; i < outputs; i++) {
         const auto p = outputPoints[i];
         c.addTrait({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
+    }
+    // Route wires
+    for (unsigned int i = 0; i < routes.size() - 1; i += 2) {
+        const auto p1 = inputPoints[routes[i] - 1];
+        const auto p2 = outputPoints[routes[i + 1] - 1];
+        c.addTrait({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
     }
 }

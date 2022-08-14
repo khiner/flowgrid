@@ -1331,20 +1331,11 @@ void ConnectorSchema::placeInputPoints() {
  * Computes the output points according to the position and the orientation of the ConnectorSchema.
  */
 void ConnectorSchema::placeOutputPoints() {
-    unsigned int N = outputs;
-    if (orientation == kLeftRight) {
-        double px = x + width;
-        double py = y + (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = {px, py + i * dWire};
-        }
-    } else {
-        double px = x;
-        double py = y + height - (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = {px, py - i * dWire};
-        }
-    }
+    const unsigned int N = outputs;
+    const double py = y + height / 2 - dWire * (N - 1) / 2;
+    const bool isLR = orientation == kLeftRight;
+    // todo vectorize
+    for (unsigned int i = 0; i < N; i++) outputPoints[i] = {isLR ? x + width : x, py + i * dWire * (isLR ? 1 : -1)};
 }
 
 /**

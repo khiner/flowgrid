@@ -1,58 +1,44 @@
 #include "Schema.h"
 #include "../../Helper/assert.h"
 
-void Collector::computeVisibleTraits() {
-    bool modified;
-    do {
-        modified = false;
-        for (const auto &trait: traits) {
-            if (withInput.count(trait) == 0) { // not connected to a real output
-                if (outputs.count(trait.start) > 0) {
-                    withInput.insert(trait); // the cable is connected to a real output
-                    outputs.insert(trait.end); // end become a real output too
-                    modified = true;
-                }
-            }
-            if (withOutput.count(trait) == 0) { // not connected to a real input
-                if (inputs.count(trait.end) > 0) {
-                    withOutput.insert(trait); // the cable is connected to a real input
-                    inputs.insert(trait.start); // start become a real input too
-                    modified = true;
-                }
-            }
+bool Collector::computeVisibleTraits() {
+    bool modified = false;
+    for (const auto &trait: traits) {
+        if (withInput.count(trait) == 0 && outputs.count(trait.start) > 0) {
+            // not connected to a real output
+            withInput.insert(trait); // the cable is connected to a real output
+            outputs.insert(trait.end); // end become a real output too
+            modified = true;
         }
-    } while (modified);
+        if (withOutput.count(trait) == 0 && inputs.count(trait.end) > 0) {
+            // not connected to a real input
+            withOutput.insert(trait); // the cable is connected to a real input
+            inputs.insert(trait.start); // start become a real input too
+            modified = true;
+        }
+    }
+    return modified;
 }
 
 bool Collector::isVisible(const Trait &t) const { return withInput.count(t) && withOutput.count(t); }
 
-void Collector::draw(device &dev) {
-    computeVisibleTraits();
-    for (const auto &trait: traits) if (isVisible(trait)) trait.draw(dev);
+void Collector::draw(Device &device) {
+    while (computeVisibleTraits()) {}
+    for (const auto &trait: traits) if (isVisible(trait)) trait.draw(device);
 }
 
 bool gDrawRouteFrame = false;
 
 // A simple rectangular box with a text and inputs and outputs.
 // The constructor is private in order to make sure `makeBlockSchema` is used instead
-class BlockSchema : public Schema {
-protected:
-    const string text;
-    const string color;
-    const string link;
-
-    // fields only defined after place() is called
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
-
-public:
+struct BlockSchema : Schema {
     friend Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);
 
     void place(double x, double y, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 protected:
     BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link);
@@ -60,13 +46,20 @@ protected:
     void placeInputPoints();
     void placeOutputPoints();
 
-    void drawRectangle(device &dev);
-    void drawText(device &dev);
-    void drawOrientationMark(device &dev);
-    void drawInputArrows(device &dev);
+    void drawRectangle(Device &);
+    void drawText(Device &);
+    void drawOrientationMark(Device &);
+    void drawInputArrows(Device &);
 
-    void collectInputWires(Collector &c);
-    void collectOutputWires(Collector &c);
+    void collectInputWires(Collector &);
+    void collectOutputWires(Collector &);
+
+    const string text;
+    const string color;
+    const string link;
+
+    vector<Point> inputPoints;
+    vector<Point> outputPoints;
 };
 
 static inline double quantize(int n) {
@@ -77,10 +70,9 @@ static inline double quantize(int n) {
 // Build a simple colored `BlockSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
 // Computes the size of the box according to the length of the text and the maximum number of ports.
 Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link) {
-    // determine the optimal size of the box
-    double minimal = 3 * dWire;
-    double w = 2 * dHorz + max(minimal, dLetter * quantize((int) text.size()));
-    double h = 2 * dVert + max(minimal, max(inputs, outputs) * dWire);
+    const double minimal = 3 * dWire;
+    const double w = 2 * dHorz + max(minimal, dLetter * quantize((int) text.size()));
+    const double h = 2 * dVert + max(minimal, max(inputs, outputs) * dWire);
     return new BlockSchema(inputs, outputs, w, h, text, color, link);
 }
 
@@ -105,52 +97,42 @@ Point BlockSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 // Computes the input points according to the position and the orientation of the `BlockSchema`.
 void BlockSchema::placeInputPoints() {
     unsigned int N = inputs;
-    if (orientation == kLeftRight) {
-        double px = x;
-        double py = y + (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) inputPoints[i] = {px, py + i * dWire};
-    } else {
-        double px = x + width;
-        double py = y + height - (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) inputPoints[i] = {px, py - i * dWire};
-    }
+    for (unsigned int i = 0; i < N; i++)
+        inputPoints[i] = orientation == kLeftRight ?
+                         Point{x, y + (height - dWire * (N - 1)) / 2 + i * dWire} :
+                         Point{x + width, y + height - (height - dWire * (N - 1)) / 2 - i * dWire};
 }
 
 // Computes the output points according to the position and the orientation of the `BlockSchema`.
 void BlockSchema::placeOutputPoints() {
     unsigned int N = outputs;
-    if (orientation == kLeftRight) {
-        double px = x + width;
-        double py = y + (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++)outputPoints[i] = {px, py + i * dWire};
-    } else {
-        double px = x;
-        double py = y + height - (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) outputPoints[i] = {px, py - i * dWire};
-    }
+    for (unsigned int i = 0; i < N; i++)
+        outputPoints[i] = orientation == kLeftRight ?
+                          Point{x + width, y + height / 2 - dWire * (N - 1) / 2 + i * dWire} :
+                          Point{x, y + height / 2 + dWire * (N - 1) / 2 - i * dWire};
 }
 
 // Draw the `BlockSchema` on the device.
 // This method can only be called after the `BlockSchema` has been placed.
-void BlockSchema::draw(device &dev) {
-    drawRectangle(dev);
-    drawText(dev);
-    drawOrientationMark(dev);
-    drawInputArrows(dev);
+void BlockSchema::draw(Device &device) {
+    drawRectangle(device);
+    drawText(device);
+    drawOrientationMark(device);
+    drawInputArrows(device);
 }
 
-void BlockSchema::drawRectangle(device &dev) {
-    dev.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
+void BlockSchema::drawRectangle(Device &device) {
+    device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
 }
 
-void BlockSchema::drawText(device &dev) {
-    dev.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
+void BlockSchema::drawText(Device &device) {
+    device.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
 }
 
 // Draw a small point that indicates the first input (like an integrated circuits).
-void BlockSchema::drawOrientationMark(device &dev) {
+void BlockSchema::drawOrientationMark(Device &device) {
     const bool isHorz = orientation == kLeftRight;
-    dev.markSens(
+    device.markSens(
         x + (isHorz ? dHorz : (width - dHorz)),
         y + (isHorz ? dVert : (height - dVert)),
         orientation
@@ -158,11 +140,11 @@ void BlockSchema::drawOrientationMark(device &dev) {
 }
 
 // Draw horizontal arrows from the input points to the `BlockSchema` rectangle.
-void BlockSchema::drawInputArrows(device &dev) {
+void BlockSchema::drawInputArrows(Device &device) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
         const auto p = inputPoints[i];
-        dev.fleche(p.x + dx, p.y, 0, orientation);
+        device.fleche(p.x + dx, p.y, 0, orientation);
     }
 }
 
@@ -174,9 +156,9 @@ void BlockSchema::collectTraits(Collector &c) {
 
 // Draw horizontal arrows from the input points to the `BlockSchema` rectangle.
 void BlockSchema::collectInputWires(Collector &c) {
-    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
+    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
-        auto p = inputPoints[i];
+        const auto p = inputPoints[i];
         c.addTrait({p, {p.x + dx, p.y}}); // in->out direction
         c.addInput({p.x + dx, p.y});
     }
@@ -184,10 +166,10 @@ void BlockSchema::collectInputWires(Collector &c) {
 
 // Draw horizontal line from the `BlockSchema` rectangle to the output points
 void BlockSchema::collectOutputWires(Collector &c) {
-    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
+    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
-        auto p = outputPoints[i];
-        c.addTrait({{p.x - dx, p.y}, p}); // in->out direction
+        const auto p = outputPoints[i];
+        c.addTrait({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
     }
 }
@@ -196,20 +178,19 @@ void BlockSchema::collectOutputWires(Collector &c) {
 // The width of a cable is null.
 // Therefor, input and output connection points are the same.
 // The constructor is private to enforce the use of `makeCableSchema`.
-class CableSchema : public Schema {
-    vector<Point> points;
-
-public:
+struct CableSchema : Schema {
     friend Schema *makeCableSchema(unsigned int n);
 
     void place(double x, double y, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 private:
     CableSchema(unsigned int n);
+
+    vector<Point> points;
 };
 
 // Build n cables in parallel.
@@ -223,19 +204,15 @@ CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, n * dWire) {
 void CableSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
     if (orientation == kLeftRight) {
-        for (unsigned int i = 0; i < inputs; i++) {
-            points[i] = {ox, oy + dWire / 2.0 + i * dWire};
-        }
+        for (unsigned int i = 0; i < inputs; i++) points[i] = {ox, oy + dWire / 2.0 + i * dWire};
     } else {
-        for (unsigned int i = 0; i < inputs; i++) {
-            points[i] = {ox, oy + height - dWire / 2.0 - i * dWire};
-        }
+        for (unsigned int i = 0; i < inputs; i++) points[i] = {ox, oy + height - dWire / 2.0 - i * dWire};
     }
 }
 
 // Nothing to draw.
 // Actual drawing will take place when the wires are enlarged.
-void CableSchema::draw(device &) {}
+void CableSchema::draw(Device &) {}
 
 // Nothing to collect.
 // Actual collect will take place when the wires are enlarged.
@@ -248,40 +225,35 @@ Point CableSchema::inputPoint(unsigned int i) const { return points[i]; }
 Point CableSchema::outputPoint(unsigned int i) const { return points[i]; }
 
 // An inverter is a special symbol corresponding to '*(-1)' to create more compact diagrams.
-class InverterSchema : public BlockSchema {
-public:
+struct InverterSchema : BlockSchema {
     friend Schema *makeInverterSchema(const string &color);
-    void draw(device &dev) override;
+    void draw(Device &) override;
 
 private:
     InverterSchema(const string &color);
 };
 
-// Build n cables in parallel.
 Schema *makeInverterSchema(const string &color) { return new InverterSchema(color); }
 
 InverterSchema::InverterSchema(const string &color) : BlockSchema(1, 1, 2.5 * dWire, dWire, "-1", color, "") {}
 
-// Nothing to draw.
-// Actual drawing will take place when the wires are enlarged.
-void InverterSchema::draw(device &dev) {
-    dev.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, color.c_str(), link.c_str(), orientation == kLeftRight);
+void InverterSchema::draw(Device &device) {
+    device.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, color.c_str(), link.c_str(), orientation == kLeftRight);
 }
 
 // Terminate a cable (cut box).
-class CutSchema : public Schema {
-    Point point;
-
+struct CutSchema : Schema {
 public:
     friend Schema *makeCutSchema();
     void place(double x, double y, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 private:
     CutSchema();
+    Point point;
 };
 
 Schema *makeCutSchema() { return new CutSchema(); }
@@ -299,7 +271,7 @@ void CutSchema::place(double ox, double oy, int orientation) {
 }
 
 // A cut is represented by a small black dot.
-void CutSchema::draw(device &) {
+void CutSchema::draw(Device &) {
     // dev.rond(point.x, point.y, dWire/8.0);
 }
 
@@ -314,19 +286,19 @@ Point CutSchema::outputPoint(unsigned int) const {
     return {-1, -1};
 }
 
-class EnlargedSchema : public Schema {
-    Schema *schema;
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
-
-public:
+struct EnlargedSchema : Schema {
     EnlargedSchema(Schema *s, double width);
 
     void place(double x, double y, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
+
+private:
+    Schema *schema;
+    vector<Point> inputPoints;
+    vector<Point> outputPoints;
 };
 
 // Returns an enlarged schema, but only if really needed.
@@ -367,46 +339,29 @@ void EnlargedSchema::place(double ox, double oy, int orientation) {
 Point EnlargedSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
 Point EnlargedSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
-// Draw the enlarged schema.
-// This method can only be called after the block have been placed.
-void EnlargedSchema::draw(device &dev) {
-    schema->draw(dev);
-}
+void EnlargedSchema::draw(Device &device) { schema->draw(device); }
 
-// Draw the enlarged schema.
-// This method can only be called after the block have been placed.
 void EnlargedSchema::collectTraits(Collector &c) {
     schema->collectTraits(c);
-
-    // draw enlarge input wires
-    for (unsigned int i = 0; i < inputs; i++) {
-        auto p = inputPoint(i);
-        auto q = schema->inputPoint(i);
-        c.addTrait({p, q});  // in->out direction
-    }
-    // draw enlarge output wires
-    for (unsigned int i = 0; i < outputs; i++) {
-        auto q = schema->outputPoint(i);
-        auto p = outputPoint(i);
-        c.addTrait({q, p});  // in->out direction
-    }
+    for (unsigned int i = 0; i < inputs; i++) c.addTrait({inputPoint(i), schema->inputPoint(i)});
+    for (unsigned int i = 0; i < outputs; i++) c.addTrait({schema->outputPoint(i), outputPoint(i)});
 }
 
-// Place two schemi in parallel.
-class ParSchema : public Schema {
+// Place two schemas in parallel.
+struct ParSchema : Schema {
+    ParSchema(Schema *s1, Schema *s2);
+
+    void place(double ox, double oy, int orientation) override;
+    void draw(Device &) override;
+    Point inputPoint(unsigned int i) const override;
+    Point outputPoint(unsigned int i) const override;
+    void collectTraits(Collector &) override;
+
+private:
     Schema *schema1;
     Schema *schema2;
     unsigned int inputFrontier;
     unsigned int outputFrontier;
-
-public:
-    ParSchema(Schema *s1, Schema *s2);
-
-    void place(double ox, double oy, int orientation) override;
-    void draw(device &dev) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
 };
 
 // Make sure s1 and s2 have same width.
@@ -422,7 +377,6 @@ ParSchema::ParSchema(Schema *s1, Schema *s2)
 
 void ParSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
-
     if (orientation == kLeftRight) {
         schema1->place(ox, oy, orientation);
         schema2->place(ox, oy + schema1->height, orientation);
@@ -440,9 +394,9 @@ Point ParSchema::outputPoint(unsigned int i) const {
     return i < outputFrontier ? schema1->outputPoint(i) : schema2->outputPoint(i - outputFrontier);
 }
 
-void ParSchema::draw(device &dev) {
-    schema1->draw(dev);
-    schema2->draw(dev);
+void ParSchema::draw(Device &device) {
+    schema1->draw(device);
+    schema2->draw(device);
 }
 
 void ParSchema::collectTraits(Collector &c) {
@@ -450,23 +404,22 @@ void ParSchema::collectTraits(Collector &c) {
     schema2->collectTraits(c);
 }
 
-class SeqSchema : public Schema {
-    Schema *schema1;
-    Schema *schema2;
-    double horzGap;
-
-public:
+struct SeqSchema : Schema {
     friend Schema *makeSeqSchema(Schema *s1, Schema *s2);
 
     void place(double ox, double oy, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 private:
     SeqSchema(Schema *s1, Schema *s2, double hgap);
-    void collectInternalWires(Collector &c);
+    void collectInternalWires(Collector &);
+
+    Schema *schema1;
+    Schema *schema2;
+    double horzGap;
 };
 
 enum { kHorDir, kUpDir, kDownDir };  // directions of connections
@@ -524,11 +477,10 @@ static double computeHorzGap(Schema *a, Schema *b) {
 // May add cables to ensure the internal connections are between the same number of outputs and inputs.
 // Compute an horizontal gap based on the number of upward and downward connections.
 Schema *makeSeqSchema(Schema *s1, Schema *s2) {
-    unsigned int o = s1->outputs;
-    unsigned int i = s2->inputs;
-
-    Schema *a = (o < i) ? makeParSchema(s1, makeCableSchema(i - o)) : s1;
-    Schema *b = (o > i) ? makeParSchema(s2, makeCableSchema(o - i)) : s2;
+    const unsigned int o = s1->outputs;
+    const unsigned int i = s2->inputs;
+    auto *a = (o < i) ? makeParSchema(s1, makeCableSchema(i - o)) : s1;
+    auto *b = (o > i) ? makeParSchema(s2, makeCableSchema(o - i)) : s2;
 
     return new SeqSchema(a, b, computeHorzGap(a, b));
 }
@@ -544,8 +496,8 @@ SeqSchema::SeqSchema(Schema *s1, Schema *s2, double hgap)
 void SeqSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double y1 = max(0.0, 0.5 * (schema2->height - schema1->height));
-    double y2 = max(0.0, 0.5 * (schema1->height - schema2->height));
+    const double y1 = max(0.0, 0.5 * (schema2->height - schema1->height));
+    const double y2 = max(0.0, 0.5 * (schema1->height - schema2->height));
     if (orientation == kLeftRight) {
         schema1->place(ox, oy + y1, orientation);
         schema2->place(ox + schema1->width + horzGap, oy + y2, orientation);
@@ -562,17 +514,15 @@ Point SeqSchema::inputPoint(unsigned int i) const { return schema1->inputPoint(i
 Point SeqSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
 
 // Draw the two components as well as the internal wires
-void SeqSchema::draw(device &dev) {
+void SeqSchema::draw(Device &device) {
     assert(schema1->outputs == schema2->inputs);
-
-    schema1->draw(dev);
-    schema2->draw(dev);
+    schema1->draw(device);
+    schema2->draw(device);
 }
 
 // Draw the two components as well as the internal wires
 void SeqSchema::collectTraits(Collector &c) {
     assert(schema1->outputs == schema2->inputs);
-
     schema1->collectTraits(c);
     schema2->collectTraits(c);
     collectInternalWires(c);
@@ -610,32 +560,30 @@ void SeqSchema::collectInternalWires(Collector &c) {
 }
 
 // Place and connect two diagrams in merge composition.
-class MergeSchema : public Schema {
-    Schema *schema1;
-    Schema *schema2;
-    double horzGap;
-
-public:
+struct MergeSchema : Schema {
     friend Schema *makeMergeSchema(Schema *s1, Schema *s2);
 
     void place(double ox, double oy, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 private:
     MergeSchema(Schema *s1, Schema *s2, double hgap);
+
+    Schema *schema1;
+    Schema *schema2;
+    double horzGap;
 };
 
 // Cables are enlarged to `dWire`.
-// The horizontal gap between the two subschema is such that the connections are not too sloppy.
 Schema *makeMergeSchema(Schema *s1, Schema *s2) {
-    // avoid ugly diagram by ensuring at least dWire width
-    Schema *a = makeEnlargedSchema(s1, dWire);
-    Schema *b = makeEnlargedSchema(s2, dWire);
-    double hgap = (a->height + b->height) / 4;
-    return new MergeSchema(a, b, hgap);
+    auto *a = makeEnlargedSchema(s1, dWire);
+    auto *b = makeEnlargedSchema(s2, dWire);
+
+    // Horizontal gap to avoid sloppy connections.
+    return new MergeSchema(a, b, (a->height + b->height) / 4);
 }
 
 // Constructor for a merge schema s1 :> s2 where the outputs of s1 are merged to the inputs of s2.
@@ -647,8 +595,8 @@ MergeSchema::MergeSchema(Schema *s1, Schema *s2, double hgap)
 void MergeSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double dy1 = max(0.0, schema2->height - schema1->height) / 2.0;
-    double dy2 = max(0.0, schema1->height - schema2->height) / 2.0;
+    const double dy1 = max(0.0, schema2->height - schema1->height) / 2.0;
+    const double dy2 = max(0.0, schema1->height - schema2->height) / 2.0;
     if (orientation == kLeftRight) {
         schema1->place(ox, oy + dy1, orientation);
         schema2->place(ox + schema1->width + horzGap, oy + dy2, orientation);
@@ -665,53 +613,44 @@ Point MergeSchema::inputPoint(unsigned int i) const { return schema1->inputPoint
 Point MergeSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
 
 // Draw the two subschema and the connections between them.
-void MergeSchema::draw(device &dev) {
-    schema1->draw(dev);
-    schema2->draw(dev);
+void MergeSchema::draw(Device &device) {
+    schema1->draw(device);
+    schema2->draw(device);
 }
 
 // Draw the two subschema and the connections between them.
 void MergeSchema::collectTraits(Collector &c) {
     schema1->collectTraits(c);
     schema2->collectTraits(c);
-
-    unsigned int r = schema2->inputs;
-    for (unsigned int i = 0; i < schema1->outputs; i++) {
-        auto p = schema1->outputPoint(i);
-        auto q = schema2->inputPoint(i % r);
-        c.addTrait({p, q});
-    }
+    for (unsigned int i = 0; i < schema1->outputs; i++) c.addTrait({schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs)});
 }
 
 // Place and connect two diagrams in split composition.
-class SplitSchema : public Schema {
-    Schema *schema1;
-    Schema *schema2;
-    double horzGap;
-
-public:
+struct SplitSchema : Schema {
     friend Schema *makeSplitSchema(Schema *s1, Schema *s2);
 
     void place(double ox, double oy, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 private:
     SplitSchema(Schema *s1, Schema *s2, double hgap);
+
+    Schema *schema1;
+    Schema *schema2;
+    double horzGap;
 };
 
 // Cables are enlarged to `dWire`.
-// The horizontal gap between the two subschema is such that the connections are not too sloppy.
 Schema *makeSplitSchema(Schema *s1, Schema *s2) {
-    // make sure a and b are at least dWire large
-    Schema *a = makeEnlargedSchema(s1, dWire);
-    Schema *b = makeEnlargedSchema(s2, dWire);
+    // Make sure `a` and `b` are at least `dWire` large.
+    auto *a = makeEnlargedSchema(s1, dWire);
+    auto *b = makeEnlargedSchema(s2, dWire);
 
-    // horizontal gap to avoid too sloppy connections
-    double hgap = (a->height + b->height) / 4;
-    return new SplitSchema(a, b, hgap);
+    // Horizontal gap to avoid sloppy connections.
+    return new SplitSchema(a, b, (a->height + b->height) / 4);
 }
 
 // Constructor for a split schema s1 <: s2, where the outputs of s1 are distributed to the inputs of s2.
@@ -724,8 +663,8 @@ SplitSchema::SplitSchema(Schema *s1, Schema *s2, double hgap)
 void SplitSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
-    double dy1 = max(0.0, schema2->height - schema1->height) / 2.0;
-    double dy2 = max(0.0, schema1->height - schema2->height) / 2.0;
+    const double dy1 = max(0.0, schema2->height - schema1->height) / 2.0;
+    const double dy2 = max(0.0, schema1->height - schema2->height) / 2.0;
     if (orientation == kLeftRight) {
         schema1->place(ox, oy + dy1, orientation);
         schema2->place(ox + schema1->width + horzGap, oy + dy2, orientation);
@@ -742,56 +681,48 @@ Point SplitSchema::inputPoint(unsigned int i) const { return schema1->inputPoint
 Point SplitSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
 
 // Draw the two sub schema and the connections between them.
-void SplitSchema::draw(device &dev) {
-    schema1->draw(dev);
-    schema2->draw(dev);
+void SplitSchema::draw(Device &device) {
+    schema1->draw(device);
+    schema2->draw(device);
 }
 
 // Draw the two subschema and the connections between them.
 void SplitSchema::collectTraits(Collector &c) {
     schema1->collectTraits(c);
     schema2->collectTraits(c);
-
-    unsigned int r = schema1->outputs;
-    for (unsigned int i = 0; i < schema2->inputs; i++) {
-        auto p = schema1->outputPoint(i % r);
-        auto q = schema2->inputPoint(i);
-        c.addTrait({p, q});
-    }
+    for (unsigned int i = 0; i < schema2->inputs; i++) c.addTrait({schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i)});
 }
 
 
 // Place and connect two diagrams in recursive composition
-class RecSchema : public Schema {
-    Schema *schema1;
-    Schema *schema2;
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
-
-public:
+struct RecSchema : Schema {
     friend Schema *makeRecSchema(Schema *s1, Schema *s2);
 
     void place(double ox, double oy, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 private:
     RecSchema(Schema *s1, Schema *s2, double width);
 
     void collectFeedback(Collector &c, const Point &src, const Point &dst, double dx, const Point &out);
     void collectFeedfront(Collector &c, const Point &src, const Point &dst, double dx);
+
+    Schema *schema1;
+    Schema *schema2;
+    vector<Point> inputPoints;
+    vector<Point> outputPoints;
 };
 
 // Creates a new recursive schema (s1 ~ s2).
 // The smallest component is enlarged to the width of the other.
 // The left and right horizontal margins are computed according to the number of internal connections.
 Schema *makeRecSchema(Schema *s1, Schema *s2) {
-    Schema *a = makeEnlargedSchema(s1, s2->width);
-    Schema *b = makeEnlargedSchema(s2, s1->width);
-    double m = dWire * max(b->inputs, b->outputs);
-    double w = a->width + 2 * m;
+    auto *a = makeEnlargedSchema(s1, s2->width);
+    auto *b = makeEnlargedSchema(s2, s1->width);
+    const double w = a->width + 2 * (dWire * max(b->inputs, b->outputs));
 
     return new RecSchema(a, b, w);
 }
@@ -815,7 +746,7 @@ void RecSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
     double dx1 = (width - schema1->width) / 2;
-    double dx2 = (width - schema2->width) / 2;
+    const double dx2 = (width - schema2->width) / 2;
     if (orientation == kLeftRight) {
         schema2->place(ox + dx2, oy, kRightLeft);
         schema1->place(ox + dx1, oy + schema2->height, kLeftRight);
@@ -828,23 +759,21 @@ void RecSchema::place(double ox, double oy, int orientation) {
     if (orientation == kRightLeft) dx1 = -dx1;
 
     for (unsigned int i = 0; i < inputs; i++) {
-        auto p = schema1->inputPoint(i + schema2->outputs);
+        const auto p = schema1->inputPoint(i + schema2->outputs);
         inputPoints[i] = {p.x - dx1, p.y};
     }
     for (unsigned int i = 0; i < outputs; i++) {
-        auto p = schema1->outputPoint(i);
+        const auto p = schema1->outputPoint(i);
         outputPoints[i] = {p.x + dx1, p.y};
     }
 }
 
-// The input points s1 ~ s2
+// The input/output points s1 ~ s2
 Point RecSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-
-// The output points s1 ~ s2
 Point RecSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 // Draw the delay sign of a feedback connection
-static void drawDelaySign(device &dev, double x, double y, double size) {
+static void drawDelaySign(Device &dev, double x, double y, double size) {
     dev.trait(x - size / 2, y, x - size / 2, y - size);
     dev.trait(x - size / 2, y - size, x + size / 2, y - size);
     dev.trait(x + size / 2, y - size, x + size / 2, y);
@@ -852,58 +781,46 @@ static void drawDelaySign(device &dev, double x, double y, double size) {
 
 // Draw the two subschema s1 and s2 as well as the implicit feedback
 // delays between s1 and s2.
-void RecSchema::draw(device &dev) {
-    schema1->draw(dev);
-    schema2->draw(dev);
+void RecSchema::draw(Device &device) {
+    schema1->draw(device);
+    schema2->draw(device);
 
-    // draw the implicit feedback delay to each schema2 input
-    double dw = (orientation == kLeftRight) ? dWire : -dWire;
+    // Draw the implicit feedback delay to each schema2 input
+    const double dw = (orientation == kLeftRight) ? dWire : -dWire;
     for (unsigned int i = 0; i < schema2->inputs; i++) {
         const auto &p = schema1->outputPoint(i);
-        drawDelaySign(dev, p.x + i * dw, p.y, dw / 2);
+        drawDelaySign(device, p.x + i * dw, p.y, dw / 2);
     }
 }
 
 // Draw:
-// * the two subschema s1 and s2
-// * the feedback connections between s1 and s2, and
-// * the feedfrom connections between s2 and s1
+//   * the two subschema s1 and s2
+//   * the feedback connections between s1 and s2, and
+//   * the feedfrom connections between s2 and s1
 void RecSchema::collectTraits(Collector &c) {
     schema1->collectTraits(c);
     schema2->collectTraits(c);
 
-    // draw the feedback connections to each schema2 input
-    for (unsigned int i = 0; i < schema2->inputs; i++) {
-        collectFeedback(c, schema1->outputPoint(i), schema2->inputPoint(i), i * dWire, outputPoint(i));
-    }
-    // draw the non-recursive output lines
-    for (unsigned int i = schema2->inputs; i < outputs; i++) {
-        auto p = schema1->outputPoint(i);
-        auto q = outputPoint(i);
-        c.addTrait({p, q});  // in->out order
-    }
+    // Feedback connections to each schema2 input
+    for (unsigned int i = 0; i < schema2->inputs; i++) collectFeedback(c, schema1->outputPoint(i), schema2->inputPoint(i), i * dWire, outputPoint(i));
 
-    // draw the input lines
-    unsigned int skip = schema2->outputs;
-    for (unsigned int i = 0; i < inputs; i++) {
-        auto p = inputPoint(i);
-        auto q = schema1->inputPoint(i + skip);
-        c.addTrait({p, q});  // in->out order
-    }
+    // Non-recursive output lines
+    for (unsigned int i = schema2->inputs; i < outputs; i++) c.addTrait({schema1->outputPoint(i), outputPoint(i)});
 
-    // draw the feedfront connections from each schema2 output
-    for (unsigned int i = 0; i < schema2->outputs; i++) {
-        collectFeedfront(c, schema2->outputPoint(i), schema1->inputPoint(i), i * dWire);
-    }
+    // Input lines
+    const unsigned int skip = schema2->outputs;
+    for (unsigned int i = 0; i < inputs; i++) c.addTrait({inputPoint(i), schema1->inputPoint(i + skip)});
+
+    // Feedfront connections from each schema2 output
+    for (unsigned int i = 0; i < schema2->outputs; i++) collectFeedfront(c, schema2->outputPoint(i), schema1->inputPoint(i), i * dWire);
 }
 
 // Draw a feedback connection between two points with an horizontal displacement `dx`.
 void RecSchema::collectFeedback(Collector &c, const Point &src, const Point &dst, double dx, const Point &out) {
-    double ox = src.x + ((orientation == kLeftRight) ? dx : -dx);
-    double ct = (orientation == kLeftRight) ? dWire / 2 : -dWire / 2;
-
-    Point up(ox, src.y - ct);
-    Point br(ox + ct / 2.0, src.y);
+    const double ox = src.x + ((orientation == kLeftRight) ? dx : -dx);
+    const double ct = (orientation == kLeftRight) ? dWire / 2 : -dWire / 2;
+    const Point up(ox, src.y - ct);
+    const Point br(ox + ct / 2.0, src.y);
 
     c.addOutput(up);
     c.addOutput(br);
@@ -917,8 +834,7 @@ void RecSchema::collectFeedback(Collector &c, const Point &src, const Point &dst
 
 // Draw a feedfrom connection between two points with an horizontal displacement `dx`.
 void RecSchema::collectFeedfront(Collector &c, const Point &src, const Point &dst, double dx) {
-    double ox = src.x + ((orientation == kLeftRight) ? -dx : dx);
-
+    const double ox = src.x + (orientation == kLeftRight ? -dx : dx);
     c.addTrait({{src.x, src.y}, {ox, src.y}});
     c.addTrait({{ox, src.y}, {ox, dst.y}});
     c.addTrait({{ox, dst.y}, {dst.x, dst.y}});
@@ -927,25 +843,24 @@ void RecSchema::collectFeedfront(Collector &c, const Point &src, const Point &ds
 // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left.
 // The rectangle is placed at half the margin parameter.
 // Arrows are added to all the outputs.
-class TopSchema : public Schema {
+struct TopSchema : Schema {
+    friend Schema *makeTopSchema(Schema *s1, double margin, const string &text, const string &link);
+
+    void place(double ox, double oy, int orientation) override;
+    void draw(Device &) override;
+    Point inputPoint(unsigned int i) const override;
+    Point outputPoint(unsigned int i) const override;
+    void collectTraits(Collector &) override;
+
+private:
+    TopSchema(Schema *s1, double margin, string text, string link);
+
     Schema *schema;
     double fMargin;
     string text;
     string link;
     vector<Point> inputPoints;
     vector<Point> outputPoints;
-
-public:
-    friend Schema *makeTopSchema(Schema *s1, double margin, const string &text, const string &link);
-
-    void place(double ox, double oy, int orientation) override;
-    void draw(device &dev) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
-
-private:
-    TopSchema(Schema *s1, double margin, string text, string link);
 };
 
 Schema *makeTopSchema(Schema *s, double margin, const string &text, const string &link) {
@@ -971,19 +886,16 @@ void TopSchema::place(double ox, double oy, int orientation) {
 Point TopSchema::inputPoint(unsigned int) const { throw std::runtime_error("ERROR : TopSchema::inputPoint"); }
 Point TopSchema::outputPoint(unsigned int) const { throw std::runtime_error("ERROR : TopSchema::outputPoint"); }
 
-// Draw the enlarged schema.
-void TopSchema::draw(device &dev) {
-    // draw a background white rectangle
-    dev.rect(x, y, width - 1, height - 1, "#ffffff", link.c_str());
-    // draw the label
-    dev.label(x + fMargin, y + fMargin / 2, text.c_str());
+void TopSchema::draw(Device &device) {
+    device.rect(x, y, width - 1, height - 1, "#ffffff", link.c_str());
+    device.label(x + fMargin, y + fMargin / 2, text.c_str());
 
-    schema->draw(dev);
+    schema->draw(device);
 
-    // draw arrows at output points of schema
+    // Draw arrows at output points of schema
     for (unsigned int i = 0; i < schema->outputs; i++) {
-        auto p = schema->outputPoint(i);
-        dev.fleche(p.x, p.y, 0, orientation);
+        const auto p = schema->outputPoint(i);
+        device.fleche(p.x, p.y, 0, orientation);
     }
 }
 
@@ -995,24 +907,23 @@ void TopSchema::collectTraits(Collector &c) {
 
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
 // The rectangle is placed at half the margin parameter.
-class DecorateSchema : public Schema {
+struct DecorateSchema : Schema {
+    friend Schema *makeDecorateSchema(Schema *s1, double margin, const string &text);
+
+    void place(double ox, double oy, int orientation) override;
+    void draw(Device &) override;
+    Point inputPoint(unsigned int i) const override;
+    Point outputPoint(unsigned int i) const override;
+    void collectTraits(Collector &) override;
+
+private:
+    DecorateSchema(Schema *s1, double margin, string text);
+
     Schema *schema;
     double fMargin;
     string text;
     vector<Point> inputPoints;
     vector<Point> outputPoints;
-
-public:
-    friend Schema *makeDecorateSchema(Schema *s1, double margin, const string &text);
-
-    void place(double ox, double oy, int orientation) override;
-    void draw(device &dev) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
-
-private:
-    DecorateSchema(Schema *s1, double margin, string text);
 };
 
 Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { return new DecorateSchema(s, margin, text); }
@@ -1047,8 +958,8 @@ void DecorateSchema::place(double ox, double oy, int orientation) {
 Point DecorateSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
 Point DecorateSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
-void DecorateSchema::draw(device &dev) {
-    schema->draw(dev);
+void DecorateSchema::draw(Device &device) {
+    schema->draw(device);
 
     // Surrounding frame
     const double x0 = x + fMargin / 2; // left
@@ -1057,46 +968,42 @@ void DecorateSchema::draw(device &dev) {
     const double y1 = y + height - fMargin / 2; // bottom
     const double tl = x + fMargin; // left of text zone
 
-    dev.dasharray(x0, y0, x0, y1); // left line
-    dev.dasharray(x0, y1, x1, y1); // bottom line
-    dev.dasharray(x1, y1, x1, y0); // right line
-    dev.dasharray(x0, y0, tl, y0); // top segment before text
-    dev.dasharray(min(tl + double(2 + text.size()) * dLetter * 0.75, x1), y0, x1, y0); // top segment after text
+    device.dasharray(x0, y0, x0, y1); // left line
+    device.dasharray(x0, y1, x1, y1); // bottom line
+    device.dasharray(x1, y1, x1, y0); // right line
+    device.dasharray(x0, y0, tl, y0); // top segment before text
+    device.dasharray(min(tl + double(2 + text.size()) * dLetter * 0.75, x1), y0, x1, y0); // top segment after text
 
-    dev.label(tl, y0, text.c_str());
+    device.label(tl, y0, text.c_str());
 }
 
 void DecorateSchema::collectTraits(Collector &c) {
     schema->collectTraits(c);
-
     for (unsigned int i = 0; i < inputs; i++) c.addTrait({inputPoint(i), schema->inputPoint(i)});
     for (unsigned int i = 0; i < outputs; i++) c.addTrait({schema->outputPoint(i), outputPoint(i)});
 }
 
 // A simple rectangular box with a text and inputs and outputs.
 // The constructor is private in order to make sure `makeConnectorSchema` is used instead.
-class ConnectorSchema : public Schema {
-protected:
-    // fields only defined after place() is called
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
-
-public:
+struct ConnectorSchema : Schema {
     friend Schema *makeConnectorSchema();
 
     void place(double x, double y, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 protected:
     ConnectorSchema();
 
     void placeInputPoints();
     void placeOutputPoints();
-    void collectInputWires(Collector &c);
-    void collectOutputWires(Collector &c);
+    void collectInputWires(Collector &);
+    void collectOutputWires(Collector &);
+
+    vector<Point> inputPoints;
+    vector<Point> outputPoints;
 };
 
 // Connectors are used to ensure unused inputs and outputs are drawn.
@@ -1141,7 +1048,7 @@ void ConnectorSchema::placeOutputPoints() {
 
 // Draw the ConnectorSchema on the device.
 // This method can only be called after the `ConnectorSchema` has been placed.
-void ConnectorSchema::draw(device &) {}
+void ConnectorSchema::draw(Device &) {}
 
 // Draw horizontal arrows from the input points to the ConnectorSchema rectangle.
 void ConnectorSchema::collectTraits(Collector &c) {
@@ -1152,7 +1059,7 @@ void ConnectorSchema::collectTraits(Collector &c) {
 // Draw horizontal arrows from the input points to the
 // ConnectorSchema rectangle
 void ConnectorSchema::collectInputWires(Collector &c) {
-    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
+    const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
         auto p = inputPoints[i];
         c.addTrait({p, {p.x + dx, p.y}}); // in->out direction
@@ -1162,7 +1069,7 @@ void ConnectorSchema::collectInputWires(Collector &c) {
 
 // Draw horizontal line from the ConnectorSchema rectangle to the output points
 void ConnectorSchema::collectOutputWires(Collector &c) {
-    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
+    const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
         auto p = outputPoints[i];
         c.addTrait({{p.x - dx, p.y}, p});  // in->out direction
@@ -1172,25 +1079,14 @@ void ConnectorSchema::collectOutputWires(Collector &c) {
 
 // A simple rectangular box with a text and inputs and outputs.
 // The constructor is private in order to make sure `makeBlockSchema` is used instead.
-class RouteSchema : public Schema {
-protected:
-    const string text;
-    const string color;
-    const string link;
-    const std::vector<int> routes;  ///< route description: s1,d2,s2,d2,...
-
-    // fields only defined after place() is called
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
-
-public:
+struct RouteSchema : Schema {
     friend Schema *makeRouteSchema(unsigned int n, unsigned int m, const std::vector<int> &routes);
     // friend schema* makeRoutingSchema(unsigned int inputs, unsigned int outputs, const vector<int>& route);
     void place(double x, double y, int orientation) override;
-    void draw(device &dev) override;
+    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &c) override;
+    void collectTraits(Collector &) override;
 
 protected:
     RouteSchema(unsigned int inputs, unsigned int outputs, double width, double height, const std::vector<int> &routes);
@@ -1198,13 +1094,21 @@ protected:
     void placeInputPoints();
     void placeOutputPoints();
 
-    void drawRectangle(device &dev);
-    void drawText(device &dev);
-    void drawOrientationMark(device &dev);
-    void drawInputArrows(device &dev);
+    void drawRectangle(Device &);
+    void drawText(Device &);
+    void drawOrientationMark(Device &);
+    void drawInputArrows(Device &);
 
-    void collectInputWires(Collector &c);
-    void collectOutputWires(Collector &c);
+    void collectInputWires(Collector &);
+    void collectOutputWires(Collector &);
+
+    const string text;
+    const string color;
+    const string link;
+    const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
+
+    vector<Point> inputPoints;
+    vector<Point> outputPoints;
 };
 
 // Build n x m cable routing
@@ -1230,7 +1134,6 @@ RouteSchema::RouteSchema(unsigned int inputs, unsigned int outputs, double width
 // This method must be called before `draw()`.
 void RouteSchema::place(double x, double y, int orientation) {
     beginPlace(x, y, orientation);
-
     placeInputPoints();
     placeOutputPoints();
 }
@@ -1240,65 +1143,53 @@ Point RouteSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 // Computes the input points according to the position and the orientation of the `RouteSchema`.
 void RouteSchema::placeInputPoints() {
-    unsigned int N = inputs;
+    const unsigned int N = inputs;
     if (orientation == kLeftRight) {
-        double px = x;
-        double py = y + (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = {px, py + i * dWire};
-        }
+        const double py = y + (height - dWire * (N - 1)) / 2;
+        for (unsigned int i = 0; i < N; i++) inputPoints[i] = {x, py + i * dWire};
     } else {
-        double px = x + width;
-        double py = y + height - (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = {px, py - i * dWire};
-        }
+        const double py = y + height - (height - dWire * (N - 1)) / 2;
+        for (unsigned int i = 0; i < N; i++) inputPoints[i] = {x + width, py - i * dWire};
     }
 }
 
 // Computes the output points according to the position and the orientation of the `RouteSchema`.
 void RouteSchema::placeOutputPoints() {
-    unsigned int N = outputs;
+    const unsigned int N = outputs;
     if (orientation == kLeftRight) {
-        double px = x + width;
-        double py = y + (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = {px, py + i * dWire};
-        }
+        const double py = y + (height - dWire * (N - 1)) / 2;
+        for (unsigned int i = 0; i < N; i++) outputPoints[i] = {x + width, py + i * dWire};
     } else {
-        double px = x;
-        double py = y + height - (height - dWire * (N - 1)) / 2;
-        for (unsigned int i = 0; i < N; i++) {
-            outputPoints[i] = {px, py - i * dWire};
-        }
+        const double py = y + height - (height - dWire * (N - 1)) / 2;
+        for (unsigned int i = 0; i < N; i++) outputPoints[i] = {x, py - i * dWire};
     }
 }
 
 // Draw the `RouteSchema` on the device.
 // This method can only be called after the `RouteSchema` have been placed.
-void RouteSchema::draw(device &dev) {
+void RouteSchema::draw(Device &device) {
     if (gDrawRouteFrame) {
-        drawRectangle(dev);
-        // drawText(dev);
-        drawOrientationMark(dev);
-        drawInputArrows(dev);
+        drawRectangle(device);
+        // drawText(device);
+        drawOrientationMark(device);
+        drawInputArrows(device);
     }
 }
 
 // Draw the colored rectangle with the optional link
-void RouteSchema::drawRectangle(device &dev) {
-    dev.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
+void RouteSchema::drawRectangle(Device &device) {
+    device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
 }
 
 // Draw the text centered on the box
-void RouteSchema::drawText(device &dev) {
-    dev.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
+void RouteSchema::drawText(Device &device) {
+    device.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
 }
 
 // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
-void RouteSchema::drawOrientationMark(device &dev) {
+void RouteSchema::drawOrientationMark(Device &device) {
     const bool isHorz = orientation == kLeftRight;
-    dev.markSens(
+    device.markSens(
         x + (isHorz ? dHorz : (width - dHorz)),
         y + (isHorz ? dVert : (height - dVert)),
         orientation
@@ -1306,11 +1197,11 @@ void RouteSchema::drawOrientationMark(device &dev) {
 }
 
 // Draw horizontal arrows from the input points to the `RouteSchema` rectangle.
-void RouteSchema::drawInputArrows(device &dev) {
-    double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
+void RouteSchema::drawInputArrows(Device &device) {
+    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
-        auto p = inputPoints[i];
-        dev.fleche(p.x + dx, p.y, 0, orientation);
+        const auto p = inputPoints[i];
+        device.fleche(p.x + dx, p.y, 0, orientation);
     }
 }
 
@@ -1331,9 +1222,9 @@ void RouteSchema::collectTraits(Collector &c) {
 
 // Draw horizontal arrows from the input points to the `RouteSchema` rectangle.
 void RouteSchema::collectInputWires(Collector &c) {
-    double dx = orientation == kLeftRight ? dHorz : -dHorz;
+    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < inputs; i++) {
-        auto p = inputPoints[i];
+        const auto p = inputPoints[i];
         c.addTrait({p, {p.x + dx, p.y}});  // in->out direction
         c.addInput({p.x + dx, p.y});
     }
@@ -1341,9 +1232,9 @@ void RouteSchema::collectInputWires(Collector &c) {
 
 // Draw horizontal line from the `RouteSchema` rectangle to the output points.
 void RouteSchema::collectOutputWires(Collector &c) {
-    double dx = orientation == kLeftRight ? dHorz : -dHorz;
+    const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     for (unsigned int i = 0; i < outputs; i++) {
-        auto p = outputPoints[i];
+        const auto p = outputPoints[i];
         c.addTrait({{p.x - dx, p.y}, p});  // in->out direction
         c.addOutput({p.x - dx, p.y});
     }

@@ -2,10 +2,9 @@
 
 #include "Device.h"
 
-class SVGDev : public device {
-public:
-    SVGDev(const char *, double, double);
-    ~SVGDev() override;
+struct SVGDevice : Device {
+    SVGDevice(const char *, double, double);
+    ~SVGDevice() override;
     void rect(double x, double y, double l, double h, const char *color, const char *link) override;
     void triangle(double x, double y, double l, double h, const char *color, const char *link, bool leftright) override;
     void rond(double x, double y, double rayon) override;

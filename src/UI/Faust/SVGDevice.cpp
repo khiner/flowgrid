@@ -1,4 +1,4 @@
-#include "SVGDev.h"
+#include "SVGDevice.h"
 
 #include <sstream>
 
@@ -51,7 +51,7 @@ static char *xmlcode(const char *name, char *name2) {
     return name2;
 }
 
-SVGDev::SVGDev(const char *ficName, double largeur, double hauteur) {
+SVGDevice::SVGDevice(const char *ficName, double largeur, double hauteur) {
     double gScale = 0.5;
     if ((fic_repr = fopen(ficName, "w+")) == nullptr) {
         stringstream error;
@@ -86,12 +86,12 @@ SVGDev::SVGDev(const char *ficName, double largeur, double hauteur) {
     }
 }
 
-SVGDev::~SVGDev() {
+SVGDevice::~SVGDevice() {
     fprintf(fic_repr, "</svg>\n");
     fclose(fic_repr);
 }
 
-void SVGDev::rect(double x, double y, double l, double h, const char *color, const char *link) {
+void SVGDevice::rect(double x, double y, double l, double h, const char *color, const char *link) {
     char buf[512];
     if (link != nullptr && link[0] != 0) {
         // open the optional link tag
@@ -124,7 +124,7 @@ void SVGDev::rect(double x, double y, double l, double h, const char *color, con
 //    points="350,180 380,180 380,160 410,160 410,180 440,180 440,140 470,140 470,180
 //    500,180 500,120 530,120 530,180" />
 
-void SVGDev::triangle(double x, double y, double l, double h, const char *color, const char *link, bool leftright) {
+void SVGDevice::triangle(double x, double y, double l, double h, const char *color, const char *link, bool leftright) {
     char buf[512];
     if (link != nullptr && link[0] != 0) {
         // open the optional link tag
@@ -148,11 +148,11 @@ void SVGDev::triangle(double x, double y, double l, double h, const char *color,
         color, x2, y + h / 2.0, r);
 }
 
-void SVGDev::rond(double x, double y, double rayon) {
+void SVGDevice::rond(double x, double y, double rayon) {
     fprintf(fic_repr, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\"/>\n", x, y, rayon);
 }
 
-void SVGDev::fleche(double x, double y, double rotation, int sens) {
+void SVGDevice::fleche(double x, double y, double rotation, int sens) {
     double dx = 3;
     double dy = 1;
 
@@ -178,28 +178,28 @@ void SVGDev::fleche(double x, double y, double rotation, int sens) {
     }
 }
 
-void SVGDev::carre(double x, double y, double cote) {
+void SVGDevice::carre(double x, double y, double cote) {
     fprintf(
         fic_repr,
         "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" style=\"stroke: black;stroke-width:0.5;fill:none;\"/>\n",
         x - 0.5 * cote, y - cote, cote, cote);
 }
 
-void SVGDev::trait(double x1, double y1, double x2, double y2) {
+void SVGDevice::trait(double x1, double y1, double x2, double y2) {
     fprintf(fic_repr,
         "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\"  style=\"stroke:black; stroke-linecap:round; "
         "stroke-width:0.25;\"/>\n",
         x1, y1, x2, y2);
 }
 
-void SVGDev::dasharray(double x1, double y1, double x2, double y2) {
+void SVGDevice::dasharray(double x1, double y1, double x2, double y2) {
     fprintf(fic_repr,
         "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\"  style=\"stroke: black; stroke-linecap:round; "
         "stroke-width:0.25; stroke-dasharray:3,3;\"/>\n",
         x1, y1, x2, y2);
 }
 
-void SVGDev::text(double x, double y, const char *name, const char *link) {
+void SVGDevice::text(double x, double y, const char *name, const char *link) {
     char buf[512];
     if (link != nullptr && link[0] != 0) {
         // open the optional link tag
@@ -216,18 +216,18 @@ void SVGDev::text(double x, double y, const char *name, const char *link) {
     }
 }
 
-void SVGDev::label(double x, double y, const char *name) {
+void SVGDevice::label(double x, double y, const char *name) {
     char name2[256];
     fprintf(fic_repr, "<text x=\"%f\" y=\"%f\" font-family=\"Arial\" font-size=\"7\">%s</text>\n", x, y + 2,
         xmlcode(name, name2));
 }
 
-void SVGDev::markSens(double x, double y, int sens) {
+void SVGDevice::markSens(double x, double y, int sens) {
     int offset = (sens == 1) ? 2 : -2;
     fprintf(fic_repr, "<circle cx=\"%f\" cy=\"%f\" r=\"1\"/>\n", x + offset, y + offset);
 }
 
-void SVGDev::Error(const char *message, const char *reason, int nb_error, double x, double y, double largeur) {
+void SVGDevice::Error(const char *message, const char *reason, int nb_error, double x, double y, double largeur) {
     fprintf(fic_repr,
         "<text x=\"%f\" y=\"%f\"  textLength=\"%f\" lengthAdjust=\"spacingAndGlyphs\" style=\"stroke: red; "
         "stroke-width:0.3; fill:red; text-anchor:middle;\">%d : %s</text>\n",

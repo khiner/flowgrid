@@ -31,7 +31,7 @@ struct Trait {
     Point start, end;
 
     Trait(const Point &p1, const Point &p2) : start(p1), end(p2) {}
-    void draw(device &dev) const { dev.trait(start.x, start.y, end.x, end.y); }
+    void draw(Device &device) const { device.trait(start.x, start.y, end.x, end.y); }
 
     bool operator<(const Trait &t) const {
         if (start < t.start) return true;
@@ -51,9 +51,11 @@ struct Collector {
     void addOutput(const Point &p) { outputs.insert(p); }
     void addInput(const Point &p) { inputs.insert(p); }
     void addTrait(const Trait &t) { traits.insert(t); }
-    void computeVisibleTraits();
-    bool isVisible(const Trait &t) const;
-    void draw(device &dev);
+    bool isVisible(const Trait &) const;
+    void draw(Device &);
+
+private:
+    bool computeVisibleTraits();
 };
 
 enum { kLeftRight = 1, kRightLeft = -1 };
@@ -79,7 +81,7 @@ struct Schema {
 
     // abstract interface for subclasses
     virtual void place(double x, double y, int orientation) = 0;
-    virtual void draw(device &dev) = 0;
+    virtual void draw(Device &) = 0;
     virtual Point inputPoint(unsigned int i) const = 0;
     virtual Point outputPoint(unsigned int i) const = 0;
     virtual void collectTraits(Collector &c) = 0;

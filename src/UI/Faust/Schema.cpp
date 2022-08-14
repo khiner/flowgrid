@@ -28,7 +28,7 @@ void Collector::draw(Device &device) {
 struct BlockSchema : Schema {
     friend Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);
 
-    void place(double x, double y, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -65,8 +65,7 @@ BlockSchema::BlockSchema(unsigned int inputs, unsigned int outputs, double width
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
-void BlockSchema::place(double x, double y, int orientation) {
-    beginPlace(x, y, orientation);
+void BlockSchema::placeImpl() {
     const bool isLR = orientation == kLeftRight;
     for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
     for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
@@ -109,7 +108,7 @@ void BlockSchema::collectTraits(Collector &c) {
 struct CableSchema : Schema {
     friend Schema *makeCableSchema(unsigned int n);
 
-    void place(double x, double y, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -128,11 +127,10 @@ CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, n * dWire) {
 }
 
 // Place the communication points vertically spaced by `dWire`.
-void CableSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
+void CableSchema::placeImpl() {
     for (unsigned int i = 0; i < inputs; i++) {
         const double dx = dWire * (i + 0.5);
-        points[i] = {ox, oy + (orientation == kLeftRight ? dx : (height - dx))};
+        points[i] = {x, y + (orientation == kLeftRight ? dx : (height - dx))};
     }
 }
 
@@ -171,7 +169,7 @@ void InverterSchema::draw(Device &device) {
 struct CutSchema : Schema {
 public:
     friend Schema *makeCutSchema();
-    void place(double x, double y, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -191,9 +189,8 @@ Schema *makeCutSchema() { return new CutSchema(); }
 CutSchema::CutSchema() : Schema(1, 0, 0, dWire / 100.0), point(0, 0) {}
 
 // The input point is placed in the middle.
-void CutSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-    point = {ox, oy + height * 0.5};  //, -1);
+void CutSchema::placeImpl() {
+    point = {x, y + height * 0.5};
 }
 
 // A cut is represented by a small black dot.
@@ -215,7 +212,7 @@ Point CutSchema::outputPoint(unsigned int) const {
 struct EnlargedSchema : Schema {
     EnlargedSchema(Schema *s, double width);
 
-    void place(double x, double y, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -241,11 +238,9 @@ EnlargedSchema::EnlargedSchema(Schema *s, double width)
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
-void EnlargedSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-
+void EnlargedSchema::placeImpl() {
     double dx = (width - schema->width) / 2;
-    schema->place(ox + dx, oy, orientation);
+    schema->place(x + dx, y, orientation);
 
     if (orientation == kRightLeft) dx = -dx;
 
@@ -273,7 +268,7 @@ void EnlargedSchema::collectTraits(Collector &c) {
 struct ParallelSchema : Schema {
     ParallelSchema(Schema *s1, Schema *s2);
 
-    void place(double ox, double oy, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -297,14 +292,13 @@ ParallelSchema::ParallelSchema(Schema *s1, Schema *s2)
     assert(s1->width == s2->width);
 }
 
-void ParallelSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
+void ParallelSchema::placeImpl() {
     if (orientation == kLeftRight) {
-        schema1->place(ox, oy, orientation);
-        schema2->place(ox, oy + schema1->height, orientation);
+        schema1->place(x, y, orientation);
+        schema2->place(x, y + schema1->height, orientation);
     } else {
-        schema2->place(ox, oy, orientation);
-        schema1->place(ox, oy + schema2->height, orientation);
+        schema2->place(x, y, orientation);
+        schema1->place(x, y + schema2->height, orientation);
     }
 }
 
@@ -329,7 +323,7 @@ void ParallelSchema::collectTraits(Collector &c) {
 struct SequentialSchema : Schema {
     friend Schema *makeSequentialSchema(Schema *s1, Schema *s2);
 
-    void place(double ox, double oy, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -411,17 +405,15 @@ SequentialSchema::SequentialSchema(Schema *s1, Schema *s2, double hgap)
 }
 
 // Place the two components horizontally with enough space for the connections.
-void SequentialSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-
+void SequentialSchema::placeImpl() {
     const double y1 = max(0.0, 0.5 * (schema2->height - schema1->height));
     const double y2 = max(0.0, 0.5 * (schema1->height - schema2->height));
     if (orientation == kLeftRight) {
-        schema1->place(ox, oy + y1, orientation);
-        schema2->place(ox + schema1->width + horzGap, oy + y2, orientation);
+        schema1->place(x, y + y1, orientation);
+        schema2->place(x + schema1->width + horzGap, y + y2, orientation);
     } else {
-        schema2->place(ox, oy + y2, orientation);
-        schema1->place(ox + schema2->width + horzGap, oy + y1, orientation);
+        schema2->place(x, y + y2, orientation);
+        schema1->place(x + schema2->width + horzGap, y + y1, orientation);
     }
 }
 
@@ -479,7 +471,7 @@ void SequentialSchema::collectInternalWires(Collector &c) {
 struct MergeSchema : Schema {
     friend Schema *makeMergeSchema(Schema *s1, Schema *s2);
 
-    void place(double ox, double oy, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -508,17 +500,15 @@ MergeSchema::MergeSchema(Schema *s1, Schema *s2, double hgap)
     : Schema(s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), schema1(s1), schema2(s2), horzGap(hgap) {}
 
 // Place the two subschema horizontaly, centered, with enough gap for the connections.
-void MergeSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-
+void MergeSchema::placeImpl() {
     const double dy1 = max(0.0, schema2->height - schema1->height) / 2.0;
     const double dy2 = max(0.0, schema1->height - schema2->height) / 2.0;
     if (orientation == kLeftRight) {
-        schema1->place(ox, oy + dy1, orientation);
-        schema2->place(ox + schema1->width + horzGap, oy + dy2, orientation);
+        schema1->place(x, y + dy1, orientation);
+        schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
     } else {
-        schema2->place(ox, oy + dy2, orientation);
-        schema1->place(ox + schema2->width + horzGap, oy + dy1, orientation);
+        schema2->place(x, y + dy2, orientation);
+        schema1->place(x + schema2->width + horzGap, y + dy1, orientation);
     }
 }
 
@@ -543,7 +533,7 @@ void MergeSchema::collectTraits(Collector &c) {
 struct SplitSchema : Schema {
     friend Schema *makeSplitSchema(Schema *s1, Schema *s2);
 
-    void place(double ox, double oy, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -574,17 +564,15 @@ SplitSchema::SplitSchema(Schema *s1, Schema *s2, double hgap)
       schema1(s1), schema2(s2), horzGap(hgap) {}
 
 // Place the two subschema horizontaly, centered, with enough gap for the connections
-void SplitSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-
+void SplitSchema::placeImpl() {
     const double dy1 = max(0.0, schema2->height - schema1->height) / 2.0;
     const double dy2 = max(0.0, schema1->height - schema2->height) / 2.0;
     if (orientation == kLeftRight) {
-        schema1->place(ox, oy + dy1, orientation);
-        schema2->place(ox + schema1->width + horzGap, oy + dy2, orientation);
+        schema1->place(x, y + dy1, orientation);
+        schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
     } else {
-        schema2->place(ox, oy + dy2, orientation);
-        schema1->place(ox + schema2->width + horzGap, oy + dy1, orientation);
+        schema2->place(x, y + dy2, orientation);
+        schema1->place(x + schema2->width + horzGap, y + dy1, orientation);
     }
 }
 
@@ -610,7 +598,7 @@ void SplitSchema::collectTraits(Collector &c) {
 struct RecSchema : Schema {
     friend Schema *makeRecSchema(Schema *s1, Schema *s2);
 
-    void place(double ox, double oy, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -654,17 +642,15 @@ RecSchema::RecSchema(Schema *s1, Schema *s2, double width)
 
 // The two subschema are placed centered vertically, s2 on top of s1.
 // The input and output points are computed.
-void RecSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-
+void RecSchema::placeImpl() {
     double dx1 = (width - schema1->width) / 2;
     const double dx2 = (width - schema2->width) / 2;
     if (orientation == kLeftRight) {
-        schema2->place(ox + dx2, oy, kRightLeft);
-        schema1->place(ox + dx1, oy + schema2->height, kLeftRight);
+        schema2->place(x + dx2, y, kRightLeft);
+        schema1->place(x + dx1, y + schema2->height, kLeftRight);
     } else {
-        schema1->place(ox + dx1, oy, kRightLeft);
-        schema2->place(ox + dx2, oy + schema1->height, kLeftRight);
+        schema1->place(x + dx1, y, kRightLeft);
+        schema2->place(x + dx2, y + schema1->height, kLeftRight);
     }
 
     // adjust delta space to orientation
@@ -752,7 +738,7 @@ void RecSchema::collectFeedfront(Collector &c, const Point &src, const Point &ds
 struct TopSchema : Schema {
     friend Schema *makeTopSchema(Schema *s1, double margin, const string &text, const string &link);
 
-    void place(double ox, double oy, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -780,9 +766,8 @@ Schema *makeTopSchema(Schema *s, double margin, const string &text, const string
 TopSchema::TopSchema(Schema *s, double margin, string text, string link)
     : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)), link(std::move(link)) {}
 
-void TopSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-    schema->place(ox + fMargin, oy + fMargin, orientation);
+void TopSchema::placeImpl() {
+    schema->place(x + fMargin, y + fMargin, orientation);
 }
 
 // Top schema has no input or output
@@ -812,7 +797,7 @@ void TopSchema::collectTraits(Collector &c) {
 struct DecorateSchema : Schema {
     friend Schema *makeDecorateSchema(Schema *s1, double margin, const string &text);
 
-    void place(double ox, double oy, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -839,9 +824,8 @@ DecorateSchema::DecorateSchema(Schema *s, double margin, string text)
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
-void DecorateSchema::place(double ox, double oy, int orientation) {
-    beginPlace(ox, oy, orientation);
-    schema->place(ox + fMargin, oy + fMargin, orientation);
+void DecorateSchema::placeImpl() {
+    schema->place(x + fMargin, y + fMargin, orientation);
 
     const double m = orientation == kRightLeft ? -fMargin : fMargin;
     for (unsigned int i = 0; i < inputs; i++) {
@@ -887,7 +871,7 @@ void DecorateSchema::collectTraits(Collector &c) {
 struct ConnectorSchema : Schema {
     friend Schema *makeConnectorSchema();
 
-    void place(double x, double y, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -909,8 +893,7 @@ ConnectorSchema::ConnectorSchema() : Schema(1, 1, dWire, dWire) {
     outputPoints.emplace_back(0, 0);
 }
 
-void ConnectorSchema::place(double x, double y, int orientation) {
-    beginPlace(x, y, orientation);
+void ConnectorSchema::placeImpl() {
     const bool isLR = orientation == kLeftRight;
     for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? Schema::x : Schema::x + width, Schema::y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
     for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
@@ -939,7 +922,7 @@ void ConnectorSchema::collectTraits(Collector &c) {
 // The constructor is private in order to make sure `makeBlockSchema` is used instead.
 struct RouteSchema : Schema {
     friend Schema *makeRouteSchema(unsigned int n, unsigned int m, const std::vector<int> &routes);
-    void place(double x, double y, int orientation) override;
+    void placeImpl() override;
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
@@ -973,8 +956,7 @@ RouteSchema::RouteSchema(unsigned int inputs, unsigned int outputs, double width
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
-void RouteSchema::place(double x, double y, int orientation) {
-    beginPlace(x, y, orientation);
+void RouteSchema::placeImpl() {
     const bool isLR = orientation == kLeftRight;
     for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
     for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
@@ -995,9 +977,7 @@ void RouteSchema::draw(Device &device) {
 
         // Input arrows
         const double dx = isLR ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) {
-            device.fleche(p.x + dx, p.y, 0, orientation);
-        }
+        for (const auto &p: inputPoints) device.fleche(p.x + dx, p.y, 0, orientation);
     }
 }
 

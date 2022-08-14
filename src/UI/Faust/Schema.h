@@ -64,22 +64,22 @@ struct Schema {
     const unsigned int inputs, outputs;
     const double width, height;
 
-    // fields only defined after `beginPlace()` is called
-    double x, y;
-    int orientation;
+    // Fields only defined after `beginPlace()` is called:
+    double x = 0, y = 0;
+    int orientation = 0;
 
-    Schema(unsigned int inputs, unsigned int outputs, double width, double height)
-        : inputs(inputs), outputs(outputs), width(width), height(height), x(0), y(0), orientation(0) {}
+    Schema(unsigned int inputs, unsigned int outputs, double width, double height) : inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;
 
-    void beginPlace(double new_x, double new_y, int new_orientation) {
+    void place(double new_x, double new_y, int new_orientation) {
         x = new_x;
         y = new_y;
         orientation = new_orientation;
+        placeImpl();
     }
 
     // abstract interface for subclasses
-    virtual void place(double x, double y, int orientation) = 0;
+    virtual void placeImpl() = 0;
     virtual void draw(Device &) = 0;
     virtual Point inputPoint(unsigned int i) const = 0;
     virtual Point outputPoint(unsigned int i) const = 0;

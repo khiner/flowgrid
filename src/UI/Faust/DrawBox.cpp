@@ -177,10 +177,10 @@ static Schema *generateInputSlotSchema(Tree a) {
 static Schema *generateAbstractionSchema(Schema *x, Tree t) {
     Tree a, b;
     while (isBoxSymbolic(t, a, b)) {
-        x = makeParSchema(x, generateInputSlotSchema(a));
+        x = makeParallelSchema(x, generateInputSlotSchema(a));
         t = b;
     }
-    return makeSeqSchema(x, generateDiagramSchema(t));
+    return makeSequentialSchema(x, generateDiagramSchema(t));
 }
 
 static Schema *addSchemaInputs(int ins, Schema *x) {
@@ -189,10 +189,10 @@ static Schema *addSchemaInputs(int ins, Schema *x) {
     Schema *y = nullptr;
     do {
         Schema *z = makeConnectorSchema();
-        y = y != nullptr ? makeParSchema(y, z) : z;
+        y = y != nullptr ? makeParallelSchema(y, z) : z;
     } while (--ins);
 
-    return makeSeqSchema(y, x);
+    return makeSequentialSchema(y, x);
 }
 static Schema *addSchemaOutputs(int outs, Schema *x) {
     if (outs == 0) return x;
@@ -200,10 +200,10 @@ static Schema *addSchemaOutputs(int outs, Schema *x) {
     Schema *y = nullptr;
     do {
         Schema *z = makeConnectorSchema();
-        y = y != nullptr ? makeParSchema(y, z) : z;
+        y = y != nullptr ? makeParallelSchema(y, z) : z;
     } while (--outs);
 
-    return makeSeqSchema(x, y);
+    return makeSequentialSchema(x, y);
 }
 
 // Transform the definition name property of tree <t> into a legal file name.
@@ -434,8 +434,8 @@ static Schema *generateInsideSchema(Tree t) {
         auto *s1 = generateDiagramSchema(a);
         return makeDecorateSchema(s1, 10, groupId + "group(" + extractName(label) + ")");
     }
-    if (isBoxSeq(t, a, b)) return makeSeqSchema(generateDiagramSchema(a), generateDiagramSchema(b));
-    if (isBoxPar(t, a, b)) return makeParSchema(generateDiagramSchema(a), generateDiagramSchema(b));
+    if (isBoxSeq(t, a, b)) return makeSequentialSchema(generateDiagramSchema(a), generateDiagramSchema(b));
+    if (isBoxPar(t, a, b)) return makeParallelSchema(generateDiagramSchema(a), generateDiagramSchema(b));
     if (isBoxSplit(t, a, b)) return makeSplitSchema(generateDiagramSchema(a), generateDiagramSchema(b));
     if (isBoxMerge(t, a, b)) return makeMergeSchema(generateDiagramSchema(a), generateDiagramSchema(b));
     if (isBoxRec(t, a, b)) return makeRecSchema(generateDiagramSchema(a), generateDiagramSchema(b));

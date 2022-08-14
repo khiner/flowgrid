@@ -327,9 +327,8 @@ void EnlargedSchema::collectTraits(Collector &c) {
     for (unsigned int i = 0; i < outputs; i++) c.addTrait({schema->outputPoint(i), outputPoint(i)});
 }
 
-// Place two schemas in parallel.
-struct ParSchema : Schema {
-    ParSchema(Schema *s1, Schema *s2);
+struct ParallelSchema : Schema {
+    ParallelSchema(Schema *s1, Schema *s2);
 
     void place(double ox, double oy, int orientation) override;
     void draw(Device &) override;
@@ -345,17 +344,17 @@ private:
 };
 
 // Make sure s1 and s2 have same width.
-Schema *makeParSchema(Schema *s1, Schema *s2) {
-    return new ParSchema(makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width));
+Schema *makeParallelSchema(Schema *s1, Schema *s2) {
+    return new ParallelSchema(makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width));
 }
 
-ParSchema::ParSchema(Schema *s1, Schema *s2)
+ParallelSchema::ParallelSchema(Schema *s1, Schema *s2)
     : Schema(s1->inputs + s2->inputs, s1->outputs + s2->outputs, s1->width, s1->height + s2->height),
       schema1(s1), schema2(s2), inputFrontier(s1->inputs), outputFrontier(s1->outputs) {
     assert(s1->width == s2->width);
 }
 
-void ParSchema::place(double ox, double oy, int orientation) {
+void ParallelSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
     if (orientation == kLeftRight) {
         schema1->place(ox, oy, orientation);
@@ -366,26 +365,26 @@ void ParSchema::place(double ox, double oy, int orientation) {
     }
 }
 
-Point ParSchema::inputPoint(unsigned int i) const {
+Point ParallelSchema::inputPoint(unsigned int i) const {
     return i < inputFrontier ? schema1->inputPoint(i) : schema2->inputPoint(i - inputFrontier);
 }
 
-Point ParSchema::outputPoint(unsigned int i) const {
+Point ParallelSchema::outputPoint(unsigned int i) const {
     return i < outputFrontier ? schema1->outputPoint(i) : schema2->outputPoint(i - outputFrontier);
 }
 
-void ParSchema::draw(Device &device) {
+void ParallelSchema::draw(Device &device) {
     schema1->draw(device);
     schema2->draw(device);
 }
 
-void ParSchema::collectTraits(Collector &c) {
+void ParallelSchema::collectTraits(Collector &c) {
     schema1->collectTraits(c);
     schema2->collectTraits(c);
 }
 
-struct SeqSchema : Schema {
-    friend Schema *makeSeqSchema(Schema *s1, Schema *s2);
+struct SequentialSchema : Schema {
+    friend Schema *makeSequentialSchema(Schema *s1, Schema *s2);
 
     void place(double ox, double oy, int orientation) override;
     void draw(Device &) override;
@@ -394,7 +393,7 @@ struct SeqSchema : Schema {
     void collectTraits(Collector &) override;
 
 private:
-    SeqSchema(Schema *s1, Schema *s2, double hgap);
+    SequentialSchema(Schema *s1, Schema *s2, double hgap);
     void collectInternalWires(Collector &);
 
     Schema *schema1;
@@ -452,28 +451,26 @@ static double computeHorzGap(Schema *a, Schema *b) {
     return dWire * max(MaxGroupSize[kUpDir], MaxGroupSize[kDownDir]);
 }
 
-
-// Make a sequential schema.
 // May add cables to ensure the internal connections are between the same number of outputs and inputs.
-// Compute an horizontal gap based on the number of upward and downward connections.
-Schema *makeSeqSchema(Schema *s1, Schema *s2) {
+// Compute a horizontal gap based on the number of upward and downward connections.
+Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
     const unsigned int o = s1->outputs;
     const unsigned int i = s2->inputs;
-    auto *a = (o < i) ? makeParSchema(s1, makeCableSchema(i - o)) : s1;
-    auto *b = (o > i) ? makeParSchema(s2, makeCableSchema(o - i)) : s2;
+    auto *a = (o < i) ? makeParallelSchema(s1, makeCableSchema(i - o)) : s1;
+    auto *b = (o > i) ? makeParallelSchema(s2, makeCableSchema(o - i)) : s2;
 
-    return new SeqSchema(a, b, computeHorzGap(a, b));
+    return new SequentialSchema(a, b, computeHorzGap(a, b));
 }
 
 // Constructor for a sequential schema (s1:s2).
 // The components s1 and s2 are supposed to be "compatible" (s1 : n->m and s2 : m->q).
-SeqSchema::SeqSchema(Schema *s1, Schema *s2, double hgap)
+SequentialSchema::SequentialSchema(Schema *s1, Schema *s2, double hgap)
     : Schema(s1->inputs, s2->outputs, s1->width + hgap + s2->width, max(s1->height, s2->height)), schema1(s1), schema2(s2), horzGap(hgap) {
     assert(s1->outputs == s2->inputs);
 }
 
 // Place the two components horizontally with enough space for the connections.
-void SeqSchema::place(double ox, double oy, int orientation) {
+void SequentialSchema::place(double ox, double oy, int orientation) {
     beginPlace(ox, oy, orientation);
 
     const double y1 = max(0.0, 0.5 * (schema2->height - schema1->height));
@@ -488,18 +485,18 @@ void SeqSchema::place(double ox, double oy, int orientation) {
 }
 
 // The input points are the input points of the first component.
-Point SeqSchema::inputPoint(unsigned int i) const { return schema1->inputPoint(i); }
+Point SequentialSchema::inputPoint(unsigned int i) const { return schema1->inputPoint(i); }
 
 // The output points are the output points of the second component.
-Point SeqSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
+Point SequentialSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
 
-void SeqSchema::draw(Device &device) {
+void SequentialSchema::draw(Device &device) {
     assert(schema1->outputs == schema2->inputs);
     schema1->draw(device);
     schema2->draw(device);
 }
 
-void SeqSchema::collectTraits(Collector &c) {
+void SequentialSchema::collectTraits(Collector &c) {
     assert(schema1->outputs == schema2->inputs);
     schema1->collectTraits(c);
     schema2->collectTraits(c);
@@ -507,7 +504,7 @@ void SeqSchema::collectTraits(Collector &c) {
 }
 
 // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
-void SeqSchema::collectInternalWires(Collector &c) {
+void SequentialSchema::collectInternalWires(Collector &c) {
     const unsigned int N = schema1->outputs;
     assert(N == schema2->inputs);
 

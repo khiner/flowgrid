@@ -80,11 +80,11 @@ void BlockSchema::draw(Device &device) {
 
     // Draw a small point that indicates the first input (like an integrated circuits).
     const bool isLR = orientation == kLeftRight;
-    device.markSens(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
+    device.dot(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
 
     // Input arrows
     const double dx = isLR ? dHorz : -dHorz;
-    for (const auto &p: inputPoints) device.fleche(p.x + dx, p.y, 0, orientation);
+    for (const auto &p: inputPoints) device.arrow(p.x + dx, p.y, 0, orientation);
 }
 
 void BlockSchema::collectTraits(Collector &c) {
@@ -162,7 +162,7 @@ Schema *makeInverterSchema(const string &color) { return new InverterSchema(colo
 InverterSchema::InverterSchema(const string &color) : BlockSchema(1, 1, 2.5 * dWire, dWire, "-1", color, "") {}
 
 void InverterSchema::draw(Device &device) {
-    device.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, color.c_str(), link.c_str(), orientation == kLeftRight);
+    device.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, color.c_str(), link.c_str(), orientation);
 }
 
 // Terminate a cable (cut box).
@@ -782,7 +782,7 @@ void TopSchema::draw(Device &device) {
 
     for (unsigned int i = 0; i < schema->outputs; i++) {
         const auto p = schema->outputPoint(i);
-        device.fleche(p.x, p.y, 0, orientation);
+        device.arrow(p.x, p.y, 0, orientation);
     }
 }
 
@@ -973,11 +973,11 @@ void RouteSchema::draw(Device &device) {
 
         // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
         const bool isLR = orientation == kLeftRight;
-        device.markSens(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
+        device.dot(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
 
         // Input arrows
         const double dx = isLR ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) device.fleche(p.x + dx, p.y, 0, orientation);
+        for (const auto &p: inputPoints) device.arrow(p.x + dx, p.y, 0, orientation);
     }
 }
 

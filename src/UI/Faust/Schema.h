@@ -57,8 +57,6 @@ private:
     bool computeVisibleTraits();
 };
 
-enum { kLeftRight = 1, kRightLeft = -1 };
-
 // An abstract block diagram schema
 struct Schema {
     const unsigned int inputs, outputs;

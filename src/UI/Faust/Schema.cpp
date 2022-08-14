@@ -50,7 +50,7 @@ protected:
     vector<Point> outputPoints;
 
 public:
-    friend Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &name, const string &color, const string &link);
+    friend Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);
 
     void place(double x, double y, int orientation) override;
     void draw(device &dev) override;
@@ -59,7 +59,7 @@ public:
     void collectTraits(Collector &c) override;
 
 protected:
-    BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, const string &name, const string &color, const string &link);
+    BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link);
 
     void placeInputPoints();
     void placeOutputPoints();
@@ -73,9 +73,9 @@ protected:
     void collectOutputWires(Collector &c);
 };
 
-static double quantize(int n) {
-    int q = 3;
-    return dLetter * (q * ((n + q - 1) / q));
+static inline double quantize(int n) {
+    static const int q = 3;
+    return q * ((n + q - 1) / q); // NOLINT(bugprone-integer-division)
 }
 
 /**
@@ -85,13 +85,13 @@ static double quantize(int n) {
 Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link) {
     // determine the optimal size of the box
     double minimal = 3 * dWire;
-    double w = 2 * dHorz + max(minimal, quantize((int) text.size()));
+    double w = 2 * dHorz + max(minimal, dLetter * quantize((int) text.size()));
     double h = 2 * dVert + max(minimal, max(inputs, outputs) * dWire);
     return new BlockSchema(inputs, outputs, w, h, text, color, link);
 }
 
-BlockSchema::BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, const string &text, const string &color, const string &link)
-    : Schema(inputs, outputs, width, height), text(text), color(color), link(link) {
+BlockSchema::BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link)
+    : Schema(inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {
     for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
@@ -369,7 +369,7 @@ void CutSchema::collectTraits(Collector &) {}
 /**
  * By definition, a Cut has only one input point.
  */
-Point CutSchema::inputPoint(unsigned int i) const { return point; }
+Point CutSchema::inputPoint(unsigned int) const { return point; }
 
 /**
  * By definition, a Cut has no output point.
@@ -1098,7 +1098,7 @@ public:
     void collectTraits(Collector &c) override;
 
 private:
-    TopSchema(Schema *s1, double margin, const string &text, const string &link);
+    TopSchema(Schema *s1, double margin, string text, string link);
 };
 
 Schema *makeTopSchema(Schema *s, double margin, const string &text, const string &link) {
@@ -1111,8 +1111,8 @@ Schema *makeTopSchema(Schema *s, double margin, const string &text, const string
  * Arrows are added to the outputs.
  * The constructor is made private to enforce the usage of `makeTopSchema`.
  */
-TopSchema::TopSchema(Schema *s, double margin, const string &text, const string &link)
-    : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(text), link(link) {}
+TopSchema::TopSchema(Schema *s, double margin, string text, string link)
+    : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)), link(std::move(link)) {}
 
 /**
  * Define the graphic position of the schema.
@@ -1128,12 +1128,12 @@ void TopSchema::place(double ox, double oy, int orientation) {
 /**
  * Top schema has no input
  */
-Point TopSchema::inputPoint(unsigned int i) const { throw faustexception("ERROR : TopSchema::inputPoint\n"); }
+Point TopSchema::inputPoint(unsigned int) const { throw faustexception("ERROR : TopSchema::inputPoint\n"); }
 
 /**
  * Top schema has no output
  */
-Point TopSchema::outputPoint(unsigned int i) const { throw faustexception("ERROR : TopSchema::outputPoint\n"); }
+Point TopSchema::outputPoint(unsigned int) const { throw faustexception("ERROR : TopSchema::outputPoint\n"); }
 
 /**
  * Draw the enlarged schema. This methos can only
@@ -1192,7 +1192,7 @@ public:
     void collectTraits(Collector &c) override;
 
 private:
-    DecorateSchema(Schema *s1, double margin, const string &text);
+    DecorateSchema(Schema *s1, double margin, string text);
 };
 
 Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { return new DecorateSchema(s, margin, text); }
@@ -1202,8 +1202,8 @@ Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { retur
  * The rectangle is placed at half the margin parameter.
  * The constructor is made private to enforce the usage of `makeDecorateSchema`
  */
-DecorateSchema::DecorateSchema(Schema *s, double margin, const string &text)
-    : Schema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(text) {
+DecorateSchema::DecorateSchema(Schema *s, double margin, string text)
+    : Schema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)) {
     for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
@@ -1260,18 +1260,8 @@ void DecorateSchema::draw(device &dev) {
 void DecorateSchema::collectTraits(Collector &c) {
     schema->collectTraits(c);
 
-    // draw enlarge input wires
-    for (unsigned int i = 0; i < inputs; i++) {
-        auto p = inputPoint(i);
-        auto q = schema->inputPoint(i);
-        c.addTrait({p, q});  // in->out direction
-    }
-    // draw enlarge output wires
-    for (unsigned int i = 0; i < outputs; i++) {
-        auto p = schema->outputPoint(i);
-        auto q = outputPoint(i);
-        c.addTrait({p, q});  // in->out direction
-    }
+    for (unsigned int i = 0; i < inputs; i++) c.addTrait({inputPoint(i), schema->inputPoint(i)});
+    for (unsigned int i = 0; i < outputs; i++) c.addTrait({schema->outputPoint(i), outputPoint(i)});
 }
 
 /**

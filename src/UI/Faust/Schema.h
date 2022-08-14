@@ -87,7 +87,7 @@ struct Schema {
     virtual void collectTraits(Collector &c) = 0;
 };
 
-Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &name, const string &color, const string &link);
+Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);
 Schema *makeCableSchema(unsigned int n = 1);
 Schema *makeInverterSchema(const string &color);
 Schema *makeCutSchema();

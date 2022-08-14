@@ -1320,17 +1320,11 @@ Point ConnectorSchema::outputPoint(unsigned int i) const { return outputPoints[i
  * Computes the input points according to the position and the orientation of the ConnectorSchema
  */
 void ConnectorSchema::placeInputPoints() {
-    unsigned int N = inputs;
-    double py = y + height / 2.0 - dWire * (N - 1) / 2.0;
-    if (orientation == kLeftRight) {
-        for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = {x, py + i * dWire};
-        }
-    } else {
-        for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = {x + width, py - i * dWire};
-        }
-    }
+    const unsigned int N = inputs;
+    const double py = y + height / 2.0 - dWire * (N - 1) / 2.0;
+    const bool isLR = orientation == kLeftRight;
+    // todo vectorize
+    for (unsigned int i = 0; i < N; i++) inputPoints[i] = {x + (isLR ? 0 : width), py + i * dWire * (isLR ? 1 : -1)};
 }
 
 /**

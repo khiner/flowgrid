@@ -51,7 +51,6 @@ struct Collector {
     void addOutput(const Point &p) { outputs.insert(p); }
     void addInput(const Point &p) { inputs.insert(p); }
     void addTrait(const Trait &t) { traits.insert(t); }
-    bool isVisible(const Trait &) const;
     void draw(Device &);
 
 private:

@@ -1237,24 +1237,20 @@ Point DecorateSchema::outputPoint(unsigned int i) const { return outputPoints[i]
 void DecorateSchema::draw(device &dev) {
     schema->draw(dev);
 
-    // define the coordinates of the frame
-    double tw = (2 + text.size()) * dLetter * 0.75;
-    double x0 = x + fMargin / 2;             // left
-    double y0 = y + fMargin / 2;             // top
-    double x1 = x + width - fMargin / 2;   // right
-    double y1 = y + height - fMargin / 2;  // bottom
-    double tl = x + fMargin;     // left of text zone
-    double tr = min(tl + tw, x1);  // right of text zone
+    // Surrounding frame
+    const double x0 = x + fMargin / 2; // left
+    const double y0 = y + fMargin / 2; // top
+    const double x1 = x + width - fMargin / 2; // right
+    const double y1 = y + height - fMargin / 2; // bottom
+    const double tl = x + fMargin; // left of text zone
 
-    // draw the surrounding frame
-    dev.dasharray(x0, y0, x0, y1);  // left line
-    dev.dasharray(x0, y1, x1, y1);  // bottom line
-    dev.dasharray(x1, y1, x1, y0);  // right line
-    dev.dasharray(x0, y0, tl, y0);  // top segment before text
-    dev.dasharray(tr, y0, x1, y0);  // top segment after text
+    dev.dasharray(x0, y0, x0, y1); // left line
+    dev.dasharray(x0, y1, x1, y1); // bottom line
+    dev.dasharray(x1, y1, x1, y0); // right line
+    dev.dasharray(x0, y0, tl, y0); // top segment before text
+    dev.dasharray(min(tl + double(2 + text.size()) * dLetter * 0.75, x1), y0, x1, y0); // top segment after text
 
-    // draw the label
-    dev.label(tl, y0, text.c_str());  //
+    dev.label(tl, y0, text.c_str());
 }
 
 void DecorateSchema::collectTraits(Collector &c) {
@@ -1325,17 +1321,14 @@ Point ConnectorSchema::outputPoint(unsigned int i) const { return outputPoints[i
  */
 void ConnectorSchema::placeInputPoints() {
     unsigned int N = inputs;
+    double py = y + height / 2.0 - dWire * (N - 1) / 2.0;
     if (orientation == kLeftRight) {
-        double px = x;
-        double py = y + (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = {px, py + i * dWire};
+            inputPoints[i] = {x, py + i * dWire};
         }
     } else {
-        double px = x + width;
-        double py = y + height - (height - dWire * (N - 1)) / 2;
         for (unsigned int i = 0; i < N; i++) {
-            inputPoints[i] = {px, py - i * dWire};
+            inputPoints[i] = {x + width, py - i * dWire};
         }
     }
 }

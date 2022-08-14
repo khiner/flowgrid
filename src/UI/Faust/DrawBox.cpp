@@ -166,16 +166,6 @@ void choldDir() {
     if (chdir(dc->currentDir.c_str()) != 0) throw std::runtime_error((stringstream("ERROR : choldDir : ") << strerror(errno)).str());
 }
 
-void faustassertaux(bool cond, const string &file, int line) {
-    if (!cond) {
-        stringstream str;
-        str << "file: " << file.substr(file.find_last_of('/') + 1) << ", line: " << line << ", ";
-        str << "version: " << FAUSTVERSION;
-        stacktrace(str, 20);
-        throw faustexception(str.str());
-    }
-}
-
 static Schema *generateDiagramSchema(Tree t);
 static Schema *generateInsideSchema(Tree t);
 

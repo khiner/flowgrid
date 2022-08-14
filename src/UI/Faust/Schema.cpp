@@ -1,5 +1,5 @@
 #include "Schema.h"
-#include "errors/exception.hh"
+#include "../../Helper/assert.h"
 
 void Collector::computeVisibleTraits() {
     bool modified;
@@ -375,7 +375,7 @@ Point CutSchema::inputPoint(unsigned int) const { return point; }
  * By definition, a Cut has no output point.
  */
 Point CutSchema::outputPoint(unsigned int) const {
-    faustassert(false);
+    assert(false);
     return {-1, -1};
 }
 
@@ -494,7 +494,7 @@ Schema *makeParSchema(Schema *s1, Schema *s2) {
 ParSchema::ParSchema(Schema *s1, Schema *s2)
     : Schema(s1->inputs + s2->inputs, s1->outputs + s2->outputs, s1->width, s1->height + s2->height),
       schema1(s1), schema2(s2), inputFrontier(s1->inputs), outputFrontier(s1->outputs) {
-    faustassert(s1->width == s2->width);
+    assert(s1->width == s2->width);
 }
 
 void ParSchema::place(double ox, double oy, int orientation) {
@@ -562,7 +562,7 @@ static int direction(const Point &a, const Point &b) {
  * It depends on the largest group of connections that go in the same direction.
  */
 static double computeHorzGap(Schema *a, Schema *b) {
-    faustassert(a->outputs == b->inputs);
+    assert(a->outputs == b->inputs);
 
     if (a->outputs == 0) return 0;
 
@@ -621,7 +621,7 @@ Schema *makeSeqSchema(Schema *s1, Schema *s2) {
  */
 SeqSchema::SeqSchema(Schema *s1, Schema *s2, double hgap)
     : Schema(s1->inputs, s2->outputs, s1->width + hgap + s2->width, max(s1->height, s2->height)), schema1(s1), schema2(s2), horzGap(hgap) {
-    faustassert(s1->outputs == s2->inputs);
+    assert(s1->outputs == s2->inputs);
 }
 
 /**
@@ -655,7 +655,7 @@ Point SeqSchema::outputPoint(unsigned int i) const { return schema2->outputPoint
  * Draw the two components as well as the internal wires
  */
 void SeqSchema::draw(device &dev) {
-    faustassert(schema1->outputs == schema2->inputs);
+    assert(schema1->outputs == schema2->inputs);
 
     schema1->draw(dev);
     schema2->draw(dev);
@@ -665,7 +665,7 @@ void SeqSchema::draw(device &dev) {
  * Draw the two components as well as the internal wires
  */
 void SeqSchema::collectTraits(Collector &c) {
-    faustassert(schema1->outputs == schema2->inputs);
+    assert(schema1->outputs == schema2->inputs);
 
     schema1->collectTraits(c);
     schema2->collectTraits(c);
@@ -677,7 +677,7 @@ void SeqSchema::collectTraits(Collector &c) {
  */
 void SeqSchema::collectInternalWires(Collector &c) {
     const unsigned int N = schema1->outputs;
-    faustassert(N == schema2->inputs);
+    assert(N == schema2->inputs);
 
     double dx = 0, mx = 0;
     int dir = -1;
@@ -936,9 +936,9 @@ Schema *makeRecSchema(Schema *s1, Schema *s2) {
 RecSchema::RecSchema(Schema *s1, Schema *s2, double width)
     : Schema(s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height), schema1(s1), schema2(s2) {
     // this version only accepts legal expressions of same width
-    faustassert(s1->inputs >= s2->outputs);
-    faustassert(s1->outputs >= s2->inputs);
-    faustassert(s1->width >= s2->width);
+    assert(s1->inputs >= s2->outputs);
+    assert(s1->outputs >= s2->inputs);
+    assert(s1->width >= s2->width);
 
     for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
     for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
@@ -1103,8 +1103,8 @@ void TopSchema::place(double ox, double oy, int orientation) {
 }
 
 // Top schema has no input or output
-Point TopSchema::inputPoint(unsigned int) const { throw faustexception("ERROR : TopSchema::inputPoint\n"); }
-Point TopSchema::outputPoint(unsigned int) const { throw faustexception("ERROR : TopSchema::outputPoint\n"); }
+Point TopSchema::inputPoint(unsigned int) const { throw std::runtime_error("ERROR : TopSchema::inputPoint"); }
+Point TopSchema::outputPoint(unsigned int) const { throw std::runtime_error("ERROR : TopSchema::outputPoint"); }
 
 // Draw the enlarged schema.
 void TopSchema::draw(device &dev) {

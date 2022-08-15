@@ -25,13 +25,10 @@ void Collector::draw(Device &device) {
 
 // A simple rectangular box with a text and inputs and outputs.
 // The constructor is private in order to make sure `makeBlockSchema` is used instead
-struct BlockSchema : Schema {
+struct BlockSchema : IOSchema {
     friend Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);
 
-    void placeImpl() override;
     void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 protected:
@@ -40,9 +37,6 @@ protected:
     const string text;
     const string color;
     const string link;
-
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
 };
 
 static inline double quantize(int n) {
@@ -60,19 +54,7 @@ Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string 
 }
 
 BlockSchema::BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link)
-    : Schema(inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {
-    for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
-    for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
-}
-
-void BlockSchema::placeImpl() {
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
-Point BlockSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point BlockSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
+    : IOSchema(inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
 
 void BlockSchema::draw(Device &device) {
     device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color, link);
@@ -130,7 +112,7 @@ CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, n * dWire) {
 void CableSchema::placeImpl() {
     for (unsigned int i = 0; i < inputs; i++) {
         const double dx = dWire * (i + 0.5);
-        points[i] = {x, y + (orientation == kLeftRight ? dx : (height - dx))};
+        points[i] = {x, y + (orientation == kLeftRight ? dx : height - dx)};
     }
 }
 
@@ -142,10 +124,7 @@ void CableSchema::draw(Device &) {}
 // Actual collect will take place when the wires are enlarged.
 void CableSchema::collectLines(Collector &) {}
 
-// Input and output points are the same if the width is 0.
 Point CableSchema::inputPoint(unsigned int i) const { return points[i]; }
-
-// Input and output points are the same if the width is 0.
 Point CableSchema::outputPoint(unsigned int i) const { return points[i]; }
 
 // An inverter is a special symbol corresponding to '*(-1)' to create more compact diagrams.
@@ -209,19 +188,15 @@ Point CutSchema::outputPoint(unsigned int) const {
     return {-1, -1};
 }
 
-struct EnlargedSchema : Schema {
+struct EnlargedSchema : IOSchema {
     EnlargedSchema(Schema *s, double width);
 
     void placeImpl() override;
     void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 private:
     Schema *schema;
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
 };
 
 // Returns an enlarged schema, but only if really needed.
@@ -230,13 +205,8 @@ Schema *makeEnlargedSchema(Schema *s, double width) {
     return width > s->width ? new EnlargedSchema(s, width) : s;
 }
 
-// Put additional space left and right of a schema so that the result has a certain width.
-// The wires are prolonged accordingly.
 EnlargedSchema::EnlargedSchema(Schema *s, double width)
-    : Schema(s->inputs, s->outputs, width, s->height), schema(s) {
-    for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
-    for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
-}
+    : IOSchema(s->inputs, s->outputs, width, s->height), schema(s) {}
 
 void EnlargedSchema::placeImpl() {
     double dx = (width - schema->width) / 2;
@@ -253,9 +223,6 @@ void EnlargedSchema::placeImpl() {
         outputPoints[i] = {p.x + dx, p.y};
     }
 }
-
-Point EnlargedSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point EnlargedSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 void EnlargedSchema::draw(Device &device) { schema->draw(device); }
 
@@ -595,13 +562,11 @@ void SplitSchema::collectLines(Collector &c) {
 
 
 // Place and connect two diagrams in recursive composition
-struct RecSchema : Schema {
+struct RecSchema : IOSchema {
     friend Schema *makeRecSchema(Schema *s1, Schema *s2);
 
     void placeImpl() override;
     void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 private:
@@ -612,8 +577,6 @@ private:
 
     Schema *schema1;
     Schema *schema2;
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
 };
 
 // Creates a new recursive schema (s1 ~ s2).
@@ -630,14 +593,11 @@ Schema *makeRecSchema(Schema *s1, Schema *s2) {
 // Constructor of a recursive schema (s1 ~ s2).
 // The two components are supposed to have the same width.
 RecSchema::RecSchema(Schema *s1, Schema *s2, double width)
-    : Schema(s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height), schema1(s1), schema2(s2) {
+    : IOSchema(s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height), schema1(s1), schema2(s2) {
     // This version only accepts legal expressions of same width.
     assert(s1->inputs >= s2->outputs);
     assert(s1->outputs >= s2->inputs);
     assert(s1->width >= s2->width);
-
-    for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
-    for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
 }
 
 // The two subschema are placed centered vertically, s2 on top of s1.
@@ -653,7 +613,6 @@ void RecSchema::placeImpl() {
         schema2->place(x + dx2, y + schema1->height, kLeftRight);
     }
 
-    // adjust delta space to orientation
     if (orientation == kRightLeft) dx1 = -dx1;
 
     for (unsigned int i = 0; i < inputs; i++) {
@@ -665,10 +624,6 @@ void RecSchema::placeImpl() {
         outputPoints[i] = {p.x + dx1, p.y};
     }
 }
-
-// The input/output points s1 ~ s2
-Point RecSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point RecSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 // Draw the delay sign of a feedback connection
 static void drawDelaySign(Device &dev, double x, double y, double size) {
@@ -751,8 +706,6 @@ private:
     double fMargin;
     string text;
     string link;
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
 };
 
 Schema *makeTopSchema(Schema *s, double margin, const string &text, const string &link) {
@@ -794,13 +747,11 @@ void TopSchema::collectLines(Collector &c) {
 
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
 // The rectangle is placed at half the margin parameter.
-struct DecorateSchema : Schema {
+struct DecorateSchema : IOSchema {
     friend Schema *makeDecorateSchema(Schema *s1, double margin, const string &text);
 
     void placeImpl() override;
     void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 private:
@@ -809,8 +760,6 @@ private:
     Schema *schema;
     double fMargin;
     string text;
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
 };
 
 Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { return new DecorateSchema(s, margin, text); }
@@ -819,10 +768,7 @@ Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { retur
 // The rectangle is placed at half the margin parameter.
 // The constructor is made private to enforce the usage of `makeDecorateSchema`
 DecorateSchema::DecorateSchema(Schema *s, double margin, string text)
-    : Schema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)) {
-    for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
-    for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
-}
+    : IOSchema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)) {}
 
 void DecorateSchema::placeImpl() {
     schema->place(x + fMargin, y + fMargin, orientation);
@@ -837,9 +783,6 @@ void DecorateSchema::placeImpl() {
         outputPoints[i] = {p.x + m, p.y}; // todo inline with `= p + {m, 0}` and vectorize
     }
 }
-
-Point DecorateSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point DecorateSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 void DecorateSchema::draw(Device &device) {
     schema->draw(device);
@@ -868,39 +811,21 @@ void DecorateSchema::collectLines(Collector &c) {
 
 // A simple rectangular box with a text and inputs and outputs.
 // The constructor is private in order to make sure `makeConnectorSchema` is used instead.
-struct ConnectorSchema : Schema {
+struct ConnectorSchema : IOSchema {
     friend Schema *makeConnectorSchema();
 
-    void placeImpl() override;
     void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 protected:
     ConnectorSchema();
-
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
 };
 
 // Connectors are used to ensure unused inputs and outputs are drawn.
 Schema *makeConnectorSchema() { return new ConnectorSchema(); }
 
 // A connector is an invisible square for `dWire` size with 1 input and 1 output.
-ConnectorSchema::ConnectorSchema() : Schema(1, 1, dWire, dWire) {
-    inputPoints.emplace_back(0, 0);
-    outputPoints.emplace_back(0, 0);
-}
-
-void ConnectorSchema::placeImpl() {
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? Schema::x : Schema::x + width, Schema::y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
-Point ConnectorSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point ConnectorSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
+ConnectorSchema::ConnectorSchema() : IOSchema(1, 1, dWire, dWire) {}
 
 void ConnectorSchema::draw(Device &) {}
 
@@ -920,12 +845,9 @@ void ConnectorSchema::collectLines(Collector &c) {
 
 // A simple rectangular box with a text and inputs and outputs.
 // The constructor is private in order to make sure `makeBlockSchema` is used instead.
-struct RouteSchema : Schema {
-    friend Schema *makeRouteSchema(unsigned int n, unsigned int m, const std::vector<int> &routes);
-    void placeImpl() override;
+struct RouteSchema : IOSchema {
+    friend Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::vector<int> &routes);
     void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 protected:
@@ -935,9 +857,6 @@ protected:
     const string color;
     const string link;
     const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
-
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
 };
 
 // Build n x m cable routing
@@ -951,19 +870,7 @@ Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::ve
 // Build a simple colored `RouteSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
 // The length of the text as well as the number of inputs and outputs are used to compute the size of the `RouteSchema`
 RouteSchema::RouteSchema(unsigned int inputs, unsigned int outputs, double width, double height, std::vector<int> routes)
-    : Schema(inputs, outputs, width, height), text(""), color("#EEEEAA"), link(""), routes(std::move(routes)) {
-    for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(Point(0, 0));
-    for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
-}
-
-void RouteSchema::placeImpl() {
-    const bool isLR = orientation == kLeftRight;
-    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * (isLR ? -1.0 : 1.0))};
-}
-
-Point RouteSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
-Point RouteSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
+    : IOSchema(inputs, outputs, width, height), text(""), color("#EEEEAA"), link(""), routes(std::move(routes)) {}
 
 void RouteSchema::draw(Device &device) {
     static bool drawRouteFrame = false; // todo provide toggle

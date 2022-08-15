@@ -62,7 +62,7 @@ struct Schema {
     const unsigned int inputs, outputs;
     const double width, height;
 
-    // Fields only defined after `beginPlace()` is called:
+    // Fields only defined after `place()` is called:
     double x = 0, y = 0;
     int orientation = 0;
 
@@ -82,6 +82,26 @@ struct Schema {
     virtual Point inputPoint(unsigned int i) const = 0;
     virtual Point outputPoint(unsigned int i) const = 0;
     virtual void collectLines(Collector &c) = 0;
+};
+
+struct IOSchema : Schema {
+    IOSchema(unsigned int inputs, unsigned int outputs, double width, double height) : Schema(inputs, outputs, width, height) {
+        for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
+        for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
+    }
+
+    void placeImpl() override {
+        const bool isLR = orientation == kLeftRight;
+        const double dir = isLR ? -1.0 : 1.0;
+        for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * dir)};
+        for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * dir)};
+    }
+
+    Point inputPoint(unsigned int i) const override { return inputPoints[i]; }
+    Point outputPoint(unsigned int i) const override { return outputPoints[i]; }
+
+    vector<Point> inputPoints;
+    vector<Point> outputPoints;
 };
 
 Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);

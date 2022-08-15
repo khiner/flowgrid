@@ -58,7 +58,7 @@ SVGDevice::SVGDevice(string file_name, double width, double height) : file_name(
     static const double scale = 0.5;
 
     stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", width, height);
-    stream << (scaledSVG ? " width=\"100%\" height=\"100%\">\n" : format(" width=\"{}mm\" height=\"{}mm\">\n", width * scale, height * scale));
+    stream << (scaledSVG ? R"( width="100%" height="100%">)" : format(R"( width="{}mm" height="{}mm">)", width * scale, height * scale));
 
     if (shadowBlur) {
         stream << "<defs>\n"
@@ -77,21 +77,21 @@ SVGDevice::~SVGDevice() {
 
 void SVGDevice::rect(double x, double y, double l, double h, const char *color, const char *link) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format("<a href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format(R"(<a href="{}">)", xmlcode(link, buf)); // open the optional link tag
 
     // Shadow
     stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" )", x + 1, y + 1, l, h);
-    stream << (shadowBlur ? "rx=\"0.1\" ry=\"0.1\" style=\"stroke:none;fill:#aaaaaa;;filter:url(#filter);\"/>\n"
-                          : "rx=\"0\" ry=\"0\" style=\"stroke:none;fill:#cccccc;\"/>\n");
+    stream << (shadowBlur ? R"(rx="0.1" ry="0.1" style="stroke:none;fill:#aaaaaa;;filter:url(#filter);"/>)"
+                          : R"(rx="0" ry="0" style="stroke:none;fill:#cccccc;"/>)");
 
     // Rectangle
-    stream << format("<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"0\" ry=\"0\" style=\"stroke:none;fill:{};\"/>\n", x, y, l, h, color);
-    if (link != nullptr && link[0] != 0) stream << "</a>\n"; // close the optional link tag
+    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, l, h, color);
+    if (link != nullptr && link[0] != 0) stream << "</a>"; // close the optional link tag
 }
 
 void SVGDevice::triangle(double x, double y, double l, double h, const char *color, const char *link, int orientation) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format("<a href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format(R"(<a href="{}">)", xmlcode(link, buf)); // open the optional link tag
 
     static const double radius = 1.5;
     double x0, x1, x2;
@@ -105,16 +105,16 @@ void SVGDevice::triangle(double x, double y, double l, double h, const char *col
         x2 = x + radius;
     }
     // triangle + circle
-    stream << format("<polygon fill=\"{}\" stroke=\"black\" stroke-width=\".25\" points=\"{},{} {},{} {},{}\"/>\n", color, x0, y, x1, y + h / 2.0, x0, y + h);
-    stream << format("<circle  fill=\"{}\" stroke=\"black\" stroke-width=\".25\" cx=\"{}\" cy=\"{}\" r=\"{}\"/>\n", color, x2, y + h / 2.0, radius);
+    stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".25" points="{},{} {},{} {},{}"/>)", color, x0, y, x1, y + h / 2.0, x0, y + h);
+    stream << format(R"(<circle  fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x2, y + h / 2.0, radius);
 }
 
 void SVGDevice::circle(double x, double y, double radius) {
-    stream << format("<circle cx=\"{}\" cy=\"{}\" r=\"{}\"/>\n", x, y, radius);
+    stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", x, y, radius);
 }
 
 string line(double x1, double y1, double x2, double y2, double rotation, double x, double y) {
-    return format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" transform=\"rotate({},{},{})\" style=\"stroke: black; stroke-width:0.25;\"/>\n", x1, y1, x2, y2, rotation, x, y);
+    return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", x1, y1, x2, y2, rotation, x, y);
 }
 
 void SVGDevice::arrow(double x, double y, double rotation, int orientation) {
@@ -126,33 +126,33 @@ void SVGDevice::arrow(double x, double y, double rotation, int orientation) {
 }
 
 void SVGDevice::square(double x, double y, double dim) {
-    stream << format("<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" style=\"stroke: black;stroke-width:0.5;fill:none;\"/>\n", x - 0.5 * dim, y - dim, dim, dim);
+    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" style="stroke: black;stroke-width:0.5;fill:none;"/>)", x - 0.5 * dim, y - dim, dim, dim);
 }
 
 void SVGDevice::trait(double x1, double y1, double x2, double y2) {
-    stream << format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"  style=\"stroke:black; stroke-linecap:round; stroke-width:0.25;\"/>\n", x1, y1, x2, y2);
+    stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", x1, y1, x2, y2);
 }
 
 void SVGDevice::dasharray(double x1, double y1, double x2, double y2) {
-    stream << format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"  style=\"stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;\"/>\n", x1, y1, x2, y2);
+    stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", x1, y1, x2, y2);
 }
 
 void SVGDevice::text(double x, double y, const char *name, const char *link) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format("<a href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format(R"(<a href="{}">)", xmlcode(link, buf)); // open the optional link tag
     char name2[256];
-    stream << format("<text x=\"{}\" y=\"{}\" font-family=\"Arial\" font-size=\"7\" text-anchor=\"middle\" fill=\"#FFFFFF\">{}</text>\n", x, y + 2, xmlcode(name, name2));
-    if (link != nullptr && link[0] != 0) stream << "</a>\n"; // close the optional link tag
+    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", x, y + 2, xmlcode(name, name2));
+    if (link != nullptr && link[0] != 0) stream << "</a>"; // close the optional link tag
 }
 
 void SVGDevice::label(double x, double y, const char *name) {
     char name2[256];
-    stream << format("<text x=\"{}\" y=\"{}\" font-family=\"Arial\" font-size=\"7\">{}</text>\n", x, y + 2, xmlcode(name, name2));
+    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", x, y + 2, xmlcode(name, name2));
 }
 
 void SVGDevice::dot(double x, double y, int orientation) {
     const int offset = orientation == kLeftRight ? 2 : -2;
-    stream << format("<circle cx=\"{}\" cy=\"{}\" r=\"1\"/>\n", x + offset, y + offset);
+    stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", x + offset, y + offset);
 }
 
 string errorText(double x, double y, double length, const string &stroke, const string &fill, const string &text) {
@@ -160,6 +160,6 @@ string errorText(double x, double y, double length, const string &stroke, const 
 }
 
 void SVGDevice::Error(const char *message, const char *reason, int nb_error, double x, double y, double width) {
-    stream << errorText(x, y - 7, width, "red", "red", format("{} : {}", nb_error, message)) << '\n';
-    stream << errorText(x, y + 7, width, "red", "none", reason) << '\n';
+    stream << errorText(x, y - 7, width, "red", "red", format("{} : {}", nb_error, message));
+    stream << errorText(x, y + 7, width, "red", "none", reason);
 }

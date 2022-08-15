@@ -123,20 +123,20 @@ $ ./FlowGrid
   - A path-addressable state-mirror, and
   - The diff-patching mechanism behind undo/redo
   - Probably other things.
-    Look for usages of the `json Context::state_json` variable, or the global `const json &sj`.
+    Look for usages of the `json Context::state_json` variable, or its global read-only alias, `const json &sj`.
 * ~~[ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main event queue~~
-  -For now just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to complex structures like JSON)
+  -For now, I just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to complex structures like JSON
 * ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
   text~~
-  - Was using to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
-    Will be using this again soon, to adapt [hlohmann json patches](https://github.com/nlohmann/json#json-pointer-and-json-patch)
+  - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
+    I'll likely be using this again at some point, to adapt [hlohmann json patches](https://github.com/nlohmann/json#json-pointer-and-json-patch)
     into something like [jsondiffpatch's deltas](https://github.com/benjamine/jsondiffpatch/blob/master/docs/deltas.md#text-diffs),
     for unified handling of state diffs involving long text strings (like code strings).
 
 ### C++ extensions
 
 * [range-v3](https://github.com/ericniebler/range-v3), since ranges are only partially supported in Clang 14
-* [fmt](https://github.com/fmtlib/fmt) for C++20-style string formatting. Currently, only used for time-formatting.
+* [fmt](https://github.com/fmtlib/fmt) for C++20-style string formatting
 
 ### Debugging
 
@@ -169,6 +169,7 @@ Here is my process for updating to the tip of all the submodule branches:
 ```sh
 $ git submodule update --remote
 $ git add .
+$ git cm -m "Bump libs"
 ```
 
 #### Forked submodules
@@ -259,5 +260,5 @@ Choosing a permissive license allowing for closed-source commercial usage may st
 I usually find it pretty easy to find the music software or hardware I need as a _music producer_.
 As a _developer_, I've found it much harder to find the resources, tooling, and methodologies I need to easily create effective new audio software.
 
-Although this project is first and foremost a creative tool, the intention and spirit is much more about hacking, learning, educating and researching than it is about creating end media products.
-For these purposes, it's more important to keep the information open than it is to make the functionality freely and widely available.
+Although this project is first and foremost a creative tool, the intention and spirit is much more about hacking, learning, educating and researching than it is about producing end media products.
+For these purposes, keeping the information open is more important than making the functionality freely and widely available.

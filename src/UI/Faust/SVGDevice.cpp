@@ -1,8 +1,11 @@
 #include "SVGDevice.h"
 
 #include <sstream>
+#include "fmt/core.h"
+#include "../../Helper/File.h"
 
 using namespace std;
+using namespace fmt;
 
 bool scaledSVG = false; // Draw scaled SVG files
 bool shadowBlur = false; // Note: `svg2pdf` doesn't like the blur filter
@@ -51,50 +54,45 @@ static char *xmlcode(const char *name, char *name2) {
     return name2;
 }
 
-SVGDevice::SVGDevice(const char *ficName, double width, double height) {
+SVGDevice::SVGDevice(string file_name, double width, double height) : file_name(std::move(file_name)) {
     static const double scale = 0.5;
-    if ((fic_repr = fopen(ficName, "w+")) == nullptr) throw std::runtime_error(string("ERROR : impossible to create or open ") + ficName);
 
-    // Representation file:
-    fprintf(fic_repr, "<?xml version=\"1.0\"?>\n");
-
-    // View box:
-    const string shared = R"(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 %f %f")";
-    scaledSVG ? fprintf(fic_repr, (shared + " width=\"100%%\" height=\"100%%\">\n").c_str(), width, height)
-              : fprintf(fic_repr, (shared + " width=\"%fmm\" height=\"%fmm\">\n").c_str(), width, height, width * scale, height * scale);
+    stream << "<?xml version=\"1.0\"?>\n";
+    stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 {} {}")", width, height);
+    stream << (scaledSVG ? " width=\"100%%\" height=\"100%%\">\n" : format(" width=\"{}mm\" height=\"{}mm\">\n", width * scale, height * scale));
 
     if (shadowBlur) {
-        fprintf(fic_repr,
-            "<defs>\n"
-            "   <filter id=\"filter\" filterRes=\"18\" x=\"0\" y=\"0\">\n"
-            "     <feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"1.55\" result=\"blur\"/>\n"
-            "     <feOffset in=\"blur\" dx=\"3\" dy=\"3\"/>\n"
-            "   </filter>\n"
-            "</defs>\n");
+        stream << "<defs>\n"
+                  "   <filter id=\"filter\" filterRes=\"18\" x=\"0\" y=\"0\">\n"
+                  "     <feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"1.55\" result=\"blur\"/>\n"
+                  "     <feOffset in=\"blur\" dx=\"3\" dy=\"3\"/>\n"
+                  "   </filter>\n"
+                  "</defs>\n";
     }
 }
 
 SVGDevice::~SVGDevice() {
-    fprintf(fic_repr, "</svg>\n");
-    fclose(fic_repr);
+    stream << "</svg>\n";
+    FileIO::write(file_name, stream.str());
 }
 
 void SVGDevice::rect(double x, double y, double l, double h, const char *color, const char *link) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) fprintf(fic_repr, "<a xlink:href=\"%s\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format("<a xlink:href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
 
     // Shadow
-    fprintf(fic_repr, shadowBlur ? "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" rx=\"0.1\" ry=\"0.1\" style=\"stroke:none;fill:#aaaaaa;;filter:url(#filter);\"/>\n"
-                                 : "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" rx=\"0\" ry=\"0\" style=\"stroke:none;fill:#cccccc;\"/>\n", x + 1, y + 1, l, h);
+    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" )", x + 1, y + 1, l, h);
+    stream << (shadowBlur ? "rx=\"0.1\" ry=\"0.1\" style=\"stroke:none;fill:#aaaaaa;;filter:url(#filter);\"/>\n"
+                          : "rx=\"0\" ry=\"0\" style=\"stroke:none;fill:#cccccc;\"/>\n");
 
     // Rectangle
-    fprintf(fic_repr, "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" rx=\"0\" ry=\"0\" style=\"stroke:none;fill:%s;\"/>\n", x, y, l, h, color);
-    if (link != nullptr && link[0] != 0) fprintf(fic_repr, "</a>\n"); // close the optional link tag
+    stream << format("<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"0\" ry=\"0\" style=\"stroke:none;fill:{};\"/>\n", x, y, l, h, color);
+    if (link != nullptr && link[0] != 0) stream << "</a>\n"; // close the optional link tag
 }
 
 void SVGDevice::triangle(double x, double y, double l, double h, const char *color, const char *link, int orientation) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) fprintf(fic_repr, "<a xlink:href=\"%s\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format("<a xlink:href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
 
     static const double radius = 1.5;
     double x0, x1, x2;
@@ -108,55 +106,61 @@ void SVGDevice::triangle(double x, double y, double l, double h, const char *col
         x2 = x + radius;
     }
     // triangle + circle
-    fprintf(fic_repr, "<polygon fill=\"%s\" stroke=\"black\" stroke-width=\".25\" points=\"%f,%f %f,%f %f,%f\"/>\n", color, x0, y, x1, y + h / 2.0, x0, y + h);
-    fprintf(fic_repr, "<circle  fill=\"%s\" stroke=\"black\" stroke-width=\".25\" cx=\"%f\" cy=\"%f\" r=\"%f\"/>\n", color, x2, y + h / 2.0, radius);
+    stream << format("<polygon fill=\"{}\" stroke=\"black\" stroke-width=\".25\" points=\"{},{} {},{} {},{}\"/>\n", color, x0, y, x1, y + h / 2.0, x0, y + h);
+    stream << format("<circle  fill=\"{}\" stroke=\"black\" stroke-width=\".25\" cx=\"{}\" cy=\"{}\" r=\"{}\"/>\n", color, x2, y + h / 2.0, radius);
 }
 
 void SVGDevice::circle(double x, double y, double radius) {
-    fprintf(fic_repr, "<circle cx=\"%f\" cy=\"%f\" r=\"%f\"/>\n", x, y, radius);
+    stream << format("<circle cx=\"{}\" cy=\"{}\" r=\"{}\"/>\n", x, y, radius);
+}
+
+string line(double x1, double y1, double x2, double y2, double rotation, double x, double y) {
+    return format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" transform=\"rotate({},{},{})\" style=\"stroke: black; stroke-width:0.25;\"/>\n", x1, y1, x2, y2, rotation, x, y);
 }
 
 void SVGDevice::arrow(double x, double y, double rotation, int orientation) {
     const double dx = 3;
     const double dy = 1;
     const auto x1 = orientation == kLeftRight ? x - dx : x + dx;
-    const char *fmt = "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" transform=\"rotate(%f,%f,%f)\" style=\"stroke: black; stroke-width:0.25;\"/>\n";
-    fprintf(fic_repr, fmt, x1, y - dy, x, y, rotation, x, y);
-    fprintf(fic_repr, fmt, x1, y + dy, x, y, rotation, x, y);
+    stream << line(x1, y - dy, x, y, rotation, x, y);
+    stream << line(x1, y + dy, x, y, rotation, x, y);
 }
 
 void SVGDevice::square(double x, double y, double dim) {
-    fprintf(fic_repr, "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" style=\"stroke: black;stroke-width:0.5;fill:none;\"/>\n", x - 0.5 * dim, y - dim, dim, dim);
+    stream << format("<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" style=\"stroke: black;stroke-width:0.5;fill:none;\"/>\n", x - 0.5 * dim, y - dim, dim, dim);
 }
 
 void SVGDevice::trait(double x1, double y1, double x2, double y2) {
-    fprintf(fic_repr, "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\"  style=\"stroke:black; stroke-linecap:round; stroke-width:0.25;\"/>\n", x1, y1, x2, y2);
+    stream << format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"  style=\"stroke:black; stroke-linecap:round; stroke-width:0.25;\"/>\n", x1, y1, x2, y2);
 }
 
 void SVGDevice::dasharray(double x1, double y1, double x2, double y2) {
-    fprintf(fic_repr, "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\"  style=\"stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;\"/>\n", x1, y1, x2, y2);
+    stream << format("<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"  style=\"stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;\"/>\n", x1, y1, x2, y2);
 }
 
 void SVGDevice::text(double x, double y, const char *name, const char *link) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) fprintf(fic_repr, "<a xlink:href=\"%s\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format("<a xlink:href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
     char name2[256];
-    fprintf(fic_repr, "<text x=\"%f\" y=\"%f\" font-family=\"Arial\" font-size=\"7\" text-anchor=\"middle\" fill=\"#FFFFFF\">%s</text>\n", x, y + 2, xmlcode(name, name2));
-    if (link != nullptr && link[0] != 0) fprintf(fic_repr, "</a>\n"); // close the optional link tag
+    stream << format("<text x=\"{}\" y=\"{}\" font-family=\"Arial\" font-size=\"7\" text-anchor=\"middle\" fill=\"#FFFFFF\">{}</text>\n", x, y + 2, xmlcode(name, name2));
+    if (link != nullptr && link[0] != 0) stream << "</a>\n"; // close the optional link tag
 }
 
 void SVGDevice::label(double x, double y, const char *name) {
     char name2[256];
-    fprintf(fic_repr, "<text x=\"%f\" y=\"%f\" font-family=\"Arial\" font-size=\"7\">%s</text>\n", x, y + 2, xmlcode(name, name2));
+    stream << format("<text x=\"{}\" y=\"{}\" font-family=\"Arial\" font-size=\"7\">{}</text>\n", x, y + 2, xmlcode(name, name2));
 }
 
 void SVGDevice::dot(double x, double y, int orientation) {
     const int offset = orientation == kLeftRight ? 2 : -2;
-    fprintf(fic_repr, "<circle cx=\"%f\" cy=\"%f\" r=\"1\"/>\n", x + offset, y + offset);
+    stream << format("<circle cx=\"{}\" cy=\"{}\" r=\"1\"/>\n", x + offset, y + offset);
+}
+
+string errorText(double x, double y, double length, const string &stroke, const string &fill, const string &text) {
+    return format(R"(<text x="{}" y="{}" textLength="{}" lengthAdjust="spacingAndGlyphs" style="stroke: {}; stroke-width:0.3; text-anchor:middle; fill:{};">{}</text>)", x, y, length, stroke, fill, text);
 }
 
 void SVGDevice::Error(const char *message, const char *reason, int nb_error, double x, double y, double width) {
-    const string shared = R"(<text x="%f" y="%f" textLength="%f" lengthAdjust="spacingAndGlyphs" style="stroke: red; stroke-width:0.3; text-anchor:middle;)";
-    fprintf(fic_repr, (shared + " fill:red;\">%d : %s</text>\n").c_str(), x, y - 7, width, nb_error, message);
-    fprintf(fic_repr, (shared + " fill:none;\">%s</text>\n").c_str(), x, y + 7, width, reason);
+    stream << errorText(x, y - 7, width, "red", "red", format("{} : {}", nb_error, message)) << '\n';
+    stream << errorText(x, y + 7, width, "red", "none", reason) << '\n';
 }

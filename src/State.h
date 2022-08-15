@@ -1,7 +1,6 @@
 #pragma once
 
 #include <set>
-#include <filesystem>
 
 #include "ImGuiFileDialog.h"
 #include "UI/UIContext.h"
@@ -22,8 +21,6 @@
  *
  * **The global `const StateData &s` instance is declared in `context.h` and instantiated in `main.cpp`.**
  */
-
-namespace fs = std::filesystem;
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
@@ -58,7 +55,7 @@ struct Base : StateMember {
 
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
-    void HelpMarker(const bool after = true) const;
+    void HelpMarker(bool after = true) const;
 };
 
 struct Bool : Base {
@@ -353,9 +350,6 @@ struct Audio : Process {
     Faust faust{path, "faust"};
 };
 
-
-using MessagePackBytes = std::vector<std::uint8_t>;
-
 struct File : StateMember {
     using StateMember::StateMember;
 
@@ -388,10 +382,6 @@ struct File : StateMember {
 
         void draw() const;
     };
-
-    static string read(const fs::path &path);
-    static bool write(const fs::path &path, const string &contents);
-    static bool write(const fs::path &path, const MessagePackBytes &contents);
 
     Dialog dialog{path, "dialog"};
 };

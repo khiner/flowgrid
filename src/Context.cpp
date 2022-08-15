@@ -101,7 +101,7 @@ FAUSTFLOAT Context::get_sample(int channel, int frame) const {
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
     if (fs::exists(PreferencesPath)) {
-        preferences = json::from_msgpack(File::read(PreferencesPath));
+        preferences = json::from_msgpack(FileIO::read(PreferencesPath));
     } else {
         write_preferences();
     }
@@ -129,7 +129,7 @@ json Context::get_project_json(const ProjectFormat format) {
         case None: return nullptr;
         case StateFormat: return sj;
         case DiffFormat:
-            return {{"diffs",      diffs},
+            return {{"diffs", diffs},
                     {"diff_index", diff_index}};
         case ActionFormat: return gestures;
     }
@@ -283,7 +283,7 @@ void Context::on_action(const Action &action) {
         [&](const Actions::save_project &a) { save_project(a.path); },
         [&](const save_default_project &) { save_project(DefaultProjectPath); },
         [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
-        [&](const save_faust_file &a) { File::write(a.path, s.audio.faust.code); },
+        [&](const save_faust_file &a) { FileIO::write(a.path, s.audio.faust.code); },
 
         // `diff_index`-changing actions:
         [&](const undo &) { increment_diff_index(-1); },
@@ -418,7 +418,7 @@ void Context::open_project(const fs::path &path) {
 
     clear();
 
-    const auto &project = json::from_msgpack(File::read(path));
+    const auto &project = json::from_msgpack(FileIO::read(path));
     if (format == StateFormat) {
         state_json = gesture_begin_state_json = project;
         state = state_json.get<State>();
@@ -454,7 +454,7 @@ bool Context::save_project(const fs::path &path) {
     if (format == None) return false; // TODO log
 
     finalize_gesture(); // Make sure any pending actions/diffs are committed.
-    if (File::write(path, json::to_msgpack(get_project_json(format)))) {
+    if (FileIO::write(path, json::to_msgpack(get_project_json(format)))) {
         if (is_user_project_path(path)) set_current_project_path(path);
         return true;
     }
@@ -470,5 +470,5 @@ void Context::set_current_project_path(const fs::path &path) {
 }
 
 bool Context::write_preferences() const {
-    return File::write(PreferencesPath, json::to_msgpack(preferences));
+    return FileIO::write(PreferencesPath, json::to_msgpack(preferences));
 }

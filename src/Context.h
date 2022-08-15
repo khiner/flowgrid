@@ -5,6 +5,7 @@
 #include <queue>
 
 #include "Action.h"
+#include "Helper/File.h"
 
 struct Preferences {
     std::list<fs::path> recently_opened_paths;
@@ -17,14 +18,15 @@ namespace fg = FlowGrid;
 using Action = action::Action;
 
 const std::map<ProjectFormat, string> ExtensionForProjectFormat{
-    {StateFormat,  ".fls"},
-    {DiffFormat,   ".fld"},
+    {StateFormat, ".fls"},
+    {DiffFormat, ".fld"},
     {ActionFormat, ".fla"},
 };
+
 // todo derive from above map
 const std::map<string, ProjectFormat> ProjectFormatForExtension{
-    {ExtensionForProjectFormat.at(StateFormat),  StateFormat},
-    {ExtensionForProjectFormat.at(DiffFormat),   DiffFormat},
+    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
+    {ExtensionForProjectFormat.at(DiffFormat), DiffFormat},
     {ExtensionForProjectFormat.at(ActionFormat), ActionFormat},
 };
 

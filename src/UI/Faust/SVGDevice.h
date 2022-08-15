@@ -1,10 +1,13 @@
 #pragma once
 
 #include "Device.h"
-#include <cstdio>
+#include "string"
+#include "sstream"
+
+using std::string;
 
 struct SVGDevice : Device {
-    SVGDevice(const char *, double, double);
+    SVGDevice(string file_name, double width, double height);
     ~SVGDevice() override;
     void rect(double x, double y, double l, double h, const char *color, const char *link) override;
     void triangle(double x, double y, double l, double h, const char *color, const char *link, int orientation) override;
@@ -19,5 +22,6 @@ struct SVGDevice : Device {
     void Error(const char *message, const char *reason, int nb_error, double x, double y, double width) override;
 
 private:
-    FILE *fic_repr = nullptr;
+    string file_name;
+    std::stringstream stream;
 };

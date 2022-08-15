@@ -232,18 +232,14 @@ void EnlargedSchema::collectLines(Collector &c) {
     for (unsigned int i = 0; i < outputs; i++) c.addLine({schema->outputPoint(i), outputPoint(i)});
 }
 
-struct ParallelSchema : Schema {
+struct ParallelSchema : BinarySchema {
     ParallelSchema(Schema *s1, Schema *s2);
 
     void placeImpl() override;
-    void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectLines(Collector &) override;
 
 private:
-    Schema *schema1;
-    Schema *schema2;
     unsigned int inputFrontier;
     unsigned int outputFrontier;
 };
@@ -254,8 +250,8 @@ Schema *makeParallelSchema(Schema *s1, Schema *s2) {
 }
 
 ParallelSchema::ParallelSchema(Schema *s1, Schema *s2)
-    : Schema(s1->inputs + s2->inputs, s1->outputs + s2->outputs, s1->width, s1->height + s2->height),
-      schema1(s1), schema2(s2), inputFrontier(s1->inputs), outputFrontier(s1->outputs) {
+    : BinarySchema(s1, s2, s1->inputs + s2->inputs, s1->outputs + s2->outputs, s1->width, s1->height + s2->height),
+      inputFrontier(s1->inputs), outputFrontier(s1->outputs) {
     assert(s1->width == s2->width);
 }
 
@@ -277,31 +273,16 @@ Point ParallelSchema::outputPoint(unsigned int i) const {
     return i < outputFrontier ? schema1->outputPoint(i) : schema2->outputPoint(i - outputFrontier);
 }
 
-void ParallelSchema::draw(Device &device) {
-    schema1->draw(device);
-    schema2->draw(device);
-}
-
-void ParallelSchema::collectLines(Collector &c) {
-    schema1->collectLines(c);
-    schema2->collectLines(c);
-}
-
-struct SequentialSchema : Schema {
+struct SequentialSchema : BinarySchema {
     friend Schema *makeSequentialSchema(Schema *s1, Schema *s2);
 
     void placeImpl() override;
-    void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 private:
     SequentialSchema(Schema *s1, Schema *s2, double hgap);
     void collectInternalWires(Collector &);
 
-    Schema *schema1;
-    Schema *schema2;
     double horzGap;
 };
 
@@ -367,7 +348,7 @@ Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
 // Constructor for a sequential schema (s1:s2).
 // The components s1 and s2 are supposed to be "compatible" (s1 : n->m and s2 : m->q).
 SequentialSchema::SequentialSchema(Schema *s1, Schema *s2, double hgap)
-    : Schema(s1->inputs, s2->outputs, s1->width + hgap + s2->width, max(s1->height, s2->height)), schema1(s1), schema2(s2), horzGap(hgap) {
+    : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + hgap + s2->width, max(s1->height, s2->height)), horzGap(hgap) {
     assert(s1->outputs == s2->inputs);
 }
 
@@ -384,22 +365,8 @@ void SequentialSchema::placeImpl() {
     }
 }
 
-// The input points are the input points of the first component.
-Point SequentialSchema::inputPoint(unsigned int i) const { return schema1->inputPoint(i); }
-
-// The output points are the output points of the second component.
-Point SequentialSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
-
-void SequentialSchema::draw(Device &device) {
-    assert(schema1->outputs == schema2->inputs);
-    schema1->draw(device);
-    schema2->draw(device);
-}
-
 void SequentialSchema::collectLines(Collector &c) {
-    assert(schema1->outputs == schema2->inputs);
-    schema1->collectLines(c);
-    schema2->collectLines(c);
+    BinarySchema::collectLines(c);
     collectInternalWires(c);
 }
 
@@ -435,20 +402,15 @@ void SequentialSchema::collectInternalWires(Collector &c) {
 }
 
 // Place and connect two diagrams in merge composition.
-struct MergeSchema : Schema {
+struct MergeSchema : BinarySchema {
     friend Schema *makeMergeSchema(Schema *s1, Schema *s2);
 
     void placeImpl() override;
-    void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 private:
     MergeSchema(Schema *s1, Schema *s2, double hgap);
 
-    Schema *schema1;
-    Schema *schema2;
     double horzGap;
 };
 
@@ -464,9 +426,9 @@ Schema *makeMergeSchema(Schema *s1, Schema *s2) {
 // Constructor for a merge schema s1 :> s2 where the outputs of s1 are merged to the inputs of s2.
 // The constructor is private in order to enforce the usage of `makeMergeSchema`.
 MergeSchema::MergeSchema(Schema *s1, Schema *s2, double hgap)
-    : Schema(s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), schema1(s1), schema2(s2), horzGap(hgap) {}
+    : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), horzGap(hgap) {}
 
-// Place the two subschema horizontaly, centered, with enough gap for the connections.
+// Place the two subschema horizontally, centered, with enough gap for the connections.
 void MergeSchema::placeImpl() {
     const double dy1 = max(0.0, schema2->height - schema1->height) / 2.0;
     const double dy2 = max(0.0, schema1->height - schema2->height) / 2.0;
@@ -479,38 +441,21 @@ void MergeSchema::placeImpl() {
     }
 }
 
-// The inputs of s1 :> s2 are the inputs of s1.
-Point MergeSchema::inputPoint(unsigned int i) const { return schema1->inputPoint(i); }
-
-// The outputs of s1 :> s2 are the outputs of s2.
-Point MergeSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
-
-void MergeSchema::draw(Device &device) {
-    schema1->draw(device);
-    schema2->draw(device);
-}
-
 void MergeSchema::collectLines(Collector &c) {
-    schema1->collectLines(c);
-    schema2->collectLines(c);
+    BinarySchema::collectLines(c);
     for (unsigned int i = 0; i < schema1->outputs; i++) c.addLine({schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs)});
 }
 
 // Place and connect two diagrams in split composition.
-struct SplitSchema : Schema {
+struct SplitSchema : BinarySchema {
     friend Schema *makeSplitSchema(Schema *s1, Schema *s2);
 
     void placeImpl() override;
-    void draw(Device &) override;
-    Point inputPoint(unsigned int i) const override;
-    Point outputPoint(unsigned int i) const override;
     void collectLines(Collector &) override;
 
 private:
     SplitSchema(Schema *s1, Schema *s2, double hgap);
 
-    Schema *schema1;
-    Schema *schema2;
     double horzGap;
 };
 
@@ -527,8 +472,7 @@ Schema *makeSplitSchema(Schema *s1, Schema *s2) {
 // Constructor for a split schema s1 <: s2, where the outputs of s1 are distributed to the inputs of s2.
 // The constructor is private in order to enforce the usage of `makeSplitSchema`.
 SplitSchema::SplitSchema(Schema *s1, Schema *s2, double hgap)
-    : Schema(s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)),
-      schema1(s1), schema2(s2), horzGap(hgap) {}
+    : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), horzGap(hgap) {}
 
 // Place the two subschema horizontaly, centered, with enough gap for the connections
 void SplitSchema::placeImpl() {
@@ -543,23 +487,10 @@ void SplitSchema::placeImpl() {
     }
 }
 
-// The inputs of s1 <: s2 are the inputs of s1.
-Point SplitSchema::inputPoint(unsigned int i) const { return schema1->inputPoint(i); }
-
-// The outputs of s1 <: s2 are the outputs of s2.
-Point SplitSchema::outputPoint(unsigned int i) const { return schema2->outputPoint(i); }
-
-void SplitSchema::draw(Device &device) {
-    schema1->draw(device);
-    schema2->draw(device);
-}
-
 void SplitSchema::collectLines(Collector &c) {
-    schema1->collectLines(c);
-    schema2->collectLines(c);
+    BinarySchema::collectLines(c);
     for (unsigned int i = 0; i < schema2->inputs; i++) c.addLine({schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i)});
 }
-
 
 // Place and connect two diagrams in recursive composition
 struct RecSchema : IOSchema {

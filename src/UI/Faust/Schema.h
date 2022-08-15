@@ -103,6 +103,26 @@ struct IOSchema : Schema {
     vector<Point> inputPoints;
     vector<Point> outputPoints;
 };
+struct BinarySchema : Schema {
+    BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, double width, double height)
+        : Schema(inputs, outputs, width, height), schema1(s1), schema2(s2) {}
+
+    Point inputPoint(unsigned int i) const override { return schema1->inputPoint(i); }
+    Point outputPoint(unsigned int i) const override { return schema2->outputPoint(i); }
+
+    void draw(Device &device) override {
+        schema1->draw(device);
+        schema2->draw(device);
+    }
+
+    void collectLines(Collector &c) override {
+        schema1->collectLines(c);
+        schema2->collectLines(c);
+    }
+
+    Schema *schema1;
+    Schema *schema2;
+};
 
 Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);
 Schema *makeCableSchema(unsigned int n = 1);

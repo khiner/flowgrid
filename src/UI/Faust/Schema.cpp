@@ -4,12 +4,12 @@
 bool Collector::computeVisibleLines() {
     bool modified = false;
     for (const auto &line: lines) {
-        if (withInput.count(line) == 0 && outputs.count(line.start) > 0) {
+        if (!withInput.contains(line) && outputs.contains(line.start)) {
             withInput.insert(line); // the cable is connected to a real output
             outputs.insert(line.end); // end become a real output too
             modified = true;
         }
-        if (withOutput.count(line) == 0 && inputs.count(line.end) > 0) {
+        if (!withOutput.contains(line) && inputs.contains(line.end)) {
             withOutput.insert(line); // the cable is connected to a real input
             inputs.insert(line.start); // start become a real input too
             modified = true;
@@ -19,8 +19,8 @@ bool Collector::computeVisibleLines() {
 }
 
 void Collector::draw(Device &device) {
-    while (computeVisibleLines()) {}
-    for (const auto &line: lines) if (withInput.count(line) && withOutput.count(line)) line.draw(device);
+    while (computeVisibleLines());
+    for (const auto &line: lines) if (withInput.contains(line) && withOutput.contains(line)) line.draw(device);
 }
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -73,13 +73,13 @@ void BlockSchema::collectLines(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     // Input wires
     for (const auto &p: inputPoints) {
-        c.addLine({p, {p.x + dx, p.y}});
-        c.addInput({p.x + dx, p.y});
+        c.lines.insert({p, {p.x + dx, p.y}});
+        c.inputs.insert({p.x + dx, p.y});
     }
     // Output wires
     for (const auto &p: outputPoints) {
-        c.addLine({{p.x - dx, p.y}, p});
-        c.addOutput({p.x - dx, p.y});
+        c.lines.insert({{p.x - dx, p.y}, p});
+        c.outputs.insert({p.x - dx, p.y});
     }
 }
 
@@ -228,8 +228,8 @@ void EnlargedSchema::draw(Device &device) { schema->draw(device); }
 
 void EnlargedSchema::collectLines(Collector &c) {
     schema->collectLines(c);
-    for (unsigned int i = 0; i < inputs; i++) c.addLine({inputPoint(i), schema->inputPoint(i)});
-    for (unsigned int i = 0; i < outputs; i++) c.addLine({schema->outputPoint(i), outputPoint(i)});
+    for (unsigned int i = 0; i < inputs; i++) c.lines.insert({inputPoint(i), schema->inputPoint(i)});
+    for (unsigned int i = 0; i < outputs; i++) c.lines.insert({schema->outputPoint(i), outputPoint(i)});
 }
 
 struct ParallelSchema : BinarySchema {
@@ -391,12 +391,12 @@ void SequentialSchema::collectInternalWires(Collector &c) {
         // todo add a toggle to always draw the straight cable - I tried this and it can look better imo (diagonal lines instead of manhatten)
         if (src.y == dst.y) {
             // Draw a straight, potentially diagonal cable.
-            c.addLine({src, dst});
+            c.lines.insert({src, dst});
         } else {
             // Draw a zigzag cable by traversing half the distance between, taking a sharp turn, then turning back and finishing.
-            c.addLine({src, {src.x + mx, src.y}});
-            c.addLine({{src.x + mx, src.y}, {src.x + mx, dst.y}});
-            c.addLine({{src.x + mx, dst.y}, dst});
+            c.lines.insert({src, {src.x + mx, src.y}});
+            c.lines.insert({{src.x + mx, src.y}, {src.x + mx, dst.y}});
+            c.lines.insert({{src.x + mx, dst.y}, dst});
         }
     }
 }
@@ -443,7 +443,7 @@ void MergeSchema::placeImpl() {
 
 void MergeSchema::collectLines(Collector &c) {
     BinarySchema::collectLines(c);
-    for (unsigned int i = 0; i < schema1->outputs; i++) c.addLine({schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs)});
+    for (unsigned int i = 0; i < schema1->outputs; i++) c.lines.insert({schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs)});
 }
 
 // Place and connect two diagrams in split composition.
@@ -489,7 +489,7 @@ void SplitSchema::placeImpl() {
 
 void SplitSchema::collectLines(Collector &c) {
     BinarySchema::collectLines(c);
-    for (unsigned int i = 0; i < schema2->inputs; i++) c.addLine({schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i)});
+    for (unsigned int i = 0; i < schema2->inputs; i++) c.lines.insert({schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i)});
 }
 
 // Place and connect two diagrams in recursive composition
@@ -557,10 +557,10 @@ void RecSchema::placeImpl() {
 }
 
 // Draw the delay sign of a feedback connection
-static void drawDelaySign(Device &dev, double x, double y, double size) {
-    dev.line(x - size / 2, y, x - size / 2, y - size);
-    dev.line(x - size / 2, y - size, x + size / 2, y - size);
-    dev.line(x + size / 2, y - size, x + size / 2, y);
+static void drawDelaySign(Device &device, double x, double y, double size) {
+    device.line(x - size / 2, y, x - size / 2, y - size);
+    device.line(x - size / 2, y - size, x + size / 2, y - size);
+    device.line(x + size / 2, y - size, x + size / 2, y);
 }
 
 void RecSchema::draw(Device &device) {
@@ -583,11 +583,11 @@ void RecSchema::collectLines(Collector &c) {
     for (unsigned int i = 0; i < schema2->inputs; i++) collectFeedback(c, schema1->outputPoint(i), schema2->inputPoint(i), i * dWire, outputPoint(i));
 
     // Non-recursive output lines
-    for (unsigned int i = schema2->inputs; i < outputs; i++) c.addLine({schema1->outputPoint(i), outputPoint(i)});
+    for (unsigned int i = schema2->inputs; i < outputs; i++) c.lines.insert({schema1->outputPoint(i), outputPoint(i)});
 
     // Input lines
     const unsigned int skip = schema2->outputs;
-    for (unsigned int i = 0; i < inputs; i++) c.addLine({inputPoint(i), schema1->inputPoint(i + skip)});
+    for (unsigned int i = 0; i < inputs; i++) c.lines.insert({inputPoint(i), schema1->inputPoint(i + skip)});
 
     // Feedfront connections from each schema2 output
     for (unsigned int i = 0; i < schema2->outputs; i++) collectFeedfront(c, schema2->outputPoint(i), schema1->inputPoint(i), i * dWire);
@@ -600,22 +600,22 @@ void RecSchema::collectFeedback(Collector &c, const Point &src, const Point &dst
     const Point up(ox, src.y - ct);
     const Point br(ox + ct / 2.0, src.y);
 
-    c.addOutput(up);
-    c.addOutput(br);
-    c.addInput(br);
+    c.outputs.insert(up);
+    c.outputs.insert(br);
+    c.inputs.insert(br);
 
-    c.addLine({up, {ox, dst.y}});
-    c.addLine({{ox, dst.y}, dst});
-    c.addLine({src, br});
-    c.addLine({br, out});
+    c.lines.insert({up, {ox, dst.y}});
+    c.lines.insert({{ox, dst.y}, dst});
+    c.lines.insert({src, br});
+    c.lines.insert({br, out});
 }
 
 // Draw a feedfrom connection between two points with a horizontal displacement `dx`.
 void RecSchema::collectFeedfront(Collector &c, const Point &src, const Point &dst, double dx) {
     const double ox = src.x + (orientation == kLeftRight ? -dx : dx);
-    c.addLine({{src.x, src.y}, {ox, src.y}});
-    c.addLine({{ox, src.y}, {ox, dst.y}});
-    c.addLine({{ox, dst.y}, {dst.x, dst.y}});
+    c.lines.insert({{src.x, src.y}, {ox, src.y}});
+    c.lines.insert({{ox, src.y}, {ox, dst.y}});
+    c.lines.insert({{ox, dst.y}, {dst.x, dst.y}});
 }
 
 // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left.
@@ -672,8 +672,8 @@ void TopSchema::draw(Device &device) {
 
 void TopSchema::collectLines(Collector &c) {
     schema->collectLines(c);
-    for (unsigned int i = 0; i < schema->inputs; i++) c.addOutput(schema->inputPoint(i));
-    for (unsigned int i = 0; i < schema->outputs; i++) c.addInput(schema->outputPoint(i));
+    for (unsigned int i = 0; i < schema->inputs; i++) c.outputs.insert(schema->inputPoint(i));
+    for (unsigned int i = 0; i < schema->outputs; i++) c.inputs.insert(schema->outputPoint(i));
 }
 
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
@@ -689,7 +689,7 @@ private:
     DecorateSchema(Schema *s1, double margin, string text);
 
     Schema *schema;
-    double fMargin;
+    double margin;
     string text;
 };
 
@@ -699,12 +699,12 @@ Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { retur
 // The rectangle is placed at half the margin parameter.
 // The constructor is made private to enforce the usage of `makeDecorateSchema`
 DecorateSchema::DecorateSchema(Schema *s, double margin, string text)
-    : IOSchema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)) {}
+    : IOSchema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
 
 void DecorateSchema::placeImpl() {
-    schema->place(x + fMargin, y + fMargin, orientation);
+    schema->place(x + margin, y + margin, orientation);
 
-    const double m = orientation == kRightLeft ? -fMargin : fMargin;
+    const double m = orientation == kRightLeft ? -margin : margin;
     for (unsigned int i = 0; i < inputs; i++) {
         const auto p = schema->inputPoint(i);
         inputPoints[i] = {p.x - m, p.y}; // todo inline with `= p - {m, 0}` and vectorize
@@ -719,11 +719,11 @@ void DecorateSchema::draw(Device &device) {
     schema->draw(device);
 
     // Surrounding frame
-    const double x0 = x + fMargin / 2; // left
-    const double y0 = y + fMargin / 2; // top
-    const double x1 = x + width - fMargin / 2; // right
-    const double y1 = y + height - fMargin / 2; // bottom
-    const double tl = x + fMargin; // left of text zone
+    const double x0 = x + margin / 2; // left
+    const double y0 = y + margin / 2; // top
+    const double x1 = x + width - margin / 2; // right
+    const double y1 = y + height - margin / 2; // bottom
+    const double tl = x + margin; // left of text zone
 
     device.dasharray(x0, y0, x0, y1); // left line
     device.dasharray(x0, y1, x1, y1); // bottom line
@@ -736,8 +736,8 @@ void DecorateSchema::draw(Device &device) {
 
 void DecorateSchema::collectLines(Collector &c) {
     schema->collectLines(c);
-    for (unsigned int i = 0; i < inputs; i++) c.addLine({inputPoint(i), schema->inputPoint(i)});
-    for (unsigned int i = 0; i < outputs; i++) c.addLine({schema->outputPoint(i), outputPoint(i)});
+    for (unsigned int i = 0; i < inputs; i++) c.lines.insert({inputPoint(i), schema->inputPoint(i)});
+    for (unsigned int i = 0; i < outputs; i++) c.lines.insert({schema->outputPoint(i), outputPoint(i)});
 }
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -764,13 +764,13 @@ void ConnectorSchema::collectLines(Collector &c) {
     const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     // Input wires
     for (const auto &p: inputPoints) {
-        c.addLine({p, {p.x + dx, p.y}});
-        c.addInput({p.x + dx, p.y});
+        c.lines.insert({p, {p.x + dx, p.y}});
+        c.inputs.insert({p.x + dx, p.y});
     }
     // Output wires
     for (const auto &p: outputPoints) {
-        c.addLine({{p.x - dx, p.y}, p});
-        c.addOutput({p.x - dx, p.y});
+        c.lines.insert({{p.x - dx, p.y}, p});
+        c.outputs.insert({p.x - dx, p.y});
     }
 }
 
@@ -823,18 +823,18 @@ void RouteSchema::collectLines(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     // Input wires
     for (const auto &p: inputPoints) {
-        c.addLine({p, {p.x + dx, p.y}});
-        c.addInput({p.x + dx, p.y});
+        c.lines.insert({p, {p.x + dx, p.y}});
+        c.inputs.insert({p.x + dx, p.y});
     }
     // Output wires
     for (const auto &p: outputPoints) {
-        c.addLine({{p.x - dx, p.y}, p});
-        c.addOutput({p.x - dx, p.y});
+        c.lines.insert({{p.x - dx, p.y}, p});
+        c.outputs.insert({p.x - dx, p.y});
     }
     // Route wires
     for (unsigned int i = 0; i < routes.size() - 1; i += 2) {
         const auto p1 = inputPoints[routes[i] - 1];
         const auto p2 = outputPoints[routes[i + 1] - 1];
-        c.addLine({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
+        c.lines.insert({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
     }
 }

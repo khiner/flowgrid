@@ -48,9 +48,6 @@ struct Collector {
     set<Line> withInput; // collect lines with a real input
     set<Line> withOutput; // collect lines with a real output
 
-    void addOutput(const Point &p) { outputs.insert(p); }
-    void addInput(const Point &p) { inputs.insert(p); }
-    void addLine(const Line &t) { lines.insert(t); }
     void draw(Device &);
 
 private:

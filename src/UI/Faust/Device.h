@@ -10,7 +10,7 @@ public:
     virtual void circle(double x, double y, double radius) = 0;
     virtual void square(double x, double y, double dim) = 0;
     virtual void arrow(double x, double y, double rotation, int orientation) = 0;
-    virtual void trait(double x1, double y1, double x2, double y2) = 0;
+    virtual void line(double x1, double y1, double x2, double y2) = 0;
     virtual void dasharray(double x1, double y1, double x2, double y2) = 0;
     virtual void text(double x, double y, const char *name, const char *link) = 0;
     virtual void label(double x, double y, const char *name) = 0;

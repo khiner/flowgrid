@@ -27,13 +27,13 @@ struct Point {
     }
 };
 
-struct Trait {
+struct Line {
     Point start, end;
 
-    Trait(const Point &p1, const Point &p2) : start(p1), end(p2) {}
-    void draw(Device &device) const { device.trait(start.x, start.y, end.x, end.y); }
+    Line(const Point &p1, const Point &p2) : start(p1), end(p2) {}
+    void draw(Device &device) const { device.line(start.x, start.y, end.x, end.y); }
 
-    bool operator<(const Trait &t) const {
+    bool operator<(const Line &t) const {
         if (start < t.start) return true;
         if (t.start < start) return false;
         if (end < t.end) return true;
@@ -42,19 +42,19 @@ struct Trait {
 };
 
 struct Collector {
-    set<Point> outputs;     // collect real outputs
-    set<Point> inputs;      // collect real inputs
-    set<Trait> traits;      // collect traits to draw
-    set<Trait> withInput;   // collect traits with a real input
-    set<Trait> withOutput;  // collect traits with a real output
+    set<Point> outputs; // collect real outputs
+    set<Point> inputs; // collect real inputs
+    set<Line> lines; // collect lines to draw
+    set<Line> withInput; // collect lines with a real input
+    set<Line> withOutput; // collect lines with a real output
 
     void addOutput(const Point &p) { outputs.insert(p); }
     void addInput(const Point &p) { inputs.insert(p); }
-    void addTrait(const Trait &t) { traits.insert(t); }
+    void addLine(const Line &t) { lines.insert(t); }
     void draw(Device &);
 
 private:
-    bool computeVisibleTraits();
+    bool computeVisibleLines();
 };
 
 // An abstract block diagram schema
@@ -81,7 +81,7 @@ struct Schema {
     virtual void draw(Device &) = 0;
     virtual Point inputPoint(unsigned int i) const = 0;
     virtual Point outputPoint(unsigned int i) const = 0;
-    virtual void collectTraits(Collector &c) = 0;
+    virtual void collectLines(Collector &c) = 0;
 };
 
 Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);

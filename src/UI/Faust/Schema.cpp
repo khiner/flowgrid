@@ -1,17 +1,17 @@
 #include "Schema.h"
 #include "../../Helper/assert.h"
 
-bool Collector::computeVisibleTraits() {
+bool Collector::computeVisibleLines() {
     bool modified = false;
-    for (const auto &trait: traits) {
-        if (withInput.count(trait) == 0 && outputs.count(trait.start) > 0) {
-            withInput.insert(trait); // the cable is connected to a real output
-            outputs.insert(trait.end); // end become a real output too
+    for (const auto &line: lines) {
+        if (withInput.count(line) == 0 && outputs.count(line.start) > 0) {
+            withInput.insert(line); // the cable is connected to a real output
+            outputs.insert(line.end); // end become a real output too
             modified = true;
         }
-        if (withOutput.count(trait) == 0 && inputs.count(trait.end) > 0) {
-            withOutput.insert(trait); // the cable is connected to a real input
-            inputs.insert(trait.start); // start become a real input too
+        if (withOutput.count(line) == 0 && inputs.count(line.end) > 0) {
+            withOutput.insert(line); // the cable is connected to a real input
+            inputs.insert(line.start); // start become a real input too
             modified = true;
         }
     }
@@ -19,8 +19,8 @@ bool Collector::computeVisibleTraits() {
 }
 
 void Collector::draw(Device &device) {
-    while (computeVisibleTraits()) {}
-    for (const auto &trait: traits) if (withInput.count(trait) && withOutput.count(trait)) trait.draw(device);
+    while (computeVisibleLines()) {}
+    for (const auto &line: lines) if (withInput.count(line) && withOutput.count(line)) line.draw(device);
 }
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -32,7 +32,7 @@ struct BlockSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 protected:
     BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link);
@@ -87,16 +87,16 @@ void BlockSchema::draw(Device &device) {
     for (const auto &p: inputPoints) device.arrow(p.x + dx, p.y, 0, orientation);
 }
 
-void BlockSchema::collectTraits(Collector &c) {
+void BlockSchema::collectLines(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     // Input wires
     for (const auto &p: inputPoints) {
-        c.addTrait({p, {p.x + dx, p.y}});
+        c.addLine({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
     // Output wires
     for (const auto &p: outputPoints) {
-        c.addTrait({{p.x - dx, p.y}, p});
+        c.addLine({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
     }
 }
@@ -112,7 +112,7 @@ struct CableSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     CableSchema(unsigned int n);
@@ -140,7 +140,7 @@ void CableSchema::draw(Device &) {}
 
 // Nothing to collect.
 // Actual collect will take place when the wires are enlarged.
-void CableSchema::collectTraits(Collector &) {}
+void CableSchema::collectLines(Collector &) {}
 
 // Input and output points are the same if the width is 0.
 Point CableSchema::inputPoint(unsigned int i) const { return points[i]; }
@@ -173,7 +173,7 @@ public:
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     CutSchema();
@@ -198,7 +198,7 @@ void CutSchema::draw(Device &) {
     // dev.rond(point.x, point.y, dWire/8.0);
 }
 
-void CutSchema::collectTraits(Collector &) {}
+void CutSchema::collectLines(Collector &) {}
 
 // By definition, a Cut has only one input point.
 Point CutSchema::inputPoint(unsigned int) const { return point; }
@@ -216,7 +216,7 @@ struct EnlargedSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     Schema *schema;
@@ -259,10 +259,10 @@ Point EnlargedSchema::outputPoint(unsigned int i) const { return outputPoints[i]
 
 void EnlargedSchema::draw(Device &device) { schema->draw(device); }
 
-void EnlargedSchema::collectTraits(Collector &c) {
-    schema->collectTraits(c);
-    for (unsigned int i = 0; i < inputs; i++) c.addTrait({inputPoint(i), schema->inputPoint(i)});
-    for (unsigned int i = 0; i < outputs; i++) c.addTrait({schema->outputPoint(i), outputPoint(i)});
+void EnlargedSchema::collectLines(Collector &c) {
+    schema->collectLines(c);
+    for (unsigned int i = 0; i < inputs; i++) c.addLine({inputPoint(i), schema->inputPoint(i)});
+    for (unsigned int i = 0; i < outputs; i++) c.addLine({schema->outputPoint(i), outputPoint(i)});
 }
 
 struct ParallelSchema : Schema {
@@ -272,7 +272,7 @@ struct ParallelSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     Schema *schema1;
@@ -315,9 +315,9 @@ void ParallelSchema::draw(Device &device) {
     schema2->draw(device);
 }
 
-void ParallelSchema::collectTraits(Collector &c) {
-    schema1->collectTraits(c);
-    schema2->collectTraits(c);
+void ParallelSchema::collectLines(Collector &c) {
+    schema1->collectLines(c);
+    schema2->collectLines(c);
 }
 
 struct SequentialSchema : Schema {
@@ -327,7 +327,7 @@ struct SequentialSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     SequentialSchema(Schema *s1, Schema *s2, double hgap);
@@ -429,10 +429,10 @@ void SequentialSchema::draw(Device &device) {
     schema2->draw(device);
 }
 
-void SequentialSchema::collectTraits(Collector &c) {
+void SequentialSchema::collectLines(Collector &c) {
     assert(schema1->outputs == schema2->inputs);
-    schema1->collectTraits(c);
-    schema2->collectTraits(c);
+    schema1->collectLines(c);
+    schema2->collectLines(c);
     collectInternalWires(c);
 }
 
@@ -457,12 +457,12 @@ void SequentialSchema::collectInternalWires(Collector &c) {
         // todo add a toggle to always draw the straight cable - I tried this and it can look better imo (diagonal lines instead of manhatten)
         if (src.y == dst.y) {
             // Draw a straight, potentially diagonal cable.
-            c.addTrait({src, dst});
+            c.addLine({src, dst});
         } else {
             // Draw a zigzag cable by traversing half the distance between, taking a sharp turn, then turning back and finishing.
-            c.addTrait({src, {src.x + mx, src.y}});
-            c.addTrait({{src.x + mx, src.y}, {src.x + mx, dst.y}});
-            c.addTrait({{src.x + mx, dst.y}, dst});
+            c.addLine({src, {src.x + mx, src.y}});
+            c.addLine({{src.x + mx, src.y}, {src.x + mx, dst.y}});
+            c.addLine({{src.x + mx, dst.y}, dst});
         }
     }
 }
@@ -475,7 +475,7 @@ struct MergeSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     MergeSchema(Schema *s1, Schema *s2, double hgap);
@@ -523,10 +523,10 @@ void MergeSchema::draw(Device &device) {
     schema2->draw(device);
 }
 
-void MergeSchema::collectTraits(Collector &c) {
-    schema1->collectTraits(c);
-    schema2->collectTraits(c);
-    for (unsigned int i = 0; i < schema1->outputs; i++) c.addTrait({schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs)});
+void MergeSchema::collectLines(Collector &c) {
+    schema1->collectLines(c);
+    schema2->collectLines(c);
+    for (unsigned int i = 0; i < schema1->outputs; i++) c.addLine({schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs)});
 }
 
 // Place and connect two diagrams in split composition.
@@ -537,7 +537,7 @@ struct SplitSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     SplitSchema(Schema *s1, Schema *s2, double hgap);
@@ -587,10 +587,10 @@ void SplitSchema::draw(Device &device) {
     schema2->draw(device);
 }
 
-void SplitSchema::collectTraits(Collector &c) {
-    schema1->collectTraits(c);
-    schema2->collectTraits(c);
-    for (unsigned int i = 0; i < schema2->inputs; i++) c.addTrait({schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i)});
+void SplitSchema::collectLines(Collector &c) {
+    schema1->collectLines(c);
+    schema2->collectLines(c);
+    for (unsigned int i = 0; i < schema2->inputs; i++) c.addLine({schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i)});
 }
 
 
@@ -602,7 +602,7 @@ struct RecSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     RecSchema(Schema *s1, Schema *s2, double width);
@@ -672,9 +672,9 @@ Point RecSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 // Draw the delay sign of a feedback connection
 static void drawDelaySign(Device &dev, double x, double y, double size) {
-    dev.trait(x - size / 2, y, x - size / 2, y - size);
-    dev.trait(x - size / 2, y - size, x + size / 2, y - size);
-    dev.trait(x + size / 2, y - size, x + size / 2, y);
+    dev.line(x - size / 2, y, x - size / 2, y - size);
+    dev.line(x - size / 2, y - size, x + size / 2, y - size);
+    dev.line(x + size / 2, y - size, x + size / 2, y);
 }
 
 void RecSchema::draw(Device &device) {
@@ -689,19 +689,19 @@ void RecSchema::draw(Device &device) {
     }
 }
 
-void RecSchema::collectTraits(Collector &c) {
-    schema1->collectTraits(c);
-    schema2->collectTraits(c);
+void RecSchema::collectLines(Collector &c) {
+    schema1->collectLines(c);
+    schema2->collectLines(c);
 
     // Feedback connections to each schema2 input
     for (unsigned int i = 0; i < schema2->inputs; i++) collectFeedback(c, schema1->outputPoint(i), schema2->inputPoint(i), i * dWire, outputPoint(i));
 
     // Non-recursive output lines
-    for (unsigned int i = schema2->inputs; i < outputs; i++) c.addTrait({schema1->outputPoint(i), outputPoint(i)});
+    for (unsigned int i = schema2->inputs; i < outputs; i++) c.addLine({schema1->outputPoint(i), outputPoint(i)});
 
     // Input lines
     const unsigned int skip = schema2->outputs;
-    for (unsigned int i = 0; i < inputs; i++) c.addTrait({inputPoint(i), schema1->inputPoint(i + skip)});
+    for (unsigned int i = 0; i < inputs; i++) c.addLine({inputPoint(i), schema1->inputPoint(i + skip)});
 
     // Feedfront connections from each schema2 output
     for (unsigned int i = 0; i < schema2->outputs; i++) collectFeedfront(c, schema2->outputPoint(i), schema1->inputPoint(i), i * dWire);
@@ -718,18 +718,18 @@ void RecSchema::collectFeedback(Collector &c, const Point &src, const Point &dst
     c.addOutput(br);
     c.addInput(br);
 
-    c.addTrait({up, {ox, dst.y}});
-    c.addTrait({{ox, dst.y}, dst});
-    c.addTrait({src, br});
-    c.addTrait({br, out});
+    c.addLine({up, {ox, dst.y}});
+    c.addLine({{ox, dst.y}, dst});
+    c.addLine({src, br});
+    c.addLine({br, out});
 }
 
 // Draw a feedfrom connection between two points with a horizontal displacement `dx`.
 void RecSchema::collectFeedfront(Collector &c, const Point &src, const Point &dst, double dx) {
     const double ox = src.x + (orientation == kLeftRight ? -dx : dx);
-    c.addTrait({{src.x, src.y}, {ox, src.y}});
-    c.addTrait({{ox, src.y}, {ox, dst.y}});
-    c.addTrait({{ox, dst.y}, {dst.x, dst.y}});
+    c.addLine({{src.x, src.y}, {ox, src.y}});
+    c.addLine({{ox, src.y}, {ox, dst.y}});
+    c.addLine({{ox, dst.y}, {dst.x, dst.y}});
 }
 
 // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left.
@@ -742,7 +742,7 @@ struct TopSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     TopSchema(Schema *s1, double margin, string text, string link);
@@ -786,8 +786,8 @@ void TopSchema::draw(Device &device) {
     }
 }
 
-void TopSchema::collectTraits(Collector &c) {
-    schema->collectTraits(c);
+void TopSchema::collectLines(Collector &c) {
+    schema->collectLines(c);
     for (unsigned int i = 0; i < schema->inputs; i++) c.addOutput(schema->inputPoint(i));
     for (unsigned int i = 0; i < schema->outputs; i++) c.addInput(schema->outputPoint(i));
 }
@@ -801,7 +801,7 @@ struct DecorateSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 private:
     DecorateSchema(Schema *s1, double margin, string text);
@@ -860,10 +860,10 @@ void DecorateSchema::draw(Device &device) {
     device.label(tl, y0, text.c_str());
 }
 
-void DecorateSchema::collectTraits(Collector &c) {
-    schema->collectTraits(c);
-    for (unsigned int i = 0; i < inputs; i++) c.addTrait({inputPoint(i), schema->inputPoint(i)});
-    for (unsigned int i = 0; i < outputs; i++) c.addTrait({schema->outputPoint(i), outputPoint(i)});
+void DecorateSchema::collectLines(Collector &c) {
+    schema->collectLines(c);
+    for (unsigned int i = 0; i < inputs; i++) c.addLine({inputPoint(i), schema->inputPoint(i)});
+    for (unsigned int i = 0; i < outputs; i++) c.addLine({schema->outputPoint(i), outputPoint(i)});
 }
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -875,7 +875,7 @@ struct ConnectorSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 protected:
     ConnectorSchema();
@@ -904,16 +904,16 @@ Point ConnectorSchema::outputPoint(unsigned int i) const { return outputPoints[i
 
 void ConnectorSchema::draw(Device &) {}
 
-void ConnectorSchema::collectTraits(Collector &c) {
+void ConnectorSchema::collectLines(Collector &c) {
     const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
     // Input wires
     for (const auto &p: inputPoints) {
-        c.addTrait({p, {p.x + dx, p.y}});
+        c.addLine({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
     // Output wires
     for (const auto &p: outputPoints) {
-        c.addTrait({{p.x - dx, p.y}, p});
+        c.addLine({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
     }
 }
@@ -926,7 +926,7 @@ struct RouteSchema : Schema {
     void draw(Device &) override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectTraits(Collector &) override;
+    void collectLines(Collector &) override;
 
 protected:
     RouteSchema(unsigned int inputs, unsigned int outputs, double width, double height, std::vector<int> routes);
@@ -981,22 +981,22 @@ void RouteSchema::draw(Device &device) {
     }
 }
 
-void RouteSchema::collectTraits(Collector &c) {
+void RouteSchema::collectLines(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
     // Input wires
     for (const auto &p: inputPoints) {
-        c.addTrait({p, {p.x + dx, p.y}});
+        c.addLine({p, {p.x + dx, p.y}});
         c.addInput({p.x + dx, p.y});
     }
     // Output wires
     for (const auto &p: outputPoints) {
-        c.addTrait({{p.x - dx, p.y}, p});
+        c.addLine({{p.x - dx, p.y}, p});
         c.addOutput({p.x - dx, p.y});
     }
     // Route wires
     for (unsigned int i = 0; i < routes.size() - 1; i += 2) {
         const auto p1 = inputPoints[routes[i] - 1];
         const auto p2 = outputPoints[routes[i + 1] - 1];
-        c.addTrait({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
+        c.addLine({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
     }
 }

@@ -113,7 +113,7 @@ void SVGDevice::circle(double x, double y, double radius) {
     stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", x, y, radius);
 }
 
-string line(double x1, double y1, double x2, double y2, double rotation, double x, double y) {
+string transform_line(double x1, double y1, double x2, double y2, double rotation, double x, double y) {
     return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", x1, y1, x2, y2, rotation, x, y);
 }
 
@@ -121,15 +121,15 @@ void SVGDevice::arrow(double x, double y, double rotation, int orientation) {
     const double dx = 3;
     const double dy = 1;
     const auto x1 = orientation == kLeftRight ? x - dx : x + dx;
-    stream << line(x1, y - dy, x, y, rotation, x, y);
-    stream << line(x1, y + dy, x, y, rotation, x, y);
+    stream << transform_line(x1, y - dy, x, y, rotation, x, y);
+    stream << transform_line(x1, y + dy, x, y, rotation, x, y);
 }
 
 void SVGDevice::square(double x, double y, double dim) {
     stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" style="stroke: black;stroke-width:0.5;fill:none;"/>)", x - 0.5 * dim, y - dim, dim, dim);
 }
 
-void SVGDevice::trait(double x1, double y1, double x2, double y2) {
+void SVGDevice::line(double x1, double y1, double x2, double y2) {
     stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", x1, y1, x2, y2);
 }
 

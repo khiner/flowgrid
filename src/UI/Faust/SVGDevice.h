@@ -14,7 +14,7 @@ struct SVGDevice : Device {
     void circle(double x, double y, double radius) override;
     void square(double x, double y, double dim) override;
     void arrow(double x, double y, double rotation, int orientation) override;
-    void trait(double x1, double y1, double x2, double y2) override;
+    void line(double x1, double y1, double x2, double y2) override;
     void dasharray(double x1, double y1, double x2, double y2) override;
     void text(double x, double y, const char *name, const char *link) override;
     void label(double x, double y, const char *name) override;

@@ -255,7 +255,7 @@ static void writeSchemaFile(Tree bd) {
     ts->draw(dev);
     {
         Collector c;
-        ts->collectTraits(c);
+        ts->collectLines(c);
         c.draw(dev);
     }
 }

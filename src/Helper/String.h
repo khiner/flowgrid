@@ -15,9 +15,23 @@ inline string snake_case_to_sentence_case(const string &snake_case) {
     return sentence_case;
 }
 
-// E.g. '/foo/bar/baz' => 'baz'
-inline string path_variable_name(const JsonPath &path) { return path.back(); }
-
-inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
-
 constexpr inline bool is_integer(const string &str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }
+
+inline string replace(string subject, const string &search, const string &replace) {
+    size_t pos = 0;
+    while ((pos = subject.find(search, pos)) != string::npos) {
+        subject.replace(pos, search.length(), replace);
+        pos += replace.length();
+    }
+    return subject;
+}
+
+// Same as above, but with single char search.
+inline string replace(string subject, const char search, const string &replace) {
+    size_t pos = 0;
+    while ((pos = subject.find(search, pos)) != string::npos) {
+        subject.replace(pos, 1, replace);
+        pos += replace.length();
+    }
+    return subject;
+}

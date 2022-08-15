@@ -8,6 +8,11 @@
 #include "JsonType.h"
 #include "Helper/String.h"
 
+// E.g. '/foo/bar/baz' => 'baz'
+inline string path_variable_name(const JsonPath &path) { return path.back(); }
+
+inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
+
 /**
  * `StateData` is a data-only struct which fully describes the application at any point in time.
  *

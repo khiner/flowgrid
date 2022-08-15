@@ -1,8 +1,10 @@
 #include "SVGDevice.h"
 
 #include <sstream>
+#include <map>
 #include "fmt/core.h"
 #include "../../Helper/File.h"
+#include "../../Helper/String.h"
 
 using namespace std;
 using namespace fmt;
@@ -10,48 +12,14 @@ using namespace fmt;
 bool scaledSVG = false; // Draw scaled SVG files
 bool shadowBlur = false; // Note: `svg2pdf` doesn't like the blur filter
 
-static char *xmlcode(const char *name, char *name2) {
-    int i, j;
+static string xml_sanitize(const string &name) {
+    static std::map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
 
-    // Substitute characters prohibited in XML:
-    for (i = 0, j = 0; name[i] != 0 && j < 250; i++) {
-        switch (name[i]) {
-            case '<':name2[j++] = '&';
-                name2[j++] = 'l';
-                name2[j++] = 't';
-                name2[j++] = ';';
-                break;
-            case '>':name2[j++] = '&';
-                name2[j++] = 'g';
-                name2[j++] = 't';
-                name2[j++] = ';';
-                break;
-            case '\'':name2[j++] = '&';
-                name2[j++] = 'a';
-                name2[j++] = 'p';
-                name2[j++] = 'o';
-                name2[j++] = 's';
-                name2[j++] = ';';
-                break;
-            case '"':name2[j++] = '&';
-                name2[j++] = 'q';
-                name2[j++] = 'u';
-                name2[j++] = 'o';
-                name2[j++] = 't';
-                name2[j++] = ';';
-                break;
-            case '&':name2[j++] = '&';
-                name2[j++] = 'a';
-                name2[j++] = 'm';
-                name2[j++] = 'p';
-                name2[j++] = ';';
-                break;
-            default:name2[j++] = name[i];
-        }
+    auto replaced_name = name;
+    for (const auto &[c, replacement]: replacements) {
+        replaced_name = replace(replaced_name, c, replacement);
     }
-    name2[j] = 0;
-
-    return name2;
+    return replaced_name;
 }
 
 SVGDevice::SVGDevice(string file_name, double width, double height) : file_name(std::move(file_name)) {
@@ -75,9 +43,8 @@ SVGDevice::~SVGDevice() {
     FileIO::write(file_name, stream.str());
 }
 
-void SVGDevice::rect(double x, double y, double l, double h, const char *color, const char *link) {
-    char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format(R"(<a href="{}">)", xmlcode(link, buf)); // open the optional link tag
+void SVGDevice::rect(double x, double y, double l, double h, const string &color, const string &link) {
+    if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
 
     // Shadow
     stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" )", x + 1, y + 1, l, h);
@@ -86,12 +53,11 @@ void SVGDevice::rect(double x, double y, double l, double h, const char *color, 
 
     // Rectangle
     stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, l, h, color);
-    if (link != nullptr && link[0] != 0) stream << "</a>"; // close the optional link tag
+    if (!link.empty()) stream << "</a>"; // close the optional link tag
 }
 
-void SVGDevice::triangle(double x, double y, double l, double h, const char *color, const char *link, int orientation) {
-    char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format(R"(<a href="{}">)", xmlcode(link, buf)); // open the optional link tag
+void SVGDevice::triangle(double x, double y, double l, double h, const string &color, int orientation, const string &link) {
+    if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
 
     static const double radius = 1.5;
     double x0, x1, x2;
@@ -137,17 +103,14 @@ void SVGDevice::dasharray(double x1, double y1, double x2, double y2) {
     stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", x1, y1, x2, y2);
 }
 
-void SVGDevice::text(double x, double y, const char *name, const char *link) {
-    char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format(R"(<a href="{}">)", xmlcode(link, buf)); // open the optional link tag
-    char name2[256];
-    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", x, y + 2, xmlcode(name, name2));
-    if (link != nullptr && link[0] != 0) stream << "</a>"; // close the optional link tag
+void SVGDevice::text(double x, double y, const char *name, const string &link) {
+    if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
+    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", x, y + 2, xml_sanitize(name));
+    if (!link.empty()) stream << "</a>"; // close the optional link tag
 }
 
 void SVGDevice::label(double x, double y, const char *name) {
-    char name2[256];
-    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", x, y + 2, xmlcode(name, name2));
+    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", x, y + 2, xml_sanitize(name));
 }
 
 void SVGDevice::dot(double x, double y, int orientation) {

@@ -75,8 +75,8 @@ Point BlockSchema::inputPoint(unsigned int i) const { return inputPoints[i]; }
 Point BlockSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 
 void BlockSchema::draw(Device &device) {
-    device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
-    device.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
+    device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color, link);
+    device.text(x + width / 2, y + height / 2, text.c_str(), link);
 
     // Draw a small point that indicates the first input (like an integrated circuits).
     const bool isLR = orientation == kLeftRight;
@@ -162,7 +162,7 @@ Schema *makeInverterSchema(const string &color) { return new InverterSchema(colo
 InverterSchema::InverterSchema(const string &color) : BlockSchema(1, 1, 2.5 * dWire, dWire, "-1", color, "") {}
 
 void InverterSchema::draw(Device &device) {
-    device.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, color.c_str(), link.c_str(), orientation);
+    device.triangle(x + dHorz, y + 0.5, width - 2 * dHorz, height - 1, color, orientation, link);
 }
 
 // Terminate a cable (cut box).
@@ -775,7 +775,7 @@ Point TopSchema::inputPoint(unsigned int) const { throw std::runtime_error("ERRO
 Point TopSchema::outputPoint(unsigned int) const { throw std::runtime_error("ERROR : TopSchema::outputPoint"); }
 
 void TopSchema::draw(Device &device) {
-    device.rect(x, y, width - 1, height - 1, "#ffffff", link.c_str());
+    device.rect(x, y, width - 1, height - 1, "#ffffff", link);
     device.label(x + fMargin, y + fMargin / 2, text.c_str());
 
     schema->draw(device);
@@ -968,8 +968,8 @@ Point RouteSchema::outputPoint(unsigned int i) const { return outputPoints[i]; }
 void RouteSchema::draw(Device &device) {
     static bool drawRouteFrame = false; // todo provide toggle
     if (drawRouteFrame) {
-        device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color.c_str(), link.c_str());
-        // device.text(x + width / 2, y + height / 2, text.c_str(), link.c_str());
+        device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color, link);
+        // device.text(x + width / 2, y + height / 2, text.c_str(), link);
 
         // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
         const bool isLR = orientation == kLeftRight;

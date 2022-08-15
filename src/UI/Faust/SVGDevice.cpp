@@ -57,9 +57,8 @@ static char *xmlcode(const char *name, char *name2) {
 SVGDevice::SVGDevice(string file_name, double width, double height) : file_name(std::move(file_name)) {
     static const double scale = 0.5;
 
-    stream << "<?xml version=\"1.0\"?>\n";
-    stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 {} {}")", width, height);
-    stream << (scaledSVG ? " width=\"100%%\" height=\"100%%\">\n" : format(" width=\"{}mm\" height=\"{}mm\">\n", width * scale, height * scale));
+    stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", width, height);
+    stream << (scaledSVG ? " width=\"100%\" height=\"100%\">\n" : format(" width=\"{}mm\" height=\"{}mm\">\n", width * scale, height * scale));
 
     if (shadowBlur) {
         stream << "<defs>\n"
@@ -78,7 +77,7 @@ SVGDevice::~SVGDevice() {
 
 void SVGDevice::rect(double x, double y, double l, double h, const char *color, const char *link) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format("<a xlink:href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format("<a href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
 
     // Shadow
     stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" )", x + 1, y + 1, l, h);
@@ -92,7 +91,7 @@ void SVGDevice::rect(double x, double y, double l, double h, const char *color, 
 
 void SVGDevice::triangle(double x, double y, double l, double h, const char *color, const char *link, int orientation) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format("<a xlink:href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format("<a href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
 
     static const double radius = 1.5;
     double x0, x1, x2;
@@ -140,7 +139,7 @@ void SVGDevice::dasharray(double x1, double y1, double x2, double y2) {
 
 void SVGDevice::text(double x, double y, const char *name, const char *link) {
     char buf[512];
-    if (link != nullptr && link[0] != 0) stream << format("<a xlink:href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
+    if (link != nullptr && link[0] != 0) stream << format("<a href=\"{}\">\n", xmlcode(link, buf)); // open the optional link tag
     char name2[256];
     stream << format("<text x=\"{}\" y=\"{}\" font-family=\"Arial\" font-size=\"7\" text-anchor=\"middle\" fill=\"#FFFFFF\">{}</text>\n", x, y + 2, xmlcode(name, name2));
     if (link != nullptr && link[0] != 0) stream << "</a>\n"; // close the optional link tag

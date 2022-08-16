@@ -2,16 +2,13 @@
 #include "../../Helper/assert.h"
 
 // A simple rectangular box with a text and inputs and outputs.
-// The constructor is private in order to make sure `makeBlockSchema` is used instead
 struct BlockSchema : IOSchema {
-    friend Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link);
+    BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link);
 
     void drawImpl(Device &) const override;
     void collectLines() override;
 
 protected:
-    BlockSchema(unsigned int inputs, unsigned int outputs, double width, double height, string text, string color, string link);
-
     const string text;
     const string color;
     const string link;
@@ -57,17 +54,14 @@ void BlockSchema::collectLines() {
 // Simple cables (identity box) in parallel.
 // The width of a cable is null.
 // Therefor, input and output connection points are the same.
-// The constructor is private to enforce the use of `makeCableSchema`.
 struct CableSchema : Schema {
-    friend Schema *makeCableSchema(unsigned int n);
+    CableSchema(unsigned int n);
 
     void placeImpl() override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
 
 private:
-    CableSchema(unsigned int n);
-
     vector<Point> points;
 };
 
@@ -90,11 +84,8 @@ Point CableSchema::outputPoint(unsigned int i) const { return points[i]; }
 
 // An inverter is a special symbol corresponding to '*(-1)' to create more compact diagrams.
 struct InverterSchema : BlockSchema {
-    friend Schema *makeInverterSchema(const string &color);
-    void drawImpl(Device &) const override;
-
-private:
     InverterSchema(const string &color);
+    void drawImpl(Device &) const override;
 };
 
 Schema *makeInverterSchema(const string &color) { return new InverterSchema(color); }
@@ -107,15 +98,14 @@ void InverterSchema::drawImpl(Device &device) const {
 
 // Terminate a cable (cut box).
 struct CutSchema : Schema {
-public:
-    friend Schema *makeCutSchema();
+    CutSchema();
+
     void placeImpl() override;
     void drawImpl(Device &) const override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
 
 private:
-    CutSchema();
     Point point;
 };
 
@@ -124,7 +114,6 @@ Schema *makeCutSchema() { return new CutSchema(); }
 // A Cut is represented by a small black dot.
 // It has 1 input and no outputs.
 // It has a 0 width and a 1 wire height.
-// The constructor is private in order to enforce the usage of `makeCutSchema`.
 CutSchema::CutSchema() : Schema(1, 0, 0, dWire / 100.0), point(0, 0) {}
 
 // The input point is placed in the middle.
@@ -134,7 +123,7 @@ void CutSchema::placeImpl() {
 
 // A cut is represented by a small black dot.
 void CutSchema::drawImpl(Device &) const {
-    // dev.rond(point.x, point.y, dWire/8.0);
+//    device.circle(point.x, point.y, dWire / 8.0);
 }
 
 // By definition, a Cut has only one input point.
@@ -231,13 +220,12 @@ Point ParallelSchema::outputPoint(unsigned int i) const {
 }
 
 struct SequentialSchema : BinarySchema {
-    friend Schema *makeSequentialSchema(Schema *s1, Schema *s2);
+    SequentialSchema(Schema *s1, Schema *s2, double hgap);
 
     void placeImpl() override;
     void collectLines() override;
 
 private:
-    SequentialSchema(Schema *s1, Schema *s2, double hgap);
     void collectInternalWires();
 
     double horzGap;
@@ -360,14 +348,12 @@ void SequentialSchema::collectInternalWires() {
 
 // Place and connect two diagrams in merge composition.
 struct MergeSchema : BinarySchema {
-    friend Schema *makeMergeSchema(Schema *s1, Schema *s2);
+    MergeSchema(Schema *s1, Schema *s2, double hgap);
 
     void placeImpl() override;
     void collectLines() override;
 
 private:
-    MergeSchema(Schema *s1, Schema *s2, double hgap);
-
     double horzGap;
 };
 
@@ -381,7 +367,6 @@ Schema *makeMergeSchema(Schema *s1, Schema *s2) {
 }
 
 // Constructor for a merge schema s1 :> s2 where the outputs of s1 are merged to the inputs of s2.
-// The constructor is private in order to enforce the usage of `makeMergeSchema`.
 MergeSchema::MergeSchema(Schema *s1, Schema *s2, double hgap)
     : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), horzGap(hgap) {}
 
@@ -405,14 +390,12 @@ void MergeSchema::collectLines() {
 
 // Place and connect two diagrams in split composition.
 struct SplitSchema : BinarySchema {
-    friend Schema *makeSplitSchema(Schema *s1, Schema *s2);
+    SplitSchema(Schema *s1, Schema *s2, double hgap);
 
     void placeImpl() override;
     void collectLines() override;
 
 private:
-    SplitSchema(Schema *s1, Schema *s2, double hgap);
-
     double horzGap;
 };
 
@@ -427,7 +410,6 @@ Schema *makeSplitSchema(Schema *s1, Schema *s2) {
 }
 
 // Constructor for a split schema s1 <: s2, where the outputs of s1 are distributed to the inputs of s2.
-// The constructor is private in order to enforce the usage of `makeSplitSchema`.
 SplitSchema::SplitSchema(Schema *s1, Schema *s2, double hgap)
     : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), horzGap(hgap) {}
 
@@ -451,15 +433,13 @@ void SplitSchema::collectLines() {
 
 // Place and connect two diagrams in recursive composition
 struct RecSchema : IOSchema {
-    friend Schema *makeRecSchema(Schema *s1, Schema *s2);
+    RecSchema(Schema *s1, Schema *s2, double width);
 
     void placeImpl() override;
     void drawImpl(Device &) const override;
     void collectLines() override;
 
 private:
-    RecSchema(Schema *s1, Schema *s2, double width);
-
     void collectFeedback(const Point &src, const Point &dst, double dx, const Point &out);
     void collectFeedfront(const Point &src, const Point &dst, double dx);
 
@@ -575,7 +555,7 @@ void RecSchema::collectFeedfront(const Point &src, const Point &dst, double dx) 
 // The rectangle is placed at half the margin parameter.
 // Arrows are added to all the outputs.
 struct TopSchema : Schema {
-    friend Schema *makeTopSchema(Schema *s1, double margin, const string &text, const string &link);
+    TopSchema(Schema *s1, double margin, string text, string link);
 
     void placeImpl() override;
     void drawImpl(Device &) const override;
@@ -584,8 +564,6 @@ struct TopSchema : Schema {
     void collectLines() override;
 
 private:
-    TopSchema(Schema *s1, double margin, string text, string link);
-
     Schema *schema;
     double fMargin;
     string text;
@@ -599,7 +577,6 @@ Schema *makeTopSchema(Schema *s, double margin, const string &text, const string
 // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left.
 // The rectangle is placed at half the margin parameter.
 // Arrows are added to the outputs.
-// The constructor is made private to enforce the usage of `makeTopSchema`.
 TopSchema::TopSchema(Schema *s, double margin, string text, string link)
     : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)), link(std::move(link)) {}
 
@@ -630,15 +607,13 @@ void TopSchema::collectLines() {
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
 // The rectangle is placed at half the margin parameter.
 struct DecorateSchema : IOSchema {
-    friend Schema *makeDecorateSchema(Schema *s1, double margin, const string &text);
+    DecorateSchema(Schema *s1, double margin, string text);
 
     void placeImpl() override;
     void drawImpl(Device &) const override;
     void collectLines() override;
 
 private:
-    DecorateSchema(Schema *s1, double margin, string text);
-
     Schema *schema;
     double margin;
     string text;
@@ -648,7 +623,6 @@ Schema *makeDecorateSchema(Schema *s, double margin, const string &text) { retur
 
 // A DecorateSchema is a schema surrounded by a dashed rectangle with a label on the top left.
 // The rectangle is placed at half the margin parameter.
-// The constructor is made private to enforce the usage of `makeDecorateSchema`
 DecorateSchema::DecorateSchema(Schema *s, double margin, string text)
     : IOSchema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
 
@@ -692,14 +666,9 @@ void DecorateSchema::collectLines() {
 }
 
 // A simple rectangular box with a text and inputs and outputs.
-// The constructor is private in order to make sure `makeConnectorSchema` is used instead.
 struct ConnectorSchema : IOSchema {
-    friend Schema *makeConnectorSchema();
-
-    void collectLines() override;
-
-protected:
     ConnectorSchema();
+    void collectLines() override;
 };
 
 // Connectors are used to ensure unused inputs and outputs are drawn.
@@ -716,15 +685,13 @@ void ConnectorSchema::collectLines() {
 }
 
 // A simple rectangular box with a text and inputs and outputs.
-// The constructor is private in order to make sure `makeBlockSchema` is used instead.
 struct RouteSchema : IOSchema {
-    friend Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::vector<int> &routes);
+    RouteSchema(unsigned int inputs, unsigned int outputs, double width, double height, std::vector<int> routes);
+
     void drawImpl(Device &) const override;
     void collectLines() override;
 
 protected:
-    RouteSchema(unsigned int inputs, unsigned int outputs, double width, double height, std::vector<int> routes);
-
     const string text;
     const string color;
     const string link;

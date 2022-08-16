@@ -69,10 +69,10 @@ struct Schema {
 
     // abstract interface for subclasses
     virtual void placeImpl() = 0;
-    virtual void drawImpl(Device &) const = 0;
     virtual Point inputPoint(unsigned int i) const = 0;
     virtual Point outputPoint(unsigned int i) const = 0;
-    virtual void collectLines() = 0;
+    virtual void collectLines() {}; // optional
+    virtual void drawImpl(Device &) const {}; // optional
 };
 
 struct IOSchema : Schema {

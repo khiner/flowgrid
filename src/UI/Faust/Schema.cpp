@@ -62,10 +62,8 @@ struct CableSchema : Schema {
     friend Schema *makeCableSchema(unsigned int n);
 
     void placeImpl() override;
-    void drawImpl(Device &) const override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectLines() override;
 
 private:
     CableSchema(unsigned int n);
@@ -86,14 +84,6 @@ void CableSchema::placeImpl() {
         points[i] = {x, y + (orientation == kLeftRight ? dx : height - dx)};
     }
 }
-
-// Nothing to draw.
-// Actual drawing will take place when the wires are enlarged.
-void CableSchema::drawImpl(Device &) const {}
-
-// Nothing to collect.
-// Actual collect will take place when the wires are enlarged.
-void CableSchema::collectLines() {}
 
 Point CableSchema::inputPoint(unsigned int i) const { return points[i]; }
 Point CableSchema::outputPoint(unsigned int i) const { return points[i]; }
@@ -123,7 +113,6 @@ public:
     void drawImpl(Device &) const override;
     Point inputPoint(unsigned int i) const override;
     Point outputPoint(unsigned int i) const override;
-    void collectLines() override;
 
 private:
     CutSchema();
@@ -147,8 +136,6 @@ void CutSchema::placeImpl() {
 void CutSchema::drawImpl(Device &) const {
     // dev.rond(point.x, point.y, dWire/8.0);
 }
-
-void CutSchema::collectLines() {}
 
 // By definition, a Cut has only one input point.
 Point CutSchema::inputPoint(unsigned int) const { return point; }
@@ -709,7 +696,6 @@ void DecorateSchema::collectLines() {
 struct ConnectorSchema : IOSchema {
     friend Schema *makeConnectorSchema();
 
-    void drawImpl(Device &) const override;
     void collectLines() override;
 
 protected:
@@ -721,8 +707,6 @@ Schema *makeConnectorSchema() { return new ConnectorSchema(); }
 
 // A connector is an invisible square for `dWire` size with 1 input and 1 output.
 ConnectorSchema::ConnectorSchema() : IOSchema(1, 1, dWire, dWire) {}
-
-void ConnectorSchema::drawImpl(Device &) const {}
 
 // Input/output wires
 void ConnectorSchema::collectLines() {

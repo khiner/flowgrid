@@ -336,9 +336,7 @@ static void writeSchemaFile(Tree bd) {
     int ins, outs;
 
     getBoxType(bd, &ins, &outs);
-
-    bool hasname = getDefNameProperty(bd, id);
-    if (!hasname) id = tree(Node(unique("diagram_"))); // create an arbitrary name
+    getDefNameProperty(bd, id);
 
     dc->schemaFileName = legalFileName(bd) + ".svg";
     ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), dc->backLink[bd]);

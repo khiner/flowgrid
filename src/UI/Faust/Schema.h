@@ -2,21 +2,12 @@
 
 #include "Device.h"
 
-#include <string>
 #include <vector>
-#include "imgui.h"
 
 const float dWire = 8; // distance between two wires
 const float dLetter = 4.3; // width of a letter
 const float dHorz = 4;
 const float dVert = 4;
-
-struct Line {
-    ImVec2 start, end;
-
-    Line(const ImVec2 &p1, const ImVec2 &p2) : start(p1), end(p2) {}
-    void draw(Device &device) const { device.line(start.x, start.y, end.x, end.y); }
-};
 
 // An abstract block diagram schema
 struct Schema {
@@ -40,7 +31,7 @@ struct Schema {
     }
 
     void draw(Device &device) const {
-        for (const auto &line: lines) line.draw(device);
+        for (const auto &line: lines) { device.line(line); }
         drawImpl(device);
     }
 

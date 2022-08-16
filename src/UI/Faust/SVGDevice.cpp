@@ -42,21 +42,25 @@ SVGDevice::~SVGDevice() {
     FileIO::write(file_name, stream.str());
 }
 
-void SVGDevice::rect(float x, float y, float l, float h, const string &color, const string &link) {
+void SVGDevice::rect(const ImVec4 &rect, const string &color, const string &link) {
     if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
 
+    const auto [x, y, w, h] = rect;
+
     // Shadow
-    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" )", x + 1, y + 1, l, h);
+    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" )", x + 1, y + 1, w, h);
     stream << (shadowBlur ? R"(rx="0.1" ry="0.1" style="stroke:none;fill:#aaaaaa;;filter:url(#filter);"/>)"
                           : R"(rx="0" ry="0" style="stroke:none;fill:#cccccc;"/>)");
 
     // Rectangle
-    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, l, h, color);
+    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, w, h, color);
     if (!link.empty()) stream << "</a>"; // close the optional link tag
 }
 
-void SVGDevice::triangle(float x, float y, float l, float h, const string &color, int orientation, const string &link) {
+void SVGDevice::triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, int orientation, const string &link) {
     if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
+    const auto [x, y] = pos;
+    const auto [l, h] = size;
 
     static const float radius = 1.5;
     float x0, x1, x2;
@@ -74,15 +78,16 @@ void SVGDevice::triangle(float x, float y, float l, float h, const string &color
     stream << format(R"(<circle  fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x2, y + h / 2.0, radius);
 }
 
-void SVGDevice::circle(float x, float y, float radius) {
-    stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", x, y, radius);
+void SVGDevice::circle(const ImVec2 &pos, float radius) {
+    stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", pos.x, pos.y, radius);
 }
 
 string transform_line(float x1, float y1, float x2, float y2, float rotation, float x, float y) {
     return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", x1, y1, x2, y2, rotation, x, y);
 }
 
-void SVGDevice::arrow(float x, float y, float rotation, int orientation) {
+void SVGDevice::arrow(const ImVec2 &pos, float rotation, int orientation) {
+    const auto [x, y] = pos;
     const float dx = 3;
     const float dy = 1;
     const auto x1 = orientation == kLeftRight ? x - dx : x + dx;
@@ -90,38 +95,27 @@ void SVGDevice::arrow(float x, float y, float rotation, int orientation) {
     stream << transform_line(x1, y + dy, x, y, rotation, x, y);
 }
 
-void SVGDevice::square(float x, float y, float dim) {
-    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" style="stroke: black;stroke-width:0.5;fill:none;"/>)", x - 0.5 * dim, y - dim, dim, dim);
+void SVGDevice::line(const Line &line) {
+    const auto &[start, end] = line;
+    stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y);
 }
 
-void SVGDevice::line(float x1, float y1, float x2, float y2) {
-    stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", x1, y1, x2, y2);
+void SVGDevice::dasharray(const Line &line) {
+    const auto &[start, end] = line;
+    stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", start.x, start.y, end.x, end.y);
 }
 
-void SVGDevice::dasharray(float x1, float y1, float x2, float y2) {
-    stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", x1, y1, x2, y2);
-}
-
-void SVGDevice::text(float x, float y, const char *name, const string &link) {
+void SVGDevice::text(const ImVec2 &pos, const char *name, const string &link) {
     if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
-    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", x, y + 2, xml_sanitize(name));
+    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
     if (!link.empty()) stream << "</a>"; // close the optional link tag
 }
 
-void SVGDevice::label(float x, float y, const char *name) {
-    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", x, y + 2, xml_sanitize(name));
+void SVGDevice::label(const ImVec2 &pos, const char *name) {
+    stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
 }
 
-void SVGDevice::dot(float x, float y, int orientation) {
+void SVGDevice::dot(const ImVec2 &pos, int orientation) {
     const float offset = orientation == kLeftRight ? 2 : -2;
-    stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", x + offset, y + offset);
-}
-
-string errorText(float x, float y, float length, const string &stroke, const string &fill, const string &text) {
-    return format(R"(<text x="{}" y="{}" textLength="{}" lengthAdjust="spacingAndGlyphs" style="stroke: {}; stroke-width:0.3; text-anchor:middle; fill:{};">{}</text>)", x, y, length, stroke, fill, text);
-}
-
-void SVGDevice::Error(const char *message, const char *reason, int nb_error, float x, float y, float width) {
-    stream << errorText(x, y - 7, width, "red", "red", format("{} : {}", nb_error, message));
-    stream << errorText(x, y + 7, width, "red", "none", reason);
+    stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x + offset, pos.y + offset);
 }

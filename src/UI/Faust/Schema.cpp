@@ -37,16 +37,15 @@ BlockSchema::BlockSchema(unsigned int inputs, unsigned int outputs, float width,
     : IOSchema(inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
 
 void BlockSchema::drawImpl(Device &device) const {
-    device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color, link);
-    device.text(x + width / 2, y + height / 2, text.c_str(), link);
+    device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
+    device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text.c_str(), link);
 
     // Draw a small point that indicates the first input (like an integrated circuits).
     const bool isLR = orientation == kLeftRight;
-    device.dot(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
+    device.dot(ImVec2{x, y} + (isLR ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
 
     // Input arrows
-    const float dx = isLR ? dHorz : -dHorz;
-    for (const auto &p: inputPoints) device.arrow(p.x + dx, p.y, 0, orientation);
+    for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR ? dHorz : -dHorz, 0}, 0, orientation);
 }
 
 // Input/output wires
@@ -67,14 +66,12 @@ struct CableSchema : Schema {
     ImVec2 outputPoint(unsigned int i) const override;
 
 private:
-    std::vector<ImVec2> points;
+    std::vector<ImVec2> points{inputs};
 };
 
 Schema *makeCableSchema(unsigned int n) { return new CableSchema(n); }
 
-CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, float(n) * dWire) {
-    for (unsigned int i = 0; i < n; i++) points.emplace_back(0, 0);
-}
+CableSchema::CableSchema(unsigned int n) : Schema(n, n, 0, float(n) * dWire) {}
 
 // Place the communication points vertically spaced by `dWire`.
 void CableSchema::placeImpl() {
@@ -98,7 +95,7 @@ Schema *makeInverterSchema(const string &color) { return new InverterSchema(colo
 InverterSchema::InverterSchema(const string &color) : BlockSchema(1, 1, 2.5f * dWire, dWire, "-1", color, "") {}
 
 void InverterSchema::drawImpl(Device &device) const {
-    device.triangle(x + dHorz, y + 0.5f, width - 2 * dHorz, height - 1, color, orientation, link);
+    device.triangle({x + dHorz, y + 0.5f}, {width - 2 * dHorz, height - 1}, color, orientation, link);
 }
 
 // Terminate a cable (cut box).
@@ -128,7 +125,7 @@ void CutSchema::placeImpl() {
 
 // A cut is represented by a small black dot.
 void CutSchema::drawImpl(Device &) const {
-//    device.circle(point.x, point.y, dWire / 8.0);
+//    device.circle(point, dWire / 8.0);
 }
 
 // By definition, a Cut has only one input point.
@@ -281,8 +278,8 @@ static float computeHorzGap(Schema *a, Schema *b) {
 Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
     const unsigned int o = s1->outputs;
     const unsigned int i = s2->inputs;
-    auto *a = (o < i) ? makeParallelSchema(s1, makeCableSchema(i - o)) : s1;
-    auto *b = (o > i) ? makeParallelSchema(s2, makeCableSchema(o - i)) : s2;
+    auto *a = o < i ? makeParallelSchema(s1, makeCableSchema(i - o)) : s1;
+    auto *b = o > i ? makeParallelSchema(s2, makeCableSchema(o - i)) : s2;
 
     return new SequentialSchema(a, b, computeHorzGap(a, b));
 }
@@ -482,9 +479,9 @@ void RecSchema::placeImpl() {
 
 // Draw the delay sign of a feedback connection
 static void drawDelaySign(Device &device, float x, float y, float size) {
-    device.line(x - size / 2, y, x - size / 2, y - size);
-    device.line(x - size / 2, y - size, x + size / 2, y - size);
-    device.line(x + size / 2, y - size, x + size / 2, y);
+    device.line({{x - size / 2, y}, {x - size / 2, y - size}});
+    device.line({{x - size / 2, y - size}, {x + size / 2, y - size}});
+    device.line({{x + size / 2, y - size}, {x + size / 2, y}});
 }
 
 void RecSchema::drawImpl(Device &device) const {
@@ -492,7 +489,7 @@ void RecSchema::drawImpl(Device &device) const {
     schema2->draw(device);
 
     // Draw the implicit feedback delay to each schema2 input
-    const float dw = (orientation == kLeftRight) ? dWire : -dWire;
+    const float dw = orientation == kLeftRight ? dWire : -dWire;
     for (unsigned int i = 0; i < schema2->inputs; i++) {
         const auto &p = schema1->outputPoint(i) + ImVec2{float(i) * dw, 0};
         drawDelaySign(device, p.x, p.y, dw / 2);
@@ -519,8 +516,8 @@ void RecSchema::collectLines() {
 
 // Draw a feedback connection between two points with a horizontal displacement `dx`.
 void RecSchema::collectFeedback(const ImVec2 &src, const ImVec2 &dst, float dx, const ImVec2 &out) {
-    const float ox = src.x + ((orientation == kLeftRight) ? dx : -dx);
-    const float ct = (orientation == kLeftRight) ? dWire / 2.0f : -dWire / 2.0f;
+    const float ox = src.x + (orientation == kLeftRight ? dx : -dx);
+    const float ct = (orientation == kLeftRight ? dWire : -dWire) / 2.0f;
     const ImVec2 up(ox, src.y - ct);
     const ImVec2 br(ox + ct / 2.0f, src.y);
 
@@ -576,15 +573,12 @@ ImVec2 TopSchema::inputPoint(unsigned int) const { throw std::runtime_error("ERR
 ImVec2 TopSchema::outputPoint(unsigned int) const { throw std::runtime_error("ERROR : TopSchema::outputPoint"); }
 
 void TopSchema::drawImpl(Device &device) const {
-    device.rect(x, y, width - 1, height - 1, "#ffffff", link);
-    device.label(x + fMargin, y + fMargin / 2, text.c_str());
+    device.rect({x, y, width - 1, height - 1}, "#ffffff", link);
+    device.label(ImVec2{x, y} + ImVec2{fMargin, fMargin / 2}, text.c_str());
 
     schema->draw(device);
 
-    for (unsigned int i = 0; i < schema->outputs; i++) {
-        const auto p = schema->outputPoint(i);
-        device.arrow(p.x, p.y, 0, orientation);
-    }
+    for (unsigned int i = 0; i < schema->outputs; i++) device.arrow(schema->outputPoint(i), 0, orientation);
 }
 
 void TopSchema::collectLines() {
@@ -625,19 +619,19 @@ void DecorateSchema::drawImpl(Device &device) const {
     schema->draw(device);
 
     // Surrounding frame
-    const float x0 = x + margin / 2; // left
-    const float y0 = y + margin / 2; // top
-    const float x1 = x + width - margin / 2; // right
-    const float y1 = y + height - margin / 2; // bottom
-    const float tl = x + margin; // left of text zone
+    const auto topLeft = ImVec2{x, y} + ImVec2{margin / 2, margin / 2};
+    const auto topRight = topLeft + ImVec2{width - margin, 0};
+    const auto bottomLeft = topLeft + ImVec2{0, height - margin};
+    const auto bottomRight = bottomLeft + ImVec2{width - margin, 0};
+    const float textLeft = x + margin;
 
-    device.dasharray(x0, y0, x0, y1); // left line
-    device.dasharray(x0, y1, x1, y1); // bottom line
-    device.dasharray(x1, y1, x1, y0); // right line
-    device.dasharray(x0, y0, tl, y0); // top segment before text
-    device.dasharray(min(tl + float(2 + text.size()) * dLetter * 0.75f, x1), y0, x1, y0); // top segment after text
+    device.dasharray({topLeft, bottomLeft}); // left line
+    device.dasharray({bottomLeft, bottomRight}); // bottom line
+    device.dasharray({bottomRight, topRight}); // right line
+    device.dasharray({topLeft, {textLeft, topLeft.y}}); // top segment before text
+    device.dasharray({{min(textLeft + float(2 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}}); // top segment after text
 
-    device.label(tl, y0, text.c_str());
+    device.label({textLeft, topLeft.y}, text.c_str());
 }
 
 void DecorateSchema::collectLines() {
@@ -660,9 +654,9 @@ ConnectorSchema::ConnectorSchema() : IOSchema(1, 1, dWire, dWire) {}
 
 // Input/output wires
 void ConnectorSchema::collectLines() {
-    const float dx = (orientation == kLeftRight) ? dHorz : -dHorz;
-    for (const auto &p: inputPoints) lines.push_back({p, {p.x + dx, p.y}});
-    for (const auto &p: outputPoints) lines.push_back({{p.x - dx, p.y}, p});
+    const float dx = orientation == kLeftRight ? dHorz : -dHorz;
+    for (const auto &p: inputPoints) lines.emplace_back(p, p + ImVec2{dx, 0});
+    for (const auto &p: outputPoints) lines.emplace_back(p - ImVec2{dx, 0}, p);
 }
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -690,34 +684,31 @@ Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::ve
 // Build a simple colored `RouteSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
 // The length of the text as well as the number of inputs and outputs are used to compute the size of the `RouteSchema`
 RouteSchema::RouteSchema(unsigned int inputs, unsigned int outputs, float width, float height, std::vector<int> routes)
-    : IOSchema(inputs, outputs, width, height), text(""), color("#EEEEAA"), link(""), routes(std::move(routes)) {}
+    : IOSchema(inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
 
 void RouteSchema::drawImpl(Device &device) const {
     static bool drawRouteFrame = false; // todo provide toggle
     if (drawRouteFrame) {
-        device.rect(x + dHorz, y + dVert, width - 2 * dHorz, height - 2 * dVert, color, link);
+        device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
         // device.text(x + width / 2, y + height / 2, text.c_str(), link);
 
         // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
         const bool isLR = orientation == kLeftRight;
-        device.dot(x + (isLR ? dHorz : (width - dHorz)), y + (isLR ? dVert : (height - dVert)), orientation);
+        device.dot(ImVec2{x, y} + (isLR ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
 
         // Input arrows
-        const float dx = isLR ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) device.arrow(p.x + dx, p.y, 0, orientation);
+        for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR ? dHorz : -dHorz, 0}, 0, orientation);
     }
 }
 
 void RouteSchema::collectLines() {
     const float dx = orientation == kLeftRight ? dHorz : -dHorz;
     // Input/output wires
-    for (const auto &p: inputPoints) lines.push_back({p, {p.x + dx, p.y}});
-    for (const auto &p: outputPoints) lines.push_back({{p.x - dx, p.y}, p});
+    for (const auto &p: inputPoints) lines.emplace_back(p, p + ImVec2{dx, 0});
+    for (const auto &p: outputPoints) lines.emplace_back(p - ImVec2{dx, 0}, p);
 
     // Route wires
     for (unsigned int i = 0; i < routes.size() - 1; i += 2) {
-        const auto p1 = inputPoints[routes[i] - 1];
-        const auto p2 = outputPoints[routes[i + 1] - 1];
-        lines.push_back({{p1.x + dx, p1.y}, {p2.x - dx, p2.y}});
+        lines.emplace_back(inputPoints[routes[i] - 1] + ImVec2{dx, 0}, outputPoints[routes[i + 1] - 1] - ImVec2{dx, 0});
     }
 }

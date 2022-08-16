@@ -4,43 +4,37 @@
 
 #include <string>
 #include <vector>
+#include "imgui.h"
 
 using namespace std;
 
-const double dWire = 8; // distance between two wires
-const double dLetter = 4.3; // width of a letter
-const double dHorz = 4;
-const double dVert = 4;
-
-struct Point {
-    double x, y;
-
-    Point() : x(0.0), y(0.0) {}
-    Point(double x, double y) : x(x), y(y) {}
-};
+const float dWire = 8; // distance between two wires
+const float dLetter = 4.3; // width of a letter
+const float dHorz = 4;
+const float dVert = 4;
 
 struct Line {
-    Point start, end;
+    ImVec2 start, end;
 
-    Line(const Point &p1, const Point &p2) : start(p1), end(p2) {}
+    Line(const ImVec2 &p1, const ImVec2 &p2) : start(p1), end(p2) {}
     void draw(Device &device) const { device.line(start.x, start.y, end.x, end.y); }
 };
 
 // An abstract block diagram schema
 struct Schema {
     const unsigned int inputs, outputs;
-    const double width, height;
+    const float width, height;
 
     // Fields only defined after `place()` is called:
-    double x = 0, y = 0;
+    float x = 0, y = 0;
     int orientation = 0;
 
     vector<Line> lines; // Populated in `collectLines()`
 
-    Schema(unsigned int inputs, unsigned int outputs, double width, double height) : inputs(inputs), outputs(outputs), width(width), height(height) {}
+    Schema(unsigned int inputs, unsigned int outputs, float width, float height) : inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;
 
-    void place(double new_x, double new_y, int new_orientation) {
+    void place(float new_x, float new_y, int new_orientation) {
         x = new_x;
         y = new_y;
         orientation = new_orientation;
@@ -54,37 +48,38 @@ struct Schema {
 
     // abstract interface for subclasses
     virtual void placeImpl() = 0;
-    virtual Point inputPoint(unsigned int i) const = 0;
-    virtual Point outputPoint(unsigned int i) const = 0;
+    virtual ImVec2 inputPoint(unsigned int i) const = 0;
+    virtual ImVec2 outputPoint(unsigned int i) const = 0;
     virtual void collectLines() {}; // optional
     virtual void drawImpl(Device &) const {}; // optional
 };
 
 struct IOSchema : Schema {
-    IOSchema(unsigned int inputs, unsigned int outputs, double width, double height) : Schema(inputs, outputs, width, height) {
+    IOSchema(unsigned int inputs, unsigned int outputs, float width, float height) : Schema(inputs, outputs, width, height) {
         for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
         for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
     }
 
     void placeImpl() override {
         const bool isLR = orientation == kLeftRight;
-        const double dir = isLR ? -1.0 : 1.0;
-        for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, y + height / 2.0 - dWire * ((inputs - 1) / 2.0 + i * dir)};
-        for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, y + height / 2.0 - dWire * ((outputs - 1) / 2.0 + i * dir)};
+        const float dir = isLR ? dWire : -dWire;
+        const float yMid = y + height / 2.0f;
+        for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, yMid - dWire * float(inputs - 1) / 2.0f + float(i) * dir};
+        for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, yMid - dWire * float(outputs - 1) / 2.0f + float(i) * dir};
     }
 
-    Point inputPoint(unsigned int i) const override { return inputPoints[i]; }
-    Point outputPoint(unsigned int i) const override { return outputPoints[i]; }
+    ImVec2 inputPoint(unsigned int i) const override { return inputPoints[i]; }
+    ImVec2 outputPoint(unsigned int i) const override { return outputPoints[i]; }
 
-    vector<Point> inputPoints;
-    vector<Point> outputPoints;
+    vector<ImVec2> inputPoints;
+    vector<ImVec2> outputPoints;
 };
 struct BinarySchema : Schema {
-    BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, double width, double height)
+    BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float width, float height)
         : Schema(inputs, outputs, width, height), schema1(s1), schema2(s2) {}
 
-    Point inputPoint(unsigned int i) const override { return schema1->inputPoint(i); }
-    Point outputPoint(unsigned int i) const override { return schema2->outputPoint(i); }
+    ImVec2 inputPoint(unsigned int i) const override { return schema1->inputPoint(i); }
+    ImVec2 outputPoint(unsigned int i) const override { return schema2->outputPoint(i); }
 
     void drawImpl(Device &device) const override {
         schema1->draw(device);
@@ -104,13 +99,13 @@ Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string 
 Schema *makeCableSchema(unsigned int n = 1);
 Schema *makeInverterSchema(const string &color);
 Schema *makeCutSchema();
-Schema *makeEnlargedSchema(Schema *s, double width);
+Schema *makeEnlargedSchema(Schema *s, float width);
 Schema *makeParallelSchema(Schema *s1, Schema *s2);
 Schema *makeSequentialSchema(Schema *s1, Schema *s2);
 Schema *makeMergeSchema(Schema *s1, Schema *s2);
 Schema *makeSplitSchema(Schema *s1, Schema *s2);
 Schema *makeRecSchema(Schema *s1, Schema *s2);
-Schema *makeTopSchema(Schema *s1, double margin, const string &text, const string &link);
-Schema *makeDecorateSchema(Schema *s1, double margin, const string &text);
+Schema *makeTopSchema(Schema *s1, float margin, const string &text, const string &link);
+Schema *makeDecorateSchema(Schema *s1, float margin, const string &text);
 Schema *makeConnectorSchema();
 Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const vector<int> &routes);

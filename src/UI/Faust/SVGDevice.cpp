@@ -22,8 +22,8 @@ static string xml_sanitize(const string &name) {
     return replaced_name;
 }
 
-SVGDevice::SVGDevice(string file_name, double width, double height) : file_name(std::move(file_name)) {
-    static const double scale = 0.5;
+SVGDevice::SVGDevice(string file_name, float width, float height) : file_name(std::move(file_name)) {
+    static const float scale = 0.5;
 
     stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", width, height);
     stream << (scaledSVG ? R"( width="100%" height="100%">)" : format(R"( width="{}mm" height="{}mm">)", width * scale, height * scale));
@@ -43,7 +43,7 @@ SVGDevice::~SVGDevice() {
     FileIO::write(file_name, stream.str());
 }
 
-void SVGDevice::rect(double x, double y, double l, double h, const string &color, const string &link) {
+void SVGDevice::rect(float x, float y, float l, float h, const string &color, const string &link) {
     if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
 
     // Shadow
@@ -56,11 +56,11 @@ void SVGDevice::rect(double x, double y, double l, double h, const string &color
     if (!link.empty()) stream << "</a>"; // close the optional link tag
 }
 
-void SVGDevice::triangle(double x, double y, double l, double h, const string &color, int orientation, const string &link) {
+void SVGDevice::triangle(float x, float y, float l, float h, const string &color, int orientation, const string &link) {
     if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
 
-    static const double radius = 1.5;
-    double x0, x1, x2;
+    static const float radius = 1.5;
+    float x0, x1, x2;
     if (orientation == kLeftRight) {
         x0 = x;
         x1 = x + l - 2 * radius;
@@ -75,54 +75,54 @@ void SVGDevice::triangle(double x, double y, double l, double h, const string &c
     stream << format(R"(<circle  fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x2, y + h / 2.0, radius);
 }
 
-void SVGDevice::circle(double x, double y, double radius) {
+void SVGDevice::circle(float x, float y, float radius) {
     stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", x, y, radius);
 }
 
-string transform_line(double x1, double y1, double x2, double y2, double rotation, double x, double y) {
+string transform_line(float x1, float y1, float x2, float y2, float rotation, float x, float y) {
     return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", x1, y1, x2, y2, rotation, x, y);
 }
 
-void SVGDevice::arrow(double x, double y, double rotation, int orientation) {
-    const double dx = 3;
-    const double dy = 1;
+void SVGDevice::arrow(float x, float y, float rotation, int orientation) {
+    const float dx = 3;
+    const float dy = 1;
     const auto x1 = orientation == kLeftRight ? x - dx : x + dx;
     stream << transform_line(x1, y - dy, x, y, rotation, x, y);
     stream << transform_line(x1, y + dy, x, y, rotation, x, y);
 }
 
-void SVGDevice::square(double x, double y, double dim) {
+void SVGDevice::square(float x, float y, float dim) {
     stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" style="stroke: black;stroke-width:0.5;fill:none;"/>)", x - 0.5 * dim, y - dim, dim, dim);
 }
 
-void SVGDevice::line(double x1, double y1, double x2, double y2) {
+void SVGDevice::line(float x1, float y1, float x2, float y2) {
     stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", x1, y1, x2, y2);
 }
 
-void SVGDevice::dasharray(double x1, double y1, double x2, double y2) {
+void SVGDevice::dasharray(float x1, float y1, float x2, float y2) {
     stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", x1, y1, x2, y2);
 }
 
-void SVGDevice::text(double x, double y, const char *name, const string &link) {
+void SVGDevice::text(float x, float y, const char *name, const string &link) {
     if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
     stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", x, y + 2, xml_sanitize(name));
     if (!link.empty()) stream << "</a>"; // close the optional link tag
 }
 
-void SVGDevice::label(double x, double y, const char *name) {
+void SVGDevice::label(float x, float y, const char *name) {
     stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", x, y + 2, xml_sanitize(name));
 }
 
-void SVGDevice::dot(double x, double y, int orientation) {
-    const int offset = orientation == kLeftRight ? 2 : -2;
+void SVGDevice::dot(float x, float y, int orientation) {
+    const float offset = orientation == kLeftRight ? 2 : -2;
     stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", x + offset, y + offset);
 }
 
-string errorText(double x, double y, double length, const string &stroke, const string &fill, const string &text) {
+string errorText(float x, float y, float length, const string &stroke, const string &fill, const string &text) {
     return format(R"(<text x="{}" y="{}" textLength="{}" lengthAdjust="spacingAndGlyphs" style="stroke: {}; stroke-width:0.3; text-anchor:middle; fill:{};">{}</text>)", x, y, length, stroke, fill, text);
 }
 
-void SVGDevice::Error(const char *message, const char *reason, int nb_error, double x, double y, double width) {
+void SVGDevice::Error(const char *message, const char *reason, int nb_error, float x, float y, float width) {
     stream << errorText(x, y - 7, width, "red", "red", format("{} : {}", nb_error, message));
     stream << errorText(x, y + 7, width, "red", "none", reason);
 }

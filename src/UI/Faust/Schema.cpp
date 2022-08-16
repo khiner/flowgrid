@@ -248,25 +248,23 @@ static double computeHorzGap(Schema *a, Schema *b) {
 
     if (a->outputs == 0) return 0;
 
-    // store the size of the largest group for each direction
-    int MaxGroupSize[3];
-    for (int &i: MaxGroupSize) i = 0;
-
     // place a and b to have valid connection points
     a->place(0, max(0.0, 0.5 * (b->height - a->height)), kLeftRight);
     b->place(0, max(0.0, 0.5 * (a->height - b->height)), kLeftRight);
 
+    // todo simplify
     // init current group direction and size
     int gdir = direction(a->outputPoint(0), b->inputPoint(0));
     int gsize = 1;
 
+    int MaxGroupSize[3] = {0, 0, 0}; // store the size of the largest group for each direction
     // analyze direction of remaining points
     for (unsigned int i = 1; i < a->outputs; i++) {
         int d = direction(a->outputPoint(i), b->inputPoint(i));
         if (d == gdir) {
             gsize++;
         } else {
-            if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
+            MaxGroupSize[gdir] = max(MaxGroupSize[gdir], gsize);
             gsize = 1;
             gdir = d;
         }
@@ -404,7 +402,6 @@ Schema *makeSplitSchema(Schema *s1, Schema *s2) {
     // Make sure `a` and `b` are at least `dWire` large.
     auto *a = makeEnlargedSchema(s1, dWire);
     auto *b = makeEnlargedSchema(s2, dWire);
-
     // Horizontal gap to avoid sloppy connections.
     return new SplitSchema(a, b, (a->height + b->height) / 4);
 }

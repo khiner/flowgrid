@@ -379,10 +379,11 @@ static void writeSchemaFile(Tree bd) {
     // generate the label of the schema
     string link = dc->backLink[bd];
     ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), link);
-    ts->place(0, 0, kLeftRight);
-    ts->collectLines();
 
     SVGDevice dev(res1, ts->width, ts->height);
+    // todo combine place/collect/draw
+    ts->place(0, 0, kLeftRight);
+    ts->collectLines();
     ts->draw(dev);
 }
 

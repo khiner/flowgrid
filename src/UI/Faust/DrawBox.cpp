@@ -1,8 +1,11 @@
 #include <set>
 #include <stack>
 #include <filesystem>
-
 #include <range/v3/algorithm/contains.hpp>
+#include <range/v3/view/take.hpp>
+#include <range/v3/view/take_while.hpp>
+#include <range/v3/core.hpp>
+#include "fmt/core.h"
 
 #include "property.hh"
 #include "boxes/ppbox.hh"
@@ -20,12 +23,12 @@
 #define numcolor "#f44800"
 #define invcolor "#ffffff"
 
-#define FAUST_PATH_MAX 1024
+namespace views = ::ranges::views;
+using namespace fmt;
 
 struct DrawContext {
     Tree boxComplexityMemo{}; // Avoid recomputing box complexity
     property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
-    string currentDir; // Save current directory name
     string schemaFileName;  // Name of schema file being generated
     set<Tree> drawnExp; // Expressions drawn or scheduled so far
     map<Tree, string> backLink; // Link to enclosing file for sub schema
@@ -129,26 +132,6 @@ int computeComplexity(Box box) {
 
 namespace fs = std::filesystem;
 
-void getCurrentDir() {
-    char buffer[FAUST_PATH_MAX];
-    char *current_dir = getcwd(buffer, FAUST_PATH_MAX);
-    dc->currentDir = current_dir ? current_dir : "";
-}
-
-void mkchDir(const string &dirname) {
-    getCurrentDir();
-    if (!dc->currentDir.empty()) {
-        fs::remove_all("FaustDiagrams");
-        if (fs::create_directory(dirname) && chdir(dirname.c_str()) == 0) return;
-    }
-
-    throw std::runtime_error((stringstream("ERROR : mkchDir : ") << strerror(errno)).str());
-}
-
-void choldDir() {
-    if (chdir(dc->currentDir.c_str()) != 0) throw std::runtime_error((stringstream("ERROR : choldDir : ") << strerror(errno)).str());
-}
-
 static Schema *createSchema(Tree t);
 
 // Generate a 1->0 block schema for an input slot.
@@ -193,22 +176,13 @@ static Schema *addSchemaOutputs(int outs, Schema *x) {
 // Transform the definition name property of tree <t> into a legal file name.
 // The resulting file name is stored in <dst> a table of at least <n> chars.
 // Returns the <dst> pointer for convenience.
-static char *legalFileName(Tree t, char *dst) {
-    static int n = FAUST_PATH_MAX;
+static string legalFileName(Tree t) {
     Tree id;
-    int i = 0;
-    if (getDefNameProperty(t, id)) {
-        const char *src = tree2str(id);
-        for (i = 0; isalnum(src[i]) && i < 16; i++) {
-            dst[i] = src[i];
-        }
-    }
-    dst[i] = 0;
-    if (strcmp(dst, "process") != 0) {
-        // if it is not process add the hex address to make the name unique
-        snprintf(&dst[i], n - i, "-%p", (void *) t);
-    }
-    return dst;
+    getDefNameProperty(t, id);
+    const string idStr = tree2str(id);
+    const string dst = views::take_while(idStr, [](char c) { return std::isalnum(c); }) | views::take(16) | ::ranges::to<string>();
+    // if it is not process add the hex address to make the name unique
+    return dst != "process" ? dst + format("-{:p}", (void *) t) : dst;
 }
 
 // Returns `true` if `t == '*(-1)'`.
@@ -348,6 +322,12 @@ static Schema *generateInsideSchema(Tree t) {
 
     throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
 }
+
+// TODO provide controls for these properties
+const int foldThreshold = 25; // global complexity threshold before activating folding
+const int foldComplexity = 2; // individual complexity threshold before folding
+const fs::path faustDiagramsPath = "FaustDiagrams"; // todo properties
+
 // Write a top level diagram.
 // A top level diagram is decorated with its definition name property and is drawn in an individual file.
 static void writeSchemaFile(Tree bd) {
@@ -355,24 +335,15 @@ static void writeSchemaFile(Tree bd) {
     Schema *ts;
     int ins, outs;
 
-    char temp[FAUST_PATH_MAX];
-
     getBoxType(bd, &ins, &outs);
 
     bool hasname = getDefNameProperty(bd, id);
     if (!hasname) id = tree(Node(unique("diagram_"))); // create an arbitrary name
 
-    // generate legal file name for the schema
-    stringstream s1;
-    s1 << legalFileName(bd, temp) << ".svg";
-    string res1 = s1.str();
-    dc->schemaFileName = res1;
+    dc->schemaFileName = legalFileName(bd) + ".svg";
+    ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), dc->backLink[bd]);
 
-    // generate the label of the schema
-    string link = dc->backLink[bd];
-    ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), link);
-
-    SVGDevice dev(res1, ts->width, ts->height);
+    SVGDevice dev(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
     // todo combine place/collect/draw
     ts->place(0, 0, kLeftRight);
     ts->collectLines();
@@ -396,23 +367,17 @@ static bool pendingDrawing(Tree &t) {
     return true;
 }
 
-// TODO provide controls for these properties
-const int foldThreshold = 25; // global complexity threshold before activating folding
-const int foldComplexity = 2; // individual complexity threshold before folding
-
 void drawBox(Box box) {
+    fs::remove_all(faustDiagramsPath);
+    fs::create_directory(faustDiagramsPath);
+
     dc = std::make_unique<DrawContext>();
     dc->foldingFlag = boxComplexity(box) > foldThreshold;
-    mkchDir("FaustDiagrams"); // create a directory to store files
 
     scheduleDrawing(box); // schedule the initial drawing
 
     Tree t;
-    while (pendingDrawing(t)) {
-        writeSchemaFile(t); // generate all the pending drawing
-    }
-
-    choldDir(); // return to original directory
+    while (pendingDrawing(t)) writeSchemaFile(t); // generate all the pending drawings
 }
 
 // Compute the Pure Routing property.
@@ -445,12 +410,9 @@ static Schema *createSchema(Tree t) {
 
     const bool hasname = getDefNameProperty(t, id);
     if (dc->foldingFlag && boxComplexity(t) >= foldComplexity && hasname) {
-        char temp[FAUST_PATH_MAX];
         getBoxType(t, &ins, &outs);
-        stringstream l;
-        l << legalFileName(t, temp) << ".svg";
         scheduleDrawing(t);
-        return makeBlockSchema(ins, outs, tree2str(id), linkcolor, l.str());
+        return makeBlockSchema(ins, outs, tree2str(id), linkcolor, legalFileName(t) + ".svg");
     }
 
     // Not a slot, with a name. Draw a line around the object with its name.

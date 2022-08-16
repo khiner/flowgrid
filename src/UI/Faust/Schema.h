@@ -2,7 +2,6 @@
 
 #include "Device.h"
 
-#include <set>
 #include <string>
 #include <vector>
 
@@ -18,13 +17,6 @@ struct Point {
 
     Point() : x(0.0), y(0.0) {}
     Point(double x, double y) : x(x), y(y) {}
-
-    bool operator<(const Point &p) const {
-        if (x < p.x) return true;
-        if (x > p.x) return false;
-        if (y < p.y) return true;
-        return false;
-    }
 };
 
 struct Line {
@@ -32,13 +24,6 @@ struct Line {
 
     Line(const Point &p1, const Point &p2) : start(p1), end(p2) {}
     void draw(Device &device) const { device.line(start.x, start.y, end.x, end.y); }
-
-    bool operator<(const Line &t) const {
-        if (start < t.start) return true;
-        if (t.start < start) return false;
-        if (end < t.end) return true;
-        return false;
-    }
 };
 
 // An abstract block diagram schema
@@ -50,7 +35,7 @@ struct Schema {
     double x = 0, y = 0;
     int orientation = 0;
 
-    set<Line> lines; // Populated in `collectLines()`
+    vector<Line> lines; // Populated in `collectLines()`
 
     Schema(unsigned int inputs, unsigned int outputs, double width, double height) : inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;

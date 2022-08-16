@@ -380,11 +380,10 @@ static void writeSchemaFile(Tree bd) {
     string link = dc->backLink[bd];
     ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), link);
     ts->place(0, 0, kLeftRight);
-    Collector c;
-    ts->collectLines(c);
+    ts->collectLines();
+
     SVGDevice dev(res1, ts->width, ts->height);
     ts->draw(dev);
-    c.draw(dev);
 }
 
 // Schedule a block diagram to be drawn.

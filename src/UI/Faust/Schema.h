@@ -41,12 +41,6 @@ struct Line {
     }
 };
 
-struct Collector {
-    set<Line> lines; // collect lines to draw
-
-    void draw(Device &);
-};
-
 // An abstract block diagram schema
 struct Schema {
     const unsigned int inputs, outputs;
@@ -55,6 +49,8 @@ struct Schema {
     // Fields only defined after `place()` is called:
     double x = 0, y = 0;
     int orientation = 0;
+
+    set<Line> lines; // Populated in `collectLines()`
 
     Schema(unsigned int inputs, unsigned int outputs, double width, double height) : inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;
@@ -66,12 +62,17 @@ struct Schema {
         placeImpl();
     }
 
+    void draw(Device &device) const {
+        for (const auto &line: lines) line.draw(device);
+        drawImpl(device);
+    }
+
     // abstract interface for subclasses
     virtual void placeImpl() = 0;
-    virtual void draw(Device &) = 0;
+    virtual void drawImpl(Device &) const = 0;
     virtual Point inputPoint(unsigned int i) const = 0;
     virtual Point outputPoint(unsigned int i) const = 0;
-    virtual void collectLines(Collector &c) = 0;
+    virtual void collectLines() = 0;
 };
 
 struct IOSchema : Schema {
@@ -100,14 +101,14 @@ struct BinarySchema : Schema {
     Point inputPoint(unsigned int i) const override { return schema1->inputPoint(i); }
     Point outputPoint(unsigned int i) const override { return schema2->outputPoint(i); }
 
-    void draw(Device &device) override {
+    void drawImpl(Device &device) const override {
         schema1->draw(device);
         schema2->draw(device);
     }
 
-    void collectLines(Collector &c) override {
-        schema1->collectLines(c);
-        schema2->collectLines(c);
+    void collectLines() override {
+        schema1->collectLines();
+        schema2->collectLines();
     }
 
     Schema *schema1;

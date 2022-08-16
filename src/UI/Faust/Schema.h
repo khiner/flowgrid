@@ -45,13 +45,8 @@ struct Collector {
     set<Point> outputs; // collect real outputs
     set<Point> inputs; // collect real inputs
     set<Line> lines; // collect lines to draw
-    set<Line> withInput; // collect lines with a real input
-    set<Line> withOutput; // collect lines with a real output
 
     void draw(Device &);
-
-private:
-    bool computeVisibleLines();
 };
 
 // An abstract block diagram schema

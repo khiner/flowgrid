@@ -1,26 +1,8 @@
 #include "Schema.h"
 #include "../../Helper/assert.h"
 
-bool Collector::computeVisibleLines() {
-    bool modified = false;
-    for (const auto &line: lines) {
-        if (!withInput.contains(line) && outputs.contains(line.start)) {
-            withInput.insert(line); // the cable is connected to a real output
-            outputs.insert(line.end); // end become a real output too
-            modified = true;
-        }
-        if (!withOutput.contains(line) && inputs.contains(line.end)) {
-            withOutput.insert(line); // the cable is connected to a real input
-            inputs.insert(line.start); // start become a real input too
-            modified = true;
-        }
-    }
-    return modified;
-}
-
 void Collector::draw(Device &device) {
-    while (computeVisibleLines());
-    for (const auto &line: lines) if (withInput.contains(line) && withOutput.contains(line)) line.draw(device);
+    for (const auto &line: lines) line.draw(device);
 }
 
 // A simple rectangular box with a text and inputs and outputs.

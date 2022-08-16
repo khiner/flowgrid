@@ -42,8 +42,6 @@ struct Line {
 };
 
 struct Collector {
-    set<Point> outputs; // collect real outputs
-    set<Point> inputs; // collect real inputs
     set<Line> lines; // collect lines to draw
 
     void draw(Device &);

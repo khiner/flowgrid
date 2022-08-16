@@ -51,18 +51,11 @@ void BlockSchema::draw(Device &device) {
     for (const auto &p: inputPoints) device.arrow(p.x + dx, p.y, 0, orientation);
 }
 
+// Input/output wires
 void BlockSchema::collectLines(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
-    // Input wires
-    for (const auto &p: inputPoints) {
-        c.lines.insert({p, {p.x + dx, p.y}});
-        c.inputs.insert({p.x + dx, p.y});
-    }
-    // Output wires
-    for (const auto &p: outputPoints) {
-        c.lines.insert({{p.x - dx, p.y}, p});
-        c.outputs.insert({p.x - dx, p.y});
-    }
+    for (const auto &p: inputPoints) c.lines.insert({p, {p.x + dx, p.y}});
+    for (const auto &p: outputPoints) c.lines.insert({{p.x - dx, p.y}, p});
 }
 
 // Simple cables (identity box) in parallel.
@@ -582,10 +575,6 @@ void RecSchema::collectFeedback(Collector &c, const Point &src, const Point &dst
     const Point up(ox, src.y - ct);
     const Point br(ox + ct / 2.0, src.y);
 
-    c.outputs.insert(up);
-    c.outputs.insert(br);
-    c.inputs.insert(br);
-
     c.lines.insert({up, {ox, dst.y}});
     c.lines.insert({{ox, dst.y}, dst});
     c.lines.insert({src, br});
@@ -654,8 +643,6 @@ void TopSchema::draw(Device &device) {
 
 void TopSchema::collectLines(Collector &c) {
     schema->collectLines(c);
-    for (unsigned int i = 0; i < schema->inputs; i++) c.outputs.insert(schema->inputPoint(i));
-    for (unsigned int i = 0; i < schema->outputs; i++) c.inputs.insert(schema->outputPoint(i));
 }
 
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
@@ -742,18 +729,11 @@ ConnectorSchema::ConnectorSchema() : IOSchema(1, 1, dWire, dWire) {}
 
 void ConnectorSchema::draw(Device &) {}
 
+// Input/output wires
 void ConnectorSchema::collectLines(Collector &c) {
     const double dx = (orientation == kLeftRight) ? dHorz : -dHorz;
-    // Input wires
-    for (const auto &p: inputPoints) {
-        c.lines.insert({p, {p.x + dx, p.y}});
-        c.inputs.insert({p.x + dx, p.y});
-    }
-    // Output wires
-    for (const auto &p: outputPoints) {
-        c.lines.insert({{p.x - dx, p.y}, p});
-        c.outputs.insert({p.x - dx, p.y});
-    }
+    for (const auto &p: inputPoints) c.lines.insert({p, {p.x + dx, p.y}});
+    for (const auto &p: outputPoints) c.lines.insert({{p.x - dx, p.y}, p});
 }
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -803,16 +783,10 @@ void RouteSchema::draw(Device &device) {
 
 void RouteSchema::collectLines(Collector &c) {
     const double dx = orientation == kLeftRight ? dHorz : -dHorz;
-    // Input wires
-    for (const auto &p: inputPoints) {
-        c.lines.insert({p, {p.x + dx, p.y}});
-        c.inputs.insert({p.x + dx, p.y});
-    }
-    // Output wires
-    for (const auto &p: outputPoints) {
-        c.lines.insert({{p.x - dx, p.y}, p});
-        c.outputs.insert({p.x - dx, p.y});
-    }
+    // Input/output wires
+    for (const auto &p: inputPoints) c.lines.insert({p, {p.x + dx, p.y}});
+    for (const auto &p: outputPoints) c.lines.insert({{p.x - dx, p.y}, p});
+
     // Route wires
     for (unsigned int i = 0; i < routes.size() - 1; i += 2) {
         const auto p1 = inputPoints[routes[i] - 1];

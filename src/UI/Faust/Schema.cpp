@@ -1,5 +1,6 @@
 #include "Schema.h"
 #include "../../Helper/assert.h"
+#include "imgui_internal.h"
 
 // A simple rectangular box with a text and inputs and outputs.
 struct BlockSchema : IOSchema {
@@ -161,14 +162,8 @@ void EnlargedSchema::placeImpl() {
 
     if (orientation == kRightLeft) dx = -dx;
 
-    for (unsigned int i = 0; i < inputs; i++) {
-        const auto p = schema->inputPoint(i);
-        inputPoints[i] = {p.x - dx, p.y};
-    }
-    for (unsigned int i = 0; i < outputs; i++) {
-        const auto p = schema->outputPoint(i);
-        outputPoints[i] = {p.x + dx, p.y};
-    }
+    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - ImVec2{dx, 0.0f};
+    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + ImVec2{dx, 0};
 }
 
 void EnlargedSchema::drawImpl(Device &device) const { schema->draw(device); }
@@ -411,7 +406,7 @@ Schema *makeSplitSchema(Schema *s1, Schema *s2) {
 SplitSchema::SplitSchema(Schema *s1, Schema *s2, float hgap)
     : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + hgap, max(s1->height, s2->height)), horzGap(hgap) {}
 
-// Place the two subschema horizontaly, centered, with enough gap for the connections
+// Place the two subschema horizontally, centered, with enough gap for the connections
 void SplitSchema::placeImpl() {
     const float dy1 = max(0.0f, schema2->height - schema1->height) / 2.0f;
     const float dy2 = max(0.0f, schema1->height - schema2->height) / 2.0f;
@@ -447,7 +442,6 @@ private:
 
 // Creates a new recursive schema (s1 ~ s2).
 // The smallest component is enlarged to the width of the other.
-// The left and right horizontal margins are computed according to the number of internal connections.
 Schema *makeRecSchema(Schema *s1, Schema *s2) {
     auto *a = makeEnlargedSchema(s1, s2->width);
     auto *b = makeEnlargedSchema(s2, s1->width);
@@ -467,7 +461,6 @@ RecSchema::RecSchema(Schema *s1, Schema *s2, float width)
 }
 
 // The two subschema are placed centered vertically, s2 on top of s1.
-// The input and output points are computed.
 void RecSchema::placeImpl() {
     float dx1 = (width - schema1->width) / 2;
     const float dx2 = (width - schema2->width) / 2;
@@ -479,16 +472,9 @@ void RecSchema::placeImpl() {
         schema2->place(x + dx2, y + schema1->height, kLeftRight);
     }
 
-    if (orientation == kRightLeft) dx1 = -dx1;
-
-    for (unsigned int i = 0; i < inputs; i++) {
-        const auto p = schema1->inputPoint(i + schema2->outputs);
-        inputPoints[i] = {p.x - dx1, p.y};
-    }
-    for (unsigned int i = 0; i < outputs; i++) {
-        const auto p = schema1->outputPoint(i);
-        outputPoints[i] = {p.x + dx1, p.y};
-    }
+    const ImVec2 d1 = {orientation == kRightLeft ? -dx1 : dx1, 0};
+    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema1->inputPoint(i + schema2->outputs) - d1;
+    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema1->outputPoint(i) + d1;
 }
 
 // Draw the delay sign of a feedback connection
@@ -505,8 +491,8 @@ void RecSchema::drawImpl(Device &device) const {
     // Draw the implicit feedback delay to each schema2 input
     const float dw = (orientation == kLeftRight) ? dWire : -dWire;
     for (unsigned int i = 0; i < schema2->inputs; i++) {
-        const auto &p = schema1->outputPoint(i);
-        drawDelaySign(device, p.x + float(i) * dw, p.y, dw / 2);
+        const auto &p = schema1->outputPoint(i) + ImVec2{float(i) * dw, 0};
+        drawDelaySign(device, p.x, p.y, dw / 2);
     }
 }
 
@@ -628,14 +614,8 @@ void DecorateSchema::placeImpl() {
     schema->place(x + margin, y + margin, orientation);
 
     const float m = orientation == kRightLeft ? -margin : margin;
-    for (unsigned int i = 0; i < inputs; i++) {
-        const auto p = schema->inputPoint(i);
-        inputPoints[i] = {p.x - m, p.y}; // todo inline with `= p - {m, 0}` and vectorize
-    }
-    for (unsigned int i = 0; i < outputs; i++) {
-        const auto p = schema->outputPoint(i);
-        outputPoints[i] = {p.x + m, p.y}; // todo inline with `= p + {m, 0}` and vectorize
-    }
+    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - ImVec2{m, 0};
+    for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + ImVec2{m, 0};
 }
 
 void DecorateSchema::drawImpl(Device &device) const {

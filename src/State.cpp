@@ -165,12 +165,12 @@ bool Field::String::Draw(const std::vector<string> &options) const {
 
 ImRect RowItemRect() {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, {row_min.x + GetWindowWidth(), row_min.y + GetFontSize()}};
+    return {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
 }
 
 ImRect RowItemRatioRect(float ratio) {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, {row_min.x + GetWindowWidth() * std::clamp(ratio, 0.0f, 1.0f), row_min.y + GetFontSize()}};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.0f, 1.0f), GetFontSize()}};
 }
 
 void FillRowItemBg(const ImVec4 &col = s.style.imgui.Colors[ImGuiCol_FrameBgActive]) {
@@ -797,11 +797,9 @@ void Style::ImGuiStyleMember::draw() const {
                     Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
 
                     const float canvas_width = ImMax(min_widget_width, rad * 2.0f);
-                    const float offset_x = floorf(canvas_width * 0.5f);
-                    const float offset_y = floorf(RAD_MAX);
-
+                    const ImVec2 offset = {floorf(canvas_width * 0.5f), floorf(RAD_MAX)};
                     const ImVec2 p1 = GetCursorScreenPos();
-                    draw_list->AddCircle(ImVec2(p1.x + offset_x, p1.y + offset_y), rad, GetColorU32(ImGuiCol_Text));
+                    draw_list->AddCircle(p1 + offset, rad, GetColorU32(ImGuiCol_Text));
                     Dummy(ImVec2(canvas_width, RAD_MAX * 2));
 
                     EndGroup();

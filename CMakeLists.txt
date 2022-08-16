@@ -37,5 +37,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI libsoundio_shared nlohmann_j
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
+add_definitions(-DIMGUI_DEFINE_MATH_OPERATORS) # ImVec2 & ImVec4 math operators
 add_definitions(-DZEP_USE_SDL) # Needed for ctrl key to work with Zep
 add_definitions(-DCUSTOM_IMGUIFILEDIALOG_CONFIG="../../src/FileDialog/CustomImGuiFileDialogConfig.h") # Relative to `lib/ImGuiFileDialog`

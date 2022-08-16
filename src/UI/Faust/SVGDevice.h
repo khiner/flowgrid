@@ -3,7 +3,6 @@
 #include "Device.h"
 #include "sstream"
 
-
 struct SVGDevice : Device {
     SVGDevice(string file_name, float width, float height);
     ~SVGDevice() override;

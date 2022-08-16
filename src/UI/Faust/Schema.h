@@ -6,8 +6,6 @@
 #include <vector>
 #include "imgui.h"
 
-using namespace std;
-
 const float dWire = 8; // distance between two wires
 const float dLetter = 4.3; // width of a letter
 const float dHorz = 4;
@@ -29,7 +27,7 @@ struct Schema {
     float x = 0, y = 0;
     int orientation = 0;
 
-    vector<Line> lines; // Populated in `collectLines()`
+    std::vector<Line> lines; // Populated in `collectLines()`
 
     Schema(unsigned int inputs, unsigned int outputs, float width, float height) : inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;
@@ -71,8 +69,8 @@ struct IOSchema : Schema {
     ImVec2 inputPoint(unsigned int i) const override { return inputPoints[i]; }
     ImVec2 outputPoint(unsigned int i) const override { return outputPoints[i]; }
 
-    vector<ImVec2> inputPoints;
-    vector<ImVec2> outputPoints;
+    std::vector<ImVec2> inputPoints;
+    std::vector<ImVec2> outputPoints;
 };
 struct BinarySchema : Schema {
     BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float width, float height)
@@ -108,4 +106,4 @@ Schema *makeRecSchema(Schema *s1, Schema *s2);
 Schema *makeTopSchema(Schema *s1, float margin, const string &text, const string &link);
 Schema *makeDecorateSchema(Schema *s1, float margin, const string &text);
 Schema *makeConnectorSchema();
-Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const vector<int> &routes);
+Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::vector<int> &routes);

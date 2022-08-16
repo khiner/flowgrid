@@ -2,6 +2,9 @@
 #include "../../Helper/assert.h"
 #include "imgui_internal.h"
 
+using std::min;
+using std::max;
+
 // A simple rectangular box with a text and inputs and outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(unsigned int inputs, unsigned int outputs, float width, float height, string text, string color, string link);
@@ -64,7 +67,7 @@ struct CableSchema : Schema {
     ImVec2 outputPoint(unsigned int i) const override;
 
 private:
-    vector<ImVec2> points;
+    std::vector<ImVec2> points;
 };
 
 Schema *makeCableSchema(unsigned int n) { return new CableSchema(n); }

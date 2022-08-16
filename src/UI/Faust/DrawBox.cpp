@@ -2,14 +2,16 @@
 #include <stack>
 #include <filesystem>
 
-#include "DrawBox.hh"
-#include "Schema.h"
-#include "SVGDevice.h"
+#include <range/v3/algorithm/contains.hpp>
 
 #include "property.hh"
 #include "boxes/ppbox.hh"
 #include "faust/dsp/libfaust-box.h"
 #include "faust/dsp/libfaust-signal.h"
+
+#include "DrawBox.hh"
+#include "Schema.h"
+#include "SVGDevice.h"
 
 #define linkcolor "#003366"
 #define normalcolor "#4B71A1"
@@ -18,32 +20,17 @@
 #define numcolor "#f44800"
 #define invcolor "#ffffff"
 
-using namespace std;
-
 #define FAUST_PATH_MAX 1024
 
 struct DrawContext {
-    DrawContext() {
-        pureRoutingProperty = new property<bool>();
-        inverter[0] = boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul));
-        inverter[1] = boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul));
-        inverter[2] = boxSeq(boxPar(boxWire(), boxReal(-1.0)), boxPrim2(sigMul));
-        inverter[3] = boxSeq(boxPar(boxReal(-1.0), boxWire()), boxPrim2(sigMul));
-        inverter[4] = boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub));
-        inverter[5] = boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub));
-    }
-
     Tree boxComplexityMemo{}; // Avoid recomputing box complexity
+    property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
     string currentDir; // Save current directory name
-    property<bool> *pureRoutingProperty;
-    bool foldingFlag = false; // true with complex block-diagrams
-    int foldThreshold = 25; // global complexity threshold before activating folding
-    int foldComplexity = 2;  // individual complexity threshold before folding
+    string schemaFileName;  // Name of schema file being generated
     set<Tree> drawnExp; // Expressions drawn or scheduled so far
     map<Tree, string> backLink; // Link to enclosing file for sub schema
     stack<Tree> pendingExp; // Expressions that need to be drawn
-    string schemaFileName;  // Name of schema file being generated
-    Tree inverter[6]{};
+    bool foldingFlag = false; // true with complex block-diagrams
 };
 
 std::unique_ptr<DrawContext> dc;
@@ -227,8 +214,15 @@ static char *legalFileName(Tree t, char *dst) {
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
 static bool isInverter(Tree t) {
-    for (const auto &i: dc->inverter) if (t == i) return true;
-    return false;
+    static Tree inverters[6]{
+        boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxWire(), boxReal(-1.0)), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxReal(-1.0), boxWire()), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub)),
+        boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub)),
+    };
+    return ::ranges::contains(inverters, t);
 }
 
 // Collect the leaf numbers of tree l into vector v.
@@ -402,9 +396,13 @@ static bool pendingDrawing(Tree &t) {
     return true;
 }
 
+// TODO provide controls for these properties
+const int foldThreshold = 25; // global complexity threshold before activating folding
+const int foldComplexity = 2; // individual complexity threshold before folding
+
 void drawBox(Box box) {
     dc = std::make_unique<DrawContext>();
-    dc->foldingFlag = boxComplexity(box) > dc->foldThreshold;
+    dc->foldingFlag = boxComplexity(box) > foldThreshold;
     mkchDir("FaustDiagrams"); // create a directory to store files
 
     scheduleDrawing(box); // schedule the initial drawing
@@ -425,18 +423,18 @@ static bool isPureRouting(Tree t) {
     int ID;
     Tree x, y;
 
-    if (dc->pureRoutingProperty->get(t, r)) return r;
+    if (dc->pureRoutingPropertyMemo.get(t, r)) return r;
 
     if (isBoxCut(t) || isBoxWire(t) || isInverter(t) || isBoxSlot(t, &ID) ||
         (isBoxPar(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
         (isBoxSeq(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
         (isBoxSplit(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
         (isBoxMerge(t, x, y) && isPureRouting(x) && isPureRouting(y))) {
-        dc->pureRoutingProperty->set(t, true);
+        dc->pureRoutingPropertyMemo.set(t, true);
         return true;
     }
 
-    dc->pureRoutingProperty->set(t, false);
+    dc->pureRoutingPropertyMemo.set(t, false);
     return false;
 }
 
@@ -446,7 +444,7 @@ static Schema *createSchema(Tree t) {
     int ins, outs;
 
     const bool hasname = getDefNameProperty(t, id);
-    if (dc->foldingFlag && boxComplexity(t) >= dc->foldComplexity && hasname) {
+    if (dc->foldingFlag && boxComplexity(t) >= foldComplexity && hasname) {
         char temp[FAUST_PATH_MAX];
         getBoxType(t, &ins, &outs);
         stringstream l;

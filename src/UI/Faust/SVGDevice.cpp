@@ -6,7 +6,6 @@
 #include "../../Helper/File.h"
 #include "../../Helper/String.h"
 
-using namespace std;
 using namespace fmt;
 
 bool scaledSVG = false; // Draw scaled SVG files

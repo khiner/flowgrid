@@ -444,28 +444,16 @@ struct SequentialSchema : BinarySchema {
         a->place(0, dy1, kLeftRight);
         b->place(0, dy2, kLeftRight);
 
-        // todo simplify
-        // init current group direction and size
-        int gdir = direction(a->outputPoint(0), b->inputPoint(0));
-        int gsize = 1;
-
-        int MaxGroupSize[3] = {0, 0, 0}; // store the size of the largest group for each direction
-        // analyze direction of remaining points
-        for (unsigned int i = 1; i < a->outputs; i++) {
-            int d = direction(a->outputPoint(i), b->inputPoint(i));
-            if (d == gdir) {
-                gsize++;
-            } else {
-                MaxGroupSize[gdir] = max(MaxGroupSize[gdir], gsize);
-                gsize = 1;
-                gdir = d;
-            }
+        int dir = kHorDir;
+        int size = 0;
+        int MaxGroupSize[] = {0, 0, 0}; // store the size of the largest group for each direction
+        for (unsigned int i = 0; i < a->outputs; i++) {
+            const auto d = direction(a->outputPoint(i), b->inputPoint(i));
+            size = d == dir ? size + 1 : 1;
+            dir = d;
+            MaxGroupSize[dir] = max(MaxGroupSize[dir], size);
         }
 
-        // update for last group
-        if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
-
-        // the gap required for the connections
         return dWire * float(max(MaxGroupSize[kUpDir], MaxGroupSize[kDownDir]));
     }
 };

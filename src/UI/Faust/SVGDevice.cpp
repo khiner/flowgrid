@@ -9,7 +9,6 @@
 using namespace fmt;
 
 bool scaledSVG = false; // Draw scaled SVG files
-bool shadowBlur = false; // Note: `svg2pdf` doesn't like the blur filter
 
 static string xml_sanitize(const string &name) {
     static std::map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
@@ -26,15 +25,6 @@ SVGDevice::SVGDevice(string file_name, float width, float height) : file_name(st
 
     stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", width, height);
     stream << (scaledSVG ? R"( width="100%" height="100%">)" : format(R"( width="{}mm" height="{}mm">)", width * scale, height * scale));
-
-    if (shadowBlur) {
-        stream << "<defs>\n"
-                  "   <filter id=\"filter\" filterRes=\"18\" x=\"0\" y=\"0\">\n"
-                  "     <feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"1.55\" result=\"blur\"/>\n"
-                  "     <feOffset in=\"blur\" dx=\"3\" dy=\"3\"/>\n"
-                  "   </filter>\n"
-                  "</defs>\n";
-    }
 }
 
 SVGDevice::~SVGDevice() {
@@ -44,15 +34,7 @@ SVGDevice::~SVGDevice() {
 
 void SVGDevice::rect(const ImVec4 &rect, const string &color, const string &link) {
     if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
-
     const auto [x, y, w, h] = rect;
-
-    // Shadow
-    stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" )", x + 1, y + 1, w, h);
-    stream << (shadowBlur ? R"(rx="0.1" ry="0.1" style="stroke:none;fill:#aaaaaa;;filter:url(#filter);"/>)"
-                          : R"(rx="0" ry="0" style="stroke:none;fill:#cccccc;"/>)");
-
-    // Rectangle
     stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, w, h, color);
     if (!link.empty()) stream << "</a>"; // close the optional link tag
 }

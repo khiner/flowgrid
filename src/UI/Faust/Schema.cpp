@@ -133,7 +133,7 @@ ImVec2 CutSchema::inputPoint(unsigned int) const { return point; }
 
 // By definition, a Cut has no output point.
 ImVec2 CutSchema::outputPoint(unsigned int) const {
-    assert(false);
+    fgassert(false);
     return {-1, -1};
 }
 
@@ -194,7 +194,7 @@ Schema *makeParallelSchema(Schema *s1, Schema *s2) {
 ParallelSchema::ParallelSchema(Schema *s1, Schema *s2)
     : BinarySchema(s1, s2, s1->inputs + s2->inputs, s1->outputs + s2->outputs, s1->width, s1->height + s2->height),
       inputFrontier(s1->inputs), outputFrontier(s1->outputs) {
-    assert(s1->width == s2->width);
+    fgassert(s1->width == s2->width);
 }
 
 void ParallelSchema::placeImpl() {
@@ -240,7 +240,7 @@ static int direction(const ImVec2 &a, const ImVec2 &b) {
 // Compute the horizontal gap needed to draw the internal wires.
 // It depends on the largest group of connections that go in the same direction.
 static float computeHorzGap(Schema *a, Schema *b) {
-    assert(a->outputs == b->inputs);
+    fgassert(a->outputs == b->inputs);
 
     if (a->outputs == 0) return 0;
 
@@ -288,7 +288,7 @@ Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
 // The components s1 and s2 are supposed to be "compatible" (s1 : n->m and s2 : m->q).
 SequentialSchema::SequentialSchema(Schema *s1, Schema *s2, float hgap)
     : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + hgap + s2->width, max(s1->height, s2->height)), horzGap(hgap) {
-    assert(s1->outputs == s2->inputs);
+    fgassert(s1->outputs == s2->inputs);
 }
 
 // Place the two components horizontally with enough space for the connections.
@@ -312,7 +312,7 @@ void SequentialSchema::collectLines() {
 // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
 void SequentialSchema::collectInternalWires() {
     const unsigned int N = schema1->outputs;
-    assert(N == schema2->inputs);
+    fgassert(N == schema2->inputs);
 
     float dx = 0, mx = 0;
     int dir = -1;
@@ -455,9 +455,9 @@ Schema *makeRecSchema(Schema *s1, Schema *s2) {
 RecSchema::RecSchema(Schema *s1, Schema *s2, float width)
     : IOSchema(s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height), schema1(s1), schema2(s2) {
     // This version only accepts legal expressions of same width.
-    assert(s1->inputs >= s2->outputs);
-    assert(s1->outputs >= s2->inputs);
-    assert(s1->width >= s2->width);
+    fgassert(s1->inputs >= s2->outputs);
+    fgassert(s1->outputs >= s2->inputs);
+    fgassert(s1->width >= s2->width);
 }
 
 // The two subschema are placed centered vertically, s2 on top of s1.

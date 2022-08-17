@@ -2,9 +2,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <stdexcept>
-#include <unistd.h>
-#include <sstream>
 #include <execinfo.h>
 
 using std::string;
@@ -39,4 +36,4 @@ void assertAux(bool condition, const string &file, int line) {
     throw Exception(str.str());
 }
 
-#define assert(cond) assertAux((cond), __FILE__, __LINE__)
+#define fgassert(cond) assertAux((cond), __FILE__, __LINE__)

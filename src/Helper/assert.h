@@ -16,23 +16,22 @@ public:
     void Print() { std::cerr << what(); }
 };
 
-static inline void stacktrace(stringstream &str, int value) {
-    void *callstack[value];
-    const int frames = backtrace(callstack, value);
-    char **symbols = backtrace_symbols(callstack, frames);
-    str << "====== Stack trace start ======\n";
-    for (int i = 0; i < frames; ++i) str << symbols[i] << "\n";
-    str << "====== Stack trace stop ======\n";
-    free(symbols);
-}
-
 void assertAux(bool condition, const string &file, int line) {
     if (condition) return;
 
     stringstream str;
     str << "Assertion failed.";
     str << "File: " << file.substr(file.find_last_of('/') + 1) << ", Line: " << line << '\n';
-    stacktrace(str, 20);
+
+    const int callstack_size = 20;
+    void *callstack[callstack_size];
+    const int frames = backtrace(callstack, callstack_size);
+    char **symbols = backtrace_symbols(callstack, frames);
+    str << "====== Stack trace start ======\n";
+    for (int i = 0; i < frames; ++i) str << symbols[i] << "\n";
+    str << "====== Stack trace stop ======\n";
+    
+    free(symbols);
     throw Exception(str.str());
 }
 

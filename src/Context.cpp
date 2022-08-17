@@ -1,5 +1,8 @@
 #include "Context.h"
 
+#include <range/v3/view/filter.hpp>
+#include <range/v3/view/map.hpp>
+
 #include "faust/dsp/llvm-dsp.h"
 #include "UI/Faust/DrawBox.hh"
 

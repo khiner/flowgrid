@@ -1,7 +1,10 @@
 #pragma once
 
 #include <string>
-#include "range/v3/view.hpp"
+#include <range/v3/core.hpp>
+#include <range/v3/view/join.hpp>
+#include <range/v3/view/transform.hpp>
+#include <range/v3/view/split.hpp>
 
 using std::string;
 namespace views = ranges::views;

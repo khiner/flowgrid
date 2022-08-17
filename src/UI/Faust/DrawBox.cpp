@@ -152,7 +152,7 @@ struct Schema {
 
     // Fields populated in `place()`:
     float x = 0, y = 0;
-    int orientation = 0;
+    int orientation = kLeftRight;
 
     std::vector<Line> lines; // Populated in `collectLines()`
 
@@ -299,13 +299,12 @@ struct EnlargedSchema : IOSchema {
     EnlargedSchema(Schema *s, float width) : IOSchema(s->inputs, s->outputs, width, s->height), schema(s) {}
 
     void placeImpl() override {
-        float dx = (width - schema->width) / 2;
+        const float dx = (width - schema->width) / 2;
         schema->place(x + dx, y, orientation);
 
-        if (orientation == kRightLeft) dx = -dx;
-
-        for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - ImVec2{dx, 0};
-        for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + ImVec2{dx, 0};
+        const ImVec2 d = {orientation == kRightLeft ? -dx : dx, 0};
+        for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - d;
+        for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + d;
     }
 
     void drawImpl(Device &device) const override { schema->draw(device); }
@@ -328,6 +327,7 @@ struct BinarySchema : Schema {
     BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float horzGap)
         : BinarySchema(s1, s2, inputs, outputs, horzGap, s1->width + s2->width + horzGap, max(s1->height, s2->height)) {}
     BinarySchema(Schema *s1, Schema *s2, float horzGap) : BinarySchema(s1, s2, s1->inputs, s2->outputs, horzGap) {}
+    BinarySchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, s1->inputs, s2->outputs, horizontalGap(s1, s2)) {}
 
     ImVec2 inputPoint(unsigned int i) const override { return schema1->inputPoint(i); }
     ImVec2 outputPoint(unsigned int i) const override { return schema2->outputPoint(i); }
@@ -355,8 +355,7 @@ struct BinarySchema : Schema {
         schema2->collectLines();
     }
 
-    Schema *schema1;
-    Schema *schema2;
+    Schema *schema1, *schema2;
     float horzGap;
 
 protected:
@@ -474,7 +473,7 @@ struct SequentialSchema : BinarySchema {
 // Place and connect two diagrams in merge composition.
 // The outputs of the first schema are merged to the inputs of the second.
 struct MergeSchema : BinarySchema {
-    MergeSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) {}
+    MergeSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2) {}
 
     void collectLines() override {
         BinarySchema::collectLines();
@@ -485,7 +484,7 @@ struct MergeSchema : BinarySchema {
 // Place and connect two diagrams in split composition.
 // The outputs of the first schema are distributed to the inputs of the second.
 struct SplitSchema : BinarySchema {
-    SplitSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) {}
+    SplitSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2) {}
 
     void collectLines() override {
         BinarySchema::collectLines();
@@ -505,7 +504,7 @@ struct RecSchema : IOSchema {
 
     // The two schemas are centered vertically, with `s2` on top of `s1`.
     void placeImpl() override {
-        float dx1 = (width - schema1->width) / 2;
+        const float dx1 = (width - schema1->width) / 2;
         const float dx2 = (width - schema2->width) / 2;
         if (orientation == kLeftRight) {
             schema2->place(x + dx2, y, kRightLeft);
@@ -575,8 +574,7 @@ private:
         lines.push_back({{ox, dst.y}, {dst.x, dst.y}});
     }
 
-    Schema *schema1;
-    Schema *schema2;
+    Schema *schema1, *schema2;
 };
 
 // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left.

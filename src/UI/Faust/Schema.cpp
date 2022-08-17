@@ -162,7 +162,7 @@ void EnlargedSchema::placeImpl() {
 
     if (orientation == kRightLeft) dx = -dx;
 
-    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - ImVec2{dx, 0.0f};
+    for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - ImVec2{dx, 0};
     for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + ImVec2{dx, 0};
 }
 
@@ -539,7 +539,7 @@ void RecSchema::collectFeedfront(const ImVec2 &src, const ImVec2 &dst, float dx)
 // The rectangle is placed at half the margin parameter.
 // Arrows are added to all the outputs.
 struct TopSchema : Schema {
-    TopSchema(Schema *s1, float margin, string text, string link);
+    TopSchema(Schema *s, string link, string text, float margin);
 
     void placeImpl() override;
     void drawImpl(Device &) const override;
@@ -549,23 +549,21 @@ struct TopSchema : Schema {
 
 private:
     Schema *schema;
-    float fMargin;
     string text;
     string link;
+    float margin;
 };
 
-Schema *makeTopSchema(Schema *s, float margin, const string &text, const string &link) {
-    return new TopSchema(makeDecorateSchema(s, margin / 2, text), margin / 2, "", link);
+Schema *makeTopSchema(Schema *s, const string &link, const string &text, float margin) {
+    return new TopSchema(makeDecorateSchema(s, text, margin), link, "", margin);
 }
 
-// A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left.
-// The rectangle is placed at half the margin parameter.
-// Arrows are added to the outputs.
-TopSchema::TopSchema(Schema *s, float margin, string text, string link)
-    : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), fMargin(margin), text(std::move(text)), link(std::move(link)) {}
+// A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
+TopSchema::TopSchema(Schema *s, string link, string text, float margin)
+    : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), text(std::move(text)), link(std::move(link)), margin(margin) {}
 
 void TopSchema::placeImpl() {
-    schema->place(x + fMargin, y + fMargin, orientation);
+    schema->place(x + margin, y + margin, orientation);
 }
 
 // Top schema has no input or output
@@ -574,7 +572,7 @@ ImVec2 TopSchema::outputPoint(unsigned int) const { throw std::runtime_error("ER
 
 void TopSchema::drawImpl(Device &device) const {
     device.rect({x, y, width - 1, height - 1}, "#ffffff", link);
-    device.label(ImVec2{x, y} + ImVec2{fMargin, fMargin / 2}, text.c_str());
+    device.label(ImVec2{x, y} + ImVec2{margin, margin / 2}, text.c_str());
 
     schema->draw(device);
 
@@ -586,9 +584,8 @@ void TopSchema::collectLines() {
 }
 
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
-// The rectangle is placed at half the margin parameter.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Schema *s1, float margin, string text);
+    DecorateSchema(Schema *s, string text, float margin);
 
     void placeImpl() override;
     void drawImpl(Device &) const override;
@@ -600,11 +597,9 @@ private:
     string text;
 };
 
-Schema *makeDecorateSchema(Schema *s, float margin, const string &text) { return new DecorateSchema(s, margin, text); }
+Schema *makeDecorateSchema(Schema *s, const string &text, float margin) { return new DecorateSchema(s, text, margin); }
 
-// A DecorateSchema is a schema surrounded by a dashed rectangle with a label on the top left.
-// The rectangle is placed at half the margin parameter.
-DecorateSchema::DecorateSchema(Schema *s, float margin, string text)
+DecorateSchema::DecorateSchema(Schema *s, string text, float margin)
     : IOSchema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
 
 void DecorateSchema::placeImpl() {
@@ -619,7 +614,7 @@ void DecorateSchema::drawImpl(Device &device) const {
     schema->draw(device);
 
     // Surrounding frame
-    const auto topLeft = ImVec2{x, y} + ImVec2{margin / 2, margin / 2};
+    const auto topLeft = ImVec2{x, y} + ImVec2{margin, margin} / 2;
     const auto topRight = topLeft + ImVec2{width - margin, 0};
     const auto bottomLeft = topLeft + ImVec2{0, height - margin};
     const auto bottomRight = bottomLeft + ImVec2{width - margin, 0};

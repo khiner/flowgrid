@@ -176,11 +176,8 @@ static Schema *addSchemaOutputs(int outs, Schema *x) {
 // Transform the definition name property of tree <t> into a legal file name.
 // The resulting file name is stored in <dst> a table of at least <n> chars.
 // Returns the <dst> pointer for convenience.
-static string legalFileName(Tree t) {
-    Tree id;
-    getDefNameProperty(t, id);
-    const string idStr = tree2str(id);
-    const string dst = views::take_while(idStr, [](char c) { return std::isalnum(c); }) | views::take(16) | ::ranges::to<string>();
+static string legalFileName(Tree t, const string &id) {
+    const string dst = views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | ::ranges::to<string>();
     // if it is not process add the hex address to make the name unique
     return dst != "process" ? dst + format("-{:p}", (void *) t) : dst;
 }
@@ -203,22 +200,21 @@ static bool isInverter(Tree t) {
 // Return true if l a number or a parallel tree of numbers.
 static bool isIntTree(Tree l, vector<int> &v) {
     int n;
-    double r;
-    Tree x, y;
-
     if (isBoxInt(l, &n)) {
         v.push_back(n);
         return true;
     }
+
+    double r;
     if (isBoxReal(l, &r)) {
         v.push_back(int(r));
         return true;
     }
+
+    Tree x, y;
     if (isBoxPar(l, x, y)) return isIntTree(x, v) && isIntTree(y, v);
 
-    stringstream error;
-    error << "ERROR in file " << __FILE__ << ':' << __LINE__ << ", not a valid list of numbers : " << boxpp(l) << endl;
-    throw std::runtime_error(error.str());
+    throw std::runtime_error((stringstream("ERROR in file ") << __FILE__ << ':' << __LINE__ << ", not a valid list of numbers : " << boxpp(l)).str());
 }
 
 // Convert user interface element into a textual representation
@@ -288,7 +284,7 @@ static Schema *generateInsideSchema(Tree t) {
     if (isVGroup || isHGroup || isTGroup) {
         const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
         auto *s1 = createSchema(a);
-        return makeDecorateSchema(s1, 10, groupId + "group(" + extractName(label) + ")");
+        return makeDecorateSchema(s1, groupId + "group(" + extractName(label) + ")");
     }
     if (isBoxSeq(t, a, b)) return makeSequentialSchema(createSchema(a), createSchema(b));
     if (isBoxPar(t, a, b)) return makeParallelSchema(createSchema(a), createSchema(b));
@@ -303,9 +299,10 @@ static Schema *generateInsideSchema(Tree t) {
     if (isBoxSymbolic(t, a, b)) {
         auto *inputSlotSchema = generateInputSlotSchema(a);
         auto *abstractionSchema = generateAbstractionSchema(inputSlotSchema, b);
+
         Tree id;
         if (getDefNameProperty(t, id)) return abstractionSchema;
-        return makeDecorateSchema(abstractionSchema, 10, "Abstraction");
+        return makeDecorateSchema(abstractionSchema, "Abstraction");
     }
     if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", normalcolor, "");
 
@@ -315,9 +312,7 @@ static Schema *generateInsideSchema(Tree t) {
         vector<int> route;
         if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) return makeRouteSchema(ins, outs, route);
 
-        stringstream error;
-        error << "ERROR in file " << __FILE__ << ':' << __LINE__ << ", invalid route expression : " << boxpp(t) << endl;
-        throw std::runtime_error(error.str());
+        throw std::runtime_error((stringstream("ERROR in file ") << __FILE__ << ':' << __LINE__ << ", invalid route expression : " << boxpp(t)).str());
     }
 
     throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
@@ -331,20 +326,19 @@ const fs::path faustDiagramsPath = "FaustDiagrams"; // todo properties
 // Write a top level diagram.
 // A top level diagram is decorated with its definition name property and is drawn in an individual file.
 static void writeSchemaFile(Tree bd) {
-    Tree id;
-    Schema *ts;
     int ins, outs;
-
     getBoxType(bd, &ins, &outs);
-    getDefNameProperty(bd, id);
 
-    dc->schemaFileName = legalFileName(bd) + ".svg";
-    ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), 20, tree2str(id), dc->backLink[bd]);
+    Tree idTree;
+    getDefNameProperty(bd, idTree);
+    const string &id = tree2str(idTree);
+    dc->schemaFileName = legalFileName(bd, id) + ".svg";
 
-    SVGDevice dev(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
+    auto *ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), dc->backLink[bd], id);
     // todo combine place/collect/draw
     ts->place(0, 0, kLeftRight);
     ts->collectLines();
+    SVGDevice dev(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
     ts->draw(dev);
 }
 
@@ -352,7 +346,7 @@ static void writeSchemaFile(Tree bd) {
 static void scheduleDrawing(Tree t) {
     if (dc->drawnExp.find(t) == dc->drawnExp.end()) {
         dc->drawnExp.insert(t);
-        dc->backLink.insert(make_pair(t, dc->schemaFileName));  // remember the enclosing filename
+        dc->backLink.emplace(t, dc->schemaFileName); // remember the enclosing filename
         dc->pendingExp.push(t);
     }
 }
@@ -403,18 +397,18 @@ static bool isPureRouting(Tree t) {
 
 // Generate an appropriate schema according to the type of block diagram.
 static Schema *createSchema(Tree t) {
-    Tree id;
-    int ins, outs;
-
-    const bool hasname = getDefNameProperty(t, id);
-    if (dc->foldingFlag && boxComplexity(t) >= foldComplexity && hasname) {
-        getBoxType(t, &ins, &outs);
-        scheduleDrawing(t);
-        return makeBlockSchema(ins, outs, tree2str(id), linkcolor, legalFileName(t) + ".svg");
+    Tree idTree;
+    if (getDefNameProperty(t, idTree)) {
+        const string &id = tree2str(idTree);
+        if (dc->foldingFlag && boxComplexity(t) >= foldComplexity) {
+            int ins, outs;
+            getBoxType(t, &ins, &outs);
+            scheduleDrawing(t);
+            return makeBlockSchema(ins, outs, tree2str(idTree), linkcolor, legalFileName(t, id) + ".svg");
+        }
+        // Not a slot, with a name. Draw a line around the object with its name.
+        if (!isPureRouting(t)) return makeDecorateSchema(generateInsideSchema(t), id);
     }
-
-    // Not a slot, with a name. Draw a line around the object with its name.
-    if (hasname && !isPureRouting(t)) return makeDecorateSchema(generateInsideSchema(t), 10, tree2str(id));
 
     return generateInsideSchema(t); // normal case
 }

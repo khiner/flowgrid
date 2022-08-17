@@ -64,17 +64,17 @@ void SVGDevice::circle(const ImVec2 &pos, float radius) {
     stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", pos.x, pos.y, radius);
 }
 
-string transform_line(float x1, float y1, float x2, float y2, float rotation, float x, float y) {
-    return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", x1, y1, x2, y2, rotation, x, y);
+string rotate_line(const Line &line, float rx, float ry, float rz) {
+    const auto &[start, end] = line;
+    return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", start.x, start.y, end.x, end.y, rx, ry, rz);
 }
 
 void SVGDevice::arrow(const ImVec2 &pos, float rotation, int orientation) {
+    static const float dx = 3, dy = 1;
     const auto [x, y] = pos;
-    const float dx = 3;
-    const float dy = 1;
     const auto x1 = orientation == kLeftRight ? x - dx : x + dx;
-    stream << transform_line(x1, y - dy, x, y, rotation, x, y);
-    stream << transform_line(x1, y + dy, x, y, rotation, x, y);
+    stream << rotate_line({{x1, y - dy}, pos}, rotation, x, y);
+    stream << rotate_line({{x1, y + dy}, pos}, rotation, x, y);
 }
 
 void SVGDevice::line(const Line &line) {

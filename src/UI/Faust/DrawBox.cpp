@@ -262,7 +262,7 @@ static inline float quantize(int n) {
 // The width of a cable is null.
 // Therefor, input and output connection points are the same.
 struct CableSchema : Schema {
-    CableSchema(unsigned int n) : Schema(n, n, 0, float(n) * dWire) {}
+    CableSchema(unsigned int n = 1) : Schema(n, n, 0, float(n) * dWire) {}
 
     // Place the communication points vertically spaced by `dWire`.
     void placeImpl() override {
@@ -478,16 +478,20 @@ private:
     float horzGap;
 };
 
+const float binarySchemaHorizontalGapRatio = 4; // todo style prop
+float binarySchemaHorizontalGap(const Schema *s1, const Schema *s2) { return (s1->height + s2->height) / binarySchemaHorizontalGapRatio; }
+
 // Place and connect two diagrams in merge composition.
 struct MergeSchema : BinarySchema {
     // Constructor for a merge schema s1 :> s2 where the outputs of s1 are merged to the inputs of s2.
-    MergeSchema(Schema *s1, Schema *s2, float horzGap)
-        : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + horzGap, max(s1->height, s2->height)), horzGap(horzGap) {}
+    MergeSchema(Schema *s1, Schema *s2)
+        : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + binarySchemaHorizontalGap(s1, s2), max(s1->height, s2->height)) {}
 
     // Place the two subschema horizontally, centered, with enough gap for the connections.
     void placeImpl() override {
         const float dy1 = max(0.0f, schema2->height - schema1->height) / 2.0f;
         const float dy2 = max(0.0f, schema1->height - schema2->height) / 2.0f;
+        const float horzGap = binarySchemaHorizontalGap(schema1, schema2);
         if (orientation == kLeftRight) {
             schema1->place(x, y + dy1, orientation);
             schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
@@ -501,21 +505,19 @@ struct MergeSchema : BinarySchema {
         BinarySchema::collectLines();
         for (unsigned int i = 0; i < schema1->outputs; i++) lines.emplace_back(schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs));
     }
-
-private:
-    float horzGap;
 };
 
 // Place and connect two diagrams in split composition.
 struct SplitSchema : BinarySchema {
     // Constructor for a split schema s1 <: s2, where the outputs of s1 are distributed to the inputs of s2.
-    SplitSchema(Schema *s1, Schema *s2, float horzGap)
-        : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + horzGap, max(s1->height, s2->height)), horzGap(horzGap) {}
+    SplitSchema(Schema *s1, Schema *s2)
+        : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + binarySchemaHorizontalGap(s1, s2), max(s1->height, s2->height)) {}
 
     // Place the two subschema horizontally, centered, with enough gap for the connections
     void placeImpl() override {
         const float dy1 = max(0.0f, schema2->height - schema1->height) / 2.0f;
         const float dy2 = max(0.0f, schema1->height - schema2->height) / 2.0f;
+        const float horzGap = binarySchemaHorizontalGap(schema1, schema2);
         if (orientation == kLeftRight) {
             schema1->place(x, y + dy1, orientation);
             schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
@@ -529,9 +531,6 @@ struct SplitSchema : BinarySchema {
         BinarySchema::collectLines();
         for (unsigned int i = 0; i < schema2->inputs; i++) lines.emplace_back(schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i));
     }
-
-private:
-    float horzGap;
 };
 
 // Place and connect two diagrams in recursive composition
@@ -625,7 +624,7 @@ private:
 // Arrows are added to all the outputs.
 struct TopSchema : Schema {
     // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
-    TopSchema(Schema *s, string link, string text, float margin)
+    TopSchema(Schema *s, string link, string text, float margin = 10)
         : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), text(std::move(text)), link(std::move(link)), margin(margin) {}
 
     void placeImpl() override { schema->place(x + margin, y + margin, orientation); }
@@ -653,7 +652,7 @@ private:
 
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Schema *s, string text, float margin)
+    DecorateSchema(Schema *s, string text, float margin = 10)
         : IOSchema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
 
     void placeImpl() override {
@@ -746,38 +745,24 @@ protected:
     const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
 };
 
-Schema *makeConnectorSchema() { return new ConnectorSchema(); }
 Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link) {
     const float minimal = 3 * dWire;
     const float w = 2 * dHorz + max(minimal, dLetter * quantize(int(text.size())));
     const float h = 2 * dVert + max(minimal, float(max(inputs, outputs)) * dWire);
     return new BlockSchema(inputs, outputs, w, h, text, color, link);
 }
-Schema *makeDecorateSchema(Schema *s, const string &text, float margin = 10) { return new DecorateSchema(s, text, margin); }
-Schema *makeTopSchema(Schema *s, const string &link, const string &text, float margin = 10) { return new TopSchema(makeDecorateSchema(s, text, margin), link, "", margin); }
-Schema *makeCableSchema(unsigned int n = 1) { return new CableSchema(n); }
-Schema *makeInverterSchema(const string &color) { return new InverterSchema(color); }
-Schema *makeCutSchema() { return new CutSchema(); }
 Schema *makeEnlargedSchema(Schema *s, float width) { return width > s->width ? new EnlargedSchema(s, width) : s; }
 Schema *makeParallelSchema(Schema *s1, Schema *s2) { return new ParallelSchema(makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width)); }
 Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
     const unsigned int o = s1->outputs;
     const unsigned int i = s2->inputs;
-    auto *a = o < i ? makeParallelSchema(s1, makeCableSchema(i - o)) : s1;
-    auto *b = o > i ? makeParallelSchema(s2, makeCableSchema(o - i)) : s2;
+    auto *a = o < i ? makeParallelSchema(s1, new CableSchema(i - o)) : s1;
+    auto *b = o > i ? makeParallelSchema(s2, new CableSchema(o - i)) : s2;
 
     return new SequentialSchema(a, b, computeHorzGap(a, b));
 }
-Schema *makeMergeSchema(Schema *s1, Schema *s2) {
-    auto *a = makeEnlargedSchema(s1, dWire);
-    auto *b = makeEnlargedSchema(s2, dWire);
-    return new MergeSchema(a, b, (a->height + b->height) / 4); // Horizontal gap to avoid sloppy connections.
-}
-Schema *makeSplitSchema(Schema *s1, Schema *s2) {
-    auto *a = makeEnlargedSchema(s1, dWire);
-    auto *b = makeEnlargedSchema(s2, dWire);
-    return new SplitSchema(a, b, (a->height + b->height) / 4); // Horizontal gap to avoid sloppy connections.
-}
+Schema *makeMergeSchema(Schema *s1, Schema *s2) { return new MergeSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
+Schema *makeSplitSchema(Schema *s1, Schema *s2) { return new SplitSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
 
 Schema *makeRecSchema(Schema *s1, Schema *s2) {
     auto *a = makeEnlargedSchema(s1, s2->width);
@@ -929,7 +914,7 @@ static Schema *addSchemaInputs(int ins, Schema *x) {
 
     Schema *y = nullptr;
     do {
-        Schema *z = makeConnectorSchema();
+        Schema *z = new ConnectorSchema();
         y = y != nullptr ? makeParallelSchema(y, z) : z;
     } while (--ins);
 
@@ -940,7 +925,7 @@ static Schema *addSchemaOutputs(int outs, Schema *x) {
 
     Schema *y = nullptr;
     do {
-        Schema *z = makeConnectorSchema();
+        Schema *z = new ConnectorSchema();
         y = y != nullptr ? makeParallelSchema(y, z) : z;
     } while (--outs);
 
@@ -1012,7 +997,7 @@ static string userInterfaceDescription(Tree box) {
 // Generate the inside schema of a block diagram according to its type.
 static Schema *generateInsideSchema(Tree t) {
     if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), normalcolor, "");
-    if (isInverter(t)) return makeInverterSchema(invcolor);
+    if (isInverter(t)) return new InverterSchema(invcolor);
 
     int i;
     double r;
@@ -1024,8 +1009,8 @@ static Schema *generateInsideSchema(Tree t) {
     }
 
     if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", normalcolor, "");
-    if (isBoxWire(t)) return makeCableSchema();
-    if (isBoxCut(t)) return makeCutSchema();
+    if (isBoxWire(t)) return new CableSchema();
+    if (isBoxCut(t)) return new CutSchema();
 
     prim0 p0;
     prim1 p1;
@@ -1058,7 +1043,7 @@ static Schema *generateInsideSchema(Tree t) {
     if (isVGroup || isHGroup || isTGroup) {
         const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
         auto *s1 = createSchema(a);
-        return makeDecorateSchema(s1, groupId + "group(" + extractName(label) + ")");
+        return new DecorateSchema(s1, groupId + "group(" + extractName(label) + ")");
     }
     if (isBoxSeq(t, a, b)) return makeSequentialSchema(createSchema(a), createSchema(b));
     if (isBoxPar(t, a, b)) return makeParallelSchema(createSchema(a), createSchema(b));
@@ -1076,7 +1061,7 @@ static Schema *generateInsideSchema(Tree t) {
 
         Tree id;
         if (getDefNameProperty(t, id)) return abstractionSchema;
-        return makeDecorateSchema(abstractionSchema, "Abstraction");
+        return new DecorateSchema(abstractionSchema, "Abstraction");
     }
     if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", normalcolor, "");
 
@@ -1108,7 +1093,7 @@ static void writeSchemaFile(Tree bd) {
     const string &id = tree2str(idTree);
     dc->schemaFileName = legalFileName(bd, id) + ".svg";
 
-    auto *ts = makeTopSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), dc->backLink[bd], id);
+    auto *ts = new TopSchema(new DecorateSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), id), dc->backLink[bd], "");
     // todo combine place/collect/draw
     ts->place(0, 0, kLeftRight);
     ts->collectLines();
@@ -1181,7 +1166,7 @@ static Schema *createSchema(Tree t) {
             return makeBlockSchema(ins, outs, tree2str(idTree), linkcolor, legalFileName(t, id) + ".svg");
         }
         // Not a slot, with a name. Draw a line around the object with its name.
-        if (!isPureRouting(t)) return makeDecorateSchema(generateInsideSchema(t), id);
+        if (!isPureRouting(t)) return new DecorateSchema(generateInsideSchema(t), id);
     }
 
     return generateInsideSchema(t); // normal case

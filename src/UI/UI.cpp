@@ -7,7 +7,7 @@
 
 #include "UI.h"
 #include "../Context.h"
-#include "FaustEditor.h"
+#include "Faust/FaustEditor.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"
 
 using namespace fg;
@@ -144,9 +144,9 @@ using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
 
 const std::map<string, ImGuiKeyModFlags> mod_keys{
     {"shift", ImGuiKeyModFlags_Shift},
-    {"ctrl",  ImGuiKeyModFlags_Ctrl},
-    {"alt",   ImGuiKeyModFlags_Alt},
-    {"cmd",   ImGuiKeyModFlags_Super},
+    {"ctrl", ImGuiKeyModFlags_Ctrl},
+    {"alt", ImGuiKeyModFlags_Alt},
+    {"cmd", ImGuiKeyModFlags_Super},
 };
 
 // Handles any number of mods, along with any single non-mod character.

@@ -1,5 +1,5 @@
 #include "FaustEditor.h"
-#include "../Context.h"
+#include "../../Context.h"
 
 #include "zep/editor.h"
 #include "zep/regress.h"
@@ -7,7 +7,7 @@
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
 #include "zep/tab_window.h"
-#include "Widgets.h"
+#include "../Widgets.h"
 
 using namespace Zep;
 
@@ -333,7 +333,7 @@ void zep_draw() {
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
     zep_editor->SetDisplayRegion({
-        {top_left.x + pos.x,     top_left.y + pos.y},
+        {top_left.x + pos.x, top_left.y + pos.y},
         {bottom_right.x + pos.x, bottom_right.y + pos.y}
     });
 

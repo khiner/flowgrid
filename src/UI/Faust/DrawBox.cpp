@@ -205,27 +205,6 @@ struct IOSchema : Schema {
     std::vector<ImVec2> outputPoints;
 };
 
-struct BinarySchema : Schema {
-    BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float width, float height)
-        : Schema(inputs, outputs, width, height), schema1(s1), schema2(s2) {}
-
-    ImVec2 inputPoint(unsigned int i) const override { return schema1->inputPoint(i); }
-    ImVec2 outputPoint(unsigned int i) const override { return schema2->outputPoint(i); }
-
-    void drawImpl(Device &device) const override {
-        schema1->draw(device);
-        schema2->draw(device);
-    }
-
-    void collectLines() override {
-        schema1->collectLines();
-        schema2->collectLines();
-    }
-
-    Schema *schema1;
-    Schema *schema2;
-};
-
 // A simple rectangular box with a text and inputs and outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(unsigned int inputs, unsigned int outputs, float width, float height, string text, string color, string link)
@@ -341,9 +320,52 @@ private:
     Schema *schema;
 };
 
+const float binarySchemaHorizontalGapRatio = 4; // todo style prop
+
+struct BinarySchema : Schema {
+    BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float horzGap, float width, float height)
+        : Schema(inputs, outputs, width, height), schema1(s1), schema2(s2), horzGap(horzGap) {}
+    BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float horzGap)
+        : BinarySchema(s1, s2, inputs, outputs, horzGap, s1->width + s2->width + horzGap, max(s1->height, s2->height)) {}
+    BinarySchema(Schema *s1, Schema *s2, float horzGap) : BinarySchema(s1, s2, s1->inputs, s2->outputs, horzGap) {}
+
+    ImVec2 inputPoint(unsigned int i) const override { return schema1->inputPoint(i); }
+    ImVec2 outputPoint(unsigned int i) const override { return schema2->outputPoint(i); }
+
+    // Place the two components horizontally, centered, with enough space for the connections.
+    void placeImpl() override {
+        const float dy1 = max(0.0f, schema2->height - schema1->height) / 2.0f;
+        const float dy2 = max(0.0f, schema1->height - schema2->height) / 2.0f;
+        if (orientation == kLeftRight) {
+            schema1->place(x, y + dy1, orientation);
+            schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
+        } else {
+            schema2->place(x, y + dy2, orientation);
+            schema1->place(x + schema2->width + horzGap, y + dy1, orientation);
+        }
+    }
+
+    void drawImpl(Device &device) const override {
+        schema1->draw(device);
+        schema2->draw(device);
+    }
+
+    void collectLines() override {
+        schema1->collectLines();
+        schema2->collectLines();
+    }
+
+    Schema *schema1;
+    Schema *schema2;
+    float horzGap;
+
+protected:
+    static float horizontalGap(const Schema *s1, const Schema *s2) { return (s1->height + s2->height) / binarySchemaHorizontalGapRatio; }
+};
+
 struct ParallelSchema : BinarySchema {
     ParallelSchema(Schema *s1, Schema *s2)
-        : BinarySchema(s1, s2, s1->inputs + s2->inputs, s1->outputs + s2->outputs, s1->width, s1->height + s2->height),
+        : BinarySchema(s1, s2, s1->inputs + s2->inputs, s1->outputs + s2->outputs, 0, s1->width, s1->height + s2->height),
           inputFrontier(s1->inputs), outputFrontier(s1->outputs) {
         fgassert(s1->width == s2->width);
     }
@@ -358,100 +380,37 @@ struct ParallelSchema : BinarySchema {
         }
     }
 
-    ImVec2 inputPoint(unsigned int i) const override {
-        return i < inputFrontier ? schema1->inputPoint(i) : schema2->inputPoint(i - inputFrontier);
-    }
-
-    ImVec2 outputPoint(unsigned int i) const override {
-        return i < outputFrontier ? schema1->outputPoint(i) : schema2->outputPoint(i - outputFrontier);
-    }
+    ImVec2 inputPoint(unsigned int i) const override { return i < inputFrontier ? schema1->inputPoint(i) : schema2->inputPoint(i - inputFrontier); }
+    ImVec2 outputPoint(unsigned int i) const override { return i < outputFrontier ? schema1->outputPoint(i) : schema2->outputPoint(i - outputFrontier); }
 
 private:
     unsigned int inputFrontier;
     unsigned int outputFrontier;
 };
 
-enum { kHorDir, kUpDir, kDownDir };  // directions of connections
+enum { kHorDir, kUpDir, kDownDir }; // directions of connections
 
-// Compute the direction of a connection. Note that
-// Y axis goes from top to bottom
+// Compute the direction of a connection.
+// Y-axis goes from top to bottom
 static int direction(const ImVec2 &a, const ImVec2 &b) {
-    if (a.y > b.y) return kUpDir;    // upward connections
-    if (a.y < b.y) return kDownDir;  // downward connection
-    return kHorDir;                  // horizontal connections
-}
-
-// Compute the horizontal gap needed to draw the internal wires.
-// It depends on the largest group of connections that go in the same direction.
-// May add cables to ensure the internal connections are between the same number of outputs and inputs.
-static float computeHorzGap(Schema *a, Schema *b) {
-    fgassert(a->outputs == b->inputs);
-
-    if (a->outputs == 0) return 0;
-
-    a->place(0, max(0.0f, 0.5f * (b->height - a->height)), kLeftRight);
-    b->place(0, max(0.0f, 0.5f * (a->height - b->height)), kLeftRight);
-
-    // todo simplify
-    // init current group direction and size
-    int gdir = direction(a->outputPoint(0), b->inputPoint(0));
-    int gsize = 1;
-
-    int MaxGroupSize[3] = {0, 0, 0}; // store the size of the largest group for each direction
-    // analyze direction of remaining points
-    for (unsigned int i = 1; i < a->outputs; i++) {
-        int d = direction(a->outputPoint(i), b->inputPoint(i));
-        if (d == gdir) {
-            gsize++;
-        } else {
-            MaxGroupSize[gdir] = max(MaxGroupSize[gdir], gsize);
-            gsize = 1;
-            gdir = d;
-        }
-    }
-
-    // update for last group
-    if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
-
-    // the gap required for the connections
-    return dWire * float(max(MaxGroupSize[kUpDir], MaxGroupSize[kDownDir]));
+    if (a.y > b.y) return kUpDir;
+    if (a.y < b.y) return kDownDir;
+    return kHorDir;
 }
 
 struct SequentialSchema : BinarySchema {
-    // Constructor for a sequential schema (s1:s2).
-    // The components s1 and s2 are supposed to be "compatible" (s1 : n->m and s2 : m->q).
-    SequentialSchema(Schema *s1, Schema *s2, float horzGap)
-        : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + horzGap + s2->width, max(s1->height, s2->height)), horzGap(horzGap) {
+    // The components s1 and s2 must be "compatible" (s1 : n->m and s2 : m->q).
+    SequentialSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) {
         fgassert(s1->outputs == s2->inputs);
     }
 
-    // Place the two components horizontally with enough space for the connections.
-    void placeImpl() override {
-        const float y1 = max(0.0f, 0.5f * (schema2->height - schema1->height));
-        const float y2 = max(0.0f, 0.5f * (schema1->height - schema2->height));
-        if (orientation == kLeftRight) {
-            schema1->place(x, y + y1, orientation);
-            schema2->place(x + schema1->width + horzGap, y + y2, orientation);
-        } else {
-            schema2->place(x, y + y2, orientation);
-            schema1->place(x + schema2->width + horzGap, y + y1, orientation);
-        }
-    }
-
+    // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
     void collectLines() override {
         BinarySchema::collectLines();
-        collectInternalWires();
-    }
-
-private:
-    // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
-    void collectInternalWires() {
-        const unsigned int N = schema1->outputs;
-        fgassert(N == schema2->inputs);
 
         float dx = 0, mx = 0;
         int dir = -1;
-        for (unsigned int i = 0; i < N; i++) {
+        for (unsigned int i = 0; i < schema1->outputs; i++) {
             const auto src = schema1->outputPoint(i);
             const auto dst = schema2->inputPoint(i);
             const int d = direction(src, dst);
@@ -475,31 +434,47 @@ private:
         }
     }
 
-    float horzGap;
+    // Compute the horizontal gap needed to draw the internal wires.
+    // It depends on the largest group of connections that go in the same direction.
+    // **Side effect: May add cables to ensure the internal connections are between the same number of outputs and inputs.**
+    static float horizontalGap(Schema *a, Schema *b) {
+        if (a->outputs == 0) return 0;
+
+        const float dy1 = max(0.0f, b->height - a->height) / 2.0f;
+        const float dy2 = max(0.0f, a->height - b->height) / 2.0f;
+        a->place(0, dy1, kLeftRight);
+        b->place(0, dy2, kLeftRight);
+
+        // todo simplify
+        // init current group direction and size
+        int gdir = direction(a->outputPoint(0), b->inputPoint(0));
+        int gsize = 1;
+
+        int MaxGroupSize[3] = {0, 0, 0}; // store the size of the largest group for each direction
+        // analyze direction of remaining points
+        for (unsigned int i = 1; i < a->outputs; i++) {
+            int d = direction(a->outputPoint(i), b->inputPoint(i));
+            if (d == gdir) {
+                gsize++;
+            } else {
+                MaxGroupSize[gdir] = max(MaxGroupSize[gdir], gsize);
+                gsize = 1;
+                gdir = d;
+            }
+        }
+
+        // update for last group
+        if (gsize > MaxGroupSize[gdir]) MaxGroupSize[gdir] = gsize;
+
+        // the gap required for the connections
+        return dWire * float(max(MaxGroupSize[kUpDir], MaxGroupSize[kDownDir]));
+    }
 };
 
-const float binarySchemaHorizontalGapRatio = 4; // todo style prop
-float binarySchemaHorizontalGap(const Schema *s1, const Schema *s2) { return (s1->height + s2->height) / binarySchemaHorizontalGapRatio; }
-
 // Place and connect two diagrams in merge composition.
+// The outputs of the first schema are merged to the inputs of the second.
 struct MergeSchema : BinarySchema {
-    // Constructor for a merge schema s1 :> s2 where the outputs of s1 are merged to the inputs of s2.
-    MergeSchema(Schema *s1, Schema *s2)
-        : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + binarySchemaHorizontalGap(s1, s2), max(s1->height, s2->height)) {}
-
-    // Place the two subschema horizontally, centered, with enough gap for the connections.
-    void placeImpl() override {
-        const float dy1 = max(0.0f, schema2->height - schema1->height) / 2.0f;
-        const float dy2 = max(0.0f, schema1->height - schema2->height) / 2.0f;
-        const float horzGap = binarySchemaHorizontalGap(schema1, schema2);
-        if (orientation == kLeftRight) {
-            schema1->place(x, y + dy1, orientation);
-            schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
-        } else {
-            schema2->place(x, y + dy2, orientation);
-            schema1->place(x + schema2->width + horzGap, y + dy1, orientation);
-        }
-    }
+    MergeSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) {}
 
     void collectLines() override {
         BinarySchema::collectLines();
@@ -508,24 +483,9 @@ struct MergeSchema : BinarySchema {
 };
 
 // Place and connect two diagrams in split composition.
+// The outputs of the first schema are distributed to the inputs of the second.
 struct SplitSchema : BinarySchema {
-    // Constructor for a split schema s1 <: s2, where the outputs of s1 are distributed to the inputs of s2.
-    SplitSchema(Schema *s1, Schema *s2)
-        : BinarySchema(s1, s2, s1->inputs, s2->outputs, s1->width + s2->width + binarySchemaHorizontalGap(s1, s2), max(s1->height, s2->height)) {}
-
-    // Place the two subschema horizontally, centered, with enough gap for the connections
-    void placeImpl() override {
-        const float dy1 = max(0.0f, schema2->height - schema1->height) / 2.0f;
-        const float dy2 = max(0.0f, schema1->height - schema2->height) / 2.0f;
-        const float horzGap = binarySchemaHorizontalGap(schema1, schema2);
-        if (orientation == kLeftRight) {
-            schema1->place(x, y + dy1, orientation);
-            schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
-        } else {
-            schema2->place(x, y + dy2, orientation);
-            schema1->place(x + schema2->width + horzGap, y + dy1, orientation);
-        }
-    }
+    SplitSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) {}
 
     void collectLines() override {
         BinarySchema::collectLines();
@@ -543,7 +503,7 @@ struct RecSchema : IOSchema {
         fgassert(s1->width >= s2->width);
     }
 
-    // The two subschema are placed centered vertically, s2 on top of s1.
+    // The two schemas are centered vertically, with `s2` on top of `s1`.
     void placeImpl() override {
         float dx1 = (width - schema1->width) / 2;
         const float dx2 = (width - schema2->width) / 2;
@@ -759,7 +719,7 @@ Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
     auto *a = o < i ? makeParallelSchema(s1, new CableSchema(i - o)) : s1;
     auto *b = o > i ? makeParallelSchema(s2, new CableSchema(o - i)) : s2;
 
-    return new SequentialSchema(a, b, computeHorzGap(a, b));
+    return new SequentialSchema(a, b);
 }
 Schema *makeMergeSchema(Schema *s1, Schema *s2) { return new MergeSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
 Schema *makeSplitSchema(Schema *s1, Schema *s2) { return new SplitSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }

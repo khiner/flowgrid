@@ -718,69 +718,35 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
 static int computeComplexity(Box box) {
     if (isBoxCut(box) || isBoxWire(box)) return 0;
 
-    int i;
-    double r;
-    prim0 p0;
-    prim1 p1;
-    prim2 p2;
-    prim3 p3;
-    prim4 p4;
-    prim5 p5;
-
     const auto *xt = getUserData(box);
 
     // simple elements / slot
-    if (xt ||
-        isBoxInt(box, &i) ||
-        isBoxReal(box, &r) ||
-        isBoxWaveform(box) ||
-        isBoxPrim0(box, &p0) ||
-        isBoxPrim1(box, &p1) ||
-        isBoxPrim2(box, &p2) ||
-        isBoxPrim3(box, &p3) ||
-        isBoxPrim4(box, &p4) ||
-        isBoxPrim5(box, &p5) ||
-        isBoxSlot(box, &i))
+    if (xt || isBoxInt(box) || isBoxReal(box) ||
+        isBoxPrim0(box) || isBoxPrim1(box) || isBoxPrim2(box) || isBoxPrim3(box) || isBoxPrim4(box) || isBoxPrim5(box) ||
+        isBoxWaveform(box) || isBoxSlot(box))
         return 1;
 
-    Tree ff, type, name, file;
     // foreign elements
-    if (isBoxFFun(box, ff) ||
-        isBoxFConst(box, type, name, file) ||
-        isBoxFVar(box, type, name, file))
-        return 1;
+    if (isBoxFFun(box) || isBoxFConst(box) || isBoxFVar(box)) return 1;
 
     Tree t1, t2;
-
     // symbolic boxes
     if (isBoxSymbolic(box, t1, t2)) return 1 + boxComplexity(t2);
-
     // binary operators
-    if (isBoxBinary(box, t1, t2))
-        return boxComplexity(t1) + boxComplexity(t2);
-
-    Tree label, cur, min, max, step, chan;
+    if (isBoxBinary(box, t1, t2)) return boxComplexity(t1) + boxComplexity(t2);
 
     // user interface widgets
-    if (isBoxButton(box, label) ||
-        isBoxCheckbox(box, label) ||
-        isBoxVSlider(box, label, cur, min, max, step) ||
-        isBoxHSlider(box, label, cur, min, max, step) ||
-        isBoxHBargraph(box, label, min, max) ||
-        isBoxVBargraph(box, label, min, max) ||
-        isBoxSoundfile(box, label, chan) ||
-        isBoxNumEntry(box, label, cur, min, max, step))
+    if (isBoxButton(box) || isBoxCheckbox(box) || isBoxVSlider(box) || isBoxHSlider(box) ||
+        isBoxHBargraph(box) || isBoxVBargraph(box) || isBoxSoundfile(box) || isBoxNumEntry(box))
         return 1;
 
     // user interface groups
-    if (isBoxVGroup(box, label, t1) ||
-        isBoxHGroup(box, label, t1) ||
-        isBoxTGroup(box, label, t1) ||
-        isBoxMetadata(box, t1, t2))
+    Tree label;
+    if (isBoxVGroup(box, label, t1) || isBoxHGroup(box, label, t1) || isBoxTGroup(box, label, t1) || isBoxMetadata(box, t1, t2))
         return boxComplexity(t1);
 
-    Tree t3;
     // environment/route
+    Tree t3;
     if (isBoxEnvironment(box) || isBoxRoute(box, t1, t2, t3)) return 0;
 
     stringstream error;

@@ -533,8 +533,8 @@ private:
 // Arrows are added to all the outputs.
 struct TopSchema : Schema {
     // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
-    TopSchema(Schema *s, string link, string text, float margin = 10)
-        : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), text(std::move(text)), link(std::move(link)), margin(margin) {}
+    TopSchema(Schema *s, string link, float margin = 10)
+        : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), link(std::move(link)), margin(margin) {}
 
     void placeImpl() override { schema->place(x + margin, y + margin, orientation); }
 
@@ -544,16 +544,13 @@ struct TopSchema : Schema {
 
     void draw(Device &device) const override {
         device.rect({x, y, width - 1, height - 1}, "#ffffff", link);
-        device.label(ImVec2{x, y} + ImVec2{margin, margin / 2}, text);
-
         schema->draw(device);
-
         for (unsigned int i = 0; i < schema->outputs; i++) device.arrow(schema->outputPoint(i), 0, orientation);
     }
 
 private:
     Schema *schema;
-    string text, link;
+    string link;
     float margin;
 };
 
@@ -983,23 +980,6 @@ static string fileName(Tree t, const string &id) {
         + format("-{:x}", reinterpret_cast<std::uintptr_t>(t));
 }
 
-// Write a top level diagram.
-// A top level diagram is decorated with its definition name property and is drawn in an individual file.
-static void writeSchemaFile(Tree bd) {
-    int ins, outs;
-    getBoxType(bd, &ins, &outs);
-
-    Tree idTree;
-    getDefNameProperty(bd, idTree);
-    const string &id = tree2str(idTree);
-    dc->schemaFileName = fileName(bd, id) + ".svg";
-
-    auto *ts = new TopSchema(new DecorateSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), id), dc->backLink[bd], "");
-    ts->place();
-    SVGDevice device(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
-    ts->draw(device);
-}
-
 // Schedule a block diagram to be drawn.
 static void scheduleDrawing(Tree t) {
     if (dc->drawnExp.find(t) == dc->drawnExp.end()) {
@@ -1059,8 +1039,22 @@ void drawBox(Box box) {
     dc = std::make_unique<DrawContext>();
     dc->foldingFlag = boxComplexity(box) > foldThreshold;
 
-    scheduleDrawing(box); // schedule the initial drawing
+    scheduleDrawing(box); // Schedule the initial drawing
 
+    // Generate all the pending diagrams.
+    // Each diagram is decorated with its definition name property and rendered to its own file.
     Tree t;
-    while (pendingDrawing(t)) writeSchemaFile(t); // generate all the pending drawings
+    while (pendingDrawing(t)) {
+        Tree idTree;
+        getDefNameProperty(t, idTree);
+        const string &id = tree2str(idTree);
+        dc->schemaFileName = fileName(t, id) + ".svg";
+
+        int ins, outs;
+        getBoxType(t, &ins, &outs);
+        auto *ts = new TopSchema(new DecorateSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(t))), id), dc->backLink[t]);
+        ts->place();
+        SVGDevice device(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
+        ts->draw(device);
+    }
 }

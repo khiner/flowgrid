@@ -36,8 +36,8 @@ public:
     virtual void arrow(const ImVec2 &pos, float rotation, int orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void dasharray(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void text(const ImVec2 &pos, const char *name, const string &link) = 0;
-    virtual void label(const ImVec2 &pos, const char *name) = 0;
+    virtual void text(const ImVec2 &pos, const string &name, const string &link) = 0;
+    virtual void label(const ImVec2 &pos, const string &name) = 0;
     virtual void dot(const ImVec2 &pos, int orientation) = 0;
 };
 
@@ -113,13 +113,13 @@ struct SVGDevice : Device {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", start.x, start.y, end.x, end.y);
     }
 
-    void text(const ImVec2 &pos, const char *name, const string &link) override {
+    void text(const ImVec2 &pos, const string &name, const string &link) override {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
         stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
         if (!link.empty()) stream << "</a>"; // close the optional link tag
     }
 
-    void label(const ImVec2 &pos, const char *name) override {
+    void label(const ImVec2 &pos, const string &name) override {
         stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
     }
 
@@ -195,7 +195,7 @@ struct BlockSchema : IOSchema {
 
     void draw(Device &device) const override {
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
-        device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text.c_str(), link);
+        device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text, link);
 
         // Draw a small point that indicates the first input (like an integrated circuits).
         const bool isLR = orientation == kLeftRight;
@@ -548,7 +548,7 @@ struct TopSchema : Schema {
 
     void draw(Device &device) const override {
         device.rect({x, y, width - 1, height - 1}, "#ffffff", link);
-        device.label(ImVec2{x, y} + ImVec2{margin, margin / 2}, text.c_str());
+        device.label(ImVec2{x, y} + ImVec2{margin, margin / 2}, text);
 
         schema->draw(device);
 
@@ -590,7 +590,7 @@ struct DecorateSchema : IOSchema {
         device.dasharray(topLeft, {textLeft, topLeft.y}); // top segment before text
         device.dasharray({min(textLeft + float(2 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}); // top segment after text
 
-        device.label({textLeft, topLeft.y}, text.c_str());
+        device.label({textLeft, topLeft.y}, text);
         for (unsigned int i = 0; i < inputs; i++) device.line(inputPoint(i), schema->inputPoint(i));
         for (unsigned int i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
     }
@@ -624,7 +624,7 @@ struct RouteSchema : IOSchema {
         static bool drawRouteFrame = false; // todo provide toggle
         if (drawRouteFrame) {
             device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
-            // device.text(x + width / 2, y + height / 2, text.c_str(), link);
+            // device.text(x + width / 2, y + height / 2, text, link);
 
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
             const bool isLR = orientation == kLeftRight;
@@ -685,12 +685,13 @@ Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::ve
     return new RouteSchema(inputs, outputs, w, h, routes);
 }
 
-#define linkcolor "#003366"
-#define normalcolor "#4B71A1"
-#define uicolor "#477881"
-#define slotcolor "#47945E"
-#define numcolor "#f44800"
-#define invcolor "#ffffff"
+// todo move to FlowGridStyle
+const string LinkColor = "#003366";
+const string NormalColor = "#4B71A1";
+const string UiColor = "#477881";
+const string SlotColor = "#47945E";
+const string NumberColor = "#f44800";
+const string InverterColor = "#ffffff";
 
 struct DrawContext {
     Tree boxComplexityMemo{}; // Avoid recomputing box complexity
@@ -802,7 +803,7 @@ static Schema *createSchema(Tree t);
 static Schema *generateInputSlotSchema(Tree a) {
     Tree id;
     getDefNameProperty(a, id);
-    return makeBlockSchema(1, 0, tree2str(id), slotcolor, "");
+    return makeBlockSchema(1, 0, tree2str(id), SlotColor, "");
 }
 // Generate an abstraction schema by placing in sequence the input slots and the body.
 static Schema *generateAbstractionSchema(Schema *x, Tree t) {
@@ -901,8 +902,8 @@ static string userInterfaceDescription(Tree box) {
 
 // Generate the inside schema of a block diagram according to its type.
 static Schema *generateInsideSchema(Tree t) {
-    if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), normalcolor, "");
-    if (isInverter(t)) return new InverterSchema(invcolor);
+    if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), NormalColor, "");
+    if (isInverter(t)) return new InverterSchema(InverterColor);
 
     int i;
     double r;
@@ -910,10 +911,10 @@ static Schema *generateInsideSchema(Tree t) {
         stringstream s;
         if (isBoxInt(t)) s << i;
         else s << r;
-        return makeBlockSchema(0, 1, s.str(), numcolor, "");
+        return makeBlockSchema(0, 1, s.str(), NumberColor, "");
     }
 
-    if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", normalcolor, "");
+    if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", NormalColor, "");
     if (isBoxWire(t)) return new CableSchema();
     if (isBoxCut(t)) return new CutSchema();
 
@@ -923,21 +924,21 @@ static Schema *generateInsideSchema(Tree t) {
     prim3 p3;
     prim4 p4;
     prim5 p5;
-    if (isBoxPrim0(t, &p0)) return makeBlockSchema(0, 1, prim0name(p0), normalcolor, "");
-    if (isBoxPrim1(t, &p1)) return makeBlockSchema(1, 1, prim1name(p1), normalcolor, "");
-    if (isBoxPrim2(t, &p2)) return makeBlockSchema(2, 1, prim2name(p2), normalcolor, "");
-    if (isBoxPrim3(t, &p3)) return makeBlockSchema(3, 1, prim3name(p3), normalcolor, "");
-    if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), normalcolor, "");
-    if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), normalcolor, "");
+    if (isBoxPrim0(t, &p0)) return makeBlockSchema(0, 1, prim0name(p0), NormalColor, "");
+    if (isBoxPrim1(t, &p1)) return makeBlockSchema(1, 1, prim1name(p1), NormalColor, "");
+    if (isBoxPrim2(t, &p2)) return makeBlockSchema(2, 1, prim2name(p2), NormalColor, "");
+    if (isBoxPrim3(t, &p3)) return makeBlockSchema(3, 1, prim3name(p3), NormalColor, "");
+    if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), NormalColor, "");
+    if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), NormalColor, "");
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), normalcolor, "");
+    if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), NormalColor, "");
 
     Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), normalcolor, "");
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return makeBlockSchema(0, 1, userInterfaceDescription(t), uicolor, "");
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return makeBlockSchema(1, 1, userInterfaceDescription(t), uicolor, "");
-    if (isBoxSoundfile(t, label, chan)) return makeBlockSchema(2, 2 + tree2int(chan), userInterfaceDescription(t), uicolor, "");
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), NormalColor, "");
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return makeBlockSchema(0, 1, userInterfaceDescription(t), UiColor, "");
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return makeBlockSchema(1, 1, userInterfaceDescription(t), UiColor, "");
+    if (isBoxSoundfile(t, label, chan)) return makeBlockSchema(2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor, "");
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return createSchema(a);
@@ -958,7 +959,7 @@ static Schema *generateInsideSchema(Tree t) {
     if (isBoxSlot(t, &i)) {
         Tree id;
         getDefNameProperty(t, id);
-        return makeBlockSchema(0, 1, tree2str(id), slotcolor, "");
+        return makeBlockSchema(0, 1, tree2str(id), SlotColor, "");
     }
     if (isBoxSymbolic(t, a, b)) {
         auto *inputSlotSchema = generateInputSlotSchema(a);
@@ -968,7 +969,7 @@ static Schema *generateInsideSchema(Tree t) {
         if (getDefNameProperty(t, id)) return abstractionSchema;
         return new DecorateSchema(abstractionSchema, "Abstraction");
     }
-    if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", normalcolor, "");
+    if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", NormalColor, "");
 
     Tree c;
     if (isBoxRoute(t, a, b, c)) {
@@ -1066,7 +1067,7 @@ static Schema *createSchema(Tree t) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
             scheduleDrawing(t);
-            return makeBlockSchema(ins, outs, tree2str(idTree), linkcolor, legalFileName(t, id) + ".svg");
+            return makeBlockSchema(ins, outs, tree2str(idTree), LinkColor, legalFileName(t, id) + ".svg");
         }
         // Not a slot, with a name. Draw a line around the object with its name.
         if (!isPureRouting(t)) return new DecorateSchema(generateInsideSchema(t), id);

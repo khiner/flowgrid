@@ -25,6 +25,22 @@
 
 using namespace fmt;
 
+static const bool scaledSVG = false; // Draw scaled SVG files todo toggleable
+static const float binarySchemaHorizontalGapRatio = 4; // todo style prop
+static const bool sequentialConnectionZigzag = true; // false allows for diagonal lines instead of zigzags instead of zigzags todo style prop
+static const bool drawRouteFrame = false; // todo style prop
+static const int foldThreshold = 25; // global complexity threshold before activating folding todo configurable in state
+static const int foldComplexity = 2; // individual complexity threshold before folding todo configurable in state
+static const fs::path faustDiagramsPath = "FaustDiagrams"; // todo app property
+
+// todo move to FlowGridStyle::Colors
+static const string LinkColor = "#003366";
+static const string NormalColor = "#4b71a1";
+static const string UiColor = "#477881";
+static const string SlotColor = "#47945e";
+static const string NumberColor = "#f44800";
+static const string InverterColor = "#ffffff";
+
 enum { kLeftRight = 1, kRightLeft = -1 };
 
 class Device {
@@ -40,8 +56,6 @@ public:
     virtual void label(const ImVec2 &pos, const string &name) = 0;
     virtual void dot(const ImVec2 &pos, int orientation) = 0;
 };
-
-bool scaledSVG = false; // Draw scaled SVG files todo toggleable
 
 struct SVGDevice : Device {
     SVGDevice(string file_name, float width, float height) : file_name(std::move(file_name)) {
@@ -299,8 +313,6 @@ private:
     Schema *schema;
 };
 
-const float binarySchemaHorizontalGapRatio = 4; // todo style prop
-
 struct BinarySchema : Schema {
     BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float horzGap, float width, float height)
         : Schema(inputs, outputs, width, height), schema1(s1), schema2(s2), horzGap(horzGap) {}
@@ -395,8 +407,7 @@ struct SequentialSchema : BinarySchema {
                 dx = d == kUpDir ? dWire : d == kDownDir ? -dWire : 0;
                 dir = d;
             }
-            // todo add a toggle to always draw the straight cable - I tried this and it can look better imo (diagonal lines instead of manhatten)
-            if (src.y == dst.y) {
+            if (!sequentialConnectionZigzag || src.y == dst.y) {
                 // Draw a straight, potentially diagonal cable.
                 device.line(src, dst);
             } else {
@@ -614,7 +625,6 @@ struct RouteSchema : IOSchema {
         : IOSchema(inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
 
     void draw(Device &device) const override {
-        static bool drawRouteFrame = false; // todo provide toggle
         if (drawRouteFrame) {
             device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
             // device.text(x + width / 2, y + height / 2, text, link);
@@ -677,14 +687,6 @@ Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::ve
     const float w = 2 * dHorz + max(minimal, h * 0.75f);
     return new RouteSchema(inputs, outputs, w, h, routes);
 }
-
-// todo move to FlowGridStyle
-const string LinkColor = "#003366";
-const string NormalColor = "#4B71A1";
-const string UiColor = "#477881";
-const string SlotColor = "#47945E";
-const string NumberColor = "#f44800";
-const string InverterColor = "#ffffff";
 
 struct DrawContext {
     Tree boxComplexityMemo{}; // Avoid recomputing box complexity
@@ -966,11 +968,6 @@ static Schema *generateInsideSchema(Tree t) {
 
     throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
 }
-
-// TODO provide controls for these properties
-const int foldThreshold = 25; // global complexity threshold before activating folding
-const int foldComplexity = 2; // individual complexity threshold before folding
-const fs::path faustDiagramsPath = "FaustDiagrams"; // todo properties
 
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
 // If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.

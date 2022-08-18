@@ -27,11 +27,6 @@ using namespace fmt;
 
 enum { kLeftRight = 1, kRightLeft = -1 };
 
-struct Line {
-    ImVec2 start, end;
-    Line(const ImVec2 &p1, const ImVec2 &p2) : start(p1), end(p2) {}
-};
-
 class Device {
 public:
     virtual ~Device() = default;
@@ -39,8 +34,8 @@ public:
     virtual void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, int orientation, const string &link) = 0;
     virtual void circle(const ImVec2 &pos, float radius) = 0;
     virtual void arrow(const ImVec2 &pos, float rotation, int orientation) = 0;
-    virtual void line(const Line &line) = 0;
-    virtual void dasharray(const Line &line) = 0;
+    virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
+    virtual void dasharray(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const char *name, const string &link) = 0;
     virtual void label(const ImVec2 &pos, const char *name) = 0;
     virtual void dot(const ImVec2 &pos, int orientation) = 0;
@@ -106,17 +101,15 @@ struct SVGDevice : Device {
         static const float dx = 3, dy = 1;
         const auto [x, y] = pos;
         const auto x1 = orientation == kLeftRight ? x - dx : x + dx;
-        stream << rotate_line({{x1, y - dy}, pos}, rotation, x, y);
-        stream << rotate_line({{x1, y + dy}, pos}, rotation, x, y);
+        stream << rotate_line({x1, y - dy}, pos, rotation, x, y);
+        stream << rotate_line({x1, y + dy}, pos, rotation, x, y);
     }
 
-    void line(const Line &line) override {
-        const auto &[start, end] = line;
+    void line(const ImVec2 &start, const ImVec2 &end) override {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y);
     }
 
-    void dasharray(const Line &line) override {
-        const auto &[start, end] = line;
+    void dasharray(const ImVec2 &start, const ImVec2 &end) override {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", start.x, start.y, end.x, end.y);
     }
 
@@ -135,8 +128,7 @@ struct SVGDevice : Device {
         stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x + offset, pos.y + offset);
     }
 
-    static string rotate_line(const Line &line, float rx, float ry, float rz) {
-        const auto &[start, end] = line;
+    static string rotate_line(const ImVec2 &start, const ImVec2 &end, float rx, float ry, float rz) {
         return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", start.x, start.y, end.x, end.y, rx, ry, rz);
     }
 
@@ -213,8 +205,8 @@ struct BlockSchema : IOSchema {
         for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR ? dHorz : -dHorz, 0}, 0, orientation);
 
         const float dx = orientation == kLeftRight ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) device.line({p, {p.x + dx, p.y}});
-        for (const auto &p: outputPoints) device.line({{p.x - dx, p.y}, p});
+        for (const auto &p: inputPoints) device.line(p, {p.x + dx, p.y});
+        for (const auto &p: outputPoints) device.line({p.x - dx, p.y}, p);
     }
 
     const string text, color, link;
@@ -297,8 +289,8 @@ struct EnlargedSchema : IOSchema {
 
     void draw(Device &device) const override {
         schema->draw(device);
-        for (unsigned int i = 0; i < inputs; i++) device.line({inputPoint(i), schema->inputPoint(i)});
-        for (unsigned int i = 0; i < outputs; i++) device.line({schema->outputPoint(i), outputPoint(i)});
+        for (unsigned int i = 0; i < inputs; i++) device.line(inputPoint(i), schema->inputPoint(i));
+        for (unsigned int i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
     }
 
 private:
@@ -404,12 +396,12 @@ struct SequentialSchema : BinarySchema {
             // todo add a toggle to always draw the straight cable - I tried this and it can look better imo (diagonal lines instead of manhatten)
             if (src.y == dst.y) {
                 // Draw a straight, potentially diagonal cable.
-                device.line({src, dst});
+                device.line(src, dst);
             } else {
                 // Draw a zigzag cable by traversing half the distance between, taking a sharp turn, then turning back and finishing.
-                device.line({src, {src.x + mx, src.y}});
-                device.line({{src.x + mx, src.y}, {src.x + mx, dst.y}});
-                device.line({{src.x + mx, dst.y}, dst});
+                device.line(src, {src.x + mx, src.y});
+                device.line({src.x + mx, src.y}, {src.x + mx, dst.y});
+                device.line({src.x + mx, dst.y}, dst);
             }
         }
     }
@@ -446,7 +438,7 @@ struct MergeSchema : BinarySchema {
 
     void draw(Device &device) const override {
         BinarySchema::draw(device);
-        for (unsigned int i = 0; i < schema1->outputs; i++) device.line({schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs)});
+        for (unsigned int i = 0; i < schema1->outputs; i++) device.line(schema1->outputPoint(i), schema2->inputPoint(i % schema2->inputs));
     }
 };
 
@@ -457,7 +449,7 @@ struct SplitSchema : BinarySchema {
 
     void draw(Device &device) const override {
         BinarySchema::draw(device);
-        for (unsigned int i = 0; i < schema2->inputs; i++) device.line({schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i)});
+        for (unsigned int i = 0; i < schema2->inputs; i++) device.line(schema1->outputPoint(i % schema1->outputs), schema2->inputPoint(i));
     }
 };
 
@@ -490,9 +482,9 @@ struct RecSchema : IOSchema {
 
     // Draw the delay sign of a feedback connection
     static void drawDelaySign(Device &device, float x, float y, float size) {
-        device.line({{x - size / 2, y}, {x - size / 2, y - size}});
-        device.line({{x - size / 2, y - size}, {x + size / 2, y - size}});
-        device.line({{x + size / 2, y - size}, {x + size / 2, y}});
+        device.line({x - size / 2, y}, {x - size / 2, y - size});
+        device.line({x - size / 2, y - size}, {x + size / 2, y - size});
+        device.line({x + size / 2, y - size}, {x + size / 2, y});
     }
 
     void draw(Device &device) const override {
@@ -508,9 +500,9 @@ struct RecSchema : IOSchema {
         // Feedback connections to each schema2 input
         for (unsigned int i = 0; i < schema2->inputs; i++) collectFeedback(device, schema1->outputPoint(i), schema2->inputPoint(i), float(i) * dWire, outputPoint(i));
         // Non-recursive output lines
-        for (unsigned int i = schema2->inputs; i < outputs; i++) device.line({schema1->outputPoint(i), outputPoint(i)});
+        for (unsigned int i = schema2->inputs; i < outputs; i++) device.line(schema1->outputPoint(i), outputPoint(i));
         // Input lines
-        for (unsigned int i = 0; i < inputs; i++) device.line({inputPoint(i), schema1->inputPoint(i + schema2->outputs)});
+        for (unsigned int i = 0; i < inputs; i++) device.line(inputPoint(i), schema1->inputPoint(i + schema2->outputs));
         // Feedfront connections from each schema2 output
         for (unsigned int i = 0; i < schema2->outputs; i++) collectFeedfront(device, schema2->outputPoint(i), schema1->inputPoint(i), float(i) * dWire);
     }
@@ -523,18 +515,18 @@ private:
         const ImVec2 up(ox, src.y - ct);
         const ImVec2 br(ox + ct / 2.0f, src.y);
 
-        device.line({up, {ox, dst.y}});
-        device.line({{ox, dst.y}, dst});
-        device.line({src, br});
-        device.line({br, out});
+        device.line(up, {ox, dst.y});
+        device.line({ox, dst.y}, dst);
+        device.line(src, br);
+        device.line(br, out);
     }
 
     // Draw a feedfrom connection between two points with a horizontal displacement `dx`.
     void collectFeedfront(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx) const {
         const float ox = src.x + (orientation == kLeftRight ? -dx : dx);
-        device.line({{src.x, src.y}, {ox, src.y}});
-        device.line({{ox, src.y}, {ox, dst.y}});
-        device.line({{ox, dst.y}, {dst.x, dst.y}});
+        device.line({src.x, src.y}, {ox, src.y});
+        device.line({ox, src.y}, {ox, dst.y});
+        device.line({ox, dst.y}, {dst.x, dst.y});
     }
 
     Schema *schema1, *schema2;
@@ -592,15 +584,15 @@ struct DecorateSchema : IOSchema {
         const auto bottomRight = bottomLeft + ImVec2{width - margin, 0};
         const float textLeft = x + margin;
 
-        device.dasharray({topLeft, bottomLeft}); // left line
-        device.dasharray({bottomLeft, bottomRight}); // bottom line
-        device.dasharray({bottomRight, topRight}); // right line
-        device.dasharray({topLeft, {textLeft, topLeft.y}}); // top segment before text
-        device.dasharray({{min(textLeft + float(2 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}}); // top segment after text
+        device.dasharray(topLeft, bottomLeft); // left line
+        device.dasharray(bottomLeft, bottomRight); // bottom line
+        device.dasharray(bottomRight, topRight); // right line
+        device.dasharray(topLeft, {textLeft, topLeft.y}); // top segment before text
+        device.dasharray({min(textLeft + float(2 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}); // top segment after text
 
         device.label({textLeft, topLeft.y}, text.c_str());
-        for (unsigned int i = 0; i < inputs; i++) device.line({inputPoint(i), schema->inputPoint(i)});
-        for (unsigned int i = 0; i < outputs; i++) device.line({schema->outputPoint(i), outputPoint(i)});
+        for (unsigned int i = 0; i < inputs; i++) device.line(inputPoint(i), schema->inputPoint(i));
+        for (unsigned int i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
     }
 
 private:
@@ -616,8 +608,8 @@ struct ConnectorSchema : IOSchema {
 
     void draw(Device &device) const override {
         const float dx = orientation == kLeftRight ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) device.line({p, p + ImVec2{dx, 0}});
-        for (const auto &p: outputPoints) device.line({p - ImVec2{dx, 0}, p});
+        for (const auto &p: inputPoints) device.line(p, p + ImVec2{dx, 0});
+        for (const auto &p: outputPoints) device.line(p - ImVec2{dx, 0}, p);
     }
 };
 
@@ -644,12 +636,12 @@ struct RouteSchema : IOSchema {
 
         const float dx = orientation == kLeftRight ? dHorz : -dHorz;
         // Input/output wires
-        for (const auto &p: inputPoints) device.line({p, p + ImVec2{dx, 0}});
-        for (const auto &p: outputPoints) device.line({p - ImVec2{dx, 0}, p});
+        for (const auto &p: inputPoints) device.line(p, p + ImVec2{dx, 0});
+        for (const auto &p: outputPoints) device.line(p - ImVec2{dx, 0}, p);
 
         // Route wires
         for (unsigned int i = 0; i < routes.size() - 1; i += 2) {
-            device.line({inputPoints[routes[i] - 1] + ImVec2{dx, 0}, outputPoints[routes[i + 1] - 1] - ImVec2{dx, 0}});
+            device.line(inputPoints[routes[i] - 1] + ImVec2{dx, 0}, outputPoints[routes[i + 1] - 1] - ImVec2{dx, 0});
         }
     }
 

@@ -907,8 +907,7 @@ static Schema *generateInsideSchema(Tree t) {
     const bool isTGroup = isBoxTGroup(t, label, a);
     if (isVGroup || isHGroup || isTGroup) {
         const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
-        auto *s1 = createSchema(a);
-        return new DecorateSchema(s1, groupId + "group(" + extractName(label) + ")");
+        return new DecorateSchema(createSchema(a), groupId + "group(" + extractName(label) + ")");
     }
     if (isBoxSeq(t, a, b)) return makeSequentialSchema(createSchema(a), createSchema(b));
     if (isBoxPar(t, a, b)) return makeParallelSchema(createSchema(a), createSchema(b));
@@ -993,7 +992,11 @@ static Schema *createSchema(Tree t) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
             scheduleDrawing(t);
-            return makeBlockSchema(ins, outs, tree2str(idTree), LinkColor, fileName(t, id) + ".svg");
+            // todo Instead of scheduling now, check for a `link` in `Schema::draw`,
+            //  and if one's there, create an SvgDevice and pass it, along with its link, to its children.
+            //  Or, create a TopSchema here and have its `draw` method always create a new device.
+            //  OR, check the box complexity inside the schema draw, and create a new device if complex. (would need to pass in the tree...)
+            return makeBlockSchema(ins, outs, id, LinkColor, fileName(t, id) + ".svg");
         }
         // Draw a line around the object with its name.
         if (!isPureRouting(t)) return new DecorateSchema(generateInsideSchema(t), id);
@@ -1002,27 +1005,16 @@ static Schema *createSchema(Tree t) {
     return generateInsideSchema(t); // normal case
 }
 
-static Schema *addSchemaInputs(int ins, Schema *x) {
-    if (ins == 0) return x;
+static Schema *addSchemaIO(int numConnections, bool in, Schema *x) {
+    if (numConnections == 0) return x;
 
     Schema *y = nullptr;
     do {
         Schema *z = new ConnectorSchema();
         y = y != nullptr ? makeParallelSchema(y, z) : z;
-    } while (--ins);
+    } while (--numConnections);
 
-    return makeSequentialSchema(y, x);
-}
-static Schema *addSchemaOutputs(int outs, Schema *x) {
-    if (outs == 0) return x;
-
-    Schema *y = nullptr;
-    do {
-        Schema *z = new ConnectorSchema();
-        y = y != nullptr ? makeParallelSchema(y, z) : z;
-    } while (--outs);
-
-    return makeSequentialSchema(x, y);
+    return in ? makeSequentialSchema(y, x) : makeSequentialSchema(x, y);
 }
 
 void drawBox(Box box) {
@@ -1045,7 +1037,7 @@ void drawBox(Box box) {
 
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        auto *ts = new TopSchema(new DecorateSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(t))), id), dc->backLink[t]);
+        auto *ts = new TopSchema(new DecorateSchema(addSchemaIO(outs, false, addSchemaIO(ins, true, generateInsideSchema(t))), id), dc->backLink[t]);
         ts->place();
         SVGDevice device(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
         ts->draw(device);

@@ -838,15 +838,6 @@ static Schema *addSchemaOutputs(int outs, Schema *x) {
     return makeSequentialSchema(x, y);
 }
 
-// Transform the definition name property of tree <t> into a legal file name.
-// The resulting file name is stored in <dst> a table of at least <n> chars.
-// Returns the <dst> pointer for convenience.
-static string legalFileName(Tree t, const string &id) {
-    const string dst = views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>();
-    // if it is not process add the hex address to make the name unique
-    return dst != "process" ? dst + format("-{:p}", (void *) t) : dst;
-}
-
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
 static bool isInverter(Tree t) {
@@ -988,6 +979,14 @@ const int foldThreshold = 25; // global complexity threshold before activating f
 const int foldComplexity = 2; // individual complexity threshold before folding
 const fs::path faustDiagramsPath = "FaustDiagrams"; // todo properties
 
+// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
+// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
+static string fileName(Tree t, const string &id) {
+    if (id == "process") return id;
+    return (views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
+        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t));
+}
+
 // Write a top level diagram.
 // A top level diagram is decorated with its definition name property and is drawn in an individual file.
 static void writeSchemaFile(Tree bd) {
@@ -997,12 +996,12 @@ static void writeSchemaFile(Tree bd) {
     Tree idTree;
     getDefNameProperty(bd, idTree);
     const string &id = tree2str(idTree);
-    dc->schemaFileName = legalFileName(bd, id) + ".svg";
+    dc->schemaFileName = fileName(bd, id) + ".svg";
 
     auto *ts = new TopSchema(new DecorateSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), id), dc->backLink[bd], "");
     ts->place(0, 0, kLeftRight);
-    SVGDevice dev(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
-    ts->draw(dev);
+    SVGDevice device(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
+    ts->draw(device);
 }
 
 // Schedule a block diagram to be drawn.
@@ -1067,7 +1066,7 @@ static Schema *createSchema(Tree t) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
             scheduleDrawing(t);
-            return makeBlockSchema(ins, outs, tree2str(idTree), LinkColor, legalFileName(t, id) + ".svg");
+            return makeBlockSchema(ins, outs, tree2str(idTree), LinkColor, fileName(t, id) + ".svg");
         }
         // Not a slot, with a name. Draw a line around the object with its name.
         if (!isPureRouting(t)) return new DecorateSchema(generateInsideSchema(t), id);

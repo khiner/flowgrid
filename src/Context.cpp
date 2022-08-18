@@ -342,7 +342,7 @@ void Context::finalize_gesture() {
     }) | views::filter([this](const auto &action) {
         // Filter out any resulting `diff_index` actions that don't actually result in a `diff_index` change.
         return action::get_id(action) != action::id<Actions::set_diff_index> || std::get<Actions::set_diff_index>(action).diff_index != gesture_begin_diff_index;
-    }) | to<const Gesture>();
+    }) | to<const Gesture>;
     if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
 
     gesture_begin_diff_index = diff_index;

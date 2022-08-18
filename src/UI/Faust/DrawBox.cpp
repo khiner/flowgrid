@@ -708,7 +708,7 @@ std::unique_ptr<DrawContext> dc;
 static int computeComplexity(Box box);
 
 // Memoized version of `computeComplexity(Box)`
-int boxComplexity(Box box) {
+static int boxComplexity(Box box) {
     Tree prop = box->getProperty(dc->boxComplexityMemo);
     if (prop) return tree2int(prop);
 
@@ -717,10 +717,14 @@ int boxComplexity(Box box) {
     return v;
 }
 
+static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
+    return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
+}
+
 // Compute the complexity of a box expression tree according to the complexity of its subexpressions.
 // Basically, it counts the number of boxes to be drawn.
 // If the box-diagram expression is not evaluated, it will throw an error.
-int computeComplexity(Box box) {
+static int computeComplexity(Box box) {
     if (isBoxCut(box) || isBoxWire(box)) return 0;
 
     int i;
@@ -761,11 +765,7 @@ int computeComplexity(Box box) {
     if (isBoxSymbolic(box, t1, t2)) return 1 + boxComplexity(t2);
 
     // binary operators
-    if (isBoxSeq(box, t1, t2) ||
-        isBoxSplit(box, t1, t2) ||
-        isBoxMerge(box, t1, t2) ||
-        isBoxPar(box, t1, t2) ||
-        isBoxRec(box, t1, t2))
+    if (isBoxBinary(box, t1, t2))
         return boxComplexity(t1) + boxComplexity(t2);
 
     Tree label, cur, min, max, step, chan;
@@ -1021,34 +1021,15 @@ static bool pendingDrawing(Tree &t) {
     return true;
 }
 
-void drawBox(Box box) {
-    fs::remove_all(faustDiagramsPath);
-    fs::create_directory(faustDiagramsPath);
-
-    dc = std::make_unique<DrawContext>();
-    dc->foldingFlag = boxComplexity(box) > foldThreshold;
-
-    scheduleDrawing(box); // schedule the initial drawing
-
-    Tree t;
-    while (pendingDrawing(t)) writeSchemaFile(t); // generate all the pending drawings
-}
-
 // Compute the Pure Routing property.
 // That is, expressions only made of cut, wires and slots.
 // No labels will be displayed for pure routing expressions.
 static bool isPureRouting(Tree t) {
     bool r;
-    int ID;
-    Tree x, y;
-
     if (dc->pureRoutingPropertyMemo.get(t, r)) return r;
 
-    if (isBoxCut(t) || isBoxWire(t) || isInverter(t) || isBoxSlot(t, &ID) ||
-        (isBoxPar(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
-        (isBoxSeq(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
-        (isBoxSplit(t, x, y) && isPureRouting(x) && isPureRouting(y)) ||
-        (isBoxMerge(t, x, y) && isPureRouting(x) && isPureRouting(y))) {
+    Tree x, y;
+    if (isBoxCut(t) || isBoxWire(t) || isInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && isPureRouting(x) && isPureRouting(y))) {
         dc->pureRoutingPropertyMemo.set(t, true);
         return true;
     }
@@ -1068,9 +1049,22 @@ static Schema *createSchema(Tree t) {
             scheduleDrawing(t);
             return makeBlockSchema(ins, outs, tree2str(idTree), LinkColor, fileName(t, id) + ".svg");
         }
-        // Not a slot, with a name. Draw a line around the object with its name.
+        // Draw a line around the object with its name.
         if (!isPureRouting(t)) return new DecorateSchema(generateInsideSchema(t), id);
     }
 
     return generateInsideSchema(t); // normal case
+}
+
+void drawBox(Box box) {
+    fs::remove_all(faustDiagramsPath);
+    fs::create_directory(faustDiagramsPath);
+
+    dc = std::make_unique<DrawContext>();
+    dc->foldingFlag = boxComplexity(box) > foldThreshold;
+
+    scheduleDrawing(box); // schedule the initial drawing
+
+    Tree t;
+    while (pendingDrawing(t)) writeSchemaFile(t); // generate all the pending drawings
 }

@@ -155,11 +155,13 @@ struct Schema {
         orientation = new_orientation;
         placeImpl();
     }
-
-    virtual void placeImpl() = 0;
+    void place() { placeImpl(); }
     virtual ImVec2 inputPoint(unsigned int i) const = 0;
     virtual ImVec2 outputPoint(unsigned int i) const = 0;
     virtual void draw(Device &) const {};
+
+protected:
+    virtual void placeImpl() = 0;
 };
 
 const float dWire = 8; // distance between two wires
@@ -999,7 +1001,7 @@ static void writeSchemaFile(Tree bd) {
     dc->schemaFileName = fileName(bd, id) + ".svg";
 
     auto *ts = new TopSchema(new DecorateSchema(addSchemaOutputs(outs, addSchemaInputs(ins, generateInsideSchema(bd))), id), dc->backLink[bd], "");
-    ts->place(0, 0, kLeftRight);
+    ts->place();
     SVGDevice device(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
     ts->draw(device);
 }

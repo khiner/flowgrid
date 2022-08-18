@@ -204,7 +204,7 @@ struct IOSchema : Schema {
     std::vector<ImVec2> outputPoints;
 };
 
-// A simple rectangular box with a text and inputs and outputs.
+// A simple rectangular box with text and inputs and outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(unsigned int inputs, unsigned int outputs, float width, float height, string text, string color, string link = "")
         : IOSchema(inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
@@ -668,11 +668,11 @@ Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
 Schema *makeMergeSchema(Schema *s1, Schema *s2) { return new MergeSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
 Schema *makeSplitSchema(Schema *s1, Schema *s2) { return new SplitSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
 
+// The smaller component is enlarged to the width of the other.
 Schema *makeRecSchema(Schema *s1, Schema *s2) {
     auto *a = makeEnlargedSchema(s1, s2->width);
     auto *b = makeEnlargedSchema(s2, s1->width);
-    // The smaller component is enlarged to the width of the other.
-    const float w = a->width + 2 * (dWire * float(max(b->inputs, b->outputs)));
+    const float w = a->width + 2 * dWire * float(max(b->inputs, b->outputs));
     return new RecSchema(a, b, w);
 }
 
@@ -786,25 +786,25 @@ static bool isInverter(Tree t) {
     return ::ranges::contains(inverters, t);
 }
 
-// Collect the leaf numbers of tree l into vector v.
-// Return true if l a number or a parallel tree of numbers.
-static bool isIntTree(Tree l, std::vector<int> &v) {
-    int n;
-    if (isBoxInt(l, &n)) {
-        v.push_back(n);
+// Collect the leaf numbers of tree `t` into vector `v`.
+// Return true if `t` is a number or a parallel tree of numbers.
+static bool isIntTree(Tree t, std::vector<int> &v) {
+    int i;
+    if (isBoxInt(t, &i)) {
+        v.push_back(i);
         return true;
     }
 
     double r;
-    if (isBoxReal(l, &r)) {
+    if (isBoxReal(t, &r)) {
         v.push_back(int(r));
         return true;
     }
 
     Tree x, y;
-    if (isBoxPar(l, x, y)) return isIntTree(x, v) && isIntTree(y, v);
+    if (isBoxPar(t, x, y)) return isIntTree(x, v) && isIntTree(y, v);
 
-    throw std::runtime_error((stringstream("ERROR in file ") << __FILE__ << ':' << __LINE__ << ", not a valid list of numbers : " << boxpp(l)).str());
+    throw std::runtime_error((stringstream("Not a valid list of numbers : ") << boxpp(t)).str());
 }
 
 // Convert user interface element into a textual representation
@@ -832,13 +832,7 @@ static Schema *generateInsideSchema(Tree t) {
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) {
-        stringstream s;
-        if (isBoxInt(t)) s << i;
-        else s << r;
-        return makeBlockSchema(0, 1, s.str(), NumberColor);
-    }
-
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return makeBlockSchema(0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), NumberColor);
     if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", NormalColor);
     if (isBoxWire(t)) return new CableSchema();
     if (isBoxCut(t)) return new CutSchema();
@@ -886,8 +880,7 @@ static Schema *generateInsideSchema(Tree t) {
         return makeBlockSchema(0, 1, tree2str(id), SlotColor);
     }
     if (isBoxSymbolic(t, a, b)) {
-        auto *inputSlotSchema = generateInputSlotSchema(a);
-        auto *abstractionSchema = generateAbstractionSchema(inputSlotSchema, b);
+        auto *abstractionSchema = generateAbstractionSchema(generateInputSlotSchema(a), b);
 
         Tree id;
         if (getDefNameProperty(t, id)) return abstractionSchema;
@@ -901,7 +894,7 @@ static Schema *generateInsideSchema(Tree t) {
         vector<int> route;
         if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) return makeRouteSchema(ins, outs, route);
 
-        throw std::runtime_error((stringstream("ERROR in file ") << __FILE__ << ':' << __LINE__ << ", invalid route expression : " << boxpp(t)).str());
+        throw std::runtime_error((stringstream("Invalid route expression : ") << boxpp(t)).str());
     }
 
     throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
@@ -955,13 +948,13 @@ static Schema *createSchema(Tree t) {
     if (getDefNameProperty(t, idTree)) {
         const string &id = tree2str(idTree);
         if (dc->foldingFlag && boxComplexity(t) >= foldComplexity) {
-            int ins, outs;
-            getBoxType(t, &ins, &outs);
             scheduleDrawing(t);
             // todo Instead of scheduling now, check for a `link` in `Schema::draw`,
             //  and if one's there, create an SvgDevice and pass it, along with its link, to its children.
             //  Or, create a TopSchema here and have its `draw` method always create a new device.
             //  OR, check the box complexity inside the schema draw, and create a new device if complex. (would need to pass in the tree...)
+            int ins, outs;
+            getBoxType(t, &ins, &outs);
             return makeBlockSchema(ins, outs, id, LinkColor, fileName(t, id) + ".svg");
         }
         // Draw a line around the object with its name.

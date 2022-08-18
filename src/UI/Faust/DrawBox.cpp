@@ -465,28 +465,17 @@ struct RecSchema : IOSchema {
         fgassert(s1->width >= s2->width);
     }
 
-    // The two schemas are centered vertically, with `s2` on top of `s1`.
+    // The two schemas are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
     void placeImpl() override {
-        const float dx1 = (width - schema1->width) / 2;
-        const float dx2 = (width - schema2->width) / 2;
-        if (orientation == kLeftRight) {
-            schema2->place(x + dx2, y, kRightLeft);
-            schema1->place(x + dx1, y + schema2->height, kLeftRight);
-        } else {
-            schema1->place(x + dx1, y, kRightLeft);
-            schema2->place(x + dx2, y + schema1->height, kLeftRight);
-        }
+        const bool isLR = orientation == kLeftRight;
+        auto *topSchema = isLR ? schema2 : schema1;
+        auto *bottomSchema = isLR ? schema1 : schema2;
+        topSchema->place(x + (width - topSchema->width) / 2, y, kRightLeft);
+        bottomSchema->place(x + (width - bottomSchema->width) / 2, y + topSchema->height, kLeftRight);
 
-        const ImVec2 d1 = {orientation == kRightLeft ? -dx1 : dx1, 0};
+        const ImVec2 d1 = {(width - schema1->width * (isLR ? 1.0f : -1.0f)) / 2, 0};
         for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema1->inputPoint(i + schema2->outputs) - d1;
         for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema1->outputPoint(i) + d1;
-    }
-
-    // Draw the delay sign of a feedback connection
-    static void drawDelaySign(Device &device, float x, float y, float size) {
-        device.line({x - size / 2, y}, {x - size / 2, y - size});
-        device.line({x - size / 2, y - size}, {x + size / 2, y - size});
-        device.line({x + size / 2, y - size}, {x + size / 2, y});
     }
 
     void draw(Device &device) const override {
@@ -495,23 +484,20 @@ struct RecSchema : IOSchema {
 
         // Draw the implicit feedback delay to each schema2 input
         const float dw = orientation == kLeftRight ? dWire : -dWire;
-        for (unsigned int i = 0; i < schema2->inputs; i++) {
-            const auto &p = schema1->outputPoint(i) + ImVec2{float(i) * dw, 0};
-            drawDelaySign(device, p.x, p.y, dw / 2);
-        }
+        for (unsigned int i = 0; i < schema2->inputs; i++) drawDelaySign(device, schema1->outputPoint(i) + ImVec2{float(i) * dw, 0}, dw / 2);
         // Feedback connections to each schema2 input
-        for (unsigned int i = 0; i < schema2->inputs; i++) collectFeedback(device, schema1->outputPoint(i), schema2->inputPoint(i), float(i) * dWire, outputPoint(i));
+        for (unsigned int i = 0; i < schema2->inputs; i++) drawFeedback(device, schema1->outputPoint(i), schema2->inputPoint(i), float(i) * dWire, outputPoint(i));
         // Non-recursive output lines
         for (unsigned int i = schema2->inputs; i < outputs; i++) device.line(schema1->outputPoint(i), outputPoint(i));
         // Input lines
         for (unsigned int i = 0; i < inputs; i++) device.line(inputPoint(i), schema1->inputPoint(i + schema2->outputs));
         // Feedfront connections from each schema2 output
-        for (unsigned int i = 0; i < schema2->outputs; i++) collectFeedfront(device, schema2->outputPoint(i), schema1->inputPoint(i), float(i) * dWire);
+        for (unsigned int i = 0; i < schema2->outputs; i++) drawFeedfront(device, schema2->outputPoint(i), schema1->inputPoint(i), float(i) * dWire);
     }
 
 private:
     // Draw a feedback connection between two points with a horizontal displacement `dx`.
-    void collectFeedback(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx, const ImVec2 &out) const {
+    void drawFeedback(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx, const ImVec2 &out) const {
         const float ox = src.x + (orientation == kLeftRight ? dx : -dx);
         const float ct = (orientation == kLeftRight ? dWire : -dWire) / 2.0f;
         const ImVec2 up(ox, src.y - ct);
@@ -524,11 +510,19 @@ private:
     }
 
     // Draw a feedfrom connection between two points with a horizontal displacement `dx`.
-    void collectFeedfront(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx) const {
+    void drawFeedfront(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx) const {
         const float ox = src.x + (orientation == kLeftRight ? -dx : dx);
         device.line({src.x, src.y}, {ox, src.y});
         device.line({ox, src.y}, {ox, dst.y});
         device.line({ox, dst.y}, {dst.x, dst.y});
+    }
+
+    // Draw the delay sign of a feedback connection (three sides of a square)
+    static void drawDelaySign(Device &device, const ImVec2 &pos, float size) {
+        const float halfSize = size / 2;
+        device.line(pos - ImVec2{halfSize, 0}, pos - ImVec2{halfSize, size});
+        device.line(pos - ImVec2{halfSize, size}, pos + ImVec2{halfSize, -size});
+        device.line(pos + ImVec2{halfSize, -size}, pos + ImVec2{halfSize, 0});
     }
 
     Schema *schema1, *schema2;

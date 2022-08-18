@@ -206,7 +206,7 @@ struct IOSchema : Schema {
 
 // A simple rectangular box with a text and inputs and outputs.
 struct BlockSchema : IOSchema {
-    BlockSchema(unsigned int inputs, unsigned int outputs, float width, float height, string text, string color, string link)
+    BlockSchema(unsigned int inputs, unsigned int outputs, float width, float height, string text, string color, string link = "")
         : IOSchema(inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
 
     void draw(Device &device) const override {
@@ -256,7 +256,7 @@ private:
 
 // An inverter is a special symbol corresponding to '*(-1)' to create more compact diagrams.
 struct InverterSchema : BlockSchema {
-    InverterSchema(const string &color) : BlockSchema(1, 1, 2.5f * dWire, dWire, "-1", color, "") {}
+    InverterSchema() : BlockSchema(1, 1, 2.5f * dWire, dWire, "-1", InverterColor) {}
 
     void draw(Device &device) const override {
         device.triangle({x + dHorz, y + 0.5f}, {width - 2 * dHorz, height - 1}, color, orientation, link);
@@ -653,7 +653,7 @@ protected:
     const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
 };
 
-Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link) {
+Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string &text, const string &color, const string &link = "") {
     const float minimal = 3 * dWire;
     const float w = 2 * dHorz + max(minimal, dLetter * quantize(int(text.size())));
     const float h = 2 * dVert + max(minimal, float(max(inputs, outputs)) * dWire);
@@ -798,7 +798,7 @@ static Schema *createSchema(Tree t);
 static Schema *generateInputSlotSchema(Tree a) {
     Tree id;
     getDefNameProperty(a, id);
-    return makeBlockSchema(1, 0, tree2str(id), SlotColor, "");
+    return makeBlockSchema(1, 0, tree2str(id), SlotColor);
 }
 // Generate an abstraction schema by placing in sequence the input slots and the body.
 static Schema *generateAbstractionSchema(Schema *x, Tree t) {
@@ -888,8 +888,8 @@ static string userInterfaceDescription(Tree box) {
 
 // Generate the inside schema of a block diagram according to its type.
 static Schema *generateInsideSchema(Tree t) {
-    if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), NormalColor, "");
-    if (isInverter(t)) return new InverterSchema(InverterColor);
+    if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), NormalColor);
+    if (isInverter(t)) return new InverterSchema();
 
     int i;
     double r;
@@ -897,10 +897,10 @@ static Schema *generateInsideSchema(Tree t) {
         stringstream s;
         if (isBoxInt(t)) s << i;
         else s << r;
-        return makeBlockSchema(0, 1, s.str(), NumberColor, "");
+        return makeBlockSchema(0, 1, s.str(), NumberColor);
     }
 
-    if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", NormalColor, "");
+    if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", NormalColor);
     if (isBoxWire(t)) return new CableSchema();
     if (isBoxCut(t)) return new CutSchema();
 
@@ -910,21 +910,21 @@ static Schema *generateInsideSchema(Tree t) {
     prim3 p3;
     prim4 p4;
     prim5 p5;
-    if (isBoxPrim0(t, &p0)) return makeBlockSchema(0, 1, prim0name(p0), NormalColor, "");
-    if (isBoxPrim1(t, &p1)) return makeBlockSchema(1, 1, prim1name(p1), NormalColor, "");
-    if (isBoxPrim2(t, &p2)) return makeBlockSchema(2, 1, prim2name(p2), NormalColor, "");
-    if (isBoxPrim3(t, &p3)) return makeBlockSchema(3, 1, prim3name(p3), NormalColor, "");
-    if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), NormalColor, "");
-    if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), NormalColor, "");
+    if (isBoxPrim0(t, &p0)) return makeBlockSchema(0, 1, prim0name(p0), NormalColor);
+    if (isBoxPrim1(t, &p1)) return makeBlockSchema(1, 1, prim1name(p1), NormalColor);
+    if (isBoxPrim2(t, &p2)) return makeBlockSchema(2, 1, prim2name(p2), NormalColor);
+    if (isBoxPrim3(t, &p3)) return makeBlockSchema(3, 1, prim3name(p3), NormalColor);
+    if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), NormalColor);
+    if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), NormalColor);
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), NormalColor, "");
+    if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), NormalColor);
 
     Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), NormalColor, "");
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return makeBlockSchema(0, 1, userInterfaceDescription(t), UiColor, "");
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return makeBlockSchema(1, 1, userInterfaceDescription(t), UiColor, "");
-    if (isBoxSoundfile(t, label, chan)) return makeBlockSchema(2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor, "");
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), NormalColor);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return makeBlockSchema(0, 1, userInterfaceDescription(t), UiColor);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return makeBlockSchema(1, 1, userInterfaceDescription(t), UiColor);
+    if (isBoxSoundfile(t, label, chan)) return makeBlockSchema(2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return createSchema(a);
@@ -945,7 +945,7 @@ static Schema *generateInsideSchema(Tree t) {
     if (isBoxSlot(t, &i)) {
         Tree id;
         getDefNameProperty(t, id);
-        return makeBlockSchema(0, 1, tree2str(id), SlotColor, "");
+        return makeBlockSchema(0, 1, tree2str(id), SlotColor);
     }
     if (isBoxSymbolic(t, a, b)) {
         auto *inputSlotSchema = generateInputSlotSchema(a);
@@ -955,7 +955,7 @@ static Schema *generateInsideSchema(Tree t) {
         if (getDefNameProperty(t, id)) return abstractionSchema;
         return new DecorateSchema(abstractionSchema, "Abstraction");
     }
-    if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", NormalColor, "");
+    if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", NormalColor);
 
     Tree c;
     if (isBoxRoute(t, a, b, c)) {

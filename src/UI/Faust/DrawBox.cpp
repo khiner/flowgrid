@@ -326,15 +326,13 @@ struct BinarySchema : Schema {
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void placeImpl() override {
-        const float dy1 = max(0.0f, schema2->height - schema1->height) / 2.0f;
-        const float dy2 = max(0.0f, schema1->height - schema2->height) / 2.0f;
-        if (orientation == kLeftRight) {
-            schema1->place(x, y + dy1, orientation);
-            schema2->place(x + schema1->width + horzGap, y + dy2, orientation);
-        } else {
-            schema2->place(x, y + dy2, orientation);
-            schema1->place(x + schema2->width + horzGap, y + dy1, orientation);
-        }
+        const bool isLR = orientation == kLeftRight;
+        auto *leftSchema = isLR ? schema1 : schema2;
+        auto *rightSchema = isLR ? schema2 : schema1;
+        const float dy1 = max(0.0f, rightSchema->height - leftSchema->height) / 2.0f;
+        const float dy2 = max(0.0f, leftSchema->height - rightSchema->height) / 2.0f;
+        leftSchema->place(x, y + dy1, orientation);
+        rightSchema->place(x + leftSchema->width + horzGap, y + dy2, orientation);
     }
 
     void draw(Device &device) const override {
@@ -357,13 +355,11 @@ struct ParallelSchema : BinarySchema {
     }
 
     void placeImpl() override {
-        if (orientation == kLeftRight) {
-            schema1->place(x, y, orientation);
-            schema2->place(x, y + schema1->height, orientation);
-        } else {
-            schema2->place(x, y, orientation);
-            schema1->place(x, y + schema2->height, orientation);
-        }
+        const bool isLR = orientation == kLeftRight;
+        auto *topSchema = isLR ? schema1 : schema2;
+        auto *bottomSchema = isLR ? schema2 : schema1;
+        topSchema->place(x, y, orientation);
+        bottomSchema->place(x, y + topSchema->height, orientation);
     }
 
     ImVec2 inputPoint(unsigned int i) const override { return i < inputFrontier ? schema1->inputPoint(i) : schema2->inputPoint(i - inputFrontier); }
@@ -810,29 +806,6 @@ static Schema *generateAbstractionSchema(Schema *x, Tree t) {
     return makeSequentialSchema(x, createSchema(t));
 }
 
-static Schema *addSchemaInputs(int ins, Schema *x) {
-    if (ins == 0) return x;
-
-    Schema *y = nullptr;
-    do {
-        Schema *z = new ConnectorSchema();
-        y = y != nullptr ? makeParallelSchema(y, z) : z;
-    } while (--ins);
-
-    return makeSequentialSchema(y, x);
-}
-static Schema *addSchemaOutputs(int outs, Schema *x) {
-    if (outs == 0) return x;
-
-    Schema *y = nullptr;
-    do {
-        Schema *z = new ConnectorSchema();
-        y = y != nullptr ? makeParallelSchema(y, z) : z;
-    } while (--outs);
-
-    return makeSequentialSchema(x, y);
-}
-
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
 static bool isInverter(Tree t) {
@@ -1027,6 +1000,29 @@ static Schema *createSchema(Tree t) {
     }
 
     return generateInsideSchema(t); // normal case
+}
+
+static Schema *addSchemaInputs(int ins, Schema *x) {
+    if (ins == 0) return x;
+
+    Schema *y = nullptr;
+    do {
+        Schema *z = new ConnectorSchema();
+        y = y != nullptr ? makeParallelSchema(y, z) : z;
+    } while (--ins);
+
+    return makeSequentialSchema(y, x);
+}
+static Schema *addSchemaOutputs(int outs, Schema *x) {
+    if (outs == 0) return x;
+
+    Schema *y = nullptr;
+    do {
+        Schema *z = new ConnectorSchema();
+        y = y != nullptr ? makeParallelSchema(y, z) : z;
+    } while (--outs);
+
+    return makeSequentialSchema(x, y);
 }
 
 void drawBox(Box box) {

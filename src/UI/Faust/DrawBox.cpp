@@ -153,6 +153,7 @@ private:
 
 // An abstract block diagram schema
 struct Schema {
+    const unsigned int descendents = 0; // The number of boxes within this schema (recursively).
     const unsigned int inputs, outputs;
     const float width, height;
 
@@ -160,7 +161,8 @@ struct Schema {
     float x = 0, y = 0;
     int orientation = kLeftRight;
 
-    Schema(unsigned int inputs, unsigned int outputs, float width, float height) : inputs(inputs), outputs(outputs), width(width), height(height) {}
+    Schema(unsigned int descendents, unsigned int inputs, unsigned int outputs, float width, float height)
+        : descendents(descendents), inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;
 
     void place(float new_x, float new_y, int new_orientation) {
@@ -184,7 +186,8 @@ const float dHorz = 4;
 const float dVert = 4;
 
 struct IOSchema : Schema {
-    IOSchema(unsigned int inputs, unsigned int outputs, float width, float height) : Schema(inputs, outputs, width, height) {
+    IOSchema(unsigned int descendents, unsigned int inputs, unsigned int outputs, float width, float height)
+        : Schema(descendents, inputs, outputs, width, height) {
         for (unsigned int i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
         for (unsigned int i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
     }
@@ -207,7 +210,7 @@ struct IOSchema : Schema {
 // A simple rectangular box with text and inputs and outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(unsigned int inputs, unsigned int outputs, float width, float height, string text, string color, string link = "")
-        : IOSchema(inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
+        : IOSchema(1, inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
 
     void draw(Device &device) const override {
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
@@ -237,7 +240,7 @@ static inline float quantize(int n) {
 // The width of a cable is null.
 // Therefor, input and output connection points are the same.
 struct CableSchema : Schema {
-    CableSchema(unsigned int n = 1) : Schema(n, n, 0, float(n) * dWire) {}
+    CableSchema(unsigned int n = 1) : Schema(0, n, n, 0, float(n) * dWire) {}
 
     // Place the communication points vertically spaced by `dWire`.
     void placeImpl() override {
@@ -268,7 +271,7 @@ struct CutSchema : Schema {
     // A Cut is represented by a small black dot.
     // It has 1 input and no outputs.
     // It has a 0 width and a 1 wire height.
-    CutSchema() : Schema(1, 0, 0, dWire / 100.0f), point(0, 0) {}
+    CutSchema() : Schema(0, 1, 0, 0, dWire / 100.0f), point(0, 0) {}
 
     // The input point is placed in the middle.
     void placeImpl() override { point = {x, y + height * 0.5f}; }
@@ -292,7 +295,7 @@ private:
 };
 
 struct EnlargedSchema : IOSchema {
-    EnlargedSchema(Schema *s, float width) : IOSchema(s->inputs, s->outputs, width, s->height), schema(s) {}
+    EnlargedSchema(Schema *s, float width) : IOSchema(s->descendents, s->inputs, s->outputs, width, s->height), schema(s) {}
 
     void placeImpl() override {
         const float dx = (width - schema->width) / 2;
@@ -315,7 +318,7 @@ private:
 
 struct BinarySchema : Schema {
     BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float horzGap, float width, float height)
-        : Schema(inputs, outputs, width, height), schema1(s1), schema2(s2), horzGap(horzGap) {}
+        : Schema(s1->descendents + s2->descendents, inputs, outputs, width, height), schema1(s1), schema2(s2), horzGap(horzGap) {}
     BinarySchema(Schema *s1, Schema *s2, unsigned int inputs, unsigned int outputs, float horzGap)
         : BinarySchema(s1, s2, inputs, outputs, horzGap, s1->width + s2->width + horzGap, max(s1->height, s2->height)) {}
     BinarySchema(Schema *s1, Schema *s2, float horzGap) : BinarySchema(s1, s2, s1->inputs, s2->outputs, horzGap) {}
@@ -466,7 +469,8 @@ struct SplitSchema : BinarySchema {
 // The two components must have the same width.
 struct RecSchema : IOSchema {
     RecSchema(Schema *s1, Schema *s2, float width)
-        : IOSchema(s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height), schema1(s1), schema2(s2) {
+        : IOSchema(s1->descendents + s2->descendents, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height),
+          schema1(s1), schema2(s2) {
         fgassert(s1->inputs >= s2->outputs);
         fgassert(s1->outputs >= s2->inputs);
         fgassert(s1->width >= s2->width);
@@ -541,7 +545,7 @@ private:
 struct TopSchema : Schema {
     // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
     TopSchema(Schema *s, string link, float margin = 10)
-        : Schema(0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), link(std::move(link)), margin(margin) {}
+        : Schema(s->descendents, 0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), link(std::move(link)), margin(margin) {}
 
     void placeImpl() override { schema->place(x + margin, y + margin, orientation); }
 
@@ -564,7 +568,7 @@ private:
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
 struct DecorateSchema : IOSchema {
     DecorateSchema(Schema *s, string text, float margin = 10)
-        : IOSchema(s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
+        : IOSchema(s->descendents, s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
 
     void placeImpl() override {
         schema->place(x + margin, y + margin, orientation);
@@ -604,7 +608,7 @@ private:
 // A simple rectangular box with a text and inputs and outputs.
 // A connector is an invisible square for `dWire` size with 1 input and 1 output.
 struct ConnectorSchema : IOSchema {
-    ConnectorSchema() : IOSchema(1, 1, dWire, dWire) {}
+    ConnectorSchema() : IOSchema(0, 1, 1, dWire, dWire) {}
 
     void draw(Device &device) const override {
         const float dx = orientation == kLeftRight ? dHorz : -dHorz;
@@ -618,7 +622,7 @@ struct RouteSchema : IOSchema {
     // Build a simple colored `RouteSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
     // The length of the text as well as the number of inputs and outputs are used to compute the size of the `RouteSchema`
     RouteSchema(unsigned int inputs, unsigned int outputs, float width, float height, std::vector<int> routes)
-        : IOSchema(inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
+        : IOSchema(0, inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
 
     void draw(Device &device) const override {
         if (drawRouteFrame) {

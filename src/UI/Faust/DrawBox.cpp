@@ -202,6 +202,7 @@ struct Schema {
     virtual ImVec2 inputPoint(unsigned int i) const = 0;
     virtual ImVec2 outputPoint(unsigned int i) const = 0;
     virtual void draw(Device &) const {};
+    inline bool isLR() const { return orientation == kLeftRight; }
 
 protected:
     virtual void placeImpl() = 0;
@@ -215,11 +216,10 @@ struct IOSchema : Schema {
     }
 
     void placeImpl() override {
-        const bool isLR = orientation == kLeftRight;
-        const float dir = isLR ? dWire : -dWire;
+        const float dir = isLR() ? dWire : -dWire;
         const float yMid = y + height / 2.0f;
-        for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR ? x : x + width, yMid - dWire * float(inputs - 1) / 2.0f + float(i) * dir};
-        for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR ? x + width : x, yMid - dWire * float(outputs - 1) / 2.0f + float(i) * dir};
+        for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = {isLR() ? x : x + width, yMid - dWire * float(inputs - 1) / 2.0f + float(i) * dir};
+        for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = {isLR() ? x + width : x, yMid - dWire * float(outputs - 1) / 2.0f + float(i) * dir};
     }
 
     ImVec2 inputPoint(unsigned int i) const override { return inputPoints[i]; }
@@ -239,11 +239,10 @@ struct BlockSchema : IOSchema {
         device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text, link);
 
         // Draw a small point that indicates the first input (like an integrated circuits).
-        const bool isLR = orientation == kLeftRight;
-        device.dot(ImVec2{x, y} + (isLR ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
+        device.dot(ImVec2{x, y} + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
 
         // Input arrows
-        for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR ? dHorz : -dHorz, 0}, 0, orientation);
+        for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR() ? dHorz : -dHorz, 0}, 0, orientation);
 
         const float dx = orientation == kLeftRight ? dHorz : -dHorz;
         for (const auto &p: inputPoints) device.line(p, {p.x + dx, p.y});
@@ -351,9 +350,8 @@ struct BinarySchema : Schema {
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void placeImpl() override {
-        const bool isLR = orientation == kLeftRight;
-        auto *leftSchema = isLR ? schema1 : schema2;
-        auto *rightSchema = isLR ? schema2 : schema1;
+        auto *leftSchema = isLR() ? schema1 : schema2;
+        auto *rightSchema = isLR() ? schema2 : schema1;
         const float dy1 = max(0.0f, rightSchema->height - leftSchema->height) / 2.0f;
         const float dy2 = max(0.0f, leftSchema->height - rightSchema->height) / 2.0f;
         leftSchema->place(x, y + dy1, orientation);
@@ -380,9 +378,8 @@ struct ParallelSchema : BinarySchema {
     }
 
     void placeImpl() override {
-        const bool isLR = orientation == kLeftRight;
-        auto *topSchema = isLR ? schema1 : schema2;
-        auto *bottomSchema = isLR ? schema2 : schema1;
+        auto *topSchema = isLR() ? schema1 : schema2;
+        auto *bottomSchema = isLR() ? schema2 : schema1;
         topSchema->place(x, y, orientation);
         bottomSchema->place(x, y + topSchema->height, orientation);
     }
@@ -500,13 +497,12 @@ struct RecSchema : IOSchema {
 
     // The two schemas are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
     void placeImpl() override {
-        const bool isLR = orientation == kLeftRight;
-        auto *topSchema = isLR ? schema2 : schema1;
-        auto *bottomSchema = isLR ? schema1 : schema2;
+        auto *topSchema = isLR() ? schema2 : schema1;
+        auto *bottomSchema = isLR() ? schema1 : schema2;
         topSchema->place(x + (width - topSchema->width) / 2, y, kRightLeft);
         bottomSchema->place(x + (width - bottomSchema->width) / 2, y + topSchema->height, kLeftRight);
 
-        const ImVec2 d1 = {(width - schema1->width * (isLR ? 1.0f : -1.0f)) / 2, 0};
+        const ImVec2 d1 = {(width - schema1->width * (isLR() ? 1.0f : -1.0f)) / 2, 0};
         for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema1->inputPoint(i + schema2->outputs) - d1;
         for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema1->outputPoint(i) + d1;
     }
@@ -640,11 +636,10 @@ struct RouteSchema : IOSchema {
             // device.text(x + width / 2, y + height / 2, text, link);
 
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
-            const bool isLR = orientation == kLeftRight;
-            device.dot(ImVec2{x, y} + (isLR ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
+            device.dot(ImVec2{x, y} + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
 
             // Input arrows
-            for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR ? dHorz : -dHorz, 0}, 0, orientation);
+            for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR() ? dHorz : -dHorz, 0}, 0, orientation);
         }
 
         const float dx = orientation == kLeftRight ? dHorz : -dHorz;

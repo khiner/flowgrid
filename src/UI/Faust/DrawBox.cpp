@@ -557,70 +557,51 @@ private:
     Schema *schema1, *schema2;
 };
 
-// A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left.
-// The rectangle is placed at half the margin parameter.
-// Arrows are added to all the outputs.
-struct TopSchema : Schema {
-    // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
-    TopSchema(Schema *s, string link, float margin = topSchemaMargin)
-        : Schema(s->descendents, 0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), link(std::move(link)), margin(margin) {}
+Schema *makeEnlargedSchema(Schema *s, float width) { return width > s->width ? new EnlargedSchema(s, width) : s; }
+Schema *makeParallelSchema(Schema *s1, Schema *s2) { return new ParallelSchema(makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width)); }
+Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
+    const unsigned int o = s1->outputs;
+    const unsigned int i = s2->inputs;
+    auto *a = o < i ? makeParallelSchema(s1, new CableSchema(i - o)) : s1;
+    auto *b = o > i ? makeParallelSchema(s2, new CableSchema(o - i)) : s2;
 
-    void placeImpl() override { schema->place(x + margin, y + margin, orientation); }
+    return new SequentialSchema(a, b);
+}
 
-    // Top schema has no input or output
-    ImVec2 inputPoint(unsigned int) const override { throw std::runtime_error("ERROR : TopSchema::inputPoint"); }
-    ImVec2 outputPoint(unsigned int) const override { throw std::runtime_error("ERROR : TopSchema::outputPoint"); }
-
-    void draw(Device &device) const override {
-        device.rect({x, y, width - 1, height - 1}, "#ffffff", link);
-        schema->draw(device);
-        for (unsigned int i = 0; i < schema->outputs; i++) device.arrow(schema->outputPoint(i), 0, orientation);
-    }
-
-private:
-    Schema *schema;
-    string link;
-    float margin;
-};
-
-// A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
+// A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
+// If `topLevel = true`, additional padding is added, along with output arrows.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Schema *s, string text, float margin = decorateSchemaMargin)
-        : IOSchema(s->descendents, s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
+    DecorateSchema(Schema *s, string text, string link = "", bool topLevel = false)
+        : IOSchema(s->descendents, s->inputs, s->outputs,
+        s->width + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0)),
+        s->height + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0))),
+          schema(s), text(std::move(text)), link(std::move(link)), topLevel(topLevel) {}
 
     void placeImpl() override {
+        const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
         schema->place(x + margin, y + margin, orientation);
 
-        const float m = orientation == kRightLeft ? -margin : margin;
+        const float m = orientation == kRightLeft ? -topSchemaMargin : topSchemaMargin;
         for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - ImVec2{m, 0};
         for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + ImVec2{m, 0};
     }
 
     void draw(Device &device) const override {
+        if (topLevel) device.rect({x, y, width - 1, height - 1}, "#ffffff", link);
+
         schema->draw(device);
-
+        const float topLevelMargin = topLevel ? topSchemaMargin : 0;
+        const float margin = 2 * topLevelMargin + decorateSchemaMargin;
         device.dashrect({x + margin / 2, y + margin / 2, width - margin, height - margin}, text);
-
         for (unsigned int i = 0; i < inputs; i++) device.line(inputPoint(i), schema->inputPoint(i));
         for (unsigned int i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
-    }
 
+        if (topLevel) for (unsigned int i = 0; i < outputs; i++) device.arrow(outputPoint(i), 0, orientation);
+    }
 private:
     Schema *schema;
-    float margin;
-    string text;
-};
-
-// A simple rectangular box with a text and inputs and outputs.
-// A connector is an invisible square for `dWire` size with 1 input and 1 output.
-struct ConnectorSchema : IOSchema {
-    ConnectorSchema() : IOSchema(0, 1, 1, dWire, dWire) {}
-
-    void draw(Device &device) const override {
-        const float dx = orientation == kLeftRight ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) device.line(p, p + ImVec2{dx, 0});
-        for (const auto &p: outputPoints) device.line(p - ImVec2{dx, 0}, p);
-    }
+    string text, link;
+    bool topLevel;
 };
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -664,16 +645,7 @@ Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string 
     const float h = 2 * dVert + max(minimal, float(max(inputs, outputs)) * dWire);
     return new BlockSchema(inputs, outputs, w, h, text, color, link);
 }
-Schema *makeEnlargedSchema(Schema *s, float width) { return width > s->width ? new EnlargedSchema(s, width) : s; }
-Schema *makeParallelSchema(Schema *s1, Schema *s2) { return new ParallelSchema(makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width)); }
-Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
-    const unsigned int o = s1->outputs;
-    const unsigned int i = s2->inputs;
-    auto *a = o < i ? makeParallelSchema(s1, new CableSchema(i - o)) : s1;
-    auto *b = o > i ? makeParallelSchema(s2, new CableSchema(o - i)) : s2;
 
-    return new SequentialSchema(a, b);
-}
 Schema *makeMergeSchema(Schema *s1, Schema *s2) { return new MergeSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
 Schema *makeSplitSchema(Schema *s1, Schema *s2) { return new SplitSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
 
@@ -960,8 +932,7 @@ static Schema *createSchema(Tree t) {
             scheduleDrawing(t);
             // todo Instead of scheduling now, check for a `link` in `Schema::draw`,
             //  and if one's there, create an SvgDevice and pass it, along with its link, to its children.
-            //  Or, create a TopSchema here and have its `draw` method always create a new device.
-            //  OR, check the box complexity inside the schema draw, and create a new device if complex. (would need to pass in the tree...)
+            //  OR, check the box complexity inside the schema draw, and create a new device if complex.
             int ins, outs;
             getBoxType(t, &ins, &outs);
             return makeBlockSchema(ins, outs, id, LinkColor, fileName(t, id) + ".svg");
@@ -973,17 +944,6 @@ static Schema *createSchema(Tree t) {
     return generateInsideSchema(t); // normal case
 }
 
-static Schema *addSchemaIO(int numConnections, bool in, Schema *x) {
-    if (numConnections == 0) return x;
-
-    Schema *y = nullptr;
-    do {
-        Schema *z = new ConnectorSchema();
-        y = y != nullptr ? makeParallelSchema(y, z) : z;
-    } while (--numConnections);
-
-    return in ? makeSequentialSchema(y, x) : makeSequentialSchema(x, y);
-}
 
 void drawBox(Box box) {
     fs::remove_all(faustDiagramsPath);
@@ -1005,7 +965,7 @@ void drawBox(Box box) {
 
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        auto *ts = new TopSchema(new DecorateSchema(addSchemaIO(outs, false, addSchemaIO(ins, true, generateInsideSchema(t))), id), dc->backLink[t]);
+        auto *ts = new DecorateSchema(generateInsideSchema(t), id, dc->backLink[t], true);
         ts->place();
         SVGDevice device(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
         ts->draw(device);

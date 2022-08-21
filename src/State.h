@@ -329,18 +329,19 @@ struct Audio : Process {
         Editor editor{path, "editor", "Faust editor"};
         Log log{path, "log", "Faust log"};
 
-        //    string code{"import(\"stdfaust.lib\");\n\n"
-//                     "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
-//                     "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
-//                     "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
-//                     "    hslider(\"shift (semitones) \", 0, -24, +24, 0.1)\n"
-//                     "  )\n"
-//                     ");\n"
-//                     "\n"
-//                     "process = no.noise : pitchshifter;\n"};
-//        String code{path, "code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
-        String code{path, "code", "Code",
-                    "import(\"stdfaust.lib\");\nctFreq = hslider(\"cutoffFrequency\",500,50,10000,0.01);\nq = hslider(\"q\",5,1,30,0.1);\ngain = hslider(\"gain\",1,0,1,0.01);\nprocess = no.noise : fi.resonlp(ctFreq,q,gain);"};
+//        String code{path, "code", "Code",
+//                    "import(\"stdfaust.lib\");\n\n"
+//                    "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
+//                    "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
+//                    "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
+//                    "    hslider(\"shift (semitones) \", 0, -24, +24, 0.1)\n"
+//                    "  )\n"
+//                    ");\n"
+//                    "\n"
+//                    "process = no.noise : pitchshifter;\n"};
+        String code{path, "code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+//        String code{path, "code", "Code",
+//                    "import(\"stdfaust.lib\");\nctFreq = hslider(\"cutoffFrequency\",500,50,10000,0.01);\nq = hslider(\"q\",5,1,30,0.1);\ngain = hslider(\"gain\",1,0,1,0.01);\nprocess = no.noise : fi.resonlp(ctFreq,q,gain);"};
         string error{};
     };
 

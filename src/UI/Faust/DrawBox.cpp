@@ -239,13 +239,14 @@ struct BlockSchema : IOSchema {
 
         // Draw a small point that indicates the first input (like an integrated circuits).
         device.dot(ImVec2{x, y} + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
+        drawConnections(device);
+    }
 
-        // Input arrows
-        for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR() ? dHorz : -dHorz, 0}, 0, orientation);
-
-        const float dx = orientation == kLeftRight ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) device.line(p, {p.x + dx, p.y});
-        for (const auto &p: outputPoints) device.line({p.x - dx, p.y}, p);
+    void drawConnections(Device &device) const {
+        const float dx = isLR() ? dHorz : -dHorz;
+        for (const auto &p: inputPoints) device.line(p, p + ImVec2{dx, 0}); // Input lines
+        for (const auto &p: outputPoints) device.line(p - ImVec2{dx, 0}, p); // Output lines
+        for (const auto &p: inputPoints) device.arrow(p + ImVec2{dx, 0}, 0, orientation); // Input arrows
     }
 
     const string text, color, link;
@@ -266,7 +267,7 @@ struct CableSchema : Schema {
     void placeImpl() override {
         for (unsigned int i = 0; i < inputs; i++) {
             const float dx = dWire * (float(i) + 0.5f);
-            points[i] = {x, y + (orientation == kLeftRight ? dx : height - dx)};
+            points[i] = {x, y + (isLR() ? dx : height - dx)};
         }
     }
 
@@ -283,6 +284,7 @@ struct InverterSchema : BlockSchema {
 
     void draw(Device &device) const override {
         device.triangle({x + dHorz, y + 0.5f}, {width - 2 * dHorz, height - 1}, color, orientation, link);
+        drawConnections(device);
     }
 };
 
@@ -420,7 +422,7 @@ struct SequentialSchema : BinarySchema {
             if (d == dir) {
                 mx += dx; // move in same direction
             } else {
-                mx = orientation == kLeftRight ? (d == kDownDir ? horzGap : 0) : (d == kUpDir ? -horzGap : 0);
+                mx = isLR() ? (d == kDownDir ? horzGap : 0) : (d == kUpDir ? -horzGap : 0);
                 dx = d == kUpDir ? dWire : d == kDownDir ? -dWire : 0;
                 dir = d;
             }
@@ -511,7 +513,7 @@ struct RecSchema : IOSchema {
         schema2->draw(device);
 
         // Draw the implicit feedback delay to each schema2 input
-        const float dw = orientation == kLeftRight ? dWire : -dWire;
+        const float dw = isLR() ? dWire : -dWire;
         for (unsigned int i = 0; i < schema2->inputs; i++) drawDelaySign(device, schema1->outputPoint(i) + ImVec2{float(i) * dw, 0}, dw / 2);
         // Feedback connections to each schema2 input
         for (unsigned int i = 0; i < schema2->inputs; i++) drawFeedback(device, schema1->outputPoint(i), schema2->inputPoint(i), float(i) * dWire, outputPoint(i));
@@ -526,8 +528,8 @@ struct RecSchema : IOSchema {
 private:
     // Draw a feedback connection between two points with a horizontal displacement `dx`.
     void drawFeedback(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx, const ImVec2 &out) const {
-        const float ox = src.x + (orientation == kLeftRight ? dx : -dx);
-        const float ct = (orientation == kLeftRight ? dWire : -dWire) / 2.0f;
+        const float ox = src.x + (isLR() ? dx : -dx);
+        const float ct = (isLR() ? dWire : -dWire) / 2.0f;
         const ImVec2 up(ox, src.y - ct);
         const ImVec2 br(ox + ct / 2.0f, src.y);
 
@@ -539,7 +541,7 @@ private:
 
     // Draw a feedfrom connection between two points with a horizontal displacement `dx`.
     void drawFeedfront(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx) const {
-        const float ox = src.x + (orientation == kLeftRight ? -dx : dx);
+        const float ox = src.x + (isLR() ? -dx : dx);
         device.line({src.x, src.y}, {ox, src.y});
         device.line({ox, src.y}, {ox, dst.y});
         device.line({ox, dst.y}, {dst.x, dst.y});
@@ -646,7 +648,7 @@ struct RouteSchema : IOSchema {
             for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR() ? dHorz : -dHorz, 0}, 0, orientation);
         }
 
-        const float dx = orientation == kLeftRight ? dHorz : -dHorz;
+        const float dx = isLR() ? dHorz : -dHorz;
         // Input/output wires
         for (const auto &p: inputPoints) device.line(p, p + ImVec2{dx, 0});
         for (const auto &p: outputPoints) device.line(p - ImVec2{dx, 0}, p);

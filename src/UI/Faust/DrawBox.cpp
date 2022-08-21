@@ -561,10 +561,10 @@ Schema *makeParallelSchema(Schema *s1, Schema *s2) { return new ParallelSchema(m
 Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
     const unsigned int o = s1->outputs;
     const unsigned int i = s2->inputs;
-    auto *a = o < i ? makeParallelSchema(s1, new CableSchema(i - o)) : s1;
-    auto *b = o > i ? makeParallelSchema(s2, new CableSchema(o - i)) : s2;
-
-    return new SequentialSchema(a, b);
+    return new SequentialSchema(
+        o < i ? makeParallelSchema(s1, new CableSchema(i - o)) : s1,
+        o > i ? makeParallelSchema(s2, new CableSchema(o - i)) : s2
+    );
 }
 
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
@@ -667,25 +667,6 @@ Schema *makeBlockSchema(unsigned int inputs, unsigned int outputs, const string 
     const float w = 2 * dHorz + max(minimal, dLetter * quantize(int(text.size())));
     const float h = 2 * dVert + max(minimal, float(max(inputs, outputs)) * dWire);
     return new BlockSchema(inputs, outputs, w, h, text, color, link);
-}
-
-Schema *makeMergeSchema(Schema *s1, Schema *s2) { return new MergeSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
-Schema *makeSplitSchema(Schema *s1, Schema *s2) { return new SplitSchema(makeEnlargedSchema(s1, dWire), makeEnlargedSchema(s2, dWire)); }
-
-// The smaller component is enlarged to the width of the other.
-Schema *makeRecSchema(Schema *s1, Schema *s2) {
-    auto *a = makeEnlargedSchema(s1, s2->width);
-    auto *b = makeEnlargedSchema(s2, s1->width);
-    const float w = a->width + 2 * dWire * float(max(b->inputs, b->outputs));
-    return new RecSchema(a, b, w);
-}
-
-// Build n x m cable routing
-Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::vector<int> &routes) {
-    const float minimal = 3 * dWire;
-    const float h = 2 * dVert + max(minimal, max(float(inputs), float(outputs)) * dWire);
-    const float w = 2 * dHorz + max(minimal, h * 0.75f);
-    return new RouteSchema(inputs, outputs, w, h, routes);
 }
 
 static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
@@ -809,9 +790,17 @@ static Schema *generateInsideSchema(Tree t) {
     }
     if (isBoxSeq(t, a, b)) return makeSequentialSchema(createSchema(a), createSchema(b));
     if (isBoxPar(t, a, b)) return makeParallelSchema(createSchema(a), createSchema(b));
-    if (isBoxSplit(t, a, b)) return makeSplitSchema(createSchema(a), createSchema(b));
-    if (isBoxMerge(t, a, b)) return makeMergeSchema(createSchema(a), createSchema(b));
-    if (isBoxRec(t, a, b)) return makeRecSchema(createSchema(a), createSchema(b));
+    if (isBoxSplit(t, a, b)) return new SplitSchema(makeEnlargedSchema(createSchema(a), dWire), makeEnlargedSchema(createSchema(b), dWire));
+    if (isBoxMerge(t, a, b)) return new MergeSchema(makeEnlargedSchema(createSchema(a), dWire), makeEnlargedSchema(createSchema(b), dWire));
+    if (isBoxRec(t, a, b)) {
+        // The smaller component is enlarged to the width of the other.
+        auto *s1 = createSchema(a);
+        auto *s2 = createSchema(b);
+        auto *s1e = makeEnlargedSchema(s1, s2->width);
+        auto *s2e = makeEnlargedSchema(s2, s1->width);
+        const float w = s1e->width + 2 * dWire * float(max(s2e->inputs, s2e->outputs));
+        return new RecSchema(s1e, s2e, w);
+    }
     if (isBoxSlot(t, &i)) {
         Tree id;
         getDefNameProperty(t, id);
@@ -830,7 +819,13 @@ static Schema *generateInsideSchema(Tree t) {
     if (isBoxRoute(t, a, b, c)) {
         int ins, outs;
         vector<int> route;
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) return makeRouteSchema(ins, outs, route);
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) {
+            // Build n x m cable routing
+            const float minimal = 3 * dWire;
+            const float h = 2 * dVert + max(minimal, max(float(ins), float(outs)) * dWire);
+            const float w = 2 * dHorz + max(minimal, h * 0.75f);
+            return new RouteSchema(ins, outs, w, h, route);
+        }
 
         throw std::runtime_error((stringstream("Invalid route expression : ") << boxpp(t)).str());
     }

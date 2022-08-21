@@ -25,13 +25,22 @@
 
 using namespace fmt;
 
-static const bool scaledSVG = false; // Draw scaled SVG files todo toggleable
-static const float binarySchemaHorizontalGapRatio = 4; // todo style prop
-static const bool sequentialConnectionZigzag = true; // false allows for diagonal lines instead of zigzags instead of zigzags todo style prop
-static const bool drawRouteFrame = false; // todo style prop
-static const int foldThreshold = 25; // global complexity threshold before activating folding todo configurable in state
-static const int foldComplexity = 2; // individual complexity threshold before folding todo configurable in state
 static const fs::path faustDiagramsPath = "FaustDiagrams"; // todo app property
+
+// todo style props
+static const int foldThreshold = 25; // global complexity threshold before activating folding
+static const int foldComplexity = 2; // individual complexity threshold before folding
+static const bool scaledSVG = false; // Draw scaled SVG files
+static const float binarySchemaHorizontalGapRatio = 4;
+static const bool sequentialConnectionZigzag = true; // false allows for diagonal lines instead of zigzags instead of zigzags
+static const bool drawRouteFrame = false;
+static const float topSchemaMargin = 10;
+static const float decorateSchemaMargin = 10;
+static const float decorateSchemaLabelOffset = 5;
+static const float dWire = 8; // distance between two wires
+static const float dLetter = 4.3; // width of a letter todo derive using ImGui
+static const float dHorz = 4;
+static const float dVert = 4;
 
 // todo move to FlowGridStyle::Colors
 static const string LinkColor = "#003366";
@@ -47,6 +56,7 @@ class Device {
 public:
     virtual ~Device() = default;
     virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
+    virtual void dashrect(const ImVec4 &rect, const string &text) = 0; // Dashed rectangle with a label on the top left.
     virtual void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, int orientation, const string &link) = 0;
     virtual void circle(const ImVec2 &pos, float radius) = 0;
     virtual void arrow(const ImVec2 &pos, float rotation, int orientation) = 0;
@@ -84,6 +94,23 @@ struct SVGDevice : Device {
         const auto [x, y, w, h] = rect;
         stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, w, h, color);
         if (!link.empty()) stream << "</a>"; // close the optional link tag
+    }
+
+    void dashrect(const ImVec4 &rect, const string &text) override {
+        const auto [x, y, w, h] = rect;
+        const auto topLeft = ImVec2{x, y};
+        const auto topRight = topLeft + ImVec2{w, 0};
+        const auto bottomLeft = topLeft + ImVec2{0, h};
+        const auto bottomRight = bottomLeft + ImVec2{w, 0};
+        const float textLeft = x + decorateSchemaLabelOffset;
+
+        dasharray(topLeft, bottomLeft); // left line
+        dasharray(bottomLeft, bottomRight); // bottom line
+        dasharray(bottomRight, topRight); // right line
+        dasharray(topLeft, {textLeft, topLeft.y}); // top segment before text
+        dasharray({min(textLeft + float(1 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}); // top segment after text
+
+        label({textLeft, topLeft.y}, text);
     }
 
     void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, int orientation, const string &link) override {
@@ -179,11 +206,6 @@ struct Schema {
 protected:
     virtual void placeImpl() = 0;
 };
-
-const float dWire = 8; // distance between two wires
-const float dLetter = 4.3; // width of a letter
-const float dHorz = 4;
-const float dVert = 4;
 
 struct IOSchema : Schema {
     IOSchema(unsigned int descendents, unsigned int inputs, unsigned int outputs, float width, float height)
@@ -544,7 +566,7 @@ private:
 // Arrows are added to all the outputs.
 struct TopSchema : Schema {
     // A TopSchema is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
-    TopSchema(Schema *s, string link, float margin = 10)
+    TopSchema(Schema *s, string link, float margin = topSchemaMargin)
         : Schema(s->descendents, 0, 0, s->width + 2 * margin, s->height + 2 * margin), schema(s), link(std::move(link)), margin(margin) {}
 
     void placeImpl() override { schema->place(x + margin, y + margin, orientation); }
@@ -567,7 +589,7 @@ private:
 
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Schema *s, string text, float margin = 10)
+    DecorateSchema(Schema *s, string text, float margin = decorateSchemaMargin)
         : IOSchema(s->descendents, s->inputs, s->outputs, s->width + 2 * margin, s->height + 2 * margin), schema(s), margin(margin), text(std::move(text)) {}
 
     void placeImpl() override {
@@ -581,20 +603,8 @@ struct DecorateSchema : IOSchema {
     void draw(Device &device) const override {
         schema->draw(device);
 
-        // Surrounding frame
-        const auto topLeft = ImVec2{x, y} + ImVec2{margin, margin} / 2;
-        const auto topRight = topLeft + ImVec2{width - margin, 0};
-        const auto bottomLeft = topLeft + ImVec2{0, height - margin};
-        const auto bottomRight = bottomLeft + ImVec2{width - margin, 0};
-        const float textLeft = x + margin;
+        device.dashrect({x + margin / 2, y + margin / 2, width - margin, height - margin}, text);
 
-        device.dasharray(topLeft, bottomLeft); // left line
-        device.dasharray(bottomLeft, bottomRight); // bottom line
-        device.dasharray(bottomRight, topRight); // right line
-        device.dasharray(topLeft, {textLeft, topLeft.y}); // top segment before text
-        device.dasharray({min(textLeft + float(2 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}); // top segment after text
-
-        device.label({textLeft, topLeft.y}, text);
         for (unsigned int i = 0; i < inputs; i++) device.line(inputPoint(i), schema->inputPoint(i));
         for (unsigned int i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
     }

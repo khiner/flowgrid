@@ -28,7 +28,6 @@ using namespace fmt;
 static const fs::path faustDiagramsPath = "FaustDiagrams"; // todo app property
 
 // todo style props
-static const int foldThreshold = 25; // global complexity threshold before activating folding
 static const int foldComplexity = 2; // individual complexity threshold before folding
 static const bool scaledSVG = false; // Draw scaled SVG files
 static const float binarySchemaHorizontalGapRatio = 4;
@@ -568,14 +567,30 @@ Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
     return new SequentialSchema(a, b);
 }
 
+// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
+// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
+static string svgFileName(Tree t, const string &id) {
+    if (id == "process") return id + ".svg";
+    return (views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
+        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
+}
+
+struct DrawContext {
+    property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
+    std::set<Tree> drawnExp; // Expressions drawn or scheduled so far
+    std::stack<string> fileNames;
+};
+
+std::unique_ptr<DrawContext> dc;
+
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
 // If `topLevel = true`, additional padding is added, along with output arrows.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Schema *s, string text, string link = "", bool topLevel = false)
+    DecorateSchema(Tree t, Schema *s, string text, string link = "", bool topLevel = false)
         : IOSchema(s->descendents, s->inputs, s->outputs,
         s->width + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0)),
         s->height + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0))),
-          schema(s), text(std::move(text)), link(std::move(link)), topLevel(topLevel) {}
+          tree(t), schema(s), text(std::move(text)), link(std::move(link)), topLevel(topLevel) {}
 
     void placeImpl() override {
         const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
@@ -598,7 +613,15 @@ struct DecorateSchema : IOSchema {
 
         if (topLevel) for (unsigned int i = 0; i < outputs; i++) device.arrow(outputPoint(i), 0, orientation);
     }
+
+    void draw() const {
+        const string &file_name = svgFileName(tree, text);
+        SVGDevice device(faustDiagramsPath / file_name, width, height);
+        draw(device);
+    }
+
 private:
+    Tree tree;
     Schema *schema;
     string text, link;
     bool topLevel;
@@ -665,74 +688,8 @@ Schema *makeRouteSchema(unsigned int inputs, unsigned int outputs, const std::ve
     return new RouteSchema(inputs, outputs, w, h, routes);
 }
 
-struct DrawContext {
-    Tree boxComplexityMemo{}; // Avoid recomputing box complexity
-    property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
-    string schemaFileName;  // Name of schema file being generated
-    std::set<Tree> drawnExp; // Expressions drawn or scheduled so far
-    std::map<Tree, string> backLink; // Link to enclosing file for sub schema
-    std::stack<Tree> pendingExp; // Expressions that need to be drawn
-    bool foldingFlag = false; // true with complex block-diagrams
-};
-
-std::unique_ptr<DrawContext> dc;
-
-static int computeComplexity(Box box);
-
-// Memoized version of `computeComplexity(Box)`
-static int boxComplexity(Box box) {
-    Tree prop = box->getProperty(dc->boxComplexityMemo);
-    if (prop) return tree2int(prop);
-
-    int v = computeComplexity(box);
-    box->setProperty(dc->boxComplexityMemo, tree(v));
-    return v;
-}
-
 static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
     return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
-}
-
-// Compute the complexity of a box expression tree according to the complexity of its subexpressions.
-// Basically, it counts the number of boxes to be drawn.
-// If the box-diagram expression is not evaluated, it will throw an error.
-static int computeComplexity(Box box) {
-    if (isBoxCut(box) || isBoxWire(box)) return 0;
-
-    const auto *xt = getUserData(box);
-
-    // simple elements / slot
-    if (xt || isBoxInt(box) || isBoxReal(box) ||
-        isBoxPrim0(box) || isBoxPrim1(box) || isBoxPrim2(box) || isBoxPrim3(box) || isBoxPrim4(box) || isBoxPrim5(box) ||
-        isBoxWaveform(box) || isBoxSlot(box))
-        return 1;
-
-    // foreign elements
-    if (isBoxFFun(box) || isBoxFConst(box) || isBoxFVar(box)) return 1;
-
-    Tree t1, t2;
-    // symbolic boxes
-    if (isBoxSymbolic(box, t1, t2)) return 1 + boxComplexity(t2);
-    // binary operators
-    if (isBoxBinary(box, t1, t2)) return boxComplexity(t1) + boxComplexity(t2);
-
-    // user interface widgets
-    if (isBoxButton(box) || isBoxCheckbox(box) || isBoxVSlider(box) || isBoxHSlider(box) ||
-        isBoxHBargraph(box) || isBoxVBargraph(box) || isBoxSoundfile(box) || isBoxNumEntry(box))
-        return 1;
-
-    // user interface groups
-    Tree label;
-    if (isBoxVGroup(box, label, t1) || isBoxHGroup(box, label, t1) || isBoxTGroup(box, label, t1) || isBoxMetadata(box, t1, t2))
-        return boxComplexity(t1);
-
-    // environment/route
-    Tree t3;
-    if (isBoxEnvironment(box) || isBoxRoute(box, t1, t2, t3)) return 0;
-
-    stringstream error;
-    error << "ERROR in boxComplexity : not an evaluated box [[ " << *box << " ]]\n";
-    throw std::runtime_error(error.str());
 }
 
 static Schema *createSchema(Tree t);
@@ -848,7 +805,7 @@ static Schema *generateInsideSchema(Tree t) {
     const bool isTGroup = isBoxTGroup(t, label, a);
     if (isVGroup || isHGroup || isTGroup) {
         const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
-        return new DecorateSchema(createSchema(a), groupId + "group(" + extractName(label) + ")");
+        return new DecorateSchema(a, createSchema(a), groupId + "group(" + extractName(label) + ")");
     }
     if (isBoxSeq(t, a, b)) return makeSequentialSchema(createSchema(a), createSchema(b));
     if (isBoxPar(t, a, b)) return makeParallelSchema(createSchema(a), createSchema(b));
@@ -865,7 +822,7 @@ static Schema *generateInsideSchema(Tree t) {
 
         Tree id;
         if (getDefNameProperty(t, id)) return abstractionSchema;
-        return new DecorateSchema(abstractionSchema, "Abstraction");
+        return new DecorateSchema(t, abstractionSchema, "Abstraction");
     }
     if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", NormalColor);
 
@@ -881,34 +838,21 @@ static Schema *generateInsideSchema(Tree t) {
     throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
 }
 
-// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
-// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
-static string fileName(Tree t, const string &id) {
-    if (id == "process") return id;
-    return (views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
-        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t));
+
+// Each top-level schema is decorated with its definition name property and rendered to its own file.
+static DecorateSchema makeTopLevelSchema(Tree t) {
+    Tree idTree;
+    getDefNameProperty(t, idTree);
+    const string &id = tree2str(idTree);
+    const string &file_name = svgFileName(t, id);
+    const string enclosingFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
+    dc->fileNames.push(file_name);
+    DecorateSchema schema = {t, generateInsideSchema(t), id, enclosingFileName, true};
+    dc->fileNames.pop();
+    return schema;
 }
 
-// Schedule a block diagram to be drawn.
-static void scheduleDrawing(Tree t) {
-    if (dc->drawnExp.find(t) == dc->drawnExp.end()) {
-        dc->drawnExp.insert(t);
-        dc->backLink.emplace(t, dc->schemaFileName); // remember the enclosing filename
-        dc->pendingExp.push(t);
-    }
-}
-
-// Retrieve next block diagram that must be drawn.
-static bool pendingDrawing(Tree &t) {
-    if (dc->pendingExp.empty()) return false;
-    t = dc->pendingExp.top();
-    dc->pendingExp.pop();
-    return true;
-}
-
-// Compute the Pure Routing property.
-// That is, expressions only made of cut, wires and slots.
-// No labels will be displayed for pure routing expressions.
+// Returns `true` if the tree is only made of cut, wires and slots.
 static bool isPureRouting(Tree t) {
     bool r;
     if (dc->pureRoutingPropertyMemo.get(t, r)) return r;
@@ -923,51 +867,34 @@ static bool isPureRouting(Tree t) {
     return false;
 }
 
-// Generate an appropriate schema according to the type of block diagram.
 static Schema *createSchema(Tree t) {
     Tree idTree;
     if (getDefNameProperty(t, idTree)) {
         const string &id = tree2str(idTree);
-        if (dc->foldingFlag && boxComplexity(t) >= foldComplexity) {
-            scheduleDrawing(t);
-            // todo Instead of scheduling now, check for a `link` in `Schema::draw`,
-            //  and if one's there, create an SvgDevice and pass it, along with its link, to its children.
-            //  OR, check the box complexity inside the schema draw, and create a new device if complex.
+        auto schema = makeTopLevelSchema(t);
+        if (schema.descendents >= foldComplexity) {
+            if (!dc->drawnExp.contains(t)) {
+                dc->drawnExp.insert(t);
+                schema.place();
+                schema.draw();
+            }
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return makeBlockSchema(ins, outs, id, LinkColor, fileName(t, id) + ".svg");
+            return makeBlockSchema(ins, outs, id, LinkColor, svgFileName(t, id));
         }
         // Draw a line around the object with its name.
-        if (!isPureRouting(t)) return new DecorateSchema(generateInsideSchema(t), id);
+        if (!isPureRouting(t)) return new DecorateSchema(t, generateInsideSchema(t), id);
     }
 
     return generateInsideSchema(t); // normal case
 }
-
 
 void drawBox(Box box) {
     fs::remove_all(faustDiagramsPath);
     fs::create_directory(faustDiagramsPath);
 
     dc = std::make_unique<DrawContext>();
-    dc->foldingFlag = boxComplexity(box) > foldThreshold;
-
-    scheduleDrawing(box); // Schedule the initial drawing
-
-    // Generate all the pending diagrams.
-    // Each diagram is decorated with its definition name property and rendered to its own file.
-    Tree t;
-    while (pendingDrawing(t)) {
-        Tree idTree;
-        getDefNameProperty(t, idTree);
-        const string &id = tree2str(idTree);
-        dc->schemaFileName = fileName(t, id) + ".svg";
-
-        int ins, outs;
-        getBoxType(t, &ins, &outs);
-        auto *ts = new DecorateSchema(generateInsideSchema(t), id, dc->backLink[t], true);
-        ts->place();
-        SVGDevice device(faustDiagramsPath / dc->schemaFileName, ts->width, ts->height);
-        ts->draw(device);
-    }
+    auto schema = makeTopLevelSchema(box);
+    schema.place();
+    schema.draw();
 }

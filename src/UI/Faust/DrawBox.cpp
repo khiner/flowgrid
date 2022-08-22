@@ -49,7 +49,7 @@ static const string SlotColor = "#47945e";
 static const string NumberColor = "#f44800";
 static const string InverterColor = "#ffffff";
 
-enum Direction { None, Horizontal, Up, Down };
+enum Direction { None = -1, Horizontal, Up, Down };
 enum Orientation { LeftRight = 1, RightLeft = -1 };
 using Count = unsigned int;
 
@@ -58,7 +58,7 @@ public:
     virtual ~Device() = default;
     virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
     virtual void dashrect(const ImVec4 &rect, const string &text) = 0; // Dashed rectangle with a label on the top left.
-    virtual void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation, const string &link) = 0;
+    virtual void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation) = 0;
     virtual void circle(const ImVec2 &pos, float radius) = 0;
     virtual void arrow(const ImVec2 &pos, float rotation, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
@@ -114,8 +114,7 @@ struct SVGDevice : Device {
         label({textLeft, topLeft.y}, text);
     }
 
-    void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation, const string &link) override {
-        if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
+    void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation) override {
         const auto [x, y] = pos;
         const auto [l, h] = size;
 
@@ -285,7 +284,7 @@ struct InverterSchema : BlockSchema {
     InverterSchema() : BlockSchema(1, 1, 2.5f * dWire, dWire, "-1", InverterColor) {}
 
     void draw(Device &device) const override {
-        device.triangle({x + dHorz, y + 0.5f}, {width - 2 * dHorz, height - 1}, color, orientation, link);
+        device.triangle({x + dHorz, y + 0.5f}, {width - 2 * dHorz, height - 1}, color, orientation);
         drawConnections(device);
     }
 };

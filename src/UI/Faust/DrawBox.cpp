@@ -49,21 +49,22 @@ static const string SlotColor = "#47945e";
 static const string NumberColor = "#f44800";
 static const string InverterColor = "#ffffff";
 
-enum { kLeftRight = 1, kRightLeft = -1 };
+enum Direction { None, Horizontal, Up, Down };
+enum Orientation { LeftRight = 1, RightLeft = -1 };
 
 class Device {
 public:
     virtual ~Device() = default;
     virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
     virtual void dashrect(const ImVec4 &rect, const string &text) = 0; // Dashed rectangle with a label on the top left.
-    virtual void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, int orientation, const string &link) = 0;
+    virtual void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation, const string &link) = 0;
     virtual void circle(const ImVec2 &pos, float radius) = 0;
-    virtual void arrow(const ImVec2 &pos, float rotation, int orientation) = 0;
+    virtual void arrow(const ImVec2 &pos, float rotation, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void dasharray(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &name, const string &link) = 0;
     virtual void label(const ImVec2 &pos, const string &name) = 0;
-    virtual void dot(const ImVec2 &pos, int orientation) = 0;
+    virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
 struct SVGDevice : Device {
@@ -112,14 +113,14 @@ struct SVGDevice : Device {
         label({textLeft, topLeft.y}, text);
     }
 
-    void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, int orientation, const string &link) override {
+    void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation, const string &link) override {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
         const auto [x, y] = pos;
         const auto [l, h] = size;
 
         static const float radius = 1.5;
         float x0, x1, x2;
-        if (orientation == kLeftRight) {
+        if (orientation == LeftRight) {
             x0 = x;
             x1 = x + l - 2 * radius;
             x2 = x + l - radius;
@@ -137,10 +138,10 @@ struct SVGDevice : Device {
         stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", pos.x, pos.y, radius);
     }
 
-    void arrow(const ImVec2 &pos, float rotation, int orientation) override {
+    void arrow(const ImVec2 &pos, float rotation, Orientation orientation) override {
         static const float dx = 3, dy = 1;
         const auto [x, y] = pos;
-        const auto x1 = orientation == kLeftRight ? x - dx : x + dx;
+        const auto x1 = orientation == LeftRight ? x - dx : x + dx;
         stream << rotate_line({x1, y - dy}, pos, rotation, x, y);
         stream << rotate_line({x1, y + dy}, pos, rotation, x, y);
     }
@@ -163,8 +164,8 @@ struct SVGDevice : Device {
         stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
     }
 
-    void dot(const ImVec2 &pos, int orientation) override {
-        const float offset = orientation == kLeftRight ? 2 : -2;
+    void dot(const ImVec2 &pos, Orientation orientation) override {
+        const float offset = orientation == LeftRight ? 2 : -2;
         stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x + offset, pos.y + offset);
     }
 
@@ -185,13 +186,13 @@ struct Schema {
 
     // Fields populated in `place()`:
     float x = 0, y = 0;
-    int orientation = kLeftRight;
+    Orientation orientation = LeftRight;
 
     Schema(unsigned int descendents, unsigned int inputs, unsigned int outputs, float width, float height)
         : descendents(descendents), inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;
 
-    void place(float new_x, float new_y, int new_orientation) {
+    void place(float new_x, float new_y, Orientation new_orientation) {
         x = new_x;
         y = new_y;
         orientation = new_orientation;
@@ -201,7 +202,7 @@ struct Schema {
     virtual ImVec2 inputPoint(unsigned int i) const = 0;
     virtual ImVec2 outputPoint(unsigned int i) const = 0;
     virtual void draw(Device &) const {};
-    inline bool isLR() const { return orientation == kLeftRight; }
+    inline bool isLR() const { return orientation == LeftRight; }
 
 protected:
     virtual void placeImpl() = 0;
@@ -323,7 +324,7 @@ struct EnlargedSchema : IOSchema {
         const float dx = (width - schema->width) / 2;
         schema->place(x + dx, y, orientation);
 
-        const ImVec2 d = {orientation == kRightLeft ? -dx : dx, 0};
+        const ImVec2 d = {orientation == RightLeft ? -dx : dx, 0};
         for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - d;
         for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + d;
     }
@@ -393,38 +394,30 @@ private:
     unsigned int outputFrontier;
 };
 
-enum { kHorDir, kUpDir, kDownDir }; // directions of connections
-
-// Compute the direction of a connection.
-// Y-axis goes from top to bottom
-static int direction(const ImVec2 &a, const ImVec2 &b) {
-    if (a.y > b.y) return kUpDir;
-    if (a.y < b.y) return kDownDir;
-    return kHorDir;
-}
-
 struct SequentialSchema : BinarySchema {
-    // The components s1 and s2 must be "compatible" (s1 : n->m and s2 : m->q).
-    SequentialSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) {
-        fgassert(s1->outputs == s2->inputs);
-    }
+    // The components s1 and s2 must be "compatible" (s1: n->m and s2: m->q).
+    SequentialSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) { fgassert(s1->outputs == s2->inputs); }
+
+    // Compute the direction of a connection.
+    // Y-axis goes from top to bottom
+    static Direction connectionDirection(const ImVec2 &a, const ImVec2 &b) { return a.y > b.y ? Up : (a.y < b.y ? Down : Horizontal); }
 
     void draw(Device &device) const override {
         BinarySchema::draw(device);
 
         // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
         float dx = 0, mx = 0;
-        int dir = -1;
+        Direction direction = None;
         for (unsigned int i = 0; i < schema1->outputs; i++) {
             const auto src = schema1->outputPoint(i);
             const auto dst = schema2->inputPoint(i);
-            const int d = direction(src, dst);
-            if (d == dir) {
+            const Direction d = connectionDirection(src, dst);
+            if (d == direction) {
                 mx += dx; // move in same direction
             } else {
-                mx = isLR() ? (d == kDownDir ? horzGap : 0) : (d == kUpDir ? -horzGap : 0);
-                dx = d == kUpDir ? dWire : d == kDownDir ? -dWire : 0;
-                dir = d;
+                mx = isLR() ? (d == Down ? horzGap : 0) : (d == Up ? -horzGap : 0);
+                dx = d == Up ? dWire : d == Down ? -dWire : 0;
+                direction = d;
             }
             if (!sequentialConnectionZigzag || src.y == dst.y) {
                 // Draw a straight, potentially diagonal cable.
@@ -446,20 +439,20 @@ struct SequentialSchema : BinarySchema {
 
         const float dy1 = max(0.0f, b->height - a->height) / 2.0f;
         const float dy2 = max(0.0f, a->height - b->height) / 2.0f;
-        a->place(0, dy1, kLeftRight);
-        b->place(0, dy2, kLeftRight);
+        a->place(0, dy1, LeftRight);
+        b->place(0, dy2, LeftRight);
 
-        int dir = kHorDir;
+        Direction direction = Horizontal;
         int size = 0;
         int MaxGroupSize[] = {0, 0, 0}; // store the size of the largest group for each direction
         for (unsigned int i = 0; i < a->outputs; i++) {
-            const auto d = direction(a->outputPoint(i), b->inputPoint(i));
-            size = d == dir ? size + 1 : 1;
-            dir = d;
-            MaxGroupSize[dir] = max(MaxGroupSize[dir], size);
+            const auto d = connectionDirection(a->outputPoint(i), b->inputPoint(i));
+            size = (d == direction ? size + 1 : 1);
+            direction = d;
+            MaxGroupSize[direction] = max(MaxGroupSize[direction], size);
         }
 
-        return dWire * float(max(MaxGroupSize[kUpDir], MaxGroupSize[kDownDir]));
+        return dWire * float(max(MaxGroupSize[Up], MaxGroupSize[Down]));
     }
 };
 
@@ -500,8 +493,8 @@ struct RecSchema : IOSchema {
     void placeImpl() override {
         auto *topSchema = isLR() ? schema2 : schema1;
         auto *bottomSchema = isLR() ? schema1 : schema2;
-        topSchema->place(x + (width - topSchema->width) / 2, y, kRightLeft);
-        bottomSchema->place(x + (width - bottomSchema->width) / 2, y + topSchema->height, kLeftRight);
+        topSchema->place(x + (width - topSchema->width) / 2, y, RightLeft);
+        bottomSchema->place(x + (width - bottomSchema->width) / 2, y + topSchema->height, LeftRight);
 
         const ImVec2 d1 = {(width - schema1->width * (isLR() ? 1.0f : -1.0f)) / 2, 0};
         for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema1->inputPoint(i + schema2->outputs) - d1;
@@ -598,7 +591,7 @@ struct DecorateSchema : IOSchema {
         const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
         schema->place(x + margin, y + margin, orientation);
 
-        const float m = orientation == kRightLeft ? -topSchemaMargin : topSchemaMargin;
+        const float m = orientation == RightLeft ? -topSchemaMargin : topSchemaMargin;
         for (unsigned int i = 0; i < inputs; i++) inputPoints[i] = schema->inputPoint(i) - ImVec2{m, 0};
         for (unsigned int i = 0; i < outputs; i++) outputPoints[i] = schema->outputPoint(i) + ImVec2{m, 0};
     }

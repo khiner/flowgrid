@@ -40,6 +40,7 @@ static const float dWire = 8; // distance between two wires
 static const float dLetter = 4.3; // width of a letter todo derive using ImGui
 static const float dHorz = 4;
 static const float dVert = 4;
+static const float inverterRadius = 1.5;
 
 // todo move to FlowGridStyle::Colors
 static const string LinkColor = "#003366";
@@ -58,8 +59,8 @@ public:
     virtual ~Device() = default;
     virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
     virtual void dashrect(const ImVec4 &rect, const string &text) = 0; // Dashed rectangle with a label on the top left.
-    virtual void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation) = 0;
-    virtual void circle(const ImVec2 &pos, float radius) = 0;
+    virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) = 0;
+    virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
     virtual void arrow(const ImVec2 &pos, float rotation, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void dasharray(const ImVec2 &start, const ImVec2 &end) = 0;
@@ -114,28 +115,13 @@ struct SVGDevice : Device {
         label({textLeft, topLeft.y}, text);
     }
 
-    void triangle(const ImVec2 &pos, const ImVec2 &size, const string &color, Orientation orientation) override {
-        const auto [x, y] = pos;
-        const auto [l, h] = size;
-
-        static const float radius = 1.5;
-        float x0, x1, x2;
-        if (orientation == LeftRight) {
-            x0 = x;
-            x1 = x + l - 2 * radius;
-            x2 = x + l - radius;
-        } else {
-            x0 = x + l;
-            x1 = x + 2 * radius;
-            x2 = x + radius;
-        }
-        // triangle + circle
-        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".25" points="{},{} {},{} {},{}"/>)", color, x0, y, x1, y + h / 2.0, x0, y + h);
-        stream << format(R"(<circle  fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x2, y + h / 2.0, radius);
+    void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) override {
+        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".25" points="{},{} {},{} {},{}"/>)", color, a.x, a.y, b.x, b.y, c.x, c.y);
     }
 
-    void circle(const ImVec2 &pos, float radius) override {
-        stream << format(R"(<circle cx="{}" cy="{}" r="{}"/>)", pos.x, pos.y, radius);
+    void circle(const ImVec2 &pos, float radius, const string &color) override {
+        const auto [x, y] = pos;
+        stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x, y, radius);
     }
 
     void arrow(const ImVec2 &pos, float rotation, Orientation orientation) override {
@@ -279,12 +265,20 @@ private:
     std::vector<ImVec2> points{inputs};
 };
 
-// An inverter is a special symbol corresponding to '*(-1)' to create more compact diagrams.
+// An inverter is a special symbol corresponding to '*(-1)', used to create more compact diagrams.
 struct InverterSchema : BlockSchema {
     InverterSchema() : BlockSchema(1, 1, 2.5f * dWire, dWire, "-1", InverterColor) {}
 
     void draw(Device &device) const override {
-        device.triangle({x + dHorz, y + 0.5f}, {width - 2 * dHorz, height - 1}, color, orientation);
+        const ImVec2 pos = {x, y};
+        const float x1 = width - 2 * dHorz;
+        const float y1 = 0.5f + (height - 1) / 2;
+        const auto ta = pos + ImVec2{dHorz + (isLR() ? 0 : x1), 0};
+        const auto tb = ta + ImVec2{(isLR() ? x1 - 2 * inverterRadius : 2 * inverterRadius - x1 - pos.x), y1};
+        const auto tc = ta + ImVec2{0, height - 1};
+        const auto circlePos = tb + ImVec2{isLR() ? inverterRadius : -inverterRadius, 0};
+        device.circle(circlePos, inverterRadius, color);
+        device.triangle(ta, tb, tc, color);
         drawConnections(device);
     }
 };

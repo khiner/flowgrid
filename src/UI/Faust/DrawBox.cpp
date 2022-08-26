@@ -171,6 +171,7 @@ static const char *getTreeName(Tree t) {
 
 // An abstract block diagram schema
 struct Schema {
+    Tree tree;
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const Count inputs, outputs;
     const float width, height;
@@ -179,8 +180,8 @@ struct Schema {
     float x = 0, y = 0;
     Orientation orientation = LeftRight;
 
-    Schema(Count descendents, Count inputs, Count outputs, float width, float height)
-        : descendents(descendents), inputs(inputs), outputs(outputs), width(width), height(height) {}
+    Schema(Tree t, Count descendents, Count inputs, Count outputs, float width, float height)
+        : tree(t), descendents(descendents), inputs(inputs), outputs(outputs), width(width), height(height) {}
     virtual ~Schema() = default;
 
     void place(float new_x, float new_y, Orientation new_orientation) {
@@ -200,8 +201,8 @@ protected:
 };
 
 struct IOSchema : Schema {
-    IOSchema(Count descendents, Count inputs, Count outputs, float width, float height)
-        : Schema(descendents, inputs, outputs, width, height) {
+    IOSchema(Tree t, Count descendents, Count inputs, Count outputs, float width, float height)
+        : Schema(t, descendents, inputs, outputs, width, height) {
         for (Count i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
         for (Count i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
     }
@@ -222,8 +223,8 @@ struct IOSchema : Schema {
 
 // A simple rectangular box with text and inputs and outputs.
 struct BlockSchema : IOSchema {
-    BlockSchema(Count inputs, Count outputs, float width, float height, string text, string color, string link = "")
-        : IOSchema(1, inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
+    BlockSchema(Tree t, Count inputs, Count outputs, float width, float height, string text, string color, string link = "")
+        : IOSchema(t, 1, inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
 
     void draw(Device &device) const override {
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
@@ -253,7 +254,7 @@ static inline float quantize(int n) {
 // The width of a cable is null.
 // Therefor, input and output connection points are the same.
 struct CableSchema : Schema {
-    CableSchema(Count n = 1) : Schema(0, n, n, 0, float(n) * dWire) {}
+    CableSchema(Tree t, Count n = 1) : Schema(t, 0, n, n, 0, float(n) * dWire) {}
 
     // Place the communication points vertically spaced by `dWire`.
     void placeImpl() override {
@@ -272,7 +273,7 @@ private:
 
 // An inverter is a special symbol corresponding to '*(-1)', used to create more compact diagrams.
 struct InverterSchema : BlockSchema {
-    InverterSchema() : BlockSchema(1, 1, 2.5f * dWire, dWire, "-1", InverterColor) {}
+    InverterSchema(Tree t) : BlockSchema(t, 1, 1, 2.5f * dWire, dWire, "-1", InverterColor) {}
 
     void draw(Device &device) const override {
         const ImVec2 pos = {x, y};
@@ -293,7 +294,7 @@ struct CutSchema : Schema {
     // A Cut is represented by a small black dot.
     // It has 1 input and no outputs.
     // It has a 0 width and a 1 wire height.
-    CutSchema() : Schema(0, 1, 0, 0, dWire / 100.0f), point(0, 0) {}
+    CutSchema(Tree t) : Schema(t, 0, 1, 0, 0, dWire / 100.0f), point(0, 0) {}
 
     // The input point is placed in the middle.
     void placeImpl() override { point = {x, y + height * 0.5f}; }
@@ -317,7 +318,7 @@ private:
 };
 
 struct EnlargedSchema : IOSchema {
-    EnlargedSchema(Schema *s, float width) : IOSchema(s->descendents, s->inputs, s->outputs, width, s->height), schema(s) {}
+    EnlargedSchema(Schema *s, float width) : IOSchema(s->tree, s->descendents, s->inputs, s->outputs, width, s->height), schema(s) {}
 
     void placeImpl() override {
         const float dx = (width - schema->width) / 2;
@@ -339,12 +340,12 @@ private:
 };
 
 struct BinarySchema : Schema {
-    BinarySchema(Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap, float width, float height)
-        : Schema(s1->descendents + s2->descendents, inputs, outputs, width, height), schema1(s1), schema2(s2), horzGap(horzGap) {}
-    BinarySchema(Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap)
-        : BinarySchema(s1, s2, inputs, outputs, horzGap, s1->width + s2->width + horzGap, max(s1->height, s2->height)) {}
-    BinarySchema(Schema *s1, Schema *s2, float horzGap) : BinarySchema(s1, s2, s1->inputs, s2->outputs, horzGap) {}
-    BinarySchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, s1->inputs, s2->outputs, horizontalGap(s1, s2)) {}
+    BinarySchema(Tree t, Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap, float width, float height)
+        : Schema(t, s1->descendents + s2->descendents, inputs, outputs, width, height), schema1(s1), schema2(s2), horzGap(horzGap) {}
+    BinarySchema(Tree t, Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap)
+        : BinarySchema(t, s1, s2, inputs, outputs, horzGap, s1->width + s2->width + horzGap, max(s1->height, s2->height)) {}
+    BinarySchema(Tree t, Schema *s1, Schema *s2, float horzGap) : BinarySchema(t, s1, s2, s1->inputs, s2->outputs, horzGap) {}
+    BinarySchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2, s1->inputs, s2->outputs, horizontalGap(s1, s2)) {}
 
     ImVec2 inputPoint(Count i) const override { return schema1->inputPoint(i); }
     ImVec2 outputPoint(Count i) const override { return schema2->outputPoint(i); }
@@ -372,8 +373,8 @@ protected:
 };
 
 struct ParallelSchema : BinarySchema {
-    ParallelSchema(Schema *s1, Schema *s2)
-        : BinarySchema(s1, s2, s1->inputs + s2->inputs, s1->outputs + s2->outputs, 0, s1->width, s1->height + s2->height),
+    ParallelSchema(Tree t, Schema *s1, Schema *s2)
+        : BinarySchema(t, s1, s2, s1->inputs + s2->inputs, s1->outputs + s2->outputs, 0, s1->width, s1->height + s2->height),
           inputFrontier(s1->inputs), outputFrontier(s1->outputs) {
         fgassert(s1->width == s2->width);
     }
@@ -395,7 +396,9 @@ private:
 
 struct SequentialSchema : BinarySchema {
     // The components s1 and s2 must be "compatible" (s1: n->m and s2: m->q).
-    SequentialSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2, horizontalGap(s1, s2)) { fgassert(s1->outputs == s2->inputs); }
+    SequentialSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2, horizontalGap(s1, s2)) {
+        fgassert(s1->outputs == s2->inputs);
+    }
 
     // Compute the direction of a connection.
     // Y-axis goes from top to bottom
@@ -458,7 +461,7 @@ struct SequentialSchema : BinarySchema {
 // Place and connect two diagrams in merge composition.
 // The outputs of the first schema are merged to the inputs of the second.
 struct MergeSchema : BinarySchema {
-    MergeSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2) {}
+    MergeSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void draw(Device &device) const override {
         BinarySchema::draw(device);
@@ -469,7 +472,7 @@ struct MergeSchema : BinarySchema {
 // Place and connect two diagrams in split composition.
 // The outputs of the first schema are distributed to the inputs of the second.
 struct SplitSchema : BinarySchema {
-    SplitSchema(Schema *s1, Schema *s2) : BinarySchema(s1, s2) {}
+    SplitSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void draw(Device &device) const override {
         BinarySchema::draw(device);
@@ -480,8 +483,8 @@ struct SplitSchema : BinarySchema {
 // Place and connect two diagrams in recursive composition
 // The two components must have the same width.
 struct RecSchema : IOSchema {
-    RecSchema(Schema *s1, Schema *s2, float width)
-        : IOSchema(s1->descendents + s2->descendents, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height),
+    RecSchema(Tree t, Schema *s1, Schema *s2, float width)
+        : IOSchema(t, s1->descendents + s2->descendents, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height),
           schema1(s1), schema2(s2) {
         fgassert(s1->inputs >= s2->outputs);
         fgassert(s1->outputs >= s2->inputs);
@@ -551,13 +554,13 @@ private:
 };
 
 Schema *makeEnlargedSchema(Schema *s, float width) { return width > s->width ? new EnlargedSchema(s, width) : s; }
-Schema *makeParallelSchema(Schema *s1, Schema *s2) { return new ParallelSchema(makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width)); }
-Schema *makeSequentialSchema(Schema *s1, Schema *s2) {
+Schema *makeParallelSchema(Tree t, Schema *s1, Schema *s2) { return new ParallelSchema(t, makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width)); }
+Schema *makeSequentialSchema(Tree t, Schema *s1, Schema *s2) {
     const Count o = s1->outputs;
     const Count i = s2->inputs;
-    return new SequentialSchema(
-        o < i ? makeParallelSchema(s1, new CableSchema(i - o)) : s1,
-        o > i ? makeParallelSchema(s2, new CableSchema(o - i)) : s2
+    return new SequentialSchema(t,
+        o < i ? makeParallelSchema(t, s1, new CableSchema(t, i - o)) : s1,
+        o > i ? makeParallelSchema(t, s2, new CableSchema(t, o - i)) : s2
     );
 }
 
@@ -581,10 +584,10 @@ std::unique_ptr<DrawContext> dc;
 // If `topLevel = true`, additional padding is added, along with output arrows.
 struct DecorateSchema : IOSchema {
     DecorateSchema(Tree t, Schema *s, string text, string link = "", bool topLevel = false)
-        : IOSchema(s->descendents, s->inputs, s->outputs,
+        : IOSchema(t, s->descendents, s->inputs, s->outputs,
         s->width + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0)),
         s->height + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0))),
-          tree(t), schema(s), text(std::move(text)), link(std::move(link)), topLevel(topLevel) {}
+          schema(s), text(std::move(text)), link(std::move(link)), topLevel(topLevel) {}
 
     void placeImpl() override {
         const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
@@ -614,7 +617,6 @@ struct DecorateSchema : IOSchema {
     }
 
 private:
-    Tree tree;
     Schema *schema;
     string text, link;
     bool topLevel;
@@ -624,8 +626,8 @@ private:
 struct RouteSchema : IOSchema {
     // Build a simple colored `RouteSchema` with a certain number of inputs and outputs, a text to be displayed, and an optional link.
     // The length of the text as well as the number of inputs and outputs are used to compute the size of the `RouteSchema`
-    RouteSchema(Count inputs, Count outputs, float width, float height, std::vector<int> routes)
-        : IOSchema(0, inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
+    RouteSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<int> routes)
+        : IOSchema(t, 0, inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
 
     void draw(Device &device) const override {
         if (drawRouteFrame) {
@@ -655,11 +657,11 @@ protected:
     const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
 };
 
-Schema *makeBlockSchema(Count inputs, Count outputs, const string &text, const string &color, const string &link = "") {
+Schema *makeBlockSchema(Tree t, Count inputs, Count outputs, const string &text, const string &color, const string &link = "") {
     const float minimal = 3 * dWire;
     const float w = 2 * dHorz + max(minimal, dLetter * quantize(int(text.size())));
     const float h = 2 * dVert + max(minimal, float(max(inputs, outputs)) * dWire);
-    return new BlockSchema(inputs, outputs, w, h, text, color, link);
+    return new BlockSchema(t, inputs, outputs, w, h, text, color, link);
 }
 
 static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
@@ -669,16 +671,16 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
 static Schema *createSchema(Tree t);
 
 // Generate a 1->0 block schema for an input slot.
-static Schema *generateInputSlotSchema(Tree a) { return makeBlockSchema(1, 0, getTreeName(a), SlotColor); }
+static Schema *generateInputSlotSchema(Tree t) { return makeBlockSchema(t, 1, 0, getTreeName(t), SlotColor); }
 
 // Generate an abstraction schema by placing in sequence the input slots and the body.
 static Schema *generateAbstractionSchema(Schema *x, Tree t) {
     Tree a, b;
     while (isBoxSymbolic(t, a, b)) {
-        x = makeParallelSchema(x, generateInputSlotSchema(a));
+        x = makeParallelSchema(t, x, generateInputSlotSchema(a));
         t = b;
     }
-    return makeSequentialSchema(x, createSchema(t));
+    return makeSequentialSchema(t, x, createSchema(t));
 }
 
 // Returns `true` if `t == '*(-1)'`.
@@ -736,15 +738,15 @@ static string userInterfaceDescription(Tree box) {
 
 // Generate the inside schema of a block diagram according to its type.
 static Schema *generateInsideSchema(Tree t) {
-    if (getUserData(t) != nullptr) return makeBlockSchema(xtendedArity(t), 1, xtendedName(t), NormalColor);
-    if (isInverter(t)) return new InverterSchema();
+    if (getUserData(t) != nullptr) return makeBlockSchema(t, xtendedArity(t), 1, xtendedName(t), NormalColor);
+    if (isInverter(t)) return new InverterSchema(t);
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return makeBlockSchema(0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), NumberColor);
-    if (isBoxWaveform(t)) return makeBlockSchema(0, 2, "waveform{...}", NormalColor);
-    if (isBoxWire(t)) return new CableSchema();
-    if (isBoxCut(t)) return new CutSchema();
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return makeBlockSchema(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), NumberColor);
+    if (isBoxWaveform(t)) return makeBlockSchema(t, 0, 2, "waveform{...}", NormalColor);
+    if (isBoxWire(t)) return new CableSchema(t);
+    if (isBoxCut(t)) return new CutSchema(t);
 
     prim0 p0;
     prim1 p1;
@@ -752,21 +754,21 @@ static Schema *generateInsideSchema(Tree t) {
     prim3 p3;
     prim4 p4;
     prim5 p5;
-    if (isBoxPrim0(t, &p0)) return makeBlockSchema(0, 1, prim0name(p0), NormalColor);
-    if (isBoxPrim1(t, &p1)) return makeBlockSchema(1, 1, prim1name(p1), NormalColor);
-    if (isBoxPrim2(t, &p2)) return makeBlockSchema(2, 1, prim2name(p2), NormalColor);
-    if (isBoxPrim3(t, &p3)) return makeBlockSchema(3, 1, prim3name(p3), NormalColor);
-    if (isBoxPrim4(t, &p4)) return makeBlockSchema(4, 1, prim4name(p4), NormalColor);
-    if (isBoxPrim5(t, &p5)) return makeBlockSchema(5, 1, prim5name(p5), NormalColor);
+    if (isBoxPrim0(t, &p0)) return makeBlockSchema(t, 0, 1, prim0name(p0), NormalColor);
+    if (isBoxPrim1(t, &p1)) return makeBlockSchema(t, 1, 1, prim1name(p1), NormalColor);
+    if (isBoxPrim2(t, &p2)) return makeBlockSchema(t, 2, 1, prim2name(p2), NormalColor);
+    if (isBoxPrim3(t, &p3)) return makeBlockSchema(t, 3, 1, prim3name(p3), NormalColor);
+    if (isBoxPrim4(t, &p4)) return makeBlockSchema(t, 4, 1, prim4name(p4), NormalColor);
+    if (isBoxPrim5(t, &p5)) return makeBlockSchema(t, 5, 1, prim5name(p5), NormalColor);
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return makeBlockSchema(ffarity(ff), 1, ffname(ff), NormalColor);
+    if (isBoxFFun(t, ff)) return makeBlockSchema(t, ffarity(ff), 1, ffname(ff), NormalColor);
 
     Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(0, 1, tree2str(name), NormalColor);
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return makeBlockSchema(0, 1, userInterfaceDescription(t), UiColor);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return makeBlockSchema(1, 1, userInterfaceDescription(t), UiColor);
-    if (isBoxSoundfile(t, label, chan)) return makeBlockSchema(2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor);
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return makeBlockSchema(t, 0, 1, tree2str(name), NormalColor);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return makeBlockSchema(t, 0, 1, userInterfaceDescription(t), UiColor);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return makeBlockSchema(t, 1, 1, userInterfaceDescription(t), UiColor);
+    if (isBoxSoundfile(t, label, chan)) return makeBlockSchema(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return createSchema(a);
@@ -778,10 +780,10 @@ static Schema *generateInsideSchema(Tree t) {
         const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
         return new DecorateSchema(a, createSchema(a), groupId + "group(" + extractName(label) + ")");
     }
-    if (isBoxSeq(t, a, b)) return makeSequentialSchema(createSchema(a), createSchema(b));
-    if (isBoxPar(t, a, b)) return makeParallelSchema(createSchema(a), createSchema(b));
-    if (isBoxSplit(t, a, b)) return new SplitSchema(makeEnlargedSchema(createSchema(a), dWire), makeEnlargedSchema(createSchema(b), dWire));
-    if (isBoxMerge(t, a, b)) return new MergeSchema(makeEnlargedSchema(createSchema(a), dWire), makeEnlargedSchema(createSchema(b), dWire));
+    if (isBoxSeq(t, a, b)) return makeSequentialSchema(t, createSchema(a), createSchema(b));
+    if (isBoxPar(t, a, b)) return makeParallelSchema(t, createSchema(a), createSchema(b));
+    if (isBoxSplit(t, a, b)) return new SplitSchema(t, makeEnlargedSchema(createSchema(a), dWire), makeEnlargedSchema(createSchema(b), dWire));
+    if (isBoxMerge(t, a, b)) return new MergeSchema(t, makeEnlargedSchema(createSchema(a), dWire), makeEnlargedSchema(createSchema(b), dWire));
     if (isBoxRec(t, a, b)) {
         // The smaller component is enlarged to the width of the other.
         auto *s1 = createSchema(a);
@@ -789,9 +791,9 @@ static Schema *generateInsideSchema(Tree t) {
         auto *s1e = makeEnlargedSchema(s1, s2->width);
         auto *s2e = makeEnlargedSchema(s2, s1->width);
         const float w = s1e->width + 2 * dWire * float(max(s2e->inputs, s2e->outputs));
-        return new RecSchema(s1e, s2e, w);
+        return new RecSchema(t, s1e, s2e, w);
     }
-    if (isBoxSlot(t, &i)) return makeBlockSchema(0, 1, getTreeName(t), SlotColor);
+    if (isBoxSlot(t, &i)) return makeBlockSchema(t, 0, 1, getTreeName(t), SlotColor);
 
     if (isBoxSymbolic(t, a, b)) {
         auto *abstractionSchema = generateAbstractionSchema(generateInputSlotSchema(a), b);
@@ -800,7 +802,7 @@ static Schema *generateInsideSchema(Tree t) {
         if (getDefNameProperty(t, id)) return abstractionSchema;
         return new DecorateSchema(t, abstractionSchema, "Abstraction");
     }
-    if (isBoxEnvironment(t)) return makeBlockSchema(0, 0, "environment{...}", NormalColor);
+    if (isBoxEnvironment(t)) return makeBlockSchema(t, 0, 0, "environment{...}", NormalColor);
 
     Tree c;
     if (isBoxRoute(t, a, b, c)) {
@@ -811,7 +813,7 @@ static Schema *generateInsideSchema(Tree t) {
             const float minimal = 3 * dWire;
             const float h = 2 * dVert + max(minimal, max(float(ins), float(outs)) * dWire);
             const float w = 2 * dHorz + max(minimal, h * 0.75f);
-            return new RouteSchema(ins, outs, w, h, route);
+            return new RouteSchema(t, ins, outs, w, h, route);
         }
 
         throw std::runtime_error((stringstream("Invalid route expression : ") << boxpp(t)).str());
@@ -857,7 +859,7 @@ static Schema *createSchema(Tree t) {
             }
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return makeBlockSchema(ins, outs, name, LinkColor, svgFileName(t, name));
+            return makeBlockSchema(t, ins, outs, name, LinkColor, svgFileName(t, name));
         }
         // Draw a line around the object with its name.
         if (!isPureRouting(t)) return new DecorateSchema(t, generateInsideSchema(t), name);
@@ -869,9 +871,6 @@ static Schema *createSchema(Tree t) {
 void drawBox(Box box) {
     fs::remove_all(faustDiagramsPath);
     fs::create_directory(faustDiagramsPath);
-
     dc = std::make_unique<DrawContext>();
-    auto schema = makeTopLevelSchema(box);
-    schema.place();
-    schema.draw();
+    createSchema(box);
 }

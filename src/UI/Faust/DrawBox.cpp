@@ -57,14 +57,14 @@ using Count = unsigned int;
 class Device {
 public:
     virtual ~Device() = default;
-    virtual void rect(const ImVec4 &rect, const string &color, const string &link = "") = 0;
+    virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
     virtual void dashrect(const ImVec4 &rect, const string &text) = 0; // Dashed rectangle with a label on the top left.
     virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
     virtual void arrow(const ImVec2 &pos, float rotation, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void dasharray(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void text(const ImVec2 &pos, const string &name, const string &link = "") = 0;
+    virtual void text(const ImVec2 &pos, const string &name, const string &link) = 0;
     virtual void label(const ImVec2 &pos, const string &name) = 0;
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
@@ -184,14 +184,17 @@ struct Schema {
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const Count inputs, outputs;
     const float width, height;
+    const string link;
     bool topLevel;
 
     // Fields populated in `place()`:
     float x = 0, y = 0;
     Orientation orientation = LeftRight;
 
-    Schema(Tree t, std::vector<Schema *> children, Count descendents, Count inputs, Count outputs, float width, float height)
-        : tree(t), children(std::move(children)), descendents(descendents), inputs(inputs), outputs(outputs), width(width), height(height), topLevel(descendents >= foldComplexity) {}
+    Schema(Tree t, std::vector<Schema *> children, Count descendents, Count inputs, Count outputs, float width, float height, string link = "")
+        : tree(t), children(std::move(children)), descendents(descendents),
+          inputs(inputs), outputs(outputs), width(width), height(height),
+          link(std::move(link)), topLevel(descendents >= foldComplexity) {}
     virtual ~Schema() = default;
 
     void place(float new_x, float new_y, Orientation new_orientation) {
@@ -217,8 +220,8 @@ protected:
 };
 
 struct IOSchema : Schema {
-    IOSchema(Tree t, std::vector<Schema *> children, Count descendents, Count inputs, Count outputs, float width, float height)
-        : Schema(t, std::move(children), descendents, inputs, outputs, width, height) {
+    IOSchema(Tree t, std::vector<Schema *> children, Count descendents, Count inputs, Count outputs, float width, float height, string link = "")
+        : Schema(t, std::move(children), descendents, inputs, outputs, width, height, std::move(link)) {
         for (Count i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
         for (Count i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
     }
@@ -240,7 +243,7 @@ struct IOSchema : Schema {
 // A simple rectangular box with text and inputs and outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(Tree t, Count inputs, Count outputs, float width, float height, string text, string color, string link = "")
-        : IOSchema(t, {}, 1, inputs, outputs, width, height), text(std::move(text)), color(std::move(color)), link(std::move(link)) {}
+        : IOSchema(t, {}, 1, inputs, outputs, width, height, std::move(link)), text(std::move(text)), color(std::move(color)) {}
 
     void draw(Device &device) const override {
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
@@ -258,7 +261,7 @@ struct BlockSchema : IOSchema {
         for (const auto &p: inputPoints) device.arrow(p + ImVec2{dx, 0}, 0, orientation); // Input arrows
     }
 
-    const string text, color, link;
+    const string text, color;
 };
 
 static inline float quantize(int n) {
@@ -588,8 +591,8 @@ struct DecorateSchema : IOSchema {
     DecorateSchema(Tree t, Schema *s, string text, string link = "")
         : IOSchema(t, {s}, s->descendents, s->inputs, s->outputs,
         s->width + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)),
-        s->height + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0))),
-          text(std::move(text)), link(std::move(link)) {}
+        s->height + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)), std::move(link)),
+          text(std::move(text)) {}
 
     void placeImpl() override {
         const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
@@ -616,7 +619,7 @@ struct DecorateSchema : IOSchema {
     }
 
 private:
-    string text, link;
+    string text;
 };
 
 struct RouteSchema : IOSchema {
@@ -625,7 +628,7 @@ struct RouteSchema : IOSchema {
 
     void draw(Device &device) const override {
         if (drawRouteFrame) {
-            device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color);
+            device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, "");
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
             device.dot(ImVec2{x, y} + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
             // Input arrows

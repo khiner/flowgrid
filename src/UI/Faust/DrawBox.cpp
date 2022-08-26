@@ -164,6 +164,11 @@ private:
     std::stringstream stream;
 };
 
+static const char *getTreeName(Tree t) {
+    Tree name;
+    return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
+}
+
 // An abstract block diagram schema
 struct Schema {
     const Count descendents = 0; // The number of boxes within this schema (recursively).
@@ -604,8 +609,7 @@ struct DecorateSchema : IOSchema {
     }
 
     void draw() const {
-        const string &file_name = svgFileName(tree, text);
-        SVGDevice device(faustDiagramsPath / file_name, width, height);
+        SVGDevice device(faustDiagramsPath / svgFileName(tree, text), width, height);
         draw(device);
     }
 
@@ -665,11 +669,8 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
 static Schema *createSchema(Tree t);
 
 // Generate a 1->0 block schema for an input slot.
-static Schema *generateInputSlotSchema(Tree a) {
-    Tree id;
-    getDefNameProperty(a, id);
-    return makeBlockSchema(1, 0, tree2str(id), SlotColor);
-}
+static Schema *generateInputSlotSchema(Tree a) { return makeBlockSchema(1, 0, getTreeName(a), SlotColor); }
+
 // Generate an abstraction schema by placing in sequence the input slots and the body.
 static Schema *generateAbstractionSchema(Schema *x, Tree t) {
     Tree a, b;
@@ -790,11 +791,8 @@ static Schema *generateInsideSchema(Tree t) {
         const float w = s1e->width + 2 * dWire * float(max(s2e->inputs, s2e->outputs));
         return new RecSchema(s1e, s2e, w);
     }
-    if (isBoxSlot(t, &i)) {
-        Tree id;
-        getDefNameProperty(t, id);
-        return makeBlockSchema(0, 1, tree2str(id), SlotColor);
-    }
+    if (isBoxSlot(t, &i)) return makeBlockSchema(0, 1, getTreeName(t), SlotColor);
+
     if (isBoxSymbolic(t, a, b)) {
         auto *abstractionSchema = generateAbstractionSchema(generateInputSlotSchema(a), b);
 
@@ -825,13 +823,10 @@ static Schema *generateInsideSchema(Tree t) {
 
 // Each top-level schema is decorated with its definition name property and rendered to its own file.
 static DecorateSchema makeTopLevelSchema(Tree t) {
-    Tree idTree;
-    getDefNameProperty(t, idTree);
-    const string &id = tree2str(idTree);
-    const string &file_name = svgFileName(t, id);
+    const string &name = getTreeName(t);
     const string enclosingFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
-    dc->fileNames.push(file_name);
-    DecorateSchema schema = {t, generateInsideSchema(t), id, enclosingFileName, true};
+    dc->fileNames.push(svgFileName(t, name));
+    DecorateSchema schema = {t, generateInsideSchema(t), name, enclosingFileName, true};
     dc->fileNames.pop();
     return schema;
 }
@@ -852,9 +847,7 @@ static bool isPureRouting(Tree t) {
 }
 
 static Schema *createSchema(Tree t) {
-    Tree idTree;
-    if (getDefNameProperty(t, idTree)) {
-        const string &id = tree2str(idTree);
+    if (const char *name = getTreeName(t)) {
         auto schema = makeTopLevelSchema(t);
         if (schema.descendents >= foldComplexity) {
             if (!dc->drawnExp.contains(t)) {
@@ -864,10 +857,10 @@ static Schema *createSchema(Tree t) {
             }
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return makeBlockSchema(ins, outs, id, LinkColor, svgFileName(t, id));
+            return makeBlockSchema(ins, outs, name, LinkColor, svgFileName(t, name));
         }
         // Draw a line around the object with its name.
-        if (!isPureRouting(t)) return new DecorateSchema(t, generateInsideSchema(t), id);
+        if (!isPureRouting(t)) return new DecorateSchema(t, generateInsideSchema(t), name);
     }
 
     return generateInsideSchema(t); // normal case

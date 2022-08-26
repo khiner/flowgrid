@@ -183,13 +183,14 @@ struct Schema {
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const Count inputs, outputs;
     const float width, height;
+    bool topLevel;
 
     // Fields populated in `place()`:
     float x = 0, y = 0;
     Orientation orientation = LeftRight;
 
     Schema(Tree t, Count descendents, Count inputs, Count outputs, float width, float height)
-        : tree(t), descendents(descendents), inputs(inputs), outputs(outputs), width(width), height(height) {}
+        : tree(t), descendents(descendents), inputs(inputs), outputs(outputs), width(width), height(height), topLevel(descendents >= foldComplexity) {}
     virtual ~Schema() = default;
 
     void place(float new_x, float new_y, Orientation new_orientation) {
@@ -589,11 +590,11 @@ std::unique_ptr<DrawContext> dc;
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
 // If `topLevel = true`, additional padding is added, along with output arrows.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Tree t, Schema *s, string text, string link = "", bool topLevel = false)
+    DecorateSchema(Tree t, Schema *s, string text, string link = "")
         : IOSchema(t, s->descendents, s->inputs, s->outputs,
-        s->width + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0)),
-        s->height + 2 * (decorateSchemaMargin + (topLevel ? topSchemaMargin : 0))),
-          schema(s), text(std::move(text)), link(std::move(link)), topLevel(topLevel) {}
+        s->width + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)),
+        s->height + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0))),
+          schema(s), text(std::move(text)), link(std::move(link)) {}
 
     void placeImpl() override {
         const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
@@ -620,7 +621,6 @@ struct DecorateSchema : IOSchema {
 private:
     Schema *schema;
     string text, link;
-    bool topLevel;
 };
 
 // A simple rectangular box with a text and inputs and outputs.
@@ -829,7 +829,7 @@ static Schema *makeTopLevelSchema(Tree t) {
     const string &name = getTreeName(t);
     const string enclosingFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
     dc->fileNames.push(svgFileName(t, name));
-    auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, enclosingFileName, true};
+    auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, enclosingFileName};
     dc->fileNames.pop();
     return schema;
 }

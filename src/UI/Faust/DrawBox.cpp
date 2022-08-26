@@ -169,6 +169,14 @@ static const char *getTreeName(Tree t) {
     return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
 }
 
+// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
+// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
+static string svgFileName(Tree t, const string &id) {
+    if (id == "process") return id + ".svg";
+    return (views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
+        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
+}
+
 // An abstract block diagram schema
 struct Schema {
     Tree tree;
@@ -195,6 +203,12 @@ struct Schema {
     virtual ImVec2 outputPoint(Count i) const = 0;
     virtual void draw(Device &) const {};
     inline bool isLR() const { return orientation == LeftRight; }
+
+    void draw() const {
+        const char *name = getTreeName(tree);
+        SVGDevice device(faustDiagramsPath / svgFileName(tree, name), width, height);
+        draw(device);
+    }
 
 protected:
     virtual void placeImpl() = 0;
@@ -564,14 +578,6 @@ Schema *makeSequentialSchema(Tree t, Schema *s1, Schema *s2) {
     );
 }
 
-// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
-// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
-static string svgFileName(Tree t, const string &id) {
-    if (id == "process") return id + ".svg";
-    return (views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
-        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
-}
-
 struct DrawContext {
     property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
     std::set<Tree> drawnExp; // Expressions drawn or scheduled so far
@@ -609,11 +615,6 @@ struct DecorateSchema : IOSchema {
         for (Count i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
 
         if (topLevel) for (Count i = 0; i < outputs; i++) device.arrow(outputPoint(i), 0, orientation);
-    }
-
-    void draw() const {
-        SVGDevice device(faustDiagramsPath / svgFileName(tree, text), width, height);
-        draw(device);
     }
 
 private:
@@ -824,11 +825,11 @@ static Schema *generateInsideSchema(Tree t) {
 
 
 // Each top-level schema is decorated with its definition name property and rendered to its own file.
-static DecorateSchema makeTopLevelSchema(Tree t) {
+static Schema *makeTopLevelSchema(Tree t) {
     const string &name = getTreeName(t);
     const string enclosingFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
     dc->fileNames.push(svgFileName(t, name));
-    DecorateSchema schema = {t, generateInsideSchema(t), name, enclosingFileName, true};
+    auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, enclosingFileName, true};
     dc->fileNames.pop();
     return schema;
 }
@@ -850,12 +851,12 @@ static bool isPureRouting(Tree t) {
 
 static Schema *createSchema(Tree t) {
     if (const char *name = getTreeName(t)) {
-        auto schema = makeTopLevelSchema(t);
-        if (schema.descendents >= foldComplexity) {
+        Schema *schema = makeTopLevelSchema(t);
+        if (schema->descendents >= foldComplexity) {
             if (!dc->drawnExp.contains(t)) {
                 dc->drawnExp.insert(t);
-                schema.place();
-                schema.draw();
+                schema->place();
+                schema->draw();
             }
             int ins, outs;
             getBoxType(t, &ins, &outs);

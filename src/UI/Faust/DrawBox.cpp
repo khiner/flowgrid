@@ -909,7 +909,7 @@ static Schema *createSchema(Tree t, bool no_block) {
     return generateInsideSchema(t); // normal case
 }
 
-void drawBox(Box box) {
+void exportSvg(Box box) {
     fs::remove_all(faustDiagramsPath);
     fs::create_directory(faustDiagramsPath);
     dc = std::make_unique<DrawContext>();
@@ -919,16 +919,25 @@ void drawBox(Box box) {
     schema->draw(SVGDeviceType);
 }
 
-void Audio::Faust::Diagram::draw() const {
-    if (!c.faust_box) return;
+Schema *active_schema;
 
-    dc = std::make_unique<DrawContext>();
-    // todo only create/place new schema when `c.faust_box` changes
-    GlobalNoBlock = true;
-    auto *schema = createSchema(c.faust_box);
-    GlobalNoBlock = false;
-    schema->place();
-    ImGui::BeginChild("Diagram", {schema->width, schema->height}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    schema->draw(ImGuiDeviceType);
+void on_box_change(Box box) {
+    if (box) {
+        exportSvg(box);
+        dc = std::make_unique<DrawContext>();
+        GlobalNoBlock = true;
+        active_schema = createSchema(box);
+        GlobalNoBlock = false;
+        active_schema->place();
+    } else {
+        active_schema = nullptr;
+    }
+}
+
+void Audio::Faust::Diagram::draw() const {
+    if (!active_schema) return;
+
+    ImGui::BeginChild("Diagram", {active_schema->width, active_schema->height}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    active_schema->draw(ImGuiDeviceType);
     ImGui::EndChild();
 }

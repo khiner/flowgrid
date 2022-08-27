@@ -3,4 +3,4 @@
 class CTree;
 typedef CTree *Box;
 
-void drawBox(Box box);
+void on_box_change(Box box);

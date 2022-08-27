@@ -56,9 +56,9 @@ struct FaustContext {
             if (dsp_factory && error_msg.empty()) {
                 dsp = dsp_factory->createDSPInstance();
                 dsp->init(sample_rate);
-                drawBox(c.faust_box);
             }
         }
+        on_box_change(c.faust_box);
         buffers = std::make_unique<FaustBuffers>(num_inputs, num_outputs);
     }
 

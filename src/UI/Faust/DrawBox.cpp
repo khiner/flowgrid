@@ -588,8 +588,7 @@ struct DecorateSchema : IOSchema {
         : IOSchema(t, s->inputs, s->outputs,
         s->width + 2 * (decorateSchemaMargin + (s->topLevel ? topSchemaMargin : 0)),
         s->height + 2 * (decorateSchemaMargin + (s->topLevel ? topSchemaMargin : 0)),
-        {s}, 0, std::move(link)),
-          text(std::move(text)) {}
+        {s}, 0, std::move(link)), text(std::move(text)) {}
 
     void placeImpl() override {
         const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
@@ -806,17 +805,6 @@ static Schema *generateInsideSchema(Tree t) {
     throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
 }
 
-
-// Each top-level schema is decorated with its definition name property and rendered to its own file.
-static Schema *makeTopLevelSchema(Tree t) {
-    const string &name = getTreeName(t);
-    const string enclosingFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
-    dc->fileNames.push(svgFileName(t, name));
-    auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, enclosingFileName};
-    dc->fileNames.pop();
-    return schema;
-}
-
 // Returns `true` if the tree is only made of cut, wires and slots.
 static bool isPureRouting(Tree t) {
     bool r;
@@ -834,7 +822,11 @@ static bool isPureRouting(Tree t) {
 
 static Schema *createSchema(Tree t) {
     if (const char *name = getTreeName(t)) {
-        auto *schema = makeTopLevelSchema(t);
+        const string &fileName = svgFileName(t, name);
+        const string &parentFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
+        dc->fileNames.push(fileName);
+        auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, parentFileName};
+        dc->fileNames.pop();
         if (schema->topLevel) {
             if (!dc->drawnExp.contains(t)) {
                 dc->drawnExp.insert(t);
@@ -843,10 +835,9 @@ static Schema *createSchema(Tree t) {
             }
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return makeBlockSchema(t, ins, outs, name, LinkColor, svgFileName(t, name));
+            return makeBlockSchema(t, ins, outs, name, LinkColor, fileName);
         }
-        // Draw a line around the object with its name.
-        if (!isPureRouting(t)) return new DecorateSchema(t, generateInsideSchema(t), name);
+        if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
     }
 
     return generateInsideSchema(t); // normal case

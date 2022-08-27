@@ -180,10 +180,10 @@ static string svgFileName(Tree t, const string &id) {
 // An abstract block diagram schema
 struct Schema {
     Tree tree;
-    const std::vector<Schema *> children{};
-    const Count descendents = 0; // The number of boxes within this schema (recursively).
     const Count inputs, outputs;
     const float width, height;
+    const std::vector<Schema *> children{};
+    const Count descendents = 0; // The number of boxes within this schema (recursively).
     const string link;
     bool topLevel;
 
@@ -191,10 +191,10 @@ struct Schema {
     float x = 0, y = 0;
     Orientation orientation = LeftRight;
 
-    Schema(Tree t, std::vector<Schema *> children, Count descendents, Count inputs, Count outputs, float width, float height, string link = "")
-        : tree(t), children(std::move(children)), descendents(descendents),
-          inputs(inputs), outputs(outputs), width(width), height(height),
-          link(std::move(link)), topLevel(descendents >= foldComplexity) {}
+// ::ranges::accumulate(children | views::transform([](Schema *child) { return child->descendents; })
+    Schema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count descendents = 0, string link = "")
+        : tree(t), inputs(inputs), outputs(outputs), width(width), height(height),
+          children(std::move(children)), descendents(descendents), link(std::move(link)), topLevel(descendents >= foldComplexity) {}
     virtual ~Schema() = default;
 
     void place(float new_x, float new_y, Orientation new_orientation) {
@@ -225,8 +225,8 @@ protected:
 };
 
 struct IOSchema : Schema {
-    IOSchema(Tree t, std::vector<Schema *> children, Count descendents, Count inputs, Count outputs, float width, float height, string link = "")
-        : Schema(t, std::move(children), descendents, inputs, outputs, width, height, std::move(link)) {
+    IOSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count descendents = 0, string link = "")
+        : Schema(t, inputs, outputs, width, height, std::move(children), descendents, std::move(link)) {
         for (Count i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
         for (Count i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
     }
@@ -248,7 +248,7 @@ struct IOSchema : Schema {
 // A simple rectangular box with text and inputs and outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(Tree t, Count inputs, Count outputs, float width, float height, string text, string color, string link = "")
-        : IOSchema(t, {}, 1, inputs, outputs, width, height, std::move(link)), text(std::move(text)), color(std::move(color)) {}
+        : IOSchema(t, inputs, outputs, width, height, {}, 1, std::move(link)), text(std::move(text)), color(std::move(color)) {}
 
     void drawImpl(Device &device) const override {
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
@@ -278,7 +278,7 @@ static inline float quantize(int n) {
 // The width of a cable is null.
 // Therefor, input and output connection points are the same.
 struct CableSchema : Schema {
-    CableSchema(Tree t, Count n = 1) : Schema(t, {}, 0, n, n, 0, float(n) * dWire) {}
+    CableSchema(Tree t, Count n = 1) : Schema(t, n, n, 0, float(n) * dWire) {}
 
     // Place the communication points vertically spaced by `dWire`.
     void placeImpl() override {
@@ -318,7 +318,7 @@ struct CutSchema : Schema {
     // A Cut is represented by a small black dot.
     // It has 1 input and no outputs.
     // It has a 0 width and a 1 wire height.
-    CutSchema(Tree t) : Schema(t, {}, 0, 1, 0, 0, dWire / 100.0f), point(0, 0) {}
+    CutSchema(Tree t) : Schema(t, 1, 0, 0, dWire / 100.0f), point(0, 0) {}
 
     // The input point is placed in the middle.
     void placeImpl() override { point = {x, y + height * 0.5f}; }
@@ -342,7 +342,7 @@ private:
 };
 
 struct EnlargedSchema : IOSchema {
-    EnlargedSchema(Schema *s, float width) : IOSchema(s->tree, {s}, s->descendents, s->inputs, s->outputs, width, s->height) {}
+    EnlargedSchema(Schema *s, float width) : IOSchema(s->tree, s->inputs, s->outputs, width, s->height, {s}, s->descendents) {}
 
     void placeImpl() override {
         auto *schema = children[0];
@@ -363,7 +363,7 @@ struct EnlargedSchema : IOSchema {
 
 struct BinarySchema : Schema {
     BinarySchema(Tree t, Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap, float width, float height)
-        : Schema(t, {s1, s2}, s1->descendents + s2->descendents, inputs, outputs, width, height), horzGap(horzGap) {}
+        : Schema(t, inputs, outputs, width, height, {s1, s2}, s1->descendents + s2->descendents), horzGap(horzGap) {}
     BinarySchema(Tree t, Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap)
         : BinarySchema(t, s1, s2, inputs, outputs, horzGap, s1->width + s2->width + horzGap, max(s1->height, s2->height)) {}
     BinarySchema(Tree t, Schema *s1, Schema *s2, float horzGap) : BinarySchema(t, s1, s2, s1->inputs, s2->outputs, horzGap) {}
@@ -499,7 +499,7 @@ struct SplitSchema : BinarySchema {
 // The two components must have the same width.
 struct RecSchema : IOSchema {
     RecSchema(Tree t, Schema *s1, Schema *s2, float width)
-        : IOSchema(t, {s1, s2}, s1->descendents + s2->descendents, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height) {
+        : IOSchema(t, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height, {s1, s2}, s1->descendents + s2->descendents) {
         fgassert(s1->inputs >= s2->outputs);
         fgassert(s1->outputs >= s2->inputs);
         fgassert(s1->width >= s2->width);
@@ -587,9 +587,10 @@ std::unique_ptr<DrawContext> dc;
 // If `topLevel = true`, additional padding is added, along with output arrows.
 struct DecorateSchema : IOSchema {
     DecorateSchema(Tree t, Schema *s, string text, string link = "")
-        : IOSchema(t, {s}, s->descendents, s->inputs, s->outputs,
+        : IOSchema(t, s->inputs, s->outputs,
         s->width + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)),
-        s->height + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)), std::move(link)),
+        s->height + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)),
+        {s}, s->descendents, std::move(link)),
           text(std::move(text)) {}
 
     void placeImpl() override {
@@ -619,7 +620,7 @@ private:
 
 struct RouteSchema : IOSchema {
     RouteSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<int> routes)
-        : IOSchema(t, {}, 0, inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
+        : IOSchema(t, inputs, outputs, width, height), color("#EEEEAA"), routes(std::move(routes)) {}
 
     void drawImpl(Device &device) const override {
         if (drawRouteFrame) {

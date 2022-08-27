@@ -645,13 +645,6 @@ Schema *makeSequentialSchema(Tree t, Schema *s1, Schema *s2) {
     );
 }
 
-struct DrawContext {
-    std::map<Tree, bool> isTreePureRouting{}; // Avoid recomputing pure-routing property
-    std::stack<Tree> treeFocusHierarchy; // As we descend into the tree, keep track of what the ordered set of ancestors for backlinks.
-};
-
-std::unique_ptr<DrawContext> dc;
-
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
 // If `topLevel = true`, additional padding is added, along with output arrows.
 struct DecorateSchema : IOSchema {
@@ -722,7 +715,7 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
     return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
 }
 
-static Schema *createSchema(Tree t, bool no_block = false);
+static Schema *createSchema(Tree t, bool allow_links = true);
 
 // Generate a 1->0 block schema for an input slot.
 static Schema *generateInputSlotSchema(Tree t) { return makeBlockSchema(t, 1, 0, getTreeName(t), SlotColor); }
@@ -876,29 +869,32 @@ static Schema *generateInsideSchema(Tree t) {
     throw std::runtime_error((stringstream("ERROR in generateInsideSchema, box expression not recognized: ") << boxpp(t)).str());
 }
 
+static bool allowSchemaLinks = false; // Set to `false` to draw all schemas inline in one big diagram. Set to `true` to split into files (for SVG rendering).
+static std::map<Tree, bool> isTreePureRouting{}; // Avoid recomputing pure-routing property. Needs to be reset whenever box changes!
+
 // Returns `true` if the tree is only made of cut, wires and slots.
 static bool isPureRouting(Tree t) {
-    if (dc->isTreePureRouting.contains(t)) return dc->isTreePureRouting[t];
+    if (isTreePureRouting.contains(t)) return isTreePureRouting[t];
 
     Tree x, y;
     if (isBoxCut(t) || isBoxWire(t) || isInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && isPureRouting(x) && isPureRouting(y))) {
-        dc->isTreePureRouting.emplace(t, true);
+        isTreePureRouting.emplace(t, true);
         return true;
     }
 
-    dc->isTreePureRouting.emplace(t, false);
+    isTreePureRouting.emplace(t, false);
     return false;
 }
 
-static bool GlobalNoBlock = false;
-
-static Schema *createSchema(Tree t, bool no_block) {
+// This method is called recursively.
+static Schema *createSchema(Tree t, bool allow_links) {
+    static std::stack<Tree> treeFocusHierarchy; // As we descend into the tree, keep track of ancestors for backlinks.
     if (const char *name = getTreeName(t)) {
-        Tree parentTree = dc->treeFocusHierarchy.empty() ? nullptr : dc->treeFocusHierarchy.top();
-        dc->treeFocusHierarchy.push(t);
+        Tree parentTree = treeFocusHierarchy.empty() ? nullptr : treeFocusHierarchy.top();
+        treeFocusHierarchy.push(t);
         auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, parentTree};
-        dc->treeFocusHierarchy.pop();
-        if (!GlobalNoBlock && !no_block && schema->topLevel) {
+        treeFocusHierarchy.pop();
+        if (allowSchemaLinks && allow_links && schema->topLevel) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
             return makeBlockSchema(t, ins, outs, name, LinkColor, schema);
@@ -909,25 +905,22 @@ static Schema *createSchema(Tree t, bool no_block) {
     return generateInsideSchema(t); // normal case
 }
 
-void exportSvg(Box box) {
-    fs::remove_all(faustDiagramsPath);
-    fs::create_directory(faustDiagramsPath);
-    dc = std::make_unique<DrawContext>();
-
-    auto *schema = createSchema(box, true);
-    schema->place();
-    schema->draw(SVGDeviceType);
-}
-
-Schema *active_schema;
+Schema *active_schema; // This diagram is drawn every frame if present.
 
 void on_box_change(Box box) {
+    isTreePureRouting = {};
     if (box) {
-        exportSvg(box);
-        dc = std::make_unique<DrawContext>();
-        GlobalNoBlock = true;
+        // Render SVG diagram(s)
+        fs::remove_all(faustDiagramsPath);
+        fs::create_directory(faustDiagramsPath);
+        allowSchemaLinks = true; // split up complex descendent groups into separate files with links
+        auto *svg_schema = createSchema(box, false); // ensure top-level is not compressed into a link
+        allowSchemaLinks = false;
+        svg_schema->place();
+        svg_schema->draw(SVGDeviceType);
+
+        // Render ImGui diagram
         active_schema = createSchema(box);
-        GlobalNoBlock = false;
         active_schema->place();
     } else {
         active_schema = nullptr;

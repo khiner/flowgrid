@@ -1,27 +1,19 @@
 #include "DrawBox.hh"
 
 #include <sstream>
-#include <set>
 #include <map>
 #include <stack>
-#include <filesystem>
-#include <fmt/core.h>
 
-#include "../../Helper/String.h"
+#include "../../Context.h"
+
 #include <range/v3/algorithm/contains.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
 #include <range/v3/numeric/accumulate.hpp>
 
-#include "property.hh"
 #include "boxes/ppbox.hh"
-#include "faust/dsp/libfaust-box.h"
 #include "faust/dsp/libfaust-signal.h"
 
-#include "imgui.h"
-#include "imgui_internal.h"
-
-#include "../../Helper/File.h"
 #include "../../Helper/assert.h"
 
 using namespace fmt;
@@ -51,22 +43,21 @@ static const string SlotColor = "#47945e";
 static const string NumberColor = "#f44800";
 static const string InverterColor = "#ffffff";
 
-enum Direction { None = -1, Horizontal, Up, Down };
-enum Orientation { LeftRight = 1, RightLeft = -1 };
 using Count = unsigned int;
+enum Orientation { LeftRight = 1, RightLeft = -1 };
+enum DeviceType { ImGuiDeviceType, SVGDeviceType };
 
 class Device {
 public:
     virtual ~Device() = default;
+    virtual DeviceType type() = 0;
     virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
-    virtual void dashrect(const ImVec4 &rect, const string &text) = 0; // Dashed rectangle with a label on the top left.
+    virtual void grouprect(const ImVec4 &rect, const string &text) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
     virtual void arrow(const ImVec2 &pos, float rotation, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void dasharray(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &name, const string &link) = 0;
-    virtual void label(const ImVec2 &pos, const string &name) = 0;
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
@@ -82,12 +73,14 @@ struct SVGDevice : Device {
         FileIO::write(file_name, stream.str());
     }
 
+    DeviceType type() override { return SVGDeviceType; }
+
     static string xml_sanitize(const string &name) {
         static std::map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
 
         auto replaced_name = name;
-        for (const auto &[c, replacement]: replacements) {
-            replaced_name = replace(replaced_name, c, replacement);
+        for (const auto &[ch, replacement]: replacements) {
+            replaced_name = replace(replaced_name, ch, replacement);
         }
         return replaced_name;
     }
@@ -99,7 +92,8 @@ struct SVGDevice : Device {
         if (!link.empty()) stream << "</a>"; // close the optional link tag
     }
 
-    void dashrect(const ImVec4 &rect, const string &text) override {
+    // SVG implements a group rect as a dashed rectangle with a label on the top left.
+    void grouprect(const ImVec4 &rect, const string &text) override {
         const auto [x, y, w, h] = rect;
         const auto topLeft = ImVec2{x, y};
         const auto topRight = topLeft + ImVec2{w, 0};
@@ -107,13 +101,13 @@ struct SVGDevice : Device {
         const auto bottomRight = bottomLeft + ImVec2{w, 0};
         const float textLeft = x + decorateSchemaLabelOffset;
 
-        dasharray(topLeft, bottomLeft); // left line
-        dasharray(bottomLeft, bottomRight); // bottom line
-        dasharray(bottomRight, topRight); // right line
-        dasharray(topLeft, {textLeft, topLeft.y}); // top segment before text
-        dasharray({min(textLeft + float(1 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}); // top segment after text
+        stream << dash_line(topLeft, bottomLeft); // left line
+        stream << dash_line(bottomLeft, bottomRight); // bottom line
+        stream << dash_line(bottomRight, topRight); // right line
+        stream << dash_line(topLeft, {textLeft, topLeft.y}); // top segment before text
+        stream << dash_line({min(textLeft + float(1 + text.size()) * dLetter * 0.75f, bottomRight.x), topLeft.y}, {bottomRight.x, topLeft.y}); // top segment after text
 
-        label({textLeft, topLeft.y}, text);
+        stream << label({textLeft, topLeft.y}, text);
     }
 
     void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) override {
@@ -125,6 +119,7 @@ struct SVGDevice : Device {
         stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x, y, radius);
     }
 
+    // todo remove `rotation` arg
     void arrow(const ImVec2 &pos, float rotation, Orientation orientation) override {
         static const float dx = 3, dy = 1;
         const auto [x, y] = pos;
@@ -137,23 +132,23 @@ struct SVGDevice : Device {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y);
     }
 
-    void dasharray(const ImVec2 &start, const ImVec2 &end) override {
-        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", start.x, start.y, end.x, end.y);
-    }
-
     void text(const ImVec2 &pos, const string &name, const string &link) override {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
         stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
         if (!link.empty()) stream << "</a>"; // close the optional link tag
     }
 
-    void label(const ImVec2 &pos, const string &name) override {
-        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
-    }
-
     void dot(const ImVec2 &pos, Orientation orientation) override {
         const float offset = orientation == LeftRight ? 2 : -2;
         stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x + offset, pos.y + offset);
+    }
+
+    static string label(const ImVec2 &pos, const string &name) {
+        return format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
+    }
+
+    static string dash_line(const ImVec2 &start, const ImVec2 &end) {
+        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", start.x, start.y, end.x, end.y);
     }
 
     static string rotate_line(const ImVec2 &start, const ImVec2 &end, float rx, float ry, float rz) {
@@ -163,6 +158,68 @@ struct SVGDevice : Device {
 private:
     string file_name;
     std::stringstream stream;
+};
+
+static ImU32 convertColor(const string &color) {
+    unsigned int x;
+    std::stringstream ss;
+    ss << std::hex << color;
+    ss >> x;
+    return x;
+}
+
+struct ImGuiDevice : Device {
+    ImGuiDevice() {
+        draw_list = ImGui::GetWindowDrawList();
+        pos = ImGui::GetWindowPos();
+    }
+
+    ~ImGuiDevice() override = default;
+
+    DeviceType type() override { return ImGuiDeviceType; }
+
+    void rect(const ImVec4 &rect, const string &color, const string &link) override {
+        const auto [x, y, w, h] = rect;
+//        drawList->AddRectFilled({x, y}, {x + w, y + h}, convertColor(color));
+        draw_list->AddRectFilled(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Button));
+    }
+
+    void grouprect(const ImVec4 &rect, const string &text) override {
+        const auto [x, y, w, h] = rect;
+        const ImVec2 textPos = {x + decorateSchemaLabelOffset, y};
+        draw_list->AddRect(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Border));
+        draw_list->AddText(pos + textPos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
+    }
+
+    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const string &color) override {
+        draw_list->AddTriangle(pos + p1, pos + p2, pos + p3, ImGui::GetColorU32(ImGuiCol_Border));
+    }
+
+    void circle(const ImVec2 &p, float radius, const string &color) override {
+        draw_list->AddCircle(pos + p, radius, ImGui::GetColorU32(ImGuiCol_Border));
+    }
+
+    void arrow(const ImVec2 &p, float rotation, Orientation orientation) override {
+        static const ImVec2 d{6, 2};
+        ImGui::RenderArrowPointingAt(draw_list, pos + p, d, orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::GetColorU32(ImGuiCol_Border));
+    }
+
+    void line(const ImVec2 &start, const ImVec2 &end) override {
+        draw_list->AddLine(pos + start, pos + end, ImGui::GetColorU32(ImGuiCol_Border));
+    }
+
+    void text(const ImVec2 &p, const string &name, const string &link) override {
+        draw_list->AddText(pos + p, ImGui::GetColorU32(ImGuiCol_Text), name.c_str());
+    }
+
+    void dot(const ImVec2 &p, Orientation orientation) override {
+        const float offset = orientation == LeftRight ? 2 : -2;
+        draw_list->AddCircle(pos + p + ImVec2{offset, offset}, 1, ImGui::GetColorU32(ImGuiCol_Border));
+    }
+
+private:
+    ImDrawList *draw_list;
+    ImVec2 pos{};
 };
 
 static const char *getTreeName(Tree t) {
@@ -188,7 +245,7 @@ struct Schema {
     const std::vector<Schema *> children{};
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const bool topLevel;
-    const Tree parent;
+    Tree parent;
 
     // Fields populated in `place()`:
     float x = 0, y = 0;
@@ -215,10 +272,15 @@ struct Schema {
     virtual ImVec2 outputPoint(Count i) const = 0;
     inline bool isLR() const { return orientation == LeftRight; }
 
-    void draw() const {
-        SVGDevice device(faustDiagramsPath / svgFileName(tree), width, height);
-        device.rect({x, y, width - 1, height - 1}, "#ffffff", svgFileName(parent));
-        draw(device);
+    void draw(DeviceType type) const {
+        if (type == SVGDeviceType) {
+            SVGDevice device(faustDiagramsPath / svgFileName(tree), width, height);
+            device.rect({x, y, width - 1, height - 1}, "#ffffff", svgFileName(parent));
+            draw(device);
+        } else {
+            ImGuiDevice device;
+            draw(device);
+        }
     }
 
 protected:
@@ -255,7 +317,7 @@ struct BlockSchema : IOSchema {
     }
 
     void drawImpl(Device &device) const override {
-        if (schema) schema->draw();
+        if (schema) schema->draw(device.type());
         const string &link = schema ? svgFileName(tree) : "";
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
         device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text, link);
@@ -424,23 +486,23 @@ struct SequentialSchema : BinarySchema {
 
     // Compute the direction of a connection.
     // Y-axis goes from top to bottom
-    static Direction connectionDirection(const ImVec2 &a, const ImVec2 &b) { return a.y > b.y ? Up : (a.y < b.y ? Down : Horizontal); }
+    static ImGuiDir connectionDirection(const ImVec2 &a, const ImVec2 &b) { return a.y > b.y ? ImGuiDir_Up : (a.y < b.y ? ImGuiDir_Down : ImGuiDir_Right); }
 
     void drawImpl(Device &device) const override {
         BinarySchema::drawImpl(device);
 
         // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
         float dx = 0, mx = 0;
-        Direction direction = None;
+        ImGuiDir direction = ImGuiDir_None;
         for (Count i = 0; i < children[0]->outputs; i++) {
             const auto src = children[0]->outputPoint(i);
             const auto dst = children[1]->inputPoint(i);
-            const Direction d = connectionDirection(src, dst);
+            const ImGuiDir d = connectionDirection(src, dst);
             if (d == direction) {
                 mx += dx; // move in same direction
             } else {
-                mx = isLR() ? (d == Down ? horzGap : 0) : (d == Up ? -horzGap : 0);
-                dx = d == Up ? dWire : d == Down ? -dWire : 0;
+                mx = isLR() ? (d == ImGuiDir_Down ? horzGap : 0) : (d == ImGuiDir_Up ? -horzGap : 0);
+                dx = d == ImGuiDir_Up ? dWire : d == ImGuiDir_Down ? -dWire : 0;
                 direction = d;
             }
             if (!sequentialConnectionZigzag || src.y == dst.y) {
@@ -466,9 +528,9 @@ struct SequentialSchema : BinarySchema {
         a->place(0, dy1, LeftRight);
         b->place(0, dy2, LeftRight);
 
-        Direction direction = Horizontal;
-        int size = 0;
-        int MaxGroupSize[] = {0, 0, 0}; // store the size of the largest group for each direction
+        ImGuiDir direction = ImGuiDir_None;
+        Count size = 0;
+        std::map<ImGuiDir, Count> MaxGroupSize; // store the size of the largest group for each direction
         for (Count i = 0; i < a->outputs; i++) {
             const auto d = connectionDirection(a->outputPoint(i), b->inputPoint(i));
             size = (d == direction ? size + 1 : 1);
@@ -476,7 +538,7 @@ struct SequentialSchema : BinarySchema {
             MaxGroupSize[direction] = max(MaxGroupSize[direction], size);
         }
 
-        return dWire * float(max(MaxGroupSize[Up], MaxGroupSize[Down]));
+        return dWire * float(max(MaxGroupSize[ImGuiDir_Up], MaxGroupSize[ImGuiDir_Down]));
     }
 };
 
@@ -583,7 +645,7 @@ Schema *makeSequentialSchema(Tree t, Schema *s1, Schema *s2) {
 }
 
 struct DrawContext {
-    property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
+    std::map<Tree, bool> isTreePureRouting{}; // Avoid recomputing pure-routing property
     std::stack<Tree> treeFocusHierarchy; // As we descend into the tree, keep track of what the ordered set of ancestors for backlinks.
 };
 
@@ -612,7 +674,7 @@ struct DecorateSchema : IOSchema {
         const auto &schema = children[0];
         const float topLevelMargin = topLevel ? topSchemaMargin : 0;
         const float margin = 2 * topLevelMargin + decorateSchemaMargin;
-        device.dashrect({x + margin / 2, y + margin / 2, width - margin, height - margin}, text);
+        device.grouprect({x + margin / 2, y + margin / 2, width - margin, height - margin}, text);
         for (Count i = 0; i < inputs; i++) device.line(inputPoint(i), schema->inputPoint(i));
         for (Count i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
 
@@ -659,7 +721,7 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
     return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
 }
 
-static Schema *createSchema(Tree t, bool noBlock = false);
+static Schema *createSchema(Tree t, bool no_block = false);
 
 // Generate a 1->0 block schema for an input slot.
 static Schema *generateInputSlotSchema(Tree t) { return makeBlockSchema(t, 1, 0, getTreeName(t), SlotColor); }
@@ -815,26 +877,27 @@ static Schema *generateInsideSchema(Tree t) {
 
 // Returns `true` if the tree is only made of cut, wires and slots.
 static bool isPureRouting(Tree t) {
-    bool r;
-    if (dc->pureRoutingPropertyMemo.get(t, r)) return r;
+    if (dc->isTreePureRouting.contains(t)) return dc->isTreePureRouting[t];
 
     Tree x, y;
     if (isBoxCut(t) || isBoxWire(t) || isInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && isPureRouting(x) && isPureRouting(y))) {
-        dc->pureRoutingPropertyMemo.set(t, true);
+        dc->isTreePureRouting.emplace(t, true);
         return true;
     }
 
-    dc->pureRoutingPropertyMemo.set(t, false);
+    dc->isTreePureRouting.emplace(t, false);
     return false;
 }
 
-static Schema *createSchema(Tree t, bool noBlock) {
+static bool GlobalNoBlock = false;
+
+static Schema *createSchema(Tree t, bool no_block) {
     if (const char *name = getTreeName(t)) {
         Tree parentTree = dc->treeFocusHierarchy.empty() ? nullptr : dc->treeFocusHierarchy.top();
         dc->treeFocusHierarchy.push(t);
         auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, parentTree};
         dc->treeFocusHierarchy.pop();
-        if (!noBlock && schema->topLevel) {
+        if (!GlobalNoBlock && !no_block && schema->topLevel) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
             return makeBlockSchema(t, ins, outs, name, LinkColor, schema);
@@ -849,7 +912,22 @@ void drawBox(Box box) {
     fs::remove_all(faustDiagramsPath);
     fs::create_directory(faustDiagramsPath);
     dc = std::make_unique<DrawContext>();
+
     auto *schema = createSchema(box, true);
     schema->place();
-    schema->draw();
+    schema->draw(SVGDeviceType);
+}
+
+void Audio::Faust::Diagram::draw() const {
+    if (!c.faust_box) return;
+
+    dc = std::make_unique<DrawContext>();
+    // todo only create/place new schema when `c.faust_box` changes
+    GlobalNoBlock = true;
+    auto *schema = createSchema(c.faust_box);
+    GlobalNoBlock = false;
+    schema->place();
+    ImGui::BeginChild("Diagram", {schema->width, schema->height}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    schema->draw(ImGuiDeviceType);
+    ImGui::EndChild();
 }

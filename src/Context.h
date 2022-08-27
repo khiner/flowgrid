@@ -4,6 +4,8 @@
 #include <list>
 #include <queue>
 
+#include "faust/dsp/libfaust-box.h"
+
 #include "Action.h"
 #include "Helper/File.h"
 
@@ -85,7 +87,7 @@ private:
 
 struct Context {
     Context();
-    ~Context() = default;
+    ~Context();
 
     static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;
@@ -114,6 +116,7 @@ struct Context {
 //    diff_match_patch<string> dmp;
     UIContext *ui{};
     StateStats state_stats;
+    Box faust_box{};
 
     Diffs diffs;
     int diff_index = -1;

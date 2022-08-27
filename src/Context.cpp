@@ -39,7 +39,6 @@ struct FaustContext {
     int num_inputs{0}, num_outputs{0};
     llvm_dsp_factory *dsp_factory;
     dsp *dsp = nullptr;
-    Box box; // already a pointer
     std::unique_ptr<FaustBuffers> buffers;
 
     FaustContext(const string &code, int sample_rate, string &error_msg) {
@@ -48,18 +47,18 @@ struct FaustContext {
 //        argv[argc++] = "-I";
 //        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
 
+        destroyLibContext();
         createLibContext();
-        box = DSPToBoxes("FlowGrid", code, &num_inputs, &num_outputs, error_msg);
-        if (box && error_msg.empty()) {
+        c.faust_box = DSPToBoxes("FlowGrid", code, &num_inputs, &num_outputs, error_msg);
+        if (c.faust_box && error_msg.empty()) {
             static const int optimize_level = -1;
-            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);
+            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", c.faust_box, 0, nullptr, "", error_msg, optimize_level);
             if (dsp_factory && error_msg.empty()) {
                 dsp = dsp_factory->createDSPInstance();
                 dsp->init(sample_rate);
-                drawBox(box);
+                drawBox(c.faust_box);
             }
         }
-        destroyLibContext();
         buffers = std::make_unique<FaustBuffers>(num_inputs, num_outputs);
     }
 
@@ -108,6 +107,10 @@ Context::Context() : state_json(state), gesture_begin_state_json(state) {
     } else {
         write_preferences();
     }
+}
+
+Context::~Context() {
+    destroyLibContext();
 }
 
 bool Context::is_user_project_path(const fs::path &path) {

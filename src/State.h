@@ -319,6 +319,11 @@ struct Audio : Process {
             string file_name{"default.dsp"};
         };
 
+        struct Diagram : Window {
+            using Window::Window;
+            void draw() const override;
+        };
+
         // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
         // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
         struct Log : Window {
@@ -327,6 +332,7 @@ struct Audio : Process {
         };
 
         Editor editor{path, "editor", "Faust editor"};
+        Diagram diagram{path, "diagram", "Faust diagram"};
         Log log{path, "log", "Faust log"};
 
 //        String code{path, "code", "Code",

@@ -276,6 +276,7 @@ void State::draw() const {
         audio.Dock(settings_node_id);
 
         audio.faust.editor.Dock(faust_editor_node_id);
+        audio.faust.diagram.Dock(faust_editor_node_id);
         audio.faust.log.Dock(faust_log_node_id);
 
         state_viewer.Dock(state_node_id);
@@ -297,6 +298,7 @@ void State::draw() const {
     audio.DrawWindow();
 
     audio.faust.editor.DrawWindow(ImGuiWindowFlags_MenuBar);
+    audio.faust.diagram.DrawWindow(ImGuiWindowFlags_MenuBar);
     audio.faust.log.DrawWindow();
 
     state_viewer.DrawWindow(ImGuiWindowFlags_MenuBar);

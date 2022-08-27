@@ -227,10 +227,7 @@ protected:
 
 struct IOSchema : Schema {
     IOSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count directDescendents = 0, string link = "")
-        : Schema(t, inputs, outputs, width, height, std::move(children), directDescendents, std::move(link)) {
-        for (Count i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
-        for (Count i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
-    }
+        : Schema(t, inputs, outputs, width, height, std::move(children), directDescendents, std::move(link)) {}
 
     void placeImpl() override {
         const float dir = isLR() ? dWire : -dWire;
@@ -242,8 +239,8 @@ struct IOSchema : Schema {
     ImVec2 inputPoint(Count i) const override { return inputPoints[i]; }
     ImVec2 outputPoint(Count i) const override { return outputPoints[i]; }
 
-    std::vector<ImVec2> inputPoints;
-    std::vector<ImVec2> outputPoints;
+    std::vector<ImVec2> inputPoints{inputs};
+    std::vector<ImVec2> outputPoints{outputs};
 };
 
 // A simple rectangular box with text and inputs and outputs.
@@ -498,8 +495,8 @@ struct SplitSchema : BinarySchema {
 
 // Place and connect two diagrams in recursive composition
 // The two components must have the same width.
-struct RecSchema : IOSchema {
-    RecSchema(Tree t, Schema *s1, Schema *s2, float width)
+struct RecursiveSchema : IOSchema {
+    RecursiveSchema(Tree t, Schema *s1, Schema *s2, float width)
         : IOSchema(t, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height, {s1, s2}) {
         fgassert(s1->inputs >= s2->outputs);
         fgassert(s1->outputs >= s2->inputs);
@@ -568,8 +565,8 @@ private:
 Schema *makeEnlargedSchema(Schema *s, float width) { return width > s->width ? new EnlargedSchema(s, width) : s; }
 Schema *makeParallelSchema(Tree t, Schema *s1, Schema *s2) { return new ParallelSchema(t, makeEnlargedSchema(s1, s2->width), makeEnlargedSchema(s2, s1->width)); }
 Schema *makeSequentialSchema(Tree t, Schema *s1, Schema *s2) {
-    const Count o = s1->outputs;
-    const Count i = s2->inputs;
+    const auto o = s1->outputs;
+    const auto i = s2->inputs;
     return new SequentialSchema(t,
         o < i ? makeParallelSchema(t, s1, new CableSchema(t, i - o)) : s1,
         o > i ? makeParallelSchema(t, s2, new CableSchema(t, o - i)) : s2
@@ -778,7 +775,7 @@ static Schema *generateInsideSchema(Tree t) {
         auto *s1e = makeEnlargedSchema(s1, s2->width);
         auto *s2e = makeEnlargedSchema(s2, s1->width);
         const float w = s1e->width + 2 * dWire * float(max(s2e->inputs, s2e->outputs));
-        return new RecSchema(t, s1e, s2e, w);
+        return new RecursiveSchema(t, s1e, s2e, w);
     }
     if (isBoxSlot(t, &i)) return makeBlockSchema(t, 0, 1, getTreeName(t), SlotColor);
 
@@ -837,7 +834,7 @@ static bool isPureRouting(Tree t) {
 
 static Schema *createSchema(Tree t) {
     if (const char *name = getTreeName(t)) {
-        Schema *schema = makeTopLevelSchema(t);
+        auto *schema = makeTopLevelSchema(t);
         if (schema->topLevel) {
             if (!dc->drawnExp.contains(t)) {
                 dc->drawnExp.insert(t);

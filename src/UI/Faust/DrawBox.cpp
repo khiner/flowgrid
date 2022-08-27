@@ -12,6 +12,7 @@
 #include <range/v3/numeric/accumulate.hpp>
 
 #include "boxes/ppbox.hh"
+#include "signals/prim2.hh"
 #include "faust/dsp/libfaust-signal.h"
 
 #include "../../Helper/assert.h"

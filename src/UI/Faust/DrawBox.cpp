@@ -11,6 +11,7 @@
 #include <range/v3/algorithm/contains.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
+#include <range/v3/numeric/accumulate.hpp>
 
 #include "property.hh"
 #include "boxes/ppbox.hh"
@@ -184,17 +185,17 @@ struct Schema {
     const float width, height;
     const std::vector<Schema *> children{};
     const Count descendents = 0; // The number of boxes within this schema (recursively).
+    const bool topLevel;
     const string link;
-    bool topLevel;
 
     // Fields populated in `place()`:
     float x = 0, y = 0;
     Orientation orientation = LeftRight;
 
-// ::ranges::accumulate(children | views::transform([](Schema *child) { return child->descendents; })
-    Schema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count descendents = 0, string link = "")
-        : tree(t), inputs(inputs), outputs(outputs), width(width), height(height),
-          children(std::move(children)), descendents(descendents), link(std::move(link)), topLevel(descendents >= foldComplexity) {}
+    Schema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count directDescendents = 0, string link = "")
+        : tree(t), inputs(inputs), outputs(outputs), width(width), height(height), children(std::move(children)),
+          descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Schema *child) { return child->descendents; }), 0)),
+          topLevel(descendents >= foldComplexity), link(std::move(link)) {}
     virtual ~Schema() = default;
 
     void place(float new_x, float new_y, Orientation new_orientation) {
@@ -225,8 +226,8 @@ protected:
 };
 
 struct IOSchema : Schema {
-    IOSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count descendents = 0, string link = "")
-        : Schema(t, inputs, outputs, width, height, std::move(children), descendents, std::move(link)) {
+    IOSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count directDescendents = 0, string link = "")
+        : Schema(t, inputs, outputs, width, height, std::move(children), directDescendents, std::move(link)) {
         for (Count i = 0; i < inputs; i++) inputPoints.emplace_back(0, 0);
         for (Count i = 0; i < outputs; i++) outputPoints.emplace_back(0, 0);
     }
@@ -342,7 +343,7 @@ private:
 };
 
 struct EnlargedSchema : IOSchema {
-    EnlargedSchema(Schema *s, float width) : IOSchema(s->tree, s->inputs, s->outputs, width, s->height, {s}, s->descendents) {}
+    EnlargedSchema(Schema *s, float width) : IOSchema(s->tree, s->inputs, s->outputs, width, s->height, {s}) {}
 
     void placeImpl() override {
         auto *schema = children[0];
@@ -363,7 +364,7 @@ struct EnlargedSchema : IOSchema {
 
 struct BinarySchema : Schema {
     BinarySchema(Tree t, Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap, float width, float height)
-        : Schema(t, inputs, outputs, width, height, {s1, s2}, s1->descendents + s2->descendents), horzGap(horzGap) {}
+        : Schema(t, inputs, outputs, width, height, {s1, s2}), horzGap(horzGap) {}
     BinarySchema(Tree t, Schema *s1, Schema *s2, Count inputs, Count outputs, float horzGap)
         : BinarySchema(t, s1, s2, inputs, outputs, horzGap, s1->width + s2->width + horzGap, max(s1->height, s2->height)) {}
     BinarySchema(Tree t, Schema *s1, Schema *s2, float horzGap) : BinarySchema(t, s1, s2, s1->inputs, s2->outputs, horzGap) {}
@@ -499,7 +500,7 @@ struct SplitSchema : BinarySchema {
 // The two components must have the same width.
 struct RecSchema : IOSchema {
     RecSchema(Tree t, Schema *s1, Schema *s2, float width)
-        : IOSchema(t, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height, {s1, s2}, s1->descendents + s2->descendents) {
+        : IOSchema(t, s1->inputs - s2->outputs, s1->outputs, width, s1->height + s2->height, {s1, s2}) {
         fgassert(s1->inputs >= s2->outputs);
         fgassert(s1->outputs >= s2->inputs);
         fgassert(s1->width >= s2->width);
@@ -588,9 +589,9 @@ std::unique_ptr<DrawContext> dc;
 struct DecorateSchema : IOSchema {
     DecorateSchema(Tree t, Schema *s, string text, string link = "")
         : IOSchema(t, s->inputs, s->outputs,
-        s->width + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)),
-        s->height + 2 * (decorateSchemaMargin + (s->descendents >= foldComplexity ? topSchemaMargin : 0)),
-        {s}, s->descendents, std::move(link)),
+        s->width + 2 * (decorateSchemaMargin + (s->topLevel ? topSchemaMargin : 0)),
+        s->height + 2 * (decorateSchemaMargin + (s->topLevel ? topSchemaMargin : 0)),
+        {s}, 0, std::move(link)),
           text(std::move(text)) {}
 
     void placeImpl() override {
@@ -837,7 +838,7 @@ static bool isPureRouting(Tree t) {
 static Schema *createSchema(Tree t) {
     if (const char *name = getTreeName(t)) {
         Schema *schema = makeTopLevelSchema(t);
-        if (schema->descendents >= foldComplexity) {
+        if (schema->topLevel) {
             if (!dc->drawnExp.contains(t)) {
                 dc->drawnExp.insert(t);
                 schema->place();

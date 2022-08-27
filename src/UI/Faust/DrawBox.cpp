@@ -172,9 +172,11 @@ static const char *getTreeName(Tree t) {
 
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
 // If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
-static string svgFileName(Tree t, const string &id) {
-    if (id == "process") return id + ".svg";
-    return (views::take_while(id, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
+static string svgFileName(Tree t) {
+    if (!t) return "";
+    const string &treeName = getTreeName(t);
+    if (treeName == "process") return treeName + ".svg";
+    return (views::take_while(treeName, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
         + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
 }
 
@@ -186,16 +188,16 @@ struct Schema {
     const std::vector<Schema *> children{};
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const bool topLevel;
-    const string link;
+    const Tree parent;
 
     // Fields populated in `place()`:
     float x = 0, y = 0;
     Orientation orientation = LeftRight;
 
-    Schema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count directDescendents = 0, string link = "")
+    Schema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count directDescendents = 0, Tree parent = nullptr)
         : tree(t), inputs(inputs), outputs(outputs), width(width), height(height), children(std::move(children)),
           descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Schema *child) { return child->descendents; }), 0)),
-          topLevel(descendents >= foldComplexity), link(std::move(link)) {}
+          topLevel(descendents >= foldComplexity), parent(parent) {}
     virtual ~Schema() = default;
 
     void place(float new_x, float new_y, Orientation new_orientation) {
@@ -214,9 +216,8 @@ struct Schema {
     inline bool isLR() const { return orientation == LeftRight; }
 
     void draw() const {
-        const char *name = getTreeName(tree);
-        SVGDevice device(faustDiagramsPath / svgFileName(tree, name), width, height);
-        device.rect({x, y, width - 1, height - 1}, "#ffffff", link);
+        SVGDevice device(faustDiagramsPath / svgFileName(tree), width, height);
+        device.rect({x, y, width - 1, height - 1}, "#ffffff", svgFileName(parent));
         draw(device);
     }
 
@@ -226,8 +227,8 @@ protected:
 };
 
 struct IOSchema : Schema {
-    IOSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count directDescendents = 0, string link = "")
-        : Schema(t, inputs, outputs, width, height, std::move(children), directDescendents, std::move(link)) {}
+    IOSchema(Tree t, Count inputs, Count outputs, float width, float height, std::vector<Schema *> children = {}, Count directDescendents = 0, Tree parent = nullptr)
+        : Schema(t, inputs, outputs, width, height, std::move(children), directDescendents, parent) {}
 
     void placeImpl() override {
         const float dir = isLR() ? dWire : -dWire;
@@ -245,8 +246,8 @@ struct IOSchema : Schema {
 
 // A simple rectangular box with text and inputs and outputs.
 struct BlockSchema : IOSchema {
-    BlockSchema(Tree t, Count inputs, Count outputs, float width, float height, string text, string color, string link = "", Schema *schema = nullptr)
-        : IOSchema(t, inputs, outputs, width, height, {}, 1, std::move(link)), text(std::move(text)), color(std::move(color)), schema(schema) {}
+    BlockSchema(Tree t, Count inputs, Count outputs, float width, float height, string text, string color, Schema *schema = nullptr)
+        : IOSchema(t, inputs, outputs, width, height, {}, 1, parent), text(std::move(text)), color(std::move(color)), schema(schema) {}
 
     void placeImpl() override {
         IOSchema::placeImpl();
@@ -255,6 +256,7 @@ struct BlockSchema : IOSchema {
 
     void drawImpl(Device &device) const override {
         if (schema) schema->draw();
+        const string &link = schema ? svgFileName(tree) : "";
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
         device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text, link);
 
@@ -582,7 +584,7 @@ Schema *makeSequentialSchema(Tree t, Schema *s1, Schema *s2) {
 
 struct DrawContext {
     property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
-    std::stack<string> fileNames;
+    std::stack<Tree> treeFocusHierarchy; // As we descend into the tree, keep track of what the ordered set of ancestors for backlinks.
 };
 
 std::unique_ptr<DrawContext> dc;
@@ -590,11 +592,11 @@ std::unique_ptr<DrawContext> dc;
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
 // If `topLevel = true`, additional padding is added, along with output arrows.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Tree t, Schema *s, string text, string link = "")
+    DecorateSchema(Tree t, Schema *s, string text, Tree parent = nullptr)
         : IOSchema(t, s->inputs, s->outputs,
         s->width + 2 * (decorateSchemaMargin + (s->topLevel ? topSchemaMargin : 0)),
         s->height + 2 * (decorateSchemaMargin + (s->topLevel ? topSchemaMargin : 0)),
-        {s}, 0, std::move(link)), text(std::move(text)) {}
+        {s}, 0, parent), text(std::move(text)) {}
 
     void placeImpl() override {
         const float margin = decorateSchemaMargin + (topLevel ? topSchemaMargin : 0);
@@ -646,11 +648,11 @@ protected:
     const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
 };
 
-Schema *makeBlockSchema(Tree t, Count inputs, Count outputs, const string &text, const string &color, const string &link = "", Schema *innerSchema = nullptr) {
+Schema *makeBlockSchema(Tree t, Count inputs, Count outputs, const string &text, const string &color, Schema *innerSchema = nullptr) {
     const float minimal = 3 * dWire;
     const float w = 2 * dHorz + max(minimal, dLetter * quantize(int(text.size())));
     const float h = 2 * dVert + max(minimal, float(max(inputs, outputs)) * dWire);
-    return new BlockSchema(t, inputs, outputs, w, h, text, color, link, innerSchema);
+    return new BlockSchema(t, inputs, outputs, w, h, text, color, innerSchema);
 }
 
 static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
@@ -828,15 +830,14 @@ static bool isPureRouting(Tree t) {
 
 static Schema *createSchema(Tree t, bool noBlock) {
     if (const char *name = getTreeName(t)) {
-        const string &fileName = svgFileName(t, name);
-        const string &parentFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
-        dc->fileNames.push(fileName);
-        auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, parentFileName};
-        dc->fileNames.pop();
+        Tree parentTree = dc->treeFocusHierarchy.empty() ? nullptr : dc->treeFocusHierarchy.top();
+        dc->treeFocusHierarchy.push(t);
+        auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, parentTree};
+        dc->treeFocusHierarchy.pop();
         if (!noBlock && schema->topLevel) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return makeBlockSchema(t, ins, outs, name, LinkColor, fileName, schema);
+            return makeBlockSchema(t, ins, outs, name, LinkColor, schema);
         }
         if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
     }

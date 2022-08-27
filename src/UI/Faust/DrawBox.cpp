@@ -245,10 +245,16 @@ struct IOSchema : Schema {
 
 // A simple rectangular box with text and inputs and outputs.
 struct BlockSchema : IOSchema {
-    BlockSchema(Tree t, Count inputs, Count outputs, float width, float height, string text, string color, string link = "")
-        : IOSchema(t, inputs, outputs, width, height, {}, 1, std::move(link)), text(std::move(text)), color(std::move(color)) {}
+    BlockSchema(Tree t, Count inputs, Count outputs, float width, float height, string text, string color, string link = "", Schema *schema = nullptr)
+        : IOSchema(t, inputs, outputs, width, height, {}, 1, std::move(link)), text(std::move(text)), color(std::move(color)), schema(schema) {}
+
+    void placeImpl() override {
+        IOSchema::placeImpl();
+        if (schema) schema->place();
+    }
 
     void drawImpl(Device &device) const override {
+        if (schema) schema->draw();
         device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
         device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text, link);
 
@@ -265,6 +271,7 @@ struct BlockSchema : IOSchema {
     }
 
     const string text, color;
+    Schema *schema;
 };
 
 static inline float quantize(int n) {
@@ -575,7 +582,6 @@ Schema *makeSequentialSchema(Tree t, Schema *s1, Schema *s2) {
 
 struct DrawContext {
     property<bool> pureRoutingPropertyMemo{}; // Avoid recomputing pure-routing property
-    std::set<Tree> drawnExp; // Expressions drawn or scheduled so far
     std::stack<string> fileNames;
 };
 
@@ -640,18 +646,18 @@ protected:
     const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
 };
 
-Schema *makeBlockSchema(Tree t, Count inputs, Count outputs, const string &text, const string &color, const string &link = "") {
+Schema *makeBlockSchema(Tree t, Count inputs, Count outputs, const string &text, const string &color, const string &link = "", Schema *innerSchema = nullptr) {
     const float minimal = 3 * dWire;
     const float w = 2 * dHorz + max(minimal, dLetter * quantize(int(text.size())));
     const float h = 2 * dVert + max(minimal, float(max(inputs, outputs)) * dWire);
-    return new BlockSchema(t, inputs, outputs, w, h, text, color, link);
+    return new BlockSchema(t, inputs, outputs, w, h, text, color, link, innerSchema);
 }
 
 static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
     return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
 }
 
-static Schema *createSchema(Tree t);
+static Schema *createSchema(Tree t, bool noBlock = false);
 
 // Generate a 1->0 block schema for an input slot.
 static Schema *generateInputSlotSchema(Tree t) { return makeBlockSchema(t, 1, 0, getTreeName(t), SlotColor); }
@@ -820,22 +826,17 @@ static bool isPureRouting(Tree t) {
     return false;
 }
 
-static Schema *createSchema(Tree t) {
+static Schema *createSchema(Tree t, bool noBlock) {
     if (const char *name = getTreeName(t)) {
         const string &fileName = svgFileName(t, name);
         const string &parentFileName = dc->fileNames.empty() ? "" : dc->fileNames.top();
         dc->fileNames.push(fileName);
         auto *schema = new DecorateSchema{t, generateInsideSchema(t), name, parentFileName};
         dc->fileNames.pop();
-        if (schema->topLevel) {
-            if (!dc->drawnExp.contains(t)) {
-                dc->drawnExp.insert(t);
-                schema->place();
-                schema->draw();
-            }
+        if (!noBlock && schema->topLevel) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return makeBlockSchema(t, ins, outs, name, LinkColor, fileName);
+            return makeBlockSchema(t, ins, outs, name, LinkColor, fileName, schema);
         }
         if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
     }
@@ -847,5 +848,7 @@ void drawBox(Box box) {
     fs::remove_all(faustDiagramsPath);
     fs::create_directory(faustDiagramsPath);
     dc = std::make_unique<DrawContext>();
-    createSchema(box);
+    auto *schema = createSchema(box, true);
+    schema->place();
+    schema->draw();
 }

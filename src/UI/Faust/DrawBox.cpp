@@ -284,6 +284,14 @@ struct Schema {
         }
     }
 
+    inline float right() const { return x + width; }
+    inline float bottom() const { return y + height; }
+    inline ImVec2 position() const { return {x, y}; }
+    inline ImVec2 size() const { return {width, height}; }
+    inline ImVec2 mid() const { return {x + width / 2, y + height / 2}; }
+    inline ImRect rect() const { return {{x, y}, {x + width, y + height}}; }
+    inline ImVec4 xywh() const { return {x, y, width, height}; }
+
 protected:
     virtual void placeImpl() = 0;
     virtual void drawImpl(Device &) const {};
@@ -294,10 +302,15 @@ struct IOSchema : Schema {
         : Schema(t, inputs, outputs, width, height, std::move(children), directDescendents, parent) {}
 
     void placeImpl() override {
-        const float dir = isLR() ? dWire : -dWire;
-        const float yMid = y + height / 2;
-        for (Count i = 0; i < inputs; i++) inputPoints[i] = {isLR() ? x : x + width, yMid - dWire * float(inputs - 1) / 2 + float(i) * dir};
-        for (Count i = 0; i < outputs; i++) outputPoints[i] = {isLR() ? x + width : x, yMid - dWire * float(outputs - 1) / 2 + float(i) * dir};
+        const float dy = isLR() ? dWire : -dWire;
+        for (Count i = 0; i < inputs; i++) {
+            const float in_y = mid().y - dWire * float(inputs - 1) / 2;
+            inputPoints[i] = {x + (isLR() ? 0 : width), in_y + float(i) * dy};
+        }
+        for (Count i = 0; i < outputs; i++) {
+            const float out_y = mid().y - dWire * float(outputs - 1) / 2;
+            outputPoints[i] = {x + (isLR() ? width : 0), out_y + float(i) * dy};
+        }
     }
 
     ImVec2 inputPoint(Count i) const override { return inputPoints[i]; }
@@ -320,19 +333,19 @@ struct BlockSchema : IOSchema {
     void drawImpl(Device &device) const override {
         if (schema) schema->draw(device.type());
         const string &link = schema ? svgFileName(tree) : "";
-        device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
-        device.text(ImVec2{x, y} + ImVec2{width, height} / 2, text, link);
+        device.rect(xywh() + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, link);
+        device.text(position() + size() / 2, text, link);
 
         // Draw a small point that indicates the first input (like an integrated circuits).
-        device.dot(ImVec2{x, y} + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
+        device.dot(position() + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
         drawConnections(device);
     }
 
     void drawConnections(Device &device) const {
-        const float dx = isLR() ? dHorz : -dHorz;
-        for (const auto &p: inputPoints) device.line(p, p + ImVec2{dx, 0}); // Input lines
-        for (const auto &p: outputPoints) device.line(p - ImVec2{dx, 0}, p); // Output lines
-        for (const auto &p: inputPoints) device.arrow(p + ImVec2{dx, 0}, 0, orientation); // Input arrows
+        const ImVec2 d = {isLR() ? dHorz : -dHorz, 0};
+        for (const auto &p: inputPoints) device.line(p, p + d); // Input lines
+        for (const auto &p: outputPoints) device.line(p - d, p); // Output lines
+        for (const auto &p: inputPoints) device.arrow(p + d, 0, orientation); // Input arrows
     }
 
     const string text, color;
@@ -365,52 +378,48 @@ private:
     std::vector<ImVec2> points{inputs};
 };
 
-// An inverter is a special symbol corresponding to '*(-1)', used to create more compact diagrams.
+// An inverter is a circle followed by a triangle.
+// It corresponds to '*(-1)', and it's used to create more compact diagrams.
 struct InverterSchema : BlockSchema {
     InverterSchema(Tree t) : BlockSchema(t, 1, 1, 2.5f * dWire, dWire, "-1", InverterColor) {}
 
     void drawImpl(Device &device) const override {
-        const ImVec2 pos = {x, y};
         const float x1 = width - 2 * dHorz;
         const float y1 = 0.5f + (height - 1) / 2;
-        const auto ta = pos + ImVec2{dHorz + (isLR() ? 0 : x1), 0};
-        const auto tb = ta + ImVec2{(isLR() ? x1 - 2 * inverterRadius : 2 * inverterRadius - x1 - pos.x), y1};
-        const auto tc = ta + ImVec2{0, height - 1};
-        const auto circlePos = tb + ImVec2{isLR() ? inverterRadius : -inverterRadius, 0};
-        device.circle(circlePos, inverterRadius, color);
-        device.triangle(ta, tb, tc, color);
+        const auto tri_a = position() + ImVec2{dHorz + (isLR() ? 0 : x1), 0};
+        const auto tri_b = tri_a + ImVec2{(isLR() ? x1 - 2 * inverterRadius : 2 * inverterRadius - x1 - x), y1};
+        const auto tri_c = tri_a + ImVec2{0, height - 1};
+        device.circle(tri_b + ImVec2{isLR() ? inverterRadius : -inverterRadius, 0}, inverterRadius, color);
+        device.triangle(tri_a, tri_b, tri_c, color);
         drawConnections(device);
     }
 };
 
-// Terminate a cable (cut box).
+// Cable termination
 struct CutSchema : Schema {
     // A Cut is represented by a small black dot.
     // It has 1 input and no outputs.
-    // It has a 0 width and a 1 wire height.
-    CutSchema(Tree t) : Schema(t, 1, 0, 0, dWire / 100.0f), point(0, 0) {}
+    // It has 0 width and 1 height, for the wire.
+    CutSchema(Tree t) : Schema(t, 1, 0, 0, dWire / 100.0f) {}
 
-    // The input point is placed in the middle.
-    void placeImpl() override { point = {x, y + height * 0.5f}; }
+    void placeImpl() override {}
 
     // A cut is represented by a small black dot.
     void drawImpl(Device &) const override {
-        //    device.circle(point, dWire / 8.0);
+        // device.circle(point, dWire / 8);
     }
 
-    // By definition, a Cut has only one input point.
-    ImVec2 inputPoint(Count) const override { return point; }
+    // A Cut has only one input point
+    ImVec2 inputPoint(Count) const override { return {x, mid().y}; }
 
-    // By definition, a Cut has no output point.
+    // A Cut has no output point.
     ImVec2 outputPoint(Count) const override {
         fgassert(false);
         return {-1, -1};
     }
-
-private:
-    ImVec2 point;
 };
 
+// todo can this just be a method returning a `Rect` on `Schema`?
 struct EnlargedSchema : IOSchema {
     EnlargedSchema(Schema *s, float width) : IOSchema(s->tree, s->inputs, s->outputs, width, s->height, {s}) {}
 
@@ -485,9 +494,10 @@ struct SequentialSchema : BinarySchema {
         fgassert(s1->outputs == s2->inputs);
     }
 
-    // Compute the direction of a connection.
-    // Y-axis goes from top to bottom
-    static ImGuiDir connectionDirection(const ImVec2 &a, const ImVec2 &b) { return a.y > b.y ? ImGuiDir_Up : (a.y < b.y ? ImGuiDir_Down : ImGuiDir_Right); }
+    static ImGuiDir connectionDirection(const ImVec2 &a, const ImVec2 &b) {
+        // Remember that the y-axis goes from top to bottom.
+        return a.y > b.y ? ImGuiDir_Up : (a.y < b.y ? ImGuiDir_Down : ImGuiDir_Right);
+    }
 
     void drawImpl(Device &device) const override {
         BinarySchema::drawImpl(device);
@@ -496,24 +506,23 @@ struct SequentialSchema : BinarySchema {
         float dx = 0, mx = 0;
         ImGuiDir direction = ImGuiDir_None;
         for (Count i = 0; i < children[0]->outputs; i++) {
-            const auto src = children[0]->outputPoint(i);
-            const auto dst = children[1]->inputPoint(i);
-            const ImGuiDir d = connectionDirection(src, dst);
+            const auto from = children[0]->outputPoint(i);
+            const auto to = children[1]->inputPoint(i);
+            const ImGuiDir d = connectionDirection(from, to);
             if (d == direction) {
-                mx += dx; // move in same direction
+                mx += dx; // Move in same direction.
             } else {
                 mx = isLR() ? (d == ImGuiDir_Down ? horzGap : 0) : (d == ImGuiDir_Up ? -horzGap : 0);
                 dx = d == ImGuiDir_Up ? dWire : d == ImGuiDir_Down ? -dWire : 0;
                 direction = d;
             }
-            if (!sequentialConnectionZigzag || src.y == dst.y) {
-                // Draw a straight, potentially diagonal cable.
-                device.line(src, dst);
+            if (!sequentialConnectionZigzag || from.y == to.y) {
+                device.line(from, to); // Draw a straight, potentially diagonal cable.
             } else {
                 // Draw a zigzag cable by traversing half the distance between, taking a sharp turn, then turning back and finishing.
-                device.line(src, {src.x + mx, src.y});
-                device.line({src.x + mx, src.y}, {src.x + mx, dst.y});
-                device.line({src.x + mx, dst.y}, dst);
+                device.line(from, {from.x + mx, from.y});
+                device.line({from.x + mx, from.y}, {from.x + mx, to.y});
+                device.line({from.x + mx, to.y}, to);
             }
         }
     }
@@ -590,47 +599,47 @@ struct RecursiveSchema : IOSchema {
     void drawImpl(Device &device) const override {
         const auto *s1 = children[0];
         const auto *s2 = children[1];
-        // Draw the implicit feedback delay to each schema2 input
+        // Implicit feedback delay to each `s2` input
         const float dw = isLR() ? dWire : -dWire;
         for (Count i = 0; i < s2->inputs; i++) drawDelaySign(device, s1->outputPoint(i) + ImVec2{float(i) * dw, 0}, dw / 2);
-        // Feedback connections to each schema2 input
+        // Feedback connections to each `s2` input
         for (Count i = 0; i < s2->inputs; i++) drawFeedback(device, s1->outputPoint(i), s2->inputPoint(i), float(i) * dWire, outputPoint(i));
         // Non-recursive output lines
         for (Count i = s2->inputs; i < outputs; i++) device.line(s1->outputPoint(i), outputPoint(i));
         // Input lines
         for (Count i = 0; i < inputs; i++) device.line(inputPoint(i), s1->inputPoint(i + s2->outputs));
-        // Feedfront connections from each schema2 output
+        // Feedfront connections from each `s2` output
         for (Count i = 0; i < s2->outputs; i++) drawFeedfront(device, s2->outputPoint(i), s1->inputPoint(i), float(i) * dWire);
     }
 
 private:
     // Draw a feedback connection between two points with a horizontal displacement `dx`.
-    void drawFeedback(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx, const ImVec2 &out) const {
-        const float ox = src.x + (isLR() ? dx : -dx);
+    void drawFeedback(Device &device, const ImVec2 &from, const ImVec2 &to, float dx, const ImVec2 &out) const {
+        const float ox = from.x + (isLR() ? dx : -dx);
         const float ct = (isLR() ? dWire : -dWire) / 2;
-        const ImVec2 up(ox, src.y - ct);
-        const ImVec2 br(ox + ct / 2, src.y);
+        const ImVec2 up(ox, from.y - ct);
+        const ImVec2 br(ox + ct / 2, from.y);
 
-        device.line(up, {ox, dst.y});
-        device.line({ox, dst.y}, dst);
-        device.line(src, br);
+        device.line(up, {ox, to.y});
+        device.line({ox, to.y}, to);
+        device.line(from, br);
         device.line(br, out);
     }
 
     // Draw a feedfrom connection between two points with a horizontal displacement `dx`.
-    void drawFeedfront(Device &device, const ImVec2 &src, const ImVec2 &dst, float dx) const {
-        const float ox = src.x + (isLR() ? -dx : dx);
-        device.line({src.x, src.y}, {ox, src.y});
-        device.line({ox, src.y}, {ox, dst.y});
-        device.line({ox, dst.y}, {dst.x, dst.y});
+    void drawFeedfront(Device &device, const ImVec2 &from, const ImVec2 &to, float dx) const {
+        const float dfx = from.x + (isLR() ? -dx : dx);
+        device.line({from.x, from.y}, {dfx, from.y});
+        device.line({dfx, from.y}, {dfx, to.y});
+        device.line({dfx, to.y}, {to.x, to.y});
     }
 
     // Draw the delay sign of a feedback connection (three sides of a square)
     static void drawDelaySign(Device &device, const ImVec2 &pos, float size) {
-        const float halfSize = size / 2;
-        device.line(pos - ImVec2{halfSize, 0}, pos - ImVec2{halfSize, size});
-        device.line(pos - ImVec2{halfSize, size}, pos + ImVec2{halfSize, -size});
-        device.line(pos + ImVec2{halfSize, -size}, pos + ImVec2{halfSize, 0});
+        const float hs = size / 2;
+        device.line(pos - ImVec2{hs, 0}, pos - ImVec2{hs, size});
+        device.line(pos - ImVec2{hs, size}, pos + ImVec2{hs, -size});
+        device.line(pos + ImVec2{hs, -size}, pos + ImVec2{hs, 0});
     }
 };
 
@@ -668,7 +677,9 @@ struct DecorateSchema : IOSchema {
         const auto &schema = children[0];
         const float topLevelMargin = topLevel ? topSchemaMargin : 0;
         const float margin = 2 * topLevelMargin + decorateSchemaMargin;
-        device.grouprect({x + margin / 2, y + margin / 2, width - margin, height - margin}, text);
+        const auto rect_pos = position() + ImVec2{margin, margin} / 2;
+        const auto rect_size = size() - ImVec2{margin, margin};
+        device.grouprect({rect_pos.x, rect_pos.y, rect_size.x, rect_size.y}, text);
         for (Count i = 0; i < inputs; i++) device.line(inputPoint(i), schema->inputPoint(i));
         for (Count i = 0; i < outputs; i++) device.line(schema->outputPoint(i), outputPoint(i));
 
@@ -685,9 +696,9 @@ struct RouteSchema : IOSchema {
 
     void drawImpl(Device &device) const override {
         if (drawRouteFrame) {
-            device.rect(ImVec4{x, y, width, height} + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, "");
+            device.rect(xywh() + ImVec4{dHorz, dVert, -2 * dHorz, -2 * dVert}, color, "");
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
-            device.dot(ImVec2{x, y} + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
+            device.dot(position() + (isLR() ? ImVec2{dHorz, dVert} : ImVec2{width - dHorz, height - dVert}), orientation);
             // Input arrows
             for (const auto &p: inputPoints) device.arrow(p + ImVec2{isLR() ? dHorz : -dHorz, 0}, 0, orientation);
         }
@@ -930,7 +941,7 @@ void on_box_change(Box box) {
 void Audio::Faust::Diagram::draw() const {
     if (!active_schema) return;
 
-    ImGui::BeginChild("Diagram", {active_schema->width, active_schema->height}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::BeginChild("Faust diagram", {active_schema->width, active_schema->height}, false, ImGuiWindowFlags_HorizontalScrollbar);
     active_schema->draw(ImGuiDeviceType);
     ImGui::EndChild();
 }

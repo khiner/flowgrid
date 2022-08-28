@@ -58,7 +58,7 @@ public:
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
     virtual void arrow(const ImVec2 &pos, float rotation, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void text(const ImVec2 &pos, const string &name, const string &link) = 0;
+    virtual void text(const ImVec2 &pos, const string &text, const string &link) = 0;
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
@@ -133,9 +133,9 @@ struct SVGDevice : Device {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y);
     }
 
-    void text(const ImVec2 &pos, const string &name, const string &link) override {
+    void text(const ImVec2 &pos, const string &text, const string &link) override {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
-        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
+        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", pos.x, pos.y + 2, xml_sanitize(text));
         if (!link.empty()) stream << "</a>"; // close the optional link tag
     }
 
@@ -187,7 +187,7 @@ struct ImGuiDevice : Device {
 
     void grouprect(const ImVec4 &rect, const string &text) override {
         const auto [x, y, w, h] = rect;
-        const ImVec2 text_pos = {x + DecorateSchemaLabelOffset, y};
+        const ImVec2 text_pos = {x + DecorateSchemaLabelOffset, y - ImGui::GetFontSize() / 2};
         draw_list->AddRect(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Border));
         draw_list->AddText(pos + text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
     }
@@ -209,8 +209,9 @@ struct ImGuiDevice : Device {
         draw_list->AddLine(pos + start, pos + end, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
-    void text(const ImVec2 &p, const string &name, const string &link) override {
-        draw_list->AddText(pos + p, ImGui::GetColorU32(ImGuiCol_Text), name.c_str());
+    void text(const ImVec2 &p, const string &text, const string &link) override {
+        const auto text_size = ImGui::CalcTextSize(text.c_str());
+        draw_list->AddText(pos + p - text_size / 2, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
     }
 
     void dot(const ImVec2 &p, Orientation orientation) override {
@@ -343,7 +344,7 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        if (inner) inner->draw(device.type());
+        if (inner && device.type() == SVGDeviceType) inner->draw(device.type());
         const string &link = inner ? svgFileName(tree) : "";
         device.rect(xywh() + ImVec4{XGap, YGap, -2 * XGap, -2 * YGap}, color, link);
         device.text(position() + size() / 2, text, link);
@@ -881,7 +882,7 @@ static Schema *Tree2SchemaNode(Tree t) {
     throw std::runtime_error("ERROR in Tree2SchemaNode, box expression not recognized: " + print_tree(t));
 }
 
-static bool AllowSchemaLinks = false; // Set to `false` to draw all schemas inline in one big diagram. Set to `true` to split into files (for SVG rendering).
+static bool AllowSchemaLinks = true; // Set to `false` to draw all schemas inline in one big diagram. Set to `true` to split into files (for SVG rendering).
 static std::map<Tree, bool> IsTreePureRouting{}; // Avoid recomputing pure-routing property. Needs to be reset whenever box changes!
 
 // Returns `true` if the tree is only made of cut, wires and slots.
@@ -907,7 +908,7 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
         treeFocusHierarchy.push(t);
         auto *schema = new DecorateSchema{t, Tree2SchemaNode(t), name, parent};
         treeFocusHierarchy.pop();
-        if (AllowSchemaLinks && allow_links && schema->is_top_level) {
+        if (schema->is_top_level && AllowSchemaLinks && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
             return new BlockSchema(t, ins, outs, name, LinkColor, schema);
@@ -921,19 +922,17 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
 Schema *active_schema; // This diagram is drawn every frame if present.
 
 void on_box_change(Box box) {
-    IsTreePureRouting = {};
+    IsTreePureRouting.clear();
     if (box) {
         // Render SVG diagram(s)
         fs::remove_all(FaustDiagramsPath);
         fs::create_directory(FaustDiagramsPath);
-        AllowSchemaLinks = true; // split up complex descendent groups into separate files with links
-        auto *svg_schema = Tree2Schema(box, false); // ensure top-level is not compressed into a link
-        AllowSchemaLinks = false;
+        auto *svg_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
         svg_schema->place();
         svg_schema->draw(SVGDeviceType);
 
         // Render ImGui diagram
-        active_schema = Tree2Schema(box);
+        active_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
         active_schema->place();
     } else {
         active_schema = nullptr;

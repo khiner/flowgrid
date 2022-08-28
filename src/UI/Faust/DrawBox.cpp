@@ -739,6 +739,12 @@ static bool isInverter(Tree t) {
     return ::ranges::contains(inverters, t);
 }
 
+static string print_tree(Tree tree) {
+    stringstream ss;
+    ss << boxpp(tree);
+    return ss.str();
+}
+
 // Collect the leaf numbers of tree `t` into vector `v`.
 // Return true if `t` is a number or a parallel tree of numbers.
 static bool isIntTree(Tree t, std::vector<int> &v) {
@@ -757,7 +763,7 @@ static bool isIntTree(Tree t, std::vector<int> &v) {
     Tree x, y;
     if (isBoxPar(t, x, y)) return isIntTree(x, v) && isIntTree(y, v);
 
-    throw std::runtime_error((stringstream("Not a valid list of numbers : ") << boxpp(t)).str());
+    throw std::runtime_error("Not a valid list of numbers : " + print_tree(t));
 }
 
 // Convert user interface element into a textual representation
@@ -765,15 +771,15 @@ static string userInterfaceDescription(Tree box) {
     Tree t1, label, cur, min, max, step, chan;
     if (isBoxButton(box, label)) return "button(" + extractName(label) + ')';
     if (isBoxCheckbox(box, label)) return "checkbox(" + extractName(label) + ')';
-    if (isBoxVSlider(box, label, cur, min, max, step)) return (stringstream("vslider(") << extractName(label) << ", " << boxpp(cur) << ", " << boxpp(min) << ", " << boxpp(max) << ", " << boxpp(step) << ')').str();
-    if (isBoxHSlider(box, label, cur, min, max, step)) return (stringstream("hslider(") << extractName(label) << ", " << boxpp(cur) << ", " << boxpp(min) << ", " << boxpp(max) << ", " << boxpp(step) << ')').str();
-    if (isBoxVGroup(box, label, t1)) return (stringstream("vgroup(") << extractName(label) << ", " << boxpp(t1, 0) << ')').str();
-    if (isBoxHGroup(box, label, t1)) return (stringstream("hgroup(") << extractName(label) << ", " << boxpp(t1, 0) << ')').str();
-    if (isBoxTGroup(box, label, t1)) return (stringstream("tgroup(") << extractName(label) << ", " << boxpp(t1, 0) << ')').str();
-    if (isBoxHBargraph(box, label, min, max)) return (stringstream("hbargraph(") << extractName(label) << ", " << boxpp(min) << ", " << boxpp(max) << ')').str();
-    if (isBoxVBargraph(box, label, min, max)) return (stringstream("vbargraph(") << extractName(label) << ", " << boxpp(min) << ", " << boxpp(max) << ')').str();
-    if (isBoxNumEntry(box, label, cur, min, max, step)) return (stringstream("nentry(") << extractName(label) << ", " << boxpp(cur) << ", " << boxpp(min) << ", " << boxpp(max) << ", " << boxpp(step) << ')').str();
-    if (isBoxSoundfile(box, label, chan)) return (stringstream("soundfile(") << extractName(label) << ", " << boxpp(chan) << ')').str();
+    if (isBoxVSlider(box, label, cur, min, max, step)) return "vslider(" + extractName(label) + ", " + print_tree(cur) + ", " + print_tree(min) + ", " + print_tree(max) + ", " + print_tree(step) + ')';
+    if (isBoxHSlider(box, label, cur, min, max, step)) return "hslider(" + extractName(label) + ", " + print_tree(cur) + ", " + print_tree(min) + ", " + print_tree(max) + ", " + print_tree(step) + ')';
+    if (isBoxVGroup(box, label, t1)) return "vgroup(" + extractName(label) + ", " + print_tree(t1) + ')';
+    if (isBoxHGroup(box, label, t1)) return "hgroup(" + extractName(label) + ", " + print_tree(t1) + ')';
+    if (isBoxTGroup(box, label, t1)) return "tgroup(" + extractName(label) + ", " + print_tree(t1) + ')';
+    if (isBoxHBargraph(box, label, min, max)) return "hbargraph(" + extractName(label) + ", " + print_tree(min) + ", " + print_tree(max) + ')';
+    if (isBoxVBargraph(box, label, min, max)) return "vbargraph(" + extractName(label) + ", " + print_tree(min) + ", " + print_tree(max) + ')';
+    if (isBoxNumEntry(box, label, cur, min, max, step)) return "nentry(" + extractName(label) + ", " + print_tree(cur) + ", " + print_tree(min) + ", " + print_tree(max) + ", " + print_tree(step) + ')';
+    if (isBoxSoundfile(box, label, chan)) return "soundfile(" + extractName(label) + ", " + print_tree(chan) + ')';
 
     throw std::runtime_error("ERROR : unknown user interface element");
 }
@@ -868,10 +874,10 @@ static Schema *Tree2SchemaNode(Tree t) {
             return new RouteSchema(t, ins, outs, w, h, route);
         }
 
-        throw std::runtime_error((stringstream("Invalid route expression : ") << boxpp(t)).str());
+        throw std::runtime_error("Invalid route expression : " + print_tree(t));
     }
 
-    throw std::runtime_error((stringstream("ERROR in Tree2SchemaNode, box expression not recognized: ") << boxpp(t)).str());
+    throw std::runtime_error("ERROR in Tree2SchemaNode, box expression not recognized: " + print_tree(t));
 }
 
 static bool AllowSchemaLinks = false; // Set to `false` to draw all schemas inline in one big diagram. Set to `true` to split into files (for SVG rendering).

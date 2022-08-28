@@ -292,6 +292,7 @@ struct Schema {
     inline ImRect rect() const { return {{x, y}, {x + w, y + h}}; }
     inline ImVec4 xywh() const { return {x, y, w, h}; }
 
+    Schema *enlarge(float dw);
 protected:
     virtual void _place() = 0;
     virtual void _draw(Device &) const {};
@@ -644,8 +645,8 @@ private:
     }
 };
 
-Schema *enlarge(Schema *schema, float w) { return w > schema->w ? new EnlargedSchema(schema, w) : schema; }
-Schema *make_parallel(Tree t, Schema *s1, Schema *s2) { return new ParallelSchema(t, enlarge(s1, s2->w), enlarge(s2, s1->w)); }
+Schema *Schema::enlarge(float dw) { return dw > this->w ? new EnlargedSchema(this, dw) : this; }
+Schema *make_parallel(Tree t, Schema *s1, Schema *s2) { return new ParallelSchema(t, s1->enlarge(s2->w), s2->enlarge(s1->w)); }
 Schema *make_sequential(Tree t, Schema *s1, Schema *s2) {
     const auto o = s1->out_count;
     const auto i = s2->in_count;
@@ -720,8 +721,6 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
     return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
 }
 
-static Schema *Tree2Schema(Tree t, bool allow_links = true);
-
 // Generate a 1->0 block schema for an input slot.
 static Schema *make_input_slot(Tree t) { return new BlockSchema(t, 1, 0, getTreeName(t), SlotColor); }
 
@@ -784,6 +783,8 @@ static string userInterfaceDescription(Tree box) {
     throw std::runtime_error("ERROR : unknown user interface element");
 }
 
+static Schema *Tree2Schema(Tree t, bool allow_links = true);
+
 // Generate an abstraction schema by placing in sequence the input slots and the body.
 static Schema *make_abstraction(Schema *x, Tree t) {
     Tree a, b;
@@ -840,14 +841,14 @@ static Schema *Tree2SchemaNode(Tree t) {
     }
     if (isBoxSeq(t, a, b)) return make_sequential(t, Tree2Schema(a), Tree2Schema(b));
     if (isBoxPar(t, a, b)) return make_parallel(t, Tree2Schema(a), Tree2Schema(b));
-    if (isBoxSplit(t, a, b)) return new SplitSchema(t, enlarge(Tree2Schema(a), WireGap), enlarge(Tree2Schema(b), WireGap));
-    if (isBoxMerge(t, a, b)) return new MergeSchema(t, enlarge(Tree2Schema(a), WireGap), enlarge(Tree2Schema(b), WireGap));
+    if (isBoxSplit(t, a, b)) return new SplitSchema(t, Tree2Schema(a)->enlarge(WireGap), Tree2Schema(b)->enlarge(WireGap));
+    if (isBoxMerge(t, a, b)) return new MergeSchema(t, Tree2Schema(a)->enlarge(WireGap), Tree2Schema(b)->enlarge(WireGap));
     if (isBoxRec(t, a, b)) {
         // The smaller component is enlarged to the width of the other.
         auto *s1 = Tree2Schema(a);
         auto *s2 = Tree2Schema(b);
-        auto *s1e = enlarge(s1, s2->w);
-        auto *s2e = enlarge(s2, s1->w);
+        auto *s1e = s1->enlarge(s2->w);
+        auto *s2e = s2->enlarge(s1->w);
         const float w = s1e->w + 2 * WireGap * float(max(s2e->in_count, s2e->out_count));
         return new RecursiveSchema(t, s1e, s2e, w);
     }
@@ -898,6 +899,7 @@ static bool isPureRouting(Tree t) {
 }
 
 // This method is called recursively.
+// todo show tree to a given level
 static Schema *Tree2Schema(Tree t, bool allow_links) {
     static std::stack<Tree> treeFocusHierarchy; // As we descend into the tree, keep track of ancestors for backlinks.
     if (const char *name = getTreeName(t)) {

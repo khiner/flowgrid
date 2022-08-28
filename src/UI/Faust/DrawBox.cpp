@@ -320,10 +320,21 @@ struct IOSchema : Schema {
     std::vector<ImVec2> output_points{out_count};
 };
 
+static inline float quantize(int n) {
+    static const int q = 3;
+    return float(q * ((n + q - 1) / q)); // NOLINT(bugprone-integer-division)
+}
+
 // A simple rectangular box with text and inputs/outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(Tree t, Count in_count, Count out_count, float w, float h, string text, string color, Schema *inner = nullptr)
-        : IOSchema(t, in_count, out_count, w, h, {}, 1, parent), text(std::move(text)), color(std::move(color)), inner(inner) {}
+        : IOSchema(t, in_count, out_count, w, h, {}, 1),
+          text(std::move(text)), color(std::move(color)), inner(inner) {}
+    BlockSchema(Tree t, Count in_count, Count out_count, string text, string color, Schema *inner = nullptr)
+        : BlockSchema(t, in_count, out_count,
+        2 * XGap + max(3 * WireGap, LetterWidth * quantize(int(text.size()))),
+        2 * YGap + max(3 * WireGap, float(max(in_count, out_count)) * WireGap),
+        std::move(text), std::move(color), inner) {}
 
     void _place() override {
         IOSchema::_place();
@@ -351,11 +362,6 @@ struct BlockSchema : IOSchema {
     const string text, color;
     Schema *inner;
 };
-
-static inline float quantize(int n) {
-    static const int q = 3;
-    return float(q * ((n + q - 1) / q)); // NOLINT(bugprone-integer-division)
-}
 
 // Simple cables (identity box) in parallel.
 // The width of a cable is null.
@@ -710,13 +716,6 @@ protected:
     const std::vector<int> routes;  // Route description: s1,d2,s2,d2,...
 };
 
-Schema *make_block(Tree t, Count in_count, Count out_count, const string &text, const string &color, Schema *innerSchema = nullptr) {
-    const float minimal = 3 * WireGap;
-    const float w = 2 * XGap + max(minimal, LetterWidth * quantize(int(text.size())));
-    const float h = 2 * YGap + max(minimal, float(max(in_count, out_count)) * WireGap);
-    return new BlockSchema(t, in_count, out_count, w, h, text, color, innerSchema);
-}
-
 static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
     return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
 }
@@ -724,17 +723,7 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
 static Schema *Tree2Schema(Tree t, bool allow_links = true);
 
 // Generate a 1->0 block schema for an input slot.
-static Schema *generateInputSlotSchema(Tree t) { return make_block(t, 1, 0, getTreeName(t), SlotColor); }
-
-// Generate an abstraction schema by placing in sequence the input slots and the body.
-static Schema *generateAbstractionSchema(Schema *x, Tree t) {
-    Tree a, b;
-    while (isBoxSymbolic(t, a, b)) {
-        x = make_parallel(t, x, generateInputSlotSchema(a));
-        t = b;
-    }
-    return make_sequential(t, x, Tree2Schema(t));
-}
+static Schema *make_input_slot(Tree t) { return new BlockSchema(t, 1, 0, getTreeName(t), SlotColor); }
 
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
@@ -789,15 +778,25 @@ static string userInterfaceDescription(Tree box) {
     throw std::runtime_error("ERROR : unknown user interface element");
 }
 
+// Generate an abstraction schema by placing in sequence the input slots and the body.
+static Schema *make_abstraction(Schema *x, Tree t) {
+    Tree a, b;
+    while (isBoxSymbolic(t, a, b)) {
+        x = make_parallel(t, x, make_input_slot(a));
+        t = b;
+    }
+    return make_sequential(t, x, Tree2Schema(t));
+}
+
 // Generate the inside schema of a block diagram according to its type.
 static Schema *Tree2SchemaNode(Tree t) {
-    if (getUserData(t) != nullptr) return make_block(t, xtendedArity(t), 1, xtendedName(t), NormalColor);
+    if (getUserData(t) != nullptr) return new BlockSchema(t, xtendedArity(t), 1, xtendedName(t), NormalColor);
     if (isInverter(t)) return new InverterSchema(t);
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return make_block(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), NumberColor);
-    if (isBoxWaveform(t)) return make_block(t, 0, 2, "waveform{...}", NormalColor);
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockSchema(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), NumberColor);
+    if (isBoxWaveform(t)) return new BlockSchema(t, 0, 2, "waveform{...}", NormalColor);
     if (isBoxWire(t)) return new CableSchema(t);
     if (isBoxCut(t)) return new CutSchema(t);
 
@@ -807,21 +806,21 @@ static Schema *Tree2SchemaNode(Tree t) {
     prim3 p3;
     prim4 p4;
     prim5 p5;
-    if (isBoxPrim0(t, &p0)) return make_block(t, 0, 1, prim0name(p0), NormalColor);
-    if (isBoxPrim1(t, &p1)) return make_block(t, 1, 1, prim1name(p1), NormalColor);
-    if (isBoxPrim2(t, &p2)) return make_block(t, 2, 1, prim2name(p2), NormalColor);
-    if (isBoxPrim3(t, &p3)) return make_block(t, 3, 1, prim3name(p3), NormalColor);
-    if (isBoxPrim4(t, &p4)) return make_block(t, 4, 1, prim4name(p4), NormalColor);
-    if (isBoxPrim5(t, &p5)) return make_block(t, 5, 1, prim5name(p5), NormalColor);
+    if (isBoxPrim0(t, &p0)) return new BlockSchema(t, 0, 1, prim0name(p0), NormalColor);
+    if (isBoxPrim1(t, &p1)) return new BlockSchema(t, 1, 1, prim1name(p1), NormalColor);
+    if (isBoxPrim2(t, &p2)) return new BlockSchema(t, 2, 1, prim2name(p2), NormalColor);
+    if (isBoxPrim3(t, &p3)) return new BlockSchema(t, 3, 1, prim3name(p3), NormalColor);
+    if (isBoxPrim4(t, &p4)) return new BlockSchema(t, 4, 1, prim4name(p4), NormalColor);
+    if (isBoxPrim5(t, &p5)) return new BlockSchema(t, 5, 1, prim5name(p5), NormalColor);
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return make_block(t, ffarity(ff), 1, ffname(ff), NormalColor);
+    if (isBoxFFun(t, ff)) return new BlockSchema(t, ffarity(ff), 1, ffname(ff), NormalColor);
 
     Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return make_block(t, 0, 1, tree2str(name), NormalColor);
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return make_block(t, 0, 1, userInterfaceDescription(t), UiColor);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return make_block(t, 1, 1, userInterfaceDescription(t), UiColor);
-    if (isBoxSoundfile(t, label, chan)) return make_block(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor);
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockSchema(t, 0, 1, tree2str(name), NormalColor);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockSchema(t, 0, 1, userInterfaceDescription(t), UiColor);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockSchema(t, 1, 1, userInterfaceDescription(t), UiColor);
+    if (isBoxSoundfile(t, label, chan)) return new BlockSchema(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Schema(a);
@@ -846,16 +845,16 @@ static Schema *Tree2SchemaNode(Tree t) {
         const float w = s1e->w + 2 * WireGap * float(max(s2e->in_count, s2e->out_count));
         return new RecursiveSchema(t, s1e, s2e, w);
     }
-    if (isBoxSlot(t, &i)) return make_block(t, 0, 1, getTreeName(t), SlotColor);
+    if (isBoxSlot(t, &i)) return new BlockSchema(t, 0, 1, getTreeName(t), SlotColor);
 
     if (isBoxSymbolic(t, a, b)) {
-        auto *abstractionSchema = generateAbstractionSchema(generateInputSlotSchema(a), b);
+        auto *abstractionSchema = make_abstraction(make_input_slot(a), b);
 
         Tree id;
         if (getDefNameProperty(t, id)) return abstractionSchema;
         return new DecorateSchema(t, abstractionSchema, "Abstraction");
     }
-    if (isBoxEnvironment(t)) return make_block(t, 0, 0, "environment{...}", NormalColor);
+    if (isBoxEnvironment(t)) return new BlockSchema(t, 0, 0, "environment{...}", NormalColor);
 
     Tree c;
     if (isBoxRoute(t, a, b, c)) {
@@ -903,7 +902,7 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
         if (AllowSchemaLinks && allow_links && schema->is_top_level) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return make_block(t, ins, outs, name, LinkColor, schema);
+            return new BlockSchema(t, ins, outs, name, LinkColor, schema);
         }
         if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
     }

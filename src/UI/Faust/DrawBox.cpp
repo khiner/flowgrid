@@ -282,6 +282,7 @@ struct Schema {
     virtual ImVec2 input_point(Count i) const = 0;
     virtual ImVec2 output_point(Count i) const = 0;
     inline bool is_lr() const { return orientation == LeftRight; }
+    inline float dir_unit() const { return is_lr() ? 1 : -1; }
 
     void draw(DeviceType type) const {
         if (type == SVGDeviceType) {
@@ -313,7 +314,7 @@ struct IOSchema : Schema {
         : Schema(t, in_count, out_count, std::move(children), directDescendents, parent) {}
 
     void _place() override {
-        const float dy = is_lr() ? WireGap : -WireGap;
+        const float dy = dir_unit() * WireGap;
         for (Count i = 0; i < in_count; i++) {
             const float in_y = mid().y - WireGap * float(in_count - 1) / 2;
             input_points[i] = {x + (is_lr() ? 0 : w), in_y + float(i) * dy};
@@ -366,7 +367,7 @@ struct BlockSchema : IOSchema {
     }
 
     void draw_connections(Device &device) const {
-        const ImVec2 d = {is_lr() ? XGap : -XGap, 0};
+        const ImVec2 d = {dir_unit() * XGap, 0};
         for (const auto &p: input_points) device.line(p, p + d); // Input lines
         for (const auto &p: output_points) device.line(p - d, p); // Output lines
         for (const auto &p: input_points) device.arrow(p + d, orientation); // Input arrows
@@ -417,7 +418,7 @@ struct InverterSchema : BlockSchema {
         const auto tri_a = position() + ImVec2{XGap + (is_lr() ? 0 : x1), 0};
         const auto tri_b = tri_a + ImVec2{(is_lr() ? x1 - 2 * InverterRadius : 2 * InverterRadius - x1 - x), y1};
         const auto tri_c = tri_a + ImVec2{0, h - 1};
-        device.circle(tri_b + ImVec2{is_lr() ? InverterRadius : -InverterRadius, 0}, InverterRadius, color);
+        device.circle(tri_b + ImVec2{dir_unit() * InverterRadius, 0}, InverterRadius, color);
         device.triangle(tri_a, tri_b, tri_c, color);
         draw_connections(device);
     }
@@ -472,12 +473,10 @@ struct ParallelSchema : Schema {
     }
 
     ImVec2 input_point(Count i) const override {
-        const float d = is_lr() ? 1 : -1;
-        return i < s1()->in_count ? s1()->input_point(i) - ImVec2{d * (w - s1()->w) / 2, 0} : s2()->input_point(i - s1()->in_count) - ImVec2{d * (w - s2()->w) / 2, 0};
+        return i < s1()->in_count ? s1()->input_point(i) - ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : s2()->input_point(i - s1()->in_count) - ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
     }
     ImVec2 output_point(Count i) const override {
-        const float d = is_lr() ? 1 : -1;
-        return i < s1()->out_count ? s1()->output_point(i) + ImVec2{d * (w - s1()->w) / 2, 0} : s2()->output_point(i - s1()->out_count) + ImVec2{d * (w - s2()->w) / 2, 0};
+        return i < s1()->out_count ? s1()->output_point(i) + ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : s2()->output_point(i - s1()->out_count) + ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
     }
 };
 
@@ -503,7 +502,7 @@ struct RecursiveSchema : Schema {
 
     void _draw(Device &device) const override {
         // Implicit feedback delay to each `s2` input
-        const float dw = is_lr() ? WireGap : -WireGap;
+        const float dw = dir_unit() * WireGap;
         // Feedback connections to each `s2` input
         for (Count i = 0; i < s2()->in_count; i++) draw_feedback(device, ImVec2{s2()->input_point(i).x, s1()->output_point(i).y}, s2()->input_point(i), float(i) * WireGap, output_point(i));
         for (Count i = 0; i < s2()->in_count; i++) draw_delay_sign(device, ImVec2{s2()->input_point(i).x, s1()->output_point(i).y} + ImVec2{float(i) * dw, 0}, dw / 2);
@@ -519,17 +518,17 @@ struct RecursiveSchema : Schema {
     }
 
     ImVec2 input_point(Count i) const override {
-        return s1()->input_point(i + s2()->out_count) - ImVec2{(w - s1()->w) / 2 * (is_lr() ? 1.0f : -1.0f), 0};
+        return s1()->input_point(i + s2()->out_count) - ImVec2{(w - s1()->w) / 2 * dir_unit(), 0};
     }
     ImVec2 output_point(Count i) const override {
-        return s1()->output_point(i) + ImVec2{(w - s1()->w) / 2 * (is_lr() ? 1.0f : -1.0f), 0};
+        return s1()->output_point(i) + ImVec2{(w - s1()->w) / 2 * dir_unit(), 0};
     }
 
 private:
     // Draw a feedback connection between two points with a horizontal displacement `dx`.
     void draw_feedback(Device &device, const ImVec2 &from, const ImVec2 &to, float dx, const ImVec2 &out) const {
-        const float ox = from.x + (is_lr() ? dx : -dx);
-        const float ct = (is_lr() ? WireGap : -WireGap) / 2;
+        const float ox = from.x + dir_unit() * dx;
+        const float ct = dir_unit() * WireGap / 2;
         const ImVec2 br(ox + ct / 2, from.y);
 
         device.line({ox, from.y - ct}, {ox, to.y});
@@ -540,7 +539,7 @@ private:
 
     // Draw a feedfront connection between two points with a horizontal displacement `dx`.
     void draw_feedfront(Device &device, const ImVec2 &from, const ImVec2 &to, float dx) const {
-        const float dfx = from.x + (is_lr() ? -dx : dx);
+        const float dfx = from.x - dir_unit() * dx;
         device.line({from.x, from.y}, {dfx, from.y});
         device.line({dfx, from.y}, {dfx, to.y});
         device.line({dfx, to.y}, {to.x, to.y});
@@ -695,7 +694,7 @@ struct DecorateSchema : IOSchema {
         const float margin = DecorateSchemaMargin + (is_top_level ? TopSchemaMargin : 0);
         s1()->place(x + margin, y + margin, orientation);
 
-        const ImVec2 m = {is_lr() ? TopSchemaMargin : -TopSchemaMargin, 0};
+        const ImVec2 m = {dir_unit() * TopSchemaMargin, 0};
         for (Count i = 0; i < in_count; i++) input_points[i] = s1()->input_point(i) - m;
         for (Count i = 0; i < out_count; i++) output_points[i] = s1()->output_point(i) + m;
     }
@@ -732,11 +731,11 @@ struct RouteSchema : IOSchema {
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
             device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);
             // Input arrows
-            for (const auto &p: input_points) device.arrow(p + ImVec2{is_lr() ? XGap : -XGap, 0}, orientation);
+            for (const auto &p: input_points) device.arrow(p + ImVec2{dir_unit() * XGap, 0}, orientation);
         }
 
         // Input/output & route wires
-        const auto d = ImVec2{is_lr() ? XGap : -XGap, 0};
+        const auto d = ImVec2{dir_unit() * XGap, 0};
         for (const auto &p: input_points) device.line(p, p + d);
         for (const auto &p: output_points) device.line(p - d, p);
         for (Count i = 0; i < routes.size() - 1; i += 2) {

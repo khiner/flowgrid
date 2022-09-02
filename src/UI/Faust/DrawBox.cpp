@@ -57,7 +57,7 @@ public:
     virtual void grouprect(const ImVec4 &rect, const string &text) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
-    virtual void arrow(const ImVec2 &pos, float rotation, Orientation orientation) = 0;
+    virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const string &link) = 0;
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
@@ -121,13 +121,12 @@ struct SVGDevice : Device {
         stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x, y, radius);
     }
 
-    // todo remove `rotation` arg
-    void arrow(const ImVec2 &pos, float rotation, Orientation orientation) override {
+    void arrow(const ImVec2 &pos, Orientation orientation) override {
         static const float dx = 3, dy = 1;
         const auto [x, y] = pos;
         const auto x1 = orientation == LeftRight ? x - dx : x + dx;
-        stream << rotate_line({x1, y - dy}, pos, rotation, x, y);
-        stream << rotate_line({x1, y + dy}, pos, rotation, x, y);
+        stream << rotate_line({x1, y - dy}, pos, 0, x, y);
+        stream << rotate_line({x1, y + dy}, pos, 0, x, y);
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
@@ -201,7 +200,7 @@ struct ImGuiDevice : Device {
         draw_list->AddCircle(pos + p, radius, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
-    void arrow(const ImVec2 &p, float rotation, Orientation orientation) override {
+    void arrow(const ImVec2 &p, Orientation orientation) override {
         static const ImVec2 d{6, 2};
         ImGui::RenderArrowPointingAt(draw_list, pos + p, d, orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::GetColorU32(ImGuiCol_Border));
     }
@@ -369,7 +368,7 @@ struct BlockSchema : IOSchema {
         const ImVec2 d = {is_lr() ? XGap : -XGap, 0};
         for (const auto &p: input_points) device.line(p, p + d); // Input lines
         for (const auto &p: output_points) device.line(p - d, p); // Output lines
-        for (const auto &p: input_points) device.arrow(p + d, 0, orientation); // Input arrows
+        for (const auto &p: input_points) device.arrow(p + d, orientation); // Input arrows
     }
 
     const string text, color;
@@ -515,7 +514,7 @@ struct RecursiveSchema : Schema {
         // Input lines
         for (Count i = 0; i < in_count; i++) device.line(input_point(i), s1()->input_point(i + s2()->out_count));
         // Output lines
-        for (Count i = 0; i < out_count; i++) device.line(s1()->output_point(i), output_point(i));
+        for (Count i = 0; i < out_count; i++) device.line(s1()->output_point(i), output_point(i) - ImVec2{dw, 0});
     }
 
     ImVec2 input_point(Count i) const override {
@@ -711,7 +710,7 @@ struct DecorateSchema : IOSchema {
         for (Count i = 0; i < in_count; i++) device.line(input_point(i), s1()->input_point(i));
         for (Count i = 0; i < out_count; i++) device.line(s1()->output_point(i), output_point(i));
 
-        if (is_top_level) for (Count i = 0; i < out_count; i++) device.arrow(output_point(i), 0, orientation);
+        if (is_top_level) for (Count i = 0; i < out_count; i++) device.arrow(output_point(i), orientation);
     }
 
 private:
@@ -734,7 +733,7 @@ struct RouteSchema : IOSchema {
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
             device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);
             // Input arrows
-            for (const auto &p: input_points) device.arrow(p + ImVec2{is_lr() ? XGap : -XGap, 0}, 0, orientation);
+            for (const auto &p: input_points) device.arrow(p + ImVec2{is_lr() ? XGap : -XGap, 0}, orientation);
         }
 
         // Input/output & route wires

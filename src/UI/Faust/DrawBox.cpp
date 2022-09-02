@@ -24,7 +24,7 @@ static const fs::path FaustDiagramsPath = "FaustDiagrams"; // todo app property
 // todo style props
 static const int FoldComplexity = 2; // Number of boxes within a `Schema` before folding
 static const bool IsSvgScaled = false; // Draw scaled SVG files
-static const float BinarySchemaHorizontalGapRatio = 4;
+static const float BinarySchemaHorizontalGapRatio = 1.0f / 4;
 static const bool SequentialConnectionZigzag = true; // false allows for diagonal lines instead of zigzags instead of zigzags
 static const bool DrawRouteFrame = false;
 static const float TopSchemaMargin = 10;
@@ -265,15 +265,13 @@ struct Schema {
         x = new_x;
         y = new_y;
         orientation = new_orientation;
-//        place_size();
         _place();
     }
     void place_size() {
-//        for (auto *child: children) child->place_size();
+        for (auto *child: children) child->place_size();
         _place_size();
     }
     void place() {
-//        place_size();
         _place();
     }
     void draw(Device &device) const {
@@ -343,9 +341,7 @@ static inline float quantize(int n) {
 // A simple rectangular box with text and inputs/outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(Tree t, Count in_count, Count out_count, string text, string color, Schema *inner = nullptr)
-        : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(std::move(color)), inner(inner) {
-        place_size();
-    }
+        : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(std::move(color)), inner(inner) {}
 
     void _place_size() override {
         w = 2 * XGap + max(3 * WireGap, LetterWidth * quantize(int(text.size())));
@@ -354,7 +350,10 @@ struct BlockSchema : IOSchema {
 
     void _place() override {
         IOSchema::_place();
-        if (inner) inner->place();
+        if (inner) {
+            inner->place_size();
+            inner->place();
+        }
     }
 
     void _draw(Device &device) const override {
@@ -381,9 +380,7 @@ struct BlockSchema : IOSchema {
 
 // Simple cables (identity box) in parallel.
 struct CableSchema : Schema {
-    CableSchema(Tree t, Count n = 1) : Schema(t, n, n) {
-        place_size();
-    }
+    CableSchema(Tree t, Count n = 1) : Schema(t, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
     void _place_size() override {
@@ -409,9 +406,7 @@ private:
 // An inverter is a circle followed by a triangle.
 // It corresponds to '*(-1)', and it's used to create more compact diagrams.
 struct InverterSchema : BlockSchema {
-    InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", InverterColor) {
-        place_size();
-    }
+    InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", InverterColor) {}
 
     void _place_size() override {
         w = 2.5f * WireGap;
@@ -434,9 +429,7 @@ struct InverterSchema : BlockSchema {
 struct CutSchema : Schema {
     // A Cut is represented by a small black dot.
     // It has 1 input and no out_count.
-    CutSchema(Tree t) : Schema(t, 1, 0) {
-        place_size();
-    }
+    CutSchema(Tree t) : Schema(t, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
     void _place_size() override {
@@ -462,9 +455,7 @@ struct CutSchema : Schema {
 
 struct ParallelSchema : Schema {
     ParallelSchema(Tree t, Schema *s1, Schema *s2)
-        : Schema(t, s1->in_count + s2->in_count, s1->out_count + s2->out_count, {s1, s2}) {
-        place_size();
-    }
+        : Schema(t, s1->in_count + s2->in_count, s1->out_count + s2->out_count, {s1, s2}) {}
 
     void _place_size() override {
         w = max(s1()->w, s2()->w);
@@ -497,7 +488,6 @@ struct RecursiveSchema : Schema {
     RecursiveSchema(Tree t, Schema *s1, Schema *s2) : Schema(t, s1->in_count - s2->out_count, s1->out_count, {s1, s2}) {
         fgassert(s1->in_count >= s2->out_count);
         fgassert(s1->out_count >= s2->in_count);
-        place_size();
     }
 
     void _place_size() override {
@@ -572,13 +562,13 @@ private:
 
 struct BinarySchema : Schema {
     BinarySchema(Tree t, Schema *s1, Schema *s2)
-        : Schema(t, s1->in_count, s2->out_count, {s1, s2}), horzGap((s1->h + s2->h) / BinarySchemaHorizontalGapRatio) {}
+        : Schema(t, s1->in_count, s2->out_count, {s1, s2}) {}
 
     ImVec2 input_point(Count i) const override { return s1()->input_point(i); }
     ImVec2 output_point(Count i) const override { return s2()->output_point(i); }
 
     void _place_size() override {
-        w = s1()->w + s2()->w + horzGap;
+        w = s1()->w + s2()->w + horizontal_gap();
         h = max(s1()->h, s2()->h);
     }
 
@@ -586,55 +576,52 @@ struct BinarySchema : Schema {
     void _place() override {
         auto *leftSchema = children[is_lr() ? 0 : 1];
         auto *rightSchema = children[is_lr() ? 1 : 0];
-        const float dy1 = max(0.0f, rightSchema->h - leftSchema->h) / 2;
-        const float dy2 = max(0.0f, leftSchema->h - rightSchema->h) / 2;
-        leftSchema->place(x, y + dy1, orientation);
-        rightSchema->place(x + leftSchema->w + horzGap, y + dy2, orientation);
+        leftSchema->place(x, y + max(0.0f, rightSchema->h - leftSchema->h) / 2, orientation);
+        rightSchema->place(x + leftSchema->w + horizontal_gap(), y + max(0.0f, leftSchema->h - rightSchema->h) / 2, orientation);
     }
 
-    float horzGap;
+    virtual float horizontal_gap() const {
+        return (s1()->h + s2()->h) * BinarySchemaHorizontalGapRatio;
+    }
 };
 
 struct SequentialSchema : BinarySchema {
     // The components s1 and s2 must be "compatible" (s1: n->m and s2: m->q).
     SequentialSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {
         fgassert(s1->out_count == s2->in_count);
-        place_size();
     }
 
     void _place_size() override {
-        if (s1()->out_count > 0) {
-            s1()->place(0, max(0.0f, s2()->h - s1()->h) / 2, LeftRight);
-            s2()->place(0, max(0.0f, s1()->h - s2()->h) / 2, LeftRight);
-        }
-        horzGap = horizontal_gap();
+        _place();
         BinarySchema::_place_size();
     }
 
-    static ImGuiDir connection_direction(const ImVec2 &a, const ImVec2 &b) {
-        return a.y > b.y ? ImGuiDir_Up : (a.y < b.y ? ImGuiDir_Down : ImGuiDir_Right);
+    ImGuiDir connection_direction(const ImVec2 &from, const ImVec2 &to) const {
+        if (is_lr()) return from.y < to.y ? ImGuiDir_Down : from.y > to.y ? ImGuiDir_Up : ImGuiDir_Right;
+        return from.y < to.y ? ImGuiDir_Up : from.y > to.y ? ImGuiDir_Down : ImGuiDir_Left;
     }
 
     void _draw(Device &device) const override {
         BinarySchema::_draw(device);
 
+        const float horzGap = horizontal_gap();
         // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
         float dx = 0, mx = 0;
         ImGuiDir direction = ImGuiDir_None;
         for (Count i = 0; i < s1()->out_count; i++) {
             const auto from = s1()->output_point(i);
             const auto to = s2()->input_point(i);
-            const ImGuiDir d = connection_direction(from, to);
-            if (d == direction) {
-                mx += dx; // Move in same direction.
-            } else {
-                mx = is_lr() ? (d == ImGuiDir_Down ? horzGap : 0) : (d == ImGuiDir_Up ? -horzGap : 0);
-                dx = d == ImGuiDir_Up ? WireGap : d == ImGuiDir_Down ? -WireGap : 0;
-                direction = d;
-            }
             if (!SequentialConnectionZigzag || from.y == to.y) {
                 device.line(from, to); // Draw a straight, potentially diagonal cable.
             } else {
+                const ImGuiDir d = connection_direction(from, to);
+                if (d == direction) {
+                    mx += dx; // Move in same direction.
+                } else {
+                    mx = is_lr() ? WireGap : -WireGap;
+                    dx = d == ImGuiDir_Down ? WireGap : d == ImGuiDir_Up ? -WireGap : 0;
+                    direction = d;
+                }
                 // Draw a zigzag cable by traversing half the distance between, taking a sharp turn, then turning back and finishing.
                 device.line(from, {from.x + mx, from.y});
                 device.line({from.x + mx, from.y}, {from.x + mx, to.y});
@@ -645,16 +632,16 @@ struct SequentialSchema : BinarySchema {
 
     // Compute the horizontal gap needed to draw the internal wires.
     // It depends on the largest group of connections that go in the same direction.
-    float horizontal_gap() const {
+    float horizontal_gap() const override {
         if (s1()->out_count == 0) return 0;
 
         ImGuiDir direction = ImGuiDir_None;
         Count size = 0;
-        std::map<ImGuiDir, Count> MaxGroupSize; // store the size of the largest group for each direction
+        std::map<ImGuiDir, Count> MaxGroupSize; // Store the size of the largest group for each direction.
         for (Count i = 0; i < s1()->out_count; i++) {
-            const auto d = connection_direction(s1()->output_point(i), s2()->input_point(i));
-            size = (d == direction ? size + 1 : 1);
-            direction = d;
+            const auto conn_dir = connection_direction(s1()->output_point(i), s2()->input_point(i));
+            size = conn_dir == direction ? size + 1 : 1;
+            direction = conn_dir;
             MaxGroupSize[direction] = max(MaxGroupSize[direction], size);
         }
 
@@ -665,9 +652,7 @@ struct SequentialSchema : BinarySchema {
 // Place and connect two diagrams in merge composition.
 // The outputs of the first schema are merged to the inputs of the second.
 struct MergeSchema : BinarySchema {
-    MergeSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {
-        place_size();
-    }
+    MergeSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void _draw(Device &device) const override {
         BinarySchema::_draw(device);
@@ -678,9 +663,7 @@ struct MergeSchema : BinarySchema {
 // Place and connect two diagrams in split composition.
 // The outputs the first schema are distributed to the inputs of the second.
 struct SplitSchema : BinarySchema {
-    SplitSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {
-        place_size();
-    }
+    SplitSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void _draw(Device &device) const override {
         BinarySchema::_draw(device);
@@ -701,9 +684,7 @@ Schema *make_sequential(Tree t, Schema *s1, Schema *s2) {
 // If the number of boxes inside is over the `box_complexity` threshold, add additional padding and draw output arrows.
 struct DecorateSchema : IOSchema {
     DecorateSchema(Tree t, Schema *inner, string text, Tree parent = nullptr)
-        : IOSchema(t, inner->in_count, inner->out_count, {inner}, 0, parent), text(std::move(text)) {
-        place_size();
-    }
+        : IOSchema(t, inner->in_count, inner->out_count, {inner}, 0, parent), text(std::move(text)) {}
 
     void _place_size() override {
         w = s1()->w + 2 * (DecorateSchemaMargin + (s1()->is_top_level ? TopSchemaMargin : 0));
@@ -737,9 +718,7 @@ private:
 
 struct RouteSchema : IOSchema {
     RouteSchema(Tree t, Count in_count, Count out_count, std::vector<int> routes)
-        : IOSchema(t, in_count, out_count), color("#EEEEAA"), routes(std::move(routes)) {
-        place_size();
-    }
+        : IOSchema(t, in_count, out_count), color("#EEEEAA"), routes(std::move(routes)) {}
 
     void _place_size() override {
         const float minimal = 3 * WireGap;
@@ -960,11 +939,13 @@ void on_box_change(Box box) {
         fs::remove_all(FaustDiagramsPath);
         fs::create_directory(FaustDiagramsPath);
         auto *svg_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
+        svg_schema->place_size();
         svg_schema->place();
         svg_schema->draw(SVGDeviceType);
 
         // Render ImGui diagram
         active_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
+        active_schema->place_size();
         active_schema->place();
     } else {
         active_schema = nullptr;

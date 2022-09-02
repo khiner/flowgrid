@@ -130,7 +130,8 @@ struct SVGDevice : Device {
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
-        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:round; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y);
+        const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
+        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:{}; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y, line_cap);
     }
 
     void text(const ImVec2 &pos, const string &text, const string &link) override {

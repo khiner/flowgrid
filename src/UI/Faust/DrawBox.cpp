@@ -519,12 +519,10 @@ struct RecursiveSchema : Schema {
     }
 
     ImVec2 input_point(Count i) const override {
-        const float d = is_lr() ? 1 : -1;
-        return s1()->input_point(i + s2()->out_count) - ImVec2{(w - s1()->w * d) / 2, 0};
+        return s1()->input_point(i + s2()->out_count) - ImVec2{(w - s1()->w) / 2 * (is_lr() ? 1.0f : -1.0f), 0};
     }
     ImVec2 output_point(Count i) const override {
-        const float d = is_lr() ? 1 : -1;
-        return s1()->output_point(i) + ImVec2{(w - s1()->w * d) / 2, 0};
+        return s1()->output_point(i) + ImVec2{(w - s1()->w) / 2 * (is_lr() ? 1.0f : -1.0f), 0};
     }
 
 private:

@@ -739,7 +739,13 @@ struct RouteSchema : IOSchema {
         const auto d = ImVec2{is_lr() ? XGap : -XGap, 0};
         for (const auto &p: input_points) device.line(p, p + d);
         for (const auto &p: output_points) device.line(p - d, p);
-        for (Count i = 0; i < routes.size() - 1; i += 2) device.line(input_points[routes[i] - 1] + d, output_points[routes[i + 1] - 1] - d);
+        for (Count i = 0; i < routes.size() - 1; i += 2) {
+            const unsigned int src = routes[i];
+            const unsigned int dst = routes[i + 1];
+            if (src > 0 && src <= in_count && (dst > 0) && dst <= out_count) {
+                device.line(input_points[src - 1] + d, output_points[dst - 1] - d);
+            }
+        }
     }
 
 protected:

@@ -10,6 +10,7 @@
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
 #include <range/v3/numeric/accumulate.hpp>
+#include <range/v3/view/map.hpp>
 
 #include "boxes/ppbox.hh"
 #include "signals/prim2.hh"
@@ -293,12 +294,9 @@ struct Schema {
         }
     }
 
-    inline float right() const { return x + w; }
-    inline float bottom() const { return y + h; }
     inline ImVec2 position() const { return {x, y}; }
     inline ImVec2 size() const { return {w, h}; }
-    inline ImVec2 mid() const { return {x + w / 2, y + h / 2}; }
-    inline ImRect rect() const { return {{x, y}, {x + w, y + h}}; }
+    inline ImVec2 mid() const { return position() + size() / 2; }
     inline ImVec4 xywh() const { return {x, y, w, h}; }
 
     inline Schema *s1() const { return children[0]; }
@@ -360,7 +358,7 @@ struct BlockSchema : IOSchema {
         if (inner && device.type() == SVGDeviceType) inner->draw(device.type());
         const string &link = inner ? svgFileName(tree) : "";
         device.rect(xywh() + ImVec4{XGap, YGap, -2 * XGap, -2 * YGap}, color, link);
-        device.text(position() + size() / 2, text, link);
+        device.text(mid(), text, link);
 
         // Draw a small point that indicates the first input (like an integrated circuits).
         device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);
@@ -513,7 +511,7 @@ struct RecursiveSchema : Schema {
         for (Count i = 0; i < s2()->out_count; i++) draw_feedfront(device, s2()->output_point(i), s1()->input_point(i), float(i) * WireGap);
         // Non-recursive output lines
         // todo delete?
-        for (Count i = s2()->in_count; i < out_count; i++) device.line(s1()->output_point(i), output_point(i));
+//        for (Count i = s2()->in_count; i < out_count; i++) device.line(s1()->output_point(i), output_point(i));
         // Input lines
         for (Count i = 0; i < in_count; i++) device.line(input_point(i), s1()->input_point(i + s2()->out_count));
         // Output lines
@@ -534,10 +532,9 @@ private:
     void draw_feedback(Device &device, const ImVec2 &from, const ImVec2 &to, float dx, const ImVec2 &out) const {
         const float ox = from.x + (is_lr() ? dx : -dx);
         const float ct = (is_lr() ? WireGap : -WireGap) / 2;
-        const ImVec2 up(ox, from.y - ct);
         const ImVec2 br(ox + ct / 2, from.y);
 
-        device.line(up, {ox, to.y});
+        device.line({ox, from.y - ct}, {ox, to.y});
         device.line({ox, to.y}, to);
         device.line(from, br);
         device.line(br, out);
@@ -561,8 +558,7 @@ private:
 };
 
 struct BinarySchema : Schema {
-    BinarySchema(Tree t, Schema *s1, Schema *s2)
-        : Schema(t, s1->in_count, s2->out_count, {s1, s2}) {}
+    BinarySchema(Tree t, Schema *s1, Schema *s2) : Schema(t, s1->in_count, s2->out_count, {s1, s2}) {}
 
     ImVec2 input_point(Count i) const override { return s1()->input_point(i); }
     ImVec2 output_point(Count i) const override { return s2()->output_point(i); }
@@ -574,10 +570,11 @@ struct BinarySchema : Schema {
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void _place() override {
-        auto *leftSchema = children[is_lr() ? 0 : 1];
-        auto *rightSchema = children[is_lr() ? 1 : 0];
-        leftSchema->place(x, y + max(0.0f, rightSchema->h - leftSchema->h) / 2, orientation);
-        rightSchema->place(x + leftSchema->w + horizontal_gap(), y + max(0.0f, leftSchema->h - rightSchema->h) / 2, orientation);
+        const float horz_gap = horizontal_gap();
+        auto *left = children[is_lr() ? 0 : 1];
+        auto *right = children[is_lr() ? 1 : 0];
+        left->place(x, y + max(0.0f, right->h - left->h) / 2, orientation);
+        right->place(x + left->w + horz_gap, y + max(0.0f, left->h - right->h) / 2, orientation);
     }
 
     virtual float horizontal_gap() const {
@@ -592,61 +589,68 @@ struct SequentialSchema : BinarySchema {
     }
 
     void _place_size() override {
-        _place();
+        s1()->place(0, max(0.0f, s2()->h - s1()->h) / 2, orientation);
+        s2()->place(0, max(0.0f, s1()->h - s2()->h) / 2, orientation);
         BinarySchema::_place_size();
     }
 
-    ImGuiDir connection_direction(const ImVec2 &from, const ImVec2 &to) const {
-        if (is_lr()) return from.y < to.y ? ImGuiDir_Down : from.y > to.y ? ImGuiDir_Up : ImGuiDir_Right;
-        return from.y < to.y ? ImGuiDir_Up : from.y > to.y ? ImGuiDir_Down : ImGuiDir_Left;
+    void _place() override {
+        BinarySchema::_place();
+        connection_indices_for_direction = {};
+        for (Count i = 0; i < s1()->out_count; i++) {
+            const auto dy = s2()->input_point(i).y - s1()->output_point(i).y;
+            connection_indices_for_direction[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up : ImGuiDir_Down].emplace_back(i);
+        }
     }
 
     void _draw(Device &device) const override {
-        BinarySchema::_draw(device);
-
-        const float horzGap = horizontal_gap();
-        // Draw the internal wires aligning the vertical segments in a symmetric way when possible.
-        float dx = 0, mx = 0;
-        ImGuiDir direction = ImGuiDir_None;
-        for (Count i = 0; i < s1()->out_count; i++) {
-            const auto from = s1()->output_point(i);
-            const auto to = s2()->input_point(i);
-            if (!SequentialConnectionZigzag || from.y == to.y) {
-                device.line(from, to); // Draw a straight, potentially diagonal cable.
-            } else {
-                const ImGuiDir d = connection_direction(from, to);
-                if (d == direction) {
-                    mx += dx; // Move in same direction.
+        if (!SequentialConnectionZigzag) {
+            // Draw a straight, potentially diagonal cable.
+            for (Count i = 0; i < s1()->out_count; i++) device.line(s1()->output_point(i), s2()->input_point(i));
+            return;
+        }
+        // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
+        for (const auto dir: views::keys(connection_indices_for_direction)) {
+            const auto &connection_indices = connection_indices_for_direction.at(dir);
+            for (Count i = 0; i < connection_indices.size(); i++) {
+                const auto connection_index = connection_indices[i];
+                const auto from = s1()->output_point(connection_index);
+                const auto to = s2()->input_point(connection_index);
+                if (dir == ImGuiDir_None) {
+                    device.line(from, to); // Draw a  straight cable
                 } else {
-                    mx = is_lr() ? WireGap : -WireGap;
-                    dx = d == ImGuiDir_Down ? WireGap : d == ImGuiDir_Up ? -WireGap : 0;
-                    direction = d;
+                    const bool lr = from.x < to.x;
+                    const Count x_position = lr ? i : connection_indices.size() - i - 1;
+                    const float bend_x = from.x + float(x_position) * (lr ? WireGap : -WireGap);
+                    device.line(from, {bend_x, from.y});
+                    device.line({bend_x, from.y}, {bend_x, to.y});
+                    device.line({bend_x, to.y}, to);
                 }
-                // Draw a zigzag cable by traversing half the distance between, taking a sharp turn, then turning back and finishing.
-                device.line(from, {from.x + mx, from.y});
-                device.line({from.x + mx, from.y}, {from.x + mx, to.y});
-                device.line({from.x + mx, to.y}, to);
             }
         }
     }
 
     // Compute the horizontal gap needed to draw the internal wires.
-    // It depends on the largest group of connections that go in the same direction.
+    // It depends on the largest group of connections that go in the same up/down direction.
     float horizontal_gap() const override {
         if (s1()->out_count == 0) return 0;
 
-        ImGuiDir direction = ImGuiDir_None;
+        ImGuiDir prev_dir = ImGuiDir_None;
         Count size = 0;
         std::map<ImGuiDir, Count> MaxGroupSize; // Store the size of the largest group for each direction.
         for (Count i = 0; i < s1()->out_count; i++) {
-            const auto conn_dir = connection_direction(s1()->output_point(i), s2()->input_point(i));
-            size = conn_dir == direction ? size + 1 : 1;
-            direction = conn_dir;
-            MaxGroupSize[direction] = max(MaxGroupSize[direction], size);
+            const float yd = s2()->input_point(i).y - s1()->output_point(i).y;
+            const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
+            size = dir == prev_dir ? size + 1 : 1;
+            prev_dir = dir;
+            MaxGroupSize[dir] = max(MaxGroupSize[dir], size);
         }
 
         return WireGap * float(max(MaxGroupSize[ImGuiDir_Up], MaxGroupSize[ImGuiDir_Down]));
     }
+
+private:
+    std::map<ImGuiDir, std::vector<Count>> connection_indices_for_direction;
 };
 
 // Place and connect two diagrams in merge composition.
@@ -655,7 +659,6 @@ struct MergeSchema : BinarySchema {
     MergeSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void _draw(Device &device) const override {
-        BinarySchema::_draw(device);
         for (Count i = 0; i < s1()->out_count; i++) device.line(s1()->output_point(i), s2()->input_point(i % s2()->in_count));
     }
 };
@@ -666,7 +669,6 @@ struct SplitSchema : BinarySchema {
     SplitSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void _draw(Device &device) const override {
-        BinarySchema::_draw(device);
         for (Count i = 0; i < s2()->in_count; i++) device.line(s1()->output_point(i % s1()->out_count), s2()->input_point(i));
     }
 };

@@ -248,6 +248,14 @@ enum IO_ {
 
 using IO = IO_;
 
+string to_string(const IO direction) {
+    switch (direction) {
+        case IO_None: return "None";
+        case IO_In: return "In";
+        case IO_Out: return "Out";
+    }
+}
+
 // An abstract block diagram schema
 struct Schema {
     Tree tree;
@@ -309,10 +317,13 @@ struct Schema {
     }
 
     void draw_channel_labels(Device &device) const {
-        for (Count i = 0; i < io_count(IO_In, 0); i++) device.text(point(IO_In, 0, i), format("In 0:{}", i), "#000000");
-        for (Count i = 0; i < io_count(IO_In, 1); i++) device.text(point(IO_In, 1, i), format("In 1:{}", i), "#000000");
-        for (Count i = 0; i < io_count(IO_Out, 0); i++) device.text(point(IO_Out, 0, i), format("Out 0:{}", i), "#000000");
-        for (Count i = 0; i < io_count(IO_Out, 1); i++) device.text(point(IO_Out, 1, i), format("Out 1:{}", i), "#000000");
+        for (const IO direction: {IO_In, IO_Out}) {
+            for (Count child_index = 0; child_index < children.size(); child_index++) {
+                for (Count i = 0; i < io_count(direction, child_index); i++) {
+                    device.text(point(direction, child_index, i), format("({})->{}:{}", child_index, to_string(direction), i), "black");
+                }
+            }
+        }
     }
 
     inline ImVec2 position() const { return {x, y}; }

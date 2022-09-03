@@ -49,6 +49,25 @@ using Count = unsigned int;
 enum Orientation { LeftRight = 1, RightLeft = -1 };
 enum DeviceType { ImGuiDeviceType, SVGDeviceType };
 
+struct TextStyle {
+    enum Justify {
+        Left,
+        Middle,
+        Right,
+    };
+    enum FontStyle {
+        Normal,
+        Bold,
+        Italic,
+    };
+
+    const string color{"#ffffff"};
+    const Justify justify{Middle};
+    const float padding_right{0};
+    const FontStyle font_style{Normal};
+    const bool top{false};
+};
+
 class Device {
 public:
     virtual ~Device() = default;
@@ -59,7 +78,7 @@ public:
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void text(const ImVec2 &pos, const string &text, const char *color = nullptr, const string &link = "") = 0;
+    virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style = {}, const string &link = "") = 0;
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
@@ -71,6 +90,7 @@ struct SVGDevice : Device {
     }
 
     ~SVGDevice() override {
+        stream << end_stream.str();
         stream << "</svg>\n";
         FileIO::write(file_name, stream.str());
     }
@@ -88,10 +108,10 @@ struct SVGDevice : Device {
     }
 
     void rect(const ImVec4 &rect, const string &color, const string &link) override {
-        if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
+        if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link));
         const auto [x, y, w, h] = rect;
         stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, w, h, color);
-        if (!link.empty()) stream << "</a>"; // close the optional link tag
+        if (!link.empty()) stream << "</a>";
     }
 
     // SVG implements a group rect as a dashed rectangle with a label on the top left.
@@ -134,10 +154,16 @@ struct SVGDevice : Device {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:{}; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y, line_cap);
     }
 
-    void text(const ImVec2 &pos, const string &text, const char *color, const string &link) override {
-        if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
-        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="{}">{}</text>)", pos.x, pos.y + 2, color ? color : "#ffffff", xml_sanitize(text));
-        if (!link.empty()) stream << "</a>"; // close the optional link tag
+    void text(const ImVec2 &pos, const string &text, const TextStyle &style, const string &link) override {
+        const auto &[color, justify, padding_right, font_style, top] = style;
+        const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
+        const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
+        const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
+        auto &text_stream = top ? end_stream : stream;
+        if (!link.empty()) text_stream << format(R"(<a href="{}">)", xml_sanitize(link));
+        text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="7" text-anchor="{}" fill="{}">{}</text>)",
+            pos.x - padding_right, pos.y + 2, font_style_formatted, font_weight, anchor, color, xml_sanitize(text));
+        if (!link.empty()) text_stream << "</a>";
     }
 
     void dot(const ImVec2 &pos, Orientation orientation) override {
@@ -160,6 +186,7 @@ struct SVGDevice : Device {
 private:
     string file_name;
     std::stringstream stream;
+    std::stringstream end_stream;
 };
 
 static ImU32 convert_color(const string &color) {
@@ -210,9 +237,11 @@ struct ImGuiDevice : Device {
         draw_list->AddLine(pos + start, pos + end, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
-    void text(const ImVec2 &p, const string &text, const char *color, const string &link) override {
+    void text(const ImVec2 &p, const string &text, const TextStyle &style, const string &link) override {
+        const auto &[color, justify, padding_right, font_style, top] = style;
         const auto text_size = ImGui::CalcTextSize(text.c_str());
-        draw_list->AddText(pos + p - text_size / 2, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
+        const auto &text_pos = pos + p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size / 2 : text_size);
+        draw_list->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
     }
 
     void dot(const ImVec2 &p, Orientation orientation) override {
@@ -320,7 +349,12 @@ struct Schema {
         for (const IO direction: {IO_In, IO_Out}) {
             for (Count child_index = 0; child_index < children.size(); child_index++) {
                 for (Count i = 0; i < io_count(direction, child_index); i++) {
-                    device.text(point(direction, child_index, i), format("({})->{}:{}", child_index, to_string(direction), i), "black");
+                    device.text(
+                        point(direction, child_index, i),
+                        format("({})->{}:{}", child_index, to_string(direction), i),
+                        {.color = "#ff0000", .justify = TextStyle::Justify::Right, .padding_right = 2, .font_style = TextStyle::FontStyle::Bold, .top = true}
+                    );
+                    device.circle(point(direction, child_index, i), 1, "#ff0000");
                 }
             }
         }
@@ -390,7 +424,7 @@ struct BlockSchema : IOSchema {
         if (inner && device.type() == SVGDeviceType) inner->draw(device.type());
         const string &link = inner ? svgFileName(tree) : "";
         device.rect(xywh() + ImVec4{XGap, YGap, -2 * XGap, -2 * YGap}, color, link);
-        device.text(mid(), text, "#ffffff", link);
+        device.text(mid(), text, {"#ffffff"}, link);
 
         // Draw a small point that indicates the first input (like an integrated circuits).
         device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);

@@ -566,15 +566,15 @@ struct ParallelSchema : Schema {
     }
 
     void _draw(Device &device) const override {
-        for (Count i = 0; i < in_count; i++) device.line(input_point(i), i < io_count(IO_In, 0) ? s1()->input_point(i) : s2()->input_point(i - io_count(IO_In, 0)));
-        for (Count i = 0; i < out_count; i++) device.line(i < io_count(IO_Out, 0) ? s1()->output_point(i) : s2()->output_point(i - io_count(IO_Out, 0)), output_point(i));
+        for (Count i = 0; i < in_count; i++) device.line(point(IO_In, i), i < io_count(IO_In, 0) ? point(IO_In, 0, i) : point(IO_In, 1, i - io_count(IO_In, 0)));
+        for (Count i = 0; i < out_count; i++) device.line(i < io_count(IO_Out, 0) ? point(IO_Out, 0, i) : point(IO_Out, 1, i - io_count(IO_Out, 0)), point(IO_Out, i));
     }
 
     ImVec2 input_point(Count i) const override {
-        return i < io_count(IO_In, 0) ? s1()->input_point(i) - ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : s2()->input_point(i - io_count(IO_In, 0)) - ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
+        return i < io_count(IO_In, 0) ? point(IO_In, 0, i) - ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : point(IO_In, 1, i - io_count(IO_In, 0)) - ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
     }
     ImVec2 output_point(Count i) const override {
-        return i < io_count(IO_Out, 0) ? s1()->output_point(i) + ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : s2()->output_point(i - io_count(IO_Out, 0)) + ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
+        return i < io_count(IO_Out, 0) ? point(IO_Out, 0, i) + ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : point(IO_Out, 1, i - io_count(IO_Out, 0)) + ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
     }
 };
 
@@ -617,9 +617,9 @@ struct RecursiveSchema : Schema {
             device.line(bend, in1);
         }
         // Non-recursive output lines
-        for (Count i = 0; i < out_count; i++) device.line(point(IO_Out, 0, i), output_point(i));
+        for (Count i = 0; i < out_count; i++) device.line(point(IO_Out, 0, i), point(IO_Out, i));
         // Input lines
-        for (Count i = 0; i < in_count; i++) device.line(input_point(i), point(IO_In, 0, i + s2()->out_count));
+        for (Count i = 0; i < in_count; i++) device.line(point(IO_In, i), point(IO_In, 0, i + s2()->out_count));
         // Out1->In0 feedfront connections
         for (Count i = 0; i < io_count(IO_Out, 1); i++) {
             const auto &from = point(IO_Out, 1, i);
@@ -641,8 +641,8 @@ struct RecursiveSchema : Schema {
 struct BinarySchema : Schema {
     BinarySchema(Tree t, Schema *s1, Schema *s2) : Schema(t, s1->in_count, s2->out_count, {s1, s2}) {}
 
-    ImVec2 input_point(Count i) const override { return s1()->input_point(i); }
-    ImVec2 output_point(Count i) const override { return s2()->output_point(i); }
+    ImVec2 input_point(Count i) const override { return point(IO_In, 0, i); }
+    ImVec2 output_point(Count i) const override { return point(IO_Out, 1, i); }
 
     void _place_size() override {
         w = s1()->w + s2()->w + horizontal_gap();
@@ -681,7 +681,7 @@ struct SequentialSchema : BinarySchema {
         BinarySchema::_place();
         connection_indices_for_direction = {};
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
-            const auto dy = s2()->input_point(i).y - s1()->output_point(i).y;
+            const auto dy = point(IO_In, 1, i).y - point(IO_Out, 0, i).y;
             connection_indices_for_direction[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up : ImGuiDir_Down].emplace_back(i);
         }
     }
@@ -689,7 +689,7 @@ struct SequentialSchema : BinarySchema {
     void _draw(Device &device) const override {
         if (!SequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
-            for (Count i = 0; i < io_count(IO_Out, 0); i++) device.line(s1()->output_point(i), s2()->input_point(i));
+            for (Count i = 0; i < io_count(IO_Out, 0); i++) device.line(point(IO_Out, 0, i), point(IO_In, 1, i));
             return;
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
@@ -697,8 +697,8 @@ struct SequentialSchema : BinarySchema {
             const auto &connection_indices = connection_indices_for_direction.at(dir);
             for (Count i = 0; i < connection_indices.size(); i++) {
                 const auto connection_index = connection_indices[i];
-                const auto from = s1()->output_point(connection_index);
-                const auto to = s2()->input_point(connection_index);
+                const auto from = point(IO_Out, 0, connection_index);
+                const auto to = point(IO_In, 1, connection_index);
                 if (dir == ImGuiDir_None) {
                     device.line(from, to); // Draw a  straight cable
                 } else {
@@ -722,7 +722,7 @@ struct SequentialSchema : BinarySchema {
         Count size = 0;
         std::map<ImGuiDir, Count> MaxGroupSize; // Store the size of the largest group for each direction.
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
-            const float yd = s2()->input_point(i).y - s1()->output_point(i).y;
+            const float yd = point(IO_In, 1, i).y - point(IO_Out, 0, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
             size = dir == prev_dir ? size + 1 : 1;
             prev_dir = dir;
@@ -742,7 +742,7 @@ struct MergeSchema : BinarySchema {
     MergeSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void _draw(Device &device) const override {
-        for (Count i = 0; i < io_count(IO_Out, 0); i++) device.line(s1()->output_point(i), s2()->input_point(i % io_count(IO_In, 1)));
+        for (Count i = 0; i < io_count(IO_Out, 0); i++) device.line(point(IO_Out, 0, i), point(IO_In, 1, i % io_count(IO_In, 1)));
     }
 };
 
@@ -752,7 +752,7 @@ struct SplitSchema : BinarySchema {
     SplitSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
 
     void _draw(Device &device) const override {
-        for (Count i = 0; i < io_count(IO_In, 1); i++) device.line(s1()->output_point(i % io_count(IO_Out, 0)), s2()->input_point(i));
+        for (Count i = 0; i < io_count(IO_In, 1); i++) device.line(point(IO_Out, 0, i % io_count(IO_Out, 0)), point(IO_In, 1, i));
     }
 };
 
@@ -781,8 +781,8 @@ struct DecorateSchema : IOSchema {
         s1()->place(x + margin, y + margin, orientation);
 
         const ImVec2 m = {dir_unit() * TopSchemaMargin, 0};
-        for (Count i = 0; i < in_count; i++) input_points[i] = s1()->input_point(i) - m;
-        for (Count i = 0; i < out_count; i++) output_points[i] = s1()->output_point(i) + m;
+        for (Count i = 0; i < in_count; i++) input_points[i] = point(IO_In, 0, i) - m;
+        for (Count i = 0; i < out_count; i++) output_points[i] = point(IO_Out, 0, i) + m;
     }
 
     void _draw(Device &device) const override {
@@ -791,10 +791,10 @@ struct DecorateSchema : IOSchema {
         const auto rect_pos = position() + ImVec2{margin, margin} / 2;
         const auto rect_size = size() - ImVec2{margin, margin};
         device.grouprect({rect_pos.x, rect_pos.y, rect_size.x, rect_size.y}, text);
-        for (Count i = 0; i < in_count; i++) device.line(input_point(i), s1()->input_point(i));
-        for (Count i = 0; i < out_count; i++) device.line(s1()->output_point(i), output_point(i));
+        for (Count i = 0; i < in_count; i++) device.line(point(IO_In, i), point(IO_In, 0, i));
+        for (Count i = 0; i < out_count; i++) device.line(point(IO_Out, 0, i), point(IO_Out, i));
 
-        if (is_top_level) for (Count i = 0; i < out_count; i++) device.arrow(output_point(i), orientation);
+        if (is_top_level) for (Count i = 0; i < out_count; i++) device.arrow(point(IO_Out, i), orientation);
     }
 
 private:

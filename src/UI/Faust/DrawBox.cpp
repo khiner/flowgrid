@@ -240,6 +240,14 @@ static string svgFileName(Tree t) {
         + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
 }
 
+enum IO_ {
+    IO_None = -1,
+    IO_In,
+    IO_Out,
+};
+
+using IO = IO_;
+
 // An abstract block diagram schema
 struct Schema {
     Tree tree;
@@ -261,6 +269,14 @@ struct Schema {
           is_top_level(descendents >= FoldComplexity), parent(parent) {}
 
     virtual ~Schema() = default;
+
+    ImVec2 point(IO direction, const Count channel) const {
+        return direction == IO_In ? input_point(channel) : output_point(channel);
+    };
+
+    ImVec2 point(IO direction, const Count child_index, const Count channel) const {
+        return children[child_index]->point(direction, channel);
+    };
 
     void place(float new_x, float new_y, Orientation new_orientation) {
         x = new_x;

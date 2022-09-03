@@ -64,8 +64,16 @@ struct TextStyle {
     const string color{"#ffffff"};
     const Justify justify{Middle};
     const float padding_right{0};
+    const float padding_bottom{0};
+    const float font_size{7};
     const FontStyle font_style{Normal};
     const bool top{false};
+};
+
+struct RectStyle {
+    const string fill_color{"#ffffff"};
+    const string stroke_color{"none"};
+    const float stroke_width{0};
 };
 
 class Device {
@@ -73,6 +81,7 @@ public:
     virtual ~Device() = default;
     virtual DeviceType type() = 0;
     virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
+    virtual void rect(const ImVec4 &rect, const RectStyle &style) = 0;
     virtual void grouprect(const ImVec4 &rect, const string &text) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
@@ -112,6 +121,12 @@ struct SVGDevice : Device {
         const auto [x, y, w, h] = rect;
         stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, w, h, color);
         if (!link.empty()) stream << "</a>";
+    }
+
+    void rect(const ImVec4 &rect, const RectStyle &style) override {
+        const auto &[fill_color, stroke_color, stroke_width] = style;
+        const auto [x, y, w, h] = rect;
+        stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:{};stroke-width={};fill:{};"/>)", x, y, w, h, stroke_color, stroke_width, fill_color);
     }
 
     // SVG implements a group rect as a dashed rectangle with a label on the top left.
@@ -155,14 +170,14 @@ struct SVGDevice : Device {
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style, const string &link) override {
-        const auto &[color, justify, padding_right, font_style, top] = style;
+        const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         auto &text_stream = top ? end_stream : stream;
         if (!link.empty()) text_stream << format(R"(<a href="{}">)", xml_sanitize(link));
-        text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="7" text-anchor="{}" fill="{}">{}</text>)",
-            pos.x - padding_right, pos.y + 2, font_style_formatted, font_weight, anchor, color, xml_sanitize(text));
+        text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}">{}</text>)",
+            pos.x - padding_right, pos.y + 2 - padding_bottom, font_style_formatted, font_weight, font_size, anchor, color, xml_sanitize(text));
         if (!link.empty()) text_stream << "</a>";
     }
 
@@ -213,6 +228,12 @@ struct ImGuiDevice : Device {
         draw_list->AddRectFilled(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Button));
     }
 
+    void rect(const ImVec4 &rect, const RectStyle &style) override {
+//        const auto &[fill_color, stroke_color, stroke_width] = style;
+//        const auto [x, y, w, h] = rect;
+//        draw_list->AddRectFilled(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Button));
+    }
+
     void grouprect(const ImVec4 &rect, const string &text) override {
         const auto [x, y, w, h] = rect;
         const ImVec2 text_pos = {x + DecorateSchemaLabelOffset, y - ImGui::GetFontSize() / 2};
@@ -238,7 +259,7 @@ struct ImGuiDevice : Device {
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style, const string &link) override {
-        const auto &[color, justify, padding_right, font_style, top] = style;
+        const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
         const auto text_size = ImGui::CalcTextSize(text.c_str());
         const auto &text_pos = pos + p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size / 2 : text_size);
         draw_list->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
@@ -345,14 +366,26 @@ struct Schema {
         }
     }
 
+    void draw_rect(Device &device) const {
+        device.rect({x, y, w, h}, {.fill_color = "#00000000", .stroke_color = "#0000ff", .stroke_width = 1});
+    }
+
     void draw_channel_labels(Device &device) const {
         for (const IO direction: {IO_In, IO_Out}) {
+            for (Count i = 0; i < io_count(direction); i++) {
+                device.text(
+                    point(direction, i),
+                    format("{}:{}", to_string(direction), i),
+                    {.color = "#0000ff", .justify = TextStyle::Justify::Right, .padding_right = 2, .padding_bottom = 3, .font_size = 8, .font_style = TextStyle::FontStyle::Bold, .top = true}
+                );
+                device.circle(point(direction, i), 1.5, "#0000ff");
+            }
             for (Count child_index = 0; child_index < children.size(); child_index++) {
                 for (Count i = 0; i < io_count(direction, child_index); i++) {
                     device.text(
                         point(direction, child_index, i),
                         format("({})->{}:{}", child_index, to_string(direction), i),
-                        {.color = "#ff0000", .justify = TextStyle::Justify::Right, .padding_right = 2, .font_style = TextStyle::FontStyle::Bold, .top = true}
+                        {.color = "#ff0000", .justify = TextStyle::Justify::Right, .padding_right = 2, .font_size = 6, .font_style = TextStyle::FontStyle::Bold, .top = true}
                     );
                     device.circle(point(direction, child_index, i), 1, "#ff0000");
                 }
@@ -581,6 +614,7 @@ struct RecursiveSchema : Schema {
         // Output lines
         for (Count i = 0; i < out_count; i++) device.line(s1()->output_point(i), output_point(i) - ImVec2{dw, 0});
 
+        draw_rect(device);
         draw_channel_labels(device);
     }
 

@@ -602,8 +602,10 @@ struct SequentialSchema : BinarySchema {
     }
 
     void _place_size() override {
-        s1()->place(0, max(0.0f, s2()->h - s1()->h) / 2, orientation);
-        s2()->place(0, max(0.0f, s1()->h - s2()->h) / 2, orientation);
+        if (s1()->x == 0 && s1()->y == 0 && s2()->x == 0 && s2()->y == 0) {
+            s1()->place(0, max(0.0f, s2()->h - s1()->h) / 2, LeftRight);
+            s2()->place(0, max(0.0f, s1()->h - s2()->h) / 2, LeftRight);
+        }
         BinarySchema::_place_size();
     }
 

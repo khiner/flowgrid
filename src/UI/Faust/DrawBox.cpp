@@ -599,60 +599,43 @@ struct RecursiveSchema : Schema {
     }
 
     void _draw(Device &device) const override {
-        // Implicit feedback delay to each `s2` input
         const float dw = dir_unit() * WireGap;
-        // Feedback connections to each `s2` input
-        for (Count i = 0; i < io_count(IO_In, 1); i++) draw_feedback(device, ImVec2{s2()->input_point(i).x, s1()->output_point(i).y}, s2()->input_point(i), float(i) * WireGap, output_point(i));
-        for (Count i = 0; i < io_count(IO_In, 1); i++) draw_delay_sign(device, ImVec2{s2()->input_point(i).x, s1()->output_point(i).y} + ImVec2{float(i) * dw, 0}, dw / 2);
-        // Feedfront connections from each `s2` output
-        for (Count i = 0; i < io_count(IO_Out, 1); i++) draw_feedfront(device, s2()->output_point(i), s1()->input_point(i), float(i) * WireGap);
+        // Out0->In1 feedback connections
+        for (Count i = 0; i < io_count(IO_In, 1); i++) {
+            const auto &in1 = point(IO_In, 1, i);
+            const auto &out0 = point(IO_Out, 0, i);
+            const auto &from = ImVec2{is_lr() ? max(in1.x, out0.x) : min(in1.x, out0.x), out0.y} + ImVec2{float(i) * dw, 0};
+            // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
+            const auto &corner1 = from - ImVec2{dw / 4, dw / 2};
+            const auto &corner2 = from + ImVec2{dw / 4, -dw / 2};
+            device.line(from - ImVec2{dw / 4, 0}, corner1);
+            device.line(corner1, corner2);
+            device.line(corner2, from + ImVec2{dw / 4, 0});
+            // Draw the feedback line
+            const ImVec2 &bend = {from.x, in1.y};
+            device.line({from.x, from.y - dw / 2}, bend);
+            device.line(bend, in1);
+        }
         // Non-recursive output lines
-        // todo delete?
-//        for (Count i = io_count(IO_In, 1); i < out_count; i++) device.line(s1()->output_point(i), output_point(i));
+        for (Count i = 0; i < out_count; i++) device.line(point(IO_Out, 0, i), output_point(i));
         // Input lines
-        for (Count i = 0; i < in_count; i++) device.line(input_point(i), s1()->input_point(i + io_count(IO_Out, 1)));
-        // Output lines
-        for (Count i = 0; i < out_count; i++) device.line(s1()->output_point(i), output_point(i) - ImVec2{dw, 0});
-
-        draw_rect(device);
-        draw_channel_labels(device);
+        for (Count i = 0; i < in_count; i++) device.line(input_point(i), point(IO_In, 0, i + s2()->out_count));
+        // Out1->In0 feedfront connections
+        for (Count i = 0; i < io_count(IO_Out, 1); i++) {
+            const auto &from = point(IO_Out, 1, i);
+            const auto &from_dx = from - ImVec2{dw * float(i), 0};
+            const auto &to = point(IO_In, 0, i);
+            const ImVec2 &corner1 = {to.x, from_dx.y};
+            const ImVec2 &corner2 = {from_dx.x, to.y};
+            const ImVec2 &bend = is_lr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
+            device.line(from, from_dx);
+            device.line(from_dx, bend);
+            device.line(bend, to);
+        }
     }
 
-    ImVec2 input_point(Count i) const override {
-        return s1()->input_point(i + io_count(IO_Out, 1)) - ImVec2{(w - s1()->w) / 2 * dir_unit(), 0};
-    }
-    ImVec2 output_point(Count i) const override {
-        return s1()->output_point(i) + ImVec2{(w - s1()->w) / 2 * dir_unit(), 0};
-    }
-
-private:
-    // Draw a feedback connection between two points with a horizontal displacement `dx`.
-    void draw_feedback(Device &device, const ImVec2 &from, const ImVec2 &to, float dx, const ImVec2 &out) const {
-        const float ox = from.x + dir_unit() * dx;
-        const float ct = dir_unit() * WireGap / 2;
-        const ImVec2 br(ox + ct / 2, from.y);
-
-        device.line({ox, from.y - ct}, {ox, to.y});
-        device.line({ox, to.y}, to);
-        device.line(from, br);
-        device.line(br, out);
-    }
-
-    // Draw a feedfront connection between two points with a horizontal displacement `dx`.
-    void draw_feedfront(Device &device, const ImVec2 &from, const ImVec2 &to, float dx) const {
-        const float dfx = from.x - dir_unit() * dx;
-        device.line({from.x, from.y}, {dfx, from.y});
-        device.line({dfx, from.y}, {dfx, to.y});
-        device.line({dfx, to.y}, {to.x, to.y});
-    }
-
-    // Draw the delay sign of a feedback connection (three sides of a square)
-    static void draw_delay_sign(Device &device, const ImVec2 &pos, float size) {
-        const float hs = size / 2;
-        device.line(pos - ImVec2{hs, 0}, pos - ImVec2{hs, size});
-        device.line(pos - ImVec2{hs, size}, pos + ImVec2{hs, -size});
-        device.line(pos + ImVec2{hs, -size}, pos + ImVec2{hs, 0});
-    }
+    ImVec2 input_point(Count i) const override { return {is_lr() ? x : x + w, point(IO_In, 0, i + io_count(IO_Out, 1)).y}; }
+    ImVec2 output_point(Count i) const override { return {is_lr() ? x + w : x, point(IO_Out, 0, i).y}; }
 };
 
 struct BinarySchema : Schema {

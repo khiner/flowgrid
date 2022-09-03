@@ -308,6 +308,13 @@ struct Schema {
         }
     }
 
+    void draw_channel_labels(Device &device) const {
+        for (Count i = 0; i < io_count(IO_In, 0); i++) device.text(point(IO_In, 0, i), format("In 0:{}", i), "#000000");
+        for (Count i = 0; i < io_count(IO_In, 1); i++) device.text(point(IO_In, 1, i), format("In 1:{}", i), "#000000");
+        for (Count i = 0; i < io_count(IO_Out, 0); i++) device.text(point(IO_Out, 0, i), format("Out 0:{}", i), "#000000");
+        for (Count i = 0; i < io_count(IO_Out, 1); i++) device.text(point(IO_Out, 1, i), format("Out 1:{}", i), "#000000");
+    }
+
     inline ImVec2 position() const { return {x, y}; }
     inline ImVec2 size() const { return {w, h}; }
     inline ImVec2 mid() const { return position() + size() / 2; }
@@ -528,6 +535,8 @@ struct RecursiveSchema : Schema {
         for (Count i = 0; i < in_count; i++) device.line(input_point(i), s1()->input_point(i + io_count(IO_Out, 1)));
         // Output lines
         for (Count i = 0; i < out_count; i++) device.line(s1()->output_point(i), output_point(i) - ImVec2{dw, 0});
+
+        draw_channel_labels(device);
     }
 
     ImVec2 input_point(Count i) const override {

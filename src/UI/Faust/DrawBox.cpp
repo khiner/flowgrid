@@ -59,7 +59,7 @@ public:
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void text(const ImVec2 &pos, const string &text, const string &link) = 0;
+    virtual void text(const ImVec2 &pos, const string &text, const char *color = nullptr, const string &link = "") = 0;
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
@@ -134,9 +134,9 @@ struct SVGDevice : Device {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:{}; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y, line_cap);
     }
 
-    void text(const ImVec2 &pos, const string &text, const string &link) override {
+    void text(const ImVec2 &pos, const string &text, const char *color, const string &link) override {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link)); // open the optional link tag
-        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="#FFFFFF">{}</text>)", pos.x, pos.y + 2, xml_sanitize(text));
+        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7" text-anchor="middle" fill="{}">{}</text>)", pos.x, pos.y + 2, color ? color : "#ffffff", xml_sanitize(text));
         if (!link.empty()) stream << "</a>"; // close the optional link tag
     }
 
@@ -210,7 +210,7 @@ struct ImGuiDevice : Device {
         draw_list->AddLine(pos + start, pos + end, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
-    void text(const ImVec2 &p, const string &text, const string &link) override {
+    void text(const ImVec2 &p, const string &text, const char *color, const string &link) override {
         const auto text_size = ImGui::CalcTextSize(text.c_str());
         draw_list->AddText(pos + p - text_size / 2, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
     }
@@ -375,7 +375,7 @@ struct BlockSchema : IOSchema {
         if (inner && device.type() == SVGDeviceType) inner->draw(device.type());
         const string &link = inner ? svgFileName(tree) : "";
         device.rect(xywh() + ImVec4{XGap, YGap, -2 * XGap, -2 * YGap}, color, link);
-        device.text(mid(), text, link);
+        device.text(mid(), text, "#ffffff", link);
 
         // Draw a small point that indicates the first input (like an integrated circuits).
         device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);

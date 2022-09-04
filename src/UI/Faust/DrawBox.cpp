@@ -313,7 +313,7 @@ struct Schema {
     const std::vector<Schema *> children{};
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const bool is_top_level;
-    const Tree parent;
+    Tree parent;
     float w = 0, h = 0; // Populated in `place_size`
     float x = 0, y = 0; // Fields populated in `place`
 
@@ -330,7 +330,7 @@ struct Schema {
 
     Count io_count(IO direction) const { return direction == IO_In ? in_count : out_count; };
     Count io_count(IO direction, const Count child_index) const { return child_index < children.size() ? children[child_index]->io_count(direction) : 0; };
-    ImVec2 point(IO direction, const Count channel) const { return direction == IO_In ? input_point(channel) : output_point(channel); };
+    virtual ImVec2 point(IO direction, const Count channel) const = 0;
 
     void place(const DeviceType type, float new_x, float new_y, Orientation new_orientation) {
         x = new_x;
@@ -349,8 +349,6 @@ struct Schema {
         for (const auto *child: children) child->draw(device);
         _draw(device);
     };
-    virtual ImVec2 input_point(Count i) const = 0;
-    virtual ImVec2 output_point(Count i) const = 0;
     inline bool is_lr() const { return orientation == LeftRight; }
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
 
@@ -422,8 +420,7 @@ struct IOSchema : Schema {
         }
     }
 
-    ImVec2 input_point(Count i) const override { return input_points[i]; }
-    ImVec2 output_point(Count i) const override { return output_points[i]; }
+    ImVec2 point(IO io, Count i) const override { return io == IO_In ? input_points[i] : output_points[i]; }
 
     std::vector<ImVec2> input_points{in_count};
     std::vector<ImVec2> output_points{out_count};
@@ -492,8 +489,7 @@ struct CableSchema : Schema {
         }
     }
 
-    ImVec2 input_point(Count i) const override { return points[i]; }
-    ImVec2 output_point(Count i) const override { return points[i]; }
+    ImVec2 point(IO io, Count i) const override { return points[i]; }
 
 private:
     std::vector<ImVec2> points{in_count};
@@ -540,12 +536,9 @@ struct CutSchema : Schema {
     }
 
     // A Cut has only one input point
-    ImVec2 input_point(Count) const override { return {x, mid().y}; }
-
-    // A Cut has no output point.
-    ImVec2 output_point(Count) const override {
-        fgassert(false);
-        return {-1, -1};
+    ImVec2 point(IO io, Count) const override {
+        fgassert(io == IO_In);
+        return {x, mid().y};
     }
 };
 
@@ -569,11 +562,11 @@ struct ParallelSchema : Schema {
         for (Count i = 0; i < out_count; i++) device.line(i < io_count(IO_Out, 0) ? child(0)->point(IO_Out, i) : child(1)->point(IO_Out, i - io_count(IO_Out, 0)), point(IO_Out, i));
     }
 
-    ImVec2 input_point(Count i) const override {
-        return i < io_count(IO_In, 0) ? child(0)->point(IO_In, i) - ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : child(1)->point(IO_In, i - io_count(IO_In, 0)) - ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
-    }
-    ImVec2 output_point(Count i) const override {
-        return i < io_count(IO_Out, 0) ? child(0)->point(IO_Out, i) + ImVec2{dir_unit() * (w - s1()->w) / 2, 0} : child(1)->point(IO_Out, i - io_count(IO_Out, 0)) + ImVec2{dir_unit() * (w - s2()->w) / 2, 0};
+    ImVec2 point(IO io, Count i) const override {
+        const float d = io == IO_In ? -1 : 1;
+        return i < io_count(io, 0) ?
+               child(0)->point(io, i) + ImVec2{d * dir_unit() * (w - s1()->w) / 2, 0} :
+               child(1)->point(io, i - io_count(io, 0)) + ImVec2{d * dir_unit() * (w - s2()->w) / 2, 0};
     }
 };
 
@@ -633,15 +626,16 @@ struct RecursiveSchema : Schema {
         }
     }
 
-    ImVec2 input_point(Count i) const override { return {is_lr() ? x : x + w, child(0)->point(IO_In, i + io_count(IO_Out, 1)).y}; }
-    ImVec2 output_point(Count i) const override { return {is_lr() ? x + w : x, child(0)->point(IO_Out, i).y}; }
+    ImVec2 point(IO io, Count i) const override {
+        const bool lr = (io == IO_In && is_lr()) || (io == IO_Out && !is_lr());
+        return {lr ? x : x + w, child(0)->point(io, i + (io == IO_In ? io_count(IO_Out, 1) : 0)).y};
+    }
 };
 
 struct BinarySchema : Schema {
     BinarySchema(Tree t, Schema *s1, Schema *s2) : Schema(t, s1->in_count, s2->out_count, {s1, s2}) {}
 
-    ImVec2 input_point(Count i) const override { return child(0)->point(IO_In, i); }
-    ImVec2 output_point(Count i) const override { return child(1)->point(IO_Out, i); }
+    ImVec2 point(IO io, Count i) const override { return child(io == IO_In ? 0 : 1)->point(io, i); }
 
     void _place_size(const DeviceType) override {
         w = s1()->w + s2()->w + horizontal_gap();

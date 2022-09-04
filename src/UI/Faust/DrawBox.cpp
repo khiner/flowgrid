@@ -313,12 +313,10 @@ struct Schema {
     const std::vector<Schema *> children{};
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const bool is_top_level;
-    Tree parent;
+    const Tree parent;
+    float w = 0, h = 0; // Populated in `place_size`
+    float x = 0, y = 0; // Fields populated in `place`
 
-    // Fields populated in `place_size()`:
-    float w = 0, h = 0;
-    // Fields populated in `place()`:
-    float x = 0, y = 0;
     Orientation orientation = LeftRight;
 
     Schema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0, Tree parent = nullptr)
@@ -333,18 +331,18 @@ struct Schema {
     ImVec2 point(IO direction, const Count channel) const { return direction == IO_In ? input_point(channel) : output_point(channel); };
     ImVec2 point(IO direction, const Count child_index, const Count channel) const { return children[child_index]->point(direction, channel); };
 
-    void place(float new_x, float new_y, Orientation new_orientation) {
+    void place(const DeviceType type, float new_x, float new_y, Orientation new_orientation) {
         x = new_x;
         y = new_y;
         orientation = new_orientation;
-        _place();
+        _place(type);
     }
-    void place_size() {
-        for (auto *child: children) child->place_size();
-        _place_size();
+    void place_size(const DeviceType type) {
+        for (auto *child: children) child->place_size(type);
+        _place_size(type);
     }
-    void place() {
-        _place();
+    void place(const DeviceType type) {
+        _place(type);
     }
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
@@ -402,8 +400,8 @@ struct Schema {
     inline Schema *s2() const { return children[1]; }
 
 protected:
-    virtual void _place_size() = 0;
-    virtual void _place() = 0;
+    virtual void _place_size(const DeviceType type) = 0;
+    virtual void _place(const DeviceType type) = 0;
     virtual void _draw(Device &) const {}
 };
 
@@ -411,7 +409,7 @@ struct IOSchema : Schema {
     IOSchema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0, Tree parent = nullptr)
         : Schema(t, in_count, out_count, std::move(children), directDescendents, parent) {}
 
-    void _place() override {
+    void _place(const DeviceType) override {
         const float dy = dir_unit() * WireGap;
         for (Count i = 0; i < in_count; i++) {
             const float in_y = mid().y - WireGap * float(in_count - 1) / 2;
@@ -440,16 +438,16 @@ struct BlockSchema : IOSchema {
     BlockSchema(Tree t, Count in_count, Count out_count, string text, string color, Schema *inner = nullptr)
         : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(std::move(color)), inner(inner) {}
 
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = 2 * XGap + max(3 * WireGap, LetterWidth * quantize(int(text.size())));
         h = 2 * YGap + max(3 * WireGap, float(max(in_count, out_count)) * WireGap);
     }
 
-    void _place() override {
-        IOSchema::_place();
+    void _place(const DeviceType type) override {
+        IOSchema::_place(type);
         if (inner) {
-            inner->place_size();
-            inner->place();
+            inner->place_size(type);
+            inner->place(type);
         }
     }
 
@@ -480,13 +478,13 @@ struct CableSchema : Schema {
     CableSchema(Tree t, Count n = 1) : Schema(t, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = 0;
         h = float(in_count) * WireGap;
     }
 
     // Place the communication points vertically spaced by `WireGap`.
-    void _place() override {
+    void _place(const DeviceType) override {
         for (Count i = 0; i < in_count; i++) {
             const float dx = WireGap * (float(i) + 0.5f);
             points[i] = {x, y + (is_lr() ? dx : h - dx)};
@@ -505,7 +503,7 @@ private:
 struct InverterSchema : BlockSchema {
     InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", InverterColor) {}
 
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = 2.5f * WireGap;
         h = WireGap;
     }
@@ -529,11 +527,11 @@ struct CutSchema : Schema {
     CutSchema(Tree t) : Schema(t, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = 0;
         h = 1;
     }
-    void _place() override {}
+    void _place(const DeviceType) override {}
 
     // A cut is represented by a small black dot.
     void _draw(Device &) const override {
@@ -554,15 +552,15 @@ struct ParallelSchema : Schema {
     ParallelSchema(Tree t, Schema *s1, Schema *s2)
         : Schema(t, s1->in_count + s2->in_count, s1->out_count + s2->out_count, {s1, s2}) {}
 
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = max(s1()->w, s2()->w);
         h = s1()->h + s2()->h;
     }
-    void _place() override {
+    void _place(const DeviceType type) override {
         auto *top_schema = children[is_lr() ? 0 : 1];
         auto *bottom_schema = children[is_lr() ? 1 : 0];
-        top_schema->place(x + (w - top_schema->w) / 2, y, orientation);
-        bottom_schema->place(x + (w - bottom_schema->w) / 2, y + top_schema->h, orientation);
+        top_schema->place(type, x + (w - top_schema->w) / 2, y, orientation);
+        bottom_schema->place(type, x + (w - bottom_schema->w) / 2, y + top_schema->h, orientation);
     }
 
     void _draw(Device &device) const override {
@@ -585,17 +583,17 @@ struct RecursiveSchema : Schema {
         fgassert(s1->out_count >= s2->in_count);
     }
 
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = max(s1()->w, s2()->w) + 2 * WireGap * float(max(io_count(IO_In, 1), io_count(IO_Out, 1)));
         h = s1()->h + s2()->h;
     }
 
     // The two schemas are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
-    void _place() override {
+    void _place(const DeviceType type) override {
         auto *top_schema = children[is_lr() ? 1 : 0];
         auto *bottom_schema = children[is_lr() ? 0 : 1];
-        top_schema->place(x + (w - top_schema->w) / 2, y, RightLeft);
-        bottom_schema->place(x + (w - bottom_schema->w) / 2, y + top_schema->h, LeftRight);
+        top_schema->place(type, x + (w - top_schema->w) / 2, y, RightLeft);
+        bottom_schema->place(type, x + (w - bottom_schema->w) / 2, y + top_schema->h, LeftRight);
     }
 
     void _draw(Device &device) const override {
@@ -644,18 +642,18 @@ struct BinarySchema : Schema {
     ImVec2 input_point(Count i) const override { return point(IO_In, 0, i); }
     ImVec2 output_point(Count i) const override { return point(IO_Out, 1, i); }
 
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = s1()->w + s2()->w + horizontal_gap();
         h = max(s1()->h, s2()->h);
     }
 
     // Place the two components horizontally, centered, with enough space for the connections.
-    void _place() override {
+    void _place(const DeviceType type) override {
         const float horz_gap = horizontal_gap();
         auto *left = children[is_lr() ? 0 : 1];
         auto *right = children[is_lr() ? 1 : 0];
-        left->place(x, y + max(0.0f, right->h - left->h) / 2, orientation);
-        right->place(x + left->w + horz_gap, y + max(0.0f, left->h - right->h) / 2, orientation);
+        left->place(type, x, y + max(0.0f, right->h - left->h) / 2, orientation);
+        right->place(type, x + left->w + horz_gap, y + max(0.0f, left->h - right->h) / 2, orientation);
     }
 
     virtual float horizontal_gap() const {
@@ -669,16 +667,16 @@ struct SequentialSchema : BinarySchema {
         fgassert(s1->out_count == s2->in_count);
     }
 
-    void _place_size() override {
+    void _place_size(const DeviceType type) override {
         if (s1()->x == 0 && s1()->y == 0 && s2()->x == 0 && s2()->y == 0) {
-            s1()->place(0, max(0.0f, s2()->h - s1()->h) / 2, LeftRight);
-            s2()->place(0, max(0.0f, s1()->h - s2()->h) / 2, LeftRight);
+            s1()->place(type, 0, max(0.0f, s2()->h - s1()->h) / 2, LeftRight);
+            s2()->place(type, 0, max(0.0f, s1()->h - s2()->h) / 2, LeftRight);
         }
-        BinarySchema::_place_size();
+        BinarySchema::_place_size(type);
     }
 
-    void _place() override {
-        BinarySchema::_place();
+    void _place(const DeviceType type) override {
+        BinarySchema::_place(type);
         connection_indices_for_direction = {};
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
             const auto dy = point(IO_In, 1, i).y - point(IO_Out, 0, i).y;
@@ -771,14 +769,14 @@ struct DecorateSchema : IOSchema {
     DecorateSchema(Tree t, Schema *inner, string text, Tree parent = nullptr)
         : IOSchema(t, inner->in_count, inner->out_count, {inner}, 0, parent), text(std::move(text)) {}
 
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         w = s1()->w + 2 * (DecorateSchemaMargin + (s1()->is_top_level ? TopSchemaMargin : 0));
         h = s1()->h + 2 * (DecorateSchemaMargin + (s1()->is_top_level ? TopSchemaMargin : 0));
     }
 
-    void _place() override {
+    void _place(const DeviceType type) override {
         const float margin = DecorateSchemaMargin + (is_top_level ? TopSchemaMargin : 0);
-        s1()->place(x + margin, y + margin, orientation);
+        s1()->place(type, x + margin, y + margin, orientation);
 
         const ImVec2 m = {dir_unit() * TopSchemaMargin, 0};
         for (Count i = 0; i < in_count; i++) input_points[i] = point(IO_In, 0, i) - m;
@@ -805,7 +803,7 @@ struct RouteSchema : IOSchema {
     RouteSchema(Tree t, Count in_count, Count out_count, std::vector<int> routes)
         : IOSchema(t, in_count, out_count), color("#EEEEAA"), routes(std::move(routes)) {}
 
-    void _place_size() override {
+    void _place_size(const DeviceType) override {
         const float minimal = 3 * WireGap;
         h = 2 * YGap + max(minimal, max(float(in_count), float(out_count)) * WireGap);
         w = 2 * XGap + max(minimal, h * 0.75f);
@@ -1030,14 +1028,14 @@ void on_box_change(Box box) {
         fs::remove_all(FaustDiagramsPath);
         fs::create_directory(FaustDiagramsPath);
         auto *svg_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
-        svg_schema->place_size();
-        svg_schema->place();
+        svg_schema->place_size(SVGDeviceType);
+        svg_schema->place(SVGDeviceType);
         svg_schema->draw(SVGDeviceType);
 
         // Render ImGui diagram
         active_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
-        active_schema->place_size();
-        active_schema->place();
+        active_schema->place_size(ImGuiDeviceType);
+        active_schema->place(ImGuiDeviceType);
     } else {
         active_schema = nullptr;
     }

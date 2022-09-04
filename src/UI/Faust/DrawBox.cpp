@@ -459,14 +459,12 @@ struct BlockSchema : IOSchema {
 
     void draw_connections(Device &device) const {
         const ImVec2 d = {dir_unit() * XGap, 0};
-        for (Count i = 0; i < io_count(IO_In); i++) {
-            const auto &p = point(IO_In, i);
-            device.line(p, p + d); // Input lines
-            device.arrow(p + d, orientation); // Input arrows
-        }
-        for (Count i = 0; i < io_count(IO_Out); i++) {
-            const auto &p = point(IO_Out, i);
-            device.line(p - d, p); // Output lines
+        for (const IO io: {IO_In, IO_Out}) {
+            for (Count i = 0; i < io_count(io); i++) {
+                const auto &p = point(io, i);
+                device.line(io == IO_In ? p : p - d, io == IO_In ? p + d : p);
+                if (io == IO_In) device.arrow(p + d, orientation); // Input arrows
+            }
         }
     }
 
@@ -492,7 +490,7 @@ struct CableSchema : Schema {
         }
     }
 
-    ImVec2 point(IO io, Count i) const override { return points[i]; }
+    ImVec2 point(IO, Count i) const override { return points[i]; }
 
 private:
     std::vector<ImVec2> points{in_count};
@@ -523,7 +521,7 @@ struct InverterSchema : BlockSchema {
 // Cable termination
 struct CutSchema : Schema {
     // A Cut is represented by a small black dot.
-    // It has 1 input and no out_count.
+    // It has 1 input and no output.
     CutSchema(Tree t) : Schema(t, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
@@ -560,15 +558,18 @@ struct ParallelSchema : Schema {
     }
 
     void _draw(Device &device) const override {
-        for (Count i = 0; i < in_count; i++) device.line(point(IO_In, i), i < io_count(IO_In, 0) ? child(0)->point(IO_In, i) : child(1)->point(IO_In, i - io_count(IO_In, 0)));
-        for (Count i = 0; i < out_count; i++) device.line(i < io_count(IO_Out, 0) ? child(0)->point(IO_Out, i) : child(1)->point(IO_Out, i - io_count(IO_Out, 0)), point(IO_Out, i));
+        for (const IO io: {IO_In, IO_Out}) {
+            for (Count i = 0; i < io_count(io); i++) {
+                device.line(point(io, i), i < io_count(io, 0) ? child(0)->point(io, i) : child(1)->point(io, i - io_count(io, 0)));
+            }
+        }
     }
 
     ImVec2 point(IO io, Count i) const override {
-        const float d = io == IO_In ? -1 : 1;
+        const float d = (io == IO_In ? -1.0f : 1.0f) * dir_unit();
         return i < io_count(io, 0) ?
-               child(0)->point(io, i) + ImVec2{d * dir_unit() * (w - s1()->w) / 2, 0} :
-               child(1)->point(io, i - io_count(io, 0)) + ImVec2{d * dir_unit() * (w - s2()->w) / 2, 0};
+               child(0)->point(io, i) + ImVec2{d * (w - s1()->w) / 2, 0} :
+               child(1)->point(io, i - io_count(io, 0)) + ImVec2{d * (w - s2()->w) / 2, 0};
     }
 };
 
@@ -653,9 +654,7 @@ struct BinarySchema : Schema {
         right->place(type, x + left->w + horz_gap, y + max(0.0f, left->h - right->h) / 2, orientation);
     }
 
-    virtual float horizontal_gap() const {
-        return (s1()->h + s2()->h) * BinarySchemaHorizontalGapRatio;
-    }
+    virtual float horizontal_gap() const { return (s1()->h + s2()->h) * BinarySchemaHorizontalGapRatio; }
 };
 
 struct SequentialSchema : BinarySchema {
@@ -782,16 +781,16 @@ struct DecorateSchema : IOSchema {
         const auto rect_pos = position() + ImVec2{margin, margin} / 2;
         const auto rect_size = size() - ImVec2{margin, margin};
         device.grouprect({rect_pos.x, rect_pos.y, rect_size.x, rect_size.y}, text);
-        for (Count i = 0; i < in_count; i++) device.line(point(IO_In, i), child(0)->point(IO_In, i));
-        for (Count i = 0; i < out_count; i++) {
-            device.line(child(0)->point(IO_Out, i), point(IO_Out, i));
-            if (is_top_level) device.arrow(point(IO_Out, i), orientation);
+        for (const IO io: {IO_In, IO_Out}) {
+            for (Count i = 0; i < io_count(io); i++) {
+                device.line(point(io, i), child(0)->point(io, i));
+                if (io == IO_Out && is_top_level) device.arrow(point(io, i), orientation);
+            }
         }
     }
 
     ImVec2 point(IO io, Count i) const override {
-        const float d = io == IO_In ? -1 : 1;
-        return child(0)->point(io, i) + ImVec2{dir_unit() * d * TopSchemaMargin, 0};
+        return child(0)->point(io, i) + ImVec2{dir_unit() * (io == IO_In ? -1.0f : 1.0f) * TopSchemaMargin, 0};
     }
 
 private:

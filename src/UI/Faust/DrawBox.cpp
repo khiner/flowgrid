@@ -25,11 +25,11 @@ static const fs::path FaustDiagramsPath = "FaustDiagrams"; // todo app property
 // todo style props
 static const int FoldComplexity = 2; // Number of boxes within a `Schema` before folding
 static const bool IsSvgScaled = false; // Draw scaled SVG files
-static const float BinarySchemaHorizontalGapRatio = 1.0f / 4;
 static const bool SequentialConnectionZigzag = true; // false allows for diagonal lines instead of zigzags instead of zigzags
 static const bool DrawRouteFrame = false;
 static const float TopSchemaMargin = 10;
 static const float DecorateSchemaMargin = 10;
+static const float BinarySchemaHorizontalGapRatio = 1.0f / 4;
 static const float DecorateSchemaLabelOffset = 5;
 static const float WireGap = 8;
 static const float XGap = 4;
@@ -115,10 +115,9 @@ struct SVGDevice : Device {
         return replaced_name;
     }
 
-    void rect(const ImVec4 &rect, const string &color, const string &link) override {
+    void rect(const ImVec4 &r, const string &color, const string &link) override {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link));
-        const auto [x, y, w, h] = rect;
-        stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:none;fill:{};"/>)", x, y, w, h, color);
+        rect(r, {.fill_color = color});
         if (!link.empty()) stream << "</a>";
     }
 
@@ -225,8 +224,8 @@ struct ImGuiDevice : Device {
 
     DeviceType type() override { return ImGuiDeviceType; }
 
-    void rect(const ImVec4 &rect, const string &color, const string &link) override {
-        const auto [x, y, w, h] = rect;
+    void rect(const ImVec4 &r, const string &color, const string &link) override {
+        const auto [x, y, w, h] = r;
         draw_list->AddRectFilled(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Button));
     }
 
@@ -324,10 +323,10 @@ struct Schema {
 
     Orientation orientation = LeftRight;
 
-    Schema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0, Tree parent = nullptr)
+    Schema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0)
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
           descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Schema *child) { return child->descendents; }), 0)),
-          is_top_level(descendents >= FoldComplexity), parent(parent) {}
+          is_top_level(descendents >= FoldComplexity) {}
 
     virtual ~Schema() = default;
 
@@ -360,7 +359,7 @@ struct Schema {
     void draw(DeviceType type) const {
         if (type == SVGDeviceType) {
             SVGDevice device(FaustDiagramsPath / svgFileName(tree), w, h);
-            device.rect({x, y, w - 1, h - 1}, "#ffffff", svgFileName(parent));
+            device.rect({x, y, w - 1, h - 1}, {.fill_color="#ffffff"});
             draw(device);
         } else {
             ImGuiDevice device;
@@ -369,7 +368,7 @@ struct Schema {
     }
 
     void draw_rect(Device &device) const {
-        device.rect({x, y, w, h}, {.fill_color = "#00000000", .stroke_color = "#0000ff", .stroke_width = 1});
+        device.rect({x, y, w, h}, {.fill_color="#00000000", .stroke_color="#0000ff", .stroke_width = 1});
     }
 
     void draw_channel_labels(Device &device) const {
@@ -378,7 +377,7 @@ struct Schema {
                 device.text(
                     point(direction, channel),
                     format("{}:{}", to_string(direction), channel),
-                    {.color = "#0000ff", .justify = TextStyle::Justify::Right, .padding_right = 2, .padding_bottom = 3, .font_size = 8, .font_style = TextStyle::FontStyle::Bold, .top = true}
+                    {.color="#0000ff", .justify=TextStyle::Justify::Right, .padding_right=2, .padding_bottom=3, .font_size=8, .font_style=TextStyle::FontStyle::Bold, .top=true}
                 );
                 device.circle(point(direction, channel), 1.5, "#0000ff");
             }
@@ -387,7 +386,7 @@ struct Schema {
                     device.text(
                         child(ci)->point(direction, channel),
                         format("({})->{}:{}", ci, to_string(direction), channel),
-                        {.color = "#ff0000", .justify = TextStyle::Justify::Right, .padding_right = 2, .font_size = 6, .font_style = TextStyle::FontStyle::Bold, .top = true}
+                        {.color="#ff0000", .justify=TextStyle::Justify::Right, .padding_right=2, .font_size=6, .font_style=TextStyle::FontStyle::Bold, .top=true}
                     );
                     device.circle(child(ci)->point(direction, channel), 1, "#ff0000");
                 }
@@ -410,8 +409,8 @@ protected:
 };
 
 struct IOSchema : Schema {
-    IOSchema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0, Tree parent = nullptr)
-        : Schema(t, in_count, out_count, std::move(children), directDescendents, parent) {}
+    IOSchema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0)
+        : Schema(t, in_count, out_count, std::move(children), directDescendents) {}
 
     ImVec2 point(IO io, Count i) const override {
         const float dy = dir_unit() * WireGap;
@@ -429,14 +428,12 @@ struct BlockSchema : IOSchema {
         const float text_w = (type == SVGDeviceType ? SVGDevice::text_size(text) : ImGuiDevice::text_size(text)).x;
         w = 2 * XGap + max(3 * WireGap, text_w);
         h = 2 * YGap + max(3 * WireGap, float(max(in_count, out_count)) * WireGap);
+        if (inner && type == SVGDeviceType) inner->place_size(type);
     }
 
     void _place(const DeviceType type) override {
         IOSchema::_place(type);
-        if (inner) {
-            inner->place_size(type);
-            inner->place(type);
-        }
+        if (inner && type == SVGDeviceType) inner->place(type);
     }
 
     void _draw(Device &device) const override {
@@ -755,8 +752,8 @@ Schema *make_sequential(Tree t, Schema *s1, Schema *s2) {
 // A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
 // If the number of boxes inside is over the `box_complexity` threshold, add additional padding and draw output arrows.
 struct DecorateSchema : IOSchema {
-    DecorateSchema(Tree t, Schema *inner, string text, Tree parent = nullptr)
-        : IOSchema(t, inner->in_count, inner->out_count, {inner}, 0, parent), text(std::move(text)) {}
+    DecorateSchema(Tree t, Schema *inner, string text)
+        : IOSchema(t, inner->in_count, inner->out_count, {inner}, 0), text(std::move(text)) {}
 
     void _place_size(const DeviceType) override {
         w = s1()->w + 2 * (DecorateSchemaMargin + (s1()->is_top_level ? TopSchemaMargin : 0));
@@ -997,12 +994,8 @@ static bool isPureRouting(Tree t) {
 // This method is called recursively.
 // todo show tree to a given level
 static Schema *Tree2Schema(Tree t, bool allow_links) {
-    static std::stack<Tree> treeFocusHierarchy; // As we descend into the tree, keep track of ancestors for backlinks.
     if (const char *name = getTreeName(t)) {
-        Tree parent = treeFocusHierarchy.empty() ? nullptr : treeFocusHierarchy.top();
-        treeFocusHierarchy.push(t);
-        auto *schema = new DecorateSchema{t, Tree2SchemaNode(t), name, parent};
-        treeFocusHierarchy.pop();
+        auto *schema = new DecorateSchema{t, Tree2SchemaNode(t), name};
         if (schema->is_top_level && AllowSchemaLinks && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);

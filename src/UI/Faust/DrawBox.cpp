@@ -90,12 +90,6 @@ public:
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
-// todo this is from Faust, used to calculate text width for SVGs. Need to think about why.
-static inline float quantize(int n) {
-    static const int q = 3;
-    return float(q * ((n + q - 1) / q)); // NOLINT(bugprone-integer-division)
-}
-
 struct SVGDevice : Device {
     SVGDevice(string file_name, float w, float h) : file_name(std::move(file_name)) {
         static const float scale = 0.5;
@@ -204,8 +198,7 @@ struct SVGDevice : Device {
     }
 
     static ImVec2 text_size(const string &text) {
-        static const float LetterWidth = 4.3;
-        return {LetterWidth * quantize(int(text.size())), 7};
+        return ImGui::CalcTextSize(text.c_str()) * .7f; // This is calculating using a different font, with a different rendering DPI, so it's all hand-wavy.
     }
 
 private:
@@ -511,7 +504,7 @@ struct InverterSchema : BlockSchema {
         const float y1 = 0.5f + (h - 1) / 2;
         const auto tri_a = position() + ImVec2{XGap + (is_lr() ? 0 : x1), 0};
         const auto tri_b = tri_a + ImVec2{(is_lr() ? x1 - 2 * InverterRadius : 2 * InverterRadius - x1 - x), y1};
-        const auto tri_c = tri_a + ImVec2{0, h - 1};
+        const auto tri_c = tri_a + ImVec2{0, h};
         device.circle(tri_b + ImVec2{dir_unit() * InverterRadius, 0}, InverterRadius, color);
         device.triangle(tri_a, tri_b, tri_c, color);
         draw_connections(device);

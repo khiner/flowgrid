@@ -234,7 +234,6 @@ struct ImGuiDevice : Device {
 
     void rect(const ImVec4 &rect, const string &color, const string &link) override {
         const auto [x, y, w, h] = rect;
-//        drawList->AddRectFilled({x, y}, {x + w, y + h}, convert_color(color));
         draw_list->AddRectFilled(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Button));
     }
 
@@ -343,7 +342,7 @@ struct Schema {
 
     Count io_count(IO direction) const { return direction == IO_In ? in_count : out_count; };
     Count io_count(IO direction, const Count child_index) const { return child_index < children.size() ? children[child_index]->io_count(direction) : 0; };
-    virtual ImVec2 point(IO direction, const Count channel) const = 0;
+    virtual ImVec2 point(IO direction, Count channel) const = 0;
 
     void place(const DeviceType type, float new_x, float new_y, Orientation new_orientation) {
         x = new_x;
@@ -412,8 +411,8 @@ struct Schema {
     inline Schema *s2() const { return children[1]; }
 
 protected:
-    virtual void _place_size(const DeviceType type) = 0;
-    virtual void _place(const DeviceType type) = 0;
+    virtual void _place_size(DeviceType) = 0;
+    virtual void _place(DeviceType) {};
     virtual void _draw(Device &) const {}
 };
 
@@ -421,22 +420,11 @@ struct IOSchema : Schema {
     IOSchema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0, Tree parent = nullptr)
         : Schema(t, in_count, out_count, std::move(children), directDescendents, parent) {}
 
-    void _place(const DeviceType) override {
+    ImVec2 point(IO io, Count i) const override {
         const float dy = dir_unit() * WireGap;
-        for (Count i = 0; i < in_count; i++) {
-            const float in_y = mid().y - WireGap * float(in_count - 1) / 2;
-            input_points[i] = {x + (is_lr() ? 0 : w), in_y + float(i) * dy};
-        }
-        for (Count i = 0; i < out_count; i++) {
-            const float out_y = mid().y - WireGap * float(out_count - 1) / 2;
-            output_points[i] = {x + (is_lr() ? w : 0), out_y + float(i) * dy};
-        }
+        const float _y = mid().y - WireGap * float(io_count(io) - 1) / 2;
+        return {x + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w), _y + float(i) * dy};
     }
-
-    ImVec2 point(IO io, Count i) const override { return io == IO_In ? input_points[i] : output_points[i]; }
-
-    std::vector<ImVec2> input_points{in_count};
-    std::vector<ImVec2> output_points{out_count};
 };
 
 // A simple rectangular box with text and inputs/outputs.
@@ -471,9 +459,15 @@ struct BlockSchema : IOSchema {
 
     void draw_connections(Device &device) const {
         const ImVec2 d = {dir_unit() * XGap, 0};
-        for (const auto &p: input_points) device.line(p, p + d); // Input lines
-        for (const auto &p: output_points) device.line(p - d, p); // Output lines
-        for (const auto &p: input_points) device.arrow(p + d, orientation); // Input arrows
+        for (Count i = 0; i < io_count(IO_In); i++) {
+            const auto &p = point(IO_In, i);
+            device.line(p, p + d); // Input lines
+            device.arrow(p + d, orientation); // Input arrows
+        }
+        for (Count i = 0; i < io_count(IO_Out); i++) {
+            const auto &p = point(IO_Out, i);
+            device.line(p - d, p); // Output lines
+        }
     }
 
     const string text, color;
@@ -537,7 +531,6 @@ struct CutSchema : Schema {
         w = 0;
         h = 1;
     }
-    void _place(const DeviceType) override {}
 
     // A cut is represented by a small black dot.
     void _draw(Device &) const override {
@@ -681,10 +674,10 @@ struct SequentialSchema : BinarySchema {
 
     void _place(const DeviceType type) override {
         BinarySchema::_place(type);
-        connection_indices_for_direction = {};
+        channels_for_direction = {};
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
             const auto dy = child(1)->point(IO_In, i).y - child(0)->point(IO_Out, i).y;
-            connection_indices_for_direction[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up : ImGuiDir_Down].emplace_back(i);
+            channels_for_direction[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up : ImGuiDir_Down].emplace_back(i);
         }
     }
 
@@ -695,17 +688,17 @@ struct SequentialSchema : BinarySchema {
             return;
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
-        for (const auto dir: views::keys(connection_indices_for_direction)) {
-            const auto &connection_indices = connection_indices_for_direction.at(dir);
-            for (Count i = 0; i < connection_indices.size(); i++) {
-                const auto connection_index = connection_indices[i];
-                const auto from = child(0)->point(IO_Out, connection_index);
-                const auto to = child(1)->point(IO_In, connection_index);
+        for (const auto dir: views::keys(channels_for_direction)) {
+            const auto &channels = channels_for_direction.at(dir);
+            for (Count i = 0; i < channels.size(); i++) {
+                const auto channel = channels[i];
+                const auto from = child(0)->point(IO_Out, channel);
+                const auto to = child(1)->point(IO_In, channel);
                 if (dir == ImGuiDir_None) {
                     device.line(from, to); // Draw a  straight cable
                 } else {
                     const bool lr = from.x < to.x;
-                    const Count x_position = lr ? i : connection_indices.size() - i - 1;
+                    const Count x_position = lr ? i : channels.size() - i - 1;
                     const float bend_x = from.x + float(x_position) * (lr ? WireGap : -WireGap);
                     device.line(from, {bend_x, from.y});
                     device.line({bend_x, from.y}, {bend_x, to.y});
@@ -735,7 +728,7 @@ struct SequentialSchema : BinarySchema {
     }
 
 private:
-    std::map<ImGuiDir, std::vector<Count>> connection_indices_for_direction;
+    std::map<ImGuiDir, std::vector<Count>> channels_for_direction;
 };
 
 // Place and connect two diagrams in merge composition.
@@ -781,10 +774,6 @@ struct DecorateSchema : IOSchema {
     void _place(const DeviceType type) override {
         const float margin = DecorateSchemaMargin + (is_top_level ? TopSchemaMargin : 0);
         s1()->place(type, x + margin, y + margin, orientation);
-
-        const ImVec2 m = {dir_unit() * TopSchemaMargin, 0};
-        for (Count i = 0; i < in_count; i++) input_points[i] = child(0)->point(IO_In, i) - m;
-        for (Count i = 0; i < out_count; i++) output_points[i] = child(0)->point(IO_Out, i) + m;
     }
 
     void _draw(Device &device) const override {
@@ -794,9 +783,15 @@ struct DecorateSchema : IOSchema {
         const auto rect_size = size() - ImVec2{margin, margin};
         device.grouprect({rect_pos.x, rect_pos.y, rect_size.x, rect_size.y}, text);
         for (Count i = 0; i < in_count; i++) device.line(point(IO_In, i), child(0)->point(IO_In, i));
-        for (Count i = 0; i < out_count; i++) device.line(child(0)->point(IO_Out, i), point(IO_Out, i));
+        for (Count i = 0; i < out_count; i++) {
+            device.line(child(0)->point(IO_Out, i), point(IO_Out, i));
+            if (is_top_level) device.arrow(point(IO_Out, i), orientation);
+        }
+    }
 
-        if (is_top_level) for (Count i = 0; i < out_count; i++) device.arrow(point(IO_Out, i), orientation);
+    ImVec2 point(IO io, Count i) const override {
+        const float d = io == IO_In ? -1 : 1;
+        return child(0)->point(io, i) + ImVec2{dir_unit() * d * TopSchemaMargin, 0};
     }
 
 private:
@@ -819,18 +814,22 @@ struct RouteSchema : IOSchema {
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
             device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);
             // Input arrows
-            for (const auto &p: input_points) device.arrow(p + ImVec2{dir_unit() * XGap, 0}, orientation);
+            for (Count i = 0; i < io_count(IO_In); i++) device.arrow(point(IO_In, i) + ImVec2{dir_unit() * XGap, 0}, orientation);
         }
 
         // Input/output & route wires
         const auto d = ImVec2{dir_unit() * XGap, 0};
-        for (const auto &p: input_points) device.line(p, p + d);
-        for (const auto &p: output_points) device.line(p - d, p);
+        for (const IO io: {IO_In, IO_Out}) {
+            for (Count i = 0; i < io_count(io); i++) {
+                const auto &p = point(io, i);
+                device.line(io == IO_In ? p : p - d, io == IO_In ? p + d : p);
+            }
+        }
         for (Count i = 0; i < routes.size() - 1; i += 2) {
-            const unsigned int src = routes[i];
-            const unsigned int dst = routes[i + 1];
-            if (src > 0 && src <= in_count && (dst > 0) && dst <= out_count) {
-                device.line(input_points[src - 1] + d, output_points[dst - 1] - d);
+            const Count src = routes[i];
+            const Count dst = routes[i + 1];
+            if (src > 0 && src <= in_count && dst > 0 && dst <= out_count) {
+                device.line(point(IO_In, src - 1) + d, point(IO_Out, dst - 1) - d);
             }
         }
     }

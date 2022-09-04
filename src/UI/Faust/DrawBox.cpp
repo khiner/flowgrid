@@ -32,7 +32,6 @@ static const float TopSchemaMargin = 10;
 static const float DecorateSchemaMargin = 10;
 static const float DecorateSchemaLabelOffset = 5;
 static const float WireGap = 8;
-static const float LetterWidth = 4.3; //  todo derive using ImGui for ImGui rendering (but keep for SVG rendering)
 static const float XGap = 4;
 static const float YGap = 4;
 static const float InverterRadius = 1.5;
@@ -91,6 +90,12 @@ public:
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
+// todo this is from Faust, used to calculate text width for SVGs. Need to think about why.
+static inline float quantize(int n) {
+    static const int q = 3;
+    return float(q * ((n + q - 1) / q)); // NOLINT(bugprone-integer-division)
+}
+
 struct SVGDevice : Device {
     SVGDevice(string file_name, float w, float h) : file_name(std::move(file_name)) {
         static const float scale = 0.5;
@@ -142,7 +147,7 @@ struct SVGDevice : Device {
         stream << dash_line(bottom_left, bottom_right); // bottom line
         stream << dash_line(bottom_right, top_right); // right line
         stream << dash_line(top_left, {text_left, top_left.y}); // top segment before text
-        stream << dash_line({min(text_left + float(1 + text.size()) * LetterWidth * 0.75f, bottom_right.x), top_left.y}, {bottom_right.x, top_left.y}); // top segment after text
+        stream << dash_line({min(text_left + text_size(text).x, bottom_right.x), top_left.y}, {bottom_right.x, top_left.y}); // top segment after text
 
         stream << label({text_left, top_left.y}, text);
     }
@@ -196,6 +201,11 @@ struct SVGDevice : Device {
 
     static string rotate_line(const ImVec2 &start, const ImVec2 &end, float rx, float ry, float rz) {
         return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", start.x, start.y, end.x, end.y, rx, ry, rz);
+    }
+
+    static ImVec2 text_size(const string &text) {
+        static const float LetterWidth = 4.3;
+        return {LetterWidth * quantize(int(text.size())), 7};
     }
 
 private:
@@ -260,14 +270,17 @@ struct ImGuiDevice : Device {
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style, const string &link) override {
         const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
-        const auto text_size = ImGui::CalcTextSize(text.c_str());
-        const auto &text_pos = pos + p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size / 2 : text_size);
+        const auto &text_pos = pos + p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
         draw_list->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
     }
 
     void dot(const ImVec2 &p, Orientation orientation) override {
         const float offset = orientation == LeftRight ? 2 : -2;
         draw_list->AddCircle(pos + p + ImVec2{offset, offset}, 1, ImGui::GetColorU32(ImGuiCol_Border));
+    }
+
+    static ImVec2 text_size(const string &text) {
+        return ImGui::CalcTextSize(text.c_str());
     }
 
 private:
@@ -426,18 +439,14 @@ struct IOSchema : Schema {
     std::vector<ImVec2> output_points{out_count};
 };
 
-static inline float quantize(int n) {
-    static const int q = 3;
-    return float(q * ((n + q - 1) / q)); // NOLINT(bugprone-integer-division)
-}
-
 // A simple rectangular box with text and inputs/outputs.
 struct BlockSchema : IOSchema {
     BlockSchema(Tree t, Count in_count, Count out_count, string text, string color, Schema *inner = nullptr)
         : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(std::move(color)), inner(inner) {}
 
-    void _place_size(const DeviceType) override {
-        w = 2 * XGap + max(3 * WireGap, LetterWidth * quantize(int(text.size())));
+    void _place_size(const DeviceType type) override {
+        const float text_w = (type == SVGDeviceType ? SVGDevice::text_size(text) : ImGuiDevice::text_size(text)).x;
+        w = 2 * XGap + max(3 * WireGap, text_w);
         h = 2 * YGap + max(3 * WireGap, float(max(in_count, out_count)) * WireGap);
     }
 

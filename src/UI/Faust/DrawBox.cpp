@@ -233,7 +233,6 @@ struct ImGuiDevice : Device {
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width] = style;
         draw_list->AddRectFilled(pos + rect.Min, pos + rect.Max, ImGui::GetColorU32(ImGuiCol_Button));
-//        bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
     }
 
     void grouprect(const ImRect &rect, const string &text) override {
@@ -381,6 +380,9 @@ protected:
     virtual void _draw(Device &) const {}
 };
 
+Schema *root_schema; // This diagram is drawn every frame if present.
+std::stack<Schema *> focused_schema_stack;
+
 static const char *getTreeName(Tree t) {
     Tree name;
     return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
@@ -441,8 +443,13 @@ struct BlockSchema : IOSchema {
             // Draw a small point that indicates the first input (like an integrated circuits).
             device.dot(is_lr() ? rect.Min : rect.Max, orientation);
         } else {
-            device.rect(rect, {.fill_color=color});
-            device.text(mid(), text, {"#ffffff"});
+            const auto &cursor_pos = ImGui::GetCursorPos();
+            ImGui::SetCursorPos(rect.Min);
+            if (!inner) ImGui::BeginDisabled();
+            // TODO match color with diagram style color
+            if (ImGui::Button(text.c_str(), rect.GetSize())) focused_schema_stack.push(inner);
+            if (!inner) ImGui::EndDisabled();
+            ImGui::SetCursorPos(cursor_pos);
         }
 
         draw_connections(device);
@@ -1009,17 +1016,12 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
     return node; // normal case
 }
 
-Schema *root_schema; // This diagram is drawn every frame if present.
-std::stack<Schema *> focused_schema_stack;
-
 void on_box_change(Box box) {
     IsTreePureRouting.clear();
     focused_schema_stack = {};
     if (box) {
         // Render ImGui diagram
         root_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
-        root_schema->place_size(ImGuiDeviceType);
-        root_schema->place(ImGuiDeviceType);
         focused_schema_stack.push(root_schema);
     } else {
         root_schema = nullptr;
@@ -1049,9 +1051,11 @@ void Audio::Faust::Diagram::draw() const {
     }
     if (focused_schema_stack.empty()) return;
 
-    const auto *focused_schema = focused_schema_stack.top();
-    ImGui::BeginChild("Faust diagram inner", {focused_schema->w, focused_schema->h}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    auto *focused = focused_schema_stack.top();
+    ImGui::BeginChild("Faust diagram inner", {focused->w, focused->h}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGuiDevice device;
-    focused_schema->draw(device);
+    focused->place_size(ImGuiDeviceType);
+    focused->place(ImGuiDeviceType);
+    focused->draw(device);
     ImGui::EndChild();
 }

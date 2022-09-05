@@ -359,8 +359,8 @@ struct Schema {
     inline Schema *s2() const { return children[1]; }
 
     inline static float WireGap() { return s.style.flowgrid.DiagramWireGap; }
-    inline static float XGap() { return s.style.flowgrid.DiagramXGap; }
-    inline static float YGap() { return s.style.flowgrid.DiagramYGap; }
+    inline static float XGap() { return s.style.flowgrid.DiagramGap.value.x; }
+    inline static float YGap() { return s.style.flowgrid.DiagramGap.value.y; }
 
 protected:
     virtual void _place_size(DeviceType) = 0;

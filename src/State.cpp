@@ -912,6 +912,19 @@ void Style::ImPlotStyleMember::draw() const {
 
 void FlowGridStyle::draw() const {
     FlashDurationSec.Draw("%.3f s");
+    Separator();
+    {
+        DiagramScaled.Draw();
+        DiagramSequentialConnectionZigzag.Draw();
+        DiagramDrawRouteFrame.Draw();
+        DiagramTopLevelMargin.Draw();
+        DiagramDecorateMargin.Draw();
+        DiagramDecorateLabelOffset.Draw();
+        DiagramBinaryHorizontalGapRatio.Draw();
+        DiagramWireGap.Draw();
+        DiagramGap.Draw();
+        DiagramInverterRadius.Draw();
+    }
 
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});

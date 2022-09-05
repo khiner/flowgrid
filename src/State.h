@@ -427,14 +427,13 @@ struct FlowGridStyle : StateMember, Drawable {
     Bool DiagramScaled{path, "DiagramScaled", false}; // Draw scaled SVG files
     Bool DiagramSequentialConnectionZigzag{path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
     Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
-    Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20};
-    Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20};
-    Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10};
-    Float DiagramBinaryHorizontalGapRatio{path, "DiagramBinaryHorizontalGapRatio", 0.25};
-    Float DiagramWireGap{path, "DiagramWireGap", 16};
-    Float DiagramXGap{path, "DiagramXGap", 8};
-    Float DiagramYGap{path, "DiagramYGap", 8};
-    Float DiagramInverterRadius{path, "DiagramInverterRadius", 3};
+    Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20, 0, 40};
+    Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20, 0, 40};
+    Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10, 0, 20};
+    Float DiagramBinaryHorizontalGapRatio{path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
+    Float DiagramWireGap{path, "DiagramWireGap", 16, 10, 20};
+    Vec2 DiagramGap{path, "DiagramGap", ImVec2(8, 8), 0, 20};
+    Float DiagramInverterRadius{path, "DiagramInverterRadius", 3, 1, 5};
 
     void StyleColorsDark() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
@@ -723,7 +722,7 @@ JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
 JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramScaled, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLabelOffset,
-    DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramXGap, DiagramYGap, DiagramInverterRadius)
+    DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

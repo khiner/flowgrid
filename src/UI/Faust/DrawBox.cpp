@@ -60,7 +60,7 @@ public:
     virtual DeviceType type() = 0;
     virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
     virtual void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) = 0; // A labeled grouping
-    virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const ImVec4 &color) = 0;
+    virtual void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
@@ -121,8 +121,8 @@ struct SVGDevice : Device {
         stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="13" fill="{}" dominant-baseline="middle">{}</text>)", text_left, top_left.y, to_string(color), xml_sanitize(text));
     }
 
-    void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const ImVec4 &color) override {
-        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(color), a.x, a.y, b.x, b.y, c.x, c.y);
+    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
+        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
 
     void circle(const ImVec2 &pos, float radius, const ImVec4 &color) override {
@@ -233,8 +233,8 @@ struct ImGuiDevice : Device {
 
     void arrow(const ImVec2 &p, Orientation orientation) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        static const ImVec2 d{6, 2};
-        ImGui::RenderArrowPointingAt(draw_list, pos + p, d, orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
+        const auto &arrow_size = s.style.flowgrid.DiagramArrowSize / 2;
+        ImGui::RenderArrowPointingAt(draw_list, pos + ImVec2{p.x, p.y + 0.5f}, arrow_size, orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
@@ -767,7 +767,7 @@ struct DecorateSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        const float m = 2 * (is_top_level ? s.style.flowgrid.DiagramTopLevelMargin : 0) + s.style.flowgrid.DiagramDecorateMargin;
+        const float m = 2.0f * (is_top_level ? s.style.flowgrid.DiagramTopLevelMargin : 0.0f) + s.style.flowgrid.DiagramDecorateMargin;
         device.grouprect({position() + ImVec2{m, m} / 2, position() + size() - ImVec2{m, m} / 2}, text, s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke]);
         for (const IO io: {IO_In, IO_Out}) {
             for (Count i = 0; i < io_count(io); i++) {

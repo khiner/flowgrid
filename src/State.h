@@ -429,10 +429,11 @@ struct FlowGridStyle : StateMember, Drawable {
     Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
     Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20, 0, 40};
     Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20, 0, 40};
-    Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10, 0, 20};
+    Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10, 2, 30};
     Float DiagramBinaryHorizontalGapRatio{path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
     Float DiagramWireGap{path, "DiagramWireGap", 16, 10, 20};
     Vec2 DiagramGap{path, "DiagramGap", ImVec2(8, 8), 0, 20};
+    Vec2 DiagramArrowSize{path, "DiagramArrowSize", ImVec2(6, 2), 1, 20};
     Float DiagramInverterRadius{path, "DiagramInverterRadius", 3, 1, 5};
 
     void StyleColorsDark() {
@@ -461,7 +462,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
         Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
         Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-        Colors[FlowGridCol_DiagramInverter] = {1, 1, 1, 1};
+        Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
     }
 
     static const char *GetColorName(FlowGridCol idx) {
@@ -722,7 +723,7 @@ JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
 JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramScaled, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLabelOffset,
-    DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramInverterRadius)
+    DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramArrowSize, DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

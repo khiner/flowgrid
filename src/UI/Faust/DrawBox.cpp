@@ -78,14 +78,13 @@ class Device {
 public:
     virtual ~Device() = default;
     virtual DeviceType type() = 0;
-    virtual void rect(const ImVec4 &rect, const string &color, const string &link) = 0;
-    virtual void rect(const ImVec4 &rect, const RectStyle &style) = 0;
-    virtual void grouprect(const ImVec4 &rect, const string &text) = 0; // A labeled grouping
+    virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
+    virtual void grouprect(const ImRect &rect, const string &text) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style = {}, const string &link = "") = 0;
+    virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
     virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
 };
 
@@ -113,26 +112,26 @@ struct SVGDevice : Device {
         return replaced_name;
     }
 
-    void rect(const ImVec4 &r, const string &color, const string &link) override {
+    void rect(const ImRect &rect, const RectStyle &style) override {
+        const auto &[fill_color, stroke_color, stroke_width] = style;
+        stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:{};stroke-width={};fill:{};"/>)",
+            rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), stroke_color, stroke_width, fill_color);
+    }
+
+    // Only SVG device has a rect-with-link method
+    void rect(const ImRect &r, const string &color, const string &link) {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link));
         rect(r, {.fill_color = color});
         if (!link.empty()) stream << "</a>";
     }
 
-    void rect(const ImVec4 &rect, const RectStyle &style) override {
-        const auto &[fill_color, stroke_color, stroke_width] = style;
-        const auto [x, y, w, h] = rect;
-        stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:{};stroke-width={};fill:{};"/>)", x, y, w, h, stroke_color, stroke_width, fill_color);
-    }
-
     // SVG implements a group rect as a dashed rectangle with a label on the top left.
-    void grouprect(const ImVec4 &rect, const string &text) override {
-        const auto [x, y, w, h] = rect;
-        const auto top_left = ImVec2{x, y};
-        const auto top_right = top_left + ImVec2{w, 0};
-        const auto bottom_left = top_left + ImVec2{0, h};
-        const auto bottom_right = bottom_left + ImVec2{w, 0};
-        const float text_left = x + DecorateSchemaLabelOffset;
+    void grouprect(const ImRect &rect, const string &text) override {
+        const auto top_left = rect.Min;
+        const auto bottom_right = rect.Max;
+        const auto top_right = top_left + ImVec2{rect.GetWidth(), 0};
+        const auto bottom_left = bottom_right - ImVec2{rect.GetWidth(), 0};
+        const float text_left = top_left.x + DecorateSchemaLabelOffset;
 
         stream << dash_line(top_left, bottom_left); // left line
         stream << dash_line(bottom_left, bottom_right); // bottom line
@@ -165,15 +164,22 @@ struct SVGDevice : Device {
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:{}; stroke-width:0.5;"/>)", start.x, start.y, end.x, end.y, line_cap);
     }
 
-    void text(const ImVec2 &pos, const string &text, const TextStyle &style, const string &link) override {
+    void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         auto &text_stream = top ? end_stream : stream;
-        if (!link.empty()) text_stream << format(R"(<a href="{}">)", xml_sanitize(link));
         text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
             pos.x - padding_right, pos.y - padding_bottom, font_style_formatted, font_weight, font_size, anchor, color, xml_sanitize(text));
+    }
+
+    // Only SVG device has a text-with-link method
+    void text(const ImVec2 &pos, const string &str, const TextStyle &style, const string &link) {
+        const bool top = style.top;
+        auto &text_stream = top ? end_stream : stream;
+        if (!link.empty()) text_stream << format(R"(<a href="{}">)", xml_sanitize(link));
+        text(pos, str, style);
         if (!link.empty()) text_stream << "</a>";
     }
 
@@ -224,21 +230,15 @@ struct ImGuiDevice : Device {
 
     DeviceType type() override { return ImGuiDeviceType; }
 
-    void rect(const ImVec4 &r, const string &color, const string &link) override {
-        const auto [x, y, w, h] = r;
-        draw_list->AddRectFilled(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Button));
+    void rect(const ImRect &rect, const RectStyle &style) override {
+        const auto &[fill_color, stroke_color, stroke_width] = style;
+        draw_list->AddRectFilled(pos + rect.Min, pos + rect.Max, ImGui::GetColorU32(ImGuiCol_Button));
+//        bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
     }
 
-    void rect(const ImVec4 &rect, const RectStyle &style) override {
-//        const auto &[fill_color, stroke_color, stroke_width] = style;
-//        const auto [x, y, w, h] = rect;
-//        draw_list->AddRectFilled(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Button));
-    }
-
-    void grouprect(const ImVec4 &rect, const string &text) override {
-        const auto [x, y, w, h] = rect;
-        const ImVec2 text_pos = {x + DecorateSchemaLabelOffset, y - ImGui::GetFontSize() / 2};
-        draw_list->AddRect(pos + ImVec2{x, y}, pos + ImVec2{x + w, y + h}, ImGui::GetColorU32(ImGuiCol_Border));
+    void grouprect(const ImRect &rect, const string &text) override {
+        const ImVec2 text_pos = {rect.Min.x + DecorateSchemaLabelOffset, rect.Min.y - ImGui::GetFontSize() / 2};
+        draw_list->AddRect(pos + rect.Min, pos + rect.Max, ImGui::GetColorU32(ImGuiCol_Border));
         draw_list->AddText(pos + text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
     }
 
@@ -259,7 +259,7 @@ struct ImGuiDevice : Device {
         draw_list->AddLine(pos + start, pos + end, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
-    void text(const ImVec2 &p, const string &text, const TextStyle &style, const string &link) override {
+    void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
         const auto &text_pos = pos + p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
         draw_list->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
@@ -431,23 +431,31 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        if (inner && device.type() == SVGDeviceType) write_svg(inner, dynamic_cast<SVGDevice &>(device).directory);
-        const string &link = inner ? svgFileName(tree) : "";
-        device.rect(xywh() + ImVec4{XGap, YGap, -2 * XGap, -2 * YGap}, color, link);
-        device.text(mid(), text, {"#ffffff"}, link);
+        const ImRect &rect = {position() + ImVec2{XGap, YGap}, position() + ImVec2{w, h} - ImVec2{XGap, YGap}};
+        if (device.type() == SVGDeviceType) {
+            auto &svg_device = dynamic_cast<SVGDevice &>(device);
+            if (inner) write_svg(inner, svg_device.directory);
+            const string &link = inner ? svgFileName(tree) : "";
+            svg_device.rect(rect, color, link);
+            svg_device.text(mid(), text, {"#ffffff"}, link);
+            // Draw a small point that indicates the first input (like an integrated circuits).
+            device.dot(is_lr() ? rect.Min : rect.Max, orientation);
+        } else {
+            device.rect(rect, {.fill_color=color});
+            device.text(mid(), text, {"#ffffff"});
+        }
 
-        // Draw a small point that indicates the first input (like an integrated circuits).
-        device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);
         draw_connections(device);
     }
 
     void draw_connections(Device &device) const {
         const ImVec2 d = {dir_unit() * XGap, 0};
         for (const IO io: {IO_In, IO_Out}) {
+            const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);
-                device.line(io == IO_In ? p : p - d, io == IO_In ? p + d : p);
-                if (io == IO_In) device.arrow(p + d, orientation); // Input arrows
+                device.line(in ? p : p - d, in ? p + d : p);
+                if (in) device.arrow(p + d, orientation); // Input arrows
             }
         }
     }
@@ -762,9 +770,7 @@ struct DecorateSchema : IOSchema {
     void _draw(Device &device) const override {
         const float top_level_margin = is_top_level ? TopSchemaMargin : 0;
         const float margin = 2 * top_level_margin + DecorateSchemaMargin;
-        const auto rect_pos = position() + ImVec2{margin, margin} / 2;
-        const auto rect_size = size() - ImVec2{margin, margin};
-        device.grouprect({rect_pos.x, rect_pos.y, rect_size.x, rect_size.y}, text);
+        device.grouprect({position() + ImVec2{margin, margin} / 2, position() + size() - ImVec2{margin, margin} / 2}, text);
         for (const IO io: {IO_In, IO_Out}) {
             for (Count i = 0; i < io_count(io); i++) {
                 device.line(point(io, i), child(0)->point(io, i));
@@ -793,9 +799,10 @@ struct RouteSchema : IOSchema {
 
     void _draw(Device &device) const override {
         if (DrawRouteFrame) {
-            device.rect(xywh() + ImVec4{XGap, YGap, -2 * XGap, -2 * YGap}, color, "");
+            const ImRect &rect = {position() + ImVec2{XGap, YGap}, position() + ImVec2{w, h} - ImVec2{XGap, YGap} * 2};
+            device.rect(rect, {.fill_color=color});
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
-            device.dot(position() + (is_lr() ? ImVec2{XGap, YGap} : ImVec2{w - XGap, h - YGap}), orientation);
+            device.dot(is_lr() ? rect.Min : rect.Max, orientation);
             // Input arrows
             for (Count i = 0; i < io_count(IO_In); i++) device.arrow(point(IO_In, i) + ImVec2{dir_unit() * XGap, 0}, orientation);
         }
@@ -803,9 +810,10 @@ struct RouteSchema : IOSchema {
         // Input/output & route wires
         const auto d = ImVec2{dir_unit() * XGap, 0};
         for (const IO io: {IO_In, IO_Out}) {
+            const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);
-                device.line(io == IO_In ? p : p - d, io == IO_In ? p + d : p);
+                device.line(in ? p : p - d, in ? p + d : p);
             }
         }
         for (Count i = 0; i < routes.size() - 1; i += 2) {
@@ -1001,35 +1009,36 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
     return node; // normal case
 }
 
-Box active_box;
-Schema *active_schema; // This diagram is drawn every frame if present.
+Schema *root_schema; // This diagram is drawn every frame if present.
+std::stack<Schema *> focused_schema_stack;
 
 void on_box_change(Box box) {
     IsTreePureRouting.clear();
+    focused_schema_stack = {};
     if (box) {
-        active_box = box;
         // Render ImGui diagram
-        active_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
-        active_schema->place_size(ImGuiDeviceType);
-        active_schema->place(ImGuiDeviceType);
+        root_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
+        root_schema->place_size(ImGuiDeviceType);
+        root_schema->place(ImGuiDeviceType);
+        focused_schema_stack.push(root_schema);
     } else {
-        active_schema = nullptr;
+        root_schema = nullptr;
     }
 }
 
 void save_box_svg(const string &path) {
-    if (!active_box) return;
+    if (!root_schema) return;
     // Render SVG diagram(s)
     fs::remove_all(path);
     fs::create_directory(path);
-    auto *schema = Tree2Schema(active_box, false); // Ensure top-level is not compressed into a link.
+    auto *schema = Tree2Schema(root_schema->tree, false); // Ensure top-level is not compressed into a link.
     schema->place_size(SVGDeviceType);
     schema->place(SVGDeviceType);
     write_svg(schema, path);
 }
 
 void Audio::Faust::Diagram::draw() const {
-    if (!active_schema) return;
+    if (!root_schema) return;
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
@@ -1038,8 +1047,11 @@ void Audio::Faust::Diagram::draw() const {
         }
         ImGui::EndMenuBar();
     }
-    ImGui::BeginChild("Faust diagram", {active_schema->w, active_schema->h}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    if (focused_schema_stack.empty()) return;
+
+    const auto *focused_schema = focused_schema_stack.top();
+    ImGui::BeginChild("Faust diagram inner", {focused_schema->w, focused_schema->h}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGuiDevice device;
-    active_schema->draw(device);
+    focused_schema->draw(device);
     ImGui::EndChild();
 }

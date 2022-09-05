@@ -71,7 +71,7 @@ public:
     virtual ~Device() = default;
     virtual DeviceType type() = 0;
     virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
-    virtual void grouprect(const ImRect &rect, const string &text) = 0; // A labeled grouping
+    virtual void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const ImVec4 &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
@@ -118,20 +118,19 @@ struct SVGDevice : Device {
     }
 
     // SVG implements a group rect as a dashed rectangle with a label on the top left.
-    void grouprect(const ImRect &rect, const string &text) override {
+    void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) override {
         const auto top_left = rect.Min;
         const auto bottom_right = rect.Max;
         const auto top_right = top_left + ImVec2{rect.GetWidth(), 0};
         const auto bottom_left = bottom_right - ImVec2{rect.GetWidth(), 0};
         const float text_left = top_left.x + DecorateSchemaLabelOffset;
 
-        stream << dash_line(top_left, bottom_left); // left line
-        stream << dash_line(bottom_left, bottom_right); // bottom line
-        stream << dash_line(bottom_right, top_right); // right line
-        stream << dash_line(top_left, {text_left, top_left.y}); // top segment before text
-        stream << dash_line({min(text_left + text_size(text).x, bottom_right.x), top_left.y}, {bottom_right.x, top_left.y}); // top segment after text
-
-        stream << label({text_left, top_left.y}, text);
+        stream << dash_line(top_left, bottom_left, color); // left line
+        stream << dash_line(bottom_left, bottom_right, color); // bottom line
+        stream << dash_line(bottom_right, top_right, color); // right line
+        stream << dash_line(top_left, {text_left, top_left.y}, color); // top segment before text
+        stream << dash_line({min(text_left + text_size(text).x, bottom_right.x), top_left.y}, {bottom_right.x, top_left.y}, color); // top segment after text
+        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="13" fill="{}" dominant-baseline="middle">{}</text>)", text_left, top_left.y, to_string(color), xml_sanitize(text));
     }
 
     void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const ImVec4 &color) override {
@@ -152,8 +151,9 @@ struct SVGDevice : Device {
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
+        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
-        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:{}; stroke-width:0.5;"/>)", start.x, start.y, end.x, end.y, line_cap);
+        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:0.5;"/>)", start.x, start.y, end.x, end.y, to_string(color), line_cap);
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
@@ -180,12 +180,8 @@ struct SVGDevice : Device {
         stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x + offset, pos.y + offset);
     }
 
-    static string label(const ImVec2 &pos, const string &name) {
-        return format(R"(<text x="{}" y="{}" font-family="Arial" font-size="13" dominant-baseline="middle">{}</text>)", pos.x, pos.y, xml_sanitize(name));
-    }
-
-    static string dash_line(const ImVec2 &start, const ImVec2 &end) {
-        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)", start.x, start.y, end.x, end.y);
+    static string dash_line(const ImVec2 &start, const ImVec2 &end, const ImVec4 &color) {
+        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: {}; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)", start.x, start.y, end.x, end.y, to_string(color));
     }
 
     static string rotate_line(const ImVec2 &start, const ImVec2 &end, float rx, float ry, float rz) {
@@ -220,36 +216,48 @@ struct ImGuiDevice : Device {
 
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width] = style;
-        draw_list->AddRectFilled(pos + rect.Min, pos + rect.Max, ImGui::GetColorU32(ImGuiCol_Button));
+        draw_list->AddRectFilled(pos + rect.Min, pos + rect.Max, ImGui::ColorConvertFloat4ToU32(fill_color));
     }
 
-    void grouprect(const ImRect &rect, const string &text) override {
-        const ImVec2 text_pos = {rect.Min.x + DecorateSchemaLabelOffset, rect.Min.y - ImGui::GetFontSize() / 2};
-        draw_list->AddRect(pos + rect.Min, pos + rect.Max, ImGui::GetColorU32(ImGuiCol_Border));
-        draw_list->AddText(pos + text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
+    void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) override {
+        const auto &color_u32 = ImGui::ColorConvertFloat4ToU32(color);
+        const auto top_left = pos + rect.Min;
+        const auto bottom_right = pos + rect.Max;
+        const auto top_right = top_left + ImVec2{rect.GetWidth(), 0};
+        const auto bottom_left = bottom_right - ImVec2{rect.GetWidth(), 0};
+        const float text_left = top_left.x + DecorateSchemaLabelOffset;
+
+        draw_list->AddLine(top_left, bottom_left, color_u32); // left line
+        draw_list->AddLine(bottom_left, bottom_right, color_u32); // bottom line
+        draw_list->AddLine(bottom_right, top_right, color_u32); // right line
+        draw_list->AddLine(top_left, {text_left - 2, top_left.y}, color_u32); // top segment before text
+        draw_list->AddLine({min(text_left + text_size(text).x + 2, bottom_right.x), top_left.y}, {bottom_right.x, top_left.y}, color_u32); // top segment after text
+        draw_list->AddText(ImVec2{text_left, top_left.y - ImGui::GetFontSize() / 2}, color_u32, text.c_str());
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
-        draw_list->AddTriangle(pos + p1, pos + p2, pos + p3, ImGui::GetColorU32(ImGuiCol_Border));
+        draw_list->AddTriangle(pos + p1, pos + p2, pos + p3, ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void circle(const ImVec2 &p, float radius, const ImVec4 &color) override {
-        draw_list->AddCircle(pos + p, radius, ImGui::GetColorU32(ImGuiCol_Border));
+        draw_list->AddCircle(pos + p, radius, ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void arrow(const ImVec2 &p, Orientation orientation) override {
+        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
         static const ImVec2 d{6, 2};
-        ImGui::RenderArrowPointingAt(draw_list, pos + p, d, orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::GetColorU32(ImGuiCol_Border));
+        ImGui::RenderArrowPointingAt(draw_list, pos + p, d, orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
-        draw_list->AddLine(pos + start, pos + end, ImGui::GetColorU32(ImGuiCol_Border));
+        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
+        draw_list->AddLine(pos + start, pos + end, ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
         const auto &text_pos = pos + p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
-        draw_list->AddText(text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
+        draw_list->AddText(text_pos, ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
 
     void dot(const ImVec2 &p, Orientation orientation) override {
@@ -388,7 +396,7 @@ static string svgFileName(Tree t) {
 
 void write_svg(Schema *schema, const fs::path &path) {
     SVGDevice device(path, svgFileName(schema->tree), schema->w, schema->h);
-    device.rect({schema->x, schema->y, schema->w - 1, schema->h - 1}, {});
+    device.rect({schema->x, schema->y, schema->w - 1, schema->h - 1}, {.fill_color=s.style.flowgrid.Colors[FlowGridCol_DiagramBg]});
     schema->draw(device);
 }
 
@@ -433,10 +441,11 @@ struct BlockSchema : IOSchema {
         } else {
             const auto &cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
+            ImGui::PushStyleColor(ImGuiCol_Button, color); // todo base ButtonHovered/ButtonActive color on this too?
             if (!inner) ImGui::BeginDisabled();
-            // TODO match color with diagram style color
             if (ImGui::Button(text.c_str(), rect.GetSize())) focused_schema_stack.push(inner);
             if (!inner) ImGui::EndDisabled();
+            ImGui::PopStyleColor();
             ImGui::SetCursorPos(cursor_pos);
         }
 
@@ -766,7 +775,7 @@ struct DecorateSchema : IOSchema {
     void _draw(Device &device) const override {
         const float top_level_margin = is_top_level ? TopSchemaMargin : 0;
         const float margin = 2 * top_level_margin + DecorateSchemaMargin;
-        device.grouprect({position() + ImVec2{margin, margin} / 2, position() + size() - ImVec2{margin, margin} / 2}, text);
+        device.grouprect({position() + ImVec2{margin, margin} / 2, position() + size() - ImVec2{margin, margin} / 2}, text, s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke]);
         for (const IO io: {IO_In, IO_Out}) {
             for (Count i = 0; i < io_count(io); i++) {
                 device.line(point(io, i), child(0)->point(io, i));
@@ -1039,6 +1048,9 @@ void Audio::Faust::Diagram::draw() const {
     }
     if (focused_schema_stack.empty()) return;
 
+    ImGui::GetWindowDrawList()->AddRectFilled(
+        ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
+        ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
     auto *focused = focused_schema_stack.top();
     ImGui::BeginChild("Faust diagram inner", {focused->w, focused->h}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGuiDevice device;

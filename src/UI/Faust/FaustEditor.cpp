@@ -413,7 +413,7 @@ void Audio::Faust::Editor::draw() const {
 }
 
 void Audio::Faust::Log::draw() const {
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+    ImGui::PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
     if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
     ImGui::PopStyleColor();
 }

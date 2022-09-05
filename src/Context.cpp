@@ -290,6 +290,7 @@ void Context::on_action(const Action &action) {
         [&](const save_default_project &) { save_project(DefaultProjectPath); },
         [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
         [&](const save_faust_file &a) { FileIO::write(a.path, s.audio.faust.code); },
+        [&](const save_faust_svg_file &a) { save_box_svg(a.path); },
 
         // `diff_index`-changing actions:
         [&](const undo &) { increment_diff_index(-1); },

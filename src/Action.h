@@ -22,11 +22,8 @@
      An `Action` is a `std::variant`, which can hold any type, and thus must be large enough to hold its largest type.
 */
 
-/**
- * From [lager](https://github.com/arximboldi/lager/blob/c9d8b7d3c7dc7138913757d1624ab705866d791d/lager/util.hpp#L27-L49)
- * Utility to make a variant visitor out of lambdas, using the *overloaded pattern* as described
- * [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
- */
+// Utility to make a variant visitor out of lambdas, using the "overloaded pattern" described
+// [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
 template<class... Ts>
 struct visitor : Ts ... {
     using Ts::operator()...;
@@ -66,8 +63,10 @@ struct set_flowgrid_color_style { int id; };
 
 struct show_open_faust_file_dialog {};
 struct show_save_faust_file_dialog {};
+struct show_save_faust_svg_file_dialog {};
 struct save_faust_file { string path; };
 struct open_faust_file { string path; };
+struct save_faust_svg_file { string path; };
 
 EmptyJsonType(undo)
 EmptyJsonType(redo)
@@ -81,6 +80,7 @@ EmptyJsonType(show_save_project_dialog)
 EmptyJsonType(close_application)
 EmptyJsonType(show_open_faust_file_dialog)
 EmptyJsonType(show_save_faust_file_dialog)
+EmptyJsonType(show_save_faust_svg_file_dialog)
 
 JsonType(set_diff_index, diff_index)
 JsonType(open_project, path)
@@ -94,6 +94,7 @@ JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)
 JsonType(save_faust_file, path)
 JsonType(open_faust_file, path)
+JsonType(save_faust_svg_file, path)
 
 }
 
@@ -114,8 +115,8 @@ using Action = std::variant<
 
     set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
 
-    open_faust_file, save_faust_file,
-    show_open_faust_file_dialog, show_save_faust_file_dialog
+    show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
+    open_faust_file, save_faust_file, save_faust_svg_file
 >;
 
 using Gesture = std::vector<Action>;
@@ -147,57 +148,60 @@ constexpr size_t id = mp_find<Action, T>::value;
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
 static const std::map<ID, string> name_for_id{
-    {id<undo>,                     ActionName(undo)},
-    {id<redo>,                     ActionName(redo)},
-    {id<set_diff_index>,           ActionName(set_diff_index)},
+    {id<undo>, ActionName(undo)},
+    {id<redo>, ActionName(redo)},
+    {id<set_diff_index>, ActionName(set_diff_index)},
 
-    {id<open_project>,             ActionName(open_project)},
-    {id<open_empty_project>,       ActionName(open_empty_project)},
-    {id<open_default_project>,     ActionName(open_default_project)},
+    {id<open_project>, ActionName(open_project)},
+    {id<open_empty_project>, ActionName(open_empty_project)},
+    {id<open_default_project>, ActionName(open_default_project)},
     {id<show_open_project_dialog>, ActionName(show_open_project_dialog)},
 
-    {id<open_file_dialog>,         ActionName(open_file_dialog)},
-    {id<close_file_dialog>,        ActionName(close_file_dialog)},
+    {id<open_file_dialog>, ActionName(open_file_dialog)},
+    {id<close_file_dialog>, ActionName(close_file_dialog)},
 
-    {id<save_project>,             ActionName(save_project)},
-    {id<save_default_project>,     ActionName(save_default_project)},
-    {id<save_current_project>,     ActionName(save_current_project)},
+    {id<save_project>, ActionName(save_project)},
+    {id<save_default_project>, ActionName(save_default_project)},
+    {id<save_current_project>, ActionName(save_current_project)},
     {id<show_save_project_dialog>, ActionName(show_save_project_dialog)},
 
-    {id<close_application>,        ActionName(close_application)},
+    {id<close_application>, ActionName(close_application)},
 
-    {id<set_value>,                ActionName(set_value)},
-    {id<toggle_value>,             ActionName(toggle_value)},
+    {id<set_value>, ActionName(set_value)},
+    {id<toggle_value>, ActionName(toggle_value)},
 //    {id<patch_value>,              ActionName(patch_value)},
 
-    {id<set_imgui_color_style>,       "Set ImGui color style"},
-    {id<set_implot_color_style>,      "Set ImPlot color style"},
-    {id<set_flowgrid_color_style>,    "Set FlowGrid color style"},
+    {id<set_imgui_color_style>, "Set ImGui color style"},
+    {id<set_implot_color_style>, "Set ImPlot color style"},
+    {id<set_flowgrid_color_style>, "Set FlowGrid color style"},
 
     {id<show_open_faust_file_dialog>, "Show open Faust file dialog"},
     {id<show_save_faust_file_dialog>, "Show save Faust file dialog"},
-    {id<open_faust_file>,             "Open Faust file"},
-    {id<save_faust_file>,             "Save Faust file"},
+    {id<show_save_faust_svg_file_dialog>, "Show save Faust SVG file dialog"},
+    {id<open_faust_file>, "Open Faust file"},
+    {id<save_faust_file>, "Save Faust file"},
+    {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
 // An action's menu label is its name, except for a few exceptions.
 static const std::map<ID, string> menu_label_for_id{
-    {id<show_open_project_dialog>,    "Open project"},
-    {id<open_empty_project>,          "New project"},
-    {id<save_current_project>,        "Save project"},
-    {id<show_save_project_dialog>,    "Save project as..."},
+    {id<show_open_project_dialog>, "Open project"},
+    {id<open_empty_project>, "New project"},
+    {id<save_current_project>, "Save project"},
+    {id<show_save_project_dialog>, "Save project as..."},
     {id<show_open_faust_file_dialog>, "Open DSP file"},
     {id<show_save_faust_file_dialog>, "Save DSP as..."},
+    {id<show_save_faust_svg_file_dialog>, "Export SVG"},
 };
 
 const std::map<ID, string> shortcut_for_id = {
-    {id<undo>,                     "cmd+z"},
-    {id<redo>,                     "shift+cmd+z"},
-    {id<open_empty_project>,       "cmd+n"},
+    {id<undo>, "cmd+z"},
+    {id<redo>, "shift+cmd+z"},
+    {id<open_empty_project>, "cmd+n"},
     {id<show_open_project_dialog>, "cmd+o"},
-    {id<save_current_project>,     "cmd+s"},
-    {id<open_default_project>,     "shift+cmd+o"},
-    {id<save_default_project>,     "shift+cmd+s"},
+    {id<save_current_project>, "cmd+s"},
+    {id<open_default_project>, "shift+cmd+o"},
+    {id<save_default_project>, "shift+cmd+s"},
 };
 
 static constexpr ID get_id(const Action &action) { return action.index(); }

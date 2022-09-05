@@ -320,6 +320,7 @@ void State::update(const Action &action) {
         [&](const show_save_project_dialog &) { file.dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
         [&](const show_open_faust_file_dialog &) { file.dialog = {"Choose file", FaustDspFileExtension, "."}; },
         [&](const show_save_faust_file_dialog &) { file.dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_save_faust_svg_file_dialog &) { file.dialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
 
         [&](const open_file_dialog &a) {
             file.dialog = a.dialog;
@@ -1164,8 +1165,7 @@ void File::Dialog::draw() const {
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
     file_dialog->OpenDialog(file_dialog_key, title, filters.c_str(), file_path, default_file_name, max_num_selections, nullptr, flags);
 
-    // TODO need to get custom vecs with math going
-    const ImVec2 min_dialog_size = {GetMainViewport()->Size.x / 2.0f, GetMainViewport()->Size.y / 2.0f};
+    const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
     if (file_dialog->Display(file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
         q(close_file_dialog{}, true);
         if (file_dialog->IsOk()) {
@@ -1182,6 +1182,9 @@ void File::Dialog::draw() const {
             } else if (extension == FaustDspFileExtension) {
                 if (save_mode) q(save_faust_file{file_path});
                 else q(open_faust_file{file_path});
+            } else {
+                // todo need a way to tell it's the svg-save case
+                if (save_mode) q(save_faust_svg_file{file_path});
             }
         }
     }

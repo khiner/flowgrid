@@ -17,24 +17,23 @@
 #include "faust/dsp/libfaust-signal.h"
 
 #include "../../Helper/assert.h"
+#include "../Widgets.h"
 
 using namespace fmt;
-
-static const fs::path FaustDiagramsPath = "FaustDiagrams"; // todo app property
 
 // todo style props
 static const int FoldComplexity = 2; // Number of boxes within a `Schema` before folding
 static const bool IsSvgScaled = false; // Draw scaled SVG files
 static const bool SequentialConnectionZigzag = true; // false allows for diagonal lines instead of zigzags instead of zigzags
 static const bool DrawRouteFrame = false;
-static const float TopSchemaMargin = 10;
-static const float DecorateSchemaMargin = 10;
-static const float BinarySchemaHorizontalGapRatio = 1.0f / 4;
-static const float DecorateSchemaLabelOffset = 5;
-static const float WireGap = 8;
-static const float XGap = 4;
-static const float YGap = 4;
-static const float InverterRadius = 1.5;
+static const float TopSchemaMargin = 20;
+static const float DecorateSchemaMargin = 20;
+static const float BinarySchemaHorizontalGapRatio = 0.25;
+static const float DecorateSchemaLabelOffset = 10;
+static const float WireGap = 16;
+static const float XGap = 8;
+static const float YGap = 8;
+static const float InverterRadius = 3;
 
 // todo move to FlowGridStyle::Colors
 static const string LinkColor = "#003366";
@@ -64,7 +63,7 @@ struct TextStyle {
     const Justify justify{Middle};
     const float padding_right{0};
     const float padding_bottom{0};
-    const float font_size{7};
+    const float font_size{13};
     const FontStyle font_style{Normal};
     const bool top{false};
 };
@@ -91,16 +90,15 @@ public:
 };
 
 struct SVGDevice : Device {
-    SVGDevice(string file_name, float w, float h) : file_name(std::move(file_name)) {
-        static const float scale = 0.5;
+    SVGDevice(fs::path directory, string file_name, float w, float h) : directory(std::move(directory)), file_name(std::move(file_name)) {
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        stream << (IsSvgScaled ? R"( width="100%" height="100%">)" : format(R"( width="{}mm" height="{}mm">)", w * scale, h * scale));
+        stream << (IsSvgScaled ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
     }
 
     ~SVGDevice() override {
         stream << end_stream.str();
         stream << "</svg>\n";
-        FileIO::write(file_name, stream.str());
+        FileIO::write(directory / file_name, stream.str());
     }
 
     DeviceType type() override { return SVGDeviceType; }
@@ -146,12 +144,12 @@ struct SVGDevice : Device {
     }
 
     void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) override {
-        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".25" points="{},{} {},{} {},{}"/>)", color, a.x, a.y, b.x, b.y, c.x, c.y);
+        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", color, a.x, a.y, b.x, b.y, c.x, c.y);
     }
 
     void circle(const ImVec2 &pos, float radius, const string &color) override {
         const auto [x, y] = pos;
-        stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".25" cx="{}" cy="{}" r="{}"/>)", color, x, y, radius);
+        stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", color, x, y, radius);
     }
 
     void arrow(const ImVec2 &pos, Orientation orientation) override {
@@ -164,7 +162,7 @@ struct SVGDevice : Device {
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
-        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:{}; stroke-width:0.25;"/>)", start.x, start.y, end.x, end.y, line_cap);
+        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:black; stroke-linecap:{}; stroke-width:0.5;"/>)", start.x, start.y, end.x, end.y, line_cap);
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style, const string &link) override {
@@ -174,34 +172,36 @@ struct SVGDevice : Device {
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         auto &text_stream = top ? end_stream : stream;
         if (!link.empty()) text_stream << format(R"(<a href="{}">)", xml_sanitize(link));
-        text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}">{}</text>)",
-            pos.x - padding_right, pos.y + 2 - padding_bottom, font_style_formatted, font_weight, font_size, anchor, color, xml_sanitize(text));
+        text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
+            pos.x - padding_right, pos.y - padding_bottom, font_style_formatted, font_weight, font_size, anchor, color, xml_sanitize(text));
         if (!link.empty()) text_stream << "</a>";
     }
 
     void dot(const ImVec2 &pos, Orientation orientation) override {
-        const float offset = orientation == LeftRight ? 2 : -2;
+        const float offset = orientation == LeftRight ? 4 : -4; // todo move offset calc into schema
         stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x + offset, pos.y + offset);
     }
 
     static string label(const ImVec2 &pos, const string &name) {
-        return format(R"(<text x="{}" y="{}" font-family="Arial" font-size="7">{}</text>)", pos.x, pos.y + 2, xml_sanitize(name));
+        return format(R"(<text x="{}" y="{}" font-family="Arial" font-size="13" dominant-baseline="middle">{}</text>)", pos.x, pos.y, xml_sanitize(name));
     }
 
     static string dash_line(const ImVec2 &start, const ImVec2 &end) {
-        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.25; stroke-dasharray:3,3;"/>)", start.x, start.y, end.x, end.y);
+        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: black; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)", start.x, start.y, end.x, end.y);
     }
 
     static string rotate_line(const ImVec2 &start, const ImVec2 &end, float rx, float ry, float rz) {
-        return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.25;"/>)lit", start.x, start.y, end.x, end.y, rx, ry, rz);
+        return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.5;"/>)lit", start.x, start.y, end.x, end.y, rx, ry, rz);
     }
 
     static ImVec2 text_size(const string &text) {
-        return ImGui::CalcTextSize(text.c_str()) * .7f; // This is calculating using a different font, with a different rendering DPI, so it's all hand-wavy.
+        // This is calculated using a potentially different font, but better than the simple worst-case multiplier in the Faust draw code.
+        return ImGui::CalcTextSize(text.c_str());
     }
 
-private:
+    fs::path directory;
     string file_name;
+private:
     std::stringstream stream;
     std::stringstream end_stream;
 };
@@ -279,21 +279,6 @@ private:
     ImVec2 pos{};
 };
 
-static const char *getTreeName(Tree t) {
-    Tree name;
-    return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
-}
-
-// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
-// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
-static string svgFileName(Tree t) {
-    if (!t) return "";
-    const string &tree_name = getTreeName(t);
-    if (tree_name == "process") return tree_name + ".svg";
-    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
-        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
-}
-
 enum IO_ {
     IO_None = -1,
     IO_In,
@@ -317,7 +302,6 @@ struct Schema {
     const std::vector<Schema *> children{};
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const bool is_top_level;
-    Tree parent;
     float w = 0, h = 0; // Populated in `place_size`
     float x = 0, y = 0; // Fields populated in `place`
 
@@ -356,17 +340,6 @@ struct Schema {
     inline bool is_lr() const { return orientation == LeftRight; }
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
 
-    void draw(DeviceType type) const {
-        if (type == SVGDeviceType) {
-            SVGDevice device(FaustDiagramsPath / svgFileName(tree), w, h);
-            device.rect({x, y, w - 1, h - 1}, {.fill_color="#ffffff"});
-            draw(device);
-        } else {
-            ImGuiDevice device;
-            draw(device);
-        }
-    }
-
     void draw_rect(Device &device) const {
         device.rect({x, y, w, h}, {.fill_color="#00000000", .stroke_color="#0000ff", .stroke_width = 1});
     }
@@ -377,18 +350,18 @@ struct Schema {
                 device.text(
                     point(direction, channel),
                     format("{}:{}", to_string(direction), channel),
-                    {.color="#0000ff", .justify=TextStyle::Justify::Right, .padding_right=2, .padding_bottom=3, .font_size=8, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                    {.color="#0000ff", .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .font_size=16, .font_style=TextStyle::FontStyle::Bold, .top=true}
                 );
-                device.circle(point(direction, channel), 1.5, "#0000ff");
+                device.circle(point(direction, channel), 3, "#0000ff");
             }
             for (Count ci = 0; ci < children.size(); ci++) {
                 for (Count channel = 0; channel < io_count(direction, ci); channel++) {
                     device.text(
                         child(ci)->point(direction, channel),
                         format("({})->{}:{}", ci, to_string(direction), channel),
-                        {.color="#ff0000", .justify=TextStyle::Justify::Right, .padding_right=2, .font_size=6, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                        {.color="#ff0000", .justify=TextStyle::Justify::Right, .padding_right=4, .font_size=12, .font_style=TextStyle::FontStyle::Bold, .top=true}
                     );
-                    device.circle(child(ci)->point(direction, channel), 1, "#ff0000");
+                    device.circle(child(ci)->point(direction, channel), 2, "#ff0000");
                 }
             }
         }
@@ -408,6 +381,27 @@ protected:
     virtual void _draw(Device &) const {}
 };
 
+static const char *getTreeName(Tree t) {
+    Tree name;
+    return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
+}
+
+// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
+// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
+static string svgFileName(Tree t) {
+    if (!t) return "";
+    const string &tree_name = getTreeName(t);
+    if (tree_name == "process") return tree_name + ".svg";
+    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
+        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
+}
+
+void write_svg(Schema *schema, const fs::path &path) {
+    SVGDevice device(path, svgFileName(schema->tree), schema->w, schema->h);
+    device.rect({schema->x, schema->y, schema->w - 1, schema->h - 1}, {.fill_color="#ffffff"});
+    schema->draw(device);
+}
+
 struct IOSchema : Schema {
     IOSchema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0)
         : Schema(t, in_count, out_count, std::move(children), directDescendents) {}
@@ -426,8 +420,8 @@ struct BlockSchema : IOSchema {
 
     void _place_size(const DeviceType type) override {
         const float text_w = (type == SVGDeviceType ? SVGDevice::text_size(text) : ImGuiDevice::text_size(text)).x;
-        w = 2 * XGap + max(3 * WireGap, text_w);
-        h = 2 * YGap + max(3 * WireGap, float(max(in_count, out_count)) * WireGap);
+        w = 2 * XGap + max(3 * WireGap, 2 * XGap + text_w);
+        h = 2 * YGap + float(max(3, max(in_count, out_count))) * WireGap;
         if (inner && type == SVGDeviceType) inner->place_size(type);
     }
 
@@ -437,7 +431,7 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        if (inner && device.type() == SVGDeviceType) inner->draw(device.type());
+        if (inner && device.type() == SVGDeviceType) write_svg(inner, dynamic_cast<SVGDevice &>(device).directory);
         const string &link = inner ? svgFileName(tree) : "";
         device.rect(xywh() + ImVec4{XGap, YGap, -2 * XGap, -2 * YGap}, color, link);
         device.text(mid(), text, {"#ffffff"}, link);
@@ -498,7 +492,7 @@ struct InverterSchema : BlockSchema {
 
     void _draw(Device &device) const override {
         const float x1 = w - 2 * XGap;
-        const float y1 = 0.5f + (h - 1) / 2;
+        const float y1 = 1 + (h - 1) / 2;
         const auto tri_a = position() + ImVec2{XGap + (is_lr() ? 0 : x1), 0};
         const auto tri_b = tri_a + ImVec2{(is_lr() ? x1 - 2 * InverterRadius : 2 * InverterRadius - x1 - x), y1};
         const auto tri_c = tri_a + ImVec2{0, h};
@@ -992,10 +986,10 @@ static bool isPureRouting(Tree t) {
 }
 
 // This method is called recursively.
-// todo show tree to a given level
 static Schema *Tree2Schema(Tree t, bool allow_links) {
+    auto *node = Tree2SchemaNode(t);
     if (const char *name = getTreeName(t)) {
-        auto *schema = new DecorateSchema{t, Tree2SchemaNode(t), name};
+        auto *schema = new DecorateSchema{t, node, name};
         if (schema->is_top_level && AllowSchemaLinks && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
@@ -1004,22 +998,16 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
         if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
     }
 
-    return Tree2SchemaNode(t); // normal case
+    return node; // normal case
 }
 
+Box active_box;
 Schema *active_schema; // This diagram is drawn every frame if present.
 
 void on_box_change(Box box) {
     IsTreePureRouting.clear();
     if (box) {
-        // Render SVG diagram(s)
-        fs::remove_all(FaustDiagramsPath);
-        fs::create_directory(FaustDiagramsPath);
-        auto *svg_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
-        svg_schema->place_size(SVGDeviceType);
-        svg_schema->place(SVGDeviceType);
-        svg_schema->draw(SVGDeviceType);
-
+        active_box = box;
         // Render ImGui diagram
         active_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
         active_schema->place_size(ImGuiDeviceType);
@@ -1029,10 +1017,29 @@ void on_box_change(Box box) {
     }
 }
 
+void save_box_svg(const string &path) {
+    if (!active_box) return;
+    // Render SVG diagram(s)
+    fs::remove_all(path);
+    fs::create_directory(path);
+    auto *schema = Tree2Schema(active_box, false); // Ensure top-level is not compressed into a link.
+    schema->place_size(SVGDeviceType);
+    schema->place(SVGDeviceType);
+    write_svg(schema, path);
+}
+
 void Audio::Faust::Diagram::draw() const {
     if (!active_schema) return;
 
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            fg::MenuItem(action::id<show_save_faust_svg_file_dialog>);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
     ImGui::BeginChild("Faust diagram", {active_schema->w, active_schema->h}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    active_schema->draw(ImGuiDeviceType);
+    ImGuiDevice device;
+    active_schema->draw(device);
     ImGui::EndChild();
 }

@@ -401,6 +401,14 @@ struct File : StateMember {
 enum FlowGridCol_ {
     FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now)
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
+    // Faust diagram colors
+    FlowGridCol_DiagramLink,
+    FlowGridCol_DiagramNormal,
+    FlowGridCol_DiagramUi,
+    FlowGridCol_DiagramSlot,
+    FlowGridCol_DiagramNumber,
+    FlowGridCol_DiagramInverter,
+
     FlowGridCol_COUNT
 };
 
@@ -417,14 +425,27 @@ struct FlowGridStyle : StateMember, Drawable {
     void StyleColorsDark() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
+        StyleDiagramFaustClassic();
     }
     void StyleColorsClassic() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
+        StyleDiagramFaustClassic();
     }
     void StyleColorsLight() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
         Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
+        StyleDiagramFaustClassic();
+    }
+
+    // Make Faust diagrams the same way Faust does when it renders to SVG.
+    void StyleDiagramFaustClassic() {
+        Colors[FlowGridCol_DiagramLink] = {0, 0.2, 0.4, 1};
+        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+        Colors[FlowGridCol_DiagramInverter] = {1, 1, 1, 1};
     }
 
     static const char *GetColorName(FlowGridCol idx) {

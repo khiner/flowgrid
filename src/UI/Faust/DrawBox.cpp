@@ -35,14 +35,6 @@ static const float XGap = 8;
 static const float YGap = 8;
 static const float InverterRadius = 3;
 
-// todo move to FlowGridStyle::Colors
-static const string LinkColor = "#003366";
-static const string NormalColor = "#4b71a1";
-static const string UiColor = "#477881";
-static const string SlotColor = "#47945e";
-static const string NumberColor = "#f44800";
-static const string InverterColor = "#ffffff";
-
 using Count = unsigned int;
 enum Orientation { LeftRight = 1, RightLeft = -1 };
 enum DeviceType { ImGuiDeviceType, SVGDeviceType };
@@ -59,7 +51,7 @@ struct TextStyle {
         Italic,
     };
 
-    const string color{"#ffffff"};
+    const ImVec4 color{1, 1, 1, 1};
     const Justify justify{Middle};
     const float padding_right{0};
     const float padding_bottom{0};
@@ -69,8 +61,8 @@ struct TextStyle {
 };
 
 struct RectStyle {
-    const string fill_color{"#ffffff"};
-    const string stroke_color{"none"};
+    const ImVec4 &fill_color{1, 1, 1, 1};
+    const ImVec4 &stroke_color{0, 0, 0, 0};
     const float stroke_width{0};
 };
 
@@ -80,8 +72,8 @@ public:
     virtual DeviceType type() = 0;
     virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
     virtual void grouprect(const ImRect &rect, const string &text) = 0; // A labeled grouping
-    virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) = 0;
-    virtual void circle(const ImVec2 &pos, float radius, const string &color) = 0;
+    virtual void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const ImVec4 &color) = 0;
+    virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
@@ -115,11 +107,11 @@ struct SVGDevice : Device {
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width] = style;
         stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:{};stroke-width={};fill:{};"/>)",
-            rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), stroke_color, stroke_width, fill_color);
+            rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), to_string(stroke_color), stroke_width, to_string(fill_color));
     }
 
     // Only SVG device has a rect-with-link method
-    void rect(const ImRect &r, const string &color, const string &link) {
+    void rect(const ImRect &r, const ImVec4 &color, const string &link) {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link));
         rect(r, {.fill_color = color});
         if (!link.empty()) stream << "</a>";
@@ -142,13 +134,13 @@ struct SVGDevice : Device {
         stream << label({text_left, top_left.y}, text);
     }
 
-    void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const string &color) override {
-        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", color, a.x, a.y, b.x, b.y, c.x, c.y);
+    void triangle(const ImVec2 &a, const ImVec2 &b, const ImVec2 &c, const ImVec4 &color) override {
+        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(color), a.x, a.y, b.x, b.y, c.x, c.y);
     }
 
-    void circle(const ImVec2 &pos, float radius, const string &color) override {
+    void circle(const ImVec2 &pos, float radius, const ImVec4 &color) override {
         const auto [x, y] = pos;
-        stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", color, x, y, radius);
+        stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", to_string(color), x, y, radius);
     }
 
     void arrow(const ImVec2 &pos, Orientation orientation) override {
@@ -171,7 +163,7 @@ struct SVGDevice : Device {
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         auto &text_stream = top ? end_stream : stream;
         text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            pos.x - padding_right, pos.y - padding_bottom, font_style_formatted, font_weight, font_size, anchor, color, xml_sanitize(text));
+            pos.x - padding_right, pos.y - padding_bottom, font_style_formatted, font_weight, font_size, anchor, to_string(color), xml_sanitize(text));
     }
 
     // Only SVG device has a text-with-link method
@@ -205,20 +197,16 @@ struct SVGDevice : Device {
         return ImGui::CalcTextSize(text.c_str());
     }
 
+    static string to_string(const ImVec4 &color) {
+        return format("rgb({}, {}, {}, {})", color.x * 255, color.y * 255, color.z * 255, color.w * 255);
+    }
+
     fs::path directory;
     string file_name;
 private:
     std::stringstream stream;
     std::stringstream end_stream;
 };
-
-static ImU32 convert_color(const string &color) {
-    unsigned int x;
-    std::stringstream ss;
-    ss << std::hex << color;
-    ss >> x;
-    return x;
-}
 
 struct ImGuiDevice : Device {
     ImGuiDevice() {
@@ -241,11 +229,11 @@ struct ImGuiDevice : Device {
         draw_list->AddText(pos + text_pos, ImGui::GetColorU32(ImGuiCol_Text), text.c_str());
     }
 
-    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const string &color) override {
+    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
         draw_list->AddTriangle(pos + p1, pos + p2, pos + p3, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
-    void circle(const ImVec2 &p, float radius, const string &color) override {
+    void circle(const ImVec2 &p, float radius, const ImVec4 &color) override {
         draw_list->AddCircle(pos + p, radius, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
@@ -340,7 +328,7 @@ struct Schema {
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
 
     void draw_rect(Device &device) const {
-        device.rect({x, y, w, h}, {.fill_color="#00000000", .stroke_color="#0000ff", .stroke_width = 1});
+        device.rect({x, y, w, h}, {.fill_color={0, 0, 0, 0}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
     }
 
     void draw_channel_labels(Device &device) const {
@@ -349,18 +337,18 @@ struct Schema {
                 device.text(
                     point(direction, channel),
                     format("{}:{}", to_string(direction), channel),
-                    {.color="#0000ff", .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .font_size=16, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                    {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .font_size=16, .font_style=TextStyle::FontStyle::Bold, .top=true}
                 );
-                device.circle(point(direction, channel), 3, "#0000ff");
+                device.circle(point(direction, channel), 3, {0, 0, 1, 1});
             }
             for (Count ci = 0; ci < children.size(); ci++) {
                 for (Count channel = 0; channel < io_count(direction, ci); channel++) {
                     device.text(
                         child(ci)->point(direction, channel),
                         format("({})->{}:{}", ci, to_string(direction), channel),
-                        {.color="#ff0000", .justify=TextStyle::Justify::Right, .padding_right=4, .font_size=12, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                        {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .font_size=12, .font_style=TextStyle::FontStyle::Bold, .top=true}
                     );
-                    device.circle(child(ci)->point(direction, channel), 2, "#ff0000");
+                    device.circle(child(ci)->point(direction, channel), 2, {1, 0, 0, 1});
                 }
             }
         }
@@ -400,7 +388,7 @@ static string svgFileName(Tree t) {
 
 void write_svg(Schema *schema, const fs::path &path) {
     SVGDevice device(path, svgFileName(schema->tree), schema->w, schema->h);
-    device.rect({schema->x, schema->y, schema->w - 1, schema->h - 1}, {.fill_color="#ffffff"});
+    device.rect({schema->x, schema->y, schema->w - 1, schema->h - 1}, {});
     schema->draw(device);
 }
 
@@ -417,8 +405,8 @@ struct IOSchema : Schema {
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockSchema : IOSchema {
-    BlockSchema(Tree t, Count in_count, Count out_count, string text, string color, Schema *inner = nullptr)
-        : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(std::move(color)), inner(inner) {}
+    BlockSchema(Tree t, Count in_count, Count out_count, string text, ImVec4 color = s.style.flowgrid.Colors[FlowGridCol_DiagramNormal], Schema *inner = nullptr)
+        : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(color), inner(inner) {}
 
     void _place_size(const DeviceType type) override {
         const float text_w = (type == SVGDeviceType ? SVGDevice::text_size(text) : ImGuiDevice::text_size(text)).x;
@@ -439,7 +427,7 @@ struct BlockSchema : IOSchema {
             if (inner) write_svg(inner, svg_device.directory);
             const string &link = inner ? svgFileName(tree) : "";
             svg_device.rect(rect, color, link);
-            svg_device.text(mid(), text, {"#ffffff"}, link);
+            svg_device.text(mid(), text, {}, link);
             // Draw a small point that indicates the first input (like an integrated circuits).
             device.dot(is_lr() ? rect.Min : rect.Max, orientation);
         } else {
@@ -467,7 +455,8 @@ struct BlockSchema : IOSchema {
         }
     }
 
-    const string text, color;
+    const string text;
+    const ImVec4 color;
     Schema *inner;
 };
 
@@ -498,7 +487,7 @@ private:
 // An inverter is a circle followed by a triangle.
 // It corresponds to '*(-1)', and it's used to create more compact diagrams.
 struct InverterSchema : BlockSchema {
-    InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", InverterColor) {}
+    InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", s.style.flowgrid.Colors[FlowGridCol_DiagramInverter]) {}
 
     void _place_size(const DeviceType) override {
         w = 2.5f * WireGap;
@@ -713,7 +702,7 @@ struct SequentialSchema : BinarySchema {
 
         ImGuiDir prev_dir = ImGuiDir_None;
         Count size = 0;
-        std::map<ImGuiDir, Count> MaxGroupSize; // Store the size of the largest group for each direction.
+        std::map < ImGuiDir, Count > MaxGroupSize; // Store the size of the largest group for each direction.
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
             const float yd = child(1)->point(IO_In, i).y - child(0)->point(IO_Out, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
@@ -796,7 +785,7 @@ private:
 
 struct RouteSchema : IOSchema {
     RouteSchema(Tree t, Count in_count, Count out_count, std::vector<int> routes)
-        : IOSchema(t, in_count, out_count), color("#EEEEAA"), routes(std::move(routes)) {}
+        : IOSchema(t, in_count, out_count), routes(std::move(routes)) {}
 
     void _place_size(const DeviceType) override {
         const float minimal = 3 * WireGap;
@@ -807,7 +796,7 @@ struct RouteSchema : IOSchema {
     void _draw(Device &device) const override {
         if (DrawRouteFrame) {
             const ImRect &rect = {position() + ImVec2{XGap, YGap}, position() + ImVec2{w, h} - ImVec2{XGap, YGap} * 2};
-            device.rect(rect, {.fill_color=color});
+            device.rect(rect, {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
             // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
             device.dot(is_lr() ? rect.Min : rect.Max, orientation);
             // Input arrows
@@ -833,7 +822,6 @@ struct RouteSchema : IOSchema {
     }
 
 protected:
-    const string color;
     const std::vector<int> routes; // Route description: s1,d2,s2,d2,...
 };
 
@@ -842,7 +830,7 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
 }
 
 // Generate a 1->0 block schema for an input slot.
-static Schema *make_input_slot(Tree t) { return new BlockSchema(t, 1, 0, getTreeName(t), SlotColor); }
+static Schema *make_input_slot(Tree t) { return new BlockSchema(t, 1, 0, getTreeName(t), s.style.flowgrid.Colors[FlowGridCol_DiagramSlot]); }
 
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
@@ -907,13 +895,13 @@ static Schema *Tree2Schema(Tree t, bool allow_links = true);
 
 // Generate the inside schema of a block diagram according to its type.
 static Schema *Tree2SchemaNode(Tree t) {
-    if (getUserData(t) != nullptr) return new BlockSchema(t, xtendedArity(t), 1, xtendedName(t), NormalColor);
+    if (getUserData(t) != nullptr) return new BlockSchema(t, xtendedArity(t), 1, xtendedName(t));
     if (isInverter(t)) return new InverterSchema(t);
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockSchema(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), NumberColor);
-    if (isBoxWaveform(t)) return new BlockSchema(t, 0, 2, "waveform{...}", NormalColor);
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockSchema(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), s.style.flowgrid.Colors[FlowGridCol_DiagramNumber]);
+    if (isBoxWaveform(t)) return new BlockSchema(t, 0, 2, "waveform{...}");
     if (isBoxWire(t)) return new CableSchema(t);
     if (isBoxCut(t)) return new CutSchema(t);
 
@@ -923,21 +911,21 @@ static Schema *Tree2SchemaNode(Tree t) {
     prim3 p3;
     prim4 p4;
     prim5 p5;
-    if (isBoxPrim0(t, &p0)) return new BlockSchema(t, 0, 1, prim0name(p0), NormalColor);
-    if (isBoxPrim1(t, &p1)) return new BlockSchema(t, 1, 1, prim1name(p1), NormalColor);
-    if (isBoxPrim2(t, &p2)) return new BlockSchema(t, 2, 1, prim2name(p2), NormalColor);
-    if (isBoxPrim3(t, &p3)) return new BlockSchema(t, 3, 1, prim3name(p3), NormalColor);
-    if (isBoxPrim4(t, &p4)) return new BlockSchema(t, 4, 1, prim4name(p4), NormalColor);
-    if (isBoxPrim5(t, &p5)) return new BlockSchema(t, 5, 1, prim5name(p5), NormalColor);
+    if (isBoxPrim0(t, &p0)) return new BlockSchema(t, 0, 1, prim0name(p0));
+    if (isBoxPrim1(t, &p1)) return new BlockSchema(t, 1, 1, prim1name(p1));
+    if (isBoxPrim2(t, &p2)) return new BlockSchema(t, 2, 1, prim2name(p2));
+    if (isBoxPrim3(t, &p3)) return new BlockSchema(t, 3, 1, prim3name(p3));
+    if (isBoxPrim4(t, &p4)) return new BlockSchema(t, 4, 1, prim4name(p4));
+    if (isBoxPrim5(t, &p5)) return new BlockSchema(t, 5, 1, prim5name(p5));
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return new BlockSchema(t, ffarity(ff), 1, ffname(ff), NormalColor);
+    if (isBoxFFun(t, ff)) return new BlockSchema(t, ffarity(ff), 1, ffname(ff));
 
     Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockSchema(t, 0, 1, tree2str(name), NormalColor);
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockSchema(t, 0, 1, userInterfaceDescription(t), UiColor);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockSchema(t, 1, 1, userInterfaceDescription(t), UiColor);
-    if (isBoxSoundfile(t, label, chan)) return new BlockSchema(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), UiColor);
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockSchema(t, 0, 1, tree2str(name));
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockSchema(t, 0, 1, userInterfaceDescription(t), s.style.flowgrid.Colors[FlowGridCol_DiagramUi]);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockSchema(t, 1, 1, userInterfaceDescription(t), s.style.flowgrid.Colors[FlowGridCol_DiagramUi]);
+    if (isBoxSoundfile(t, label, chan)) return new BlockSchema(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), s.style.flowgrid.Colors[FlowGridCol_DiagramUi]);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Schema(a);
@@ -955,7 +943,7 @@ static Schema *Tree2SchemaNode(Tree t) {
     if (isBoxMerge(t, a, b)) return new MergeSchema(t, Tree2Schema(a), Tree2Schema(b));
     if (isBoxRec(t, a, b)) return new RecursiveSchema(t, Tree2Schema(a), Tree2Schema(b));
 
-    if (isBoxSlot(t, &i)) return new BlockSchema(t, 0, 1, getTreeName(t), SlotColor);
+    if (isBoxSlot(t, &i)) return new BlockSchema(t, 0, 1, getTreeName(t), s.style.flowgrid.Colors[FlowGridCol_DiagramSlot]);
 
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction schema by placing in sequence the input slots and the body.
@@ -968,7 +956,7 @@ static Schema *Tree2SchemaNode(Tree t) {
         auto *abstraction = make_sequential(b, input_slots, Tree2Schema(b));
         return getTreeName(t) ? abstraction : new DecorateSchema(t, abstraction, "Abstraction");
     }
-    if (isBoxEnvironment(t)) return new BlockSchema(t, 0, 0, "environment{...}", NormalColor);
+    if (isBoxEnvironment(t)) return new BlockSchema(t, 0, 0, "environment{...}");
 
     Tree c;
     if (isBoxRoute(t, a, b, c)) {
@@ -1008,7 +996,7 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
         if (schema->is_top_level && AllowSchemaLinks && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return new BlockSchema(t, ins, outs, name, LinkColor, schema);
+            return new BlockSchema(t, ins, outs, name, s.style.flowgrid.Colors[FlowGridCol_DiagramLink], schema);
         }
         if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
     }

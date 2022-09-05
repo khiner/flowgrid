@@ -424,6 +424,17 @@ struct FlowGridStyle : StateMember, Drawable {
 
     ImVec4 Colors[FlowGridCol_COUNT];
     Float FlashDurationSec{path, "FlashDurationSec", 0.6, 0, 5};
+    Bool DiagramScaled{path, "DiagramScaled", false}; // Draw scaled SVG files
+    Bool DiagramSequentialConnectionZigzag{path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
+    Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
+    Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20};
+    Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20};
+    Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10};
+    Float DiagramBinaryHorizontalGapRatio{path, "DiagramBinaryHorizontalGapRatio", 0.25};
+    Float DiagramWireGap{path, "DiagramWireGap", 16};
+    Float DiagramXGap{path, "DiagramXGap", 8};
+    Float DiagramYGap{path, "DiagramYGap", 8};
+    Float DiagramInverterRadius{path, "DiagramInverterRadius", 3};
 
     void StyleColorsDark() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
@@ -709,10 +720,10 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
     GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale,
     AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
-    MajorTickSize,
-    MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize, Colors,
-    Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec)
+    MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
+    Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
+JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramScaled, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLabelOffset,
+    DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramXGap, DiagramYGap, DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

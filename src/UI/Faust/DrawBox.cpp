@@ -453,7 +453,7 @@ struct BlockSchema : IOSchema {
             const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);
-                device.line(in ? p - ImVec2{0.1f, 0} : p - d, in ? p + d - ImVec2{s.style.flowgrid.DiagramArrowSize.value.x, 0} : p);
+                device.line(in ? p : p - d, in ? p + d - ImVec2{dir_unit() * s.style.flowgrid.DiagramArrowSize.value.x, 0} : p);
                 if (in) device.arrow(p + d, orientation); // Input arrows
             }
         }

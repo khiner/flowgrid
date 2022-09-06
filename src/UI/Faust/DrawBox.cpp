@@ -215,16 +215,13 @@ struct ImGuiDevice : Device {
         const auto &color_u32 = ImGui::ColorConvertFloat4ToU32(color);
         const auto top_left = pos + rect.Min;
         const auto bottom_right = pos + rect.Max;
-        const auto top_right = top_left + ImVec2{rect.GetWidth(), 0};
-        const auto bottom_left = bottom_right - ImVec2{rect.GetWidth(), 0};
-        const float text_left = top_left.x + s.style.flowgrid.DiagramDecorateLabelOffset;
+        const ImVec2 text_top_left = {top_left.x + s.style.flowgrid.DiagramDecorateLabelOffset, top_left.y - ImGui::GetFontSize() / 2};
 
-        draw_list->AddLine(top_left, bottom_left, color_u32); // left line
-        draw_list->AddLine(bottom_left, bottom_right, color_u32); // bottom line
-        draw_list->AddLine(bottom_right, top_right, color_u32); // right line
-        draw_list->AddLine(top_left, {text_left - 2, top_left.y}, color_u32); // top segment before text
-        draw_list->AddLine({min(text_left + text_size(text).x + 2, bottom_right.x), top_left.y}, {bottom_right.x, top_left.y}, color_u32); // top segment after text
-        draw_list->AddText(ImVec2{text_left, top_left.y - ImGui::GetFontSize() / 2}, color_u32, text.c_str());
+        // Decorate outline
+        draw_list->AddRect(top_left, bottom_right, color_u32);
+        // Rectangle, same size as BG, on top of the decorate outline, to put the text on top of the line
+        draw_list->AddRectFilled(text_top_left - ImVec2{3, 0}, text_top_left + text_size(text) + ImVec2{3, 0}, ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
+        draw_list->AddText(text_top_left, color_u32, text.c_str());
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {

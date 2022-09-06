@@ -923,6 +923,7 @@ void FlowGridStyle::draw() const {
         DiagramBinaryHorizontalGapRatio.Draw();
         DiagramWireGap.Draw();
         DiagramGap.Draw();
+        DiagramWireWidth.Draw();
         DiagramArrowSize.Draw();
         DiagramInverterRadius.Draw();
     }

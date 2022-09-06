@@ -137,8 +137,9 @@ struct SVGDevice : Device {
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
+        const auto width = s.style.flowgrid.DiagramWireWidth;
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
-        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:0.5;"/>)", start.x, start.y, end.x, end.y, to_string(color), line_cap);
+        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start.x, start.y, end.x, end.y, to_string(color), line_cap, width);
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
@@ -242,7 +243,9 @@ struct ImGuiDevice : Device {
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        draw_list->AddLine(pos + start, pos + end, ImGui::ColorConvertFloat4ToU32(color));
+        const auto width = s.style.flowgrid.DiagramWireWidth;
+        // ImGui adds {0.5, 0.5} to line points.
+        draw_list->AddLine(pos + start - ImVec2{0.5f, 0}, pos + end - ImVec2{0.5f, 0}, ImGui::ColorConvertFloat4ToU32(color), width);
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {

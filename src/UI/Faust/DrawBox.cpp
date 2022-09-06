@@ -61,7 +61,7 @@ public:
     virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
     virtual void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) = 0;
-    virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &color) = 0;
+    virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
@@ -122,18 +122,12 @@ struct SVGDevice : Device {
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
-        stream << get_triangle(p1, p2, p3, color);
+        stream << get_triangle(p1, p2, p3, {0, 0, 0, 0}, color);
     }
 
-    void circle(const ImVec2 &pos, float radius, const ImVec4 &color) override {
+    void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
         const auto [x, y] = pos;
-        stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", to_string(color), x, y, radius);
-    }
-
-    // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Orientation orientation, const ImVec4 &color) {
-        const float d = orientation == RightLeft ? 1 : -1;
-        return get_triangle(ImVec2(pos.x + d * half_sz.x, pos.y - d * half_sz.y), ImVec2(pos.x + d * half_sz.x, pos.y + d * half_sz.y), pos, color);
+        stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", to_string(fill_color), to_string(stroke_color), x, y, radius);
     }
 
     void arrow(const ImVec2 &pos, Orientation orientation) override {
@@ -175,8 +169,14 @@ struct SVGDevice : Device {
         return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: {}; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)", start.x, start.y, end.x, end.y, to_string(color));
     }
 
-    static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) {
-        return format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
+    static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Orientation orientation, const ImVec4 &color) {
+        const float d = orientation == RightLeft ? 1 : -1;
+        return get_triangle(ImVec2(pos.x + d * half_sz.x, pos.y - d * half_sz.y), ImVec2(pos.x + d * half_sz.x, pos.y + d * half_sz.y), pos, color, color);
+    }
+
+    static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &fill_color, const ImVec4 &stroke_color) {
+        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(fill_color), to_string(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
 
     static ImVec2 text_size(const string &text) {
@@ -230,8 +230,8 @@ struct ImGuiDevice : Device {
         draw_list->AddTriangle(pos + p1, pos + p2, pos + p3, ImGui::ColorConvertFloat4ToU32(color));
     }
 
-    void circle(const ImVec2 &p, float radius, const ImVec4 &color) override {
-        draw_list->AddCircle(pos + p, radius, ImGui::ColorConvertFloat4ToU32(color));
+    void circle(const ImVec2 &p, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
+        draw_list->AddCircle(pos + p, radius, ImGui::ColorConvertFloat4ToU32(stroke_color));
     }
 
     void arrow(const ImVec2 &p, Orientation orientation) override {
@@ -338,7 +338,7 @@ struct Schema {
                     format("{}:{}", to_string(direction), channel),
                     {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .font_size=16, .font_style=TextStyle::FontStyle::Bold, .top=true}
                 );
-                device.circle(point(direction, channel), 3, {0, 0, 1, 1});
+                device.circle(point(direction, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
             }
             for (Count ci = 0; ci < children.size(); ci++) {
                 for (Count channel = 0; channel < io_count(direction, ci); channel++) {
@@ -347,7 +347,7 @@ struct Schema {
                         format("({})->{}:{}", ci, to_string(direction), channel),
                         {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .font_size=12, .font_style=TextStyle::FontStyle::Bold, .top=true}
                     );
-                    device.circle(child(ci)->point(direction, channel), 2, {1, 0, 0, 1});
+                    device.circle(child(ci)->point(direction, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
                 }
             }
         }
@@ -505,7 +505,7 @@ struct InverterSchema : BlockSchema {
         const auto tri_a = position() + ImVec2{XGap() + (is_lr() ? 0 : x1), 0};
         const auto tri_b = tri_a + ImVec2{(is_lr() ? x1 - 2 * radius : 2 * radius - x1 - x), y1};
         const auto tri_c = tri_a + ImVec2{0, h};
-        device.circle(tri_b + ImVec2{dir_unit() * radius, 0}, radius, color);
+        device.circle(tri_b + ImVec2{dir_unit() * radius, 0}, radius, {0, 0, 0, 0}, color);
         device.triangle(tri_a, tri_b, tri_c, color);
         draw_connections(device);
     }

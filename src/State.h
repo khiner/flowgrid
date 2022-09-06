@@ -433,7 +433,7 @@ struct FlowGridStyle : StateMember, Drawable {
     Float DiagramBinaryHorizontalGapRatio{path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
     Float DiagramWireGap{path, "DiagramWireGap", 16, 10, 20};
     Vec2 DiagramGap{path, "DiagramGap", ImVec2(8, 8), 0, 20};
-    Vec2 DiagramArrowSize{path, "DiagramArrowSize", ImVec2(6, 2), 1, 20};
+    Vec2 DiagramArrowSize{path, "DiagramArrowSize", ImVec2(3, 2), 1, 10};
     Float DiagramInverterRadius{path, "DiagramInverterRadius", 3, 1, 5};
 
     void StyleColorsDark() {

@@ -122,7 +122,7 @@ struct SVGDevice : Device {
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
-        stream << format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+        stream << get_triangle(p1, p2, p3, color);
     }
 
     void circle(const ImVec2 &pos, float radius, const ImVec4 &color) override {
@@ -130,12 +130,15 @@ struct SVGDevice : Device {
         stream << format(R"(<circle fill="{}" stroke="black" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", to_string(color), x, y, radius);
     }
 
+    // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
+    string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Orientation orientation, const ImVec4 &color) {
+        const float d = orientation == RightLeft ? 1 : -1;
+        return get_triangle(ImVec2(pos.x + d * half_sz.x, pos.y - d * half_sz.y), ImVec2(pos.x + d * half_sz.x, pos.y + d * half_sz.y), pos, color);
+    }
+
     void arrow(const ImVec2 &pos, Orientation orientation) override {
-        static const float dx = 3, dy = 1;
-        const auto [x, y] = pos;
-        const auto x1 = orientation == LeftRight ? x - dx : x + dx;
-        stream << rotate_line({x1, y - dy}, pos, 0, x, y);
-        stream << rotate_line({x1, y + dy}, pos, 0, x, y);
+        const auto &[dx, dy] = s.style.flowgrid.DiagramArrowSize.value;
+        stream << arrow_pointing_at(pos, s.style.flowgrid.DiagramArrowSize.value, orientation, s.style.flowgrid.Colors[FlowGridCol_DiagramLine]);
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
@@ -172,8 +175,8 @@ struct SVGDevice : Device {
         return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: {}; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)", start.x, start.y, end.x, end.y, to_string(color));
     }
 
-    static string rotate_line(const ImVec2 &start, const ImVec2 &end, float rx, float ry, float rz) {
-        return format(R"lit(<line x1="{}" y1="{}" x2="{}" y2="{}" transform="rotate({},{},{})" style="stroke: black; stroke-width:0.5;"/>)lit", start.x, start.y, end.x, end.y, rx, ry, rz);
+    static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) {
+        return format(R"(<polygon fill="{}" stroke="black" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
 
     static ImVec2 text_size(const string &text) {
@@ -233,8 +236,8 @@ struct ImGuiDevice : Device {
 
     void arrow(const ImVec2 &p, Orientation orientation) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        const auto &arrow_size = s.style.flowgrid.DiagramArrowSize / 2;
-        ImGui::RenderArrowPointingAt(draw_list, pos + ImVec2{p.x, p.y + 0.5f}, arrow_size, orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
+        ImGui::RenderArrowPointingAt(draw_list, pos + ImVec2{p.x, p.y + 0.5f}, s.style.flowgrid.DiagramArrowSize,
+            orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
@@ -450,7 +453,7 @@ struct BlockSchema : IOSchema {
             const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);
-                device.line(in ? p : p - d, in ? p + d : p);
+                device.line(in ? p - ImVec2{0.1f, 0} : p - d, in ? p + d - ImVec2{s.style.flowgrid.DiagramArrowSize.value.x, 0} : p);
                 if (in) device.arrow(p + d, orientation); // Input arrows
             }
         }
@@ -770,9 +773,10 @@ struct DecorateSchema : IOSchema {
         const float m = 2.0f * (is_top_level ? s.style.flowgrid.DiagramTopLevelMargin : 0.0f) + s.style.flowgrid.DiagramDecorateMargin;
         device.grouprect({position() + ImVec2{m, m} / 2, position() + size() - ImVec2{m, m} / 2}, text, s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke]);
         for (const IO io: {IO_In, IO_Out}) {
+            const bool has_arrow = io == IO_Out && is_top_level;
             for (Count i = 0; i < io_count(io); i++) {
-                device.line(point(io, i), child(0)->point(io, i));
-                if (io == IO_Out && is_top_level) device.arrow(point(io, i), orientation);
+                device.line(child(0)->point(io, i), point(io, i) - ImVec2{has_arrow ? dir_unit() * s.style.flowgrid.DiagramArrowSize.value.x : 0, 0});
+                if (has_arrow) device.arrow(point(io, i), orientation);
             }
         }
     }

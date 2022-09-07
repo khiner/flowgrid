@@ -436,10 +436,14 @@ struct BlockSchema : IOSchema {
         } else {
             const auto &cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
-            ImGui::PushStyleColor(ImGuiCol_Button, color); // todo base ButtonHovered/ButtonActive color on this too?
-            if (!inner) ImGui::BeginDisabled();
-            if (ImGui::Button(text.c_str(), rect.GetSize())) focused_schema_stack.push(inner);
-            if (!inner) ImGui::EndDisabled();
+            ImGui::PushStyleColor(ImGuiCol_Button, color);
+            if (!inner) {
+                // Emulate disabled behavior, but without making color more dim, by just allowing clicks but not changing color.
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+            }
+            if (ImGui::Button(text.c_str(), rect.GetSize()) && inner) focused_schema_stack.push(inner);
+            if (!inner) ImGui::PopStyleColor(2);
             ImGui::PopStyleColor();
             ImGui::SetCursorPos(cursor_pos);
         }

@@ -1038,7 +1038,11 @@ void save_box_svg(const string &path) {
 }
 
 void Audio::Faust::Diagram::draw() const {
-    if (!root_schema) return;
+    if (!root_schema) {
+        // todo don't show empty menu bar in this case
+        ImGui::Text("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
+        return;
+    }
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {

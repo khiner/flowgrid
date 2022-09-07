@@ -1053,8 +1053,17 @@ void Audio::Faust::Diagram::draw() const {
     }
     if (focused_schema_stack.empty()) return;
 
+    {
+        // Nav menu
+        const bool can_nav = focused_schema_stack.size() > 1;
+        if (!can_nav) ImGui::BeginDisabled();
+        if (ImGui::Button("Top")) while (focused_schema_stack.size() > 1) focused_schema_stack.pop();
+        ImGui::SameLine();
+        if (ImGui::Button("Back")) focused_schema_stack.pop();
+        if (!can_nav) ImGui::EndDisabled();
+    }
     ImGui::GetWindowDrawList()->AddRectFilled(
-        ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
+        {ImGui::GetWindowPos().x, ImGui::GetWindowPos().y + ImGui::GetCursorPos().y}, ImGui::GetWindowPos() + ImGui::GetWindowSize(),
         ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
     auto *focused = focused_schema_stack.top();
     ImGui::BeginChild("Faust diagram inner", {focused->w, focused->h}, false, ImGuiWindowFlags_HorizontalScrollbar);

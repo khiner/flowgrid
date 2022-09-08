@@ -16,7 +16,7 @@ inline ImVec2 toImVec2(const NVec2f &im) { return {im.x, im.y}; }
 
 struct ZepFont_ImGui : ZepFont {
     ZepFont_ImGui(ZepDisplay &display, ImFont *font, float heightRatio) : ZepFont(display), font(font) {
-        SetPixelHeight(int(font->FontSize * heightRatio));
+        SetPixelHeight(int(font->FontSize * heightRatio * ImGui::GetIO().FontGlobalScale));
     }
 
     void SetPixelHeight(int pixelHeight) override {
@@ -92,12 +92,7 @@ struct ZepDisplay_ImGui : ZepDisplay {
 
     void SetClipRect(const NRectf &rc) override { clipRect = rc; }
 
-    ZepFont &GetFont(ZepTextType type) override {
-        if (fonts[(int) type] == nullptr) {
-            fonts[(int) type] = std::make_shared<ZepFont_ImGui>(*this, ImGui::GetIO().Fonts[0].Fonts[0], int(16.0f * pixelScale.y));
-        }
-        return *fonts[(int) type];
-    }
+    ZepFont &GetFont(ZepTextType type) override { return *fonts[(int) type]; }
 
     NRectf clipRect;
 };

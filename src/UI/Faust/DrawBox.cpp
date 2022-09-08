@@ -199,7 +199,7 @@ private:
 struct ImGuiDevice : Device {
     ImGuiDevice() {
         draw_list = ImGui::GetWindowDrawList();
-        pos = ImGui::GetWindowPos();
+        pos = ImGui::GetCursorScreenPos();
     }
 
     ~ImGuiDevice() override = default;
@@ -1066,14 +1066,14 @@ void Audio::Faust::Diagram::draw() const {
         if (ImGui::Button("Back")) focused_schema_stack.pop();
         if (!can_nav) ImGui::EndDisabled();
     }
-    ImGui::GetWindowDrawList()->AddRectFilled(
-        {ImGui::GetWindowPos().x, ImGui::GetWindowPos().y + ImGui::GetCursorPos().y}, ImGui::GetWindowPos() + ImGui::GetWindowSize(),
-        ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
     auto *focused = focused_schema_stack.top();
-    ImGui::BeginChild("Faust diagram inner", {focused->w, focused->h}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    ImGuiDevice device;
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
+    ImGui::SetNextWindowContentSize({focused->w, focused->h});
+    ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
+        ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
+    ImGuiDevice device;
     focused->draw(device);
     ImGui::EndChild();
 }

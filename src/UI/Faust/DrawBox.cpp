@@ -54,6 +54,10 @@ struct RectStyle {
     const float stroke_width{0};
 };
 
+static inline ImVec2 scale(const ImVec2 &p);
+static inline float scale(const float f);
+static inline ImVec2 get_scale();
+
 // Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
 class Device {
 public:
@@ -69,13 +73,6 @@ public:
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
     virtual void dot(const ImVec2 &pos) = 0;
 
-    static inline ImVec2 scale(const ImVec2 &p) {
-        return p * scale(1);
-    }
-    static inline float scale(const float f) {
-        const float scale = s.style.flowgrid.DiagramScale;
-        return f * scale;
-    }
     ImVec2 at(const ImVec2 &p) const { return offset + scale(p); }
 
     ImVec2 offset{};
@@ -380,6 +377,16 @@ protected:
 Schema *root_schema; // This diagram is drawn every frame if present.
 std::stack<Schema *> focused_schema_stack;
 
+static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
+static inline float scale(const float f) { return f * get_scale().y; }
+static inline ImVec2 get_scale() {
+    if (s.style.flowgrid.DiagramScaleFill && !focused_schema_stack.empty()) {
+        const auto *focused_schema = focused_schema_stack.top();
+        return ImGui::GetWindowSize() / ImVec2{focused_schema->w, focused_schema->h};
+    }
+    return s.style.flowgrid.DiagramScale;
+}
+
 static const char *getTreeName(Tree t) {
     Tree name;
     return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
@@ -430,7 +437,7 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        const ImRect &rect = {Device::scale(position() + ImVec2{XGap(), YGap()}), Device::scale(position() + ImVec2{w, h} - ImVec2{XGap(), YGap()})};
+        const ImRect &rect = {scale(position() + ImVec2{XGap(), YGap()}), scale(position() + ImVec2{w, h} - ImVec2{XGap(), YGap()})};
         if (device.type() == SVGDeviceType) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (inner) write_svg(inner, svg_device.directory);
@@ -1073,19 +1080,13 @@ void Audio::Faust::Diagram::draw() const {
         ImGui::SameLine();
         if (ImGui::Button("Back")) focused_schema_stack.pop();
         if (!can_nav) ImGui::EndDisabled();
-        ImGui::SameLine();
-//        s.style.flowgrid.DiagramScaleFill.Draw(); todo implement
-        if (!s.style.flowgrid.DiagramScaleFill) {
-            ImGui::SameLine();
-            s.style.flowgrid.DiagramScale.Draw();
-        }
     }
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    ImGui::SetNextWindowContentSize(Device::scale({focused->w, focused->h}));
+    if (!s.style.flowgrid.DiagramScaleFill) ImGui::SetNextWindowContentSize(scale({focused->w, focused->h}));
     ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    ImGui::GetCurrentWindow()->FontWindowScale = Device::scale(1);
+    ImGui::GetCurrentWindow()->FontWindowScale = scale(1);
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
         ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
     ImGuiDevice device;

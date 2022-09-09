@@ -426,8 +426,9 @@ struct FlowGridStyle : StateMember, Drawable {
     Float FlashDurationSec{path, "FlashDurationSec", 0.6, 0, 5};
     Bool DiagramSequentialConnectionZigzag{path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
     Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
-    Bool DiagramScaleFill{path, "DiagramScaleFill", false}; // This and `DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
-    Float DiagramScale{path, "DiagramScale", 1, 0.1, 10};
+    Bool DiagramScaleFill{path, "DiagramScaleFill", "Scale to window", false}; // This and `DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
+    Bool DiagramScaleLinked{path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
+    Vec2 DiagramScale{path, "DiagramScale", ImVec2(1, 1), 0.1, 10};
     Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20, 0, 40};
     Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20, 0, 40};
     Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10, 2, 30};
@@ -724,8 +725,8 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleFill, DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLabelOffset,
-    DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius)
+JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleFill, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
+    DiagramDecorateMargin, DiagramDecorateLabelOffset, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

@@ -917,6 +917,25 @@ void FlowGridStyle::draw() const {
 
     if (BeginTabBar("##FlowGridStyleEditor")) {
         if (BeginTabItem("Faust diagram")) {
+            if (!DiagramScaleFill) {
+                const auto scale_before = DiagramScale.value;
+                if (DiagramScale.Draw()) {
+                    if (DiagramScaleLinked) {
+                        c.run_queued_actions();
+                        const auto scale_after = DiagramScale.value;
+                        q(set_value{DiagramScale.path, scale_after.x != scale_before.x ?
+                                                       ImVec2{scale_after.x, scale_after.x} :
+                                                       ImVec2{scale_after.y, scale_after.y}});
+                        c.run_queued_actions();
+                    }
+                }
+                if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
+                    const float min_scale = std::min(DiagramScale.value.x, DiagramScale.value.y);
+                    q(set_value{DiagramScale.path, ImVec2{min_scale, min_scale}});
+                }
+                SameLine();
+            }
+            DiagramScaleFill.Draw();
             DiagramSequentialConnectionZigzag.Draw();
             DiagramDrawRouteFrame.Draw();
             DiagramTopLevelMargin.Draw();

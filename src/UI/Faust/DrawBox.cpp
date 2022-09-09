@@ -46,7 +46,7 @@ struct TextStyle {
     const Justify justify{Middle};
     const float padding_right{0};
     const float padding_bottom{0};
-    const float font_size{13};
+    const float scale_height{1};
     const FontStyle font_style{Normal};
     const bool top{false};
 };
@@ -131,13 +131,19 @@ struct SVGDevice : Device {
         const auto &tr = sr.GetTR();
         const auto &bl = sr.GetBL();
         const float text_x = tl.x + scale(DecorateLabelOffset);
+        const float font_size = ImGui::GetFontSize() * s.style.flowgrid.DiagramScale.value.y;
 
         stream << dash_line(tl, bl, color); // left line
         stream << dash_line(bl, br, color); // bottom line
         stream << dash_line(br, tr, color); // right line
         stream << dash_line(tl, {text_x - scale(DecorateLabelXPadding), tl.y}, color); // top segment before text
-        stream << dash_line({min(text_x + text_size(text).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
-        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="13" fill="{}" dominant-baseline="middle">{}</text>)", text_x, tl.y, to_string(color), xml_sanitize(text));
+        // Adding 4-char space after decorate label to make up for size calculation done against
+        // default ImGui font (Ableton font) instead of SVG-exported font (Arial).
+        // Strings with lots of thin characters like parens, in particular, will make the size too small.
+        // todo calculate using Arial or export current font into SVG somehow
+        stream << dash_line({min(text_x + text_size(format("{}    ", text)).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
+        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
+            text_x, tl.y, font_size, to_string(color), xml_sanitize(text));
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
@@ -146,7 +152,8 @@ struct SVGDevice : Device {
 
     void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
         const auto [x, y] = at(pos);
-        stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", to_string(fill_color), to_string(stroke_color), x, y, radius);
+        stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)",
+            to_string(fill_color), to_string(stroke_color), x, y, radius);
     }
 
     void arrow(const ImVec2 &pos, Orientation orientation) override {
@@ -164,7 +171,8 @@ struct SVGDevice : Device {
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
+        const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style, top] = style;
+        const float font_size = ImGui::GetFontSize() * s.style.flowgrid.DiagramScale.value.y;
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
@@ -188,7 +196,8 @@ struct SVGDevice : Device {
     }
 
     static string dash_line(const ImVec2 &start, const ImVec2 &end, const ImVec4 &color) {
-        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: {}; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)", start.x, start.y, end.x, end.y, to_string(color));
+        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: {}; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)",
+            start.x, start.y, end.x, end.y, to_string(color));
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
@@ -198,12 +207,13 @@ struct SVGDevice : Device {
     }
 
     static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &fill_color, const ImVec4 &stroke_color) {
-        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", to_string(fill_color), to_string(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)",
+            to_string(fill_color), to_string(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
 
     static ImVec2 text_size(const string &text) {
         // This is calculated using a potentially different font, but better than the simple worst-case multiplier in the Faust draw code.
-        return ImGui::CalcTextSize(text.c_str());
+        return ImGui::CalcTextSize(text.c_str()) * s.style.flowgrid.DiagramScale.value.y;
     }
 
     static string to_string(const ImVec4 &color) {
@@ -279,7 +289,8 @@ struct ImGuiDevice : Device {
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
+        const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style, top] = style;
+        const float font_size = ImGui::GetFontSize() * s.style.flowgrid.DiagramScale.value.y * scale_height;
         const auto &text_pos = p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
         draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
@@ -364,7 +375,7 @@ struct Schema {
                 device.text(
                     point(direction, channel),
                     format("{}:{}", to_string(direction), channel),
-                    {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .font_size=16, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                    {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .scale_height=1.3, .font_style=TextStyle::FontStyle::Bold, .top=true}
                 );
                 device.circle(point(direction, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
             }
@@ -373,7 +384,7 @@ struct Schema {
                     device.text(
                         child(ci)->point(direction, channel),
                         format("({})->{}:{}", ci, to_string(direction), channel),
-                        {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .font_size=12, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                        {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold, .top=true}
                     );
                     device.circle(child(ci)->point(direction, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
                 }

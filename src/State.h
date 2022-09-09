@@ -431,7 +431,6 @@ struct FlowGridStyle : StateMember, Drawable {
     Vec2 DiagramScale{path, "DiagramScale", ImVec2(1, 1), 0.1, 10};
     Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20, 0, 40};
     Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20, 0, 40};
-    Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10, 2, 30};
     Float DiagramDecorateLineWidth{path, "DiagramDecorateLineWidth", 1, 0, 4};
     Float DiagramDecorateCornerRadius{path, "DiagramDecorateCornerRadius", 0, 0, 10};
     Float DiagramBinaryHorizontalGapRatio{path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
@@ -728,8 +727,7 @@ JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
 JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleFill, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
-    DiagramDecorateMargin, DiagramDecorateLabelOffset, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize,
-    DiagramInverterRadius)
+    DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

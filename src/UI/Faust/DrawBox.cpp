@@ -59,8 +59,9 @@ static inline float scale(const float f);
 static inline ImVec2 get_scale();
 
 // Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
-class Device {
-public:
+struct Device {
+    static constexpr float LabelOffset = 14; // Not configurable, since it's a pain to deal with right.
+
     Device(const ImVec2 &offset = {0, 0}) : offset(offset) {}
     virtual ~Device() = default;
     virtual DeviceType type() = 0;
@@ -121,7 +122,7 @@ struct SVGDevice : Device {
         const auto bottom_right = rect.Max;
         const auto top_right = top_left + ImVec2{rect.GetWidth(), 0};
         const auto bottom_left = bottom_right - ImVec2{rect.GetWidth(), 0};
-        const float text_left = top_left.x + s.style.flowgrid.DiagramDecorateLabelOffset;
+        const float text_left = top_left.x + LabelOffset;
 
         stream << dash_line(top_left, bottom_left, color); // left line
         stream << dash_line(bottom_left, bottom_right, color); // bottom line
@@ -217,19 +218,32 @@ struct ImGuiDevice : Device {
 
     void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) override {
         const auto &color_u32 = ImGui::ColorConvertFloat4ToU32(color);
-        const auto top_left = rect.Min;
-        const auto bottom_right = rect.Max;
-        const ImVec2 text_top_left = {top_left.x + s.style.flowgrid.DiagramDecorateLabelOffset, top_left.y};
-        const float hfs = ImGui::GetFontSize() / 2;
-        const ImVec2 text_offset = {0, hfs};
+        const auto &a = at(rect.Min);
+        const auto &b = at(rect.Max);
+        const auto &text_top_left = at(rect.Min + ImVec2{LabelOffset, 0});
 
-        // Decorate outline
-        const float corner_radius = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
+        // Decorate a potentially rounded outline rect with a break in the top-left (to the right of max rounding) for the label text
+        const float corner_rad = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
         const float line_width = scale(s.style.flowgrid.DiagramDecorateLineWidth);
-        if (line_width > 0) draw_list->AddRect(at(top_left), at(bottom_right), color_u32, corner_radius, ImDrawFlags_None, line_width);
-        // Rectangle, same size as BG, on top of the decorate outline, to put the text on top of the line
-        draw_list->AddRectFilled(at(text_top_left - ImVec2{3, 0}) - text_offset, at(text_top_left + ImVec2{3, 0}) + text_size(text), ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
-        draw_list->AddText(at(text_top_left) - text_offset, color_u32, text.c_str());
+        if (line_width > 0) {
+            if (corner_rad < 0.5f) {
+                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({3, 0}));
+                draw_list->PathLineTo({b.x, a.y});
+                draw_list->PathLineTo(b);
+                draw_list->PathLineTo({a.x, b.y});
+                draw_list->PathLineTo(a);
+                draw_list->PathLineTo(text_top_left - scale({3, 0}));
+            } else {
+                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({3, 0}));
+                draw_list->PathArcToFast({b.x - corner_rad, a.y + corner_rad}, corner_rad, 9, 12);
+                draw_list->PathArcToFast({b.x - corner_rad, b.y - corner_rad}, corner_rad, 0, 3);
+                draw_list->PathArcToFast({a.x + corner_rad, b.y - corner_rad}, corner_rad, 3, 6);
+                draw_list->PathArcToFast({a.x + corner_rad, a.y + corner_rad}, corner_rad, 6, 9);
+                draw_list->PathLineTo(text_top_left - scale({3, 0}));
+            }
+            draw_list->PathStroke(color_u32, ImDrawFlags_None, line_width);
+        }
+        draw_list->AddText(text_top_left - ImVec2{0, ImGui::GetFontSize() / 2}, color_u32, text.c_str());
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {

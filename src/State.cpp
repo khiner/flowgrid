@@ -917,7 +917,6 @@ void FlowGridStyle::draw() const {
 
     if (BeginTabBar("##FlowGridStyleEditor")) {
         if (BeginTabItem("Faust diagram")) {
-            DiagramScaled.Draw();
             DiagramSequentialConnectionZigzag.Draw();
             DiagramDrawRouteFrame.Draw();
             DiagramTopLevelMargin.Draw();

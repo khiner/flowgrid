@@ -54,8 +54,10 @@ struct RectStyle {
     const float stroke_width{0};
 };
 
+// Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
 class Device {
 public:
+    Device(const ImVec2 &offset = {0, 0}) : offset(offset) {}
     virtual ~Device() = default;
     virtual DeviceType type() = 0;
     virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
@@ -65,13 +67,24 @@ public:
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
-    virtual void dot(const ImVec2 &pos, Orientation orientation) = 0;
+    virtual void dot(const ImVec2 &pos) = 0;
+
+    static inline ImVec2 scale(const ImVec2 &p) {
+        return p * scale(1);
+    }
+    static inline float scale(const float f) {
+        const float scale = s.style.flowgrid.DiagramScale;
+        return f * scale;
+    }
+    ImVec2 at(const ImVec2 &p) const { return offset + scale(p); }
+
+    ImVec2 offset{};
 };
 
 struct SVGDevice : Device {
     SVGDevice(fs::path directory, string file_name, float w, float h) : directory(std::move(directory)), file_name(std::move(file_name)) {
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        stream << (s.style.flowgrid.DiagramScaled ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        stream << (s.style.flowgrid.DiagramScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
     }
 
     ~SVGDevice() override {
@@ -161,9 +174,8 @@ struct SVGDevice : Device {
         if (!link.empty()) text_stream << "</a>";
     }
 
-    void dot(const ImVec2 &pos, Orientation orientation) override {
-        const float offset = orientation == LeftRight ? 4 : -4; // todo move offset calc into schema
-        stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x + offset, pos.y + offset);
+    void dot(const ImVec2 &pos) override {
+        stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x, pos.y);
     }
 
     static string dash_line(const ImVec2 &start, const ImVec2 &end, const ImVec4 &color) {
@@ -197,12 +209,7 @@ private:
 };
 
 struct ImGuiDevice : Device {
-    ImGuiDevice() {
-        draw_list = ImGui::GetWindowDrawList();
-        pos = ImGui::GetCursorScreenPos();
-    }
-
-    ~ImGuiDevice() override = default;
+    ImGuiDevice() : Device(ImGui::GetCursorScreenPos()), draw_list(ImGui::GetWindowDrawList()) {}
 
     DeviceType type() override { return ImGuiDeviceType; }
 
@@ -215,13 +222,17 @@ struct ImGuiDevice : Device {
         const auto &color_u32 = ImGui::ColorConvertFloat4ToU32(color);
         const auto top_left = rect.Min;
         const auto bottom_right = rect.Max;
-        const ImVec2 text_top_left = {top_left.x + s.style.flowgrid.DiagramDecorateLabelOffset, top_left.y - ImGui::GetFontSize() / 2};
+        const ImVec2 text_top_left = {top_left.x + s.style.flowgrid.DiagramDecorateLabelOffset, top_left.y};
+        const float hfs = ImGui::GetFontSize() / 2;
+        const ImVec2 text_offset = {0, hfs};
 
-        // Decorate outline
-        draw_list->AddRect(at(top_left), at(bottom_right), color_u32);
+        // Decorate outline todo configurable decorate line width
+        const float rounding = scale(0);
+        const float line_width = scale(1);
+        draw_list->AddRect(at(top_left), at(bottom_right), color_u32, rounding, ImDrawFlags_None, line_width);
         // Rectangle, same size as BG, on top of the decorate outline, to put the text on top of the line
-        draw_list->AddRectFilled(at(text_top_left - ImVec2{3, 0}), at(text_top_left + text_size(text) + ImVec2{3, 0}), ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
-        draw_list->AddText(at(text_top_left), color_u32, text.c_str());
+        draw_list->AddRectFilled(at(text_top_left - ImVec2{3, 0}) - text_offset, at(text_top_left + ImVec2{3, 0}) + text_size(text), ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
+        draw_list->AddText(at(text_top_left) - text_offset, color_u32, text.c_str());
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
@@ -234,13 +245,13 @@ struct ImGuiDevice : Device {
 
     void arrow(const ImVec2 &p, Orientation orientation) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        ImGui::RenderArrowPointingAt(draw_list, at(p) + ImVec2{0, 0.5f}, s.style.flowgrid.DiagramArrowSize,
+        ImGui::RenderArrowPointingAt(draw_list, at(p) + ImVec2{0, 0.5f}, scale(s.style.flowgrid.DiagramArrowSize),
             orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        const auto width = s.style.flowgrid.DiagramWireWidth;
+        const auto width = scale(s.style.flowgrid.DiagramWireWidth);
         // ImGui adds {0.5, 0.5} to line points.
         draw_list->AddLine(at(start) - ImVec2{0.5f, 0}, at(end) - ImVec2{0.5f, 0}, ImGui::ColorConvertFloat4ToU32(color), width);
     }
@@ -251,29 +262,13 @@ struct ImGuiDevice : Device {
         draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
 
-    void dot(const ImVec2 &p, Orientation orientation) override {
-        const float offset = orientation == LeftRight ? 2 : -2;
-        draw_list->AddCircle(at(p + ImVec2{offset, offset}), 1, ImGui::GetColorU32(ImGuiCol_Border));
+    void dot(const ImVec2 &p) override {
+        draw_list->AddCircle(at(p), scale(1), ImGui::GetColorU32(ImGuiCol_Border));
     }
 
-    static ImVec2 text_size(const string &text) {
-        return ImGui::CalcTextSize(text.c_str());
-    }
+    static ImVec2 text_size(const string &text) { return ImGui::CalcTextSize(text.c_str()); }
 
-    ImVec2 at(const ImVec2 &p) const { return pos + scale(p); }
-
-    static ImVec2 scale(const ImVec2 &p) {
-        const ImVec2 &scale = {1, 1};
-        return p * scale;
-    }
-    static float scale(const float f) {
-        const float scale = 1;
-        return f * scale;
-    }
-
-private:
     ImDrawList *draw_list;
-    ImVec2 pos{};
 };
 
 enum IO_ {
@@ -435,15 +430,16 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        const ImRect &rect = {position() + ImVec2{XGap(), YGap()}, position() + ImVec2{w, h} - ImVec2{XGap(), YGap()}};
+        const ImRect &rect = {Device::scale(position() + ImVec2{XGap(), YGap()}), Device::scale(position() + ImVec2{w, h} - ImVec2{XGap(), YGap()})};
         if (device.type() == SVGDeviceType) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (inner) write_svg(inner, svg_device.directory);
             const string &link = inner ? svgFileName(tree) : "";
             svg_device.rect(rect, color, link);
             svg_device.text(mid(), text, {}, link);
-            // Draw a small point that indicates the first input (like an integrated circuits).
-            device.dot(is_lr() ? rect.Min : rect.Max, orientation);
+            // Draw the orientation mark to indicate the first input (like integrated circuits).
+            const float offset = dir_unit() * 4;
+            device.dot((is_lr() ? rect.Min : rect.Max) * ImVec2{offset, offset});
         } else {
             const auto &cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
@@ -822,8 +818,9 @@ struct RouteSchema : IOSchema {
         if (s.style.flowgrid.DiagramDrawRouteFrame) {
             const ImRect &rect = {position() + ImVec2{XGap(), YGap()}, position() + ImVec2{w, h} - ImVec2{XGap(), YGap()} * 2};
             device.rect(rect, {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
-            // Draw the orientation mark, a small point that indicates the first input (like integrated circuits).
-            device.dot(is_lr() ? rect.Min : rect.Max, orientation);
+            // Draw the orientation mark to indicate the first input (like integrated circuits).
+            const float offset = dir_unit() * 4;
+            device.dot((is_lr() ? rect.Min : rect.Max) + ImVec2{offset, offset});
             // Input arrows
             for (Count i = 0; i < io_count(IO_In); i++) device.arrow(point(IO_In, i) + ImVec2{dir_unit() * XGap(), 0}, orientation);
         }
@@ -1076,12 +1073,19 @@ void Audio::Faust::Diagram::draw() const {
         ImGui::SameLine();
         if (ImGui::Button("Back")) focused_schema_stack.pop();
         if (!can_nav) ImGui::EndDisabled();
+        ImGui::SameLine();
+//        s.style.flowgrid.DiagramScaleFill.Draw(); todo implement
+        if (!s.style.flowgrid.DiagramScaleFill) {
+            ImGui::SameLine();
+            s.style.flowgrid.DiagramScale.Draw();
+        }
     }
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    ImGui::SetNextWindowContentSize({focused->w, focused->h});
+    ImGui::SetNextWindowContentSize(Device::scale({focused->w, focused->h}));
     ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::GetCurrentWindow()->FontWindowScale = Device::scale(1);
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
         ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
     ImGuiDevice device;

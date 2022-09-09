@@ -107,6 +107,7 @@ UIContext create_ui_context(const RenderContext &render_context) {
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    //io.FontAllowUserScaling = true;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 

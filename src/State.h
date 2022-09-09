@@ -424,9 +424,10 @@ struct FlowGridStyle : StateMember, Drawable {
 
     ImVec4 Colors[FlowGridCol_COUNT];
     Float FlashDurationSec{path, "FlashDurationSec", 0.6, 0, 5};
-    Bool DiagramScaled{path, "DiagramScaled", false}; // Draw scaled SVG files
     Bool DiagramSequentialConnectionZigzag{path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
     Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
+    Bool DiagramScaleFill{path, "DiagramScaleFill", false}; // This and `DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
+    Float DiagramScale{path, "DiagramScale", 1, 0.1, 10};
     Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20, 0, 40};
     Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20, 0, 40};
     Float DiagramDecorateLabelOffset{path, "DiagramDecorateLabelOffset", 10, 2, 30};
@@ -723,7 +724,7 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramScaled, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLabelOffset,
+JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleFill, DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLabelOffset,
     DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 

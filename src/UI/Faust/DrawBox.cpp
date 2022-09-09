@@ -223,10 +223,10 @@ struct ImGuiDevice : Device {
         const float hfs = ImGui::GetFontSize() / 2;
         const ImVec2 text_offset = {0, hfs};
 
-        // Decorate outline todo configurable decorate line width
-        const float rounding = scale(0);
-        const float line_width = scale(1);
-        draw_list->AddRect(at(top_left), at(bottom_right), color_u32, rounding, ImDrawFlags_None, line_width);
+        // Decorate outline
+        const float corner_radius = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
+        const float line_width = scale(s.style.flowgrid.DiagramDecorateLineWidth);
+        if (line_width > 0) draw_list->AddRect(at(top_left), at(bottom_right), color_u32, corner_radius, ImDrawFlags_None, line_width);
         // Rectangle, same size as BG, on top of the decorate outline, to put the text on top of the line
         draw_list->AddRectFilled(at(text_top_left - ImVec2{3, 0}) - text_offset, at(text_top_left + ImVec2{3, 0}) + text_size(text), ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
         draw_list->AddText(at(text_top_left) - text_offset, color_u32, text.c_str());

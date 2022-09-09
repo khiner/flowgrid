@@ -208,33 +208,33 @@ struct ImGuiDevice : Device {
 
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width] = style;
-        draw_list->AddRectFilled(pos + rect.Min, pos + rect.Max, ImGui::ColorConvertFloat4ToU32(fill_color));
+        draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(fill_color));
     }
 
     void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) override {
         const auto &color_u32 = ImGui::ColorConvertFloat4ToU32(color);
-        const auto top_left = pos + rect.Min;
-        const auto bottom_right = pos + rect.Max;
+        const auto top_left = rect.Min;
+        const auto bottom_right = rect.Max;
         const ImVec2 text_top_left = {top_left.x + s.style.flowgrid.DiagramDecorateLabelOffset, top_left.y - ImGui::GetFontSize() / 2};
 
         // Decorate outline
-        draw_list->AddRect(top_left, bottom_right, color_u32);
+        draw_list->AddRect(at(top_left), at(bottom_right), color_u32);
         // Rectangle, same size as BG, on top of the decorate outline, to put the text on top of the line
-        draw_list->AddRectFilled(text_top_left - ImVec2{3, 0}, text_top_left + text_size(text) + ImVec2{3, 0}, ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
-        draw_list->AddText(text_top_left, color_u32, text.c_str());
+        draw_list->AddRectFilled(at(text_top_left - ImVec2{3, 0}), at(text_top_left + text_size(text) + ImVec2{3, 0}), ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
+        draw_list->AddText(at(text_top_left), color_u32, text.c_str());
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
-        draw_list->AddTriangle(pos + p1, pos + p2, pos + p3, ImGui::ColorConvertFloat4ToU32(color));
+        draw_list->AddTriangle(at(p1), at(p2), at(p3), ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void circle(const ImVec2 &p, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
-        draw_list->AddCircle(pos + p, radius, ImGui::ColorConvertFloat4ToU32(stroke_color));
+        draw_list->AddCircle(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(stroke_color));
     }
 
     void arrow(const ImVec2 &p, Orientation orientation) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        ImGui::RenderArrowPointingAt(draw_list, pos + ImVec2{p.x, p.y + 0.5f}, s.style.flowgrid.DiagramArrowSize,
+        ImGui::RenderArrowPointingAt(draw_list, at(p) + ImVec2{0, 0.5f}, s.style.flowgrid.DiagramArrowSize,
             orientation == LeftRight ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
     }
 
@@ -242,22 +242,33 @@ struct ImGuiDevice : Device {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
         const auto width = s.style.flowgrid.DiagramWireWidth;
         // ImGui adds {0.5, 0.5} to line points.
-        draw_list->AddLine(pos + start - ImVec2{0.5f, 0}, pos + end - ImVec2{0.5f, 0}, ImGui::ColorConvertFloat4ToU32(color), width);
+        draw_list->AddLine(at(start) - ImVec2{0.5f, 0}, at(end) - ImVec2{0.5f, 0}, ImGui::ColorConvertFloat4ToU32(color), width);
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, font_size, font_style, top] = style;
-        const auto &text_pos = pos + p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
-        draw_list->AddText(text_pos, ImGui::ColorConvertFloat4ToU32(color), text.c_str());
+        const auto &text_pos = p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
+        draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
 
     void dot(const ImVec2 &p, Orientation orientation) override {
         const float offset = orientation == LeftRight ? 2 : -2;
-        draw_list->AddCircle(pos + p + ImVec2{offset, offset}, 1, ImGui::GetColorU32(ImGuiCol_Border));
+        draw_list->AddCircle(at(p + ImVec2{offset, offset}), 1, ImGui::GetColorU32(ImGuiCol_Border));
     }
 
     static ImVec2 text_size(const string &text) {
         return ImGui::CalcTextSize(text.c_str());
+    }
+
+    ImVec2 at(const ImVec2 &p) const { return pos + scale(p); }
+
+    static ImVec2 scale(const ImVec2 &p) {
+        const ImVec2 &scale = {1, 1};
+        return p * scale;
+    }
+    static float scale(const float f) {
+        const float scale = 1;
+        return f * scale;
     }
 
 private:

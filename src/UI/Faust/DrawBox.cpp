@@ -421,7 +421,7 @@ struct IOSchema : Schema {
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockSchema : IOSchema {
-    BlockSchema(Tree t, Count in_count, Count out_count, string text, ImVec4 color = s.style.flowgrid.Colors[FlowGridCol_DiagramNormal], Schema *inner = nullptr)
+    BlockSchema(Tree t, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridCol_DiagramNormal, Schema *inner = nullptr)
         : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(color), inner(inner) {}
 
     void _place_size(const DeviceType type) override {
@@ -437,12 +437,13 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
+        const auto &c = s.style.flowgrid.Colors[color];
         const ImRect &rect = {scale(position() + ImVec2{XGap(), YGap()}), scale(position() + ImVec2{w, h} - ImVec2{XGap(), YGap()})};
         if (device.type() == SVGDeviceType) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (inner) write_svg(inner, svg_device.directory);
             const string &link = inner ? svgFileName(tree) : "";
-            svg_device.rect(rect, color, link);
+            svg_device.rect(rect, c, link);
             svg_device.text(mid(), text, {}, link);
             // Draw the orientation mark to indicate the first input (like integrated circuits).
             const float offset = dir_unit() * 4;
@@ -450,11 +451,11 @@ struct BlockSchema : IOSchema {
         } else {
             const auto &cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
-            ImGui::PushStyleColor(ImGuiCol_Button, color);
+            ImGui::PushStyleColor(ImGuiCol_Button, c);
             if (!inner) {
                 // Emulate disabled behavior, but without making color more dim, by just allowing clicks but not changing color.
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
             }
             if (ImGui::Button(text.c_str(), rect.GetSize()) && inner) focused_schema_stack.push(inner);
             if (!inner) ImGui::PopStyleColor(2);
@@ -478,7 +479,7 @@ struct BlockSchema : IOSchema {
     }
 
     const string text;
-    const ImVec4 color;
+    const FlowGridCol color;
     Schema *inner;
 };
 
@@ -509,7 +510,7 @@ private:
 // An inverter is a circle followed by a triangle.
 // It corresponds to '*(-1)', and it's used to create more compact diagrams.
 struct InverterSchema : BlockSchema {
-    InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", s.style.flowgrid.Colors[FlowGridCol_DiagramInverter]) {}
+    InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", FlowGridCol_DiagramInverter) {}
 
     void _place_size(const DeviceType) override {
         w = 2.5f * WireGap();
@@ -523,8 +524,8 @@ struct InverterSchema : BlockSchema {
         const auto tri_a = position() + ImVec2{XGap() + (is_lr() ? 0 : x1), 0};
         const auto tri_b = tri_a + ImVec2{(is_lr() ? x1 - 2 * radius : 2 * radius - x1 - x), y1};
         const auto tri_c = tri_a + ImVec2{0, h};
-        device.circle(tri_b + ImVec2{dir_unit() * radius, 0}, radius, {0, 0, 0, 0}, color);
-        device.triangle(tri_a, tri_b, tri_c, color);
+        device.circle(tri_b + ImVec2{dir_unit() * radius, 0}, radius, {0, 0, 0, 0}, s.style.flowgrid.Colors[color]);
+        device.triangle(tri_a, tri_b, tri_c, s.style.flowgrid.Colors[color]);
         draw_connections(device);
     }
 };
@@ -859,7 +860,7 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
 }
 
 // Generate a 1->0 block schema for an input slot.
-static Schema *make_input_slot(Tree t) { return new BlockSchema(t, 1, 0, getTreeName(t), s.style.flowgrid.Colors[FlowGridCol_DiagramSlot]); }
+static Schema *make_input_slot(Tree t) { return new BlockSchema(t, 1, 0, getTreeName(t), FlowGridCol_DiagramSlot); }
 
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
@@ -929,7 +930,7 @@ static Schema *Tree2SchemaNode(Tree t) {
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockSchema(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), s.style.flowgrid.Colors[FlowGridCol_DiagramNumber]);
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockSchema(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridCol_DiagramNumber);
     if (isBoxWaveform(t)) return new BlockSchema(t, 0, 2, "waveform{...}");
     if (isBoxWire(t)) return new CableSchema(t);
     if (isBoxCut(t)) return new CutSchema(t);
@@ -952,9 +953,9 @@ static Schema *Tree2SchemaNode(Tree t) {
 
     Tree label, chan, type, name, file;
     if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockSchema(t, 0, 1, tree2str(name));
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockSchema(t, 0, 1, userInterfaceDescription(t), s.style.flowgrid.Colors[FlowGridCol_DiagramUi]);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockSchema(t, 1, 1, userInterfaceDescription(t), s.style.flowgrid.Colors[FlowGridCol_DiagramUi]);
-    if (isBoxSoundfile(t, label, chan)) return new BlockSchema(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), s.style.flowgrid.Colors[FlowGridCol_DiagramUi]);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockSchema(t, 0, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockSchema(t, 1, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
+    if (isBoxSoundfile(t, label, chan)) return new BlockSchema(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), FlowGridCol_DiagramUi);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Schema(a);
@@ -972,7 +973,7 @@ static Schema *Tree2SchemaNode(Tree t) {
     if (isBoxMerge(t, a, b)) return new MergeSchema(t, Tree2Schema(a), Tree2Schema(b));
     if (isBoxRec(t, a, b)) return new RecursiveSchema(t, Tree2Schema(a), Tree2Schema(b));
 
-    if (isBoxSlot(t, &i)) return new BlockSchema(t, 0, 1, getTreeName(t), s.style.flowgrid.Colors[FlowGridCol_DiagramSlot]);
+    if (isBoxSlot(t, &i)) return new BlockSchema(t, 0, 1, getTreeName(t), FlowGridCol_DiagramSlot);
 
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction schema by placing in sequence the input slots and the body.
@@ -1025,7 +1026,7 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
         if (schema->is_top_level && AllowSchemaLinks && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return new BlockSchema(t, ins, outs, name, s.style.flowgrid.Colors[FlowGridCol_DiagramLink], schema);
+            return new BlockSchema(t, ins, outs, name, FlowGridCol_DiagramLink, schema);
         }
         if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
     }

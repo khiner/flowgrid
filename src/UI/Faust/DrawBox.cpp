@@ -19,6 +19,9 @@
 #include "../../Helper/assert.h"
 #include "../Widgets.h"
 
+using std::min;
+using std::max;
+
 using namespace fmt;
 
 static const int FoldComplexity = 2; // Number of boxes within a `Schema` before folding
@@ -55,12 +58,14 @@ struct RectStyle {
 };
 
 static inline ImVec2 scale(const ImVec2 &p);
-static inline float scale(const float f);
+static inline ImRect scale(const ImRect &r);
+static inline float scale(float f);
 static inline ImVec2 get_scale();
 
 // Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
 struct Device {
-    static constexpr float LabelOffset = 14; // Not configurable, since it's a pain to deal with right.
+    static constexpr float DecorateLabelOffset = 14; // Not configurable, since it's a pain to deal with right.
+    static constexpr float DecorateLabelXPadding = 3;
 
     Device(const ImVec2 &offset = {0, 0}) : offset(offset) {}
     virtual ~Device() = default;
@@ -80,7 +85,8 @@ struct Device {
 };
 
 struct SVGDevice : Device {
-    SVGDevice(fs::path directory, string file_name, float w, float h) : directory(std::move(directory)), file_name(std::move(file_name)) {
+    SVGDevice(fs::path directory, string file_name, ImVec2 size) : directory(std::move(directory)), file_name(std::move(file_name)) {
+        const auto &[w, h] = scale(size);
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
         stream << (s.style.flowgrid.DiagramScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
     }
@@ -103,10 +109,11 @@ struct SVGDevice : Device {
         return replaced_name;
     }
 
-    void rect(const ImRect &rect, const RectStyle &style) override {
+    void rect(const ImRect &r, const RectStyle &style) override {
+        const auto &sr = scale(r);
         const auto &[fill_color, stroke_color, stroke_width] = style;
         stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:{};stroke-width={};fill:{};"/>)",
-            rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), to_string(stroke_color), stroke_width, to_string(fill_color));
+            sr.Min.x, sr.Min.y, sr.GetWidth(), sr.GetHeight(), to_string(stroke_color), stroke_width, to_string(fill_color));
     }
 
     // Only SVG device has a rect-with-link method
@@ -117,40 +124,43 @@ struct SVGDevice : Device {
     }
 
     // SVG implements a group rect as a dashed rectangle with a label on the top left.
-    void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) override {
-        const auto top_left = rect.Min;
-        const auto bottom_right = rect.Max;
-        const auto top_right = top_left + ImVec2{rect.GetWidth(), 0};
-        const auto bottom_left = bottom_right - ImVec2{rect.GetWidth(), 0};
-        const float text_left = top_left.x + LabelOffset;
+    void grouprect(const ImRect &r, const string &text, const ImVec4 &color) override {
+        const auto &sr = scale(r);
+        const auto &tl = sr.Min;
+        const auto &br = sr.Max;
+        const auto &tr = sr.GetTR();
+        const auto &bl = sr.GetBL();
+        const float text_x = tl.x + scale(DecorateLabelOffset);
 
-        stream << dash_line(top_left, bottom_left, color); // left line
-        stream << dash_line(bottom_left, bottom_right, color); // bottom line
-        stream << dash_line(bottom_right, top_right, color); // right line
-        stream << dash_line(top_left, {text_left, top_left.y}, color); // top segment before text
-        stream << dash_line({min(text_left + text_size(text).x, bottom_right.x), top_left.y}, {bottom_right.x, top_left.y}, color); // top segment after text
-        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="13" fill="{}" dominant-baseline="middle">{}</text>)", text_left, top_left.y, to_string(color), xml_sanitize(text));
+        stream << dash_line(tl, bl, color); // left line
+        stream << dash_line(bl, br, color); // bottom line
+        stream << dash_line(br, tr, color); // right line
+        stream << dash_line(tl, {text_x - scale(DecorateLabelXPadding), tl.y}, color); // top segment before text
+        stream << dash_line({min(text_x + text_size(text).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
+        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="13" fill="{}" dominant-baseline="middle">{}</text>)", text_x, tl.y, to_string(color), xml_sanitize(text));
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
-        stream << get_triangle(p1, p2, p3, {0, 0, 0, 0}, color);
+        stream << get_triangle(at(p1), at(p2), at(p3), {0, 0, 0, 0}, color);
     }
 
     void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
-        const auto [x, y] = pos;
+        const auto [x, y] = at(pos);
         stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", to_string(fill_color), to_string(stroke_color), x, y, radius);
     }
 
     void arrow(const ImVec2 &pos, Orientation orientation) override {
-        const auto &[dx, dy] = s.style.flowgrid.DiagramArrowSize.value;
-        stream << arrow_pointing_at(pos, s.style.flowgrid.DiagramArrowSize.value, orientation, s.style.flowgrid.Colors[FlowGridCol_DiagramLine]);
+        stream << arrow_pointing_at(at(pos), scale(s.style.flowgrid.DiagramArrowSize), orientation, s.style.flowgrid.Colors[FlowGridCol_DiagramLine]);
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
-        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        const auto width = s.style.flowgrid.DiagramWireWidth;
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
-        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start.x, start.y, end.x, end.y, to_string(color), line_cap, width);
+        const auto &start_scaled = at(start);
+        const auto &end_scaled = at(end);
+        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
+        const auto width = scale(s.style.flowgrid.DiagramWireWidth);
+        stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)",
+            start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, to_string(color), line_cap, width);
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
@@ -158,22 +168,23 @@ struct SVGDevice : Device {
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
+        const auto &p = at(pos - ImVec2{padding_right, padding_bottom});
         auto &text_stream = top ? end_stream : stream;
         text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            pos.x - padding_right, pos.y - padding_bottom, font_style_formatted, font_weight, font_size, anchor, to_string(color), xml_sanitize(text));
+            p.x, p.y, font_style_formatted, font_weight, font_size, anchor, to_string(color), xml_sanitize(text));
     }
 
     // Only SVG device has a text-with-link method
     void text(const ImVec2 &pos, const string &str, const TextStyle &style, const string &link) {
-        const bool top = style.top;
-        auto &text_stream = top ? end_stream : stream;
+        auto &text_stream = style.top ? end_stream : stream;
         if (!link.empty()) text_stream << format(R"(<a href="{}">)", xml_sanitize(link));
         text(pos, str, style);
         if (!link.empty()) text_stream << "</a>";
     }
 
     void dot(const ImVec2 &pos) override {
-        stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", pos.x, pos.y);
+        const auto &p = at(pos);
+        stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", p.x, p.y);
     }
 
     static string dash_line(const ImVec2 &start, const ImVec2 &end, const ImVec4 &color) {
@@ -220,21 +231,21 @@ struct ImGuiDevice : Device {
         const auto &color_u32 = ImGui::ColorConvertFloat4ToU32(color);
         const auto &a = at(rect.Min);
         const auto &b = at(rect.Max);
-        const auto &text_top_left = at(rect.Min + ImVec2{LabelOffset, 0});
+        const auto &text_top_left = at(rect.Min + ImVec2{DecorateLabelOffset, 0});
 
         // Decorate a potentially rounded outline rect with a break in the top-left (to the right of max rounding) for the label text
         const float corner_rad = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
         const float line_width = scale(s.style.flowgrid.DiagramDecorateLineWidth);
         if (line_width > 0) {
             if (corner_rad < 0.5f) {
-                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({3, 0}));
+                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({DecorateLabelXPadding, 0}));
                 draw_list->PathLineTo({b.x, a.y});
                 draw_list->PathLineTo(b);
                 draw_list->PathLineTo({a.x, b.y});
                 draw_list->PathLineTo(a);
                 draw_list->PathLineTo(text_top_left - scale({3, 0}));
             } else {
-                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({3, 0}));
+                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({DecorateLabelXPadding, 0}));
                 draw_list->PathArcToFast({b.x - corner_rad, a.y + corner_rad}, corner_rad, 9, 12);
                 draw_list->PathArcToFast({b.x - corner_rad, b.y - corner_rad}, corner_rad, 0, 3);
                 draw_list->PathArcToFast({a.x + corner_rad, b.y - corner_rad}, corner_rad, 3, 6);
@@ -370,6 +381,7 @@ struct Schema {
         }
     }
 
+    inline ImRect rect() const { return {position(), position() + size()}; }
     inline ImVec2 position() const { return {x, y}; }
     inline ImVec2 size() const { return {w, h}; }
     inline ImVec2 mid() const { return position() + size() / 2; }
@@ -392,9 +404,10 @@ Schema *root_schema; // This diagram is drawn every frame if present.
 std::stack<Schema *> focused_schema_stack;
 
 static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
+static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
 static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
-    if (s.style.flowgrid.DiagramScaleFill && !focused_schema_stack.empty()) {
+    if (s.style.flowgrid.DiagramScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
         const auto *focused_schema = focused_schema_stack.top();
         return ImGui::GetWindowSize() / ImVec2{focused_schema->w, focused_schema->h};
     }
@@ -417,8 +430,8 @@ static string svgFileName(Tree t) {
 }
 
 void write_svg(Schema *schema, const fs::path &path) {
-    SVGDevice device(path, svgFileName(schema->tree), schema->w, schema->h);
-    device.rect({schema->x, schema->y, schema->w - 1, schema->h - 1}, {.fill_color=s.style.flowgrid.Colors[FlowGridCol_DiagramBg]});
+    SVGDevice device(path, svgFileName(schema->tree), schema->size());
+    device.rect(schema->rect(), {.fill_color=s.style.flowgrid.Colors[FlowGridCol_DiagramBg]});
     schema->draw(device);
 }
 
@@ -441,7 +454,7 @@ struct BlockSchema : IOSchema {
     void _place_size(const DeviceType type) override {
         const float text_w = (type == SVGDeviceType ? SVGDevice::text_size(text) : ImGuiDevice::text_size(text)).x;
         w = 2 * XGap() + max(3 * WireGap(), 2 * XGap() + text_w);
-        h = 2 * YGap() + float(max(3, max(in_count, out_count))) * WireGap();
+        h = 2 * YGap() + max(3.0f, float(max(in_count, out_count))) * WireGap();
         if (inner && type == SVGDeviceType) inner->place_size(type);
     }
 
@@ -451,25 +464,26 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        const auto &c = s.style.flowgrid.Colors[color];
-        const ImRect &rect = {scale(position() + ImVec2{XGap(), YGap()}), scale(position() + ImVec2{w, h} - ImVec2{XGap(), YGap()})};
+        const auto &col = s.style.flowgrid.Colors[color];
         if (device.type() == SVGDeviceType) {
+            const ImRect &rect = {position() + ImVec2{XGap(), YGap()}, position() + ImVec2{w, h} - ImVec2{XGap(), YGap()}};
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (inner) write_svg(inner, svg_device.directory);
             const string &link = inner ? svgFileName(tree) : "";
-            svg_device.rect(rect, c, link);
+            svg_device.rect(rect, col, link);
             svg_device.text(mid(), text, {}, link);
             // Draw the orientation mark to indicate the first input (like integrated circuits).
             const float offset = dir_unit() * 4;
             device.dot((is_lr() ? rect.Min : rect.Max) * ImVec2{offset, offset});
         } else {
+            const ImRect &rect = {scale(position() + ImVec2{XGap(), YGap()}), scale(position() + ImVec2{w, h} - ImVec2{XGap(), YGap()})};
             const auto &cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
-            ImGui::PushStyleColor(ImGuiCol_Button, c);
+            ImGui::PushStyleColor(ImGuiCol_Button, col);
             if (!inner) {
                 // Emulate disabled behavior, but without making color more dim, by just allowing clicks but not changing color.
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, c);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
             }
             if (ImGui::Button(text.c_str(), rect.GetSize()) && inner) focused_schema_stack.push(inner);
             if (!inner) ImGui::PopStyleColor(2);
@@ -819,7 +833,7 @@ struct DecorateSchema : IOSchema {
     }
 
     inline float margin(const Schema *schema = nullptr) const {
-        return s.style.flowgrid.DiagramDecorateMargin + float((schema ? schema->is_top_level : is_top_level) ? s.style.flowgrid.DiagramTopLevelMargin : 0);
+        return s.style.flowgrid.DiagramDecorateMargin + ((schema ? schema->is_top_level : is_top_level) ? s.style.flowgrid.DiagramTopLevelMargin : 0.0f);
     }
 
 private:
@@ -1005,7 +1019,7 @@ static Schema *Tree2SchemaNode(Tree t) {
     Tree c;
     if (isBoxRoute(t, a, b, c)) {
         int ins, outs;
-        vector<int> route;
+        std::vector<int> route;
         // Build n x m cable routing
         if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) return new RouteSchema(t, ins, outs, route);
 

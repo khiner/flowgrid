@@ -131,19 +131,14 @@ struct SVGDevice : Device {
         const auto &tr = sr.GetTR();
         const auto &bl = sr.GetBL();
         const float text_x = tl.x + scale(DecorateLabelOffset);
-        const float font_size = ImGui::GetFontSize() * s.style.flowgrid.DiagramScale.value.y;
 
         stream << dash_line(tl, bl, color); // left line
         stream << dash_line(bl, br, color); // bottom line
         stream << dash_line(br, tr, color); // right line
         stream << dash_line(tl, {text_x - scale(DecorateLabelXPadding), tl.y}, color); // top segment before text
-        // Adding 4-char space after decorate label to make up for size calculation done against
-        // default ImGui font (Ableton font) instead of SVG-exported font (Arial).
-        // Strings with lots of thin characters like parens, in particular, will make the size too small.
-        // todo calculate using Arial or export current font into SVG somehow
-        stream << dash_line({min(text_x + text_size(format("{}    ", text)).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
+        stream << dash_line({min(text_x + text_size(text).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
         stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            text_x, tl.y, font_size, to_string(color), xml_sanitize(text));
+            text_x, tl.y, text_size(text).y, to_string(color), xml_sanitize(text));
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
@@ -172,14 +167,13 @@ struct SVGDevice : Device {
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style, top] = style;
-        const float font_size = ImGui::GetFontSize() * s.style.flowgrid.DiagramScale.value.y;
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = at(pos - ImVec2{padding_right, padding_bottom});
         auto &text_stream = top ? end_stream : stream;
         text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            p.x, p.y, font_style_formatted, font_weight, font_size, anchor, to_string(color), xml_sanitize(text));
+            p.x, p.y, font_style_formatted, font_weight, text_size(text).y, anchor, to_string(color), xml_sanitize(text));
     }
 
     // Only SVG device has a text-with-link method
@@ -212,8 +206,11 @@ struct SVGDevice : Device {
     }
 
     static ImVec2 text_size(const string &text) {
-        // This is calculated using a potentially different font, but better than the simple worst-case multiplier in the Faust draw code.
-        return ImGui::CalcTextSize(text.c_str()) * s.style.flowgrid.DiagramScale.value.y;
+        // Scaling because we are calculating based on ImGui font (Ableton font) instead of SVG-exported font (Arial).
+        // Strings with lots of thin characters like parens, in particular, will make the size too small,
+        // and it doesn't work well with diagram scaling. Close enough on non-scaled diagrams.
+        // todo calculate using Arial or export current font into SVG somehow. also, try exporting with an ImGui current-window present.
+        return ImGui::CalcTextSize(text.c_str()) * s.style.flowgrid.DiagramScale * ImVec2{1, 0.8};
     }
 
     static string to_string(const ImVec4 &color) {

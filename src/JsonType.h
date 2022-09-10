@@ -1,5 +1,7 @@
 #pragma once
 
+#include <variant>
+
 #include "fmt/chrono.h"
 #include "nlohmann/json.hpp"
 

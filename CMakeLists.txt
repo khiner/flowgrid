@@ -19,7 +19,7 @@ file(
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 include_directories(
-    lib/faust/architecture lib/faust/compiler lib/faust/compiler/errors lib/faust/compiler/tlib
+    lib/faust/architecture
     lib/zep/include
     lib/ImGuiFileDialog
     lib/implot

@@ -12,12 +12,12 @@
 #include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "boxes/ppbox.hh"
-#include "signals/prim2.hh"
 #include "faust/dsp/libfaust-signal.h"
 
 #include "../../Helper/assert.h"
 #include "../Widgets.h"
+
+using Tree = Box;
 
 using std::min;
 using std::max;
@@ -914,7 +914,7 @@ static bool isInverter(Tree t) {
 
 static string print_tree(Tree tree) {
     stringstream ss;
-    ss << boxpp(tree);
+    printBox(tree, ss, false);
     return ss.str();
 }
 

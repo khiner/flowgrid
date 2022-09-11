@@ -139,7 +139,7 @@ struct SVGDevice : Device {
         const auto &sr = scale(r);
         const auto &[fill_color, stroke_color, stroke_width] = style;
         stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:{};stroke-width={};fill:{};"/>)",
-            sr.Min.x, sr.Min.y, sr.GetWidth(), sr.GetHeight(), to_string(stroke_color), stroke_width, to_string(fill_color));
+            sr.Min.x, sr.Min.y, sr.GetWidth(), sr.GetHeight(), rgb_color(stroke_color), stroke_width, rgb_color(fill_color));
     }
 
     // Only SVG device has a rect-with-link method
@@ -164,7 +164,7 @@ struct SVGDevice : Device {
         stream << dash_line(tl, {text_x - scale(DecorateLabelXPadding), tl.y}, color); // top segment before text
         stream << dash_line({min(text_x + scale(text_size(text)).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
         stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            text_x, tl.y, get_font_name(), get_font_size(), to_string(color), xml_sanitize(text));
+            text_x, tl.y, get_font_name(), get_font_size(), rgb_color(color), xml_sanitize(text));
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
@@ -174,7 +174,7 @@ struct SVGDevice : Device {
     void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
         const auto [x, y] = at(pos);
         stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)",
-            to_string(fill_color), to_string(stroke_color), x, y, radius);
+            rgb_color(fill_color), rgb_color(stroke_color), x, y, radius);
     }
 
     void arrow(const ImVec2 &pos, Orientation orientation) override {
@@ -188,7 +188,7 @@ struct SVGDevice : Device {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
         const auto width = scale(s.style.flowgrid.DiagramWireWidth);
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)",
-            start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, to_string(color), line_cap, width);
+            start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, rgb_color(color), line_cap, width);
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
@@ -199,7 +199,7 @@ struct SVGDevice : Device {
         const auto &p = at(pos - ImVec2{padding_right, padding_bottom});
         auto &text_stream = top ? end_stream : stream;
         text_stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            p.x, p.y, get_font_name(), font_style_formatted, font_weight, get_font_size(), anchor, to_string(color), xml_sanitize(text));
+            p.x, p.y, get_font_name(), font_style_formatted, font_weight, get_font_size(), anchor, rgb_color(color), xml_sanitize(text));
     }
 
     // Only SVG device has a text-with-link method
@@ -217,7 +217,7 @@ struct SVGDevice : Device {
 
     static string dash_line(const ImVec2 &start, const ImVec2 &end, const ImVec4 &color) {
         return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: {}; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)",
-            start.x, start.y, end.x, end.y, to_string(color));
+            start.x, start.y, end.x, end.y, rgb_color(color));
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
@@ -228,10 +228,10 @@ struct SVGDevice : Device {
 
     static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &fill_color, const ImVec4 &stroke_color) {
         return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)",
-            to_string(fill_color), to_string(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+            rgb_color(fill_color), rgb_color(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
 
-    static string to_string(const ImVec4 &color) {
+    static string rgb_color(const ImVec4 &color) {
         return format("rgb({}, {}, {}, {})", color.x * 255, color.y * 255, color.z * 255, color.w * 255);
     }
 
@@ -495,7 +495,9 @@ struct BlockSchema : IOSchema {
         if (device.type() == SVGDeviceType) {
             const ImRect &rect = {position() + ImVec2{XGap(), YGap()}, position() + ImVec2{w, h} - ImVec2{XGap(), YGap()}};
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
-            if (inner) write_svg(inner, svg_device.directory);
+            // todo why is draw called twice for each block with an inner child? (or maybe even every schema?)
+            //  note this is likely double-writing in ImGui too
+            if (inner && !fs::exists(svg_device.directory / svgFileName(inner->tree))) write_svg(inner, svg_device.directory);
             const string &link = inner ? svgFileName(tree) : "";
             svg_device.rect(rect, col, link);
             svg_device.text(mid(), text, {}, link);
@@ -1089,7 +1091,6 @@ void on_box_change(Box box) {
     IsTreePureRouting.clear();
     focused_schema_stack = {};
     if (box) {
-        // Render ImGui diagram
         root_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
         focused_schema_stack.push(root_schema);
     } else {

@@ -912,11 +912,7 @@ static bool isInverter(Tree t) {
     return ::ranges::contains(inverters, t);
 }
 
-static string print_tree(Tree tree) {
-    stringstream ss;
-    printBox(tree, ss, false);
-    return ss.str();
-}
+static inline string print_tree(Tree tree) { return printBox(tree, false); }
 
 // Collect the leaf numbers of tree `t` into vector `v`.
 // Return true if `t` is a number or a parallel tree of numbers.

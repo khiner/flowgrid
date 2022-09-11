@@ -14,6 +14,7 @@
 
 #include "faust/dsp/libfaust-signal.h"
 
+#include "../../Helper/basen.h"
 #include "../../Helper/assert.h"
 #include "../Widgets.h"
 
@@ -84,11 +85,36 @@ struct Device {
     ImVec2 offset{};
 };
 
+// ImGui saves font name as "{Name}.{Ext}, {Size}px"
+static inline string get_font_name() {
+    const string name = ImGui::GetFont()->GetDebugName();
+    return name.substr(0, name.find_first_of('.'));
+}
+static inline string get_font_path() {
+    const string name = ImGui::GetFont()->GetDebugName();
+    return format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
+}
+
+static ImVec2 text_size(const string &text) { return ImGui::CalcTextSize(text.c_str()); }
+
 struct SVGDevice : Device {
     SVGDevice(fs::path directory, string file_name, ImVec2 size) : directory(std::move(directory)), file_name(std::move(file_name)) {
         const auto &[w, h] = scale(size);
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
         stream << (s.style.flowgrid.DiagramScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+
+        // Embed the current font as a base64-encoded string.
+        const string ttf_contents = FileIO::read(get_font_path());
+        string ttf_base64;
+        bn::encode_b64(ttf_contents.begin(), ttf_contents.end(), back_inserter(ttf_base64));
+        stream << format(R"(
+        <defs><style>
+            @font-face{{
+                font-family:"{}";
+                src:url(data:application/font-woff;charset=utf-8;base64,{}) format("woff");
+                font-weight:normal;font-style:normal;
+            }}
+        </style></defs>)", get_font_name(), ttf_base64);
     }
 
     ~SVGDevice() override {
@@ -136,9 +162,9 @@ struct SVGDevice : Device {
         stream << dash_line(bl, br, color); // bottom line
         stream << dash_line(br, tr, color); // right line
         stream << dash_line(tl, {text_x - scale(DecorateLabelXPadding), tl.y}, color); // top segment before text
-        stream << dash_line({min(text_x + text_size(text).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
-        stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            text_x, tl.y, text_size(text).y, to_string(color), xml_sanitize(text));
+        stream << dash_line({min(text_x + scale(text_size(text)).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
+        stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
+            text_x, tl.y, get_font_name(), get_font_size(), to_string(color), xml_sanitize(text));
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
@@ -172,8 +198,8 @@ struct SVGDevice : Device {
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = at(pos - ImVec2{padding_right, padding_bottom});
         auto &text_stream = top ? end_stream : stream;
-        text_stream << format(R"(<text x="{}" y="{}" font-family="Arial" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            p.x, p.y, font_style_formatted, font_weight, text_size(text).y, anchor, to_string(color), xml_sanitize(text));
+        text_stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
+            p.x, p.y, get_font_name(), font_style_formatted, font_weight, get_font_size(), anchor, to_string(color), xml_sanitize(text));
     }
 
     // Only SVG device has a text-with-link method
@@ -205,17 +231,13 @@ struct SVGDevice : Device {
             to_string(fill_color), to_string(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
 
-    static ImVec2 text_size(const string &text) {
-        // Scaling because we are calculating based on ImGui font (Ableton font) instead of SVG-exported font (Arial).
-        // Strings with lots of thin characters like parens, in particular, will make the size too small,
-        // and it doesn't work well with diagram scaling. Close enough on non-scaled diagrams.
-        // todo calculate using Arial or export current font into SVG somehow. also, try exporting with an ImGui current-window present.
-        return ImGui::CalcTextSize(text.c_str()) * s.style.flowgrid.DiagramScale * ImVec2{1, 0.8};
-    }
-
     static string to_string(const ImVec4 &color) {
         return format("rgb({}, {}, {}, {})", color.x * 255, color.y * 255, color.z * 255, color.w * 255);
     }
+
+    // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
+    // Determined empirically to make the two renderings look the same.
+    static float get_font_size() { return scale(ImGui::GetTextLineHeight()) * 0.8f; }
 
     fs::path directory;
     string file_name;
@@ -287,7 +309,6 @@ struct ImGuiDevice : Device {
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style, top] = style;
-        const float font_size = ImGui::GetFontSize() * s.style.flowgrid.DiagramScale.value.y * scale_height;
         const auto &text_pos = p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
         draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
@@ -295,8 +316,6 @@ struct ImGuiDevice : Device {
     void dot(const ImVec2 &p) override {
         draw_list->AddCircle(at(p), scale(1), ImGui::GetColorU32(ImGuiCol_Border));
     }
-
-    static ImVec2 text_size(const string &text) { return ImGui::CalcTextSize(text.c_str()); }
 
     ImDrawList *draw_list;
 };
@@ -460,7 +479,7 @@ struct BlockSchema : IOSchema {
         : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(color), inner(inner) {}
 
     void _place_size(const DeviceType type) override {
-        const float text_w = (type == SVGDeviceType ? SVGDevice::text_size(text) : ImGuiDevice::text_size(text)).x;
+        const float text_w = text_size(text).x;
         w = 2 * XGap() + max(3 * WireGap(), 2 * XGap() + text_w);
         h = 2 * YGap() + max(3.0f, float(max(in_count, out_count))) * WireGap();
         if (inner && type == SVGDeviceType) inner->place_size(type);

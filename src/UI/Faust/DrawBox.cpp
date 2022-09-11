@@ -94,6 +94,17 @@ static inline string get_font_path() {
     const string name = ImGui::GetFont()->GetDebugName();
     return format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
 }
+static inline string get_font_base64() {
+    static std::map<string, string> base64_for_font_name; // avoid recomputing
+    const string &font_name = get_font_name();
+    if (!base64_for_font_name.contains(font_name)) {
+        const string ttf_contents = FileIO::read(get_font_path());
+        string ttf_base64;
+        bn::encode_b64(ttf_contents.begin(), ttf_contents.end(), back_inserter(ttf_base64));
+        base64_for_font_name[font_name] = ttf_base64;
+    }
+    return base64_for_font_name.at(font_name);
+}
 
 static ImVec2 text_size(const string &text) { return ImGui::CalcTextSize(text.c_str()); }
 
@@ -104,9 +115,6 @@ struct SVGDevice : Device {
         stream << (s.style.flowgrid.DiagramScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
-        const string ttf_contents = FileIO::read(get_font_path());
-        string ttf_base64;
-        bn::encode_b64(ttf_contents.begin(), ttf_contents.end(), back_inserter(ttf_base64));
         stream << format(R"(
         <defs><style>
             @font-face{{
@@ -114,7 +122,7 @@ struct SVGDevice : Device {
                 src:url(data:application/font-woff;charset=utf-8;base64,{}) format("woff");
                 font-weight:normal;font-style:normal;
             }}
-        </style></defs>)", get_font_name(), ttf_base64);
+        </style></defs>)", get_font_name(), get_font_base64());
     }
 
     ~SVGDevice() override {

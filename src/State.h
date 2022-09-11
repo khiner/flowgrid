@@ -403,6 +403,7 @@ enum FlowGridCol_ {
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
     // Faust diagram colors
     FlowGridCol_DiagramBg,
+    FlowGridCol_DiagramGroupTitle,
     FlowGridCol_DiagramGroupStroke,
     FlowGridCol_DiagramLine,
     FlowGridCol_DiagramLink,
@@ -459,7 +460,8 @@ struct FlowGridStyle : StateMember, Drawable {
     // Make Faust diagrams the same way Faust does when it renders to SVG.
     void StyleDiagramFaustClassic() {
         Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramGroupStroke] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramGroupStroke] = {0.2, 0.2, 0.2, 1};
         Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 1};
         Colors[FlowGridCol_DiagramLink] = {0, 0.2, 0.4, 1};
         Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
@@ -474,6 +476,7 @@ struct FlowGridStyle : StateMember, Drawable {
             case FlowGridCol_GestureIndicator: return "GestureIndicator";
             case FlowGridCol_HighlightText: return "HighlightText";
             case FlowGridCol_DiagramBg: return "DiagramBg";
+            case FlowGridCol_DiagramGroupTitle: return "DiagramGroupTitle";
             case FlowGridCol_DiagramGroupStroke: return "DiagramGroupStroke";
             case FlowGridCol_DiagramLine: return "DiagramLine";
             case FlowGridCol_DiagramLink: return "DiagramLink";

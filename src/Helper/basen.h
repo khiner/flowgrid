@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cassert>
-#include <cstring>
 
 namespace bn {
 
@@ -163,8 +162,7 @@ void decode(Iter1 start, Iter1 end, Iter2 out) {
             buffer |= value >> bits_in_next_byte;
             *out++ = buffer;
             buffer = 0;
-            // save the remainder of our value in the buffer; it will be flushed
-            // during next iterations
+            // save the remainder of our value in the buffer; it will be flushed during next iterations
             buffer |= value << (8 - bits_in_next_byte);
             output_current_bit = bits_in_next_byte;
         }
@@ -184,16 +182,13 @@ void encode(Iter1 start, Iter1 end, Iter2 out) {
     while (has_backlog || iter != end) {
         if (!has_backlog) {
             if (start_bit + ConversionTraits::group_length() < 8) {
-                // the value fits within single byte, so we can extract it
-                // directly
+                // the value fits within single byte, so we can extract it directly
                 char v = extract_partial_bits(*iter, start_bit, ConversionTraits::group_length());
                 *out++ = ConversionTraits::encode(v);
-                // since we know that start_bit + ConversionTraits::group_length() < 8 we don't need to go
-                // to the next byte
+                // since we know that start_bit + ConversionTraits::group_length() < 8 we don't need to go to the next byte
                 start_bit += ConversionTraits::group_length();
             } else {
-                // our bits are spanning across byte border; we need to keep the
-                // starting point and move over to next byte.
+                // our bits are spanning across byte border; we need to keep the starting point and move over to next byte.
                 backlog = *iter++;
                 has_backlog = true;
             }

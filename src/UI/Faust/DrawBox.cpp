@@ -72,7 +72,7 @@ struct Device {
     virtual ~Device() = default;
     virtual DeviceType type() = 0;
     virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
-    virtual void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) = 0; // A labeled grouping
+    virtual void grouprect(const ImRect &rect, const string &text) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) = 0;
     virtual void arrow(const ImVec2 &pos, Orientation orientation) = 0;
@@ -157,22 +157,27 @@ struct SVGDevice : Device {
         if (!link.empty()) stream << "</a>";
     }
 
-    // SVG implements a group rect as a dashed rectangle with a label on the top left.
-    void grouprect(const ImRect &r, const string &text, const ImVec4 &color) override {
+    void grouprect(const ImRect &r, const string &text) override {
         const auto &sr = scale(r);
         const auto &tl = sr.Min;
-        const auto &br = sr.Max;
         const auto &tr = sr.GetTR();
-        const auto &bl = sr.GetBL();
         const float text_x = tl.x + scale(DecorateLabelOffset);
-
-        stream << dash_line(tl, bl, color); // left line
-        stream << dash_line(bl, br, color); // bottom line
-        stream << dash_line(br, tr, color); // right line
-        stream << dash_line(tl, {text_x - scale(DecorateLabelXPadding), tl.y}, color); // top segment before text
-        stream << dash_line({min(text_x + scale(text_size(text)).x + scale(DecorateLabelXPadding), tr.x), tr.y}, tr, color); // top segment after text
+        const auto &padding = scale({DecorateLabelXPadding, 0});
+        const ImVec2 &text_right = {min(text_x + scale(text_size(text)).x + padding.x, tr.x), tr.y};
+        const auto &label_color = s.style.flowgrid.Colors[FlowGridCol_DiagramGroupTitle];
+        const auto &stroke_color = s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke];
+        const float rad = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
+        const float line_width = scale(s.style.flowgrid.DiagramDecorateLineWidth);
+        // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
+        stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)",
+            text_x - padding.x, tl.y, -scale(DecorateLabelOffset) + padding.x + rad, rad, rad, -rad, rad, // before text to top-left
+            (sr.GetHeight() - 2 * rad), rad, rad, rad, rad, // top-left to bottom-left
+            (sr.GetWidth() - 2 * rad), rad, rad, rad, -rad, // bottom-left to bottom-right
+            -(sr.GetHeight() - 2 * rad), rad, rad, -rad, -rad, // bottom-right to top-right
+            -(tr.x - rad - text_right.x), // top-right to after text
+            line_width, rgb_color(stroke_color));
         stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            text_x, tl.y, get_font_name(), get_font_size(), rgb_color(color), xml_sanitize(text));
+            text_x, tl.y, get_font_name(), get_font_size(), rgb_color(label_color), xml_sanitize(text));
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
@@ -223,11 +228,6 @@ struct SVGDevice : Device {
         stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", p.x, p.y);
     }
 
-    static string dash_line(const ImVec2 &start, const ImVec2 &end, const ImVec4 &color) {
-        return format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke: {}; stroke-linecap:round; stroke-width:0.5; stroke-dasharray:6,6;"/>)",
-            start.x, start.y, end.x, end.y, rgb_color(color));
-    }
-
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
     static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Orientation orientation, const ImVec4 &color) {
         const float d = orientation == RightLeft ? 1 : -1;
@@ -264,34 +264,34 @@ struct ImGuiDevice : Device {
         draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(fill_color));
     }
 
-    void grouprect(const ImRect &rect, const string &text, const ImVec4 &color) override {
-        const auto &color_u32 = ImGui::ColorConvertFloat4ToU32(color);
+    void grouprect(const ImRect &rect, const string &text) override {
         const auto &a = at(rect.Min);
         const auto &b = at(rect.Max);
         const auto &text_top_left = at(rect.Min + ImVec2{DecorateLabelOffset, 0});
+        const auto &stroke_color = ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke]);
+        const auto &label_color = ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramGroupTitle]);
 
         // Decorate a potentially rounded outline rect with a break in the top-left (to the right of max rounding) for the label text
-        const float corner_rad = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
+        const float rad = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
         const float line_width = scale(s.style.flowgrid.DiagramDecorateLineWidth);
         if (line_width > 0) {
-            if (corner_rad < 0.5f) {
-                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({DecorateLabelXPadding, 0}));
+            const auto &padding = scale({DecorateLabelXPadding, 0});
+            draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + padding);
+            if (rad < 0.5f) {
                 draw_list->PathLineTo({b.x, a.y});
                 draw_list->PathLineTo(b);
                 draw_list->PathLineTo({a.x, b.y});
                 draw_list->PathLineTo(a);
-                draw_list->PathLineTo(text_top_left - scale({3, 0}));
             } else {
-                draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + scale({DecorateLabelXPadding, 0}));
-                draw_list->PathArcToFast({b.x - corner_rad, a.y + corner_rad}, corner_rad, 9, 12);
-                draw_list->PathArcToFast({b.x - corner_rad, b.y - corner_rad}, corner_rad, 0, 3);
-                draw_list->PathArcToFast({a.x + corner_rad, b.y - corner_rad}, corner_rad, 3, 6);
-                draw_list->PathArcToFast({a.x + corner_rad, a.y + corner_rad}, corner_rad, 6, 9);
-                draw_list->PathLineTo(text_top_left - scale({3, 0}));
+                draw_list->PathArcToFast({b.x - rad, a.y + rad}, rad, 9, 12);
+                draw_list->PathArcToFast({b.x - rad, b.y - rad}, rad, 0, 3);
+                draw_list->PathArcToFast({a.x + rad, b.y - rad}, rad, 3, 6);
+                draw_list->PathArcToFast({a.x + rad, a.y + rad}, rad, 6, 9);
             }
-            draw_list->PathStroke(color_u32, ImDrawFlags_None, line_width);
+            draw_list->PathLineTo(text_top_left - padding);
+            draw_list->PathStroke(stroke_color, ImDrawFlags_None, line_width);
         }
-        draw_list->AddText(text_top_left - ImVec2{0, ImGui::GetFontSize() / 2}, color_u32, text.c_str());
+        draw_list->AddText(text_top_left - ImVec2{0, ImGui::GetFontSize() / 2}, label_color, text.c_str());
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
@@ -317,7 +317,7 @@ struct ImGuiDevice : Device {
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style, top] = style;
-        const auto &text_pos = p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / 2 : text_size(text));
+        const auto &text_pos = p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / ImVec2{2, 1} : text_size(text));
         draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
 
@@ -855,7 +855,7 @@ struct DecorateSchema : IOSchema {
 
     void _draw(Device &device) const override {
         const float m = 2.0f * (is_top_level ? s.style.flowgrid.DiagramTopLevelMargin : 0.0f) + s.style.flowgrid.DiagramDecorateMargin;
-        device.grouprect({position() + ImVec2{m, m} / 2, position() + size() - ImVec2{m, m} / 2}, text, s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke]);
+        device.grouprect({position() + ImVec2{m, m} / 2, position() + size() - ImVec2{m, m} / 2}, text);
         for (const IO io: {IO_In, IO_Out}) {
             const bool has_arrow = io == IO_Out && is_top_level;
             for (Count i = 0; i < io_count(io); i++) {

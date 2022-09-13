@@ -25,8 +25,6 @@ using std::max;
 
 using namespace fmt;
 
-static const int FoldComplexity = 2; // Number of boxes within a `Schema` before folding
-
 using Count = unsigned int;
 enum Orientation { LeftRight = 1, RightLeft = -1 };
 enum DeviceType { ImGuiDeviceType, SVGDeviceType };
@@ -359,7 +357,8 @@ struct Schema {
     Schema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0)
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
           descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Schema *child) { return child->descendents; }), 0)),
-          is_top_level(descendents >= FoldComplexity) {}
+        // `DiagramFoldComplexity == 0` means no folding
+          is_top_level(s.style.flowgrid.DiagramFoldComplexity > 0 && descendents >= Count(s.style.flowgrid.DiagramFoldComplexity.value)) {}
 
     virtual ~Schema() = default;
 
@@ -1106,8 +1105,11 @@ void on_box_change(Box box) {
     }
 }
 
+static int prev_fold_complexity = 0; // watch and recompile when it changes
+
 void save_box_svg(const string &path) {
     if (!root_schema) return;
+    prev_fold_complexity = s.style.flowgrid.DiagramFoldComplexity;
     // Render SVG diagram(s)
     fs::remove_all(path);
     fs::create_directory(path);
@@ -1131,7 +1133,13 @@ void Audio::Faust::Diagram::draw() const {
         }
         ImGui::EndMenuBar();
     }
+
     if (focused_schema_stack.empty()) return;
+
+    if (s.style.flowgrid.DiagramFoldComplexity != prev_fold_complexity) {
+        prev_fold_complexity = s.style.flowgrid.DiagramFoldComplexity;
+        on_box_change(root_schema->tree);
+    }
 
     {
         // Nav menu

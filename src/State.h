@@ -83,10 +83,12 @@ struct Bool : Base {
     bool value;
 };
 struct Int : Base {
-    Int(const JsonPath &parent_path, const string &id, const string &name = "", int value = 0, int min = 0, int max = 100)
-        : Base(parent_path, id, name), value(value), min(min), max(max) {}
-    Int(const JsonPath &parent_path, const string &id, int value, int min = 0, int max = 100)
-        : Int(parent_path, id, "", value, min, max) {}
+    Int(const JsonPath &parent_path, const string &id, const string &name = "", int value = 0, int min = 0, int max = 100, const string &help = "")
+        : Base(parent_path, id, name), value(value), min(min), max(max) {
+        this->help = help;
+    }
+    Int(const JsonPath &parent_path, const string &id, int value, int min = 0, int max = 100, const string &help = "")
+        : Int(parent_path, id, "", value, min, max, help) {}
 
     operator int() const { return value; }
     Int &operator=(int v) {
@@ -425,6 +427,8 @@ struct FlowGridStyle : StateMember, Drawable {
 
     ImVec4 Colors[FlowGridCol_COUNT];
     Float FlashDurationSec{path, "FlashDurationSec", 0.6, 0, 5};
+    Int DiagramFoldComplexity{path, "DiagramFoldComplexity", 3, 0, 20,
+                              "Number of boxes within a diagram before folding into a sub-diagram. Setting to zero disables folding altogether, for a fully-expanded diagram."};
     Bool DiagramSequentialConnectionZigzag{path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
     Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
     Bool DiagramScaleFill{path, "DiagramScaleFill", "Scale to window", false}; // This and `DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
@@ -729,7 +733,7 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleFill, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
+JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleFill, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
     DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 

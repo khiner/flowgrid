@@ -935,6 +935,7 @@ void FlowGridStyle::draw() const {
                 SameLine();
             }
             DiagramScaleFill.Draw();
+            DiagramOrientation.Draw();
             DiagramSequentialConnectionZigzag.Draw();
             DiagramDrawRouteFrame.Draw();
             DiagramTopLevelMargin.Draw();

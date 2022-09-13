@@ -60,6 +60,13 @@ static inline ImRect scale(const ImRect &r);
 static inline float scale(float f);
 static inline ImVec2 get_scale();
 
+static inline ImGuiDir global_orientation(ImGuiDir orientation) {
+    if (s.style.flowgrid.DiagramOrientation == ImGuiDir_Right) return orientation;
+    return orientation == ImGuiDir_Right ? ImGuiDir_Left : ImGuiDir_Right;
+}
+
+static inline bool is_lr(ImGuiDir orientation) { return global_orientation(orientation) == ImGuiDir_Right; }
+
 // Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
 struct Device {
     static constexpr float DecorateLabelOffset = 14; // Not configurable, since it's a pain to deal with right.
@@ -227,7 +234,7 @@ struct SVGDevice : Device {
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
     static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, ImGuiDir orientation, const ImVec4 &color) {
-        const float d = orientation == ImGuiDir_Left ? 1 : -1;
+        const float d = is_lr(orientation) ? -1 : 1;
         return get_triangle(ImVec2(pos.x + d * half_sz.x, pos.y - d * half_sz.y), ImVec2(pos.x + d * half_sz.x, pos.y + d * half_sz.y), pos, color, color);
     }
 
@@ -302,7 +309,7 @@ struct ImGuiDevice : Device {
     void arrow(const ImVec2 &p, ImGuiDir orientation) override {
         const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
         ImGui::RenderArrowPointingAt(draw_list, at(p) + ImVec2{0, 0.5f}, scale(s.style.flowgrid.DiagramArrowSize),
-            orientation == ImGuiDir_Right ? ImGuiDir_Right : ImGuiDir_Left, ImGui::ColorConvertFloat4ToU32(color));
+            global_orientation(orientation), ImGui::ColorConvertFloat4ToU32(color));
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
@@ -384,7 +391,7 @@ struct Schema {
         for (const auto *child: children) child->draw(device);
         _draw(device);
     };
-    inline bool is_lr() const { return orientation == ImGuiDir_Right; }
+    inline bool is_lr() const { return ::is_lr(orientation); }
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
 
     void draw_rect(Device &device) const {

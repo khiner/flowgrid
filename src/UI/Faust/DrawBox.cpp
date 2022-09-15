@@ -486,9 +486,13 @@ struct IOSchema : Schema {
         : Schema(t, in_count, out_count, std::move(children), directDescendents) {}
 
     ImVec2 point(IO io, Count i) const override {
-        const float dy = dir_unit() * WireGap();
-        const float _y = mid().y - WireGap() * float(io_count(io) - 1) / 2;
-        return {x + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w), _y + float(i) * dy};
+        // Intentionally not using `dir_unit()`.
+        // `Left` here means "flipped with respect to global orientation".
+        const float d = orientation == ImGuiDir_Left ? -1 : 1;
+        return {
+            x + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w),
+            mid().y - WireGap() * float(io_count(io) - 1) / 2 + float(i) * d * WireGap()
+        };
     }
 };
 

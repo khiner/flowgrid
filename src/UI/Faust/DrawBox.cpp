@@ -459,18 +459,22 @@ static const char *getTreeName(Tree t) {
     return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
 }
 
+// Hex address (without the '0x' prefix)
+static string unique_id(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
+
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
 // If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
-static string svgFileName(Tree t) {
+static string svg_file_name(Tree t) {
     if (!t) return "";
+
     const string &tree_name = getTreeName(t);
     if (tree_name == "process") return tree_name + ".svg";
-    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)
-        + format("-{:x}", reinterpret_cast<std::uintptr_t>(t)) + ".svg";
+
+    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>) + format("-{}", unique_id(t)) + ".svg";
 }
 
 void write_svg(Schema *schema, const fs::path &path) {
-    SVGDevice device(path, svgFileName(schema->tree), schema->size());
+    SVGDevice device(path, svg_file_name(schema->tree), schema->size());
     device.rect(schema->rect(), {.fill_color=s.style.flowgrid.Colors[FlowGridCol_DiagramBg]});
     schema->draw(device);
 }
@@ -510,8 +514,8 @@ struct BlockSchema : IOSchema {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             // todo why is draw called twice for each block with an inner child? (or maybe even every schema?)
             //  note this is likely double-writing in ImGui too
-            if (inner && !fs::exists(svg_device.directory / svgFileName(inner->tree))) write_svg(inner, svg_device.directory);
-            const string &link = inner ? svgFileName(tree) : "";
+            if (inner && !fs::exists(svg_device.directory / svg_file_name(inner->tree))) write_svg(inner, svg_device.directory);
+            const string &link = inner ? svg_file_name(tree) : "";
             svg_device.rect(rect, col, link);
             svg_device.text(mid(), text, {}, link);
             // Draw the orientation mark to indicate the first input (like integrated circuits).
@@ -527,7 +531,7 @@ struct BlockSchema : IOSchema {
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
             }
-            if (ImGui::Button(text.c_str(), rect.GetSize()) && inner) focused_schema_stack.push(inner);
+            if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), rect.GetSize()) && inner) focused_schema_stack.push(inner);
             if (!inner) ImGui::PopStyleColor(2);
             ImGui::PopStyleColor();
             ImGui::SetCursorPos(cursor_pos);

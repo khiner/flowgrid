@@ -44,7 +44,7 @@ struct TextStyle {
     const Justify justify{Middle};
     const float padding_right{0};
     const float padding_bottom{0};
-    const float scale_height{1};
+    const float scale_height{1}; // todo remove this in favor of using a set (two for now) of predetermined font sizes
     const FontStyle font_style{Normal};
     const bool top{false};
 };
@@ -265,7 +265,8 @@ struct ImGuiDevice : Device {
 
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width] = style;
-        draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(fill_color));
+        if (fill_color.w != 0) draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(fill_color));
+        if (stroke_color.w != 0) draw_list->AddRect(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(stroke_color));
     }
 
     void grouprect(const ImRect &rect, const string &text) override {
@@ -303,7 +304,8 @@ struct ImGuiDevice : Device {
     }
 
     void circle(const ImVec2 &p, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
-        draw_list->AddCircle(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(stroke_color));
+        if (fill_color.w != 0) draw_list->AddCircleFilled(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(fill_color));
+        if (stroke_color.w != 0) draw_list->AddCircle(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(stroke_color));
     }
 
     void arrow(const ImVec2 &p, ImGuiDir orientation) override {
@@ -340,8 +342,8 @@ enum IO_ {
 
 using IO = IO_;
 
-string to_string(const IO direction) {
-    switch (direction) {
+string to_string(const IO io) {
+    switch (io) {
         case IO_None: return "None";
         case IO_In: return "In";
         case IO_Out: return "Out";
@@ -370,9 +372,9 @@ struct Schema {
 
     inline Schema *child(Count i) const { return children[i]; }
 
-    Count io_count(IO direction) const { return direction == IO_In ? in_count : out_count; };
-    Count io_count(IO direction, const Count child_index) const { return child_index < children.size() ? children[child_index]->io_count(direction) : 0; };
-    virtual ImVec2 point(IO direction, Count channel) const = 0;
+    Count io_count(IO io) const { return io == IO_In ? in_count : out_count; };
+    Count io_count(IO io, const Count child_index) const { return child_index < children.size() ? children[child_index]->io_count(io) : 0; };
+    virtual ImVec2 point(IO io, Count channel) const = 0;
 
     void place(const DeviceType type, float new_x, float new_y, ImGuiDir new_orientation) {
         x = new_x;
@@ -395,27 +397,27 @@ struct Schema {
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
 
     void draw_rect(Device &device) const {
-        device.rect({x, y, w, h}, {.fill_color={0, 0, 0, 0}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
+        device.rect(rect(), {.fill_color={0, 0, 0, 0}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
     }
 
     void draw_channel_labels(Device &device) const {
-        for (const IO direction: {IO_In, IO_Out}) {
-            for (Count channel = 0; channel < io_count(direction); channel++) {
+        for (const IO io: {IO_In, IO_Out}) {
+            for (Count channel = 0; channel < io_count(io); channel++) {
                 device.text(
-                    point(direction, channel),
-                    format("{}:{}", to_string(direction), channel),
+                    point(io, channel),
+                    format("{}:{}", to_string(io), channel),
                     {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .scale_height=1.3, .font_style=TextStyle::FontStyle::Bold, .top=true}
                 );
-                device.circle(point(direction, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
+                device.circle(point(io, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
             }
             for (Count ci = 0; ci < children.size(); ci++) {
-                for (Count channel = 0; channel < io_count(direction, ci); channel++) {
+                for (Count channel = 0; channel < io_count(io, ci); channel++) {
                     device.text(
-                        child(ci)->point(direction, channel),
-                        format("({})->{}:{}", ci, to_string(direction), channel),
+                        child(ci)->point(io, channel),
+                        format("({})->{}:{}", ci, to_string(io), channel),
                         {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold, .top=true}
                     );
-                    device.circle(child(ci)->point(direction, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
+                    device.circle(child(ci)->point(io, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
                 }
             }
         }
@@ -527,7 +529,7 @@ struct BlockSchema : IOSchema {
             ImGui::SetCursorPos(rect.Min);
             ImGui::PushStyleColor(ImGuiCol_Button, col);
             if (!inner) {
-                // Emulate disabled behavior, but without making color more dim, by just allowing clicks but not changing color.
+                // Emulate disabled behavior, but without making color dimmer, by just allowing clicks but not changing color.
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
             }
@@ -733,11 +735,10 @@ struct BinarySchema : Schema {
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void _place(const DeviceType type) override {
-        const float horz_gap = horizontal_gap();
         auto *left = children[is_lr() ? 0 : 1];
         auto *right = children[is_lr() ? 1 : 0];
         left->place(type, x, y + max(0.0f, right->h - left->h) / 2, orientation);
-        right->place(type, x + left->w + horz_gap, y + max(0.0f, left->h - right->h) / 2, orientation);
+        right->place(type, x + left->w + horizontal_gap(), y + max(0.0f, left->h - right->h) / 2, orientation);
     }
 
     virtual float horizontal_gap() const { return (s1()->h + s2()->h) * s.style.flowgrid.DiagramBinaryHorizontalGapRatio; }

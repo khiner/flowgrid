@@ -27,6 +27,7 @@ using namespace fmt;
 
 using Count = unsigned int;
 enum DeviceType { ImGuiDeviceType, SVGDeviceType };
+enum SchemaOrientation { SchemaForward, SchemaReverse };
 
 struct TextStyle {
     enum Justify {
@@ -60,12 +61,13 @@ static inline ImRect scale(const ImRect &r);
 static inline float scale(float f);
 static inline ImVec2 get_scale();
 
-static inline ImGuiDir global_orientation(ImGuiDir orientation) {
-    if (s.style.flowgrid.DiagramOrientation == ImGuiDir_Right) return orientation;
-    return orientation == ImGuiDir_Right ? ImGuiDir_Left : ImGuiDir_Right;
+static inline ImGuiDir global_direction(SchemaOrientation orientation) {
+    const ImGuiDir dir = s.style.flowgrid.DiagramOrientation;
+    return (dir == ImGuiDir_Right && orientation == SchemaForward) || (dir == ImGuiDir_Left && orientation == SchemaReverse) ?
+           ImGuiDir_Right : ImGuiDir_Left;
 }
 
-static inline bool is_lr(ImGuiDir orientation) { return global_orientation(orientation) == ImGuiDir_Right; }
+static inline bool is_lr(SchemaOrientation orientation) { return global_direction(orientation) == ImGuiDir_Right; }
 
 // Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
 struct Device {
@@ -79,7 +81,7 @@ struct Device {
     virtual void grouprect(const ImRect &rect, const string &text) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) = 0;
-    virtual void arrow(const ImVec2 &pos, ImGuiDir orientation) = 0;
+    virtual void arrow(const ImVec2 &pos, SchemaOrientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
     virtual void dot(const ImVec2 &pos) = 0;
@@ -194,7 +196,7 @@ struct SVGDevice : Device {
             rgb_color(fill_color), rgb_color(stroke_color), x, y, radius);
     }
 
-    void arrow(const ImVec2 &pos, ImGuiDir orientation) override {
+    void arrow(const ImVec2 &pos, SchemaOrientation orientation) override {
         stream << arrow_pointing_at(at(pos), scale(s.style.flowgrid.DiagramArrowSize), orientation, s.style.flowgrid.Colors[FlowGridCol_DiagramLine]);
     }
 
@@ -233,7 +235,7 @@ struct SVGDevice : Device {
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, ImGuiDir orientation, const ImVec4 &color) {
+    static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, SchemaOrientation orientation, const ImVec4 &color) {
         const float d = is_lr(orientation) ? -1 : 1;
         return get_triangle(ImVec2(pos.x + d * half_sz.x, pos.y - d * half_sz.y), ImVec2(pos.x + d * half_sz.x, pos.y + d * half_sz.y), pos, color, color);
     }
@@ -308,10 +310,13 @@ struct ImGuiDevice : Device {
         if (stroke_color.w != 0) draw_list->AddCircle(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(stroke_color));
     }
 
-    void arrow(const ImVec2 &p, ImGuiDir orientation) override {
-        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        ImGui::RenderArrowPointingAt(draw_list, at(p) + ImVec2{0, 0.5f}, scale(s.style.flowgrid.DiagramArrowSize),
-            global_orientation(orientation), ImGui::ColorConvertFloat4ToU32(color));
+    void arrow(const ImVec2 &p, SchemaOrientation orientation) override {
+        ImGui::RenderArrowPointingAt(draw_list,
+            at(p) + ImVec2{0, 0.5f},
+            scale(s.style.flowgrid.DiagramArrowSize),
+            global_direction(orientation),
+            ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramLine])
+        );
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
@@ -360,7 +365,7 @@ struct Schema {
     float w = 0, h = 0; // Populated in `place_size`
     float x = 0, y = 0; // Fields populated in `place`
 
-    ImGuiDir orientation = ImGuiDir_Right;
+    SchemaOrientation orientation = SchemaForward;
 
     Schema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0)
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
@@ -376,7 +381,7 @@ struct Schema {
     Count io_count(IO io, const Count child_index) const { return child_index < children.size() ? children[child_index]->io_count(io) : 0; };
     virtual ImVec2 point(IO io, Count channel) const = 0;
 
-    void place(const DeviceType type, float new_x, float new_y, ImGuiDir new_orientation) {
+    void place(const DeviceType type, float new_x, float new_y, SchemaOrientation new_orientation) {
         x = new_x;
         y = new_y;
         orientation = new_orientation;
@@ -486,9 +491,7 @@ struct IOSchema : Schema {
         : Schema(t, in_count, out_count, std::move(children), directDescendents) {}
 
     ImVec2 point(IO io, Count i) const override {
-        // Intentionally not using `dir_unit()`.
-        // `Left` here means "flipped with respect to global orientation".
-        const float d = orientation == ImGuiDir_Left ? -1 : 1;
+        const float d = orientation == SchemaReverse ? -1 : 1;
         return {
             x + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w),
             mid().y - WireGap() * float(io_count(io) - 1) / 2 + float(i) * d * WireGap()
@@ -681,8 +684,8 @@ struct RecursiveSchema : Schema {
     void _place(const DeviceType type) override {
         auto *top_schema = children[is_lr() ? 1 : 0];
         auto *bottom_schema = children[is_lr() ? 0 : 1];
-        top_schema->place(type, x + (w - top_schema->w) / 2, y, ImGuiDir_Left);
-        bottom_schema->place(type, x + (w - bottom_schema->w) / 2, y + top_schema->h, ImGuiDir_Right);
+        top_schema->place(type, x + (w - top_schema->w) / 2, y, SchemaReverse);
+        bottom_schema->place(type, x + (w - bottom_schema->w) / 2, y + top_schema->h, SchemaForward);
     }
 
     void _draw(Device &device) const override {
@@ -756,8 +759,8 @@ struct SequentialSchema : BinarySchema {
 
     void _place_size(const DeviceType type) override {
         if (s1()->x == 0 && s1()->y == 0 && s2()->x == 0 && s2()->y == 0) {
-            s1()->place(type, 0, max(0.0f, s2()->h - s1()->h) / 2, ImGuiDir_Right);
-            s2()->place(type, 0, max(0.0f, s1()->h - s2()->h) / 2, ImGuiDir_Right);
+            s1()->place(type, 0, max(0.0f, s2()->h - s1()->h) / 2, SchemaForward);
+            s2()->place(type, 0, max(0.0f, s1()->h - s2()->h) / 2, SchemaForward);
         }
         BinarySchema::_place_size(type);
     }

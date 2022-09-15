@@ -15,13 +15,13 @@ using namespace fg;
 //-----------------------------------------------------------------------------
 
 void HelpMarker(const char *help) {
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(help);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
+    TextDisabled("(?)");
+    if (IsItemHovered()) {
+        BeginTooltip();
+        PushTextWrapPos(GetFontSize() * 35.0f);
+        TextUnformatted(help);
+        PopTextWrapPos();
+        EndTooltip();
     }
 }
 
@@ -29,28 +29,28 @@ void HelpMarker(const char *help) {
 void Field::Base::HelpMarker(const bool after) const {
     if (help.empty()) return;
 
-    if (after) ImGui::SameLine();
+    if (after) SameLine();
     ::HelpMarker(help.c_str());
-    if (!after) ImGui::SameLine();
+    if (!after) SameLine();
 }
 
 bool Field::Bool::Draw() const {
     bool v = value;
-    const bool edited = ImGui::Checkbox(name.c_str(), &v);
+    const bool edited = Checkbox(name.c_str(), &v);
     if (edited) q(toggle_value{path});
     HelpMarker();
     return edited;
 }
 bool Field::Bool::DrawMenu() const {
     HelpMarker(false);
-    const bool edited = ImGui::MenuItem(name.c_str(), nullptr, value);
+    const bool edited = MenuItem(name.c_str(), nullptr, value);
     if (edited) q(toggle_value{path});
     return edited;
 }
 
 bool Field::Int::Draw() const {
     int v = value;
-    const bool edited = ImGui::SliderInt(name.c_str(), &v, min, max, "%d", ImGuiSliderFlags_None);
+    const bool edited = SliderInt(name.c_str(), &v, min, max, "%d", ImGuiSliderFlags_None);
     gestured();
     if (edited) q(set_value{path, v});
     HelpMarker();
@@ -58,16 +58,16 @@ bool Field::Int::Draw() const {
 }
 bool Field::Int::Draw(const std::vector<int> &options) const {
     bool edited = false;
-    if (ImGui::BeginCombo(name.c_str(), std::to_string(value).c_str())) {
+    if (BeginCombo(name.c_str(), std::to_string(value).c_str())) {
         for (const auto option: options) {
             const bool is_selected = option == value;
-            if (ImGui::Selectable(std::to_string(option).c_str(), is_selected)) {
+            if (Selectable(std::to_string(option).c_str(), is_selected)) {
                 q(set_value{path, option});
                 edited = true;
             }
-            if (is_selected) ImGui::SetItemDefaultFocus();
+            if (is_selected) SetItemDefaultFocus();
         }
-        ImGui::EndCombo();
+        EndCombo();
     }
     HelpMarker();
     return edited;
@@ -75,7 +75,7 @@ bool Field::Int::Draw(const std::vector<int> &options) const {
 
 bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     float v = value;
-    const bool edited = ImGui::SliderFloat(name.c_str(), &v, min, max, fmt, flags);
+    const bool edited = SliderFloat(name.c_str(), &v, min, max, fmt, flags);
     gestured();
     if (edited) q(set_value{path, v});
     HelpMarker();
@@ -84,7 +84,7 @@ bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
 
 bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
     float v = value;
-    const bool edited = ImGui::DragFloat(name.c_str(), &v, v_speed, min, max, fmt, flags);
+    const bool edited = DragFloat(name.c_str(), &v, v_speed, min, max, fmt, flags);
     gestured();
     if (edited) q(set_value{path, v});
     HelpMarker();
@@ -94,7 +94,7 @@ bool Field::Float::Draw() const { return Draw("%.3f"); }
 
 bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     ImVec2 v = value;
-    const bool edited = ImGui::SliderFloat2(name.c_str(), (float *) &v, min, max, fmt, flags);
+    const bool edited = SliderFloat2(name.c_str(), (float *) &v, min, max, fmt, flags);
     gestured();
     if (edited) q(set_value{path, v});
     HelpMarker();
@@ -105,17 +105,17 @@ bool Field::Vec2::Draw() const { return Draw("%.3f"); }
 
 bool Field::Enum::Draw() const {
     bool edited = false;
-    if (ImGui::BeginCombo(name.c_str(), options[value].c_str())) {
+    if (BeginCombo(name.c_str(), options[value].c_str())) {
         for (int i = 0; i < int(options.size()); i++) {
             const bool is_selected = i == value;
             const auto &option = options[i];
-            if (ImGui::Selectable(option.c_str(), is_selected)) {
+            if (Selectable(option.c_str(), is_selected)) {
                 q(set_value{path, i});
                 edited = true;
             }
-            if (is_selected) ImGui::SetItemDefaultFocus();
+            if (is_selected) SetItemDefaultFocus();
         }
-        ImGui::EndCombo();
+        EndCombo();
     }
     HelpMarker();
     return edited;
@@ -123,14 +123,14 @@ bool Field::Enum::Draw() const {
 bool Field::Enum::DrawMenu() const {
     HelpMarker(false);
     bool edited = false;
-    if (ImGui::BeginMenu(name.c_str())) {
+    if (BeginMenu(name.c_str())) {
         for (int i = 0; i < int(options.size()); i++) {
             const bool is_selected = value == i;
             if (MenuItem(options[i].c_str(), nullptr, is_selected)) {
                 q(set_value{path, i});
                 edited = true;
             }
-            if (is_selected) ImGui::SetItemDefaultFocus();
+            if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
     }
@@ -138,22 +138,22 @@ bool Field::Enum::DrawMenu() const {
 }
 
 bool Field::String::Draw() const {
-    ImGui::Text("%s", value.c_str());
+    Text("%s", value.c_str());
     return false;
 }
 
 bool Field::String::Draw(const std::vector<string> &options) const {
     bool edited = false;
-    if (ImGui::BeginCombo(name.c_str(), value.c_str())) {
+    if (BeginCombo(name.c_str(), value.c_str())) {
         for (const auto &option: options) {
             const bool is_selected = option == value;
-            if (ImGui::Selectable(option.c_str(), is_selected)) {
+            if (Selectable(option.c_str(), is_selected)) {
                 q(set_value{path, option});
                 edited = true;
             };
-            if (is_selected) ImGui::SetItemDefaultFocus();
+            if (is_selected) SetItemDefaultFocus();
         }
-        ImGui::EndCombo();
+        EndCombo();
     }
     HelpMarker();
     return edited;
@@ -186,20 +186,20 @@ void Window::DrawWindow(ImGuiWindowFlags flags) const {
     if (!visible) return;
 
     bool open = visible;
-    if (ImGui::Begin(name.c_str(), &open, flags)) {
+    if (Begin(name.c_str(), &open, flags)) {
         if (open) draw();
     }
-    ImGui::End();
+    End();
 
     if (visible && !open) q(set_value{visible.path, false});
 }
 
 void Window::Dock(ImGuiID node_id) const {
-    ImGui::DockBuilderDockWindow(name.c_str(), node_id);
+    DockBuilderDockWindow(name.c_str(), node_id);
 }
 
 bool Window::ToggleMenuItem() const {
-    const bool edited = ImGui::MenuItem(name.c_str(), nullptr, visible);
+    const bool edited = MenuItem(name.c_str(), nullptr, visible);
     if (edited) q(toggle_value{visible.path});
     return edited;
 }
@@ -213,64 +213,64 @@ void Process::draw() const {
 }
 
 void State::draw() const {
-    if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
+    if (BeginMainMenuBar()) {
+        if (BeginMenu("File")) {
             MenuItem(action::id<open_empty_project>);
             MenuItem(action::id<show_open_project_dialog>);
 
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
-            if (ImGui::BeginMenu("Open recent project", !recently_opened_paths.empty())) {
+            if (BeginMenu("Open recent project", !recently_opened_paths.empty())) {
                 for (const auto &recently_opened_path: recently_opened_paths) {
-                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(open_project{recently_opened_path});
+                    if (MenuItem(recently_opened_path.filename().c_str())) q(open_project{recently_opened_path});
                 }
-                ImGui::EndMenu();
+                EndMenu();
             }
 
             MenuItem(action::id<save_current_project>);
             MenuItem(action::id<show_save_project_dialog>);
             MenuItem(action::id<open_default_project>);
             MenuItem(action::id<save_default_project>);
-            ImGui::EndMenu();
+            EndMenu();
         }
-        if (ImGui::BeginMenu("Edit")) {
+        if (BeginMenu("Edit")) {
             MenuItem(action::id<undo>);
             MenuItem(action::id<redo>);
-            ImGui::EndMenu();
+            EndMenu();
         }
-        if (ImGui::BeginMenu("Windows")) {
-            if (ImGui::BeginMenu("State")) {
+        if (BeginMenu("Windows")) {
+            if (BeginMenu("State")) {
                 state_viewer.ToggleMenuItem();
                 state_memory_editor.ToggleMenuItem();
                 path_update_frequency.ToggleMenuItem();
-                ImGui::EndMenu();
+                EndMenu();
             }
-            if (ImGui::BeginMenu("Audio")) {
+            if (BeginMenu("Audio")) {
                 audio.ToggleMenuItem();
-                if (ImGui::BeginMenu("Faust")) {
+                if (BeginMenu("Faust")) {
                     audio.faust.editor.ToggleMenuItem();
                     audio.faust.log.ToggleMenuItem();
-                    ImGui::EndMenu();
+                    EndMenu();
                 }
-                ImGui::EndMenu();
+                EndMenu();
             }
             metrics.ToggleMenuItem();
             style.ToggleMenuItem();
             tools.ToggleMenuItem();
             demo.ToggleMenuItem();
-            ImGui::EndMenu();
+            EndMenu();
         }
-        ImGui::EndMainMenuBar();
+        EndMainMenuBar();
     }
 
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
-    auto dockspace_id = ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
-    int frame_count = ImGui::GetCurrentContext()->FrameCount;
+    auto dockspace_id = DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+    int frame_count = GetCurrentContext()->FrameCount;
     if (frame_count == 1) {
         auto faust_editor_node_id = dockspace_id;
-        auto settings_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
-        auto state_node_id = ImGui::DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.6f, nullptr, &settings_node_id);
-        auto utilities_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
-        auto faust_log_node_id = ImGui::DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
+        auto settings_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
+        auto state_node_id = DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.6f, nullptr, &settings_node_id);
+        auto utilities_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
+        auto faust_log_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
 
         application_settings.Dock(settings_node_id);
         audio.Dock(settings_node_id);
@@ -331,11 +331,11 @@ void State::update(const Action &action) {
         [&](const set_imgui_color_style &a) {
             auto *dst = style.imgui.Colors;
             switch (a.id) {
-                case 0: ImGui::StyleColorsDark(dst);
+                case 0: StyleColorsDark(dst);
                     break;
-                case 1: ImGui::StyleColorsLight(dst);
+                case 1: StyleColorsLight(dst);
                     break;
-                case 2: ImGui::StyleColorsClassic(dst);
+                case 2: StyleColorsClassic(dst);
                     break;
             }
         },
@@ -380,7 +380,7 @@ void State::update(const Action &action) {
 }
 
 ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
-    ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
+    SaveIniSettingsToMemory(); // Populates the `Settings` context members
     nodes = ctx->DockContext.NodesSettings; // already an ImVector
     // Convert `ImChunkStream`s to `ImVector`s.
     for (auto *ws = ctx->SettingsWindows.begin(); ws != nullptr; ws = ctx->SettingsWindows.next_chunk(ws)) {
@@ -395,7 +395,7 @@ ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
 static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settings) {
     if (!window) return; // TODO log
 
-    const ImGuiViewport *main_viewport = ImGui::GetMainViewport();
+    const ImGuiViewport *main_viewport = GetMainViewport();
     window->ViewportPos = main_viewport->Pos;
     if (settings->ViewportId) {
         window->ViewportId = settings->ViewportId;
@@ -493,15 +493,15 @@ void Style::ImPlotStyleMember::populate_context(ImPlotContext *ctx) const {
 
 void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
     /** Clear **/
-    ImGui::DockSettingsHandler_ClearAll(ctx, nullptr);
+    DockSettingsHandler_ClearAll(ctx, nullptr);
 
     /** Apply **/
-    for (auto ws: windows) ApplyWindowSettings(ImGui::FindWindowByID(ws.ID), &ws);
+    for (auto ws: windows) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
 
     ctx->DockContext.NodesSettings = nodes; // already an ImVector
-    ImGui::DockSettingsHandler_ApplyAll(ctx, nullptr);
+    DockSettingsHandler_ApplyAll(ctx, nullptr);
 
-    /** Other housekeeping to emulate `ImGui::LoadIniSettingsFromMemory` **/
+    /** Other housekeeping to emulate `LoadIniSettingsFromMemory` **/
     ctx->SettingsLoaded = true;
     ctx->SettingsDirty = false;
 }
@@ -554,7 +554,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     // The rest below is structurally identical to `fg::Widgets::JsonTree`.
     // Couldn't find an easy/clean way to inject the above into each recursive call.
     if (value.is_null()) {
-        ImGui::Text("%s", label.c_str());
+        Text("%s", label.c_str());
     } else if (value.is_object()) {
         if (JsonTreeNode(label, flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
@@ -981,7 +981,7 @@ void Style::draw() const {
 
 void ApplicationSettings::draw() const {
     int v = c.diff_index;
-    if (ImGui::SliderInt("Diff index", &v, -1, int(c.diffs.size()) - 1)) q(set_diff_index{v});
+    if (SliderInt("Diff index", &v, -1, int(c.diffs.size()) - 1)) q(set_diff_index{v});
     GestureDurationSec.Draw("%.3f s");
 }
 

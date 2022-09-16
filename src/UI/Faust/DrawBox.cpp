@@ -47,7 +47,6 @@ struct TextStyle {
     const float padding_bottom{0};
     const float scale_height{1}; // todo remove this in favor of using a set (two for now) of predetermined font sizes
     const FontStyle font_style{Normal};
-    const bool top{false};
 };
 
 struct RectStyle {
@@ -132,7 +131,6 @@ struct SVGDevice : Device {
     }
 
     ~SVGDevice() override {
-        stream << end_stream.str();
         stream << "</svg>\n";
         FileIO::write(directory / file_name, stream.str());
     }
@@ -211,22 +209,20 @@ struct SVGDevice : Device {
     }
 
     void text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style, top] = style;
+        const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style] = style;
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = at(pos - ImVec2{padding_right, padding_bottom});
-        auto &text_stream = top ? end_stream : stream;
-        text_stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
+        stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
             p.x, p.y, get_font_name(), font_style_formatted, font_weight, get_font_size(), anchor, rgb_color(color), xml_sanitize(text));
     }
 
     // Only SVG device has a text-with-link method
     void text(const ImVec2 &pos, const string &str, const TextStyle &style, const string &link) {
-        auto &text_stream = style.top ? end_stream : stream;
-        if (!link.empty()) text_stream << format(R"(<a href="{}">)", xml_sanitize(link));
+        if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link));
         text(pos, str, style);
-        if (!link.empty()) text_stream << "</a>";
+        if (!link.empty()) stream << "</a>";
     }
 
     void dot(const ImVec2 &pos, const ImVec4 &fill_color) override {
@@ -256,9 +252,9 @@ struct SVGDevice : Device {
 
     fs::path directory;
     string file_name;
+
 private:
     std::stringstream stream;
-    std::stringstream end_stream;
 };
 
 struct ImGuiDevice : Device {
@@ -328,7 +324,7 @@ struct ImGuiDevice : Device {
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style, top] = style;
+        const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style] = style;
         const auto &text_pos = p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / ImVec2{2, 1} : text_size(text));
         draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
@@ -426,7 +422,7 @@ struct Schema {
                 device.text(
                     point(io, channel),
                     format("{}:{}", to_string(io), channel),
-                    {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .scale_height=1.3, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                    {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .scale_height=1.3, .font_style=TextStyle::FontStyle::Bold}
                 );
                 device.circle(point(io, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
             }
@@ -435,7 +431,7 @@ struct Schema {
                     device.text(
                         child(ci)->point(io, channel),
                         format("({})->{}:{}", ci, to_string(io), channel),
-                        {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold, .top=true}
+                        {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold}
                     );
                     device.circle(child(ci)->point(io, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
                 }

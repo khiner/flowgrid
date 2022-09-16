@@ -725,7 +725,7 @@ JsonType(Process, running)
 JsonType(ApplicationSettings, visible, GestureDurationSec)
 JsonType(DiagramSettings, ScaleFill, HoverDebug)
 JsonType(Audio::Faust::Editor, visible, file_name)
-JsonType(Audio::Faust, code, error, editor, log)
+JsonType(Audio::Faust, code, diagram, error, editor, log)
 JsonType(Audio, running, visible, muted, backend, sample_rate, device_volume, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)

@@ -362,7 +362,7 @@ struct Schema {
     const std::vector<Schema *> children{};
     const Count descendents = 0; // The number of boxes within this schema (recursively).
     const bool is_top_level;
-    float w = 0, h = 0; // Populated in `place_size`
+    ImVec2 size; // Populated in `place_size`
     float x = 0, y = 0; // Fields populated in `place`
 
     SchemaOrientation orientation = SchemaForward;
@@ -428,18 +428,18 @@ struct Schema {
         }
     }
 
-    inline ImRect rect() const { return {position(), position() + size()}; }
+    inline ImRect rect() const { return {position(), position() + size}; }
     inline ImVec2 position() const { return {x, y}; }
-    inline ImVec2 size() const { return {w, h}; }
-    inline ImVec2 mid() const { return position() + size() / 2; }
-    inline ImVec4 xywh() const { return {x, y, w, h}; }
+    inline ImVec2 mid() const { return position() + size / 2; }
+    inline ImVec4 xywh() const { return {x, y, size.x, size.y}; }
 
     inline Schema *s1() const { return children[0]; }
     inline Schema *s2() const { return children[1]; }
 
     inline static float WireGap() { return s.style.flowgrid.DiagramWireGap; }
-    inline static float XGap() { return s.style.flowgrid.DiagramGap.value.x; }
-    inline static float YGap() { return s.style.flowgrid.DiagramGap.value.y; }
+    inline static ImVec2 Gap() { return s.style.flowgrid.DiagramGap; }
+    inline static float XGap() { return Gap().x; }
+    inline static float YGap() { return Gap().y; }
 
 protected:
     virtual void _place_size(DeviceType) = 0;
@@ -456,7 +456,7 @@ static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
     if (s.style.flowgrid.DiagramScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
         const auto *focused_schema = focused_schema_stack.top();
-        return ImGui::GetWindowSize() / ImVec2{focused_schema->w, focused_schema->h};
+        return ImGui::GetWindowSize() / focused_schema->size;
     }
     return s.style.flowgrid.DiagramScale;
 }
@@ -481,7 +481,7 @@ static string svg_file_name(Tree t) {
 }
 
 void write_svg(Schema *schema, const fs::path &path) {
-    SVGDevice device(path, svg_file_name(schema->tree), schema->size());
+    SVGDevice device(path, svg_file_name(schema->tree), schema->size);
     device.rect(schema->rect(), {.fill_color=s.style.flowgrid.Colors[FlowGridCol_DiagramBg]});
     schema->draw(device);
 }
@@ -493,7 +493,7 @@ struct IOSchema : Schema {
     ImVec2 point(IO io, Count i) const override {
         const float d = orientation == SchemaReverse ? -1 : 1;
         return {
-            x + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w),
+            x + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : size.x),
             mid().y - WireGap() * float(io_count(io) - 1) / 2 + float(i) * d * WireGap()
         };
     }
@@ -506,8 +506,10 @@ struct BlockSchema : IOSchema {
 
     void _place_size(const DeviceType type) override {
         const float text_w = text_size(text).x;
-        w = 2 * XGap() + max(3 * WireGap(), 2 * XGap() + text_w);
-        h = 2 * YGap() + max(3.0f, float(max(in_count, out_count))) * WireGap();
+        size = (Gap() * 2) + ImVec2{
+            max(3 * WireGap(), 2 * XGap() + text_w),
+            max(3.0f, float(max(in_count, out_count))) * WireGap(),
+        };
         if (inner && type == SVGDeviceType) inner->place_size(type);
     }
 
@@ -519,7 +521,7 @@ struct BlockSchema : IOSchema {
     void _draw(Device &device) const override {
         const auto &col = s.style.flowgrid.Colors[color];
         if (device.type() == SVGDeviceType) {
-            const ImRect &rect = {position() + ImVec2{XGap(), YGap()}, position() + ImVec2{w, h} - ImVec2{XGap(), YGap()}};
+            const ImRect &rect = {position() + Gap(), position() + size - Gap()};
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             // todo why is draw called twice for each block with an inner child? (or maybe even every schema?)
             //  note this is likely double-writing in ImGui too
@@ -531,7 +533,7 @@ struct BlockSchema : IOSchema {
             const float offset = dir_unit() * 4;
             device.dot((is_lr() ? rect.Min : rect.Max) * ImVec2{offset, offset});
         } else {
-            const ImRect &rect = {scale(position() + ImVec2{XGap(), YGap()}), scale(position() + ImVec2{w, h} - ImVec2{XGap(), YGap()})};
+            const ImRect &rect = {scale(position() + Gap()), scale(position() + size - Gap())};
             const auto &cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
             ImGui::PushStyleColor(ImGuiCol_Button, col);
@@ -571,16 +573,13 @@ struct CableSchema : Schema {
     CableSchema(Tree t, Count n = 1) : Schema(t, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
-    void _place_size(const DeviceType) override {
-        w = 0;
-        h = float(in_count) * WireGap();
-    }
+    void _place_size(const DeviceType) override { size = {0, float(in_count) * WireGap()}; }
 
     // Place the communication points vertically spaced by `WireGap`.
     void _place(const DeviceType) override {
         for (Count i = 0; i < in_count; i++) {
             const float dx = WireGap() * (float(i) + 0.5f);
-            points[i] = {x, y + (is_lr() ? dx : h - dx)};
+            points[i] = {x, y + (is_lr() ? dx : size.y - dx)};
         }
     }
 
@@ -595,18 +594,14 @@ private:
 struct InverterSchema : BlockSchema {
     InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", FlowGridCol_DiagramInverter) {}
 
-    void _place_size(const DeviceType) override {
-        w = 2.5f * WireGap();
-        h = WireGap();
-    }
+    void _place_size(const DeviceType) override { size = ImVec2{2.5f, 1} * WireGap(); }
 
     void _draw(Device &device) const override {
         const float radius = s.style.flowgrid.DiagramInverterRadius;
-        const float x1 = w - 2 * XGap();
-        const float y1 = 1 + (h - 1) / 2;
-        const auto tri_a = position() + ImVec2{XGap() + (is_lr() ? 0 : x1), 0};
-        const auto tri_b = tri_a + ImVec2{(is_lr() ? x1 - 2 * radius : 2 * radius - x1 - x), y1};
-        const auto tri_c = tri_a + ImVec2{0, h};
+        const ImVec2 p1 = {size.x - 2 * XGap(), 1 + (size.y - 1) / 2};
+        const auto tri_a = position() + ImVec2{XGap() + (is_lr() ? 0 : p1.x), 0};
+        const auto tri_b = tri_a + ImVec2{dir_unit() * (p1.x - 2 * radius) + (is_lr() ? 0 : x), p1.y};
+        const auto tri_c = tri_a + ImVec2{0, size.y};
         device.circle(tri_b + ImVec2{dir_unit() * radius, 0}, radius, {0, 0, 0, 0}, s.style.flowgrid.Colors[color]);
         device.triangle(tri_a, tri_b, tri_c, s.style.flowgrid.Colors[color]);
         draw_connections(device);
@@ -620,10 +615,7 @@ struct CutSchema : Schema {
     CutSchema(Tree t) : Schema(t, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
-    void _place_size(const DeviceType) override {
-        w = 0;
-        h = 1;
-    }
+    void _place_size(const DeviceType) override { size = {0, 1}; }
 
     // A cut is represented by a small black dot.
     void _draw(Device &) const override {
@@ -641,15 +633,12 @@ struct ParallelSchema : Schema {
     ParallelSchema(Tree t, Schema *s1, Schema *s2)
         : Schema(t, s1->in_count + s2->in_count, s1->out_count + s2->out_count, {s1, s2}) {}
 
-    void _place_size(const DeviceType) override {
-        w = max(s1()->w, s2()->w);
-        h = s1()->h + s2()->h;
-    }
+    void _place_size(const DeviceType) override { size = {max(s1()->size.x, s2()->size.x), s1()->size.y + s2()->size.y}; }
     void _place(const DeviceType type) override {
         auto *top = children[is_lr() ? 0 : 1];
         auto *bottom = children[is_lr() ? 1 : 0];
-        top->place(type, x + (w - top->w) / 2, y, orientation);
-        bottom->place(type, x + (w - bottom->w) / 2, y + top->h, orientation);
+        top->place(type, x + (size.x - top->size.x) / 2, y, orientation);
+        bottom->place(type, x + (size.x - bottom->size.x) / 2, y + top->size.y, orientation);
     }
 
     void _draw(Device &device) const override {
@@ -663,8 +652,8 @@ struct ParallelSchema : Schema {
     ImVec2 point(IO io, Count i) const override {
         const float d = (io == IO_In ? -1.0f : 1.0f) * dir_unit();
         return i < io_count(io, 0) ?
-               child(0)->point(io, i) + ImVec2{d * (w - s1()->w) / 2, 0} :
-               child(1)->point(io, i - io_count(io, 0)) + ImVec2{d * (w - s2()->w) / 2, 0};
+               child(0)->point(io, i) + ImVec2{d * (size.x - s1()->size.x) / 2, 0} :
+               child(1)->point(io, i - io_count(io, 0)) + ImVec2{d * (size.x - s2()->size.x) / 2, 0};
     }
 };
 
@@ -676,16 +665,18 @@ struct RecursiveSchema : Schema {
     }
 
     void _place_size(const DeviceType) override {
-        w = max(s1()->w, s2()->w) + 2 * WireGap() * float(max(io_count(IO_In, 1), io_count(IO_Out, 1)));
-        h = s1()->h + s2()->h;
+        size = {
+            max(s1()->size.x, s2()->size.x) + 2 * WireGap() * float(max(io_count(IO_In, 1), io_count(IO_Out, 1))),
+            s1()->size.y + s2()->size.y
+        };
     }
 
     // The two schemas are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
     void _place(const DeviceType type) override {
         auto *top_schema = children[is_lr() ? 1 : 0];
         auto *bottom_schema = children[is_lr() ? 0 : 1];
-        top_schema->place(type, x + (w - top_schema->w) / 2, y, SchemaReverse);
-        bottom_schema->place(type, x + (w - bottom_schema->w) / 2, y + top_schema->h, SchemaForward);
+        top_schema->place(type, x + (size.x - top_schema->size.x) / 2, y, SchemaReverse);
+        bottom_schema->place(type, x + (size.x - bottom_schema->size.x) / 2, y + top_schema->size.y, SchemaForward);
     }
 
     void _draw(Device &device) const override {
@@ -722,11 +713,14 @@ struct RecursiveSchema : Schema {
             device.line(from_dx, bend);
             device.line(bend, to);
         }
+
+        draw_rect(device);
+        draw_channel_labels(device);
     }
 
     ImVec2 point(IO io, Count i) const override {
         const bool lr = (io == IO_In && is_lr()) || (io == IO_Out && !is_lr());
-        return {lr ? x : x + w, child(0)->point(io, i + (io == IO_In ? io_count(IO_Out, 1) : 0)).y};
+        return {lr ? x : x + size.x, child(0)->point(io, i + (io == IO_In ? io_count(IO_Out, 1) : 0)).y};
     }
 };
 
@@ -735,20 +729,17 @@ struct BinarySchema : Schema {
 
     ImVec2 point(IO io, Count i) const override { return child(io == IO_In ? 0 : 1)->point(io, i); }
 
-    void _place_size(const DeviceType) override {
-        w = s1()->w + s2()->w + horizontal_gap();
-        h = max(s1()->h, s2()->h);
-    }
+    void _place_size(const DeviceType) override { size = {s1()->size.x + s2()->size.x + horizontal_gap(), max(s1()->size.y, s2()->size.y)}; }
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void _place(const DeviceType type) override {
         auto *left = children[is_lr() ? 0 : 1];
         auto *right = children[is_lr() ? 1 : 0];
-        left->place(type, x, y + max(0.0f, right->h - left->h) / 2, orientation);
-        right->place(type, x + left->w + horizontal_gap(), y + max(0.0f, left->h - right->h) / 2, orientation);
+        left->place(type, x, y + max(0.0f, right->size.y - left->size.y) / 2, orientation);
+        right->place(type, x + left->size.x + horizontal_gap(), y + max(0.0f, left->size.y - right->size.y) / 2, orientation);
     }
 
-    virtual float horizontal_gap() const { return (s1()->h + s2()->h) * s.style.flowgrid.DiagramBinaryHorizontalGapRatio; }
+    virtual float horizontal_gap() const { return (s1()->size.y + s2()->size.y) * s.style.flowgrid.DiagramBinaryHorizontalGapRatio; }
 };
 
 struct SequentialSchema : BinarySchema {
@@ -759,8 +750,8 @@ struct SequentialSchema : BinarySchema {
 
     void _place_size(const DeviceType type) override {
         if (s1()->x == 0 && s1()->y == 0 && s2()->x == 0 && s2()->y == 0) {
-            s1()->place(type, 0, max(0.0f, s2()->h - s1()->h) / 2, SchemaForward);
-            s2()->place(type, 0, max(0.0f, s1()->h - s2()->h) / 2, SchemaForward);
+            s1()->place(type, 0, max(0.0f, s2()->size.y - s1()->size.y) / 2, SchemaForward);
+            s2()->place(type, 0, max(0.0f, s1()->size.y - s2()->size.y) / 2, SchemaForward);
         }
         BinarySchema::_place_size(type);
     }
@@ -861,8 +852,7 @@ struct DecorateSchema : IOSchema {
 
     void _place_size(const DeviceType) override {
         const float m = margin(s1());
-        w = s1()->w + 2 * m;
-        h = s1()->h + 2 * m;
+        size = s1()->size + ImVec2{m, m} * 2;
     }
 
     void _place(const DeviceType type) override {
@@ -872,7 +862,7 @@ struct DecorateSchema : IOSchema {
 
     void _draw(Device &device) const override {
         const float m = 2.0f * (is_top_level ? s.style.flowgrid.DiagramTopLevelMargin : 0.0f) + s.style.flowgrid.DiagramDecorateMargin;
-        device.grouprect({position() + ImVec2{m, m} / 2, position() + size() - ImVec2{m, m} / 2}, text);
+        device.grouprect({position() + ImVec2{m, m} / 2, position() + size - ImVec2{m, m} / 2}, text);
         for (const IO io: {IO_In, IO_Out}) {
             const bool has_arrow = io == IO_Out && is_top_level;
             for (Count i = 0; i < io_count(io); i++) {
@@ -900,13 +890,13 @@ struct RouteSchema : IOSchema {
 
     void _place_size(const DeviceType) override {
         const float minimal = 3 * WireGap();
-        h = 2 * YGap() + max(minimal, max(float(in_count), float(out_count)) * WireGap());
-        w = 2 * XGap() + max(minimal, h * 0.75f);
+        const float h = 2 * YGap() + max(minimal, max(float(in_count), float(out_count)) * WireGap());
+        size = {2 * XGap() + max(minimal, h * 0.75f), h};
     }
 
     void _draw(Device &device) const override {
         if (s.style.flowgrid.DiagramDrawRouteFrame) {
-            const ImRect &rect = {position() + ImVec2{XGap(), YGap()}, position() + ImVec2{w, h} - ImVec2{XGap(), YGap()} * 2};
+            const ImRect &rect = {position() + Gap(), position() + size - Gap() * 2};
             device.rect(rect, {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
             // Draw the orientation mark to indicate the first input (like integrated circuits).
             const float offset = dir_unit() * 4;
@@ -1171,7 +1161,7 @@ void Audio::Faust::Diagram::draw() const {
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    if (!s.style.flowgrid.DiagramScaleFill) ImGui::SetNextWindowContentSize(scale({focused->w, focused->h}));
+    if (!s.style.flowgrid.DiagramScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
     ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::GetCurrentWindow()->FontWindowScale = scale(1);
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),

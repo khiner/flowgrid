@@ -230,6 +230,12 @@ struct ApplicationSettings : Window {
     Float GestureDurationSec{path, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
 };
 
+struct DiagramSettings : StateMember {
+    using StateMember::StateMember;
+
+    Bool HoverDebug{path, "HoverDebug", false};
+};
+
 struct StateViewer : Window {
     using Window::Window;
     void draw() const override;
@@ -658,6 +664,7 @@ struct StateData {
     ImGuiSettings imgui_settings{RootPath, "imgui_settings", "ImGui settings"};
     Style style{RootPath, "style"};
     ApplicationSettings application_settings{RootPath, "application_settings"};
+    DiagramSettings diagram_settings{RootPath, "diagram_settings"};
     Audio audio{RootPath, "audio"};
     Processes processes{RootPath, "processes"};
     File file{RootPath, "file"};
@@ -716,6 +723,7 @@ JsonType(Window, visible)
 JsonType(Process, running)
 
 JsonType(ApplicationSettings, visible, GestureDurationSec)
+JsonType(DiagramSettings, HoverDebug)
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio, running, visible, muted, backend, sample_rate, device_volume, faust)
@@ -747,4 +755,4 @@ JsonType(ImGuiSettingsData, nodes, windows, tables)
 
 JsonType(Processes, ui)
 
-JsonType(StateData, application_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, project_preview, demo, metrics, tools);
+JsonType(StateData, application_settings, diagram_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, project_preview, demo, metrics, tools);

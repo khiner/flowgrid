@@ -355,6 +355,12 @@ string to_string(const IO io) {
     }
 }
 
+struct Schema;
+
+Schema *root_schema; // This diagram is drawn every frame if present.
+std::stack<Schema *> focused_schema_stack;
+const Schema *hovered_schema;
+
 // An abstract block diagram schema
 struct Schema {
     Tree tree;
@@ -396,9 +402,15 @@ struct Schema {
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
         _draw(device);
+        if (s.diagram_settings.HoverDebug && (!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
+            hovered_schema = this;
+        }
     };
     inline bool is_lr() const { return ::is_lr(orientation); }
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
+    inline bool is_inside(const Schema &schema) const {
+        return x() > schema.x() && right() < schema.right() && y() > schema.y() && y() < schema.bottom();
+    }
 
     void draw_rect(Device &device) const {
         device.rect(rect(), {.fill_color={0, 0, 0, 0}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
@@ -431,6 +443,8 @@ struct Schema {
     inline float y() const { return position.y; }
     inline float w() const { return size.x; }
     inline float h() const { return size.y; }
+    inline float right() const { return x() + w(); }
+    inline float bottom() const { return y() + h(); }
 
     inline ImRect rect() const { return {position, position + size}; }
     inline ImVec2 mid() const { return position + size / 2; }
@@ -448,9 +462,6 @@ protected:
     virtual void _place(DeviceType) {};
     virtual void _draw(Device &) const {}
 };
-
-Schema *root_schema; // This diagram is drawn every frame if present.
-std::stack<Schema *> focused_schema_stack;
 
 static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
 static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
@@ -715,14 +726,11 @@ struct RecursiveSchema : Schema {
             device.line(from_dx, bend);
             device.line(bend, to);
         }
-
-        draw_rect(device);
-        draw_channel_labels(device);
     }
 
     ImVec2 point(IO io, Count i) const override {
         const bool lr = (io == IO_In && is_lr()) || (io == IO_Out && !is_lr());
-        return {lr ? x() : x() + w(), child(0)->point(io, i + (io == IO_In ? io_count(IO_Out, 1) : 0)).y};
+        return {lr ? x() : right(), child(0)->point(io, i + (io == IO_In ? io_count(IO_Out, 1) : 0)).y};
     }
 };
 
@@ -1144,6 +1152,10 @@ void Audio::Faust::Diagram::draw() const {
             fg::MenuItem(action::id<show_save_faust_svg_file_dialog>);
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("View")) {
+            fg::ToggleMenuItem(s.diagram_settings.HoverDebug);
+            ImGui::EndMenu();
+        }
         ImGui::EndMenuBar();
     }
 
@@ -1163,6 +1175,7 @@ void Audio::Faust::Diagram::draw() const {
         if (ImGui::Button("Back")) focused_schema_stack.pop();
         if (!can_nav) ImGui::EndDisabled();
     }
+
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
@@ -1172,6 +1185,12 @@ void Audio::Faust::Diagram::draw() const {
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
         ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
     ImGuiDevice device;
+    hovered_schema = nullptr;
     focused->draw(device);
+    if (hovered_schema) {
+        hovered_schema->draw_rect(device);
+        hovered_schema->draw_channel_labels(device);
+    }
+
     ImGui::EndChild();
 }

@@ -118,7 +118,7 @@ struct SVGDevice : Device {
     SVGDevice(fs::path directory, string file_name, ImVec2 size) : directory(std::move(directory)), file_name(std::move(file_name)) {
         const auto &[w, h] = scale(size);
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        stream << (s.style.flowgrid.DiagramScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        stream << (s.diagram_settings.ScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         stream << format(R"(
@@ -413,7 +413,7 @@ struct Schema {
     }
 
     void draw_rect(Device &device) const {
-        device.rect(rect(), {.fill_color={0, 0, 0, 0}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
+        device.rect(rect(), {.fill_color={0, 0, 0, 0.1}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
     }
 
     void draw_channel_labels(Device &device) const {
@@ -467,7 +467,7 @@ static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
 static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
 static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
-    if (s.style.flowgrid.DiagramScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
+    if (s.diagram_settings.ScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
         const auto *focused_schema = focused_schema_stack.top();
         return ImGui::GetWindowSize() / focused_schema->size;
     }
@@ -534,19 +534,18 @@ struct BlockSchema : IOSchema {
     void _draw(Device &device) const override {
         const auto &col = s.style.flowgrid.Colors[color];
         if (device.type() == SVGDeviceType) {
-            const ImRect &rect = {position + Gap(), position + size - Gap()};
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             // todo why is draw called twice for each block with an inner child? (or maybe even every schema?)
             //  note this is likely double-writing in ImGui too
             if (inner && !fs::exists(svg_device.directory / svg_file_name(inner->tree))) write_svg(inner, svg_device.directory);
+            const ImRect &rect = {position + Gap(), position + size - Gap()};
             const string &link = inner ? svg_file_name(tree) : "";
             svg_device.rect(rect, col, link);
             svg_device.text(mid(), text, {}, link);
             // Draw the orientation mark to indicate the first input (like integrated circuits).
-            const float offset = dir_unit() * 4;
-            device.dot((is_lr() ? rect.Min : rect.Max) * ImVec2{offset, offset});
+            device.dot((is_lr() ? rect.Min : rect.Max) * dir_unit() * 4);
         } else {
-            const ImRect &rect = {scale(position + Gap()), scale(position + size - Gap())};
+            const ImRect &rect = scale(ImRect{position + Gap(), position + size - Gap()});
             const auto cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
             ImGui::PushStyleColor(ImGuiCol_Button, col);
@@ -1153,6 +1152,7 @@ void Audio::Faust::Diagram::draw() const {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
+            fg::ToggleMenuItem(s.diagram_settings.ScaleFill);
             fg::ToggleMenuItem(s.diagram_settings.HoverDebug);
             ImGui::EndMenu();
         }
@@ -1179,7 +1179,7 @@ void Audio::Faust::Diagram::draw() const {
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    if (!s.style.flowgrid.DiagramScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
+    if (!s.diagram_settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
     ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::GetCurrentWindow()->FontWindowScale = scale(1);
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),

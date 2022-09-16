@@ -233,6 +233,7 @@ struct ApplicationSettings : Window {
 struct DiagramSettings : StateMember {
     using StateMember::StateMember;
 
+    Bool ScaleFill{path, "ScaleFill", "Scale to window", false}; // This and `style.flowgrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
     Bool HoverDebug{path, "HoverDebug", false};
 };
 
@@ -438,7 +439,6 @@ struct FlowGridStyle : StateMember, Drawable {
     Enum DiagramOrientation{path, "DiagramOrientation", {"Left", "Right"}, ImGuiDir_Right};
     Bool DiagramSequentialConnectionZigzag{path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
     Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
-    Bool DiagramScaleFill{path, "DiagramScaleFill", "Scale to window", false}; // This and `DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
     Bool DiagramScaleLinked{path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
     Vec2 DiagramScale{path, "DiagramScale", ImVec2(1, 1), 0.1, 10};
     Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20, 0, 40};
@@ -723,7 +723,7 @@ JsonType(Window, visible)
 JsonType(Process, running)
 
 JsonType(ApplicationSettings, visible, GestureDurationSec)
-JsonType(DiagramSettings, HoverDebug)
+JsonType(DiagramSettings, ScaleFill, HoverDebug)
 JsonType(Audio::Faust::Editor, visible, file_name)
 JsonType(Audio::Faust, code, error, editor, log)
 JsonType(Audio, running, visible, muted, backend, sample_rate, device_volume, faust)
@@ -742,8 +742,8 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramOrientation, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleFill, DiagramScaleLinked, DiagramScale,
-    DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize,
+JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramOrientation, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
+    DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize,
     DiagramInverterRadius)
 JsonType(Style, visible, imgui, implot, flowgrid)
 

@@ -31,7 +31,7 @@ bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *
     const ImGuiTreeNodeFlags imgui_flags = flags & JsonTreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
 
     if (disabled) ImGui::BeginDisabled();
-    if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, s.style.flowgrid.Colors[FlowGridCol_HighlightText]);
+    if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
     const bool is_open = id ? ImGui::TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : ImGui::TreeNodeEx(label.c_str(), imgui_flags);
     if (highlighted) ImGui::PopStyleColor();
     if (disabled) ImGui::EndDisabled();

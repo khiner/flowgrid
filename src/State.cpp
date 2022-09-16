@@ -173,7 +173,7 @@ ImRect RowItemRatioRect(float ratio) {
     return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.0f, 1.0f), GetFontSize()}};
 }
 
-void FillRowItemBg(const ImVec4 &col = s.style.imgui.Colors[ImGuiCol_FrameBgActive]) {
+void FillRowItemBg(const ImVec4 &col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
     const auto &rect = RowItemRect();
     GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, ImColor(col));
 }
@@ -183,15 +183,15 @@ void FillRowItemBg(const ImVec4 &col = s.style.imgui.Colors[ImGuiCol_FrameBgActi
 //-----------------------------------------------------------------------------
 
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
-    if (!visible) return;
+    if (!Visible) return;
 
-    bool open = visible;
+    bool open = Visible;
     if (Begin(name.c_str(), &open, flags)) {
         if (open) draw();
     }
     End();
 
-    if (visible && !open) q(set_value{visible.path, false});
+    if (Visible && !open) q(set_value{Visible.path, false});
 }
 
 void Window::Dock(ImGuiID node_id) const {
@@ -199,8 +199,8 @@ void Window::Dock(ImGuiID node_id) const {
 }
 
 bool Window::ToggleMenuItem() const {
-    const bool edited = MenuItem(name.c_str(), nullptr, visible);
-    if (edited) q(toggle_value{visible.path});
+    const bool edited = MenuItem(name.c_str(), nullptr, Visible);
+    if (edited) q(toggle_value{Visible.path});
     return edited;
 }
 
@@ -209,7 +209,7 @@ void Window::SelectTab() const {
 }
 
 void Process::draw() const {
-    running.Draw();
+    Running.Draw();
 }
 
 void State::draw() const {
@@ -239,24 +239,24 @@ void State::draw() const {
         }
         if (BeginMenu("Windows")) {
             if (BeginMenu("State")) {
-                state_viewer.ToggleMenuItem();
-                state_memory_editor.ToggleMenuItem();
-                path_update_frequency.ToggleMenuItem();
+                StateViewer.ToggleMenuItem();
+                StateMemoryEditor.ToggleMenuItem();
+                PathUpdateFrequency.ToggleMenuItem();
                 EndMenu();
             }
             if (BeginMenu("Audio")) {
-                audio.ToggleMenuItem();
+                Audio.ToggleMenuItem();
                 if (BeginMenu("Faust")) {
-                    audio.faust.editor.ToggleMenuItem();
-                    audio.faust.log.ToggleMenuItem();
+                    Audio.faust.Editor.ToggleMenuItem();
+                    Audio.faust.Log.ToggleMenuItem();
                     EndMenu();
                 }
                 EndMenu();
             }
-            metrics.ToggleMenuItem();
-            style.ToggleMenuItem();
-            tools.ToggleMenuItem();
-            demo.ToggleMenuItem();
+            Metrics.ToggleMenuItem();
+            Style.ToggleMenuItem();
+            Tools.ToggleMenuItem();
+            Demo.ToggleMenuItem();
             EndMenu();
         }
         EndMainMenuBar();
@@ -272,64 +272,64 @@ void State::draw() const {
         auto utilities_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
         auto faust_log_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
 
-        application_settings.Dock(settings_node_id);
-        audio.Dock(settings_node_id);
+        ApplicationSettings.Dock(settings_node_id);
+        Audio.Dock(settings_node_id);
 
-        audio.faust.editor.Dock(faust_editor_node_id);
-        audio.faust.diagram.Dock(faust_editor_node_id);
-        audio.faust.log.Dock(faust_log_node_id);
+        Audio.faust.Editor.Dock(faust_editor_node_id);
+        Audio.faust.Diagram.Dock(faust_editor_node_id);
+        Audio.faust.Log.Dock(faust_log_node_id);
 
-        state_viewer.Dock(state_node_id);
-        state_memory_editor.Dock(state_node_id);
-        path_update_frequency.Dock(state_node_id);
-        project_preview.Dock(state_node_id);
+        StateViewer.Dock(state_node_id);
+        StateMemoryEditor.Dock(state_node_id);
+        PathUpdateFrequency.Dock(state_node_id);
+        ProjectPreview.Dock(state_node_id);
 
-        metrics.Dock(utilities_node_id);
-        style.Dock(utilities_node_id);
-        tools.Dock(utilities_node_id);
-        demo.Dock(utilities_node_id);
+        Metrics.Dock(utilities_node_id);
+        Style.Dock(utilities_node_id);
+        Tools.Dock(utilities_node_id);
+        Demo.Dock(utilities_node_id);
     } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
-        state_viewer.SelectTab();
-        metrics.SelectTab();
+        StateViewer.SelectTab();
+        Metrics.SelectTab();
     }
 
-    application_settings.DrawWindow();
-    audio.DrawWindow();
+    ApplicationSettings.DrawWindow();
+    Audio.DrawWindow();
 
-    audio.faust.editor.DrawWindow(ImGuiWindowFlags_MenuBar);
-    audio.faust.diagram.DrawWindow(ImGuiWindowFlags_MenuBar);
-    audio.faust.log.DrawWindow();
+    Audio.faust.Editor.DrawWindow(ImGuiWindowFlags_MenuBar);
+    Audio.faust.Diagram.DrawWindow(ImGuiWindowFlags_MenuBar);
+    Audio.faust.Log.DrawWindow();
 
-    state_viewer.DrawWindow(ImGuiWindowFlags_MenuBar);
-    path_update_frequency.DrawWindow();
-    state_memory_editor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
-    project_preview.DrawWindow();
+    StateViewer.DrawWindow(ImGuiWindowFlags_MenuBar);
+    PathUpdateFrequency.DrawWindow();
+    StateMemoryEditor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
+    ProjectPreview.DrawWindow();
 
-    metrics.DrawWindow();
-    style.DrawWindow();
-    tools.DrawWindow();
-    demo.DrawWindow(ImGuiWindowFlags_MenuBar);
-    file.dialog.draw();
+    Metrics.DrawWindow();
+    Style.DrawWindow();
+    Tools.DrawWindow();
+    Demo.DrawWindow(ImGuiWindowFlags_MenuBar);
+    File.Dialog.draw();
 }
 
 // Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
 void State::update(const Action &action) {
     std::visit(visitor{
-        [&](const show_open_project_dialog &) { file.dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
-        [&](const show_save_project_dialog &) { file.dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_open_faust_file_dialog &) { file.dialog = {"Choose file", FaustDspFileExtension, "."}; },
-        [&](const show_save_faust_file_dialog &) { file.dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_save_faust_svg_file_dialog &) { file.dialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_open_project_dialog &) { File.Dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
+        [&](const show_save_project_dialog &) { File.Dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_open_faust_file_dialog &) { File.Dialog = {"Choose file", FaustDspFileExtension, "."}; },
+        [&](const show_save_faust_file_dialog &) { File.Dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_save_faust_svg_file_dialog &) { File.Dialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
 
         [&](const open_file_dialog &a) {
-            file.dialog = a.dialog;
-            file.dialog.visible = true;
+            File.Dialog = a.dialog;
+            File.Dialog.Visible = true;
         },
-        [&](const close_file_dialog &) { file.dialog.visible = false; },
+        [&](const close_file_dialog &) { File.Dialog.Visible = false; },
 
         [&](const set_imgui_color_style &a) {
-            auto *dst = style.imgui.Colors;
+            auto *dst = Style.ImGui.Colors;
             switch (a.id) {
                 case 0: StyleColorsDark(dst);
                     break;
@@ -340,39 +340,39 @@ void State::update(const Action &action) {
             }
         },
         [&](const set_implot_color_style &a) {
-            auto *dst = style.implot.Colors;
+            auto *dst = Style.ImPlot.Colors;
             switch (a.id) {
                 case 0: ImPlot::StyleColorsAuto(dst);
-                    style.implot.MinorAlpha = 0.25f;
+                    Style.ImPlot.MinorAlpha = 0.25f;
                     break;
                 case 1: ImPlot::StyleColorsClassic(dst);
-                    style.implot.MinorAlpha = 0.5f;
+                    Style.ImPlot.MinorAlpha = 0.5f;
                     break;
                 case 2: ImPlot::StyleColorsDark(dst);
-                    style.implot.MinorAlpha = 0.25f;
+                    Style.ImPlot.MinorAlpha = 0.25f;
                     break;
                 case 3: ImPlot::StyleColorsLight(dst);
-                    style.implot.MinorAlpha = 1.0f;
+                    Style.ImPlot.MinorAlpha = 1.0f;
                     break;
             }
         },
         [&](const set_flowgrid_color_style &a) {
             switch (a.id) {
-                case 0: style.flowgrid.StyleColorsDark();
+                case 0: Style.FlowGrid.StyleColorsDark();
                     break;
-                case 1: style.flowgrid.StyleColorsLight();
+                case 1: Style.FlowGrid.StyleColorsLight();
                     break;
-                case 2: style.flowgrid.StyleColorsClassic();
+                case 2: Style.FlowGrid.StyleColorsClassic();
                     break;
                 default:break;
             }
         },
 
-        [&](const open_faust_file &a) { audio.faust.code = FileIO::read(a.path); },
+        [&](const open_faust_file &a) { Audio.faust.Code = FileIO::read(a.path); },
 
         [&](const close_application &) {
-            processes.ui.running = false;
-            audio.running = false;
+            Processes.UI.Running = false;
+            Audio.Running = false;
         },
 
         [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
@@ -381,13 +381,13 @@ void State::update(const Action &action) {
 
 ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
     SaveIniSettingsToMemory(); // Populates the `Settings` context members
-    nodes = ctx->DockContext.NodesSettings; // already an ImVector
+    Nodes = ctx->DockContext.NodesSettings; // already an ImVector
     // Convert `ImChunkStream`s to `ImVector`s.
     for (auto *ws = ctx->SettingsWindows.begin(); ws != nullptr; ws = ctx->SettingsWindows.next_chunk(ws)) {
-        windows.push_back(*ws);
+        Windows.push_back(*ws);
     }
     for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
-        tables.push_back(*ts);
+        Tables.push_back(*ts);
     }
 }
 
@@ -496,9 +496,9 @@ void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
     DockSettingsHandler_ClearAll(ctx, nullptr);
 
     /** Apply **/
-    for (auto ws: windows) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
+    for (auto ws: Windows) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
 
-    ctx->DockContext.NodesSettings = nodes; // already an ImVector
+    ctx->DockContext.NodesSettings = Nodes; // already an ImVector
     DockSettingsHandler_ApplyAll(ctx, nullptr);
 
     /** Other housekeeping to emulate `LoadIniSettingsFromMemory` **/
@@ -512,8 +512,8 @@ void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
 
 // TODO option to indicate relative update-recency
 static void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) {
-    const bool auto_select = s.state_viewer.auto_select;
-    const bool annotate_enabled = s.state_viewer.label_mode == StateViewer::LabelMode::Annotated;
+    const bool auto_select = s.StateViewer.AutoSelect;
+    const bool annotate_enabled = s.StateViewer.LabelMode == StateViewer::LabelMode::Annotated;
 
     const auto path_string = path.to_string();
     const string &leaf_name = path == RootPath ? path_string : path.back();
@@ -521,9 +521,9 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     const bool is_array_item = is_integer(leaf_name);
     const bool is_color = path_string.find("Colors") != string::npos && is_array_item;
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
-    const bool is_imgui_color = parent_path == s.style.imgui.path / "Colors";
-    const bool is_implot_color = parent_path == s.style.implot.path / "Colors";
-    const bool is_flowgrid_color = parent_path == s.style.flowgrid.path / "Colors";
+    const bool is_imgui_color = parent_path == s.Style.ImGui.path / "Colors";
+    const bool is_implot_color = parent_path == s.Style.ImPlot.path / "Colors";
+    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.path / "Colors";
     const auto &label = annotate_enabled ?
                         (is_imgui_color ?
                          GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
@@ -535,14 +535,14 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
         const auto is_ancestor_path = [path_string](const string &candidate_path) { return candidate_path.rfind(path_string, 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
-        if (was_recently_updated) FillRowItemBg(s.style.imgui.Colors[ImGuiCol_FrameBg]);
+        if (was_recently_updated) FillRowItemBg(s.Style.ImGui.Colors[ImGuiCol_FrameBg]);
     }
 
     // Flash background color of nodes when its corresponding path updates.
     if (c.state_stats.latest_update_time_for_path.contains(path)) {
         const auto latest_update_time = c.state_stats.latest_update_time_for_path.contains(path) ? c.state_stats.latest_update_time_for_path.at(path) : TimePoint{};
-        const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time).count() / s.style.flowgrid.FlashDurationSec;
-        auto flash_color = s.style.flowgrid.Colors[FlowGridCol_GestureIndicator];
+        const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
+        auto flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.w = std::max(0.0f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
@@ -579,8 +579,8 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
 void StateViewer::draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            auto_select.DrawMenu();
-            label_mode.DrawMenu();
+            AutoSelect.DrawMenu();
+            LabelMode.DrawMenu();
             EndMenu();
         }
         EndMenuBar();
@@ -608,7 +608,7 @@ void StatePathUpdateFrequency::draw() const {
         return;
     }
 
-    auto &[labels, values] = c.state_stats.path_update_frequency;
+    auto &[labels, values] = c.state_stats.PathUpdateFrequency;
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
@@ -630,13 +630,13 @@ void StatePathUpdateFrequency::draw() const {
 }
 
 void ProjectPreview::draw() const {
-    format.Draw();
-    raw.Draw();
+    Format.Draw();
+    Raw.Draw();
 
     Separator();
 
-    const json project_json = c.get_project_json(ProjectFormat(format.value));
-    if (raw) Text("%s", project_json.dump(4).c_str());
+    const json project_json = c.get_project_json(ProjectFormat(Format.value));
+    if (Raw) Text("%s", project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
 
@@ -669,7 +669,7 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
 
             PushID(i);
             ColorEdit4(path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
-            SameLine(0.0f, s.style.imgui.ItemInnerSpacing.value.x);
+            SameLine(0.0f, s.Style.ImGui.ItemInnerSpacing.value.x);
             TextUnformatted(name);
             PopID();
         }
@@ -688,17 +688,17 @@ void Style::ImGuiStyleMember::draw() const {
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     {
-        bool border = s.style.imgui.WindowBorderSize > 0.0f;
+        bool border = s.Style.ImGui.WindowBorderSize > 0.0f;
         if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.path, border ? 1.0f : 0.0f});
     }
     SameLine();
     {
-        bool border = s.style.imgui.FrameBorderSize > 0.0f;
+        bool border = s.Style.ImGui.FrameBorderSize > 0.0f;
         if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.path, border ? 1.0f : 0.0f});
     }
     SameLine();
     {
-        bool border = s.style.imgui.PopupBorderSize > 0.0f;
+        bool border = s.Style.ImGui.PopupBorderSize > 0.0f;
         if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.path, border ? 1.0f : 0.0f});
     }
 
@@ -918,7 +918,7 @@ void FlowGridStyle::draw() const {
     if (BeginTabBar("##FlowGridStyleEditor")) {
         if (BeginTabItem("Faust diagram")) {
             DiagramFoldComplexity.Draw();
-            const bool ScaleFill = s.audio.faust.diagram.Settings.ScaleFill;
+            const bool ScaleFill = s.Audio.faust.Diagram.Settings.ScaleFill;
             if (ScaleFill) ImGui::BeginDisabled();
             const auto scale_before = DiagramScale.value;
             if (DiagramScale.Draw() && DiagramScaleLinked) {
@@ -962,16 +962,16 @@ void FlowGridStyle::draw() const {
 
 void Style::draw() const {
     if (BeginTabBar("##style")) {
-        if (BeginTabItem(flowgrid.name.c_str())) {
-            flowgrid.draw();
+        if (BeginTabItem(FlowGrid.name.c_str())) {
+            FlowGrid.draw();
             EndTabItem();
         }
-        if (BeginTabItem(imgui.name.c_str())) {
-            imgui.draw();
+        if (BeginTabItem(ImGui.name.c_str())) {
+            ImGui.draw();
             EndTabItem();
         }
-        if (BeginTabItem(implot.name.c_str())) {
-            implot.draw();
+        if (BeginTabItem(ImPlot.name.c_str())) {
+            ImPlot.draw();
             EndTabItem();
         }
         EndTabBar();
@@ -991,7 +991,7 @@ void ApplicationSettings::draw() const {
 const std::vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
 
 void Demo::draw() const {
-    if (BeginTabBar("##demos")) {
+    if (BeginTabBar("##Demos")) {
         if (BeginTabItem("ImGui")) {
             ShowDemo();
             EndTabItem();
@@ -1043,15 +1043,15 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
 //        }
 //    }
     if (TreeNode("Forward diff")) {
-        ShowJsonPatchMetrics(diff.forward);
+        ShowJsonPatchMetrics(diff.Forward);
         TreePop();
     }
     if (TreeNode("Reverse diff")) {
-        ShowJsonPatchMetrics(diff.reverse);
+        ShowJsonPatchMetrics(diff.Reverse);
         TreePop();
     }
 
-    BulletText("Time: %s", fmt::format("{}\n", diff.time).c_str());
+    BulletText("Time: %s", fmt::format("{}\n", diff.Time).c_str());
 }
 
 void ShowGesture(const Gesture &gesture) {
@@ -1071,8 +1071,8 @@ void Metrics::FlowGridMetrics::draw() const {
         const bool active_gesture_present = !c.active_gesture.empty();
         if (active_gesture_present || widget_gesture) {
             // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - c.gesture_time_remaining_sec / s.application_settings.GestureDurationSec);
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.style.flowgrid.Colors[FlowGridCol_GestureIndicator]));
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - c.gesture_time_remaining_sec / s.ApplicationSettings.GestureDurationSec);
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]));
 
             const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -1130,12 +1130,12 @@ void Metrics::FlowGridMetrics::draw() const {
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) c.clear_preferences();
             SameLine();
-            show_relative_paths.Draw();
+            ShowRelativePaths.Draw();
 
             if (!has_recently_opened_paths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
                 for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
-                    BulletText("%s", (show_relative_paths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                    BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();
             }
@@ -1157,17 +1157,17 @@ void Metrics::ImGuiMetrics::draw() const { ShowMetrics(); }
 void Metrics::ImPlotMetrics::draw() const { ImPlot::ShowMetrics(); }
 
 void Metrics::draw() const {
-    if (BeginTabBar("##metrics")) {
-        if (BeginTabItem(flowgrid.name.c_str())) {
-            flowgrid.draw();
+    if (BeginTabBar("##Metrics")) {
+        if (BeginTabItem(FlowGrid.name.c_str())) {
+            FlowGrid.draw();
             EndTabItem();
         }
-        if (BeginTabItem(imgui.name.c_str())) {
-            imgui.draw();
+        if (BeginTabItem(ImGui.name.c_str())) {
+            ImGui.draw();
             EndTabItem();
         }
-        if (BeginTabItem(implot.name.c_str())) {
-            implot.draw();
+        if (BeginTabItem(ImPlot.name.c_str())) {
+            ImPlot.draw();
             EndTabItem();
         }
         EndTabBar();
@@ -1175,9 +1175,9 @@ void Metrics::draw() const {
 }
 
 void Tools::draw() const {
-    if (BeginTabBar("##tools")) {
+    if (BeginTabBar("##Tools")) {
         if (BeginTabItem("ImGui")) {
-            if (BeginTabBar("##imgui_tools")) {
+            if (BeginTabBar("##ImGui_Tools")) {
                 if (BeginTabItem("Debug log")) {
                     ShowDebugLog();
                     EndTabItem();
@@ -1197,11 +1197,11 @@ void Tools::draw() const {
 static auto *file_dialog = ImGuiFileDialog::Instance();
 static const string file_dialog_key = "FileDialog";
 
-void File::Dialog::draw() const {
-    if (!visible) return file_dialog->Close();
+void File::FileDialog::draw() const {
+    if (!Visible) return file_dialog->Close();
 
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
-    file_dialog->OpenDialog(file_dialog_key, title, filters.c_str(), file_path, default_file_name, max_num_selections, nullptr, flags);
+    file_dialog->OpenDialog(file_dialog_key, Title, Filters.c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
 
     const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
     if (file_dialog->Display(file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
@@ -1215,14 +1215,14 @@ void File::Dialog::draw() const {
                 //   The file would generally be larger, and the load time would be slower,
                 //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
                 //   with full undo/redo history/position/etc.!
-                if (save_mode) q(save_project{file_path});
+                if (SaveMode) q(save_project{file_path});
                 else q(open_project{file_path});
             } else if (extension == FaustDspFileExtension) {
-                if (save_mode) q(save_faust_file{file_path});
+                if (SaveMode) q(save_faust_file{file_path});
                 else q(open_faust_file{file_path});
             } else {
                 // todo need a way to tell it's the svg-save case
-                if (save_mode) q(save_faust_svg_file{file_path});
+                if (SaveMode) q(save_faust_svg_file{file_path});
             }
         }
     }

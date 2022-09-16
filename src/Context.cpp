@@ -98,7 +98,7 @@ void Context::compute_frames(int frame_count) const { // NOLINT(readability-conv
 }
 
 FAUSTFLOAT Context::get_sample(int channel, int frame) const {
-    return !faust || s.audio.muted ? 0 : faust->get_sample(channel, frame);
+    return !faust || s.Audio.Muted ? 0 : faust->get_sample(channel, frame);
 }
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
@@ -149,7 +149,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    gesture_time_remaining_sec = std::max(0.0f, s.application_settings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
+    gesture_time_remaining_sec = std::max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
     if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) finalize_gesture();
 }
 
@@ -162,8 +162,8 @@ bool Context::action_allowed(const ActionID action_id) const {
         case action::id<Actions::show_save_project_dialog>:
         case action::id<Actions::save_default_project>: return project_has_changes();
         case action::id<Actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
-        case action::id<Actions::open_file_dialog>: return !s.file.dialog.visible;
-        case action::id<Actions::close_file_dialog>: return s.file.dialog.visible;
+        case action::id<Actions::open_file_dialog>: return !s.File.Dialog.Visible;
+        case action::id<Actions::close_file_dialog>: return s.File.Dialog.Visible;
         default: return true;
     }
 }
@@ -178,22 +178,22 @@ bool Context::action_allowed(const Action &action) const { return action_allowed
 void Context::update_ui_context(UIContextFlags flags) {
     if (flags == UIContextFlags_None) return;
 
-    if (flags & UIContextFlags_ImGuiSettings) s.imgui_settings.populate_context(ui->imgui_context);
-    if (flags & UIContextFlags_ImGuiStyle) s.style.imgui.populate_context(ui->imgui_context);
-    if (flags & UIContextFlags_ImPlotStyle) s.style.implot.populate_context(ui->implot_context);
+    if (flags & UIContextFlags_ImGuiSettings) s.ImGuiSettings.populate_context(ui->imgui_context);
+    if (flags & UIContextFlags_ImGuiStyle) s.Style.ImGui.populate_context(ui->imgui_context);
+    if (flags & UIContextFlags_ImPlotStyle) s.Style.ImPlot.populate_context(ui->implot_context);
 }
 
 void Context::update_faust_context() {
     has_new_faust_code = true;
 
-    faust = std::make_unique<FaustContext>(s.audio.faust.code, s.audio.sample_rate, state.audio.faust.error);
+    faust = std::make_unique<FaustContext>(s.Audio.faust.Code, s.Audio.SampleRate, state.Audio.faust.Error);
     if (faust->dsp) {
 //        StatefulFaustUI faust_ui;
 //        faust->dsp->buildUserInterface(&faust_ui);
 //                faust->dsp->metadata(&faust_ui); // version/author/licence/etc
-//                _s.audio.faust.json = faust_ui.
+//                _s.Audio.faust.json = faust_ui.
     } else {
-//                _s.audio.faust.json = "";
+//                _s.Audio.faust.json = "";
     }
 }
 
@@ -240,10 +240,10 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
     }
 
     if (is_full_gesture) gesture_update_times_for_path.clear();
-    path_update_frequency = create_path_update_frequency_plottable();
+    PathUpdateFrequency = create_PathUpdateFrequency_plottable();
 }
 
-StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
+StateStats::Plottable StateStats::create_PathUpdateFrequency_plottable() {
     std::vector<JsonPath> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
     for (const auto &path: views::keys(gesture_update_times_for_path)) {
@@ -289,7 +289,7 @@ void Context::on_action(const Action &action) {
         [&](const Actions::save_project &a) { save_project(a.path); },
         [&](const save_default_project &) { save_project(DefaultProjectPath); },
         [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
-        [&](const save_faust_file &a) { FileIO::write(a.path, s.audio.faust.code); },
+        [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.faust.Code); },
         [&](const save_faust_svg_file &a) { save_box_svg(a.path); },
 
         // `diff_index`-changing actions:
@@ -377,7 +377,7 @@ void Context::on_patch(const Action &action, const JsonPatch &patch) {
 
     state_stats.apply_patch(patch, Clock::now(), Forward, false);
     for (const auto &patch_op: patch) on_set_value(patch_op.path);
-    s.audio.update_process();
+    s.Audio.update_process();
 }
 
 void Context::set_diff_index(int new_diff_index) {
@@ -389,13 +389,13 @@ void Context::set_diff_index(int new_diff_index) {
 
     while (diff_index != new_diff_index) {
         const auto &diff = diffs[direction == Reverse ? diff_index-- : ++diff_index];
-        const auto &patch = direction == Reverse ? diff.reverse : diff.forward;
+        const auto &patch = direction == Reverse ? diff.Reverse : diff.Forward;
         state_json = gesture_begin_state_json = state_json.patch(patch);
         state = state_json;
-        state_stats.apply_patch(patch, diff.time, direction, true);
+        state_stats.apply_patch(patch, diff.Time, direction, true);
         for (const auto &patch_op: patch) on_set_value(patch_op.path);
     }
-    s.audio.update_process();
+    s.Audio.update_process();
 }
 
 void Context::increment_diff_index(int diff_index_delta) {
@@ -406,12 +406,12 @@ void Context::increment_diff_index(int diff_index_delta) {
 void Context::on_set_value(const JsonPath &path) {
     const auto &path_str = path.to_string();
 
-    // Setting `imgui_settings` does not require a `c.update_ui_context` on the action, since the action will be initiated by ImGui itself,
+    // Setting `ImGuiSettings` does not require a `c.update_ui_context` on the action, since the action will be initiated by ImGui itself,
     // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-    if (path_str.rfind(s.imgui_settings.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path_str.rfind(s.style.imgui.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
-    else if (path_str.rfind(s.style.implot.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
-    else if (path == s.audio.faust.code.path) update_faust_context();
+    if (path_str.rfind(s.ImGuiSettings.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path_str.rfind(s.Style.ImGui.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
+    else if (path_str.rfind(s.Style.ImPlot.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
+    else if (path == s.Audio.faust.Code.path) update_faust_context();
 }
 
 ProjectFormat get_project_format(const fs::path &path) {

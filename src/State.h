@@ -202,10 +202,10 @@ inline void from_json(const json &j, Enum &field) { field.value = j; }
 struct Window : StateMember, Drawable {
     using StateMember::StateMember;
     Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name) {
-        this->visible.value = visible;
+        this->Visible = visible;
     }
 
-    Bool visible{path, "visible", true};
+    Bool Visible{path, "Visible", true};
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(name.c_str()); }
     void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -218,9 +218,9 @@ struct Process : Window {
     using Window::Window;
 
     void draw() const override;
-    virtual void update_process() const {}; // Start/stop the thread based on the current `running` state, and any other needed housekeeping.
+    virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool running{path, "running", true};
+    Bool Running{path, "Running", true};
 };
 
 struct ApplicationSettings : Window {
@@ -235,15 +235,15 @@ struct StateViewer : Window {
     void draw() const override;
 
     enum LabelMode { Annotated, Raw };
-    Enum label_mode{
-        path, "label_mode", {"Annotated", "Raw"},
+    Enum LabelMode{
+        path, "LabelMode", {"Annotated", "Raw"},
         "The raw JSON state doesn't store keys for all items.\n"
         "For example, the main `ui.style.colors` state is a list.\n\n"
         "'Annotated' mode shows (highlighted) labels for such state items.\n"
         "'Raw' mode shows the state exactly as it is in the raw JSON state."
     };
-    Bool auto_select{
-        path, "auto_select", "Auto-select", true,
+    Bool AutoSelect{
+        path, "AutoSelect", "Auto-select", true,
         "When auto-select is enabled, state changes automatically open.\n"
         "The state viewer to the changed state node(s), closing all other state nodes.\n"
         "State menu items can only be opened or closed manually if auto-select is disabled."
@@ -266,8 +266,8 @@ struct ProjectPreview : Window {
     using Window::Window;
     void draw() const override;
 
-    Enum format{path, "format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
-    Bool raw{path, "raw"};
+    Enum Format{path, "Format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
+    Bool Raw{path, "Raw"};
 };
 
 struct Demo : Window {
@@ -282,7 +282,7 @@ struct Metrics : Window {
     struct FlowGridMetrics : StateMember, Drawable {
         using StateMember::StateMember;
         void draw() const override;
-        Bool show_relative_paths{path, "show_relative_paths", true};
+        Bool ShowRelativePaths{path, "ShowRelativePaths", true};
     };
     struct ImGuiMetrics : StateMember, Drawable {
         using StateMember::StateMember;
@@ -293,9 +293,9 @@ struct Metrics : Window {
         void draw() const override;
     };
 
-    FlowGridMetrics flowgrid{path, "flowgrid", "FlowGrid"};
-    ImGuiMetrics imgui{path, "imgui", "ImGui"};
-    ImPlotMetrics implot{path, "implot", "ImPlot"};
+    FlowGridMetrics FlowGrid{path, "FlowGrid"};
+    ImGuiMetrics ImGui{path, "ImGui"};
+    ImPlotMetrics ImPlot{path, "ImPlot"};
 };
 
 struct Tools : Window {
@@ -303,10 +303,11 @@ struct Tools : Window {
     void draw() const override;
 };
 
+enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
+
 struct Audio : Process {
     using Process::Process;
 
-    enum Backend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
     static const std::vector<int> PrioritizedDefaultSampleRates;
 
     void draw() const override;
@@ -314,39 +315,38 @@ struct Audio : Process {
     struct Faust : StateMember {
         using StateMember::StateMember;
 
-        struct Editor : Window {
+        struct FaustEditor : Window {
             using Window::Window;
             void draw() const override;
 
-            string file_name{"default.dsp"};
+            string FileName{"default.dsp"}; // todo state member & respond to changes, or remove from state
         };
 
-        struct Diagram : Window {
+        struct FaustDiagram : Window {
             using Window::Window;
             void draw() const override;
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
 
-                Bool ScaleFill{path, "ScaleFill", "Scale to window", false}; // This and `style.flowgrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
+                Bool ScaleFill{path, "ScaleFill", "Scale to window", false}; // This and `style.FlowGrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
                 Bool HoverDebug{path, "HoverDebug", false};
             };
 
             DiagramSettings Settings{path, "Settings"};
         };
 
-        // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
-        // TODO thinking basically move members out of `StatefulFaustUI` more or less as is into the main state here.
-        struct Log : Window {
+        // todo move to top-level Log
+        struct FaustLog : Window {
             using Window::Window;
             void draw() const override;
         };
 
-        Editor editor{path, "editor", "Faust editor"};
-        Diagram diagram{path, "diagram", "Faust diagram"};
-        Log log{path, "log", "Faust log"};
+        FaustEditor Editor{path, "Editor", "Faust editor"};
+        FaustDiagram Diagram{path, "Diagram", "Faust diagram"};
+        FaustLog Log{path, "Log", "Faust log"};
 
-//        String code{path, "code", "Code",
+//        String Code{path, "Code", "Code",
 //                    "import(\"stdfaust.lib\");\n\n"
 //                    "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
 //                    "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
@@ -356,21 +356,22 @@ struct Audio : Process {
 //                    ");\n"
 //                    "\n"
 //                    "process = no.noise : pitchshifter;\n"};
-        String code{path, "code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
-//        String code{path, "code", "Code",
+        String Code{path, "Code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+//        String Code{path, "Code", "Code",
 //                    "import(\"stdfaust.lib\");\nctFreq = hslider(\"cutoffFrequency\",500,50,10000,0.01);\nq = hslider(\"q\",5,1,30,0.1);\ngain = hslider(\"gain\",1,0,1,0.01);\nprocess = no:noise : fi.resonlp(ctFreq,q,gain);"};
-        string error{};
+        string Error{};
     };
 
     void update_process() const override;
 
-    Bool muted{path, "muted", true};
-    Backend backend = none;
-    std::optional<string> in_device_id;
-    String out_device_id{path, "out_device_id", "Out device ID"};
-    Float device_volume{path, "device_volume", 1.0};
-    Int sample_rate{path, "sample_rate"};
     Faust faust{path, "faust"};
+
+    Bool Muted{path, "Muted", true};
+    AudioBackend Backend = none;
+    std::optional<string> InDeviceId;
+    String OutDeviceId{path, "OutDeviceId", "Out device ID"};
+    Float DeviceVolume{path, "DeviceVolume", 1.0};
+    Int SampleRate{path, "SampleRate"};
 };
 
 struct File : StateMember {
@@ -380,33 +381,33 @@ struct File : StateMember {
         // Always open as a modal to avoid user activity outside the dialog.
         DialogData(string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "",
                    const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_None)
-            : visible{false}, save_mode(save_mode), max_num_selections(max_num_selections), flags(flags | ImGuiFileDialogFlags_Modal),
-              title(std::move(title)), filters(std::move(filters)), file_path(std::move(file_path)), default_file_name(std::move(default_file_name)) {};
+            : Visible{false}, SaveMode(save_mode), MaxNumSelections(max_num_selections), Flags(flags | ImGuiFileDialogFlags_Modal),
+              Title(std::move(title)), Filters(std::move(filters)), FilePath(std::move(file_path)), DefaultFileName(std::move(default_file_name)) {};
 
-        bool visible;
-        bool save_mode; // The same file dialog instance is used for both saving & opening files.
-        int max_num_selections;
-        ImGuiFileDialogFlags flags;
-        string title;
-        string filters;
-        string file_path;
-        string default_file_name;
+        bool Visible;
+        bool SaveMode; // The same file dialog instance is used for both saving & opening files.
+        int MaxNumSelections;
+        ImGuiFileDialogFlags Flags;
+        string Title;
+        string Filters;
+        string FilePath;
+        string DefaultFileName;
     };
 
     // TODO window?
-    struct Dialog : DialogData, StateMember {
-        Dialog(const JsonPath &path, const string &id) : DialogData(), StateMember(path, id, title) {}
+    struct FileDialog : DialogData, StateMember {
+        FileDialog(const JsonPath &path, const string &id) : DialogData(), StateMember(path, id, Title) {}
 
-        Dialog &operator=(const DialogData &other) {
+        FileDialog &operator=(const DialogData &other) {
             DialogData::operator=(other);
-            visible = true;
+            Visible = true;
             return *this;
         }
 
         void draw() const;
     };
 
-    Dialog dialog{path, "dialog"};
+    FileDialog Dialog{path, "Dialog"};
 };
 
 enum FlowGridCol_ {
@@ -610,15 +611,15 @@ struct Style : Window {
         Bool Use24HourClock{path, "Use24HourClock"};
     };
 
-    ImGuiStyleMember imgui{path, "imgui", "ImGui"};
-    ImPlotStyleMember implot{path, "implot", "ImPlot"};
-    FlowGridStyle flowgrid{path, "flowgrid", "FlowGrid"};
+    ImGuiStyleMember ImGui{path, "ImGui"};
+    ImPlotStyleMember ImPlot{path, "ImPlot"};
+    FlowGridStyle FlowGrid{path, "FlowGrid"};
 };
 
 struct Processes : StateMember {
     using StateMember::StateMember;
 
-    Process ui{path, "ui", "UI"};
+    Process UI{path, "UI"};
 };
 
 // The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).
@@ -640,9 +641,9 @@ struct ImGuiSettingsData {
     ImGuiSettingsData() = default;
     explicit ImGuiSettingsData(ImGuiContext *ctx);
 
-    ImVector<ImGuiDockNodeSettings> nodes;
-    ImVector<ImGuiWindowSettings> windows;
-    ImVector<ImGuiTableSettings> tables;
+    ImVector<ImGuiDockNodeSettings> Nodes;
+    ImVector<ImGuiWindowSettings> Windows;
+    ImVector<ImGuiTableSettings> Tables;
 };
 
 struct ImGuiSettings : StateMember, ImGuiSettingsData {
@@ -663,21 +664,21 @@ struct ImGuiSettings : StateMember, ImGuiSettingsData {
 const JsonPath RootPath{""};
 
 struct StateData {
-    ImGuiSettings imgui_settings{RootPath, "imgui_settings", "ImGui settings"};
-    Style style{RootPath, "style"};
-    ApplicationSettings application_settings{RootPath, "application_settings"};
-    Audio audio{RootPath, "audio"};
-    Processes processes{RootPath, "processes"};
-    File file{RootPath, "file"};
+    ImGuiSettings ImGuiSettings{RootPath, "ImGuiSettings", "ImGui settings"};
+    Style Style{RootPath, "Style"};
+    ApplicationSettings ApplicationSettings{RootPath, "ApplicationSettings", "Application settings"};
+    Audio Audio{RootPath, "Audio"};
+    Processes Processes{RootPath, "Processes"};
+    File File{RootPath, "File"};
 
-    Demo demo{RootPath, "demo"};
-    Metrics metrics{RootPath, "metrics"};
-    Tools tools{RootPath, "tools"};
+    Demo Demo{RootPath, "Demo"};
+    Metrics Metrics{RootPath, "Metrics"};
+    Tools Tools{RootPath, "Tools"};
 
-    StateViewer state_viewer{RootPath, "state_viewer"};
-    StateMemoryEditor state_memory_editor{RootPath, "state_memory_editor"};
-    StatePathUpdateFrequency path_update_frequency{RootPath, "path_update_frequency", "State path update frequency"};
-    ProjectPreview project_preview{RootPath, "project_preview"};
+    StateViewer StateViewer{RootPath, "StateViewer", "State viewer"};
+    StateMemoryEditor StateMemoryEditor{RootPath, "StateMemoryEditor", "State memory editor"};
+    StatePathUpdateFrequency PathUpdateFrequency{RootPath, "PathUpdateFrequency", "State path update frequency"};
+    ProjectPreview ProjectPreview{RootPath, "ProjectPreview", "Project preview"};
 };
 
 // Types for [json-patch](https://jsonpatch.com)
@@ -702,9 +703,9 @@ using JsonPatch = std::vector<JsonPatchOp>;
 
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
-    JsonPatch forward;
-    JsonPatch reverse;
-    TimePoint time;
+    JsonPatch Forward;
+    JsonPatch Reverse;
+    TimePoint Time;
 };
 using Diffs = std::vector<BidirectionalStateDiff>;
 
@@ -717,25 +718,25 @@ NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
     { Test, "test" },
 })
 
-JsonType(JsonPatchOp, path, op, value)
-JsonType(BidirectionalStateDiff, forward, reverse, time)
+JsonType(JsonPatchOp, path, op, value, from) // lower-case since these are deserialized and passed directly to json-lib.
+JsonType(BidirectionalStateDiff, Forward, Reverse, Time)
 
-JsonType(Window, visible)
-JsonType(Process, running)
+JsonType(Window, Visible)
+JsonType(Process, Running)
 
-JsonType(ApplicationSettings, visible, GestureDurationSec)
-JsonType(Audio::Faust::Editor, visible, file_name)
-JsonType(Audio::Faust::Diagram::DiagramSettings, ScaleFill, HoverDebug)
-JsonType(Audio::Faust::Diagram, Settings)
-JsonType(Audio::Faust, code, diagram, error, editor, log)
-JsonType(Audio, running, visible, muted, backend, sample_rate, device_volume, faust)
-JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
-JsonType(File::DialogData, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags)
-JsonType(File, dialog)
-JsonType(StateViewer, visible, label_mode, auto_select)
-JsonType(ProjectPreview, visible, format, raw)
-JsonType(Metrics::FlowGridMetrics, show_relative_paths)
-JsonType(Metrics, visible, flowgrid)
+JsonType(ApplicationSettings, Visible, GestureDurationSec)
+JsonType(Audio::Faust::FaustEditor, Visible, FileName)
+JsonType(Audio::Faust::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
+JsonType(Audio::Faust::FaustDiagram, Settings)
+JsonType(Audio::Faust, Code, Diagram, Error, Editor, Log)
+JsonType(Audio, Running, Visible, Muted, Backend, SampleRate, DeviceVolume, faust)
+JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
+JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
+JsonType(File, Dialog)
+JsonType(StateViewer, Visible, LabelMode, AutoSelect)
+JsonType(ProjectPreview, Visible, Format, Raw)
+JsonType(Metrics::FlowGridMetrics, ShowRelativePaths)
+JsonType(Metrics, Visible, FlowGrid)
 
 JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding,
     PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize,
@@ -747,14 +748,14 @@ JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight,
 JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramOrientation, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
     DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize,
     DiagramInverterRadius)
-JsonType(Style, visible, imgui, implot, flowgrid)
+JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.
 JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
 JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
 JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
-JsonType(ImGuiSettingsData, nodes, windows, tables)
+JsonType(ImGuiSettingsData, Nodes, Windows, Tables)
 
-JsonType(Processes, ui)
+JsonType(Processes, UI)
 
-JsonType(StateData, application_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, project_preview, demo, metrics, tools);
+JsonType(StateData, ApplicationSettings, Audio, File, Style, ImGuiSettings, Processes, StateViewer, StateMemoryEditor, PathUpdateFrequency, ProjectPreview, Demo, Metrics, Tools);

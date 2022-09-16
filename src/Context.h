@@ -77,12 +77,12 @@ struct StateStats {
     std::map<JsonPath, std::vector<TimePoint>> gesture_update_times_for_path{};
     std::map<JsonPath, std::vector<TimePoint>> committed_update_times_for_path{};
     std::map<JsonPath, TimePoint> latest_update_time_for_path{};
-    Plottable path_update_frequency;
+    Plottable PathUpdateFrequency;
 
     void apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_gesture);
 
 private:
-    Plottable create_path_update_frequency_plottable();
+    Plottable create_PathUpdateFrequency_plottable();
 };
 
 struct Context {
@@ -189,6 +189,6 @@ inline bool q(Action &&a, bool flush = false) {
 
 ```cpp
 State &state = c.s;
-Audio audio = s.audio; // Or just access the (read-only) `state` members directly
+Audio audio = s.Audio; // Or just access the (read-only) `state` members directly
 ```
  */

@@ -21,7 +21,7 @@ const json &sj = c.sj;
 int main(int, const char **) {
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
-    s.audio.update_process();
+    s.Audio.update_process();
 
     auto ui_context = create_ui();
     c.ui = &ui_context;
@@ -46,7 +46,7 @@ int main(int, const char **) {
     // since any further state changes would show up in the undo stack.
     c.update_faust_context();
 
-    while (s.processes.ui.running) {
+    while (s.Processes.UI.Running) {
         tick_ui();
         c.run_queued_actions();
     }

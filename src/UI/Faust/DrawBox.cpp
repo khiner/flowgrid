@@ -62,7 +62,7 @@ static inline float scale(float f);
 static inline ImVec2 get_scale();
 
 static inline ImGuiDir global_direction(SchemaOrientation orientation) {
-    const ImGuiDir dir = s.style.flowgrid.DiagramOrientation;
+    const ImGuiDir dir = s.Style.FlowGrid.DiagramOrientation;
     return (dir == ImGuiDir_Right && orientation == SchemaForward) || (dir == ImGuiDir_Left && orientation == SchemaReverse) ?
            ImGuiDir_Right : ImGuiDir_Left;
 }
@@ -118,7 +118,7 @@ struct SVGDevice : Device {
     SVGDevice(fs::path directory, string file_name, ImVec2 size) : directory(std::move(directory)), file_name(std::move(file_name)) {
         const auto &[w, h] = scale(size);
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        stream << (s.audio.faust.diagram.Settings.ScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        stream << (s.Audio.faust.Diagram.Settings.ScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         stream << format(R"(
@@ -170,10 +170,10 @@ struct SVGDevice : Device {
         const float text_x = tl.x + scale(DecorateLabelOffset);
         const auto &padding = scale({DecorateLabelXPadding, 0});
         const ImVec2 &text_right = {min(text_x + scale(text_size(text)).x + padding.x, tr.x), tr.y};
-        const auto &label_color = s.style.flowgrid.Colors[FlowGridCol_DiagramGroupTitle];
-        const auto &stroke_color = s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke];
-        const float rad = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
-        const float line_width = scale(s.style.flowgrid.DiagramDecorateLineWidth);
+        const auto &label_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle];
+        const auto &stroke_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke];
+        const float rad = scale(s.Style.FlowGrid.DiagramDecorateCornerRadius);
+        const float line_width = scale(s.Style.FlowGrid.DiagramDecorateLineWidth);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
         stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)",
             text_x - padding.x, tl.y, -scale(DecorateLabelOffset) + padding.x + rad, rad, rad, -rad, rad, // before text to top-left
@@ -197,15 +197,15 @@ struct SVGDevice : Device {
     }
 
     void arrow(const ImVec2 &pos, SchemaOrientation orientation) override {
-        stream << arrow_pointing_at(at(pos), scale(s.style.flowgrid.DiagramArrowSize), orientation, s.style.flowgrid.Colors[FlowGridCol_DiagramLine]);
+        stream << arrow_pointing_at(at(pos), scale(s.Style.FlowGrid.DiagramArrowSize), orientation, s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine]);
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
         const auto &start_scaled = at(start);
         const auto &end_scaled = at(end);
-        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        const auto width = scale(s.style.flowgrid.DiagramWireWidth);
+        const auto &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
+        const auto width = scale(s.Style.FlowGrid.DiagramWireWidth);
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)",
             start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, rgb_color(color), line_cap, width);
     }
@@ -275,12 +275,12 @@ struct ImGuiDevice : Device {
         const auto &a = at(rect.Min);
         const auto &b = at(rect.Max);
         const auto &text_top_left = at(rect.Min + ImVec2{DecorateLabelOffset, 0});
-        const auto &stroke_color = ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramGroupStroke]);
-        const auto &label_color = ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramGroupTitle]);
+        const auto &stroke_color = ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke]);
+        const auto &label_color = ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle]);
 
         // Decorate a potentially rounded outline rect with a break in the top-left (to the right of max rounding) for the label text
-        const float rad = scale(s.style.flowgrid.DiagramDecorateCornerRadius);
-        const float line_width = scale(s.style.flowgrid.DiagramDecorateLineWidth);
+        const float rad = scale(s.Style.FlowGrid.DiagramDecorateCornerRadius);
+        const float line_width = scale(s.Style.FlowGrid.DiagramDecorateLineWidth);
         if (line_width > 0) {
             const auto &padding = scale({DecorateLabelXPadding, 0});
             draw_list->PathLineTo(text_top_left + ImVec2{text_size(text).x, 0} + padding);
@@ -313,15 +313,15 @@ struct ImGuiDevice : Device {
     void arrow(const ImVec2 &p, SchemaOrientation orientation) override {
         ImGui::RenderArrowPointingAt(draw_list,
             at(p) + ImVec2{0, 0.5f},
-            scale(s.style.flowgrid.DiagramArrowSize),
+            scale(s.Style.FlowGrid.DiagramArrowSize),
             global_direction(orientation),
-            ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramLine])
+            ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine])
         );
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
-        const auto &color = s.style.flowgrid.Colors[FlowGridCol_DiagramLine];
-        const auto width = scale(s.style.flowgrid.DiagramWireWidth);
+        const auto &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
+        const auto width = scale(s.Style.FlowGrid.DiagramWireWidth);
         // ImGui adds {0.5, 0.5} to line points.
         draw_list->AddLine(at(start) - ImVec2{0.5f, 0}, at(end) - ImVec2{0.5f, 0}, ImGui::ColorConvertFloat4ToU32(color), width);
     }
@@ -377,7 +377,7 @@ struct Schema {
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
           descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Schema *child) { return child->descendents; }), 0)),
         // `DiagramFoldComplexity == 0` means no folding
-          is_top_level(s.style.flowgrid.DiagramFoldComplexity > 0 && descendents >= Count(s.style.flowgrid.DiagramFoldComplexity.value)) {}
+          is_top_level(s.Style.FlowGrid.DiagramFoldComplexity > 0 && descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity.value)) {}
 
     virtual ~Schema() = default;
 
@@ -402,7 +402,7 @@ struct Schema {
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
         _draw(device);
-        if (s.audio.faust.diagram.Settings.HoverDebug && (!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
+        if (s.Audio.faust.Diagram.Settings.HoverDebug && (!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
             hovered_schema = this;
         }
     };
@@ -452,8 +452,8 @@ struct Schema {
     inline Schema *s1() const { return children[0]; }
     inline Schema *s2() const { return children[1]; }
 
-    inline static float WireGap() { return s.style.flowgrid.DiagramWireGap; }
-    inline static ImVec2 Gap() { return s.style.flowgrid.DiagramGap; }
+    inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
+    inline static ImVec2 Gap() { return s.Style.FlowGrid.DiagramGap; }
     inline static float XGap() { return Gap().x; }
     inline static float YGap() { return Gap().y; }
 
@@ -467,11 +467,11 @@ static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
 static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
 static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
-    if (s.audio.faust.diagram.Settings.ScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
+    if (s.Audio.faust.Diagram.Settings.ScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
         const auto *focused_schema = focused_schema_stack.top();
         return ImGui::GetWindowSize() / focused_schema->size;
     }
-    return s.style.flowgrid.DiagramScale;
+    return s.Style.FlowGrid.DiagramScale;
 }
 
 static const char *getTreeName(Tree t) {
@@ -495,7 +495,7 @@ static string svg_file_name(Tree t) {
 
 void write_svg(Schema *schema, const fs::path &path) {
     SVGDevice device(path, svg_file_name(schema->tree), schema->size);
-    device.rect(schema->rect(), {.fill_color=s.style.flowgrid.Colors[FlowGridCol_DiagramBg]});
+    device.rect(schema->rect(), {.fill_color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]});
     schema->draw(device);
 }
 
@@ -532,7 +532,7 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        const auto &col = s.style.flowgrid.Colors[color];
+        const auto &col = s.Style.FlowGrid.Colors[color];
         if (device.type() == SVGDeviceType) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             // todo why is draw called twice for each block with an inner child? (or maybe even every schema?)
@@ -569,7 +569,7 @@ struct BlockSchema : IOSchema {
             const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);
-                device.line(in ? p : p - d, in ? p + d - ImVec2{dir_unit() * s.style.flowgrid.DiagramArrowSize.value.x, 0} : p);
+                device.line(in ? p : p - d, in ? p + d - ImVec2{dir_unit() * s.Style.FlowGrid.DiagramArrowSize.value.x, 0} : p);
                 if (in) device.arrow(p + d, orientation); // Input arrows
             }
         }
@@ -609,13 +609,13 @@ struct InverterSchema : BlockSchema {
     void _place_size(const DeviceType) override { size = ImVec2{2.5f, 1} * WireGap(); }
 
     void _draw(Device &device) const override {
-        const float radius = s.style.flowgrid.DiagramInverterRadius;
+        const float radius = s.Style.FlowGrid.DiagramInverterRadius;
         const ImVec2 p1 = {w() - 2 * XGap(), 1 + (h() - 1) / 2};
         const auto tri_a = position + ImVec2{XGap() + (is_lr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{dir_unit() * (p1.x - 2 * radius) + (is_lr() ? 0 : x()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, h()};
-        device.circle(tri_b + ImVec2{dir_unit() * radius, 0}, radius, {0, 0, 0, 0}, s.style.flowgrid.Colors[color]);
-        device.triangle(tri_a, tri_b, tri_c, s.style.flowgrid.Colors[color]);
+        device.circle(tri_b + ImVec2{dir_unit() * radius, 0}, radius, {0, 0, 0, 0}, s.Style.FlowGrid.Colors[color]);
+        device.triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Colors[color]);
         draw_connections(device);
     }
 };
@@ -748,7 +748,7 @@ struct BinarySchema : Schema {
         right->place(type, position + ImVec2{left->w() + horizontal_gap(), max(0.0f, left->h() - right->h()) / 2}, orientation);
     }
 
-    virtual float horizontal_gap() const { return (s1()->h() + s2()->h()) * s.style.flowgrid.DiagramBinaryHorizontalGapRatio; }
+    virtual float horizontal_gap() const { return (s1()->h() + s2()->h()) * s.Style.FlowGrid.DiagramBinaryHorizontalGapRatio; }
 };
 
 struct SequentialSchema : BinarySchema {
@@ -775,7 +775,7 @@ struct SequentialSchema : BinarySchema {
     }
 
     void _draw(Device &device) const override {
-        if (!s.style.flowgrid.DiagramSequentialConnectionZigzag) {
+        if (!s.Style.FlowGrid.DiagramSequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
             for (Count i = 0; i < io_count(IO_Out, 0); i++) device.line(child(0)->point(IO_Out, i), child(1)->point(IO_In, i));
             return;
@@ -870,23 +870,23 @@ struct DecorateSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        const float m = 2.0f * (is_top_level ? s.style.flowgrid.DiagramTopLevelMargin : 0.0f) + s.style.flowgrid.DiagramDecorateMargin;
+        const float m = 2.0f * (is_top_level ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.0f) + s.Style.FlowGrid.DiagramDecorateMargin;
         device.grouprect({position + ImVec2{m, m} / 2, position + size - ImVec2{m, m} / 2}, text);
         for (const IO io: {IO_In, IO_Out}) {
             const bool has_arrow = io == IO_Out && is_top_level;
             for (Count i = 0; i < io_count(io); i++) {
-                device.line(child(0)->point(io, i), point(io, i) - ImVec2{has_arrow ? dir_unit() * s.style.flowgrid.DiagramArrowSize.value.x : 0, 0});
+                device.line(child(0)->point(io, i), point(io, i) - ImVec2{has_arrow ? dir_unit() * s.Style.FlowGrid.DiagramArrowSize.value.x : 0, 0});
                 if (has_arrow) device.arrow(point(io, i), orientation);
             }
         }
     }
 
     ImVec2 point(IO io, Count i) const override {
-        return child(0)->point(io, i) + ImVec2{dir_unit() * (io == IO_In ? -1.0f : 1.0f) * s.style.flowgrid.DiagramTopLevelMargin, 0};
+        return child(0)->point(io, i) + ImVec2{dir_unit() * (io == IO_In ? -1.0f : 1.0f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
     inline float margin(const Schema *schema = nullptr) const {
-        return s.style.flowgrid.DiagramDecorateMargin + ((schema ? schema->is_top_level : is_top_level) ? s.style.flowgrid.DiagramTopLevelMargin : 0.0f);
+        return s.Style.FlowGrid.DiagramDecorateMargin + ((schema ? schema->is_top_level : is_top_level) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.0f);
     }
 
 private:
@@ -904,7 +904,7 @@ struct RouteSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        if (s.style.flowgrid.DiagramDrawRouteFrame) {
+        if (s.Style.FlowGrid.DiagramDrawRouteFrame) {
             const ImRect &rect = {position + Gap(), position + size - Gap() * 2};
             device.rect(rect, {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
             // Draw the orientation mark to indicate the first input (like integrated circuits).
@@ -1129,7 +1129,7 @@ static int prev_fold_complexity = 0; // watch and recompile when it changes
 
 void save_box_svg(const string &path) {
     if (!root_schema) return;
-    prev_fold_complexity = s.style.flowgrid.DiagramFoldComplexity;
+    prev_fold_complexity = s.Style.FlowGrid.DiagramFoldComplexity;
     // Render SVG diagram(s)
     fs::remove_all(path);
     fs::create_directory(path);
@@ -1139,7 +1139,7 @@ void save_box_svg(const string &path) {
     write_svg(schema, path);
 }
 
-void Audio::Faust::Diagram::draw() const {
+void Audio::Faust::FaustDiagram::draw() const {
     if (!root_schema) {
         // todo don't show empty menu bar in this case
         ImGui::Text("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
@@ -1152,8 +1152,8 @@ void Audio::Faust::Diagram::draw() const {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-            fg::ToggleMenuItem(s.audio.faust.diagram.Settings.ScaleFill);
-            fg::ToggleMenuItem(s.audio.faust.diagram.Settings.HoverDebug);
+            fg::ToggleMenuItem(s.Audio.faust.Diagram.Settings.ScaleFill);
+            fg::ToggleMenuItem(s.Audio.faust.Diagram.Settings.HoverDebug);
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -1161,8 +1161,8 @@ void Audio::Faust::Diagram::draw() const {
 
     if (focused_schema_stack.empty()) return;
 
-    if (s.style.flowgrid.DiagramFoldComplexity != prev_fold_complexity) {
-        prev_fold_complexity = s.style.flowgrid.DiagramFoldComplexity;
+    if (s.Style.FlowGrid.DiagramFoldComplexity != prev_fold_complexity) {
+        prev_fold_complexity = s.Style.FlowGrid.DiagramFoldComplexity;
         on_box_change(root_schema->tree);
     }
 
@@ -1179,11 +1179,11 @@ void Audio::Faust::Diagram::draw() const {
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    if (!s.audio.faust.diagram.Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
+    if (!s.Audio.faust.Diagram.Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
     ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::GetCurrentWindow()->FontWindowScale = scale(1);
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
-        ImGui::ColorConvertFloat4ToU32(s.style.flowgrid.Colors[FlowGridCol_DiagramBg]));
+        ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]));
     ImGuiDevice device;
     hovered_schema = nullptr;
     focused->draw(device);

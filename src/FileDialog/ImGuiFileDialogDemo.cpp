@@ -275,7 +275,7 @@ void IGFD::ShowDemo() {
     {
         ImGui::Text("FilePathName: %s", filePathName.c_str());
         ImGui::Text("FilePath: %s", filePath.c_str());
-        ImGui::Text("Filters: %s", s.file.dialog.filters.c_str());
+        ImGui::Text("Filters: %s", s.File.Dialog.Filters.c_str());
         ImGui::Text("UserDatas: %s", userData.c_str());
         ImGui::Text("Selection: ");
         ImGui::Indent();

@@ -230,9 +230,9 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
                 case BufferMessageType::TextDeleted:
                 case BufferMessageType::TextAdded: {
                     auto *buffer = buffer_message->buffer;
-                    if (zep_initialized && buffer->name == s.audio.faust.editor.file_name) {
+                    if (zep_initialized && buffer->name == s.Audio.faust.Editor.FileName) {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                        q(set_value{s.audio.faust.code.path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                        q(set_value{s.Audio.faust.Code.path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
                 }
                     break;
@@ -320,7 +320,7 @@ void zep_init() {
     display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.5));
     display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.25));
     display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.125));
-    zep_editor->InitWithText(s.audio.faust.editor.file_name, s.audio.faust.code);
+    zep_editor->InitWithText(s.Audio.faust.Editor.FileName, s.Audio.faust.Code);
 }
 
 /*
@@ -331,7 +331,7 @@ void zep_init() {
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
  *     (and right navigation should move from the end)
  */
-void Audio::Faust::Editor::draw() const {
+void Audio::Faust::FaustEditor::draw() const {
     if (!zep_initialized) {
         // Called once after the fonts are initialized
         zep_init();
@@ -401,15 +401,15 @@ void Audio::Faust::Editor::draw() const {
     //  XXX This currently always redundantly re-sets the buffer when the change comes from the editor.
     if (c.has_new_faust_code) {
         ignore_changes = true;
-        zep_editor->GetActiveBuffer()->SetText(s.audio.faust.code);
+        zep_editor->GetActiveBuffer()->SetText(s.Audio.faust.Code);
         ignore_changes = false;
         c.has_new_faust_code = false;
     }
 }
 
-void Audio::Faust::Log::draw() const {
+void Audio::Faust::FaustLog::draw() const {
     ImGui::PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    if (!s.audio.faust.error.empty()) ImGui::Text("Faust error:\n%s", s.audio.faust.error.c_str());
+    if (!s.Audio.faust.Error.empty()) ImGui::Text("Faust error:\n%s", s.Audio.faust.Error.c_str());
     ImGui::PopStyleColor();
 }
 

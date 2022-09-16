@@ -424,6 +424,7 @@ enum FlowGridCol_ {
     FlowGridCol_DiagramSlot,
     FlowGridCol_DiagramNumber,
     FlowGridCol_DiagramInverter,
+    FlowGridCol_DiagramOrientationMark,
 
     FlowGridCol_COUNT
 };
@@ -441,7 +442,9 @@ struct FlowGridStyle : StateMember, Drawable {
                               "Number of boxes within a diagram before folding into a sub-diagram. Setting to zero disables folding altogether, for a fully-expanded diagram."};
     Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
     Bool DiagramSequentialConnectionZigzag{Path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
-    Bool DiagramDrawRouteFrame{Path, "DiagramDrawRouteFrame", false};
+    Bool DiagramOrientationMark{Path, "DiagramOrientationMark", false};
+    Float DiagramOrientationMarkRadius{Path, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
+    Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
     Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
     Vec2 DiagramScale{Path, "DiagramScale", ImVec2(1, 1), 0.1, 10};
     Float DiagramTopLevelMargin{Path, "DiagramTopLevelMargin", 20, 0, 40};
@@ -483,6 +486,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
         Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
         Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
     }
 
     static const char *GetColorName(FlowGridCol idx) {
@@ -499,6 +503,7 @@ struct FlowGridStyle : StateMember, Drawable {
             case FlowGridCol_DiagramSlot: return "DiagramSlot";
             case FlowGridCol_DiagramNumber: return "DiagramNumber";
             case FlowGridCol_DiagramInverter: return "DiagramInverter";
+            case FlowGridCol_DiagramOrientationMark: return "DiagramOrientationMark";
             default: return "Unknown";
         }
     }
@@ -745,8 +750,8 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
-    DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize,
+JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
+    DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize,
     DiagramInverterRadius)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 

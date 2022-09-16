@@ -940,7 +940,13 @@ void FlowGridStyle::draw() const {
             }
             DiagramDirection.Draw();
             DiagramSequentialConnectionZigzag.Draw();
-            DiagramDrawRouteFrame.Draw();
+            DiagramOrientationMark.Draw();
+            if (DiagramOrientationMark) {
+                SameLine();
+                SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
+                DiagramOrientationMarkRadius.Draw();
+            }
+            DiagramRouteFrame.Draw();
             DiagramTopLevelMargin.Draw();
             DiagramDecorateMargin.Draw();
             DiagramDecorateLineWidth.Draw();

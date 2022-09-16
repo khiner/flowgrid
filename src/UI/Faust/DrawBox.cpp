@@ -84,7 +84,7 @@ struct Device {
     virtual void arrow(const ImVec2 &pos, SchemaOrientation orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
-    virtual void dot(const ImVec2 &pos) = 0;
+    virtual void dot(const ImVec2 &pos, const ImVec4 &fill_color) = 0;
 
     ImVec2 at(const ImVec2 &p) const { return offset + scale(p); }
 
@@ -229,9 +229,10 @@ struct SVGDevice : Device {
         if (!link.empty()) text_stream << "</a>";
     }
 
-    void dot(const ImVec2 &pos) override {
+    void dot(const ImVec2 &pos, const ImVec4 &fill_color) override {
         const auto &p = at(pos);
-        stream << format(R"(<circle cx="{}" cy="{}" r="1"/>)", p.x, p.y);
+        const float radius = scale(s.Style.FlowGrid.DiagramOrientationMarkRadius);
+        stream << format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, rgb_color(fill_color));
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
@@ -332,8 +333,9 @@ struct ImGuiDevice : Device {
         draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
 
-    void dot(const ImVec2 &p) override {
-        draw_list->AddCircle(at(p), scale(1), ImGui::GetColorU32(ImGuiCol_Border));
+    void dot(const ImVec2 &p, const ImVec4 &fill_color) override {
+        const float radius = scale(s.Style.FlowGrid.DiagramOrientationMarkRadius);
+        draw_list->AddCircleFilled(at(p), radius, ImGui::ColorConvertFloat4ToU32(fill_color));
     }
 
     ImDrawList *draw_list;
@@ -511,6 +513,22 @@ struct IOSchema : Schema {
             mid().y - WireGap() * (float(io_count(io) - 1) / 2 - float(i) * orientation_unit())
         };
     }
+
+    ImRect get_frame_rect() const { return {position + Gap(), position + size - Gap()}; }
+
+    // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
+    // Marker on top: Forward orientation. Inputs go from top to bottom.
+    // Marker on bottom: Backward orientation. Inputs go from bottom to top.
+    void draw_orientation_mark(Device &device) const {
+        if (!s.Style.FlowGrid.DiagramOrientationMark) return;
+
+        const auto &rect = get_frame_rect();
+        const auto &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramOrientationMark];
+        device.dot(ImVec2{
+            is_lr() ? rect.Min.x : rect.Max.x,
+            is_forward() ? rect.Min.y : rect.Max.y
+        } + ImVec2{dir_unit(), orientation_unit()} * 4, color);
+    }
 };
 
 // A simple rectangular box with text and inputs/outputs.
@@ -534,35 +552,31 @@ struct BlockSchema : IOSchema {
 
     void _draw(Device &device) const override {
         const auto &col = s.Style.FlowGrid.Colors[color];
+        const ImRect &rect = get_frame_rect();
         if (device.type() == SVGDeviceType) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             // todo why is draw called twice for each block with an inner child? (or maybe even every schema?)
             //  note this is likely double-writing in ImGui too
             if (inner && !fs::exists(svg_device.directory / svg_file_name(inner->tree))) write_svg(inner, svg_device.directory);
-            const ImRect &rect = {position + Gap(), position + size - Gap()};
             const string &link = inner ? svg_file_name(tree) : "";
             svg_device.rect(rect, col, link);
             svg_device.text(mid(), text, {}, link);
-            // Draw the orientation mark to indicate the first input (like integrated circuits).
-            // todo needs updating for global orientation changes
-            // todo add style prop for showing channel orientation marks
-            device.dot((is_lr() ? rect.Min : rect.Max) * dir_unit() * 4);
         } else {
-            const ImRect &rect = scale(ImRect{position + Gap(), position + size - Gap()});
+            const ImRect &scaled_rect = scale(ImRect{position + Gap(), position + size - Gap()});
             const auto cursor_pos = ImGui::GetCursorPos();
-            ImGui::SetCursorPos(rect.Min);
+            ImGui::SetCursorPos(scaled_rect.Min);
             ImGui::PushStyleColor(ImGuiCol_Button, col);
             if (!inner) {
                 // Emulate disabled behavior, but without making color dimmer, by just allowing clicks but not changing color.
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
             }
-            if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), rect.GetSize()) && inner) focused_schema_stack.push(inner);
+            if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), scaled_rect.GetSize()) && inner) focused_schema_stack.push(inner);
             if (!inner) ImGui::PopStyleColor(2);
             ImGui::PopStyleColor();
             ImGui::SetCursorPos(cursor_pos);
         }
-
+        draw_orientation_mark(device);
         draw_connections(device);
     }
 
@@ -906,13 +920,9 @@ struct RouteSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        if (s.Style.FlowGrid.DiagramDrawRouteFrame) {
-            const ImRect &rect = {position + Gap(), position + size - Gap() * 2};
-            device.rect(rect, {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
-            // Draw the orientation mark to indicate the first input (like integrated circuits).
-            const float offset = dir_unit() * 4;
-            // todo needs updating for global orientation changes
-            device.dot((is_lr() ? rect.Min : rect.Max) + ImVec2{offset, offset});
+        if (s.Style.FlowGrid.DiagramRouteFrame) {
+            device.rect(get_frame_rect(), {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
+            draw_orientation_mark(device);
             // Input arrows
             for (Count i = 0; i < io_count(IO_In); i++) device.arrow(point(IO_In, i) + ImVec2{dir_unit() * XGap(), 0}, orientation);
         }

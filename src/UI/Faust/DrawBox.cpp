@@ -62,7 +62,7 @@ static inline float scale(float f);
 static inline ImVec2 get_scale();
 
 static inline ImGuiDir global_direction(SchemaOrientation orientation) {
-    const ImGuiDir dir = s.Style.FlowGrid.DiagramOrientation;
+    const ImGuiDir dir = s.Style.FlowGrid.DiagramDirection;
     return (dir == ImGuiDir_Right && orientation == SchemaForward) || (dir == ImGuiDir_Left && orientation == SchemaReverse) ?
            ImGuiDir_Right : ImGuiDir_Left;
 }
@@ -408,6 +408,8 @@ struct Schema {
     };
     inline bool is_lr() const { return ::is_lr(orientation); }
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
+    inline bool is_forward() const { return orientation == SchemaForward; }
+    inline float orientation_unit() const { return is_forward() ? 1 : -1; }
     inline bool is_inside(const Schema &schema) const {
         return x() > schema.x() && right() < schema.right() && y() > schema.y() && y() < schema.bottom();
     }
@@ -504,10 +506,9 @@ struct IOSchema : Schema {
         : Schema(t, in_count, out_count, std::move(children), directDescendents) {}
 
     ImVec2 point(IO io, Count i) const override {
-        const float d = orientation == SchemaReverse ? -1 : 1;
         return {
             x() + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w()),
-            mid().y - WireGap() * (float(io_count(io) - 1) / 2 - float(i) * d)
+            mid().y - WireGap() * (float(io_count(io) - 1) / 2 - float(i) * orientation_unit())
         };
     }
 };
@@ -543,6 +544,8 @@ struct BlockSchema : IOSchema {
             svg_device.rect(rect, col, link);
             svg_device.text(mid(), text, {}, link);
             // Draw the orientation mark to indicate the first input (like integrated circuits).
+            // todo needs updating for global orientation changes
+            // todo add style prop for showing channel orientation marks
             device.dot((is_lr() ? rect.Min : rect.Max) * dir_unit() * 4);
         } else {
             const ImRect &rect = scale(ImRect{position + Gap(), position + size - Gap()});
@@ -647,8 +650,8 @@ struct ParallelSchema : Schema {
 
     void _place_size(const DeviceType) override { size = {max(s1()->w(), s2()->w()), s1()->h() + s2()->h()}; }
     void _place(const DeviceType type) override {
-        auto *top = children[is_lr() ? 0 : 1];
-        auto *bottom = children[is_lr() ? 1 : 0];
+        auto *top = children[is_forward() ? 0 : 1];
+        auto *bottom = children[is_forward() ? 1 : 0];
         top->place(type, position + ImVec2{(w() - top->w()) / 2, 0}, orientation);
         bottom->place(type, position + ImVec2{(w() - bottom->w()) / 2, top->h()}, orientation);
     }
@@ -662,10 +665,10 @@ struct ParallelSchema : Schema {
     }
 
     ImVec2 point(IO io, Count i) const override {
-        const float d = (io == IO_In ? -1.0f : 1.0f) * dir_unit();
+        const float dx = (io == IO_In ? -1.0f : 1.0f) * dir_unit();
         return i < io_count(io, 0) ?
-               child(0)->point(io, i) + ImVec2{d * (w() - s1()->w()) / 2, 0} :
-               child(1)->point(io, i - io_count(io, 0)) + ImVec2{d * (w() - s2()->w()) / 2, 0};
+               child(0)->point(io, i) + ImVec2{dx * (w() - s1()->w()) / 2, 0} :
+               child(1)->point(io, i - io_count(io, 0)) + ImVec2{dx * (w() - s2()->w()) / 2, 0};
     }
 };
 
@@ -685,22 +688,22 @@ struct RecursiveSchema : Schema {
 
     // The two schemas are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
     void _place(const DeviceType type) override {
-        auto *top_schema = children[is_lr() ? 1 : 0];
-        auto *bottom_schema = children[is_lr() ? 0 : 1];
+        auto *top_schema = children[is_forward() ? 1 : 0];
+        auto *bottom_schema = children[is_forward() ? 0 : 1];
         top_schema->place(type, position + ImVec2{(w() - top_schema->w()) / 2, 0}, SchemaReverse);
         bottom_schema->place(type, position + ImVec2{(w() - bottom_schema->w()) / 2, top_schema->h()}, SchemaForward);
     }
 
     void _draw(Device &device) const override {
-        const float dw = dir_unit() * WireGap();
+        const float dw = orientation_unit() * WireGap();
         // Out0->In1 feedback connections
         for (Count i = 0; i < io_count(IO_In, 1); i++) {
             const auto &in1 = child(1)->point(IO_In, i);
             const auto &out0 = child(0)->point(IO_Out, i);
             const auto &from = ImVec2{is_lr() ? max(in1.x, out0.x) : min(in1.x, out0.x), out0.y} + ImVec2{float(i) * dw, 0};
             // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
-            const auto &corner1 = from - ImVec2{dw / 4, dw / 2};
-            const auto &corner2 = from + ImVec2{dw / 4, -dw / 2};
+            const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
+            const auto &corner2 = from + ImVec2{dw, -dw} / ImVec2{4, 2};
             device.line(from - ImVec2{dw / 4, 0}, corner1);
             device.line(corner1, corner2);
             device.line(corner2, from + ImVec2{dw / 4, 0});
@@ -790,9 +793,8 @@ struct SequentialSchema : BinarySchema {
                 if (dir == ImGuiDir_None) {
                     device.line(from, to); // Draw a  straight cable
                 } else {
-                    const bool lr = from.x < to.x;
-                    const Count x_position = lr ? i : channels.size() - i - 1;
-                    const float bend_x = from.x + float(x_position) * (lr ? WireGap() : -WireGap());
+                    const Count x_position = is_forward() ? i : channels.size() - i - 1;
+                    const float bend_x = from.x + float(x_position) * dir_unit() * WireGap();
                     device.line(from, {bend_x, from.y});
                     device.line({bend_x, from.y}, {bend_x, to.y});
                     device.line({bend_x, to.y}, to);
@@ -909,6 +911,7 @@ struct RouteSchema : IOSchema {
             device.rect(rect, {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
             // Draw the orientation mark to indicate the first input (like integrated circuits).
             const float offset = dir_unit() * 4;
+            // todo needs updating for global orientation changes
             device.dot((is_lr() ? rect.Min : rect.Max) + ImVec2{offset, offset});
             // Input arrows
             for (Count i = 0; i < io_count(IO_In); i++) device.arrow(point(IO_In, i) + ImVec2{dir_unit() * XGap(), 0}, orientation);

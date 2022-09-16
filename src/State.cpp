@@ -938,7 +938,7 @@ void FlowGridStyle::draw() const {
                 Text("Uncheck Style->ScaleFill in the 'Faust diagram' window to edit scale settings.");
                 ImGui::EndDisabled();
             }
-            DiagramOrientation.Draw();
+            DiagramDirection.Draw();
             DiagramSequentialConnectionZigzag.Draw();
             DiagramDrawRouteFrame.Draw();
             DiagramTopLevelMargin.Draw();

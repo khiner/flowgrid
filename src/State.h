@@ -439,7 +439,7 @@ struct FlowGridStyle : StateMember, Drawable {
     Float FlashDurationSec{Path, "FlashDurationSec", 0.6, 0, 5};
     Int DiagramFoldComplexity{Path, "DiagramFoldComplexity", 3, 0, 20,
                               "Number of boxes within a diagram before folding into a sub-diagram. Setting to zero disables folding altogether, for a fully-expanded diagram."};
-    Enum DiagramOrientation{Path, "DiagramOrientation", {"Left", "Right"}, ImGuiDir_Right};
+    Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
     Bool DiagramSequentialConnectionZigzag{Path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
     Bool DiagramDrawRouteFrame{Path, "DiagramDrawRouteFrame", false};
     Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
@@ -745,7 +745,7 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramOrientation, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
+JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramDrawRouteFrame, DiagramScaleLinked, DiagramScale, DiagramTopLevelMargin,
     DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap, DiagramWireWidth, DiagramArrowSize,
     DiagramInverterRadius)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)

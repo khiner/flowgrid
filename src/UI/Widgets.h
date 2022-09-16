@@ -10,6 +10,7 @@ bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char 
 
 using ActionID = size_t; // duplicate definition to avoid importing `Action.h`
 void MenuItem(ActionID); // For actions with no data members.
+void ToggleMenuItem(const StateMember &);
 
 typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {

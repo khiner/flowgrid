@@ -36,33 +36,33 @@ void Field::Base::HelpMarker(const bool after) const {
 
 bool Field::Bool::Draw() const {
     bool v = value;
-    const bool edited = Checkbox(name.c_str(), &v);
-    if (edited) q(toggle_value{path});
+    const bool edited = Checkbox(Name.c_str(), &v);
+    if (edited) q(toggle_value{Path});
     HelpMarker();
     return edited;
 }
 bool Field::Bool::DrawMenu() const {
     HelpMarker(false);
-    const bool edited = MenuItem(name.c_str(), nullptr, value);
-    if (edited) q(toggle_value{path});
+    const bool edited = MenuItem(Name.c_str(), nullptr, value);
+    if (edited) q(toggle_value{Path});
     return edited;
 }
 
 bool Field::Int::Draw() const {
     int v = value;
-    const bool edited = SliderInt(name.c_str(), &v, min, max, "%d", ImGuiSliderFlags_None);
+    const bool edited = SliderInt(Name.c_str(), &v, min, max, "%d", ImGuiSliderFlags_None);
     gestured();
-    if (edited) q(set_value{path, v});
+    if (edited) q(set_value{Path, v});
     HelpMarker();
     return edited;
 }
 bool Field::Int::Draw(const std::vector<int> &options) const {
     bool edited = false;
-    if (BeginCombo(name.c_str(), std::to_string(value).c_str())) {
+    if (BeginCombo(Name.c_str(), std::to_string(value).c_str())) {
         for (const auto option: options) {
             const bool is_selected = option == value;
             if (Selectable(std::to_string(option).c_str(), is_selected)) {
-                q(set_value{path, option});
+                q(set_value{Path, option});
                 edited = true;
             }
             if (is_selected) SetItemDefaultFocus();
@@ -75,18 +75,18 @@ bool Field::Int::Draw(const std::vector<int> &options) const {
 
 bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     float v = value;
-    const bool edited = SliderFloat(name.c_str(), &v, min, max, fmt, flags);
+    const bool edited = SliderFloat(Name.c_str(), &v, min, max, fmt, flags);
     gestured();
-    if (edited) q(set_value{path, v});
+    if (edited) q(set_value{Path, v});
     HelpMarker();
     return edited;
 }
 
 bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
     float v = value;
-    const bool edited = DragFloat(name.c_str(), &v, v_speed, min, max, fmt, flags);
+    const bool edited = DragFloat(Name.c_str(), &v, v_speed, min, max, fmt, flags);
     gestured();
-    if (edited) q(set_value{path, v});
+    if (edited) q(set_value{Path, v});
     HelpMarker();
     return edited;
 }
@@ -94,9 +94,9 @@ bool Field::Float::Draw() const { return Draw("%.3f"); }
 
 bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     ImVec2 v = value;
-    const bool edited = SliderFloat2(name.c_str(), (float *) &v, min, max, fmt, flags);
+    const bool edited = SliderFloat2(Name.c_str(), (float *) &v, min, max, fmt, flags);
     gestured();
-    if (edited) q(set_value{path, v});
+    if (edited) q(set_value{Path, v});
     HelpMarker();
     return edited;
 }
@@ -105,12 +105,12 @@ bool Field::Vec2::Draw() const { return Draw("%.3f"); }
 
 bool Field::Enum::Draw() const {
     bool edited = false;
-    if (BeginCombo(name.c_str(), options[value].c_str())) {
+    if (BeginCombo(Name.c_str(), options[value].c_str())) {
         for (int i = 0; i < int(options.size()); i++) {
             const bool is_selected = i == value;
             const auto &option = options[i];
             if (Selectable(option.c_str(), is_selected)) {
-                q(set_value{path, i});
+                q(set_value{Path, i});
                 edited = true;
             }
             if (is_selected) SetItemDefaultFocus();
@@ -123,11 +123,11 @@ bool Field::Enum::Draw() const {
 bool Field::Enum::DrawMenu() const {
     HelpMarker(false);
     bool edited = false;
-    if (BeginMenu(name.c_str())) {
+    if (BeginMenu(Name.c_str())) {
         for (int i = 0; i < int(options.size()); i++) {
             const bool is_selected = value == i;
             if (MenuItem(options[i].c_str(), nullptr, is_selected)) {
-                q(set_value{path, i});
+                q(set_value{Path, i});
                 edited = true;
             }
             if (is_selected) SetItemDefaultFocus();
@@ -144,11 +144,11 @@ bool Field::String::Draw() const {
 
 bool Field::String::Draw(const std::vector<string> &options) const {
     bool edited = false;
-    if (BeginCombo(name.c_str(), value.c_str())) {
+    if (BeginCombo(Name.c_str(), value.c_str())) {
         for (const auto &option: options) {
             const bool is_selected = option == value;
             if (Selectable(option.c_str(), is_selected)) {
-                q(set_value{path, option});
+                q(set_value{Path, option});
                 edited = true;
             };
             if (is_selected) SetItemDefaultFocus();
@@ -186,21 +186,21 @@ void Window::DrawWindow(ImGuiWindowFlags flags) const {
     if (!Visible) return;
 
     bool open = Visible;
-    if (Begin(name.c_str(), &open, flags)) {
+    if (Begin(Name.c_str(), &open, flags)) {
         if (open) draw();
     }
     End();
 
-    if (Visible && !open) q(set_value{Visible.path, false});
+    if (Visible && !open) q(set_value{Visible.Path, false});
 }
 
 void Window::Dock(ImGuiID node_id) const {
-    DockBuilderDockWindow(name.c_str(), node_id);
+    DockBuilderDockWindow(Name.c_str(), node_id);
 }
 
 bool Window::ToggleMenuItem() const {
-    const bool edited = MenuItem(name.c_str(), nullptr, Visible);
-    if (edited) q(toggle_value{Visible.path});
+    const bool edited = MenuItem(Name.c_str(), nullptr, Visible);
+    if (edited) q(toggle_value{Visible.Path});
     return edited;
 }
 
@@ -521,9 +521,9 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     const bool is_array_item = is_integer(leaf_name);
     const bool is_color = path_string.find("Colors") != string::npos && is_array_item;
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
-    const bool is_imgui_color = parent_path == s.Style.ImGui.path / "Colors";
-    const bool is_implot_color = parent_path == s.Style.ImPlot.path / "Colors";
-    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.path / "Colors";
+    const bool is_imgui_color = parent_path == s.Style.ImGui.Path / "Colors";
+    const bool is_implot_color = parent_path == s.Style.ImPlot.Path / "Colors";
+    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Path / "Colors";
     const auto &label = annotate_enabled ?
                         (is_imgui_color ?
                          GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
@@ -689,17 +689,17 @@ void Style::ImGuiStyleMember::draw() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     {
         bool border = s.Style.ImGui.WindowBorderSize > 0.0f;
-        if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.path, border ? 1.0f : 0.0f});
+        if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.Path, border ? 1.0f : 0.0f});
     }
     SameLine();
     {
         bool border = s.Style.ImGui.FrameBorderSize > 0.0f;
-        if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.path, border ? 1.0f : 0.0f});
+        if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.Path, border ? 1.0f : 0.0f});
     }
     SameLine();
     {
         bool border = s.Style.ImGui.PopupBorderSize > 0.0f;
-        if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.path, border ? 1.0f : 0.0f});
+        if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.Path, border ? 1.0f : 0.0f});
     }
 
     Separator();
@@ -747,7 +747,7 @@ void Style::ImGuiStyleMember::draw() const {
             EndTabItem();
         }
 
-        ShowColorEditor(path / "Colors", ImGuiCol_COUNT, GetStyleColorName);
+        ShowColorEditor(Path / "Colors", ImGuiCol_COUNT, GetStyleColorName);
 
 //        if (BeginTabItem("Fonts")) {
 //            ImGuiIO &io = GetIO();
@@ -882,7 +882,7 @@ void Style::ImPlotStyleMember::draw() const {
 
             Separator();
             PushItemWidth(-160);
-            const auto colors_path = JsonPath(path / "Colors");
+            const auto colors_path = JsonPath(Path / "Colors");
             for (int i = 0; i < ImPlotCol_COUNT; i++) {
                 const char *name = ImPlot::GetStyleColorName(i);
                 if (!filter.PassFilter(name)) continue;
@@ -924,14 +924,14 @@ void FlowGridStyle::draw() const {
             if (DiagramScale.Draw() && DiagramScaleLinked) {
                 c.run_queued_actions();
                 const auto scale_after = DiagramScale.value;
-                q(set_value{DiagramScale.path, scale_after.x != scale_before.x ?
+                q(set_value{DiagramScale.Path, scale_after.x != scale_before.x ?
                                                ImVec2{scale_after.x, scale_after.x} :
                                                ImVec2{scale_after.y, scale_after.y}});
                 c.run_queued_actions();
             }
             if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
                 const float min_scale = std::min(DiagramScale.value.x, DiagramScale.value.y);
-                q(set_value{DiagramScale.path, ImVec2{min_scale, min_scale}});
+                q(set_value{DiagramScale.Path, ImVec2{min_scale, min_scale}});
             }
             if (ScaleFill) {
                 SameLine();
@@ -955,22 +955,22 @@ void FlowGridStyle::draw() const {
             EndTabItem();
         }
 
-        ShowColorEditor(path / "Colors", FlowGridCol_COUNT, FlowGridStyle::GetColorName);
+        ShowColorEditor(Path / "Colors", FlowGridCol_COUNT, FlowGridStyle::GetColorName);
         EndTabBar();
     }
 }
 
 void Style::draw() const {
     if (BeginTabBar("##style")) {
-        if (BeginTabItem(FlowGrid.name.c_str())) {
+        if (BeginTabItem(FlowGrid.Name.c_str())) {
             FlowGrid.draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImGui.name.c_str())) {
+        if (BeginTabItem(ImGui.Name.c_str())) {
             ImGui.draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImPlot.name.c_str())) {
+        if (BeginTabItem(ImPlot.Name.c_str())) {
             ImPlot.draw();
             EndTabItem();
         }
@@ -1158,15 +1158,15 @@ void Metrics::ImPlotMetrics::draw() const { ImPlot::ShowMetrics(); }
 
 void Metrics::draw() const {
     if (BeginTabBar("##Metrics")) {
-        if (BeginTabItem(FlowGrid.name.c_str())) {
+        if (BeginTabItem(FlowGrid.Name.c_str())) {
             FlowGrid.draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImGui.name.c_str())) {
+        if (BeginTabItem(ImGui.Name.c_str())) {
             ImGui.draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImPlot.name.c_str())) {
+        if (BeginTabItem(ImPlot.Name.c_str())) {
             ImPlot.draw();
             EndTabItem();
         }

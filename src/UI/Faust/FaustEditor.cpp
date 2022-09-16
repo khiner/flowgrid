@@ -232,7 +232,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
                     auto *buffer = buffer_message->buffer;
                     if (zep_initialized && buffer->name == s.Audio.faust.Editor.FileName) {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                        q(set_value{s.Audio.faust.Code.path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                        q(set_value{s.Audio.faust.Code.Path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
                 }
                     break;

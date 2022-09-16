@@ -21,8 +21,8 @@ void fg::MenuItem(ActionID action_id) {
 }
 
 void fg::ToggleMenuItem(const StateMember &member) {
-    const string &menu_label = path_label(member.path);
-    if (ImGui::MenuItem(menu_label.c_str(), nullptr, sj[member.path])) q(toggle_value{member.path});
+    const string &menu_label = path_label(member.Path);
+    if (ImGui::MenuItem(menu_label.c_str(), nullptr, sj[member.Path])) q(toggle_value{member.Path});
 }
 
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {

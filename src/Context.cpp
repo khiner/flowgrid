@@ -408,10 +408,10 @@ void Context::on_set_value(const JsonPath &path) {
 
     // Setting `ImGuiSettings` does not require a `c.update_ui_context` on the action, since the action will be initiated by ImGui itself,
     // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-    if (path_str.rfind(s.ImGuiSettings.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path_str.rfind(s.Style.ImGui.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
-    else if (path_str.rfind(s.Style.ImPlot.path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
-    else if (path == s.Audio.faust.Code.path) update_faust_context();
+    if (path_str.rfind(s.ImGuiSettings.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path_str.rfind(s.Style.ImGui.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
+    else if (path_str.rfind(s.Style.ImPlot.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
+    else if (path == s.Audio.faust.Code.Path) update_faust_context();
 }
 
 ProjectFormat get_project_format(const fs::path &path) {

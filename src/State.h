@@ -39,10 +39,10 @@ JsonType(ImVec2ih, x, y)
 
 struct StateMember {
     StateMember(const JsonPath &parent_path, const string &id, const string &name = "")
-        : path(parent_path / id), id(id), name(name.empty() ? snake_case_to_sentence_case(id) : name) {}
+        : Path(parent_path / id), ID(id), Name(name.empty() ? snake_case_to_sentence_case(id) : name) {}
 
-    JsonPath path; // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
-    string id, name;
+    JsonPath Path; // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
+    string ID, Name;
 };
 
 struct Drawable {
@@ -205,9 +205,9 @@ struct Window : StateMember, Drawable {
         this->Visible = visible;
     }
 
-    Bool Visible{path, "Visible", true};
+    Bool Visible{Path, "Visible", true};
 
-    ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(name.c_str()); }
+    ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(Name.c_str()); }
     void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
     void Dock(ImGuiID node_id) const;
     bool ToggleMenuItem() const;
@@ -220,14 +220,14 @@ struct Process : Window {
     void draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool Running{path, "Running", true};
+    Bool Running{Path, "Running", true};
 };
 
 struct ApplicationSettings : Window {
     using Window::Window;
     void draw() const override;
 
-    Float GestureDurationSec{path, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
+    Float GestureDurationSec{Path, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
 };
 
 struct StateViewer : Window {
@@ -236,14 +236,14 @@ struct StateViewer : Window {
 
     enum LabelMode { Annotated, Raw };
     Enum LabelMode{
-        path, "LabelMode", {"Annotated", "Raw"},
+        Path, "LabelMode", {"Annotated", "Raw"},
         "The raw JSON state doesn't store keys for all items.\n"
         "For example, the main `ui.style.colors` state is a list.\n\n"
         "'Annotated' mode shows (highlighted) labels for such state items.\n"
         "'Raw' mode shows the state exactly as it is in the raw JSON state."
     };
     Bool AutoSelect{
-        path, "AutoSelect", "Auto-select", true,
+        Path, "AutoSelect", "Auto-select", true,
         "When auto-select is enabled, state changes automatically open.\n"
         "The state viewer to the changed state node(s), closing all other state nodes.\n"
         "State menu items can only be opened or closed manually if auto-select is disabled."
@@ -266,8 +266,8 @@ struct ProjectPreview : Window {
     using Window::Window;
     void draw() const override;
 
-    Enum Format{path, "Format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
-    Bool Raw{path, "Raw"};
+    Enum Format{Path, "Format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
+    Bool Raw{Path, "Raw"};
 };
 
 struct Demo : Window {
@@ -282,7 +282,7 @@ struct Metrics : Window {
     struct FlowGridMetrics : StateMember, Drawable {
         using StateMember::StateMember;
         void draw() const override;
-        Bool ShowRelativePaths{path, "ShowRelativePaths", true};
+        Bool ShowRelativePaths{Path, "ShowRelativePaths", true};
     };
     struct ImGuiMetrics : StateMember, Drawable {
         using StateMember::StateMember;
@@ -293,9 +293,9 @@ struct Metrics : Window {
         void draw() const override;
     };
 
-    FlowGridMetrics FlowGrid{path, "FlowGrid"};
-    ImGuiMetrics ImGui{path, "ImGui"};
-    ImPlotMetrics ImPlot{path, "ImPlot"};
+    FlowGridMetrics FlowGrid{Path, "FlowGrid"};
+    ImGuiMetrics ImGui{Path, "ImGui"};
+    ImPlotMetrics ImPlot{Path, "ImPlot"};
 };
 
 struct Tools : Window {
@@ -329,11 +329,11 @@ struct Audio : Process {
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
 
-                Bool ScaleFill{path, "ScaleFill", "Scale to window", false}; // This and `style.FlowGrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
-                Bool HoverDebug{path, "HoverDebug", false};
+                Bool ScaleFill{Path, "ScaleFill", "Scale to window", false}; // This and `style.FlowGrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
+                Bool HoverDebug{Path, "HoverDebug", false};
             };
 
-            DiagramSettings Settings{path, "Settings"};
+            DiagramSettings Settings{Path, "Settings"};
         };
 
         // todo move to top-level Log
@@ -342,11 +342,11 @@ struct Audio : Process {
             void draw() const override;
         };
 
-        FaustEditor Editor{path, "Editor", "Faust editor"};
-        FaustDiagram Diagram{path, "Diagram", "Faust diagram"};
-        FaustLog Log{path, "Log", "Faust log"};
+        FaustEditor Editor{Path, "Editor", "Faust editor"};
+        FaustDiagram Diagram{Path, "Diagram", "Faust diagram"};
+        FaustLog Log{Path, "Log", "Faust log"};
 
-//        String Code{path, "Code", "Code",
+//        String Code{Path, "Code", "Code",
 //                    "import(\"stdfaust.lib\");\n\n"
 //                    "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
 //                    "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
@@ -356,22 +356,22 @@ struct Audio : Process {
 //                    ");\n"
 //                    "\n"
 //                    "process = no.noise : pitchshifter;\n"};
-        String Code{path, "Code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
-//        String Code{path, "Code", "Code",
+        String Code{Path, "Code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+//        String Code{Path, "Code", "Code",
 //                    "import(\"stdfaust.lib\");\nctFreq = hslider(\"cutoffFrequency\",500,50,10000,0.01);\nq = hslider(\"q\",5,1,30,0.1);\ngain = hslider(\"gain\",1,0,1,0.01);\nprocess = no:noise : fi.resonlp(ctFreq,q,gain);"};
         string Error{};
     };
 
     void update_process() const override;
 
-    Faust faust{path, "faust"};
+    Faust faust{Path, "faust"};
 
-    Bool Muted{path, "Muted", true};
+    Bool Muted{Path, "Muted", true};
     AudioBackend Backend = none;
     std::optional<string> InDeviceId;
-    String OutDeviceId{path, "OutDeviceId", "Out device ID"};
-    Float DeviceVolume{path, "DeviceVolume", 1.0};
-    Int SampleRate{path, "SampleRate"};
+    String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
+    Float DeviceVolume{Path, "DeviceVolume", 1.0};
+    Int SampleRate{Path, "SampleRate"};
 };
 
 struct File : StateMember {
@@ -407,7 +407,7 @@ struct File : StateMember {
         void draw() const;
     };
 
-    FileDialog Dialog{path, "Dialog"};
+    FileDialog Dialog{Path, "Dialog"};
 };
 
 enum FlowGridCol_ {
@@ -436,24 +436,24 @@ struct FlowGridStyle : StateMember, Drawable {
     void draw() const override;
 
     ImVec4 Colors[FlowGridCol_COUNT];
-    Float FlashDurationSec{path, "FlashDurationSec", 0.6, 0, 5};
-    Int DiagramFoldComplexity{path, "DiagramFoldComplexity", 3, 0, 20,
+    Float FlashDurationSec{Path, "FlashDurationSec", 0.6, 0, 5};
+    Int DiagramFoldComplexity{Path, "DiagramFoldComplexity", 3, 0, 20,
                               "Number of boxes within a diagram before folding into a sub-diagram. Setting to zero disables folding altogether, for a fully-expanded diagram."};
-    Enum DiagramOrientation{path, "DiagramOrientation", {"Left", "Right"}, ImGuiDir_Right};
-    Bool DiagramSequentialConnectionZigzag{path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
-    Bool DiagramDrawRouteFrame{path, "DiagramDrawRouteFrame", false};
-    Bool DiagramScaleLinked{path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
-    Vec2 DiagramScale{path, "DiagramScale", ImVec2(1, 1), 0.1, 10};
-    Float DiagramTopLevelMargin{path, "DiagramTopLevelMargin", 20, 0, 40};
-    Float DiagramDecorateMargin{path, "DiagramDecorateMargin", 20, 0, 40};
-    Float DiagramDecorateLineWidth{path, "DiagramDecorateLineWidth", 1, 0, 4};
-    Float DiagramDecorateCornerRadius{path, "DiagramDecorateCornerRadius", 0, 0, 10};
-    Float DiagramBinaryHorizontalGapRatio{path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
-    Float DiagramWireWidth{path, "DiagramWireWidth", 1, 0.5, 4};
-    Float DiagramWireGap{path, "DiagramWireGap", 16, 10, 20};
-    Vec2 DiagramGap{path, "DiagramGap", ImVec2(8, 8), 0, 20};
-    Vec2 DiagramArrowSize{path, "DiagramArrowSize", ImVec2(3, 2), 1, 10};
-    Float DiagramInverterRadius{path, "DiagramInverterRadius", 3, 1, 5};
+    Enum DiagramOrientation{Path, "DiagramOrientation", {"Left", "Right"}, ImGuiDir_Right};
+    Bool DiagramSequentialConnectionZigzag{Path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
+    Bool DiagramDrawRouteFrame{Path, "DiagramDrawRouteFrame", false};
+    Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
+    Vec2 DiagramScale{Path, "DiagramScale", ImVec2(1, 1), 0.1, 10};
+    Float DiagramTopLevelMargin{Path, "DiagramTopLevelMargin", 20, 0, 40};
+    Float DiagramDecorateMargin{Path, "DiagramDecorateMargin", 20, 0, 40};
+    Float DiagramDecorateLineWidth{Path, "DiagramDecorateLineWidth", 1, 0, 4};
+    Float DiagramDecorateCornerRadius{Path, "DiagramDecorateCornerRadius", 0, 0, 10};
+    Float DiagramBinaryHorizontalGapRatio{Path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
+    Float DiagramWireWidth{Path, "DiagramWireWidth", 1, 0.5, 4};
+    Float DiagramWireGap{Path, "DiagramWireGap", 16, 10, 20};
+    Vec2 DiagramGap{Path, "DiagramGap", ImVec2(8, 8), 0, 20};
+    Vec2 DiagramArrowSize{Path, "DiagramArrowSize", ImVec2(3, 2), 1, 10};
+    Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
 
     void StyleColorsDark() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
@@ -521,47 +521,47 @@ struct Style : Window {
         // Initial values copied from `ImGuiStyle()` default constructor.
         // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
-        Float Alpha{path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Float DisabledAlpha{path, "DisabledAlpha", 0.6, 0, 1, "Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
-        Vec2 WindowPadding{path, "WindowPadding", ImVec2(8, 8), 0, 20};
-        Float WindowRounding{path, "WindowRounding", 0, 0, 12};
-        Float WindowBorderSize{path, "WindowBorderSize", 1};
-        Vec2 WindowMinSize{path, "WindowMinSize", ImVec2(32, 32)};
-        Vec2 WindowTitleAlign{path, "WindowTitleAlign", ImVec2(0, 0.5)};
-        Enum WindowMenuButtonPosition{path, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
-        Float ChildRounding{path, "ChildRounding", 0, 0, 12};
-        Float ChildBorderSize{path, "ChildBorderSize", 1};
-        Float PopupRounding{path, "PopupRounding", 0, 0, 12};
-        Float PopupBorderSize{path, "PopupBorderSize", 1};
-        Vec2 FramePadding{path, "FramePadding", ImVec2(4, 3), 0, 20};
-        Float FrameRounding{path, "FrameRounding", 0, 0, 12};
-        Float FrameBorderSize{path, "FrameBorderSize", 0};
-        Vec2 ItemSpacing{path, "ItemSpacing", ImVec2(8, 4), 0, 20};
-        Vec2 ItemInnerSpacing{path, "ItemInnerSpacing", ImVec2(4, 4), 0, 20};
-        Vec2 CellPadding{path, "CellPadding", ImVec2(4, 2), 0, 20};
-        Vec2 TouchExtraPadding{path, "TouchExtraPadding", ImVec2(0, 0), 0, 10};
-        Float IndentSpacing{path, "IndentSpacing", 21, 0, 30};
-        Float ColumnsMinSpacing{path, "ColumnsMinSpacing", 6};
-        Float ScrollbarSize{path, "ScrollbarSize", 14, 1, 20};
-        Float ScrollbarRounding{path, "ScrollbarRounding", 9, 0, 12};
-        Float GrabMinSize{path, "GrabMinSize", 12, 1, 20};
-        Float GrabRounding{path, "GrabRounding", 0, 0, 12};
-        Float LogSliderDeadzone{path, "LogSliderDeadzone", 4, 0, 12};
-        Float TabRounding{path, "TabRounding", 4, 0, 12};
-        Float TabBorderSize{path, "TabBorderSize", 0};
-        Float TabMinWidthForCloseButton{path, "TabMinWidthForCloseButton", 0};
-        Enum ColorButtonPosition{path, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
-        Vec2 ButtonTextAlign{path, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "Alignment applies when a button is larger than its text content."};
-        Vec2 SelectableTextAlign{path, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "Alignment applies when a selectable is larger than its text content."};
-        Vec2 DisplayWindowPadding{path, "DisplayWindowPadding", ImVec2(19, 19)};
-        Vec2 DisplaySafeAreaPadding{path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
-        Float MouseCursorScale{path, "MouseCursorScale", 1};
-        Bool AntiAliasedLines{path, "AntiAliasedLines", "Anti-aliased lines", true, "When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
-        Bool AntiAliasedLinesUseTex{path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture", true,
+        Float Alpha{Path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
+        Float DisabledAlpha{Path, "DisabledAlpha", 0.6, 0, 1, "Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
+        Vec2 WindowPadding{Path, "WindowPadding", ImVec2(8, 8), 0, 20};
+        Float WindowRounding{Path, "WindowRounding", 0, 0, 12};
+        Float WindowBorderSize{Path, "WindowBorderSize", 1};
+        Vec2 WindowMinSize{Path, "WindowMinSize", ImVec2(32, 32)};
+        Vec2 WindowTitleAlign{Path, "WindowTitleAlign", ImVec2(0, 0.5)};
+        Enum WindowMenuButtonPosition{Path, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
+        Float ChildRounding{Path, "ChildRounding", 0, 0, 12};
+        Float ChildBorderSize{Path, "ChildBorderSize", 1};
+        Float PopupRounding{Path, "PopupRounding", 0, 0, 12};
+        Float PopupBorderSize{Path, "PopupBorderSize", 1};
+        Vec2 FramePadding{Path, "FramePadding", ImVec2(4, 3), 0, 20};
+        Float FrameRounding{Path, "FrameRounding", 0, 0, 12};
+        Float FrameBorderSize{Path, "FrameBorderSize", 0};
+        Vec2 ItemSpacing{Path, "ItemSpacing", ImVec2(8, 4), 0, 20};
+        Vec2 ItemInnerSpacing{Path, "ItemInnerSpacing", ImVec2(4, 4), 0, 20};
+        Vec2 CellPadding{Path, "CellPadding", ImVec2(4, 2), 0, 20};
+        Vec2 TouchExtraPadding{Path, "TouchExtraPadding", ImVec2(0, 0), 0, 10};
+        Float IndentSpacing{Path, "IndentSpacing", 21, 0, 30};
+        Float ColumnsMinSpacing{Path, "ColumnsMinSpacing", 6};
+        Float ScrollbarSize{Path, "ScrollbarSize", 14, 1, 20};
+        Float ScrollbarRounding{Path, "ScrollbarRounding", 9, 0, 12};
+        Float GrabMinSize{Path, "GrabMinSize", 12, 1, 20};
+        Float GrabRounding{Path, "GrabRounding", 0, 0, 12};
+        Float LogSliderDeadzone{Path, "LogSliderDeadzone", 4, 0, 12};
+        Float TabRounding{Path, "TabRounding", 4, 0, 12};
+        Float TabBorderSize{Path, "TabBorderSize", 0};
+        Float TabMinWidthForCloseButton{Path, "TabMinWidthForCloseButton", 0};
+        Enum ColorButtonPosition{Path, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
+        Vec2 ButtonTextAlign{Path, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "Alignment applies when a button is larger than its text content."};
+        Vec2 SelectableTextAlign{Path, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "Alignment applies when a selectable is larger than its text content."};
+        Vec2 DisplayWindowPadding{Path, "DisplayWindowPadding", ImVec2(19, 19)};
+        Vec2 DisplaySafeAreaPadding{Path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
+        Float MouseCursorScale{Path, "MouseCursorScale", 1};
+        Bool AntiAliasedLines{Path, "AntiAliasedLines", "Anti-aliased lines", true, "When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
+        Bool AntiAliasedLinesUseTex{Path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture", true,
                                     "Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering)."};
-        Bool AntiAliasedFill{path, "AntiAliasedFill", "Anti-aliased fill", true};
-        Float CurveTessellationTol{path, "CurveTessellationTol", "Curve tesselation tolerance", 1.25, 0.1, 10};
-        Float CircleTessellationMaxError{path, "CircleTessellationMaxError", 0.3, 0.1, 5};
+        Bool AntiAliasedFill{Path, "AntiAliasedFill", "Anti-aliased fill", true};
+        Float CurveTessellationTol{Path, "CurveTessellationTol", "Curve tesselation tolerance", 1.25, 0.1, 10};
+        Float CircleTessellationMaxError{Path, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
     };
     struct ImPlotStyleMember : StateMember, Drawable {
@@ -577,49 +577,49 @@ struct Style : Window {
         // Initial values copied from `ImPlotStyle()` default constructor.
         // Ranges copied from `ImPlot::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
-        Float LineWeight{path, "LineWeight", 1, 0, 5};
-        Int Marker{path, "Marker", ImPlotMarker_None};
-        Float MarkerSize{path, "MarkerSize", 4, 2, 10};
-        Float MarkerWeight{path, "MarkerWeight", 1, 0, 5};
-        Float FillAlpha{path, "FillAlpha", 1};
-        Float ErrorBarSize{path, "ErrorBarSize", 5, 0, 10};
-        Float ErrorBarWeight{path, "ErrorBarWeight", 1.5, 0, 5};
-        Float DigitalBitHeight{path, "DigitalBitHeight", 8, 0, 20};
-        Float DigitalBitGap{path, "DigitalBitGap", 4, 0, 20};
-        Float PlotBorderSize{path, "PlotBorderSize", 1, 0, 2};
-        Float MinorAlpha{path, "MinorAlpha", 0.25};
-        Vec2 MajorTickLen{path, "MajorTickLen", ImVec2(10, 10), 0, 20};
-        Vec2 MinorTickLen{path, "MinorTickLen", ImVec2(5, 5), 0, 20};
-        Vec2 MajorTickSize{path, "MajorTickSize", ImVec2(1, 1), 0, 2};
-        Vec2 MinorTickSize{path, "MinorTickSize", ImVec2(1, 1), 0, 2};
-        Vec2 MajorGridSize{path, "MajorGridSize", ImVec2(1, 1), 0, 2};
-        Vec2 MinorGridSize{path, "MinorGridSize", ImVec2(1, 1), 0, 2};
-        Vec2 PlotPadding{path, "PlotPadding", ImVec2(10, 10), 0, 20};
-        Vec2 LabelPadding{path, "LabelPadding", ImVec2(5, 5), 0, 20};
-        Vec2 LegendPadding{path, "LegendPadding", ImVec2(10, 10), 0, 20};
-        Vec2 LegendInnerPadding{path, "LegendInnerPadding", ImVec2(5, 5), 0, 10};
-        Vec2 LegendSpacing{path, "LegendSpacing", ImVec2(5, 0), 0, 5};
-        Vec2 MousePosPadding{path, "MousePosPadding", ImVec2(10, 10), 0, 20};
-        Vec2 AnnotationPadding{path, "AnnotationPadding", ImVec2(2, 2), 0, 5};
-        Vec2 FitPadding{path, "FitPadding", ImVec2(0, 0), 0, 0.2};
-        Vec2 PlotDefaultSize{path, "PlotDefaultSize", ImVec2(400, 300), 0, 1000};
-        Vec2 PlotMinSize{path, "PlotMinSize", ImVec2(200, 150), 0, 300};
+        Float LineWeight{Path, "LineWeight", 1, 0, 5};
+        Int Marker{Path, "Marker", ImPlotMarker_None};
+        Float MarkerSize{Path, "MarkerSize", 4, 2, 10};
+        Float MarkerWeight{Path, "MarkerWeight", 1, 0, 5};
+        Float FillAlpha{Path, "FillAlpha", 1};
+        Float ErrorBarSize{Path, "ErrorBarSize", 5, 0, 10};
+        Float ErrorBarWeight{Path, "ErrorBarWeight", 1.5, 0, 5};
+        Float DigitalBitHeight{Path, "DigitalBitHeight", 8, 0, 20};
+        Float DigitalBitGap{Path, "DigitalBitGap", 4, 0, 20};
+        Float PlotBorderSize{Path, "PlotBorderSize", 1, 0, 2};
+        Float MinorAlpha{Path, "MinorAlpha", 0.25};
+        Vec2 MajorTickLen{Path, "MajorTickLen", ImVec2(10, 10), 0, 20};
+        Vec2 MinorTickLen{Path, "MinorTickLen", ImVec2(5, 5), 0, 20};
+        Vec2 MajorTickSize{Path, "MajorTickSize", ImVec2(1, 1), 0, 2};
+        Vec2 MinorTickSize{Path, "MinorTickSize", ImVec2(1, 1), 0, 2};
+        Vec2 MajorGridSize{Path, "MajorGridSize", ImVec2(1, 1), 0, 2};
+        Vec2 MinorGridSize{Path, "MinorGridSize", ImVec2(1, 1), 0, 2};
+        Vec2 PlotPadding{Path, "PlotPadding", ImVec2(10, 10), 0, 20};
+        Vec2 LabelPadding{Path, "LabelPadding", ImVec2(5, 5), 0, 20};
+        Vec2 LegendPadding{Path, "LegendPadding", ImVec2(10, 10), 0, 20};
+        Vec2 LegendInnerPadding{Path, "LegendInnerPadding", ImVec2(5, 5), 0, 10};
+        Vec2 LegendSpacing{Path, "LegendSpacing", ImVec2(5, 0), 0, 5};
+        Vec2 MousePosPadding{Path, "MousePosPadding", ImVec2(10, 10), 0, 20};
+        Vec2 AnnotationPadding{Path, "AnnotationPadding", ImVec2(2, 2), 0, 5};
+        Vec2 FitPadding{Path, "FitPadding", ImVec2(0, 0), 0, 0.2};
+        Vec2 PlotDefaultSize{Path, "PlotDefaultSize", ImVec2(400, 300), 0, 1000};
+        Vec2 PlotMinSize{Path, "PlotMinSize", ImVec2(200, 150), 0, 300};
         ImVec4 Colors[ImPlotCol_COUNT];
         ImPlotColormap Colormap;
-        Bool UseLocalTime{path, "UseLocalTime"};
-        Bool UseISO8601{path, "UseISO8601"};
-        Bool Use24HourClock{path, "Use24HourClock"};
+        Bool UseLocalTime{Path, "UseLocalTime"};
+        Bool UseISO8601{Path, "UseISO8601"};
+        Bool Use24HourClock{Path, "Use24HourClock"};
     };
 
-    ImGuiStyleMember ImGui{path, "ImGui"};
-    ImPlotStyleMember ImPlot{path, "ImPlot"};
-    FlowGridStyle FlowGrid{path, "FlowGrid"};
+    ImGuiStyleMember ImGui{Path, "ImGui"};
+    ImPlotStyleMember ImPlot{Path, "ImPlot"};
+    FlowGridStyle FlowGrid{Path, "FlowGrid"};
 };
 
 struct Processes : StateMember {
     using StateMember::StateMember;
 
-    Process UI{path, "UI"};
+    Process UI{Path, "UI"};
 };
 
 // The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).

@@ -124,7 +124,7 @@ int audio() {
         }
     }
     if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates.back(); // Fall back to the highest supported sample rate.
-    if (outstream->sample_rate != s.Audio.SampleRate) q(set_value{s.Audio.SampleRate.path, outstream->sample_rate});
+    if (outstream->sample_rate != s.Audio.SampleRate) q(set_value{s.Audio.SampleRate.Path, outstream->sample_rate});
 
     enum SoundIoFormat *format;
     for (format = prioritized_formats; *format != SoundIoFormatInvalid; format++) {

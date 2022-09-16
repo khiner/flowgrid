@@ -496,7 +496,7 @@ struct IOSchema : Schema {
         const float d = orientation == SchemaReverse ? -1 : 1;
         return {
             x() + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w()),
-            mid().y - WireGap() * float(io_count(io) - 1) / 2 + float(i) * d * WireGap()
+            mid().y - WireGap() * (float(io_count(io) - 1) / 2 - float(i) * d)
         };
     }
 };
@@ -536,7 +536,7 @@ struct BlockSchema : IOSchema {
             device.dot((is_lr() ? rect.Min : rect.Max) * ImVec2{offset, offset});
         } else {
             const ImRect &rect = {scale(position + Gap()), scale(position + size - Gap())};
-            const auto &cursor_pos = ImGui::GetCursorPos();
+            const auto cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(rect.Min);
             ImGui::PushStyleColor(ImGuiCol_Button, col);
             if (!inner) {
@@ -950,7 +950,10 @@ static bool isInverter(Tree t) {
     return ::ranges::contains(inverters, t);
 }
 
-static inline string print_tree(Tree tree) { return printBox(tree, false); }
+static inline string print_tree(Tree tree) {
+    const auto &str = printBox(tree, false);
+    return str.substr(0, str.size() - 1); // Last character is a newline.
+}
 
 // Collect the leaf numbers of tree `t` into vector `v`.
 // Return true if `t` is a number or a parallel tree of numbers.

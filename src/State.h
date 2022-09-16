@@ -230,13 +230,6 @@ struct ApplicationSettings : Window {
     Float GestureDurationSec{path, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
 };
 
-struct DiagramSettings : StateMember {
-    using StateMember::StateMember;
-
-    Bool ScaleFill{path, "ScaleFill", "Scale to window", false}; // This and `style.flowgrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
-    Bool HoverDebug{path, "HoverDebug", false};
-};
-
 struct StateViewer : Window {
     using Window::Window;
     void draw() const override;
@@ -331,6 +324,15 @@ struct Audio : Process {
         struct Diagram : Window {
             using Window::Window;
             void draw() const override;
+
+            struct DiagramSettings : StateMember {
+                using StateMember::StateMember;
+
+                Bool ScaleFill{path, "ScaleFill", "Scale to window", false}; // This and `style.flowgrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
+                Bool HoverDebug{path, "HoverDebug", false};
+            };
+
+            DiagramSettings Settings{path, "Settings"};
         };
 
         // The following are populated by `StatefulFaustUI` when the Faust DSP changes.
@@ -664,7 +666,6 @@ struct StateData {
     ImGuiSettings imgui_settings{RootPath, "imgui_settings", "ImGui settings"};
     Style style{RootPath, "style"};
     ApplicationSettings application_settings{RootPath, "application_settings"};
-    DiagramSettings diagram_settings{RootPath, "diagram_settings"};
     Audio audio{RootPath, "audio"};
     Processes processes{RootPath, "processes"};
     File file{RootPath, "file"};
@@ -723,8 +724,9 @@ JsonType(Window, visible)
 JsonType(Process, running)
 
 JsonType(ApplicationSettings, visible, GestureDurationSec)
-JsonType(DiagramSettings, ScaleFill, HoverDebug)
 JsonType(Audio::Faust::Editor, visible, file_name)
+JsonType(Audio::Faust::Diagram::DiagramSettings, ScaleFill, HoverDebug)
+JsonType(Audio::Faust::Diagram, Settings)
 JsonType(Audio::Faust, code, diagram, error, editor, log)
 JsonType(Audio, running, visible, muted, backend, sample_rate, device_volume, faust)
 JsonType(File::Dialog, visible, title, save_mode, filters, file_path, default_file_name, max_num_selections, flags) // todo without this, error "type must be string, but is object" on project load
@@ -755,4 +757,4 @@ JsonType(ImGuiSettingsData, nodes, windows, tables)
 
 JsonType(Processes, ui)
 
-JsonType(StateData, application_settings, diagram_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, project_preview, demo, metrics, tools);
+JsonType(StateData, application_settings, audio, file, style, imgui_settings, processes, state_viewer, state_memory_editor, path_update_frequency, project_preview, demo, metrics, tools);

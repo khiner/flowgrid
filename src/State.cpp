@@ -918,7 +918,7 @@ void FlowGridStyle::draw() const {
     if (BeginTabBar("##FlowGridStyleEditor")) {
         if (BeginTabItem("Faust diagram")) {
             DiagramFoldComplexity.Draw();
-            const bool ScaleFill = s.diagram_settings.ScaleFill;
+            const bool ScaleFill = s.audio.faust.diagram.Settings.ScaleFill;
             if (ScaleFill) ImGui::BeginDisabled();
             const auto scale_before = DiagramScale.value;
             if (DiagramScale.Draw() && DiagramScaleLinked) {

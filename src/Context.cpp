@@ -70,27 +70,29 @@ struct FaustContext {
         deleteDSPFactory(dsp_factory);
     }
 
-    void compute(int frame_count) const;
-    FAUSTFLOAT get_sample(int channel, int frame) const;
-};
-
-void FaustContext::compute(int frame_count) const {
-    if (buffers) {
-        if (frame_count > buffers->num_frames) {
-            std::cerr << "The output stream buffer only has " << buffers->num_frames
-                      << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
-                      << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
-            exit(1);
+    void compute(int frame_count) const {
+        if (buffers) {
+            if (frame_count > buffers->num_frames) {
+                std::cerr << "The output stream buffer only has " << buffers->num_frames
+                          << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
+                          << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
+                exit(1);
+            }
+            if (dsp) dsp->compute(frame_count, buffers->input, buffers->output);
         }
-        if (dsp) dsp->compute(frame_count, buffers->input, buffers->output);
+        // TODO log warning
     }
-    // TODO log warning
-}
 
-FAUSTFLOAT FaustContext::get_sample(int channel, int frame) const {
-    if (!buffers || !dsp) return 0;
-    return buffers->output[std::min(channel, buffers->num_output_channels - 1)][frame];
-}
+    inline FAUSTFLOAT get_sample(int channel, int frame) const {
+        if (!buffers || !dsp) return 0;
+        return buffers->output[std::min(channel, buffers->num_output_channels - 1)][frame];
+    }
+
+    inline void set_input_sample(int channel, int frame, FAUSTFLOAT value) {
+        if (!buffers || !dsp) return;
+        buffers->input[std::min(channel, buffers->num_input_channels - 1)][frame] = value;
+    }
+};
 
 std::unique_ptr<FaustContext> faust;
 void Context::compute_frames(int frame_count) const { // NOLINT(readability-convert-member-functions-to-static)
@@ -99,6 +101,10 @@ void Context::compute_frames(int frame_count) const { // NOLINT(readability-conv
 
 FAUSTFLOAT Context::get_sample(int channel, int frame) const {
     return !faust || s.Audio.Muted ? 0 : faust->get_sample(channel, frame);
+}
+
+void Context::set_input_sample(int channel, int frame, FAUSTFLOAT value) {
+    if (faust) faust->set_input_sample(channel, frame, value);
 }
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {

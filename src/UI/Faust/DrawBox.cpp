@@ -337,14 +337,6 @@ struct ImGuiDevice : Device {
     ImDrawList *draw_list;
 };
 
-enum IO_ {
-    IO_None = -1,
-    IO_In,
-    IO_Out,
-};
-
-using IO = IO_;
-
 string to_string(const IO io) {
     switch (io) {
         case IO_None: return "None";

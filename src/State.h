@@ -305,6 +305,14 @@ struct Tools : Window {
 
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
 
+enum IO_ {
+    IO_None = -1,
+    IO_In,
+    IO_Out,
+};
+
+using IO = IO_;
+
 struct Audio : Process {
     using Process::Process;
 
@@ -368,7 +376,7 @@ struct Audio : Process {
 
     Bool Muted{Path, "Muted", true};
     AudioBackend Backend = none;
-    std::optional<string> InDeviceId;
+    String InDeviceId{Path, "InDeviceId", "In device ID"};
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
     Float DeviceVolume{Path, "DeviceVolume", 1.0};
     Int SampleRate{Path, "SampleRate"};

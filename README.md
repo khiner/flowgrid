@@ -4,14 +4,7 @@ _Still actively building this._
 
 ## Application goals
 
-**Ultimately, I aim to make FlowGrid a sort of general-purpose audiovisual programming language.**
-
-I eventually hope to use FlowGrid to create artful/(self-)educational/useful interactive audiovisual programs.
-
-At this early stage, however, I'm currently focused on making FlowGrid a development and debugging environment specialized to the needs of developing the FlowGrid application itself.
-
-I'm prioritizing features that will make it easier to get things done - meta-features rather than domain-features.
-My rational for this approach is that any feature which increases development velocity will have a greater impact on reducing the total development time the earlier it's done.
+My goal with FlowGrid to create artful/(self-)educational/useful interactive audiovisual programs.
 
 ## Current development goals
 

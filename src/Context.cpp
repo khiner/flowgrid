@@ -10,6 +10,7 @@
 // This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
 // AND switching between different sample rates, which seems to make for high peak frame sizes at the transition frame.
 // If it needs bumping up, bump away!
+// Note: This is _not_ the device buffer size!
 static const int MAX_EXPECTED_FRAME_COUNT = 8192;
 
 struct FaustBuffers {
@@ -97,6 +98,11 @@ struct FaustContext {
 std::unique_ptr<FaustContext> faust;
 void Context::compute_frames(int frame_count) const { // NOLINT(readability-convert-member-functions-to-static)
     if (faust) faust->compute(frame_count);
+}
+
+FAUSTFLOAT *Context::get_samples(IO io, int channel) {
+    if (!faust) return nullptr;
+    return io == IO_In ? faust->buffers->input[channel] : faust->buffers->output[channel];
 }
 
 FAUSTFLOAT Context::get_sample(int channel, int frame) const {

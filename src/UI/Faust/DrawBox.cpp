@@ -23,8 +23,6 @@ using Tree = Box;
 using std::min;
 using std::max;
 
-using namespace fmt;
-
 using Count = unsigned int;
 enum DeviceType { ImGuiDeviceType, SVGDeviceType };
 enum SchemaOrientation { SchemaForward, SchemaReverse };

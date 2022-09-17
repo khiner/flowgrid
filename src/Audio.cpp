@@ -95,6 +95,8 @@ std::map<IO, std::vector<int>> device_sample_rates = {{IO_In, {}}, {IO_Out, {}}}
 bool soundio_ready = false;
 bool thread_running = false;
 int underflow_count = 0;
+int last_read_frame_count_max = 0;
+int last_write_frame_count_max = 0;
 
 int audio() {
     soundio = soundio_create();
@@ -196,6 +198,10 @@ int audio() {
     if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates[IO_Out].back();
     if (outstream->sample_rate != s.Audio.SampleRate) q(set_value{s.Audio.SampleRate.Path, outstream->sample_rate});
 
+    // todo in the libsoundio microphone example, input & output devices need the same format, since it uses a single ring buffer
+    //  (I think that's why anyway!)
+    //  Currently, we're handling reading & writing separately, so they don't need to be the same format.
+    //  However, I want to investigate using a ring buffer as well, so keeping this as-is for now.
     for (const auto &format: prioritized_formats) {
         if (soundio_device_supports_format(in_device, format) &&
             soundio_device_supports_format(out_device, format)) {
@@ -212,6 +218,7 @@ int audio() {
         SoundIoChannelArea *areas;
         int err;
 
+        last_read_frame_count_max = frame_count_max;
         int frames_left = frame_count_max;
         while (true) {
             int frame_count = frames_left;
@@ -224,7 +231,7 @@ int audio() {
             const auto *layout = &instream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    c.set_input_sample(channel, frame, read_sample(areas[channel].ptr));
+                    Context::set_input_sample(channel, frame, read_sample(areas[channel].ptr));
                     areas[channel].ptr += areas[channel].step;
                 }
             }
@@ -244,6 +251,7 @@ int audio() {
         SoundIoChannelArea *areas;
         int err;
 
+        last_write_frame_count_max = frame_count_max;
         int frames_left = frame_count_max;
         while (true) {
             int frame_count = frames_left;
@@ -314,8 +322,6 @@ void Audio::update_process() const {
 
     if (soundio_ready && outstream && outstream->volume != DeviceVolume) soundio_outstream_set_volume(outstream, DeviceVolume);
 }
-
-#include "UI/Widgets.h"
 
 using namespace fg;
 using namespace ImGui;
@@ -416,8 +422,34 @@ void ShowBackends() {
         }
         TreePop();
     }
-
 }
+
+void PlotBuffer(const char *label, IO io, int channel, int frame_count_max) {
+    const float *buffer = Context::get_samples(io, channel);
+    if (buffer == nullptr) return;
+
+    ImPlot::PlotLine(label, buffer, frame_count_max);
+}
+
+void PlotBuffers() {
+    // todo use stream channel layouts & buffer size instead of hard coding
+    if (ImPlot::BeginPlot("In")) {
+        ImPlot::SetupAxes("Sample index", "Value");
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, last_read_frame_count_max, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1);
+        PlotBuffer("In (mono)", IO_In, 0, last_read_frame_count_max);
+        ImPlot::EndPlot();
+    }
+    if (ImPlot::BeginPlot("Out")) {
+        ImPlot::SetupAxes("Sample index", "Value");
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, last_write_frame_count_max, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1);
+        PlotBuffer("Out (left)", IO_Out, 0, last_write_frame_count_max);
+        PlotBuffer("Out (right)", IO_Out, 1, last_write_frame_count_max);
+        ImPlot::EndPlot();
+    }
+}
+
 void Audio::draw() const {
     Running.Draw();
     Muted.Draw();
@@ -439,5 +471,6 @@ void Audio::draw() const {
             TreePop();
         }
         ShowBackends();
+        PlotBuffers();
     }
 }

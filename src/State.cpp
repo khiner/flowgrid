@@ -1057,7 +1057,7 @@ void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
         TreePop();
     }
 
-    BulletText("Time: %s", fmt::format("{}\n", diff.Time).c_str());
+    BulletText("Time: %s", format("{}\n", diff.Time).c_str());
 }
 
 void ShowGesture(const Gesture &gesture) {

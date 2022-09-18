@@ -3,54 +3,12 @@
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "faust/dsp/llvm-dsp.h"
 #include "UI/Faust/DrawBox.hh"
-
-// Used to initialize the static Faust buffer.
-// This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
-// AND switching between different sample rates, which seems to make for high peak frame sizes at the transition frame.
-// If it needs bumping up, bump away!
-// Note: This is _not_ the device buffer size!
-static const int MAX_EXPECTED_FRAME_COUNT = 8192;
-
-struct FaustBuffers {
-    const int num_frames = MAX_EXPECTED_FRAME_COUNT;
-    const int input_count;
-    const int output_count;
-    float **input;
-    float **output;
-
-    FaustBuffers(int num_input_channels, int num_output_channels) :
-        input_count(num_input_channels), output_count(num_output_channels) {
-        input = new float *[num_input_channels];
-        output = new float *[num_output_channels];
-        for (int i = 0; i < num_input_channels; i++) { input[i] = new float[MAX_EXPECTED_FRAME_COUNT]; }
-        for (int i = 0; i < num_output_channels; i++) { output[i] = new float[MAX_EXPECTED_FRAME_COUNT]; }
-    }
-
-    ~FaustBuffers() {
-        for (int i = 0; i < input_count; i++) { delete[] input[i]; }
-        for (int i = 0; i < output_count; i++) { delete[] output[i]; }
-        delete[] input;
-        delete[] output;
-    }
-    // todo overload `[]` operator get/set for dimensionality `[2 (input/output)][num_channels][max_num_frames (max between input_count/output_count)]
-    inline FAUSTFLOAT get(IO io, int channel, int frame) const {
-        if ((io == IO_In && channel >= input_count) || (io == IO_Out && channel >= output_count)) return 0;
-        return (io == IO_In ? input : output)[channel][frame];
-    }
-    inline void set(IO io, int channel, int frame, FAUSTFLOAT value) const {
-        if ((io == IO_In && channel >= input_count) || (io == IO_Out && channel >= output_count)) return;
-        if (channel >= input_count) return;
-        (io == IO_In ? input : output)[channel][frame] = value;
-    }
-};
 
 struct FaustContext {
     int num_inputs{0}, num_outputs{0};
     llvm_dsp_factory *dsp_factory;
     dsp *dsp = nullptr;
-    std::unique_ptr<FaustBuffers> buffers;
 
     FaustContext(const string &code, int sample_rate, string &error_msg) {
 //        The only arg that's strictly needed is the faust library path.
@@ -70,7 +28,6 @@ struct FaustContext {
             }
         }
         on_box_change(c.faust_box);
-        buffers = std::make_unique<FaustBuffers>(num_inputs, num_outputs);
     }
 
     ~FaustContext() {
@@ -80,47 +37,36 @@ struct FaustContext {
         dsp = nullptr;
         deleteDSPFactory(dsp_factory);
     }
-
-    void compute(int frame_count) const {
-        if (buffers) {
-            if (frame_count > buffers->num_frames) {
-                std::cerr << "The output stream buffer only has " << buffers->num_frames
-                          << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
-                          << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
-                exit(1);
-            }
-            if (dsp) dsp->compute(frame_count, buffers->input, buffers->output);
-        }
-        // TODO log warning
-    }
-
-    inline FAUSTFLOAT get_sample(IO io, int channel, int frame) const {
-        if (!buffers || !dsp) return 0;
-        return buffers->get(io, channel, frame);
-    }
-
-    inline void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) const {
-        if (!buffers || !dsp) return;
-        buffers->set(io, channel, frame, value);
-    }
 };
 
 std::unique_ptr<FaustContext> faust;
 void Context::compute_frames(int frame_count) const { // NOLINT(readability-convert-member-functions-to-static)
-    if (faust) faust->compute(frame_count);
+    if (faust) compute(frame_count);
 }
 
-FAUSTFLOAT *Context::get_samples(IO io, int channel) {
+FAUSTFLOAT *Context::get_samples(IO io, int channel) const {
     if (!faust) return nullptr;
-    return io == IO_In ? faust->buffers->input[channel] : faust->buffers->output[channel];
+    return io == IO_In ? buffers->input[channel] : buffers->output[channel];
 }
 
 FAUSTFLOAT Context::get_sample(IO io, int channel, int frame) const {
-    return !faust || s.Audio.Muted ? 0 : faust->get_sample(io, channel, frame);
+    return !faust || s.Audio.Muted ? 0 : buffers->get(io, channel, frame);
 }
 
-void Context::set_sample(IO io, int channel, int frame, FAUSTFLOAT value) {
-    if (faust) faust->set_sample(io, channel, frame, value);
+void Context::compute(int frame_count) const {
+    if (faust && buffers) {
+        if (frame_count > buffers->num_frames) {
+            std::cerr << "The output stream buffer only has " << buffers->num_frames
+                      << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
+                      << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
+            exit(1);
+        }
+        if (faust && faust->dsp) faust->dsp->compute(frame_count, buffers->input, buffers->output);
+    }
+    // TODO log warning
+}
+void Context::set_sample(IO io, int channel, int frame, FAUSTFLOAT value) const {
+    if (buffers) buffers->set(io, channel, frame, value);
 }
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
@@ -209,6 +155,7 @@ void Context::update_faust_context() {
     has_new_faust_code = true;
 
     faust = std::make_unique<FaustContext>(s.Audio.faust.Code, s.Audio.SampleRate, state.Audio.faust.Error);
+    buffers = std::make_unique<Buffers>(faust->num_inputs, faust->num_outputs);
     if (faust->dsp) {
 //        StatefulFaustUI faust_ui;
 //        faust->dsp->buildUserInterface(&faust_ui);

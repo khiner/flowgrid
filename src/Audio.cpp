@@ -232,7 +232,7 @@ int audio() {
             const auto *layout = &instream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    Context::set_sample(IO_In, channel, frame, read_sample(areas[channel].ptr));
+                    c.set_sample(IO_In, channel, frame, read_sample(areas[channel].ptr));
                     areas[channel].ptr += areas[channel].step;
                 }
             }
@@ -431,7 +431,7 @@ void ShowBackends() {
 }
 
 void PlotBuffer(const char *label, IO io, int channel, int frame_count_max) {
-    const float *buffer = Context::get_samples(io, channel);
+    const float *buffer = c.get_samples(io, channel);
     if (buffer == nullptr) return;
 
     ImPlot::PlotLine(label, buffer, frame_count_max);

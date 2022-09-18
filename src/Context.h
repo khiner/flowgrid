@@ -101,15 +101,15 @@ struct Buffers {
     const int num_frames = MAX_EXPECTED_FRAME_COUNT;
     const int input_count;
     const int output_count;
-    float **input;
-    float **output;
+    FAUSTFLOAT **input;
+    FAUSTFLOAT **output;
 
     Buffers(int num_input_channels, int num_output_channels) :
         input_count(num_input_channels), output_count(num_output_channels) {
-        input = new float *[num_input_channels];
-        output = new float *[num_output_channels];
-        for (int i = 0; i < num_input_channels; i++) { input[i] = new float[MAX_EXPECTED_FRAME_COUNT]; }
-        for (int i = 0; i < num_output_channels; i++) { output[i] = new float[MAX_EXPECTED_FRAME_COUNT]; }
+        input = new FAUSTFLOAT *[num_input_channels];
+        output = new FAUSTFLOAT *[num_output_channels];
+        for (int i = 0; i < num_input_channels; i++) { input[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
+        for (int i = 0; i < num_output_channels; i++) { output[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
     }
 
     ~Buffers() {
@@ -151,9 +151,9 @@ struct Context {
 
     // Audio
     void compute_frames(int frame_count) const;
-    float *get_samples(IO io, int channel) const;
-    float get_sample(IO io, int channel, int frame) const;
-    void set_sample(IO io, int channel, int frame, float value) const;
+    FAUSTFLOAT *get_samples(IO io, int channel) const;
+    FAUSTFLOAT get_sample(IO io, int channel, int frame) const;
+    void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) const;
     void compute(int frame_count) const;
 
     void update_ui_context(UIContextFlags flags);

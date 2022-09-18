@@ -28,37 +28,36 @@ SoundIoBackend soundio_backend(const AudioBackend backend) {
     }
 }
 
-// todo use FAUSTFLOAT more
-
-inline static float read_sample_s16ne(const char *ptr) {
+inline static FAUSTFLOAT read_sample_s16ne(const char *ptr) {
     const auto value = *(int16_t *) ptr;
-    return 2.0f * float(value) / (float(INT16_MAX) - float(INT16_MIN));
+    return 2.0f * FAUSTFLOAT(value) / (FAUSTFLOAT(INT16_MAX) - FAUSTFLOAT(INT16_MIN));
 }
-inline static float read_sample_s32ne(const char *ptr) {
+inline static FAUSTFLOAT read_sample_s32ne(const char *ptr) {
     const auto value = *(int32_t *) ptr;
-    return 2.0f * float(value) / (float(INT32_MAX) - float(INT32_MIN));
+    return 2.0f * FAUSTFLOAT(value) / (FAUSTFLOAT(INT32_MAX) - FAUSTFLOAT(INT32_MIN));
 }
-inline static float read_sample_float32ne(const char *ptr) {
-    return *(float *) ptr;
+inline static FAUSTFLOAT read_sample_float32ne(const char *ptr) {
+    const auto value = *(float *) ptr;
+    return FAUSTFLOAT(value);
 }
-inline static float read_sample_float64ne(const char *ptr) {
+inline static FAUSTFLOAT read_sample_float64ne(const char *ptr) {
     const auto value = *(double *) ptr;
-    return float(value);
+    return FAUSTFLOAT(value);
 }
 
-inline static void write_sample_s16ne(char *ptr, float sample) {
+inline static void write_sample_s16ne(char *ptr, FAUSTFLOAT sample) {
     auto *buf = (int16_t *) ptr;
-    *buf = (int16_t) (sample * (float(INT16_MAX) - float(INT16_MIN)) / 2.0);
+    *buf = int16_t(sample * (FAUSTFLOAT(INT16_MAX) - FAUSTFLOAT(INT16_MIN)) / 2.0);
 }
-inline static void write_sample_s32ne(char *ptr, float sample) {
+inline static void write_sample_s32ne(char *ptr, FAUSTFLOAT sample) {
     auto *buf = (int32_t *) ptr;
-    *buf = (int32_t) (sample * (float(INT32_MAX) - float(INT32_MIN)) / 2.0);
+    *buf = int32_t(sample * (FAUSTFLOAT(INT32_MAX) - FAUSTFLOAT(INT32_MIN)) / 2.0);
 }
-inline static void write_sample_float32ne(char *ptr, float sample) {
+inline static void write_sample_float32ne(char *ptr, FAUSTFLOAT sample) {
     auto *buf = (float *) ptr;
-    *buf = sample;
+    *buf = float(sample);
 }
-inline static void write_sample_float64ne(char *ptr, float sample) {
+inline static void write_sample_float64ne(char *ptr, FAUSTFLOAT sample) {
     auto *buf = (double *) ptr;
     *buf = double(sample);
 }
@@ -83,8 +82,8 @@ auto write_sample_for_format(const SoundIoFormat format) {
 }
 
 // These IO read/write functions are determined at runtime below.
-static float (*read_sample)(const char *ptr);
-static void (*write_sample)(char *ptr, float sample);
+static FAUSTFLOAT (*read_sample)(const char *ptr);
+static void (*write_sample)(char *ptr, FAUSTFLOAT sample);
 
 SoundIo *soundio = nullptr;
 SoundIoInStream *instream = nullptr;
@@ -266,7 +265,7 @@ int audio() {
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    const float output_sample = c.get_sample(IO_Out, channel, frame) +
+                    const FAUSTFLOAT output_sample = c.get_sample(IO_Out, channel, frame) +
                         (s.Audio.MonitorInput ? c.get_sample(IO_In, min(channel, c.buffers->input_count - 1), frame) : 0);
                     write_sample(areas[channel].ptr, output_sample);
                     areas[channel].ptr += areas[channel].step;
@@ -433,7 +432,7 @@ void ShowBackends() {
 }
 
 void PlotBuffer(const char *label, IO io, int channel, int frame_count_max) {
-    const float *buffer = c.get_samples(io, channel);
+    const FAUSTFLOAT *buffer = c.get_samples(io, channel);
     if (buffer == nullptr) return;
 
     ImPlot::PlotLine(label, buffer, frame_count_max);

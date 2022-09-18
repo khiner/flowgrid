@@ -213,6 +213,15 @@ static void create_stream(const IO io) {
     if (io == IO_In) instream = soundio_instream_create(device);
     else outstream = soundio_outstream_create(device);
     if ((io == IO_In && !instream) || (io == IO_Out && !outstream)) throw std::runtime_error("Out of memory");
+
+    auto *format_ptr = &(io == IO_In ? instream->format : outstream->format);
+    for (const auto &format: prioritized_formats) {
+        if (soundio_device_supports_format(devices[io], format)) {
+            *format_ptr = format;
+            break;
+        }
+    }
+    if (*format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("No suitable {} device format available", to_string(io)));
 }
 static void open_stream(const IO io) {
     if (io == IO_None) return;
@@ -308,19 +317,6 @@ int audio() {
     if (!instream->sample_rate) instream->sample_rate = device_sample_rates[IO_In].back();
     if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates[IO_Out].back();
     if (outstream->sample_rate != s.Audio.SampleRate) q(set_value{s.Audio.SampleRate.Path, outstream->sample_rate});
-
-    // todo in the libsoundio microphone example, input & output devices need the same format, since it uses a single ring buffer
-    //  (I think that's why anyway!)
-    //  Currently, we're handling reading & writing separately, so they don't need to be the same format.
-    //  However, I want to investigate using a ring buffer as well, so keeping this as-is for now.
-    for (const auto &format: prioritized_formats) {
-        if (soundio_device_supports_format(devices[IO_In], format) &&
-            soundio_device_supports_format(devices[IO_Out], format)) {
-            instream->format = format;
-            outstream->format = format;
-        }
-    }
-    if (instream->format == SoundIoFormatInvalid || outstream->format == SoundIoFormatInvalid) throw std::runtime_error("No suitable device format available");
 
     read_sample = read_sample_for_format(instream->format);
     write_sample = write_sample_for_format(outstream->format);

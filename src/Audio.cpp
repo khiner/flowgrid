@@ -184,7 +184,7 @@ void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) {
     if (buffers) buffers->set(io, channel, frame, value);
 }
 
-static int device_count(const IO io) {
+static int get_device_count(const IO io) {
     switch (io) {
         case IO_In : return soundio_input_device_count(soundio);
         case IO_Out : return soundio_output_device_count(soundio);
@@ -263,12 +263,13 @@ int audio() {
         if (default_device_index < 0) throw std::runtime_error(format("No {} device found", to_string(io))); // todo move on without input
 
         device_ids[io].clear();
-        for (int i = 0; i < device_count(io); i++) device_ids[io].emplace_back(get_device(io, i)->id);
+        const auto device_count = get_device_count(io);
+        for (int i = 0; i < device_count; i++) device_ids[io].emplace_back(get_device(io, i)->id);
 
         int device_index = default_device_index;
         if (s.Audio.get_device_id(io)) {
             bool found = false;
-            for (int i = 0; i < device_count(io); i++) {
+            for (int i = 0; i < device_count; i++) {
                 auto *device = get_device(io, i);
                 if (s.Audio.get_device_id(io) == device->id) {
                     device_index = i;
@@ -286,7 +287,7 @@ int audio() {
         if (device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(device->probe_error));
 
         for (int i = 0; i < device->sample_rate_count; i++) device_sample_rates[io].push_back(device->sample_rates[i].max);
-        if (device_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", to_string(io)));
+        if (device_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", capitalize(to_string(io))));
 
         devices[io] = device;
         create_stream(io);
@@ -477,26 +478,18 @@ void ShowDevice(const SoundIoDevice &device, bool is_default) {
 
 // Based on https://github.com/andrewrk/libsoundio/blob/master/example/sio_list_devices.c
 void ShowDevices() {
-    const auto input_count = soundio_input_device_count(soundio);
-    if (TreeNodeEx("Input devices", ImGuiTreeNodeFlags_DefaultOpen, "Input devices (%d)", input_count)) {
-        const auto default_input = soundio_default_input_device_index(soundio);
-        for (int i = 0; i < input_count; i++) {
-            auto *device = soundio_get_input_device(soundio, i);
-            ShowDevice(*device, default_input == i);
-            soundio_device_unref(device);
+    for (const IO io: {IO_In, IO_Out}) {
+        const auto device_count = get_device_count(io);
+        const string &io_label = capitalize(to_string(io));
+        if (TreeNodeEx(format("{} devices ({})", io_label, device_count).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            const auto default_device_index = get_default_device_index(io);
+            for (int device_index = 0; device_index < device_count; device_index++) {
+                auto *device = get_device(io, device_index);
+                ShowDevice(*device, default_device_index == device_index);
+                soundio_device_unref(device);
+            }
+            TreePop();
         }
-        TreePop();
-    }
-
-    const auto output_count = soundio_output_device_count(soundio);
-    if (TreeNodeEx("Output devices", ImGuiTreeNodeFlags_DefaultOpen, "Output devices (%d)", output_count)) {
-        const auto default_output = soundio_default_output_device_index(soundio);
-        for (int i = 0; i < output_count; i++) {
-            auto *device = soundio_get_output_device(soundio, i);
-            ShowDevice(*device, default_output == i);
-            soundio_device_unref(device);
-        }
-        TreePop();
     }
 }
 

@@ -332,14 +332,6 @@ struct ImGuiDevice : Device {
     ImDrawList *draw_list;
 };
 
-string to_string(const IO io) {
-    switch (io) {
-        case IO_None: return "None";
-        case IO_In: return "In";
-        case IO_Out: return "Out";
-    }
-}
-
 struct Schema;
 
 Schema *root_schema; // This diagram is drawn every frame if present.
@@ -408,7 +400,7 @@ struct Schema {
             for (Count channel = 0; channel < io_count(io); channel++) {
                 device.text(
                     point(io, channel),
-                    format("{}:{}", to_string(io), channel),
+                    format("{}:{}", to_string(io, true), channel),
                     {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .scale_height=1.3, .font_style=TextStyle::FontStyle::Bold}
                 );
                 device.circle(point(io, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
@@ -417,7 +409,7 @@ struct Schema {
                 for (Count channel = 0; channel < io_count(io, ci); channel++) {
                     device.text(
                         child(ci)->point(io, channel),
-                        format("({})->{}:{}", ci, to_string(io), channel),
+                        format("({})->{}:{}", ci, to_string(io, true), channel),
                         {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold}
                     );
                     device.circle(child(ci)->point(io, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});

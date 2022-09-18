@@ -313,6 +313,19 @@ enum IO_ {
 
 using IO = IO_;
 
+inline static string to_string(const IO io, const bool shorten = false) {
+    switch (io) {
+        case IO_In: return shorten ? "In" : "Input";
+        case IO_Out: return shorten ? "Out" : "Output";
+        case IO_None: return "None";
+    }
+}
+
+inline static std::ostream &operator<<(std::ostream &os, const IO &io) {
+    os << to_string(io);
+    return os;
+}
+
 struct Audio : Process {
     using Process::Process;
 

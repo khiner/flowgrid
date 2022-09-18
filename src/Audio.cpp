@@ -185,6 +185,7 @@ int audio() {
     // If the project has a saved sample rate, give it the highest priority.
     if (s.Audio.SampleRate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), s.Audio.SampleRate);
     // Could just check `device_sample_rates` populated above, but this `supports_sample_rate` function handles devices supporting ranges.
+    // todo support input sample rates not supported by output device
     for (const auto &preferred_sample_rate: prioritized_sample_rates) {
         if (soundio_device_supports_sample_rate(in_device, preferred_sample_rate) &&
             soundio_device_supports_sample_rate(out_device, preferred_sample_rate)) {
@@ -231,7 +232,7 @@ int audio() {
             const auto *layout = &instream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    Context::set_input_sample(channel, frame, read_sample(areas[channel].ptr));
+                    Context::set_sample(IO_In, channel, frame, read_sample(areas[channel].ptr));
                     areas[channel].ptr += areas[channel].step;
                 }
             }
@@ -265,7 +266,7 @@ int audio() {
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    write_sample(areas[channel].ptr, c.get_sample(channel, frame));
+                    write_sample(areas[channel].ptr, c.get_sample(IO_Out, channel, frame));
                     areas[channel].ptr += areas[channel].step;
                 }
             }
@@ -283,16 +284,21 @@ int audio() {
 
     outstream->underflow_callback = [](SoundIoOutStream *) { std::cerr << "Underflow #" << underflow_count++ << std::endl; };
 
-    if ((err = soundio_outstream_open(outstream))) { throw std::runtime_error(string("Unable to open device: ") + soundio_strerror(err)); }
-    if (outstream->layout_error) { std::cerr << "Unable to set channel layout: " << soundio_strerror(outstream->layout_error); }
-    if ((err = soundio_outstream_start(outstream))) { throw std::runtime_error(string("Unable to start device: ") + soundio_strerror(err)); }
+    if ((err = soundio_instream_open(instream))) { throw std::runtime_error(string("Unable to open input device: ") + soundio_strerror(err)); }
+    if ((err = soundio_outstream_open(outstream))) { throw std::runtime_error(string("Unable to open output device: ") + soundio_strerror(err)); }
+    if (instream->layout_error) { std::cerr << "Unable to set input channel layout: " << soundio_strerror(instream->layout_error); }
+    if (outstream->layout_error) { std::cerr << "Unable to set output channel layout: " << soundio_strerror(outstream->layout_error); }
+    if ((err = soundio_instream_start(instream))) { throw std::runtime_error(string("Unable to start input device: ") + soundio_strerror(err)); }
+    if ((err = soundio_outstream_start(outstream))) { throw std::runtime_error(string("Unable to start output device: ") + soundio_strerror(err)); }
 
     soundio_ready = true;
     while (thread_running) {}
 
     // Cleanup
     soundio_ready = false;
+    soundio_instream_destroy(instream);
     soundio_outstream_destroy(outstream);
+    soundio_device_unref(in_device);
     soundio_device_unref(out_device);
     soundio_destroy(soundio);
     soundio = nullptr;

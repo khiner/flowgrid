@@ -108,8 +108,8 @@ struct Context {
     // Audio
     void compute_frames(int frame_count) const;
     static float *get_samples(IO io, int channel);
-    float get_sample(int channel, int frame) const;
-    static void set_input_sample(int channel, int frame, float value);
+    float get_sample(IO io, int channel, int frame) const;
+    static void set_sample(IO io, int channel, int frame, float value);
 
     void update_ui_context(UIContextFlags flags);
     void update_faust_context();

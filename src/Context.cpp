@@ -15,13 +15,13 @@ static const int MAX_EXPECTED_FRAME_COUNT = 8192;
 
 struct FaustBuffers {
     const int num_frames = MAX_EXPECTED_FRAME_COUNT;
-    const int num_input_channels;
-    const int num_output_channels;
+    const int input_count;
+    const int output_count;
     float **input;
     float **output;
 
     FaustBuffers(int num_input_channels, int num_output_channels) :
-        num_input_channels(num_input_channels), num_output_channels(num_output_channels) {
+        input_count(num_input_channels), output_count(num_output_channels) {
         input = new float *[num_input_channels];
         output = new float *[num_output_channels];
         for (int i = 0; i < num_input_channels; i++) { input[i] = new float[MAX_EXPECTED_FRAME_COUNT]; }
@@ -29,10 +29,20 @@ struct FaustBuffers {
     }
 
     ~FaustBuffers() {
-        for (int i = 0; i < num_input_channels; i++) { delete[] input[i]; }
-        for (int i = 0; i < num_output_channels; i++) { delete[] output[i]; }
+        for (int i = 0; i < input_count; i++) { delete[] input[i]; }
+        for (int i = 0; i < output_count; i++) { delete[] output[i]; }
         delete[] input;
         delete[] output;
+    }
+    // todo overload `[]` operator get/set for dimensionality `[2 (input/output)][num_channels][max_num_frames (max between input_count/output_count)]
+    inline FAUSTFLOAT get(IO io, int channel, int frame) const {
+        if ((io == IO_In && channel >= input_count) || (io == IO_Out && channel >= output_count)) return 0;
+        return (io == IO_In ? input : output)[channel][frame];
+    }
+    inline void set(IO io, int channel, int frame, FAUSTFLOAT value) const {
+        if ((io == IO_In && channel >= input_count) || (io == IO_Out && channel >= output_count)) return;
+        if (channel >= input_count) return;
+        (io == IO_In ? input : output)[channel][frame] = value;
     }
 };
 
@@ -84,14 +94,14 @@ struct FaustContext {
         // TODO log warning
     }
 
-    inline FAUSTFLOAT get_sample(int channel, int frame) const {
+    inline FAUSTFLOAT get_sample(IO io, int channel, int frame) const {
         if (!buffers || !dsp) return 0;
-        return buffers->output[std::min(channel, buffers->num_output_channels - 1)][frame];
+        return buffers->get(io, channel, frame);
     }
 
-    inline void set_input_sample(int channel, int frame, FAUSTFLOAT value) {
+    inline void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) const {
         if (!buffers || !dsp) return;
-        buffers->input[std::min(channel, buffers->num_input_channels - 1)][frame] = value;
+        buffers->set(io, channel, frame, value);
     }
 };
 
@@ -105,12 +115,12 @@ FAUSTFLOAT *Context::get_samples(IO io, int channel) {
     return io == IO_In ? faust->buffers->input[channel] : faust->buffers->output[channel];
 }
 
-FAUSTFLOAT Context::get_sample(int channel, int frame) const {
-    return !faust || s.Audio.Muted ? 0 : faust->get_sample(channel, frame);
+FAUSTFLOAT Context::get_sample(IO io, int channel, int frame) const {
+    return !faust || s.Audio.Muted ? 0 : faust->get_sample(io, channel, frame);
 }
 
-void Context::set_input_sample(int channel, int frame, FAUSTFLOAT value) {
-    if (faust) faust->set_input_sample(channel, frame, value);
+void Context::set_sample(IO io, int channel, int frame, FAUSTFLOAT value) {
+    if (faust) faust->set_sample(io, channel, frame, value);
 }
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {

@@ -443,7 +443,7 @@ void ShowChannelLayout(const SoundIoChannelLayout &layout, bool is_current) {
 void ShowDevice(const SoundIoDevice &device, bool is_default) {
     const char *default_str = is_default ? " (default)" : "";
     const char *raw_str = device.is_raw ? " (raw)" : "";
-    if (TreeNode("%s%s%s", device.name, default_str, raw_str)) {
+    if (TreeNode(device.name, "%s%s%s", device.name, default_str, raw_str)) {
         Text("ID: %s", device.id);
         if (device.probe_error) {
             Text("Probe error: %s", soundio_strerror(device.probe_error));

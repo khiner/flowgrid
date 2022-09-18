@@ -90,12 +90,43 @@ SoundIoInStream *instream = nullptr;
 SoundIoOutStream *outstream = nullptr;
 std::map<IO, std::vector<string>> device_ids = {{IO_In, {}}, {IO_Out, {}}};
 std::map<IO, std::vector<int>> device_sample_rates = {{IO_In, {}}, {IO_Out, {}}};
+std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
 
 bool soundio_ready = false;
 bool thread_running = false;
 int underflow_count = 0;
 int last_read_frame_count_max = 0;
 int last_write_frame_count_max = 0;
+
+static int device_count(IO io) { return io == IO_In ? soundio_input_device_count(soundio) : soundio_output_device_count(soundio); }
+static SoundIoDevice *get_device(IO io, int index) { return io == IO_In ? soundio_get_input_device(soundio, index) : soundio_get_output_device(soundio, index); }
+static int get_default_device_index(IO io) { return io == IO_In ? soundio_default_input_device_index(soundio) : soundio_default_output_device_index(soundio); }
+
+static void create_stream(IO io) {
+    auto *device = devices[io];
+    if (io == IO_In) instream = soundio_instream_create(device);
+    else outstream = soundio_outstream_create(device);
+    if ((io == IO_In && !instream) || (io == IO_Out && !outstream)) throw std::runtime_error("Out of memory");
+}
+static void open_stream(IO io) {
+    int err;
+    if ((err = (io == IO_In ? soundio_instream_open(instream) : soundio_outstream_open(outstream)))) {
+        throw std::runtime_error(string("Unable to open input device: ") + soundio_strerror(err));
+    }
+
+    if (io == IO_In && instream->layout_error) { std::cerr << "Unable to set input channel layout: " << soundio_strerror(instream->layout_error); }
+    else if (io == IO_Out && outstream->layout_error) { std::cerr << "Unable to set output channel layout: " << soundio_strerror(outstream->layout_error); }
+
+    if ((err = (io == IO_In ? soundio_instream_start(instream) : soundio_outstream_start(outstream)))) {
+        throw std::runtime_error(string("Unable to start input device: ") + soundio_strerror(err));
+    }
+}
+static void destroy_stream(IO io) {
+    if (io == IO_In) soundio_instream_destroy(instream);
+    else soundio_outstream_destroy(outstream);
+
+    soundio_device_unref(devices[io]);
+}
 
 int audio() {
     soundio = soundio_create();
@@ -106,77 +137,47 @@ int audio() {
 
     soundio_flush_events(soundio);
 
-    // Input device setup
-    int default_in_device_index = soundio_default_input_device_index(soundio);
-    if (default_in_device_index < 0) throw std::runtime_error("No input device found"); // todo move on without input
+    // Input/output device setup
+    device_sample_rates.clear();
+    for (IO io: {IO_In, IO_Out}) {
+        int default_device_index = get_default_device_index(io);
+        if (default_device_index < 0) throw std::runtime_error("No input device found"); // todo move on without input
 
-    // Output device setup
-    int default_out_device_index = soundio_default_output_device_index(soundio);
-    if (default_out_device_index < 0) throw std::runtime_error("No output device found");
+        device_ids[io].clear();
+        for (int i = 0; i < device_count(io); i++) device_ids[io].emplace_back(get_device(io, i)->id);
 
-    device_ids[IO_In].clear();
-    for (int i = 0; i < soundio_input_device_count(soundio); i++) device_ids[IO_In].emplace_back(soundio_get_input_device(soundio, i)->id);
-
-    int in_device_index = default_in_device_index;
-    if (s.Audio.InDeviceId) {
-        bool found = false;
-        for (int i = 0; i < soundio_input_device_count(soundio); i++) {
-            auto *device = soundio_get_input_device(soundio, i);
-            if (s.Audio.InDeviceId == device->id) {
-                in_device_index = i;
-                found = true;
+        int device_index = default_device_index;
+        if (s.Audio.get_device_id(io)) {
+            bool found = false;
+            for (int i = 0; i < device_count(io); i++) {
+                auto *device = get_device(io, i);
+                if (s.Audio.get_device_id(io) == device->id) {
+                    device_index = i;
+                    found = true;
+                    soundio_device_unref(device);
+                    break;
+                }
                 soundio_device_unref(device);
-                break;
             }
-            soundio_device_unref(device);
+            if (!found) throw std::runtime_error(string("Invalid input device id: ") + string(s.Audio.get_device_id(io)));
         }
-        if (!found) throw std::runtime_error(string("Invalid input device id: ") + string(s.Audio.InDeviceId));
+
+        auto *device = get_device(io, device_index);
+        if (!device) throw std::runtime_error("Could not get input device: out of memory");
+        if (device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(device->probe_error));
+
+        for (int i = 0; i < device->sample_rate_count; i++) device_sample_rates[io].push_back(device->sample_rates[i].max);
+        if (device_sample_rates[io].empty()) throw std::runtime_error("Input audio stream has no supported sample rates");
+
+        devices[io] = device;
+        create_stream(io);
     }
-
-    device_ids[IO_Out].clear();
-    for (int i = 0; i < soundio_output_device_count(soundio); i++) device_ids[IO_Out].emplace_back(soundio_get_output_device(soundio, i)->id);
-
-    int out_device_index = default_out_device_index;
-    if (s.Audio.OutDeviceId) {
-        bool found = false;
-        for (int i = 0; i < soundio_output_device_count(soundio); i++) {
-            auto *device = soundio_get_output_device(soundio, i);
-            if (s.Audio.OutDeviceId == device->id) {
-                out_device_index = i;
-                found = true;
-                soundio_device_unref(device);
-                break;
-            }
-            soundio_device_unref(device);
-        }
-        if (!found) throw std::runtime_error(string("Invalid output device id: ") + string(s.Audio.OutDeviceId));
-    }
-
-    auto *in_device = soundio_get_input_device(soundio, in_device_index);
-    if (!in_device) throw std::runtime_error("Could not get input device: out of memory");
-    if (in_device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(in_device->probe_error));
-
-    auto *out_device = soundio_get_output_device(soundio, out_device_index);
-    if (!out_device) throw std::runtime_error("Could not get output device: out of memory");
-    if (out_device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(out_device->probe_error));
 
     // This is from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_microphone.c#L308-L313,
     // but it fails with a mono microphone and stereo output, which is a common scenario that we'll happily handle.
 //    soundio_device_sort_channel_layouts(out_device);
 //    const auto *layout = soundio_best_matching_channel_layout(out_device->layouts, out_device->layout_count, in_device->layouts, in_device->layout_count);
 //    if (!layout) throw std::runtime_error("Channel layouts not compatible");
-
-    device_sample_rates.clear();
-    for (int i = 0; i < in_device->sample_rate_count; i++) device_sample_rates[IO_In].push_back(in_device->sample_rates[i].max);
-    if (device_sample_rates[IO_In].empty()) throw std::runtime_error("Input audio stream has no supported sample rates");
-    for (int i = 0; i < out_device->sample_rate_count; i++) device_sample_rates[IO_Out].push_back(out_device->sample_rates[i].max);
-    if (device_sample_rates[IO_Out].empty()) throw std::runtime_error("Output audio stream has no supported sample rates");
-
-    instream = soundio_instream_create(in_device);
-    if (!instream) throw std::runtime_error("Out of memory");
-    outstream = soundio_outstream_create(out_device);
-    if (!outstream) throw std::runtime_error("Out of memory");
-
 //    instream->layout = *layout;
 //    outstream->layout = *layout;
 
@@ -186,8 +187,8 @@ int audio() {
     // Could just check `device_sample_rates` populated above, but this `supports_sample_rate` function handles devices supporting ranges.
     // todo support input sample rates not supported by output device
     for (const auto &preferred_sample_rate: prioritized_sample_rates) {
-        if (soundio_device_supports_sample_rate(in_device, preferred_sample_rate) &&
-            soundio_device_supports_sample_rate(out_device, preferred_sample_rate)) {
+        if (soundio_device_supports_sample_rate(devices[IO_In], preferred_sample_rate) &&
+            soundio_device_supports_sample_rate(devices[IO_Out], preferred_sample_rate)) {
             instream->sample_rate = preferred_sample_rate;
             outstream->sample_rate = preferred_sample_rate;
             break;
@@ -203,8 +204,8 @@ int audio() {
     //  Currently, we're handling reading & writing separately, so they don't need to be the same format.
     //  However, I want to investigate using a ring buffer as well, so keeping this as-is for now.
     for (const auto &format: prioritized_formats) {
-        if (soundio_device_supports_format(in_device, format) &&
-            soundio_device_supports_format(out_device, format)) {
+        if (soundio_device_supports_format(devices[IO_In], format) &&
+            soundio_device_supports_format(devices[IO_Out], format)) {
             instream->format = format;
             outstream->format = format;
         }
@@ -285,22 +286,13 @@ int audio() {
 
     outstream->underflow_callback = [](SoundIoOutStream *) { std::cerr << "Underflow #" << underflow_count++ << std::endl; };
 
-    if ((err = soundio_instream_open(instream))) { throw std::runtime_error(string("Unable to open input device: ") + soundio_strerror(err)); }
-    if ((err = soundio_outstream_open(outstream))) { throw std::runtime_error(string("Unable to open output device: ") + soundio_strerror(err)); }
-    if (instream->layout_error) { std::cerr << "Unable to set input channel layout: " << soundio_strerror(instream->layout_error); }
-    if (outstream->layout_error) { std::cerr << "Unable to set output channel layout: " << soundio_strerror(outstream->layout_error); }
-    if ((err = soundio_instream_start(instream))) { throw std::runtime_error(string("Unable to start input device: ") + soundio_strerror(err)); }
-    if ((err = soundio_outstream_start(outstream))) { throw std::runtime_error(string("Unable to start output device: ") + soundio_strerror(err)); }
+    for (IO io: {IO_In, IO_Out}) open_stream(io);
 
     soundio_ready = true;
     while (thread_running) {}
-
-    // Cleanup
     soundio_ready = false;
-    soundio_instream_destroy(instream);
-    soundio_outstream_destroy(outstream);
-    soundio_device_unref(in_device);
-    soundio_device_unref(out_device);
+
+    for (IO io: {IO_In, IO_Out}) destroy_stream(io);
     soundio_destroy(soundio);
     soundio = nullptr;
 
@@ -451,8 +443,8 @@ void PlotBuffers() {
         ImPlot::SetupAxes("Sample index", "Value");
         ImPlot::SetupAxisLimits(ImAxis_X1, 0, last_write_frame_count_max, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1);
-        PlotBuffer("Out (left)", IO_Out, 0, last_write_frame_count_max);
-        PlotBuffer("Out (right)", IO_Out, 1, last_write_frame_count_max);
+        PlotBuffer("Left", IO_Out, 0, last_write_frame_count_max);
+        PlotBuffer("Right", IO_Out, 1, last_write_frame_count_max);
         ImPlot::EndPlot();
     }
 }

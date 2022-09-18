@@ -371,6 +371,7 @@ struct Audio : Process {
     };
 
     void update_process() const override;
+    String get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
     Faust faust{Path, "faust"};
 

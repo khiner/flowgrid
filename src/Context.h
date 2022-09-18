@@ -47,6 +47,16 @@ static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForP
 static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
 static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
 
+struct FaustContext {
+    int num_inputs{0}, num_outputs{0};
+    llvm_dsp_factory *dsp_factory;
+    dsp *dsp = nullptr;
+    Box box = nullptr;
+
+    FaustContext(const string &code, int sample_rate, string &error_msg);
+    ~FaustContext();
+};
+
 struct State : StateData, Drawable {
     State() = default;
 
@@ -90,46 +100,6 @@ private:
     Plottable create_path_update_frequency_plottable();
 };
 
-// Used to initialize the static Faust buffer.
-// This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
-// AND switching between different sample rates, which seems to make for high peak frame sizes at the transition frame.
-// If it needs bumping up, bump away!
-// Note: This is _not_ the device buffer size!
-static const int MAX_EXPECTED_FRAME_COUNT = 8192;
-
-struct Buffers {
-    const int num_frames = MAX_EXPECTED_FRAME_COUNT;
-    const int input_count;
-    const int output_count;
-    FAUSTFLOAT **input;
-    FAUSTFLOAT **output;
-
-    Buffers(int num_input_channels, int num_output_channels) :
-        input_count(num_input_channels), output_count(num_output_channels) {
-        input = new FAUSTFLOAT *[num_input_channels];
-        output = new FAUSTFLOAT *[num_output_channels];
-        for (int i = 0; i < num_input_channels; i++) { input[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
-        for (int i = 0; i < num_output_channels; i++) { output[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
-    }
-
-    ~Buffers() {
-        for (int i = 0; i < input_count; i++) { delete[] input[i]; }
-        for (int i = 0; i < output_count; i++) { delete[] output[i]; }
-        delete[] input;
-        delete[] output;
-    }
-    // todo overload `[]` operator get/set for dimensionality `[2 (input/output)][num_channels][max_num_frames (max between input_count/output_count)]
-    inline FAUSTFLOAT get(IO io, int channel, int frame) const {
-        if ((io == IO_In && channel >= input_count) || (io == IO_Out && channel >= output_count)) return 0;
-        return (io == IO_In ? input : output)[channel][frame];
-    }
-    inline void set(IO io, int channel, int frame, FAUSTFLOAT value) const {
-        if ((io == IO_In && channel >= input_count) || (io == IO_Out && channel >= output_count)) return;
-        if (channel >= input_count) return;
-        (io == IO_In ? input : output)[channel][frame] = value;
-    }
-};
-
 struct Context {
     Context();
     ~Context();
@@ -149,13 +119,6 @@ struct Context {
 
     void clear();
 
-    // Audio
-    void compute_frames(int frame_count) const;
-    FAUSTFLOAT *get_samples(IO io, int channel) const;
-    FAUSTFLOAT get_sample(IO io, int channel, int frame) const;
-    void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) const;
-    void compute(int frame_count) const;
-
     void update_ui_context(UIContextFlags flags);
     void update_faust_context();
 
@@ -164,7 +127,7 @@ struct Context {
 //    diff_match_patch<string> dmp;
     UIContext *ui{};
     StateStats state_stats;
-    Box faust_box{};
+    unique_ptr<FaustContext> faust;
 
     Diffs diffs;
     int diff_index = -1;
@@ -187,7 +150,6 @@ struct Context {
     // Read-only public shorthand state references:
     const State &s = state;
     const json &sj = state_json;
-    unique_ptr<Buffers> buffers;
 
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.

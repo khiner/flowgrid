@@ -5,68 +5,33 @@
 
 #include "UI/Faust/DrawBox.hh"
 
-struct FaustContext {
-    int num_inputs{0}, num_outputs{0};
-    llvm_dsp_factory *dsp_factory;
-    dsp *dsp = nullptr;
-
-    FaustContext(const string &code, int sample_rate, string &error_msg) {
+FaustContext::FaustContext(const string &code, int sample_rate, string &error_msg) {
 //        The only arg that's strictly needed is the faust library path.
 //        However, we currently use an environment variable for this: `FAUST_LIB_PATH=../lib/faust/libraries`
-//        argv[argc++] = "-I";
+//        argv[argc++] = "-I" ;
 //        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
+// todo Stephane added this recently - switch back to using argv
 
-        destroyLibContext();
-        createLibContext();
-        c.faust_box = DSPToBoxes("FlowGrid", code, &num_inputs, &num_outputs, error_msg);
-        if (c.faust_box && error_msg.empty()) {
-            static const int optimize_level = -1;
-            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", c.faust_box, 0, nullptr, "", error_msg, optimize_level);
-            if (dsp_factory && error_msg.empty()) {
-                dsp = dsp_factory->createDSPInstance();
-                dsp->init(sample_rate);
-            }
+    destroyLibContext();
+    createLibContext();
+    box = DSPToBoxes("FlowGrid", code, &num_inputs, &num_outputs, error_msg);
+    if (box && error_msg.empty()) {
+        static const int optimize_level = -1;
+        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);
+        if (dsp_factory && error_msg.empty()) {
+            dsp = dsp_factory->createDSPInstance();
+            dsp->init(sample_rate);
         }
-        on_box_change(c.faust_box);
     }
-
-    ~FaustContext() {
-        if (!dsp) return;
-
-        delete dsp;
-        dsp = nullptr;
-        deleteDSPFactory(dsp_factory);
-    }
-};
-
-std::unique_ptr<FaustContext> faust;
-void Context::compute_frames(int frame_count) const { // NOLINT(readability-convert-member-functions-to-static)
-    if (faust) compute(frame_count);
+    on_box_change(box);
 }
 
-FAUSTFLOAT *Context::get_samples(IO io, int channel) const {
-    if (!buffers) return nullptr;
-    return io == IO_In ? buffers->input[channel] : buffers->output[channel];
-}
+FaustContext::~FaustContext() {
+    if (!dsp) return;
 
-FAUSTFLOAT Context::get_sample(IO io, int channel, int frame) const {
-    return !buffers || s.Audio.Muted ? 0 : buffers->get(io, channel, frame);
-}
-
-void Context::compute(int frame_count) const {
-    if (buffers) {
-        if (frame_count > buffers->num_frames) {
-            std::cerr << "The output stream buffer only has " << buffers->num_frames
-                      << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
-                      << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
-            exit(1);
-        }
-        if (faust && faust->dsp) faust->dsp->compute(frame_count, buffers->input, buffers->output);
-    }
-    // TODO log warning
-}
-void Context::set_sample(IO io, int channel, int frame, FAUSTFLOAT value) const {
-    if (buffers) buffers->set(io, channel, frame, value);
+    delete dsp;
+    dsp = nullptr;
+    deleteDSPFactory(dsp_factory);
 }
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
@@ -155,17 +120,14 @@ void Context::update_faust_context() {
     has_new_faust_code = true;
 
     faust = std::make_unique<FaustContext>(s.Audio.faust.Code, s.Audio.SampleRate, state.Audio.faust.Error);
-    // Always keep at least one buffer available for writing from a mono audio input stream.
-    // todo create `buffers` based on `Audio::(input|output)_stream::channel_layout`
-    buffers = std::make_unique<Buffers>(max(faust->num_inputs, 1), faust->num_outputs);
-    if (faust->dsp) {
+//    if (faust->dsp) {
 //        StatefulFaustUI faust_ui;
 //        faust->dsp->buildUserInterface(&faust_ui);
-//                faust->dsp->metadata(&faust_ui); // version/author/licence/etc
-//                _s.Audio.faust.json = faust_ui.
-    } else {
-//                _s.Audio.faust.json = "";
-    }
+//        faust->dsp->metadata(&faust_ui); // version/author/licence/etc
+//        _s.Audio.faust.json = faust_ui.
+//    } else {
+//        _s.Audio.faust.json = "";
+//    }
 }
 
 void Context::clear() {

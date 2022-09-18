@@ -6,6 +6,64 @@
 
 #include "Context.h"
 
+// Used to initialize the static Faust buffer.
+// This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
+// AND switching between different sample rates, which seems to make for high peak frame sizes at the transition frame.
+// If it needs bumping up, bump away!
+// Note: This is _not_ the device buffer size!
+static const int MAX_EXPECTED_FRAME_COUNT = 8192;
+
+struct Buffers {
+    const int num_frames = MAX_EXPECTED_FRAME_COUNT;
+    const int input_count;
+    const int output_count;
+    FAUSTFLOAT **input;
+    FAUSTFLOAT **output;
+
+    Buffers(int num_input_channels, int num_output_channels) :
+        input_count(num_input_channels), output_count(num_output_channels) {
+        input = new FAUSTFLOAT *[num_input_channels];
+        output = new FAUSTFLOAT *[num_output_channels];
+        for (int i = 0; i < num_input_channels; i++) { input[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
+        for (int i = 0; i < num_output_channels; i++) { output[i] = new FAUSTFLOAT[MAX_EXPECTED_FRAME_COUNT]; }
+    }
+
+    ~Buffers() {
+        for (int i = 0; i < input_count; i++) { delete[] input[i]; }
+        for (int i = 0; i < output_count; i++) { delete[] output[i]; }
+        delete[] input;
+        delete[] output;
+    }
+
+    // todo overload `[]` operator get/set for dimensionality `[2 (input/output)][num_channels][max_num_frames (max between input_count/output_count)]
+    int channel_count(IO io) const { return io == IO_In ? input_count : io == IO_Out ? output_count : 0; }
+    FAUSTFLOAT **get_buffer(IO io) const { return io == IO_In ? input : io == IO_Out ? output : nullptr; }
+    FAUSTFLOAT *get_buffer(IO io, int channel) const {
+        const auto *buffer = get_buffer(io);
+        return buffer ? buffer[channel] : nullptr;
+    }
+    inline FAUSTFLOAT get(IO io, int channel, int frame) const {
+        const auto *buffer = get_buffer(io, channel);
+        return buffer ? buffer[frame] : 0;
+    }
+    inline void set(IO io, int channel, int frame, FAUSTFLOAT value) const {
+        auto *buffer = get_buffer(io, channel);
+        if (buffer) buffer[frame] = value;
+    }
+
+    void zero(IO io) const {
+        auto *buffer = get_buffer(io);
+        if (!buffer) return;
+        for (int channel = 0; channel < channel_count(io); channel++) {
+            auto *channel_buffer = get_buffer(io, channel);
+            for (int i = 0; i < num_frames; i++) channel_buffer[i] = 0;
+        }
+    }
+    void zero() const {
+        for (const IO io: {IO_In, IO_Out}) zero(io);
+    }
+};
+
 static enum SoundIoFormat prioritized_formats[] = {
     SoundIoFormatFloat32NE,
     SoundIoFormatFloat64NE,
@@ -91,12 +149,40 @@ SoundIoOutStream *outstream = nullptr;
 std::map<IO, std::vector<string>> device_ids = {{IO_In, {}}, {IO_Out, {}}};
 std::map<IO, std::vector<int>> device_sample_rates = {{IO_In, {}}, {IO_Out, {}}};
 std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
+unique_ptr<Buffers> buffers;
 
 bool soundio_ready = false;
 bool thread_running = false;
 int underflow_count = 0;
 int last_read_frame_count_max = 0;
 int last_write_frame_count_max = 0;
+
+void compute(int frame_count) {
+    if (!buffers) return;
+
+    if (frame_count > buffers->num_frames) {
+        std::cerr << "The output stream buffer only has " << buffers->num_frames
+                  << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
+                  << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
+        exit(1);
+    }
+    if (c.faust && c.faust->dsp) {
+        c.faust->dsp->compute(frame_count, buffers->input, buffers->output);
+    } else {
+        buffers->zero(IO_Out);
+    }
+}
+
+FAUSTFLOAT *get_samples(IO io, int channel) {
+    if (!buffers) return nullptr;
+    return io == IO_In ? buffers->input[channel] : buffers->output[channel];
+}
+FAUSTFLOAT get_sample(IO io, int channel, int frame) {
+    return !buffers || s.Audio.Muted ? 0 : buffers->get(io, channel, frame);
+}
+void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) {
+    if (buffers) buffers->set(io, channel, frame, value);
+}
 
 static int device_count(const IO io) {
     switch (io) {
@@ -256,7 +342,7 @@ int audio() {
             const auto *layout = &instream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    c.set_sample(IO_In, channel, frame, read_sample(areas[channel].ptr));
+                    set_sample(IO_In, channel, frame, read_sample(areas[channel].ptr));
                     areas[channel].ptr += areas[channel].step;
                 }
             }
@@ -285,13 +371,14 @@ int audio() {
                 exit(1);
             }
             if (!frame_count) break;
-            c.compute_frames(frame_count);
+
+            compute(frame_count);
 
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    const FAUSTFLOAT output_sample = c.get_sample(IO_Out, channel, frame) +
-                        (s.Audio.MonitorInput ? c.get_sample(IO_In, min(channel, c.buffers->input_count - 1), frame) : 0);
+                    const FAUSTFLOAT output_sample = get_sample(IO_Out, channel, frame) +
+                        (s.Audio.MonitorInput ? get_sample(IO_In, min(channel, buffers->channel_count(IO_In) - 1), frame) : 0);
                     write_sample(areas[channel].ptr, output_sample);
                     areas[channel].ptr += areas[channel].step;
                 }
@@ -311,11 +398,13 @@ int audio() {
     outstream->underflow_callback = [](SoundIoOutStream *) { std::cerr << "Underflow #" << underflow_count++ << std::endl; };
 
     for (IO io: {IO_In, IO_Out}) open_stream(io);
+    buffers = std::make_unique<Buffers>(instream->layout.channel_count, outstream->layout.channel_count);
 
     soundio_ready = true;
     while (thread_running) {}
     soundio_ready = false;
 
+    buffers = nullptr;
     for (IO io: {IO_In, IO_Out}) destroy_stream(io);
     soundio_destroy(soundio);
     soundio = nullptr;
@@ -352,9 +441,7 @@ using namespace ImGui;
 void ShowChannelLayout(const SoundIoChannelLayout &layout, bool is_current) {
     const char *current_str = is_current ? " (current)" : "";
     if (layout.name) Text("%s%s", layout.name, current_str);
-    for (int i = 0; i < layout.channel_count; i++) {
-        BulletText("%s", soundio_get_channel_name(layout.channels[i]));
-    }
+    for (int i = 0; i < layout.channel_count; i++) BulletText("%s", soundio_get_channel_name(layout.channels[i]));
 }
 
 void ShowDevice(const SoundIoDevice &device, bool is_default) {
@@ -448,7 +535,7 @@ void ShowBackends() {
 }
 
 void PlotBuffer(const char *label, IO io, int channel, int frame_count_max) {
-    const FAUSTFLOAT *buffer = c.get_samples(io, channel);
+    const FAUSTFLOAT *buffer = get_samples(io, channel);
     if (buffer == nullptr) return;
 
     ImPlot::PlotLine(label, buffer, frame_count_max);

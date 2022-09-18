@@ -266,10 +266,9 @@ int audio() {
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    write_sample(
-                        areas[channel].ptr, c.get_sample(IO_Out, channel, frame) +
-                            (s.Audio.MonitorInput ? c.get_sample(IO_In, channel, frame) : 0)
-                    );
+                    const float output_sample = c.get_sample(IO_Out, channel, frame) +
+                        (s.Audio.MonitorInput ? c.get_sample(IO_In, min(channel, c.buffers->input_count - 1), frame) : 0);
+                    write_sample(areas[channel].ptr, output_sample);
                     areas[channel].ptr += areas[channel].step;
                 }
             }

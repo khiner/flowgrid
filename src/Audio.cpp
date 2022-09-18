@@ -494,7 +494,23 @@ void ShowDevices() {
 }
 
 void ShowStreams() {
-    if (TreeNodeEx("Output stream", ImGuiTreeNodeFlags_DefaultOpen)) {
+    // todo maybe modify SoundIoInStream/SoundIoOutStream to share a common interface to DRY up? This is a pain elsewhere, too.
+    if (TreeNode("Input stream")) {
+        BulletText("Name: %s", instream->name);
+        BulletText("Device ID: %s", instream->device->id);
+        BulletText("Format: %s", soundio_format_string(instream->format));
+        BulletText("Sample rate: %d", instream->sample_rate);
+        if (TreeNodeEx("Channel layout", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ShowChannelLayout(instream->layout, false);
+            TreePop();
+        }
+        BulletText("Software latency: %0.8f sec", instream->software_latency);
+        BulletText("Bytes per frame: %d", instream->bytes_per_frame);
+        BulletText("Bytes per sample: %d", instream->bytes_per_sample);
+
+        TreePop();
+    }
+    if (TreeNode("Output stream")) {
         BulletText("Name: %s", outstream->name);
         BulletText("Device ID: %s", outstream->device->id);
         BulletText("Format: %s", soundio_format_string(outstream->format));

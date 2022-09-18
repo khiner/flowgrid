@@ -155,7 +155,9 @@ void Context::update_faust_context() {
     has_new_faust_code = true;
 
     faust = std::make_unique<FaustContext>(s.Audio.faust.Code, s.Audio.SampleRate, state.Audio.faust.Error);
-    buffers = std::make_unique<Buffers>(faust->num_inputs, faust->num_outputs);
+    // Always keep at least one buffer available for writing from a mono audio input stream.
+    // todo create `buffers` based on `Audio::(input|output)_stream::channel_layout`
+    buffers = std::make_unique<Buffers>(max(faust->num_inputs, 1), faust->num_outputs);
     if (faust->dsp) {
 //        StatefulFaustUI faust_ui;
 //        faust->dsp->buildUserInterface(&faust_ui);

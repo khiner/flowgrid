@@ -21,6 +21,8 @@ namespace fg = FlowGrid;
 using Action = action::Action;
 using namespace fmt;
 using std::unique_ptr;
+using std::min;
+using std::max;
 
 const std::map<ProjectFormat, string> ExtensionForProjectFormat{
     {StateFormat, ".fls"},

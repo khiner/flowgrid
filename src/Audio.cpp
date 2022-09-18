@@ -266,7 +266,10 @@ int audio() {
             const auto *layout = &outstream->layout;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < layout->channel_count; channel++) {
-                    write_sample(areas[channel].ptr, c.get_sample(IO_Out, channel, frame));
+                    write_sample(
+                        areas[channel].ptr, c.get_sample(IO_Out, channel, frame) +
+                            (s.Audio.MonitorInput ? c.get_sample(IO_In, channel, frame) : 0)
+                    );
                     areas[channel].ptr += areas[channel].step;
                 }
             }
@@ -459,6 +462,7 @@ void PlotBuffers() {
 void Audio::draw() const {
     Running.Draw();
     Muted.Draw();
+    MonitorInput.Draw();
     DeviceVolume.Draw();
 
     if (!device_ids[IO_In].empty()) InDeviceId.Draw(device_ids[IO_In]);

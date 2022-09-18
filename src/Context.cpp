@@ -45,16 +45,16 @@ void Context::compute_frames(int frame_count) const { // NOLINT(readability-conv
 }
 
 FAUSTFLOAT *Context::get_samples(IO io, int channel) const {
-    if (!faust) return nullptr;
+    if (!buffers) return nullptr;
     return io == IO_In ? buffers->input[channel] : buffers->output[channel];
 }
 
 FAUSTFLOAT Context::get_sample(IO io, int channel, int frame) const {
-    return !faust || s.Audio.Muted ? 0 : buffers->get(io, channel, frame);
+    return !buffers || s.Audio.Muted ? 0 : buffers->get(io, channel, frame);
 }
 
 void Context::compute(int frame_count) const {
-    if (faust && buffers) {
+    if (buffers) {
         if (frame_count > buffers->num_frames) {
             std::cerr << "The output stream buffer only has " << buffers->num_frames
                       << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl

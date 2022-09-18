@@ -380,6 +380,7 @@ struct Audio : Process {
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
     Float DeviceVolume{Path, "DeviceVolume", 1.0};
     Int SampleRate{Path, "SampleRate"};
+    Bool MonitorInput{Path, "MonitorInput"};
 };
 
 struct File : StateMember {
@@ -742,7 +743,7 @@ JsonType(Audio::Faust::FaustEditor, Visible, FileName)
 JsonType(Audio::Faust::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
 JsonType(Audio::Faust::FaustDiagram, Settings)
 JsonType(Audio::Faust, Code, Diagram, Error, Editor, Log)
-JsonType(Audio, Running, Visible, Muted, Backend, SampleRate, DeviceVolume, faust)
+JsonType(Audio, Running, Visible, Muted, Backend, SampleRate, MonitorInput, DeviceVolume, faust)
 JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
 JsonType(File, Dialog)

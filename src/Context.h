@@ -87,7 +87,7 @@ struct StateStats {
     void apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_gesture);
 
 private:
-    Plottable create_PathUpdateFrequency_plottable();
+    Plottable create_path_update_frequency_plottable();
 };
 
 // Used to initialize the static Faust buffer.

@@ -211,10 +211,10 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
     }
 
     if (is_full_gesture) gesture_update_times_for_path.clear();
-    PathUpdateFrequency = create_PathUpdateFrequency_plottable();
+    PathUpdateFrequency = create_path_update_frequency_plottable();
 }
 
-StateStats::Plottable StateStats::create_PathUpdateFrequency_plottable() {
+StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
     std::vector<JsonPath> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
     for (const auto &path: views::keys(gesture_update_times_for_path)) {

@@ -8,6 +8,8 @@
 #include "JsonType.h"
 #include "Helper/String.h"
 
+using namespace fmt;
+
 // E.g. '/foo/bar/baz' => 'baz'
 inline string path_variable_name(const JsonPath &path) { return path.back(); }
 
@@ -220,7 +222,7 @@ struct Process : Window {
     void draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool Running{Path, "Running", true};
+    Bool Running{Path, "Running", true, format("Disabling completely ends the {} process.\nEnabling will start the process up again.", Name)};
 };
 
 struct ApplicationSettings : Window {
@@ -386,15 +388,16 @@ struct Audio : Process {
     void update_process() const override;
     String get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Faust faust{Path, "faust"};
-
-    Bool Muted{Path, "Muted", true};
+    Bool FaustRunning{Path, "FaustRunning", true, "Disabling completely skips Faust computation when computing audio output."};
+    Bool Muted{Path, "Muted", true, "Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load."};
     AudioBackend Backend = none;
     String InDeviceId{Path, "InDeviceId", "In device ID"};
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
     Float DeviceVolume{Path, "DeviceVolume", 1.0};
     Int SampleRate{Path, "SampleRate"};
-    Bool MonitorInput{Path, "MonitorInput"};
+    Bool MonitorInput{Path, "MonitorInput", false, "Enabling adds the audio input stream directly to the audio output."};
+
+    Faust faust{Path, "faust"};
 };
 
 struct File : StateMember {
@@ -757,7 +760,7 @@ JsonType(Audio::Faust::FaustEditor, Visible, FileName)
 JsonType(Audio::Faust::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
 JsonType(Audio::Faust::FaustDiagram, Settings)
 JsonType(Audio::Faust, Code, Diagram, Error, Editor, Log)
-JsonType(Audio, Running, Visible, Muted, Backend, SampleRate, MonitorInput, DeviceVolume, faust)
+JsonType(Audio, Running, FaustRunning, Visible, Muted, Backend, SampleRate, MonitorInput, DeviceVolume, faust)
 JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
 JsonType(File, Dialog)

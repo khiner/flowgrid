@@ -148,17 +148,6 @@ int underflow_count = 0;
 int last_read_frame_count_max = 0;
 int last_write_frame_count_max = 0;
 
-FAUSTFLOAT *get_samples(IO io, int channel) {
-    if (!buffers) return nullptr;
-    return io == IO_In ? buffers->input[channel] : buffers->output[channel];
-}
-FAUSTFLOAT get_sample(IO io, int channel, int frame) {
-    return !buffers || s.Audio.Muted ? 0 : buffers->get(io, min(channel, buffers->channel_count(IO_In) - 1), frame);
-}
-void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) {
-    if (buffers) buffers->set(io, channel, frame, value);
-}
-
 static int get_device_count(const IO io) {
     switch (io) {
         case IO_In : return soundio_input_device_count(soundio);
@@ -368,7 +357,7 @@ int audio() {
             }
             if (frame_count <= 0) break;
 
-            const bool compute_faust = buffers && c.faust && c.faust->dsp;
+            const bool compute_faust = s.Audio.FaustRunning && buffers && c.faust && c.faust->dsp;
             const int num_faust_output_frames = compute_faust ? min(frame_count, buffers->num_frames) : 0;
             if (compute_faust) {
                 char *read_ptr = soundio_ring_buffer_read_ptr(ring_buffer);
@@ -377,9 +366,9 @@ int audio() {
                     for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
                         if (frame > rb_filled_count) {
                             // Ring buffer does not have enough data. Set remaining input samples to zero.
-                            set_sample(IO_In, channel, frame, 0);
+                            buffers->set(IO_In, channel, frame, 0);
                         } else {
-                            set_sample(IO_In, channel, frame, read_sample(read_ptr));
+                            buffers->set(IO_In, channel, frame, read_sample(read_ptr));
                             read_ptr += instream->bytes_per_sample;
                         }
                     }
@@ -398,11 +387,9 @@ int audio() {
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) {
                     FAUSTFLOAT output_sample = 0;
-                    if (frame < num_faust_output_frames) output_sample += get_sample(IO_Out, channel, frame);
-                    if (s.Audio.MonitorInput) {
-                        // Monitor input directly from the ring buffer
-                        output_sample += read_sample(read_ptr);
-                    }
+                    if (frame < num_faust_output_frames) output_sample += !buffers || s.Audio.Muted ? 0 : buffers->get(IO_Out, min(channel, buffers->channel_count(IO_In) - 1), frame);
+                    if (s.Audio.MonitorInput) output_sample += read_sample(read_ptr); // Monitor input directly from the ring buffer
+
                     write_sample(areas[channel].ptr, output_sample);
                     areas[channel].ptr += areas[channel].step;
                 }
@@ -577,7 +564,9 @@ void ShowBackends() {
 }
 
 void PlotBuffer(const char *label, IO io, int channel, int frame_count_max) {
-    const FAUSTFLOAT *buffer = get_samples(io, channel);
+    if (!buffers) return;
+
+    const FAUSTFLOAT *buffer = buffers->get_buffer(io, channel);
     if (buffer == nullptr) return;
 
     ImPlot::PlotLine(label, buffer, frame_count_max);
@@ -604,6 +593,7 @@ void PlotBuffers() {
 
 void Audio::draw() const {
     Running.Draw();
+    FaustRunning.Draw();
     Muted.Draw();
     MonitorInput.Draw();
     DeviceVolume.Draw();

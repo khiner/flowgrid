@@ -386,11 +386,13 @@ int audio() {
             char *read_ptr = soundio_ring_buffer_read_ptr(ring_buffer);
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) {
-                    FAUSTFLOAT output_sample = 0;
-                    if (faust_buffers && !s.Audio.Muted && frame < num_faust_output_frames) output_sample += faust_buffers->get(IO_Out, min(channel, faust_buffers->channel_count(IO_In) - 1), frame);
-                    if (s.Audio.MonitorInput) output_sample += read_sample(read_ptr); // Monitor input directly from the ring buffer
+                    FAUSTFLOAT out_sample = 0;
+                    if (!s.Audio.Muted) {
+                        if (faust_buffers && frame < num_faust_output_frames) out_sample += faust_buffers->get(IO_Out, min(channel, faust_buffers->channel_count(IO_In) - 1), frame);
+                        if (s.Audio.MonitorInput) out_sample += read_sample(read_ptr); // Monitor input directly from the ring buffer
+                    }
 
-                    write_sample(out_areas[channel].ptr, output_sample);
+                    write_sample(out_areas[channel].ptr, out_sample);
                     out_areas[channel].ptr += out_areas[channel].step;
                 }
                 read_ptr += instream->bytes_per_sample; // todo xxx this assumes mono input!

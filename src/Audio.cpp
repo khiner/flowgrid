@@ -425,8 +425,9 @@ int audio() {
     while (thread_running) {}
     soundio_ready = false;
 
-    buffers = nullptr;
     for (IO io: {IO_In, IO_Out}) destroy_stream(io);
+
+    buffers = nullptr;
     soundio_destroy(soundio);
     soundio = nullptr;
 

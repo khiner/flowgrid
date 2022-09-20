@@ -50,18 +50,6 @@ struct Buffers {
         auto *buffer = get_buffer(io, channel);
         if (buffer) buffer[frame] = value;
     }
-
-    void zero(IO io) const {
-        auto *buffer = get_buffer(io);
-        if (!buffer) return;
-        for (int channel = 0; channel < channel_count(io); channel++) {
-            auto *channel_buffer = get_buffer(io, channel);
-            for (int i = 0; i < num_frames; i++) channel_buffer[i] = 0;
-        }
-    }
-    void zero() const {
-        for (const IO io: {IO_In, IO_Out}) zero(io);
-    }
 };
 
 static enum SoundIoFormat prioritized_formats[] = {
@@ -120,22 +108,22 @@ inline static void write_sample_float64ne(char *ptr, FAUSTFLOAT sample) {
     *buf = double(sample);
 }
 
-auto read_sample_for_format(const SoundIoFormat format) {
-    switch (format) {
+auto read_sample_for_format(const SoundIoFormat soundio_format) {
+    switch (soundio_format) {
         case SoundIoFormatFloat32NE: return read_sample_float32ne;
         case SoundIoFormatFloat64NE: return read_sample_float64ne;
         case SoundIoFormatS32NE: return read_sample_s32ne;
         case SoundIoFormatS16NE: return read_sample_s16ne;
-        default: throw std::runtime_error(string("No `read_sample` function defined for format"));
+        default: throw std::runtime_error(format("No `read_sample` function defined for format {}", soundio_format_string(soundio_format)));
     }
 }
-auto write_sample_for_format(const SoundIoFormat format) {
-    switch (format) {
+auto write_sample_for_format(const SoundIoFormat soundio_format) {
+    switch (soundio_format) {
         case SoundIoFormatFloat32NE: return write_sample_float32ne;
         case SoundIoFormatFloat64NE: return write_sample_float64ne;
         case SoundIoFormatS32NE: return write_sample_s32ne;
         case SoundIoFormatS16NE: return write_sample_s16ne;
-        default: throw std::runtime_error(string("No `write_sample` function defined for format"));
+        default: throw std::runtime_error(format("No `write_sample` function defined for format {}", soundio_format_string(soundio_format)));
     }
 }
 
@@ -149,7 +137,10 @@ SoundIoOutStream *outstream = nullptr;
 std::map<IO, std::vector<string>> device_ids = {{IO_In, {}}, {IO_Out, {}}};
 std::map<IO, std::vector<int>> device_sample_rates = {{IO_In, {}}, {IO_Out, {}}};
 std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
+SoundIoRingBuffer *ring_buffer = nullptr;
 unique_ptr<Buffers> buffers;
+
+float microphone_latency = 0.2; // seconds
 
 bool soundio_ready = false;
 bool thread_running = false;
@@ -157,28 +148,12 @@ int underflow_count = 0;
 int last_read_frame_count_max = 0;
 int last_write_frame_count_max = 0;
 
-void compute(int frame_count) {
-    if (!buffers) return;
-
-    if (frame_count > buffers->num_frames) {
-        std::cerr << "The output stream buffer only has " << buffers->num_frames
-                  << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
-                  << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
-        exit(1);
-    }
-    if (c.faust && c.faust->dsp) {
-        c.faust->dsp->compute(frame_count, buffers->input, buffers->output);
-    } else {
-        buffers->zero(IO_Out);
-    }
-}
-
 FAUSTFLOAT *get_samples(IO io, int channel) {
     if (!buffers) return nullptr;
     return io == IO_In ? buffers->input[channel] : buffers->output[channel];
 }
 FAUSTFLOAT get_sample(IO io, int channel, int frame) {
-    return !buffers || s.Audio.Muted ? 0 : buffers->get(io, channel, frame);
+    return !buffers || s.Audio.Muted ? 0 : buffers->get(io, min(channel, buffers->channel_count(IO_In) - 1), frame);
 }
 void set_sample(IO io, int channel, int frame, FAUSTFLOAT value) {
     if (buffers) buffers->set(io, channel, frame, value);
@@ -233,7 +208,11 @@ static void open_stream(const IO io) {
 
     if (io == IO_In && instream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(instream->layout_error); }
     else if (io == IO_Out && outstream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(outstream->layout_error); }
+}
+static void start_stream(const IO io) {
+    if (io == IO_None) return;
 
+    int err;
     if ((err = (io == IO_In ? soundio_instream_start(instream) : soundio_outstream_start(outstream)))) {
         throw std::runtime_error(format("Unable to start {} device: ", to_string(io)) + soundio_strerror(err));
     }
@@ -322,30 +301,43 @@ int audio() {
     read_sample = read_sample_for_format(instream->format);
     write_sample = write_sample_for_format(outstream->format);
 
-    instream->read_callback = [](SoundIoInStream *instream, int /*frame_count_min*/, int frame_count_max) {
+    instream->read_callback = [](SoundIoInStream *instream, int frame_count_min, int frame_count_max) {
+        last_read_frame_count_max = frame_count_max;
+
         SoundIoChannelArea *areas;
         int err;
 
-        last_read_frame_count_max = frame_count_max;
-        int frames_left = frame_count_max;
+        char *write_ptr = soundio_ring_buffer_write_ptr(ring_buffer);
+        const int free_count = soundio_ring_buffer_free_count(ring_buffer) / instream->bytes_per_frame;
+        if (frame_count_min > free_count) throw std::runtime_error("Ring buffer overflow");
+
+        const int write_frames = min(free_count, frame_count_max);
+        int frames_left = write_frames;
         while (true) {
             int frame_count = frames_left;
             if ((err = soundio_instream_begin_read(instream, &areas, &frame_count))) {
-                std::cerr << "Begin read error: " << soundio_strerror(err) << std::endl;
+                std::cerr << "Begin read error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
             if (!frame_count) break;
 
-            const auto *layout = &instream->layout;
-            for (int frame = 0; frame < frame_count; frame++) {
-                for (int channel = 0; channel < layout->channel_count; channel++) {
-                    set_sample(IO_In, channel, frame, read_sample(areas[channel].ptr));
-                    areas[channel].ptr += areas[channel].step;
+            if (!areas) {
+                // Due to an overflow there is a hole. Fill the hole in the ring buffer with silence.
+                memset(write_ptr, 0, frame_count * instream->bytes_per_frame);
+                std::cerr << format("Dropped {} frames due to internal overflow", frame_count) << '\n';
+            } else {
+                for (int frame = 0; frame < frame_count; frame += 1) {
+                    for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
+                        memcpy(write_ptr, areas[channel].ptr, instream->bytes_per_sample);
+                        areas[channel].ptr += areas[channel].step;
+                        write_ptr += instream->bytes_per_sample;
+                    }
                 }
             }
 
             if ((err = soundio_instream_end_read(instream))) {
                 if (err == SoundIoErrorUnderflow) return;
+
                 std::cerr << "End read error: " << soundio_strerror(err) << std::endl;
                 exit(1);
             }
@@ -353,33 +345,70 @@ int audio() {
             frames_left -= frame_count;
             if (frames_left <= 0) break;
         }
+
+        soundio_ring_buffer_advance_write_ptr(ring_buffer, write_frames * instream->bytes_per_frame);
     };
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-        SoundIoChannelArea *areas;
+        last_write_frame_count_max = frame_count_max;
+
+        struct SoundIoChannelArea *areas;
         int err;
 
-        last_write_frame_count_max = frame_count_max;
+        // `rb_filled_count` is the number of samples ready to read from the ring buffer.
+        // We're using the input format size since output stream may have a different sample format (with a different byte size).
+        const int rb_filled_count = soundio_ring_buffer_fill_count(ring_buffer) / instream->bytes_per_frame;
+
         int frames_left = frame_count_max;
-        while (true) {
+        while (frames_left > 0) {
             int frame_count = frames_left;
             if ((err = soundio_outstream_begin_write(outstream, &areas, &frame_count))) {
                 std::cerr << "Begin write error: " << soundio_strerror(err) << std::endl;
                 exit(1);
             }
-            if (!frame_count) break;
+            if (frame_count <= 0) break;
 
-            compute(frame_count);
+            const bool compute_faust = buffers && c.faust && c.faust->dsp;
+            const int num_faust_output_frames = compute_faust ? min(frame_count, buffers->num_frames) : 0;
+            if (compute_faust) {
+                char *read_ptr = soundio_ring_buffer_read_ptr(ring_buffer);
+                // Copy any filled bytes from the input ring buffer to the faust input buffer.
+                for (int frame = 0; frame < frame_count; frame++) {
+                    for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
+                        if (frame > rb_filled_count) {
+                            // Ring buffer does not have enough data. Set remaining input samples to zero.
+                            set_sample(IO_In, channel, frame, 0);
+                        } else {
+                            set_sample(IO_In, channel, frame, read_sample(read_ptr));
+                            read_ptr += instream->bytes_per_sample;
+                        }
+                    }
+                }
 
-            const auto *layout = &outstream->layout;
+                // Compute the output buffer.
+                if (frame_count > buffers->num_frames) {
+                    std::cerr << "The output stream buffer only has " << buffers->num_frames
+                              << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count << "." << std::endl
+                              << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
+                }
+                c.faust->dsp->compute(num_faust_output_frames, buffers->input, buffers->output);
+            }
+
+            char *read_ptr = soundio_ring_buffer_read_ptr(ring_buffer);
             for (int frame = 0; frame < frame_count; frame++) {
-                for (int channel = 0; channel < layout->channel_count; channel++) {
-                    const FAUSTFLOAT output_sample = get_sample(IO_Out, channel, frame) +
-                        (s.Audio.MonitorInput ? get_sample(IO_In, min(channel, buffers->channel_count(IO_In) - 1), frame) : 0);
+                for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) {
+                    FAUSTFLOAT output_sample = 0;
+                    if (frame < num_faust_output_frames) output_sample += get_sample(IO_Out, channel, frame);
+                    if (s.Audio.MonitorInput) {
+                        // Monitor input directly from the ring buffer
+                        output_sample += read_sample(read_ptr);
+                    }
                     write_sample(areas[channel].ptr, output_sample);
                     areas[channel].ptr += areas[channel].step;
                 }
+                read_ptr += instream->bytes_per_sample; // todo xxx this assumes mono input!
             }
+            soundio_ring_buffer_advance_read_ptr(ring_buffer, min(rb_filled_count, frame_count) * instream->bytes_per_frame);
 
             if ((err = soundio_outstream_end_write(outstream))) {
                 if (err == SoundIoErrorUnderflow) return;
@@ -388,14 +417,22 @@ int audio() {
             }
 
             frames_left -= frame_count;
-            if (frames_left <= 0) break;
         }
     };
 
     outstream->underflow_callback = [](SoundIoOutStream *) { std::cerr << "Underflow #" << underflow_count++ << std::endl; };
 
     for (IO io: {IO_In, IO_Out}) open_stream(io);
+
+    // Faust buffer init
     buffers = std::make_unique<Buffers>(instream->layout.channel_count, outstream->layout.channel_count);
+
+    // Ring buffer init
+    int capacity = ceil(microphone_latency * 2 * float(instream->sample_rate) * float(instream->bytes_per_frame));
+    ring_buffer = soundio_ring_buffer_create(soundio, capacity);
+    if (!ring_buffer) throw std::runtime_error("Unable to create ring buffer: Out of memory");
+
+    for (IO io: {IO_In, IO_Out}) start_stream(io);
 
     soundio_ready = true;
     while (thread_running) {}

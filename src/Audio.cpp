@@ -193,14 +193,28 @@ static void create_stream(const IO io) {
     }
     if (*format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("No suitable {} device format available", to_string(io)));
 }
+
+static void retrying_stream_open(IO io) {
+    int err;
+    int attempt = 0;
+    static int max_attempts = 3;
+    while (++attempt <= max_attempts) {
+        err = (io == IO_In ? soundio_instream_open(instream) : soundio_outstream_open(outstream));
+        if (!err) break;
+
+        const string &error_message = format("Error opening {} device: {}\n"
+                                             "Attempt: {}", to_string(io), soundio_strerror(err), attempt);
+        if (err != SoundIoErrorOpeningDevice) throw std::runtime_error(error_message);
+
+        std::cerr << error_message << '\n';
+        std::this_thread::sleep_for(1s);
+    }
+}
+
 static void open_stream(const IO io) {
     if (io == IO_None) return;
 
-    int err;
-    if ((err = (io == IO_In ? soundio_instream_open(instream) : soundio_outstream_open(outstream)))) {
-        throw std::runtime_error(format("Unable to open {} device: ", to_string(io)) + soundio_strerror(err));
-    }
-
+    retrying_stream_open(io);
     if (io == IO_In && instream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(instream->layout_error); }
     else if (io == IO_Out && outstream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(outstream->layout_error); }
 }
@@ -564,7 +578,7 @@ void ShowStreams() {
 void ShowBufferPlots() {
     for (IO io: {IO_In, IO_Out}) {
         const bool is_in = io == IO_In;
-        if (TreeNode(to_string(io).c_str())) {
+        if (TreeNode(capitalize(to_string(io)).c_str())) {
             const auto *area = is_in ? in_areas : out_areas;
             if (!area) continue;
 

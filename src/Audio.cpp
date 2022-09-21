@@ -142,13 +142,17 @@ unique_ptr<Buffers> faust_buffers;
 SoundIoChannelArea *in_areas = nullptr;
 SoundIoChannelArea *out_areas = nullptr;
 
+// Working copies for bookkeeping in read/write callbacks, so others can safely use `in/out_areas` above (e.g. for charting):
+static char *in_area_pointers[SOUNDIO_MAX_CHANNELS];
+static char *out_area_pointers[SOUNDIO_MAX_CHANNELS];
+
 float microphone_latency = 0.2; // seconds
 
 bool soundio_ready = false;
 bool thread_running = false;
 int underflow_count = 0;
-int last_read_frame_count_max = 0;
-int last_write_frame_count_max = 0;
+int last_read_frame_count = 0;
+int last_write_frame_count = 0;
 
 static int get_device_count(const IO io) {
     switch (io) {
@@ -293,22 +297,21 @@ int audio() {
     write_sample = write_sample_for_format(outstream->format);
 
     instream->read_callback = [](SoundIoInStream *instream, int frame_count_min, int frame_count_max) {
-        last_read_frame_count_max = frame_count_max;
-
-        int err;
-
         char *write_ptr = soundio_ring_buffer_write_ptr(ring_buffer);
         const int free_count = soundio_ring_buffer_free_count(ring_buffer) / instream->bytes_per_frame;
         if (frame_count_min > free_count) throw std::runtime_error("Ring buffer overflow");
 
         const int write_frames = min(free_count, frame_count_max);
         int frames_left = write_frames;
+        int err;
         while (true) {
             int frame_count = frames_left;
             if ((err = soundio_instream_begin_read(instream, &in_areas, &frame_count))) {
                 std::cerr << "Begin read error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
+
+            last_read_frame_count = frame_count;
             if (!frame_count) break;
 
             if (!in_areas) {
@@ -316,10 +319,12 @@ int audio() {
                 memset(write_ptr, 0, frame_count * instream->bytes_per_frame);
                 std::cerr << format("Dropped {} frames due to internal overflow", frame_count) << '\n';
             } else {
+                for (int channel = 0; channel < instream->layout.channel_count; channel += 1) in_area_pointers[channel] = in_areas[channel].ptr;
+
                 for (int frame = 0; frame < frame_count; frame += 1) {
                     for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
-                        memcpy(write_ptr, in_areas[channel].ptr, instream->bytes_per_sample);
-                        in_areas[channel].ptr += in_areas[channel].step;
+                        memcpy(write_ptr, in_area_pointers[channel], instream->bytes_per_sample);
+                        in_area_pointers[channel] += in_areas[channel].step;
                         write_ptr += instream->bytes_per_sample;
                     }
                 }
@@ -340,14 +345,11 @@ int audio() {
     };
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
-        last_write_frame_count_max = frame_count_max;
-
-        int err;
-
         // `rb_filled_count` is the number of samples ready to read from the ring buffer.
         // We're using the input format size since output stream may have a different sample format (with a different byte size).
         const int rb_filled_count = soundio_ring_buffer_fill_count(ring_buffer) / instream->bytes_per_frame;
 
+        int err;
         int frames_left = frame_count_max;
         while (frames_left > 0) {
             int frame_count = frames_left;
@@ -355,6 +357,8 @@ int audio() {
                 std::cerr << "Begin write error: " << soundio_strerror(err) << std::endl;
                 exit(1);
             }
+
+            last_write_frame_count = frame_count;
             if (frame_count <= 0) break;
 
             const bool compute_faust = s.Audio.FaustRunning && faust_buffers && c.faust && c.faust->dsp;
@@ -384,6 +388,8 @@ int audio() {
             }
 
             char *read_ptr = soundio_ring_buffer_read_ptr(ring_buffer);
+
+            for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) out_area_pointers[channel] = out_areas[channel].ptr;
             for (int frame = 0; frame < frame_count; frame++) {
                 for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) {
                     FAUSTFLOAT out_sample = 0;
@@ -392,8 +398,8 @@ int audio() {
                         if (s.Audio.MonitorInput) out_sample += read_sample(read_ptr); // Monitor input directly from the ring buffer
                     }
 
-                    write_sample(out_areas[channel].ptr, out_sample);
-                    out_areas[channel].ptr += out_areas[channel].step;
+                    write_sample(out_area_pointers[channel], out_sample);
+                    out_area_pointers[channel] += out_areas[channel].step;
                 }
                 read_ptr += instream->bytes_per_sample; // todo xxx this assumes mono input!
             }
@@ -564,11 +570,11 @@ void ShowBufferPlots() {
 
             const auto *device = is_in ? instream->device : outstream->device;
             const auto &layout = is_in ? instream->layout : outstream->layout;
-            const auto frame_count = is_in ? last_read_frame_count_max : last_write_frame_count_max;
+            const auto frame_count = is_in ? last_read_frame_count : last_write_frame_count;
             if (ImPlot::BeginPlot(device->name, {-1, 160})) {
                 ImPlot::SetupAxes("Sample index", "Value");
                 ImPlot::SetupAxisLimits(ImAxis_X1, 0, frame_count, ImGuiCond_Always);
-                ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1, ImGuiCond_Always);
                 for (int channel_index = 0; channel_index < layout.channel_count; channel_index++) {
                     const auto &channel = layout.channels[channel_index];
                     const char *channel_name = soundio_get_channel_name(channel);
@@ -577,7 +583,7 @@ void ShowBufferPlots() {
                     //  since the area pointer position gets updated in the separate read/write callbacks on the audio thread.
                     //  Hrm.. are the start points of each channel area static after initializing the stream?
                     //  If so, could just set those once on stream init and use them hear!
-                    ImPlot::PlotLine(channel_name, (float *) (area[channel_index].ptr - area[channel_index].step * frame_count), frame_count);
+                    ImPlot::PlotLine(channel_name, (float *) area[channel_index].ptr, frame_count);
                 }
                 ImPlot::EndPlot();
             }

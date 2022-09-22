@@ -149,10 +149,14 @@ static char *out_area_pointers[SOUNDIO_MAX_CHANNELS];
 float microphone_latency = 0.2; // seconds
 
 bool soundio_ready = false;
-bool thread_running = false;
 int underflow_count = 0;
 int last_read_frame_count = 0;
 int last_write_frame_count = 0;
+
+bool thread_running = false;
+bool retry_thread = false;
+int retry_thread_attempt = 0;
+static const int max_thread_retries = 3;
 
 static int get_device_count(const IO io) {
     switch (io) {
@@ -193,28 +197,14 @@ static void create_stream(const IO io) {
     }
     if (*format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("No suitable {} device format available", to_string(io)));
 }
-
-static void retrying_stream_open(IO io) {
-    int err;
-    int attempt = 0;
-    static int max_attempts = 3;
-    while (++attempt <= max_attempts) {
-        err = (io == IO_In ? soundio_instream_open(instream) : soundio_outstream_open(outstream));
-        if (!err) break;
-
-        const string &error_message = format("Error opening {} device: {}\n"
-                                             "Attempt: {}", to_string(io), soundio_strerror(err), attempt);
-        if (err != SoundIoErrorOpeningDevice) throw std::runtime_error(error_message);
-
-        std::cerr << error_message << '\n';
-        std::this_thread::sleep_for(1s);
-    }
-}
-
 static void open_stream(const IO io) {
     if (io == IO_None) return;
 
-    retrying_stream_open(io);
+    int err;
+    if ((err = (io == IO_In ? soundio_instream_open(instream) : soundio_outstream_open(outstream)))) {
+        throw std::runtime_error(format("Unable to open {} device: ", to_string(io)) + soundio_strerror(err));
+    }
+
     if (io == IO_In && instream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(instream->layout_error); }
     else if (io == IO_Out && outstream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(outstream->layout_error); }
 }
@@ -236,6 +226,8 @@ static void destroy_stream(const IO io) {
 }
 
 int audio() {
+    retry_thread = false;
+
     soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
@@ -431,21 +423,37 @@ int audio() {
 
     outstream->underflow_callback = [](SoundIoOutStream *) { std::cerr << "Underflow #" << underflow_count++ << std::endl; };
 
-    for (IO io: {IO_In, IO_Out}) open_stream(io);
+    try {
+        for (IO io: {IO_In, IO_Out}) open_stream(io);
+    } catch (const std::exception &e) {
+        // On Mac, sometimes microphone input stream open will fail if it's already been opened and closed recently.
+        // It seems sometimes it doesn't fully shut down, so starting up again can error with a
+        // [1852797029 OS error](https://developer.apple.com/forums/thread/133990),
+        // since it thinks the microphone is being used by another application.
+        // If we run into any stream-open failure: signal to try again via `retry_thread`, clean up, and exit.
+        if (++retry_thread_attempt > max_thread_retries) throw e;
 
-    // Faust buffer init
-    faust_buffers = std::make_unique<Buffers>(instream->layout.channel_count, outstream->layout.channel_count);
+        std::cerr << e.what() << "\nRetrying (attempt " << retry_thread_attempt << ")\n";
+        retry_thread = true;
+    }
 
-    // Ring buffer init
-    int capacity = ceil(microphone_latency * 2 * float(instream->sample_rate) * float(instream->bytes_per_frame));
-    ring_buffer = soundio_ring_buffer_create(soundio, capacity);
-    if (!ring_buffer) throw std::runtime_error("Unable to create ring buffer: Out of memory");
+    if (!retry_thread) {
+        retry_thread_attempt = 0;
 
-    for (IO io: {IO_In, IO_Out}) start_stream(io);
+        // Faust buffer init
+        faust_buffers = std::make_unique<Buffers>(instream->layout.channel_count, outstream->layout.channel_count);
 
-    soundio_ready = true;
-    while (thread_running) {}
-    soundio_ready = false;
+        // Ring buffer init
+        int capacity = ceil(microphone_latency * 2 * float(instream->sample_rate) * float(instream->bytes_per_frame));
+        ring_buffer = soundio_ring_buffer_create(soundio, capacity);
+        if (!ring_buffer) throw std::runtime_error("Unable to create ring buffer: Out of memory");
+
+        for (IO io: {IO_In, IO_Out}) start_stream(io);
+
+        soundio_ready = true;
+        while (thread_running) {}
+        soundio_ready = false;
+    }
 
     for (IO io: {IO_In, IO_Out}) destroy_stream(io);
 
@@ -463,8 +471,8 @@ void Audio::update_process() const {
 
     if (thread_running != Running) {
         thread_running = Running;
+        if (audio_thread.joinable()) audio_thread.join();
         if (Running) audio_thread = std::thread(audio);
-        else audio_thread.join();
     }
 
     // Reset the audio thread to make any sample rate change take effect (except the first change from 0 to a supported sample rate on startup).
@@ -640,5 +648,10 @@ void Audio::draw() const {
             ShowBufferPlots();
             TreePop();
         }
+    }
+
+    if (retry_thread) {
+        thread_running = false;
+        update_process();
     }
 }

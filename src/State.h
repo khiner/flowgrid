@@ -461,23 +461,24 @@ typedef int FlowGridCol; // -> enum FlowGridCol_
 
 struct FlowGridStyle : StateMember, Drawable {
     FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
-        StyleColorsDark();
-        StyleDiagramColorsFaust();
+        ColorsDark();
+        DiagramColorsFaust();
     }
 
     void draw() const override;
 
     ImVec4 Colors[FlowGridCol_COUNT];
     Float FlashDurationSec{Path, "FlashDurationSec", 0.6, 0, 5};
+
     Int DiagramFoldComplexity{Path, "DiagramFoldComplexity", 3, 0, 20,
                               "Number of boxes within a diagram before folding into a sub-diagram. Setting to zero disables folding altogether, for a fully-expanded diagram."};
-    Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
-    Bool DiagramSequentialConnectionZigzag{Path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
-    Bool DiagramOrientationMark{Path, "DiagramOrientationMark", false};
-    Float DiagramOrientationMarkRadius{Path, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
-    Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
     Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
     Vec2 DiagramScale{Path, "DiagramScale", {1, 1}, 0.1, 10};
+    Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
+    Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
+    Bool DiagramSequentialConnectionZigzag{Path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
+    Bool DiagramOrientationMark{Path, "DiagramOrientationMark", true};
+    Float DiagramOrientationMarkRadius{Path, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
     Float DiagramTopLevelMargin{Path, "DiagramTopLevelMargin", 20, 0, 40};
     Float DiagramDecorateMargin{Path, "DiagramDecorateMargin", 20, 0, 40};
     Float DiagramDecorateLineWidth{Path, "DiagramDecorateLineWidth", 1, 0, 4};
@@ -489,20 +490,20 @@ struct FlowGridStyle : StateMember, Drawable {
     Vec2 DiagramArrowSize{Path, "DiagramArrowSize", {3, 2}, 1, 10};
     Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
 
-    void StyleColorsDark() {
+    void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
         Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
     }
-    void StyleColorsClassic() {
+    void ColorsClassic() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
         Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
     }
-    void StyleColorsLight() {
+    void ColorsLight() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.45f, 0.00f, 1.00f};
         Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
     }
 
-    void StyleDiagramColorsDark() {
+    void DiagramColorsDark() {
         Colors[FlowGridCol_DiagramBg] = {0.06, 0.06, 0.06, 0.94};
         Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {1, 1, 1, 1};
@@ -517,7 +518,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
         Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
     }
-    void StyleDiagramColorsClassic() {
+    void DiagramColorsClassic() {
         Colors[FlowGridCol_DiagramBg] = {0, 0, 0, 0.85};
         Colors[FlowGridCol_DiagramText] = {0.9, 0.9, 0.9, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {0.9, 0.9, 0.9, 1};
@@ -532,7 +533,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
         Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
     }
-    void StyleDiagramColorsLight() {
+    void DiagramColorsLight() {
         Colors[FlowGridCol_DiagramBg] = {0.94, 0.94, 0.94, 1};
         Colors[FlowGridCol_DiagramText] = {0, 0, 0, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
@@ -548,7 +549,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
     }
     // Color Faust diagrams the same way Faust does when it renders to SVG.
-    void StyleDiagramColorsFaust() {
+    void DiagramColorsFaust() {
         Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
@@ -562,6 +563,36 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
         Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
         Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+    }
+
+    void DiagramLayoutFlowGrid() {
+        DiagramSequentialConnectionZigzag = false;
+        DiagramOrientationMark = false;
+        DiagramTopLevelMargin = 10;
+        DiagramDecorateMargin = 10;
+        DiagramDecorateLineWidth = 2;
+        DiagramDecorateCornerRadius = 5;
+        DiagramBinaryHorizontalGapRatio = 0.25;
+        DiagramWireWidth = 1;
+        DiagramWireGap = 16;
+        DiagramGap = {8, 8};
+        DiagramArrowSize = {3, 2};
+        DiagramInverterRadius = 3;
+    }
+    // Lay out Faust diagrams the same way Faust does when it renders to SVG.
+    void DiagramLayoutFaust() {
+        DiagramSequentialConnectionZigzag = true;
+        DiagramOrientationMark = true;
+        DiagramTopLevelMargin = 20;
+        DiagramDecorateMargin = 20;
+        DiagramDecorateLineWidth = 1;
+        DiagramDecorateCornerRadius = 0;
+        DiagramBinaryHorizontalGapRatio = 0.25;
+        DiagramWireWidth = 1;
+        DiagramWireGap = 16;
+        DiagramGap = {8, 8};
+        DiagramArrowSize = {3, 2};
+        DiagramInverterRadius = 3;
     }
 
     static const char *GetColorName(FlowGridCol idx) {

@@ -358,24 +358,33 @@ void State::update(const Action &action) {
         },
         [&](const set_flowgrid_color_style &a) {
             switch (a.id) {
-                case 0: Style.FlowGrid.StyleColorsDark();
+                case 0: Style.FlowGrid.ColorsDark();
                     break;
-                case 1: Style.FlowGrid.StyleColorsLight();
+                case 1: Style.FlowGrid.ColorsLight();
                     break;
-                case 2: Style.FlowGrid.StyleColorsClassic();
+                case 2: Style.FlowGrid.ColorsClassic();
                     break;
                 default:break;
             }
         },
         [&](const set_flowgrid_diagram_color_style &a) {
             switch (a.id) {
-                case 0: Style.FlowGrid.StyleDiagramColorsDark();
+                case 0: Style.FlowGrid.DiagramColorsDark();
                     break;
-                case 1: Style.FlowGrid.StyleDiagramColorsLight();
+                case 1: Style.FlowGrid.DiagramColorsLight();
                     break;
-                case 2: Style.FlowGrid.StyleDiagramColorsClassic();
+                case 2: Style.FlowGrid.DiagramColorsClassic();
                     break;
-                case 3: Style.FlowGrid.StyleDiagramColorsFaust();
+                case 3: Style.FlowGrid.DiagramColorsFaust();
+                    break;
+                default:break;
+            }
+        },
+        [&](const set_flowgrid_diagram_layout_style &a) {
+            switch (a.id) {
+                case 0: Style.FlowGrid.DiagramLayoutFlowGrid();
+                    break;
+                case 1: Style.FlowGrid.DiagramLayoutFaust();
                     break;
                 default:break;
             }
@@ -924,9 +933,10 @@ void Style::ImPlotStyleMember::draw() const {
 }
 
 void FlowGridStyle::draw() const {
-    static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});
-    if (Combo("Diagram colors##Selector", &style_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{style_idx});
+    static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
+    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
+    if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{diagram_colors_idx});
+    if (Combo("Diagram layout", &diagram_layout_idx, "FlowGrid\0Faust\0")) q(set_flowgrid_diagram_layout_style{diagram_layout_idx});
     FlashDurationSec.Draw("%.3f s");
 
     if (BeginTabBar("##FlowGridStyleEditor")) {
@@ -953,7 +963,6 @@ void FlowGridStyle::draw() const {
                 ImGui::EndDisabled();
             }
             DiagramDirection.Draw();
-            DiagramSequentialConnectionZigzag.Draw();
             DiagramOrientationMark.Draw();
             if (DiagramOrientationMark) {
                 SameLine();
@@ -961,6 +970,7 @@ void FlowGridStyle::draw() const {
                 DiagramOrientationMarkRadius.Draw();
             }
             DiagramRouteFrame.Draw();
+            DiagramSequentialConnectionZigzag.Draw();
             DiagramTopLevelMargin.Draw();
             DiagramDecorateMargin.Draw();
             DiagramDecorateLineWidth.Draw();

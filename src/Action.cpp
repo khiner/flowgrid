@@ -35,6 +35,7 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<set_implot_color_style>:
         case id<set_flowgrid_color_style>:
         case id<set_flowgrid_diagram_color_style>:
+        case id<set_flowgrid_diagram_layout_style>:
         case id<show_open_faust_file_dialog>:
         case id<show_save_faust_file_dialog>:if (a_id == b_id) return b;
             return false;

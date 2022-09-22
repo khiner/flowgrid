@@ -273,6 +273,9 @@ int audio() {
         create_stream(io);
     }
 
+    if (instream->device->id != s.Audio.InDeviceId) q(set_value{s.Audio.InDeviceId.Path, instream->device->id});
+    if (outstream->device->id != s.Audio.OutDeviceId) q(set_value{s.Audio.OutDeviceId.Path, outstream->device->id});
+
     // This is from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_microphone.c#L308-L313,
     // but it fails with a mono microphone and stereo output, which is a common scenario that we'll happily handle.
 //    soundio_device_sort_channel_layouts(out_device);

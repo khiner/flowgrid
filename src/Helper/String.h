@@ -19,6 +19,14 @@ inline static string capitalize(const string &str) {
     return copy;
 }
 
+inline static string lowercase(const string &str) {
+    if (str.empty()) return "";
+
+    string copy = str;
+    copy[0] = tolower(copy[0], std::locale());
+    return copy;
+}
+
 // E.g. 'foo_bar_baz' => 'Foo bar baz'
 inline static string snake_case_to_sentence_case(const string &snake_case) {
     auto sentence_case = snake_case | views::split('_') | views::join(' ') | to<string>;

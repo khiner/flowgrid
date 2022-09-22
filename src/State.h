@@ -222,7 +222,7 @@ struct Process : Window {
     void draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool Running{Path, "Running", true, format("Disabling completely ends the {} process.\nEnabling will start the process up again.", Name)};
+    Bool Running{Path, "Running", true, format("Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name))};
 };
 
 struct ApplicationSettings : Window {
@@ -841,7 +841,7 @@ JsonType(Audio::Faust::FaustEditor, Visible, FileName)
 JsonType(Audio::Faust::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
 JsonType(Audio::Faust::FaustDiagram, Settings)
 JsonType(Audio::Faust, Code, Diagram, Error, Editor, Log)
-JsonType(Audio, Running, FaustRunning, Visible, Muted, Backend, SampleRate, MonitorInput, DeviceVolume, faust)
+JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, Muted, Backend, SampleRate, MonitorInput, DeviceVolume, faust)
 JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
 JsonType(File, Dialog)

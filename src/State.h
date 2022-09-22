@@ -458,7 +458,9 @@ enum FlowGridCol_ {
 typedef int FlowGridCol; // -> enum FlowGridCol_
 
 struct FlowGridStyle : StateMember, Drawable {
-    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {}
+    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
+        StyleColorsDark();
+    }
 
     void draw() const override;
 
@@ -486,22 +488,22 @@ struct FlowGridStyle : StateMember, Drawable {
 
     void StyleColorsDark() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-        Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
-        StyleDiagramFaustClassic();
+        Colors[FlowGridCol_GestureIndicator] = {0.866666734, 0.517647088, 0.321568638, 1}; // ImPlot::GetColormapColor(1, 0);
+        StyleDiagramColorsFaustClassic();
     }
     void StyleColorsClassic() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-        Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
-        StyleDiagramFaustClassic();
+        Colors[FlowGridCol_GestureIndicator] = {0.866666734, 0.517647088, 0.321568638, 1}; // ImPlot::GetColormapColor(1, 0);
+        StyleDiagramColorsFaustClassic();
     }
     void StyleColorsLight() {
         Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
-        Colors[FlowGridCol_GestureIndicator] = ImPlot::GetColormapColor(1, 0);
-        StyleDiagramFaustClassic();
+        Colors[FlowGridCol_GestureIndicator] = {0.866666734, 0.517647088, 0.321568638, 1}; // ImPlot::GetColormapColor(1, 0);
+        StyleDiagramColorsFaustClassic();
     }
 
-    // Make Faust diagrams the same way Faust does when it renders to SVG.
-    void StyleDiagramFaustClassic() {
+    // Color Faust diagrams the same way Faust does when it renders to SVG.
+    void StyleDiagramColorsFaustClassic() {
         Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
         Colors[FlowGridCol_DiagramGroupStroke] = {0.2, 0.2, 0.2, 1};

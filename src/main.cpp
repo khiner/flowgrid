@@ -23,7 +23,6 @@ int main(int, const char **) {
 
     auto ui_context = create_ui();
     c.ui = &ui_context;
-    q(set_flowgrid_color_style{0}, true); // Relies on ImPlot color maps being set up during `create_ui`
 
     {
         // Relying on these imperatively-run side effects up front is not great.

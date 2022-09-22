@@ -467,8 +467,8 @@ void Audio::update_process() const {
         else audio_thread.join();
     }
 
-    // Reset the audio thread to make any sample rate change take effect.
-    if (thread_running && previous_sample_rate != s.Audio.SampleRate) {
+    // Reset the audio thread to make any sample rate change take effect (except the first change from 0 to a supported sample rate on startup).
+    if (thread_running && previous_sample_rate != 0 && previous_sample_rate != s.Audio.SampleRate) {
         thread_running = false;
         audio_thread.join();
         thread_running = true;

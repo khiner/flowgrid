@@ -444,7 +444,7 @@ enum FlowGridCol_ {
     FlowGridCol_DiagramText, // ImGuiCol_Text
     FlowGridCol_DiagramGroupTitle, // ImGuiCol_Text
     FlowGridCol_DiagramGroupStroke, // ImGuiCol_Border
-    FlowGridCol_DiagramLine, // ImGuiCol_Border
+    FlowGridCol_DiagramLine, // ImGuiCol_PlotLines
     FlowGridCol_DiagramLink, // ImGuiCol_Button
     FlowGridCol_DiagramInverter, // ImGuiCol_Text
     FlowGridCol_DiagramOrientationMark, // ImGuiCol_Text
@@ -462,7 +462,8 @@ typedef int FlowGridCol; // -> enum FlowGridCol_
 struct FlowGridStyle : StateMember, Drawable {
     FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
         ColorsDark();
-        DiagramColorsFaust();
+        DiagramColorsDark();
+        DiagramLayoutFlowGrid();
     }
 
     void draw() const override;
@@ -508,7 +509,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramGroupStroke] = {0.43, 0.43, 0.5, 0.5};
-        Colors[FlowGridCol_DiagramLine] = {0.43, 0.43, 0.5, 0.5};
+        Colors[FlowGridCol_DiagramLine] = {0.61, 0.61, 0.61, 1};
         Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
         Colors[FlowGridCol_DiagramInverter] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramOrientationMark] = {1, 1, 1, 1};
@@ -523,7 +524,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramText] = {0.9, 0.9, 0.9, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {0.9, 0.9, 0.9, 1};
         Colors[FlowGridCol_DiagramGroupStroke] = {0.5, 0.5, 0.5, 0.5};
-        Colors[FlowGridCol_DiagramLine] = {0.5, 0.5, 0.5, 0.5};
+        Colors[FlowGridCol_DiagramLine] = {1, 1, 1, 1};
         Colors[FlowGridCol_DiagramLink] = {0.35, 0.4, 0.61, 0.62};
         Colors[FlowGridCol_DiagramInverter] = {0.9, 0.9, 0.9, 1};
         Colors[FlowGridCol_DiagramOrientationMark] = {0.9, 0.9, 0.9, 1};
@@ -538,7 +539,7 @@ struct FlowGridStyle : StateMember, Drawable {
         Colors[FlowGridCol_DiagramText] = {0, 0, 0, 1};
         Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
         Colors[FlowGridCol_DiagramGroupStroke] = {0, 0, 0, 0.3};
-        Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 0.3};
+        Colors[FlowGridCol_DiagramLine] = {0.39, 0.39, 0.39, 1};
         Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
         Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
         Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
@@ -569,7 +570,7 @@ struct FlowGridStyle : StateMember, Drawable {
         DiagramSequentialConnectionZigzag = false;
         DiagramOrientationMark = false;
         DiagramTopLevelMargin = 10;
-        DiagramDecorateMargin = 10;
+        DiagramDecorateMargin = 15;
         DiagramDecorateLineWidth = 2;
         DiagramDecorateCornerRadius = 5;
         DiagramBinaryHorizontalGapRatio = 0.25;

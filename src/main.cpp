@@ -40,11 +40,6 @@ int main(int, const char **) {
     // This project is loaded before applying diffs when loading any .fgd (FlowGridDiff) project.
     c.save_empty_project();
 
-    // Run initialization that doesn't update state.
-    // It's obvious at app start time if anything further has state-modification side effects,
-    // since any further state changes would show up in the undo stack.
-    c.update_faust_context();
-
     while (s.Processes.UI.Running) {
         tick_ui();
         c.run_queued_actions();

@@ -243,6 +243,14 @@ void Context::on_action(const Action &action) {
             state = state_json;
             on_patch(a, json::diff(before_json, state_json));
         },
+        [&](const set_values &a) {
+            const auto before_json = state_json;
+            for (const auto &[path, value]: a.values) {
+                state_json[path] = value;
+            }
+            state = state_json;
+            on_patch(a, json::diff(before_json, state_json));
+        },
         [&](const toggle_value &a) {
             const auto before_json = state_json;
             state_json[a.path] = !state_json[a.path];
@@ -297,16 +305,6 @@ void Context::finalize_gesture() {
 }
 
 void Context::on_patch(const Action &action, const JsonPatch &patch) {
-//    // Apply context-dependent transformations on actions to make them more easily merge-able.
-//    // (Merge only sees two consecutive actions at a time.)
-//    const auto transform_action_pre_merge = [this](const Action &action) -> Action {
-//        switch (action::get_id(action)) {
-//            case action::id<undo>: return Actions::set_diff_index{diff_index - 1};
-//            case action::id<redo>: return Actions::set_diff_index{diff_index + 1};
-//            default: return action;
-//        }
-//    };
-
     active_gesture.emplace_back(action);
     active_gesture_patch = json::diff(gesture_begin_state_json, sj);
 

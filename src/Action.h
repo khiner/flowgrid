@@ -54,6 +54,7 @@ struct show_save_project_dialog {};
 struct close_application {};
 
 struct set_value { JsonPath path; json value; };
+struct set_values { std::map<JsonPath, json> values; };
 //struct patch_value { JsonPatch patch; };
 struct toggle_value { JsonPath path; };
 
@@ -89,6 +90,7 @@ JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)
 JsonType(set_value, path, value)
+JsonType(set_values, values)
 //JsonType(patch_value, patch)
 JsonType(toggle_value, path)
 JsonType(set_imgui_color_style, id)
@@ -115,7 +117,7 @@ using Action = std::variant<
     open_file_dialog, close_file_dialog,
     close_application,
 
-    set_value, toggle_value,
+    set_value, set_values, toggle_value,
 
     set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
     set_flowgrid_diagram_layout_style,
@@ -173,6 +175,7 @@ static const std::map<ID, string> name_for_id{
     {id<close_application>, ActionName(close_application)},
 
     {id<set_value>, ActionName(set_value)},
+    {id<set_values>, ActionName(set_values)},
     {id<toggle_value>, ActionName(toggle_value)},
 //    {id<patch_value>,              ActionName(patch_value)},
 

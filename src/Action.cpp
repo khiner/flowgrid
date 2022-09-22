@@ -1,3 +1,5 @@
+#include <range/v3/view/concat.hpp>
+
 #include "Action.h"
 
 using namespace action;
@@ -44,6 +46,8 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<save_faust_file>:if (a_id == b_id && json(a) == json(b)) return a;
             return false;
         case id<set_value>:if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
+            return false;
+        case id<set_values>:if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::map>};
             return false;
         case id<toggle_value>:return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
         default: return false;

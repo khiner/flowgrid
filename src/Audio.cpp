@@ -146,7 +146,8 @@ SoundIoChannelArea *out_areas = nullptr;
 static char *in_area_pointers[SOUNDIO_MAX_CHANNELS];
 static char *out_area_pointers[SOUNDIO_MAX_CHANNELS];
 
-float microphone_latency = 0.2; // seconds
+static float microphone_latency = 0.2; // seconds
+static const int MaxThreadRetries = 5; // Max number of times in a row the audio thread will try again after an error opening the IO streams
 
 bool soundio_ready = false;
 int underflow_count = 0;
@@ -154,9 +155,9 @@ int last_read_frame_count = 0;
 int last_write_frame_count = 0;
 
 bool thread_running = false;
+bool first_run = true;
 bool retry_thread = false;
 int retry_thread_attempt = 0;
-static const int max_thread_retries = 5;
 
 static int get_device_count(const IO io) {
     switch (io) {
@@ -273,9 +274,6 @@ int audio() {
         create_stream(io);
     }
 
-    if (instream->device->id != s.Audio.InDeviceId) q(set_value{s.Audio.InDeviceId.Path, instream->device->id});
-    if (outstream->device->id != s.Audio.OutDeviceId) q(set_value{s.Audio.OutDeviceId.Path, outstream->device->id});
-
     // This is from https://github.com/andrewrk/libsoundio/blob/a46b0f21c397cd095319f8c9feccf0f1e50e31ba/example/sio_microphone.c#L308-L313,
     // but it fails with a mono microphone and stereo output, which is a common scenario that we'll happily handle.
 //    soundio_device_sort_channel_layouts(out_device);
@@ -300,7 +298,6 @@ int audio() {
     // Fall back to the highest supported sample rate. todo make sure in/out SRs match (use union)
     if (!instream->sample_rate) instream->sample_rate = device_sample_rates[IO_In].back();
     if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates[IO_Out].back();
-    if (outstream->sample_rate != s.Audio.SampleRate) q(set_value{s.Audio.SampleRate.Path, outstream->sample_rate});
 
     read_sample = read_sample_for_format(instream->format);
     write_sample = write_sample_for_format(outstream->format);
@@ -434,7 +431,7 @@ int audio() {
         // [1852797029 OS error](https://developer.apple.com/forums/thread/133990),
         // since it thinks the microphone is being used by another application.
         // If we run into any stream-open failure: signal to try again via `retry_thread`, clean up, and exit.
-        if (++retry_thread_attempt > max_thread_retries) throw std::runtime_error(e.what());
+        if (++retry_thread_attempt > MaxThreadRetries) throw std::runtime_error(e.what());
 
         std::cerr << e.what() << "\nRetrying (attempt " << retry_thread_attempt << ")\n";
         retry_thread = true;
@@ -453,6 +450,15 @@ int audio() {
 
         for (IO io: {IO_In, IO_Out}) start_stream(io);
 
+        if (first_run) {
+            std::map < JsonPath, json > values;
+            if (outstream->sample_rate != s.Audio.SampleRate) values[s.Audio.SampleRate.Path] = outstream->sample_rate;
+            if (instream->device->id != s.Audio.InDeviceId) values[s.Audio.InDeviceId.Path] = instream->device->id;
+            if (outstream->device->id != s.Audio.OutDeviceId) values[s.Audio.OutDeviceId.Path] = outstream->device->id;
+            if (!values.empty()) q(set_values{values});
+            first_run = false;
+        }
+
         soundio_ready = true;
         while (thread_running) {}
         soundio_ready = false;
@@ -467,25 +473,22 @@ int audio() {
     return 0;
 }
 
-std::thread audio_thread;
+static std::thread audio_thread;
 
 void Audio::update_process() const {
-    static int previous_sample_rate = s.Audio.SampleRate;
-
     if (thread_running != Running) {
         thread_running = Running;
         if (audio_thread.joinable()) audio_thread.join();
         if (Running) audio_thread = std::thread(audio);
-    }
-
-    // Reset the audio thread to make any sample rate change take effect (except the first change from 0 to a supported sample rate on startup).
-    if (thread_running && previous_sample_rate != 0 && previous_sample_rate != s.Audio.SampleRate) {
+    } else if (thread_running &&
+        (outstream->sample_rate != s.Audio.SampleRate || instream->device->id != s.Audio.InDeviceId || outstream->device->id != s.Audio.OutDeviceId)) {
+        // Reset the audio thread to make any sample rate change take effect
+        // (except the first change from 0 to a supported sample rate on startup).
         thread_running = false;
         audio_thread.join();
         thread_running = true;
         audio_thread = std::thread(audio);
     }
-    previous_sample_rate = s.Audio.SampleRate;
 
     if (soundio_ready && outstream && outstream->volume != DeviceVolume) soundio_outstream_set_volume(outstream, DeviceVolume);
 }

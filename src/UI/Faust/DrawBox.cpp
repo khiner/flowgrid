@@ -526,7 +526,8 @@ struct BlockSchema : IOSchema {
     }
 
     void _draw(Device &device) const override {
-        const auto &col = s.Style.FlowGrid.Colors[color];
+        const auto &fill_color = s.Style.FlowGrid.Colors[color];
+        const auto &text_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramText];
         const ImRect &rect = get_frame_rect();
         if (device.type() == SVGDeviceType) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
@@ -534,21 +535,22 @@ struct BlockSchema : IOSchema {
             //  note this is likely double-writing in ImGui too
             if (inner && !fs::exists(svg_device.directory / svg_file_name(inner->tree))) write_svg(inner, svg_device.directory);
             const string &link = inner ? svg_file_name(tree) : "";
-            svg_device.rect(rect, col, link);
-            svg_device.text(mid(), text, {}, link);
+            svg_device.rect(rect, fill_color, link);
+            svg_device.text(mid(), text, {.color=text_color}, link);
         } else {
             const ImRect &scaled_rect = scale(ImRect{position + Gap(), position + size - Gap()});
             const auto cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(scaled_rect.Min);
-            ImGui::PushStyleColor(ImGuiCol_Button, col);
+            ImGui::PushStyleColor(ImGuiCol_Button, fill_color);
+            ImGui::PushStyleColor(ImGuiCol_Text, text_color);
             if (!inner) {
                 // Emulate disabled behavior, but without making color dimmer, by just allowing clicks but not changing color.
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, col);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, fill_color);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, fill_color);
             }
             if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), scaled_rect.GetSize()) && inner) focused_schema_stack.push(inner);
             if (!inner) ImGui::PopStyleColor(2);
-            ImGui::PopStyleColor();
+            ImGui::PopStyleColor(2);
             ImGui::SetCursorPos(cursor_pos);
         }
         draw_orientation_mark(device);

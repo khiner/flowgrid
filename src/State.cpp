@@ -367,6 +367,19 @@ void State::update(const Action &action) {
                 default:break;
             }
         },
+        [&](const set_flowgrid_diagram_color_style &a) {
+            switch (a.id) {
+                case 0: Style.FlowGrid.StyleDiagramColorsDark();
+                    break;
+                case 1: Style.FlowGrid.StyleDiagramColorsLight();
+                    break;
+                case 2: Style.FlowGrid.StyleDiagramColorsClassic();
+                    break;
+                case 3: Style.FlowGrid.StyleDiagramColorsFaust();
+                    break;
+                default:break;
+            }
+        },
 
         [&](const open_faust_file &a) { Audio.faust.Code = FileIO::read(a.path); },
 
@@ -913,6 +926,7 @@ void Style::ImPlotStyleMember::draw() const {
 void FlowGridStyle::draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{style_idx});
+    if (Combo("Diagram colors##Selector", &style_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{style_idx});
     FlashDurationSec.Draw("%.3f s");
 
     if (BeginTabBar("##FlowGridStyleEditor")) {

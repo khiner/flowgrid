@@ -60,6 +60,7 @@ struct toggle_value { JsonPath path; };
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
 struct set_flowgrid_color_style { int id; };
+struct set_flowgrid_diagram_color_style { int id; };
 
 struct show_open_faust_file_dialog {};
 struct show_save_faust_file_dialog {};
@@ -92,6 +93,7 @@ JsonType(toggle_value, path)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)
+JsonType(set_flowgrid_diagram_color_style, id)
 JsonType(save_faust_file, path)
 JsonType(open_faust_file, path)
 JsonType(save_faust_svg_file, path)
@@ -113,7 +115,7 @@ using Action = std::variant<
 
     set_value, toggle_value,
 
-    set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style,
+    set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
 
     show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
     open_faust_file, save_faust_file, save_faust_svg_file
@@ -174,6 +176,7 @@ static const std::map<ID, string> name_for_id{
     {id<set_imgui_color_style>, "Set ImGui color style"},
     {id<set_implot_color_style>, "Set ImPlot color style"},
     {id<set_flowgrid_color_style>, "Set FlowGrid color style"},
+    {id<set_flowgrid_diagram_color_style>, "Set FlowGrid diagram color style"},
 
     {id<show_open_faust_file_dialog>, "Show open Faust file dialog"},
     {id<show_save_faust_file_dialog>, "Show save Faust file dialog"},

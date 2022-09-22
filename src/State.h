@@ -437,20 +437,22 @@ struct File : StateMember {
 };
 
 enum FlowGridCol_ {
-    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now)
+    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
     // Faust diagram colors
-    FlowGridCol_DiagramBg,
-    FlowGridCol_DiagramGroupTitle,
-    FlowGridCol_DiagramGroupStroke,
-    FlowGridCol_DiagramLine,
-    FlowGridCol_DiagramLink,
+    FlowGridCol_DiagramBg, // ImGuiCol_WindowBg
+    FlowGridCol_DiagramText, // ImGuiCol_Text
+    FlowGridCol_DiagramGroupTitle, // ImGuiCol_Text
+    FlowGridCol_DiagramGroupStroke, // ImGuiCol_Border
+    FlowGridCol_DiagramLine, // ImGuiCol_Border
+    FlowGridCol_DiagramLink, // ImGuiCol_Button
+    FlowGridCol_DiagramInverter, // ImGuiCol_Text
+    FlowGridCol_DiagramOrientationMark, // ImGuiCol_Text
+    // The rest are box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
     FlowGridCol_DiagramNormal,
     FlowGridCol_DiagramUi,
     FlowGridCol_DiagramSlot,
     FlowGridCol_DiagramNumber,
-    FlowGridCol_DiagramInverter,
-    FlowGridCol_DiagramOrientationMark,
 
     FlowGridCol_COUNT
 };
@@ -460,6 +462,7 @@ typedef int FlowGridCol; // -> enum FlowGridCol_
 struct FlowGridStyle : StateMember, Drawable {
     FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
         StyleColorsDark();
+        StyleDiagramColorsFaust();
     }
 
     void draw() const override;
@@ -474,7 +477,7 @@ struct FlowGridStyle : StateMember, Drawable {
     Float DiagramOrientationMarkRadius{Path, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
     Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
     Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
-    Vec2 DiagramScale{Path, "DiagramScale", ImVec2(1, 1), 0.1, 10};
+    Vec2 DiagramScale{Path, "DiagramScale", {1, 1}, 0.1, 10};
     Float DiagramTopLevelMargin{Path, "DiagramTopLevelMargin", 20, 0, 40};
     Float DiagramDecorateMargin{Path, "DiagramDecorateMargin", 20, 0, 40};
     Float DiagramDecorateLineWidth{Path, "DiagramDecorateLineWidth", 1, 0, 4};
@@ -482,39 +485,83 @@ struct FlowGridStyle : StateMember, Drawable {
     Float DiagramBinaryHorizontalGapRatio{Path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
     Float DiagramWireWidth{Path, "DiagramWireWidth", 1, 0.5, 4};
     Float DiagramWireGap{Path, "DiagramWireGap", 16, 10, 20};
-    Vec2 DiagramGap{Path, "DiagramGap", ImVec2(8, 8), 0, 20};
-    Vec2 DiagramArrowSize{Path, "DiagramArrowSize", ImVec2(3, 2), 1, 10};
+    Vec2 DiagramGap{Path, "DiagramGap", {8, 8}, 0, 20};
+    Vec2 DiagramArrowSize{Path, "DiagramArrowSize", {3, 2}, 1, 10};
     Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
 
     void StyleColorsDark() {
-        Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-        Colors[FlowGridCol_GestureIndicator] = {0.866666734, 0.517647088, 0.321568638, 1}; // ImPlot::GetColormapColor(1, 0);
-        StyleDiagramColorsFaustClassic();
+        Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
+        Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
     }
     void StyleColorsClassic() {
-        Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
-        Colors[FlowGridCol_GestureIndicator] = {0.866666734, 0.517647088, 0.321568638, 1}; // ImPlot::GetColormapColor(1, 0);
-        StyleDiagramColorsFaustClassic();
+        Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
+        Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
     }
     void StyleColorsLight() {
-        Colors[FlowGridCol_HighlightText] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
-        Colors[FlowGridCol_GestureIndicator] = {0.866666734, 0.517647088, 0.321568638, 1}; // ImPlot::GetColormapColor(1, 0);
-        StyleDiagramColorsFaustClassic();
+        Colors[FlowGridCol_HighlightText] = {1.00f, 0.45f, 0.00f, 1.00f};
+        Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
     }
 
-    // Color Faust diagrams the same way Faust does when it renders to SVG.
-    void StyleDiagramColorsFaustClassic() {
-        Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramGroupStroke] = {0.2, 0.2, 0.2, 1};
-        Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramLink] = {0, 0.2, 0.4, 1};
+    void StyleDiagramColorsDark() {
+        Colors[FlowGridCol_DiagramBg] = {0.06, 0.06, 0.06, 0.94};
+        Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
+        Colors[FlowGridCol_DiagramGroupTitle] = {1, 1, 1, 1};
+        Colors[FlowGridCol_DiagramGroupStroke] = {0.43, 0.43, 0.5, 0.5};
+        Colors[FlowGridCol_DiagramLine] = {0.43, 0.43, 0.5, 0.5};
+        Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
+        Colors[FlowGridCol_DiagramInverter] = {1, 1, 1, 1};
+        Colors[FlowGridCol_DiagramOrientationMark] = {1, 1, 1, 1};
+        // Box fills
         Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
         Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
         Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
         Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+    }
+    void StyleDiagramColorsClassic() {
+        Colors[FlowGridCol_DiagramBg] = {0, 0, 0, 0.85};
+        Colors[FlowGridCol_DiagramText] = {0.9, 0.9, 0.9, 1};
+        Colors[FlowGridCol_DiagramGroupTitle] = {0.9, 0.9, 0.9, 1};
+        Colors[FlowGridCol_DiagramGroupStroke] = {0.5, 0.5, 0.5, 0.5};
+        Colors[FlowGridCol_DiagramLine] = {0.5, 0.5, 0.5, 0.5};
+        Colors[FlowGridCol_DiagramLink] = {0.35, 0.4, 0.61, 0.62};
+        Colors[FlowGridCol_DiagramInverter] = {0.9, 0.9, 0.9, 1};
+        Colors[FlowGridCol_DiagramOrientationMark] = {0.9, 0.9, 0.9, 1};
+        // Box fills
+        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+    }
+    void StyleDiagramColorsLight() {
+        Colors[FlowGridCol_DiagramBg] = {0.94, 0.94, 0.94, 1};
+        Colors[FlowGridCol_DiagramText] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramGroupStroke] = {0, 0, 0, 0.3};
+        Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 0.3};
+        Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
         Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
         Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
+        // Box fills
+        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+    }
+    // Color Faust diagrams the same way Faust does when it renders to SVG.
+    void StyleDiagramColorsFaust() {
+        Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
+        Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
+        Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramGroupStroke] = {0.2, 0.2, 0.2, 1};
+        Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramLink] = {0, 0.2, 0.4, 1};
+        Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
+        Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
+        // Box fills
+        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
     }
 
     static const char *GetColorName(FlowGridCol idx) {

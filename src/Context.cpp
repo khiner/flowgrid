@@ -117,11 +117,11 @@ void Context::update_ui_context(UIContextFlags flags) {
 }
 
 void Context::update_faust_context() {
-    if (s.Audio.SampleRate == 0) return; // Sample rate has not been set up yet (set during first audio stream initialization).
+    if (s.Audio.OutSampleRate == 0) return; // Sample rate has not been set up yet (set during first audio stream initialization).
 
     has_new_faust_code = true; // todo I hate this. also, might be called due to sample rate change, not code change.
 
-    faust = std::make_unique<FaustContext>(s.Audio.faust.Code, s.Audio.SampleRate, state.Audio.faust.Error);
+    faust = std::make_unique<FaustContext>(s.Audio.faust.Code, s.Audio.OutSampleRate, state.Audio.faust.Error);
 //    if (faust->dsp) {
 //        StatefulFaustUI faust_ui;
 //        faust->dsp->buildUserInterface(&faust_ui);
@@ -344,7 +344,7 @@ void Context::on_set_value(const JsonPath &path) {
     if (path_str.rfind(s.ImGuiSettings.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
     else if (path_str.rfind(s.Style.ImGui.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
     else if (path_str.rfind(s.Style.ImPlot.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
-    else if (path == s.Audio.faust.Code.Path || path == s.Audio.SampleRate.Path) update_faust_context();
+    else if (path == s.Audio.faust.Code.Path || path == s.Audio.OutSampleRate.Path) update_faust_context();
 }
 
 ProjectFormat get_project_format(const fs::path &path) {

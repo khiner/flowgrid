@@ -379,7 +379,7 @@ struct Audio : Process {
 //                    ");\n"
 //                    "\n"
 //                    "process = no.noise : pitchshifter;\n"};
-        String Code{Path, "Code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.pulsen(1, 10000) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
+        String Code{Path, "Code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
 //        String Code{Path, "Code", "Code",
 //                    "import(\"stdfaust.lib\");\nctFreq = hslider(\"cutoffFrequency\",500,50,10000,0.01);\nq = hslider(\"q\",5,1,30,0.1);\ngain = hslider(\"gain\",1,0,1,0.01);\nprocess = no:noise : fi.resonlp(ctFreq,q,gain);"};
         string Error{};
@@ -393,8 +393,9 @@ struct Audio : Process {
     AudioBackend Backend = none;
     String InDeviceId{Path, "InDeviceId", "In device ID"};
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
-    Float DeviceVolume{Path, "DeviceVolume", 1.0};
-    Int SampleRate{Path, "SampleRate"};
+    Int InSampleRate{Path, "InSampleRate"};
+    Int OutSampleRate{Path, "OutSampleRate"};
+    Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
     Bool MonitorInput{Path, "MonitorInput", false, "Enabling adds the audio input stream directly to the audio output."};
 
     Faust faust{Path, "faust"};
@@ -841,7 +842,7 @@ JsonType(Audio::Faust::FaustEditor, Visible, FileName)
 JsonType(Audio::Faust::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
 JsonType(Audio::Faust::FaustDiagram, Settings)
 JsonType(Audio::Faust, Code, Diagram, Error, Editor, Log)
-JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, Muted, Backend, SampleRate, MonitorInput, DeviceVolume, faust)
+JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, OutDeviceVolume, Muted, Backend, MonitorInput, faust)
 JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
 JsonType(File, Dialog)

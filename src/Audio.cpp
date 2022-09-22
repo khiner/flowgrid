@@ -227,8 +227,6 @@ static void destroy_stream(const IO io) {
 }
 
 int audio() {
-    retry_thread = false;
-
     soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
@@ -282,15 +280,20 @@ int audio() {
 //    instream->layout = *layout;
 //    outstream->layout = *layout;
 
-    auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
-    // If the project has a saved sample rate, give it the highest priority.
-    if (s.Audio.SampleRate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), s.Audio.SampleRate);
+    auto in_prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
+    auto out_prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
+    // If the project has saved sample rates, give them the highest priority.
+    if (s.Audio.InSampleRate) in_prioritized_sample_rates.insert(in_prioritized_sample_rates.begin(), s.Audio.InSampleRate);
+    if (s.Audio.OutSampleRate) out_prioritized_sample_rates.insert(out_prioritized_sample_rates.begin(), s.Audio.OutSampleRate);
     // Could just check `device_sample_rates` populated above, but this `supports_sample_rate` function handles devices supporting ranges.
-    // todo support input sample rates not supported by output device
-    for (const auto &preferred_sample_rate: prioritized_sample_rates) {
-        if (soundio_device_supports_sample_rate(devices[IO_In], preferred_sample_rate) &&
-            soundio_device_supports_sample_rate(devices[IO_Out], preferred_sample_rate)) {
+    for (const auto &preferred_sample_rate: in_prioritized_sample_rates) {
+        if (soundio_device_supports_sample_rate(devices[IO_In], preferred_sample_rate)) {
             instream->sample_rate = preferred_sample_rate;
+            break;
+        }
+    }
+    for (const auto &preferred_sample_rate: out_prioritized_sample_rates) {
+        if (soundio_device_supports_sample_rate(devices[IO_Out], preferred_sample_rate)) {
             outstream->sample_rate = preferred_sample_rate;
             break;
         }
@@ -452,9 +455,10 @@ int audio() {
 
         if (first_run) {
             std::map < JsonPath, json > values;
-            if (outstream->sample_rate != s.Audio.SampleRate) values[s.Audio.SampleRate.Path] = outstream->sample_rate;
             if (instream->device->id != s.Audio.InDeviceId) values[s.Audio.InDeviceId.Path] = instream->device->id;
             if (outstream->device->id != s.Audio.OutDeviceId) values[s.Audio.OutDeviceId.Path] = outstream->device->id;
+            if (instream->sample_rate != s.Audio.InSampleRate) values[s.Audio.InSampleRate.Path] = instream->sample_rate;
+            if (outstream->sample_rate != s.Audio.OutSampleRate) values[s.Audio.OutSampleRate.Path] = outstream->sample_rate;
             if (!values.empty()) q(set_values{values});
             first_run = false;
         }
@@ -481,7 +485,8 @@ void Audio::update_process() const {
         if (audio_thread.joinable()) audio_thread.join();
         if (Running) audio_thread = std::thread(audio);
     } else if (thread_running &&
-        (outstream->sample_rate != s.Audio.SampleRate || instream->device->id != s.Audio.InDeviceId || outstream->device->id != s.Audio.OutDeviceId)) {
+        (instream->device->id != s.Audio.InDeviceId || outstream->device->id != s.Audio.OutDeviceId ||
+            instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != s.Audio.OutSampleRate)) {
         // Reset the audio thread to make any sample rate change take effect
         // (except the first change from 0 to a supported sample rate on startup).
         thread_running = false;
@@ -490,7 +495,7 @@ void Audio::update_process() const {
         audio_thread = std::thread(audio);
     }
 
-    if (soundio_ready && outstream && outstream->volume != DeviceVolume) soundio_outstream_set_volume(outstream, DeviceVolume);
+    if (soundio_ready && outstream && outstream->volume != OutDeviceVolume) soundio_outstream_set_volume(outstream, OutDeviceVolume);
 }
 
 using namespace fg;
@@ -622,6 +627,7 @@ void ShowBufferPlots() {
 
 void Audio::draw() const {
     if (retry_thread) {
+        retry_thread = false;
         thread_running = false;
         update_process();
     }
@@ -634,11 +640,12 @@ void Audio::draw() const {
     FaustRunning.Draw();
     Muted.Draw();
     MonitorInput.Draw();
-    DeviceVolume.Draw();
+    OutDeviceVolume.Draw();
 
     if (!device_ids[IO_In].empty()) InDeviceId.Draw(device_ids[IO_In]);
     if (!device_ids[IO_Out].empty()) OutDeviceId.Draw(device_ids[IO_Out]);
-    if (!device_sample_rates[IO_Out].empty()) SampleRate.Draw(device_sample_rates[IO_Out]); // todo only show sample rates supported by both I/O
+    if (!device_sample_rates[IO_In].empty()) InSampleRate.Draw(device_sample_rates[IO_In]);
+    if (!device_sample_rates[IO_Out].empty()) OutSampleRate.Draw(device_sample_rates[IO_Out]);
     NewLine();
     if (TreeNode("Devices")) {
         ShowDevices();

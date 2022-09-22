@@ -156,7 +156,7 @@ int last_write_frame_count = 0;
 bool thread_running = false;
 bool retry_thread = false;
 int retry_thread_attempt = 0;
-static const int max_thread_retries = 3;
+static const int max_thread_retries = 5;
 
 static int get_device_count(const IO io) {
     switch (io) {
@@ -431,7 +431,7 @@ int audio() {
         // [1852797029 OS error](https://developer.apple.com/forums/thread/133990),
         // since it thinks the microphone is being used by another application.
         // If we run into any stream-open failure: signal to try again via `retry_thread`, clean up, and exit.
-        if (++retry_thread_attempt > max_thread_retries) throw e;
+        if (++retry_thread_attempt > max_thread_retries) throw std::runtime_error(e.what());
 
         std::cerr << e.what() << "\nRetrying (attempt " << retry_thread_attempt << ")\n";
         retry_thread = true;
@@ -615,7 +615,16 @@ void ShowBufferPlots() {
 }
 
 void Audio::draw() const {
+    if (retry_thread) {
+        thread_running = false;
+        update_process();
+    }
     Running.Draw();
+    if (!soundio_ready) {
+        Text("No audio context created yet");
+        return;
+    }
+
     FaustRunning.Draw();
     Muted.Draw();
     MonitorInput.Draw();
@@ -625,33 +634,24 @@ void Audio::draw() const {
     if (!device_ids[IO_Out].empty()) OutDeviceId.Draw(device_ids[IO_Out]);
     if (!device_sample_rates[IO_Out].empty()) SampleRate.Draw(device_sample_rates[IO_Out]); // todo only show sample rates supported by both I/O
     NewLine();
-    if (!soundio_ready) {
-        Text("No audio context created yet");
-    } else {
-        if (TreeNode("Devices")) {
-            ShowDevices();
-            TreePop();
-        }
-        if (TreeNode("Streams")) {
-            ShowStreams();
-            TreePop();
-        }
-        const auto backend_count = soundio_backend_count(soundio);
-        if (TreeNodeEx("Backends", ImGuiTreeNodeFlags_None, "Available backends (%d)", backend_count)) {
-            for (int i = 0; i < backend_count; i++) {
-                const auto backend = soundio_get_backend(soundio, i);
-                BulletText("%s%s", soundio_backend_name(backend), backend == soundio->current_backend ? " (current)" : "");
-            }
-            TreePop();
-        }
-        if (TreeNode("Plots")) {
-            ShowBufferPlots();
-            TreePop();
-        }
+    if (TreeNode("Devices")) {
+        ShowDevices();
+        TreePop();
     }
-
-    if (retry_thread) {
-        thread_running = false;
-        update_process();
+    if (TreeNode("Streams")) {
+        ShowStreams();
+        TreePop();
+    }
+    const auto backend_count = soundio_backend_count(soundio);
+    if (TreeNodeEx("Backends", ImGuiTreeNodeFlags_None, "Available backends (%d)", backend_count)) {
+        for (int i = 0; i < backend_count; i++) {
+            const auto backend = soundio_get_backend(soundio, i);
+            BulletText("%s%s", soundio_backend_name(backend), backend == soundio->current_backend ? " (current)" : "");
+        }
+        TreePop();
+    }
+    if (TreeNode("Plots")) {
+        ShowBufferPlots();
+        TreePop();
     }
 }

@@ -21,6 +21,8 @@ const json &sj = c.sj;
 int main(int, const char **) {
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
+    s.Audio.update_process(); // Start audio process
+
     auto ui_context = create_ui();
     c.ui = &ui_context;
 

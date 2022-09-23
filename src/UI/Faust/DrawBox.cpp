@@ -486,7 +486,7 @@ struct IOSchema : Schema {
     ImVec2 point(IO io, Count i) const override {
         return {
             x() + ((io == IO_In && is_lr()) || (io == IO_Out && !is_lr()) ? 0 : w()),
-            mid().y - WireGap() * (float(io_count(io) - 1) / 2 - float(i) * orientation_unit())
+            mid().y - WireGap() * (float(io_count(io) - 1) / 2 - float(i)) * orientation_unit()
         };
     }
 

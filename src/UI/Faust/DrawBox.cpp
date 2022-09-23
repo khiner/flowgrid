@@ -380,7 +380,7 @@ struct Schema {
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
         _draw(device);
-        if (s.Audio.Faust.Diagram.Settings.HoverDebug && (!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
+        if ((!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
             hovered_schema = this;
         }
     };
@@ -406,11 +406,16 @@ struct Schema {
                 );
                 device.circle(point(io, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
             }
+        }
+    }
+
+    void draw_child_channel_labels(Device &device) const {
+        for (const IO io: {IO_In, IO_Out}) {
             for (Count ci = 0; ci < children.size(); ci++) {
                 for (Count channel = 0; channel < io_count(io, ci); channel++) {
                     device.text(
                         child(ci)->point(io, channel),
-                        format("({})->{}:{}", ci, capitalize(to_string(io, true)), channel),
+                        format("C{}->{}:{}", ci, capitalize(to_string(io, true)), channel),
                         {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold}
                     );
                     device.circle(child(ci)->point(io, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
@@ -1145,8 +1150,13 @@ void Audio::FaustState::FaustDiagram::draw() const {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-            fg::ToggleMenuItem(s.Audio.Faust.Diagram.Settings.ScaleFill);
-            fg::ToggleMenuItem(s.Audio.Faust.Diagram.Settings.HoverDebug);
+            fg::ToggleMenuItem(Settings.ScaleFill);
+            if (ImGui::BeginMenu("Hover")) {
+                fg::ToggleMenuItem(Settings.HoverShowRect);
+                fg::ToggleMenuItem(Settings.HoverShowChannels);
+                fg::ToggleMenuItem(Settings.HoverShowChildChannels);
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -1172,17 +1182,19 @@ void Audio::FaustState::FaustDiagram::draw() const {
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    if (!s.Audio.Faust.Diagram.Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
+    if (!Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
     ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::GetCurrentWindow()->FontWindowScale = scale(1);
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
         ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]));
+
     ImGuiDevice device;
     hovered_schema = nullptr;
     focused->draw(device);
     if (hovered_schema) {
-        hovered_schema->draw_rect(device);
-        hovered_schema->draw_channel_labels(device);
+        if (Settings.HoverShowRect) hovered_schema->draw_rect(device);
+        if (Settings.HoverShowChannels) hovered_schema->draw_channel_labels(device);
+        if (Settings.HoverShowChildChannels) hovered_schema->draw_child_channel_labels(device);
     }
 
     ImGui::EndChild();

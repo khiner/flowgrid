@@ -353,7 +353,9 @@ struct Audio : Process {
                 using StateMember::StateMember;
 
                 Bool ScaleFill{Path, "ScaleFill", "Scale to window", false}; // This and `style.FlowGrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
-                Bool HoverDebug{Path, "HoverDebug", false};
+                Bool HoverShowRect{Path, "HoverShowRect", false};
+                Bool HoverShowChannels{Path, "HoverShowChannels", false};
+                Bool HoverShowChildChannels{Path, "HoverShowChildChannels", false};
             };
 
             DiagramSettings Settings{Path, "Settings"};
@@ -842,7 +844,7 @@ JsonType(Process, Running)
 
 JsonType(ApplicationSettings, Visible, GestureDurationSec)
 JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
-JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
+JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverShowRect, HoverShowChannels, HoverShowChildChannels)
 JsonType(Audio::FaustState::FaustDiagram, Settings)
 JsonType(Audio::FaustState, Code, Diagram, Error, Editor, Log)
 JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)

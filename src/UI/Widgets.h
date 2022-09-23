@@ -12,13 +12,13 @@ using ActionID = size_t; // duplicate definition to avoid importing `Action.h`
 void MenuItem(ActionID); // For actions with no data members.
 void ToggleMenuItem(const StateMember &);
 
-typedef int JsonTreeNodeFlags;
 enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None = 0,
     JsonTreeNodeFlags_Highlighted = 1 << 0,
     JsonTreeNodeFlags_Disabled = 1 << 1,
     JsonTreeNodeFlags_DefaultOpen = 1 << 2,
 };
+using JsonTreeNodeFlags = int;
 
 bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr);
 

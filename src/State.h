@@ -354,6 +354,7 @@ struct Audio : Process {
 
                 Bool ScaleFill{Path, "ScaleFill", "Scale to window", false}; // This and `style.FlowGrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
                 Bool HoverShowRect{Path, "HoverShowRect", false};
+                Bool HoverShowType{Path, "HoverShowType", false};
                 Bool HoverShowChannels{Path, "HoverShowChannels", false};
                 Bool HoverShowChildChannels{Path, "HoverShowChildChannels", false};
             };
@@ -459,8 +460,7 @@ enum FlowGridCol_ {
 
     FlowGridCol_COUNT
 };
-
-typedef int FlowGridCol; // -> enum FlowGridCol_
+using FlowGridCol = int;
 
 struct FlowGridStyle : StateMember, Drawable {
     FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
@@ -844,7 +844,7 @@ JsonType(Process, Running)
 
 JsonType(ApplicationSettings, Visible, GestureDurationSec)
 JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
-JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverShowRect, HoverShowChannels, HoverShowChildChannels)
+JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverShowRect, HoverShowType, HoverShowChannels, HoverShowChildChannels)
 JsonType(Audio::FaustState::FaustDiagram, Settings)
 JsonType(Audio::FaustState, Code, Diagram, Error, Editor, Log)
 JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)

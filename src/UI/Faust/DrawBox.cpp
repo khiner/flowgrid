@@ -321,7 +321,7 @@ struct ImGuiDevice : Device {
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style] = style;
-        const auto &text_pos = p - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / ImVec2{2, 1} : text_size(text));
+        const auto &text_pos = p - ImVec2{padding_right, padding_bottom} - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / ImVec2{2, 1} : text_size(text));
         draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
     }
 
@@ -338,6 +338,8 @@ struct Schema;
 Schema *root_schema; // This diagram is drawn every frame if present.
 std::stack<Schema *> focused_schema_stack;
 const Schema *hovered_schema;
+
+static string get_box_type(Box t);
 
 // An abstract block diagram schema
 struct Schema {
@@ -392,38 +394,6 @@ struct Schema {
         return x() > schema.x() && right() < schema.right() && y() > schema.y() && y() < schema.bottom();
     }
 
-    void draw_rect(Device &device) const {
-        device.rect(rect(), {.fill_color={0, 0, 0, 0.1}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
-    }
-
-    void draw_channel_labels(Device &device) const {
-        for (const IO io: {IO_In, IO_Out}) {
-            for (Count channel = 0; channel < io_count(io); channel++) {
-                device.text(
-                    point(io, channel),
-                    format("{}:{}", capitalize(to_string(io, true)), channel),
-                    {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .scale_height=1.3, .font_style=TextStyle::FontStyle::Bold}
-                );
-                device.circle(point(io, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
-            }
-        }
-    }
-
-    void draw_child_channel_labels(Device &device) const {
-        for (const IO io: {IO_In, IO_Out}) {
-            for (Count ci = 0; ci < children.size(); ci++) {
-                for (Count channel = 0; channel < io_count(io, ci); channel++) {
-                    device.text(
-                        child(ci)->point(io, channel),
-                        format("C{}->{}:{}", ci, capitalize(to_string(io, true)), channel),
-                        {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold}
-                    );
-                    device.circle(child(ci)->point(io, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
-                }
-            }
-        }
-    }
-
     inline float x() const { return position.x; }
     inline float y() const { return position.y; }
     inline float w() const { return size.x; }
@@ -441,6 +411,44 @@ struct Schema {
     inline static ImVec2 Gap() { return s.Style.FlowGrid.DiagramGap; }
     inline static float XGap() { return Gap().x; }
     inline static float YGap() { return Gap().y; }
+
+    // Debug
+    void draw_rect(Device &device) const {
+        device.rect(rect(), {.fill_color={0.5, 0.5, 0.5, 0.1}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
+    }
+    void draw_type(Device &device) const {
+        const string &type = get_box_type(tree); // todo cache this at construction time if we ever use it outside the debug hover context
+        const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
+        const static float padding = 2;
+        device.rect({position, position + text_size(type_label) + ImVec2{padding, padding} * 2}, {.fill_color={0.5, 0.5, 0.5, 0.3}});
+        device.text(position, type_label, {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Left, .padding_right=-padding, .padding_bottom=-padding});
+    }
+    void draw_channel_labels(Device &device) const {
+        for (const IO io: {IO_In, IO_Out}) {
+            for (Count channel = 0; channel < io_count(io); channel++) {
+                device.text(
+                    point(io, channel),
+                    format("{}:{}", capitalize(to_string(io, true)), channel),
+                    {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .padding_bottom=6, .scale_height=1.3, .font_style=TextStyle::FontStyle::Bold}
+                );
+                device.circle(point(io, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
+            }
+        }
+    }
+    void draw_child_channel_labels(Device &device) const {
+        for (const IO io: {IO_In, IO_Out}) {
+            for (Count ci = 0; ci < children.size(); ci++) {
+                for (Count channel = 0; channel < io_count(io, ci); channel++) {
+                    device.text(
+                        child(ci)->point(io, channel),
+                        format("C{}->{}:{}", ci, capitalize(to_string(io, true)), channel),
+                        {.color={1, 0, 0, 1}, .justify=TextStyle::Justify::Right, .padding_right=4, .scale_height=0.9, .font_style=TextStyle::FontStyle::Bold}
+                    );
+                    device.circle(child(ci)->point(io, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
+                }
+            }
+        }
+    }
 
 protected:
     virtual void _place_size(DeviceType) = 0;
@@ -1066,17 +1074,77 @@ static Schema *Tree2SchemaNode(Tree t) {
     }
     if (isBoxEnvironment(t)) return new BlockSchema(t, 0, 0, "environment{...}");
 
-    Tree c;
-    if (isBoxRoute(t, a, b, c)) {
+    Tree route;
+    if (isBoxRoute(t, a, b, route)) {
         int ins, outs;
-        std::vector<int> route;
+        std::vector<int> routes;
         // Build n x m cable routing
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(c, route)) return new RouteSchema(t, ins, outs, route);
-
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(route, routes)) return new RouteSchema(t, ins, outs, routes);
         throw std::runtime_error("Invalid route expression : " + print_tree(t));
     }
 
     throw std::runtime_error("ERROR in Tree2SchemaNode, box expression not recognized: " + print_tree(t));
+}
+
+string get_box_type(Box t) {
+    if (getUserData(t) != nullptr) return format("{}({},{})", xtendedName(t), xtendedArity(t), 1);
+    if (isInverter(t)) return "Inverter";
+    if (isBoxInt(t)) return "Int";
+    if (isBoxReal(t)) return "Real";
+    if (isBoxWaveform(t)) return "Waveform";
+    if (isBoxWire(t)) return "Cable";
+    if (isBoxCut(t)) return "Cut";
+
+    prim0 p0;
+    prim1 p1;
+    prim2 p2;
+    prim3 p3;
+    prim4 p4;
+    prim5 p5;
+    if (isBoxPrim0(t, &p0)) return prim0name(p0);
+    if (isBoxPrim1(t, &p1)) return prim1name(p1);
+    if (isBoxPrim2(t, &p2)) return prim2name(p2);
+    if (isBoxPrim3(t, &p3)) return prim3name(p3);
+    if (isBoxPrim4(t, &p4)) return prim4name(p4);
+    if (isBoxPrim5(t, &p5)) return prim5name(p5);
+
+    Tree ff;
+    if (isBoxFFun(t, ff)) return format("FFun:{}({})", ffname(ff), ffarity(ff));
+
+    Tree label, chan, type, name, file;
+    if (isBoxFConst(t, type, name, file)) return format("FConst:{}", tree2str(name));
+    if (isBoxFVar(t, type, name, file)) return format("FVar:{}", tree2str(name));
+    if (isBoxButton(t)) return "Button";
+    if (isBoxCheckbox(t)) return "Checkbox";
+    if (isBoxVSlider(t)) return "VSlider";
+    if (isBoxHSlider(t)) return "HSlider";
+    if (isBoxNumEntry(t)) return "NumEntry";
+    if (isBoxVBargraph(t)) return "VBarGraph";
+    if (isBoxHBargraph(t)) return "HBarGraph";
+    if (isBoxSoundfile(t, label, chan)) return format("Soundfile({},{})", 2, 2 + tree2int(chan));
+
+    Tree a, b;
+    if (isBoxVGroup(t)) return "VGroup";
+    if (isBoxHGroup(t)) return "HGroup";
+    if (isBoxTGroup(t)) return "TGroup";
+    if (isBoxSeq(t, a, b)) return "Sequential";
+    if (isBoxPar(t, a, b)) return "Parallel";
+    if (isBoxSplit(t, a, b)) return "Split";
+    if (isBoxMerge(t, a, b)) return "Merge";
+    if (isBoxRec(t, a, b)) return "Recursive";
+
+    int i;
+    if (isBoxSlot(t, &i)) return format("Slot({})", i);
+    if (isBoxEnvironment(t)) return "Environment";
+
+    Tree route;
+    if (isBoxRoute(t, a, b, route)) {
+        int ins, outs;
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs)) return format("Route({}x{})", ins, outs);
+        throw std::runtime_error("Invalid route expression : " + print_tree(t));
+    }
+
+    return "";
 }
 
 static bool AllowSchemaLinks = true; // Set to `false` to draw all schemas inline in one big diagram. Set to `true` to split into files (for SVG rendering).
@@ -1153,6 +1221,7 @@ void Audio::FaustState::FaustDiagram::draw() const {
             fg::ToggleMenuItem(Settings.ScaleFill);
             if (ImGui::BeginMenu("Hover")) {
                 fg::ToggleMenuItem(Settings.HoverShowRect);
+                fg::ToggleMenuItem(Settings.HoverShowType);
                 fg::ToggleMenuItem(Settings.HoverShowChannels);
                 fg::ToggleMenuItem(Settings.HoverShowChildChannels);
                 ImGui::EndMenu();
@@ -1193,6 +1262,7 @@ void Audio::FaustState::FaustDiagram::draw() const {
     focused->draw(device);
     if (hovered_schema) {
         if (Settings.HoverShowRect) hovered_schema->draw_rect(device);
+        if (Settings.HoverShowType) hovered_schema->draw_type(device);
         if (Settings.HoverShowChannels) hovered_schema->draw_channel_labels(device);
         if (Settings.HoverShowChildChannels) hovered_schema->draw_child_channel_labels(device);
     }

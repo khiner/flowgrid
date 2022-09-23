@@ -975,6 +975,7 @@ void FlowGridStyle::draw() const {
             DiagramDecorateMargin.Draw();
             DiagramDecorateLineWidth.Draw();
             DiagramDecorateCornerRadius.Draw();
+            DiagramBoxCornerRadius.Draw();
             DiagramBinaryHorizontalGapRatio.Draw();
             DiagramWireGap.Draw();
             DiagramGap.Draw();

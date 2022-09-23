@@ -48,6 +48,7 @@ struct RectStyle {
     const ImVec4 &fill_color{1, 1, 1, 1};
     const ImVec4 &stroke_color{0, 0, 0, 0};
     const float stroke_width{0};
+    const float corner_radius{0};
 };
 
 static inline ImVec2 scale(const ImVec2 &p);
@@ -144,15 +145,15 @@ struct SVGDevice : Device {
 
     void rect(const ImRect &r, const RectStyle &style) override {
         const auto &sr = scale(r);
-        const auto &[fill_color, stroke_color, stroke_width] = style;
-        stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="0" ry="0" style="stroke:{};stroke-width={};fill:{};"/>)",
-            sr.Min.x, sr.Min.y, sr.GetWidth(), sr.GetHeight(), rgb_color(stroke_color), stroke_width, rgb_color(fill_color));
+        const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
+        stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="{}" style="stroke:{};stroke-width={};fill:{};"/>)",
+            sr.Min.x, sr.Min.y, sr.GetWidth(), sr.GetHeight(), corner_radius, rgb_color(stroke_color), stroke_width, rgb_color(fill_color));
     }
 
     // Only SVG device has a rect-with-link method
-    void rect(const ImRect &r, const ImVec4 &color, const string &link) {
+    void rect(const ImRect &r, const RectStyle &style, const string &link) {
         if (!link.empty()) stream << format(R"(<a href="{}">)", xml_sanitize(link));
-        rect(r, {.fill_color = color});
+        rect(r, style);
         if (!link.empty()) stream << "</a>";
     }
 
@@ -258,9 +259,9 @@ struct ImGuiDevice : Device {
     DeviceType type() override { return ImGuiDeviceType; }
 
     void rect(const ImRect &rect, const RectStyle &style) override {
-        const auto &[fill_color, stroke_color, stroke_width] = style;
-        if (fill_color.w != 0) draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(fill_color));
-        if (stroke_color.w != 0) draw_list->AddRect(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(stroke_color));
+        const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
+        if (fill_color.w != 0) draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(fill_color), corner_radius);
+        if (stroke_color.w != 0) draw_list->AddRect(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(stroke_color), corner_radius);
     }
 
     void grouprect(const ImRect &rect, const string &text) override {
@@ -535,12 +536,13 @@ struct BlockSchema : IOSchema {
             //  note this is likely double-writing in ImGui too
             if (inner && !fs::exists(svg_device.directory / svg_file_name(inner->tree))) write_svg(inner, svg_device.directory);
             const string &link = inner ? svg_file_name(tree) : "";
-            svg_device.rect(rect, fill_color, link);
+            svg_device.rect(rect, {.fill_color=fill_color, .corner_radius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
             svg_device.text(mid(), text, {.color=text_color}, link);
         } else {
             const ImRect &scaled_rect = scale(ImRect{position + Gap(), position + size - Gap()});
             const auto cursor_pos = ImGui::GetCursorPos();
             ImGui::SetCursorPos(scaled_rect.Min);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, s.Style.FlowGrid.DiagramBoxCornerRadius);
             ImGui::PushStyleColor(ImGuiCol_Button, fill_color);
             ImGui::PushStyleColor(ImGuiCol_Text, text_color);
             if (!inner) {
@@ -551,6 +553,7 @@ struct BlockSchema : IOSchema {
             if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), scaled_rect.GetSize()) && inner) focused_schema_stack.push(inner);
             if (!inner) ImGui::PopStyleColor(2);
             ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar(1);
             ImGui::SetCursorPos(cursor_pos);
         }
         draw_orientation_mark(device);

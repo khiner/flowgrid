@@ -6,15 +6,14 @@
 #include "UI/Faust/DrawBox.hh"
 
 FaustContext::FaustContext(const string &code, int sample_rate, string &error_msg) {
-//        The only arg that's strictly needed is the faust library path.
-//        However, we currently use an environment variable for this: `FAUST_LIB_PATH=../lib/faust/libraries`
-//        argv[argc++] = "-I" ;
-//        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-// todo Stephane added this recently - switch back to using argv
+    int argc = 0;
+    const char **argv = new const char *[8];
+    argv[argc++] = "-I";
+    argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
 
     destroyLibContext();
     createLibContext();
-    box = DSPToBoxes("FlowGrid", code, &num_inputs, &num_outputs, error_msg);
+    box = DSPToBoxes("FlowGrid", code, argc, argv, &num_inputs, &num_outputs, error_msg);
     if (box && error_msg.empty()) {
         static const int optimize_level = -1;
         dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);

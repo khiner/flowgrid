@@ -247,8 +247,8 @@ void State::draw() const {
             if (BeginMenu("Audio")) {
                 Audio.ToggleMenuItem();
                 if (BeginMenu("Faust")) {
-                    Audio.faust.Editor.ToggleMenuItem();
-                    Audio.faust.Log.ToggleMenuItem();
+                    Audio.Faust.Editor.ToggleMenuItem();
+                    Audio.Faust.Log.ToggleMenuItem();
                     EndMenu();
                 }
                 EndMenu();
@@ -275,9 +275,9 @@ void State::draw() const {
         ApplicationSettings.Dock(settings_node_id);
         Audio.Dock(settings_node_id);
 
-        Audio.faust.Editor.Dock(faust_editor_node_id);
-        Audio.faust.Diagram.Dock(faust_editor_node_id);
-        Audio.faust.Log.Dock(faust_log_node_id);
+        Audio.Faust.Editor.Dock(faust_editor_node_id);
+        Audio.Faust.Diagram.Dock(faust_editor_node_id);
+        Audio.Faust.Log.Dock(faust_log_node_id);
 
         StateViewer.Dock(state_node_id);
         StateMemoryEditor.Dock(state_node_id);
@@ -297,9 +297,9 @@ void State::draw() const {
     ApplicationSettings.DrawWindow();
     Audio.DrawWindow();
 
-    Audio.faust.Editor.DrawWindow(ImGuiWindowFlags_MenuBar);
-    Audio.faust.Diagram.DrawWindow(ImGuiWindowFlags_MenuBar);
-    Audio.faust.Log.DrawWindow();
+    Audio.Faust.Editor.DrawWindow(ImGuiWindowFlags_MenuBar);
+    Audio.Faust.Diagram.DrawWindow(ImGuiWindowFlags_MenuBar);
+    Audio.Faust.Log.DrawWindow();
 
     StateViewer.DrawWindow(ImGuiWindowFlags_MenuBar);
     PathUpdateFrequency.DrawWindow();
@@ -390,7 +390,7 @@ void State::update(const Action &action) {
             }
         },
 
-        [&](const open_faust_file &a) { Audio.faust.Code = FileIO::read(a.path); },
+        [&](const open_faust_file &a) { Audio.Faust.Code = FileIO::read(a.path); },
 
         [&](const close_application &) {
             Processes.UI.Running = false;
@@ -942,7 +942,7 @@ void FlowGridStyle::draw() const {
     if (BeginTabBar("##FlowGridStyleEditor")) {
         if (BeginTabItem("Faust diagram")) {
             DiagramFoldComplexity.Draw();
-            const bool ScaleFill = s.Audio.faust.Diagram.Settings.ScaleFill;
+            const bool ScaleFill = s.Audio.Faust.Diagram.Settings.ScaleFill;
             if (ScaleFill) ImGui::BeginDisabled();
             const auto scale_before = DiagramScale.value;
             if (DiagramScale.Draw() && DiagramScaleLinked) {

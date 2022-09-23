@@ -112,7 +112,7 @@ struct SVGDevice : Device {
     SVGDevice(fs::path directory, string file_name, ImVec2 size) : directory(std::move(directory)), file_name(std::move(file_name)) {
         const auto &[w, h] = scale(size);
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        stream << (s.Audio.faust.Diagram.Settings.ScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        stream << (s.Audio.Faust.Diagram.Settings.ScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         stream << format(R"(
@@ -379,7 +379,7 @@ struct Schema {
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
         _draw(device);
-        if (s.Audio.faust.Diagram.Settings.HoverDebug && (!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
+        if (s.Audio.Faust.Diagram.Settings.HoverDebug && (!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
             hovered_schema = this;
         }
     };
@@ -446,7 +446,7 @@ static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
 static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
 static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
-    if (s.Audio.faust.Diagram.Settings.ScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
+    if (s.Audio.Faust.Diagram.Settings.ScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
         const auto *focused_schema = focused_schema_stack.top();
         return ImGui::GetWindowSize() / focused_schema->size;
     }
@@ -1129,7 +1129,7 @@ void save_box_svg(const string &path) {
     write_svg(schema, path);
 }
 
-void Audio::Faust::FaustDiagram::draw() const {
+void Audio::FaustState::FaustDiagram::draw() const {
     if (!root_schema) {
         // todo don't show empty menu bar in this case
         ImGui::Text("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
@@ -1142,8 +1142,8 @@ void Audio::Faust::FaustDiagram::draw() const {
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
-            fg::ToggleMenuItem(s.Audio.faust.Diagram.Settings.ScaleFill);
-            fg::ToggleMenuItem(s.Audio.faust.Diagram.Settings.HoverDebug);
+            fg::ToggleMenuItem(s.Audio.Faust.Diagram.Settings.ScaleFill);
+            fg::ToggleMenuItem(s.Audio.Faust.Diagram.Settings.HoverDebug);
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -1169,7 +1169,7 @@ void Audio::Faust::FaustDiagram::draw() const {
     auto *focused = focused_schema_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    if (!s.Audio.faust.Diagram.Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
+    if (!s.Audio.Faust.Diagram.Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
     ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::GetCurrentWindow()->FontWindowScale = scale(1);
     ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),

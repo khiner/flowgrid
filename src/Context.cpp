@@ -121,14 +121,14 @@ void Context::update_faust_context() {
 
     has_new_faust_code = true; // todo I hate this. also, might be called due to sample rate change, not code change.
 
-    faust = std::make_unique<FaustContext>(s.Audio.faust.Code, s.Audio.OutSampleRate, state.Audio.faust.Error);
+    faust = std::make_unique<FaustContext>(s.Audio.Faust.Code, s.Audio.OutSampleRate, state.Audio.Faust.Error);
 //    if (faust->dsp) {
 //        StatefulFaustUI faust_ui;
 //        faust->dsp->buildUserInterface(&faust_ui);
 //        faust->dsp->metadata(&faust_ui); // version/author/licence/etc
-//        _s.Audio.faust.json = faust_ui.
+//        _s.Audio.Faust.json = faust_ui.
 //    } else {
-//        _s.Audio.faust.json = "";
+//        _s.Audio.Faust.json = "";
 //    }
 }
 
@@ -224,7 +224,7 @@ void Context::on_action(const Action &action) {
         [&](const Actions::save_project &a) { save_project(a.path); },
         [&](const save_default_project &) { save_project(DefaultProjectPath); },
         [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
-        [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.faust.Code); },
+        [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
         [&](const save_faust_svg_file &a) { save_box_svg(a.path); },
 
         // `diff_index`-changing actions:
@@ -344,7 +344,7 @@ void Context::on_set_value(const JsonPath &path) {
     if (path_str.rfind(s.ImGuiSettings.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
     else if (path_str.rfind(s.Style.ImGui.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
     else if (path_str.rfind(s.Style.ImPlot.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
-    else if (path == s.Audio.faust.Code.Path || path == s.Audio.OutSampleRate.Path) update_faust_context();
+    else if (path == s.Audio.Faust.Code.Path || path == s.Audio.OutSampleRate.Path) update_faust_context();
 }
 
 ProjectFormat get_project_format(const fs::path &path) {

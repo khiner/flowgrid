@@ -335,7 +335,7 @@ struct Audio : Process {
 
     void draw() const override;
 
-    struct Faust : StateMember {
+    struct FaustState : StateMember {
         using StateMember::StateMember;
 
         struct FaustEditor : Window {
@@ -398,7 +398,7 @@ struct Audio : Process {
     Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
     Bool MonitorInput{Path, "MonitorInput", false, "Enabling adds the audio input stream directly to the audio output."};
 
-    Faust faust{Path, "faust"};
+    FaustState Faust{Path, "Faust"};
 };
 
 struct File : StateMember {
@@ -838,11 +838,11 @@ JsonType(Window, Visible)
 JsonType(Process, Running)
 
 JsonType(ApplicationSettings, Visible, GestureDurationSec)
-JsonType(Audio::Faust::FaustEditor, Visible, FileName)
-JsonType(Audio::Faust::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
-JsonType(Audio::Faust::FaustDiagram, Settings)
-JsonType(Audio::Faust, Code, Diagram, Error, Editor, Log)
-JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, OutDeviceVolume, Muted, Backend, MonitorInput, faust)
+JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
+JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverDebug)
+JsonType(Audio::FaustState::FaustDiagram, Settings)
+JsonType(Audio::FaustState, Code, Diagram, Error, Editor, Log)
+JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)
 JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
 JsonType(File, Dialog)

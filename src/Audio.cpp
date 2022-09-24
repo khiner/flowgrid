@@ -211,6 +211,21 @@ static void create_stream(const IO io) {
         }
     }
     if (*format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("No suitable {} device format available", to_string(io)));
+
+    auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
+    // If the project has a saved sample rate, give it the highest priority.
+    Int saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
+    if (saved_sample_rate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), saved_sample_rate);
+    // Could just check `device_sample_rates`, but this `supports_sample_rate` function handles devices supporting ranges.
+    auto *sample_rate_ptr = &(io == IO_In ? instream->sample_rate : outstream->sample_rate);
+    for (const auto &preferred_sample_rate: prioritized_sample_rates) {
+        if (soundio_device_supports_sample_rate(devices[io], preferred_sample_rate)) {
+            *sample_rate_ptr = preferred_sample_rate;
+            break;
+        }
+    }
+    // Fall back to the highest supported sample rate.
+    if (!(*sample_rate_ptr)) *sample_rate_ptr = device_sample_rates[io].back();
 }
 static void open_stream(const IO io) {
     if (io == IO_None) return;
@@ -293,28 +308,6 @@ int audio() {
 //    if (!layout) throw std::runtime_error("Channel layouts not compatible");
 //    instream->layout = *layout;
 //    outstream->layout = *layout;
-
-    auto in_prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
-    auto out_prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
-    // If the project has saved sample rates, give them the highest priority.
-    if (s.Audio.InSampleRate) in_prioritized_sample_rates.insert(in_prioritized_sample_rates.begin(), s.Audio.InSampleRate);
-    if (s.Audio.OutSampleRate) out_prioritized_sample_rates.insert(out_prioritized_sample_rates.begin(), s.Audio.OutSampleRate);
-    // Could just check `device_sample_rates` populated above, but this `supports_sample_rate` function handles devices supporting ranges.
-    for (const auto &preferred_sample_rate: in_prioritized_sample_rates) {
-        if (soundio_device_supports_sample_rate(devices[IO_In], preferred_sample_rate)) {
-            instream->sample_rate = preferred_sample_rate;
-            break;
-        }
-    }
-    for (const auto &preferred_sample_rate: out_prioritized_sample_rates) {
-        if (soundio_device_supports_sample_rate(devices[IO_Out], preferred_sample_rate)) {
-            outstream->sample_rate = preferred_sample_rate;
-            break;
-        }
-    }
-    // Fall back to the highest supported sample rate. todo make sure in/out SRs match (use union)
-    if (!instream->sample_rate) instream->sample_rate = device_sample_rates[IO_In].back();
-    if (!outstream->sample_rate) outstream->sample_rate = device_sample_rates[IO_Out].back();
 
     // Input/output sample rates are settled. Set up resampler if needed.
     unique_ptr<r8b::CDSPResampler24> resampler;

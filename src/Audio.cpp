@@ -375,17 +375,15 @@ int audio() {
         // or it has a different sample rate than the output stream.
         // todo currently only handling format changes. Handle sample rate conversion.
         if (input_buffer != input_buffer_direct) {
-            char *write_ptr = soundio_ring_buffer_write_ptr(input_buffer);
+            auto *write_ptr = (float *) soundio_ring_buffer_write_ptr(input_buffer);
             char *read_ptr = write_ptr_direct;
             for (int frame = 0; frame < write_frames; frame++) {
                 for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
-                    const float converted_sample = read_sample(read_ptr);
-                    memcpy(write_ptr, &converted_sample, FloatSize);
+                    *write_ptr = read_sample(read_ptr);
                     read_ptr += instream->bytes_per_sample;
-                    write_ptr += FloatSize;
+                    write_ptr += 1;
                 }
             }
-
             soundio_ring_buffer_advance_write_ptr(input_buffer, write_frames * FloatSize * instream->layout.channel_count);
         }
 
@@ -407,10 +405,10 @@ int audio() {
             // If the current Faust program accepts inputs, copy any filled bytes from the device to the Faust input buffers.
             const int faust_in_channel_count = faust_buffers->channel_count(IO_In);
             if (faust_in_channel_count > 0) {
-                char *read_ptr = soundio_ring_buffer_read_ptr(input_buffer);
+                auto *read_ptr = (float *) soundio_ring_buffer_read_ptr(input_buffer);
                 for (int frame = 0; frame < input_sample_count; frame++) {
                     for (int channel = 0; channel < instream->layout.channel_count; channel++) {
-                        const float value = *(float *) read_ptr;
+                        const float value = *read_ptr;
                         if (faust_in_channel_count < channel) {
                             faust_buffers->set(IO_In, channel, frame, value);
                         } else {
@@ -418,7 +416,7 @@ int audio() {
                             // todo handle the inverse: more Faust input channels than device inputs
                             faust_buffers->set(IO_In, faust_in_channel_count - 1, frame, faust_buffers->get(IO_In, faust_in_channel_count - 1, frame) + value);
                         }
-                        read_ptr += FloatSize;
+                        read_ptr += 1;
                     }
                 }
                 // If the device input buffer does not have enough data filled, set the remaining Faust input samples to zero.
@@ -446,33 +444,29 @@ int audio() {
             last_write_frame_count = frame_count;
             if (frame_count <= 0) break;
 
-            char *read_ptr = soundio_ring_buffer_read_ptr(input_buffer);
-
             // Make a local copy of the output area pointers for incrementing, so others can read directly from the device areas.
             // todo Others assume float32, so we'll need indirect converted buffers when the output stream uses a different format.
             for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) out_area_pointers[channel] = out_areas[channel].ptr;
 
+            auto *read_ptr = (float *) soundio_ring_buffer_read_ptr(input_buffer);
             for (int frame_inner = 0; frame_inner < frame_count; frame_inner++) {
                 for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) {
                     float out_sample = 0;
                     if (!s.Audio.Muted) {
+                        // Monitor input directly from the ring buffer.
+                        if (s.Audio.MonitorInput) out_sample += *read_ptr;
                         if (compute_faust) {
                             out_sample += faust_buffers->get(
                                 IO_Out, min(channel, faust_buffers->channel_count(IO_Out) - 1),
                                 frame_count_max - frames_left + frame_inner // outer frame index
                             );
                         }
-                        if (s.Audio.MonitorInput) {
-                            // Monitor input directly from the ring buffer.
-                            const float value = *(float *) read_ptr;
-                            out_sample += value;
-                        }
                     }
 
                     write_sample(out_area_pointers[channel], out_sample);
                     out_area_pointers[channel] += out_areas[channel].step;
                 }
-                read_ptr += FloatSize; // todo xxx this assumes mono input!
+                read_ptr += 1; // todo xxx this assumes mono input!
             }
             soundio_ring_buffer_advance_read_ptr(input_buffer, min(input_sample_count, frame_count) * FloatSize);
 

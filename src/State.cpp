@@ -1,6 +1,7 @@
 #include "Context.h"
 
 #include "imgui_memory_editor.h"
+#include <range/v3/view/iota.hpp>
 
 #include "FileDialog/ImGuiFileDialogDemo.h"
 #include "UI/Widgets.h"
@@ -104,13 +105,17 @@ bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
 bool Field::Vec2::Draw() const { return Draw("%.3f"); }
 
 bool Field::Enum::Draw() const {
+    return Draw(views::ints(0, int(options.size())) | to<std::vector<int>>); // todo if I stick with this pattern, cache.
+}
+
+bool Field::Enum::Draw(const std::vector<int> &choices) const {
     bool edited = false;
     if (BeginCombo(Name.c_str(), options[value].c_str())) {
-        for (int i = 0; i < int(options.size()); i++) {
-            const bool is_selected = i == value;
-            const auto &option = options[i];
+        for (int choice: choices) {
+            const bool is_selected = choice == value;
+            const auto &option = options[choice];
             if (Selectable(option.c_str(), is_selected)) {
-                q(set_value{Path, i});
+                q(set_value{Path, choice});
                 edited = true;
             }
             if (is_selected) SetItemDefaultFocus();
@@ -119,6 +124,7 @@ bool Field::Enum::Draw() const {
     }
     HelpMarker();
     return edited;
+
 }
 bool Field::Enum::DrawMenu() const {
     HelpMarker(false);
@@ -1020,6 +1026,13 @@ void ApplicationSettings::draw() const {
 }
 
 const std::vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
+const std::vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
+    IoFormat_Float32NE,
+    IoFormat_Float64NE,
+    IoFormat_S32NE,
+    IoFormat_S16NE,
+    IoFormat_Invalid,
+};
 
 void Demo::draw() const {
     if (BeginTabBar("##Demos")) {

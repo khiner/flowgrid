@@ -60,15 +60,26 @@ struct Buffers {
     }
 };
 
-static enum SoundIoFormat prioritized_formats[] = {
-    SoundIoFormatFloat32NE,
-    SoundIoFormatFloat64NE,
-    SoundIoFormatS32NE,
-    SoundIoFormatS16NE,
-    SoundIoFormatInvalid,
-};
+SoundIoFormat to_soundio_format(const Audio::IoFormat format) {
+    switch (format) {
+        case Audio::IoFormat_Invalid: return SoundIoFormatInvalid;
+        case Audio::IoFormat_Float32NE: return SoundIoFormatFloat32NE;
+        case Audio::IoFormat_Float64NE: return SoundIoFormatFloat64NE;
+        case Audio::IoFormat_S32NE: return SoundIoFormatS32NE;
+        case Audio::IoFormat_S16NE: return SoundIoFormatS16NE;
+    }
+}
+Audio::IoFormat to_audio_format(const SoundIoFormat format) {
+    switch (format) {
+        case SoundIoFormatInvalid : return Audio::IoFormat_Invalid;
+        case SoundIoFormatFloat32NE : return Audio::IoFormat_Float32NE;
+        case SoundIoFormatFloat64NE : return Audio::IoFormat_Float64NE;
+        case SoundIoFormatS32NE : return Audio::IoFormat_S32NE;
+        case SoundIoFormatS16NE : return Audio::IoFormat_S16NE;
+    }
+}
 
-SoundIoBackend soundio_backend(const AudioBackend backend) {
+SoundIoBackend to_soundio_backend(const AudioBackend backend) {
     switch (backend) {
         case dummy: return SoundIoBackendDummy;
         case alsa: return SoundIoBackendAlsa;
@@ -143,7 +154,8 @@ SoundIo *soundio = nullptr;
 SoundIoInStream *instream = nullptr;
 SoundIoOutStream *outstream = nullptr;
 std::map<IO, std::vector<string>> device_ids = {{IO_In, {}}, {IO_Out, {}}};
-std::map<IO, std::vector<int>> device_sample_rates = {{IO_In, {}}, {IO_Out, {}}};
+std::map<IO, std::vector<Audio::IoFormat>> supported_formats = {{IO_In, {}}, {IO_Out, {}}};
+std::map<IO, std::vector<int>> supported_sample_rates = {{IO_In, {}}, {IO_Out, {}}};
 std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
 
 /**
@@ -203,20 +215,29 @@ static void create_stream(const IO io) {
     else outstream = soundio_outstream_create(device);
     if ((io == IO_In && !instream) || (io == IO_Out && !outstream)) throw std::runtime_error("Out of memory");
 
-    auto *format_ptr = &(io == IO_In ? instream->format : outstream->format);
+    auto prioritized_formats = Audio::PrioritizedDefaultFormats;
+    // If the project has a saved format, give it the highest priority.
+    Enum saved_format = io == IO_In ? s.Audio.InFormat : s.Audio.OutFormat;
+    if (saved_format != Audio::IoFormat_Invalid) prioritized_formats.insert(prioritized_formats.begin(), Audio::IoFormat(saved_format.value));
+    auto *soundio_format_ptr = &(io == IO_In ? instream->format : outstream->format);
     for (const auto &format: prioritized_formats) {
-        if (soundio_device_supports_format(devices[io], format)) {
-            *format_ptr = format;
+        const auto soundio_format = to_soundio_format(format);
+        if (soundio_device_supports_format(devices[io], soundio_format)) {
+            *soundio_format_ptr = soundio_format;
             break;
         }
     }
-    if (*format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("No suitable {} device format available", to_string(io)));
+    // Fall back to the highest supported format.
+    for (int i = 0; i < device->format_count; i++) supported_formats[io].push_back(to_audio_format(device->formats[i]));
+    if (!(*soundio_format_ptr) && !supported_formats.empty()) *soundio_format_ptr = to_soundio_format(supported_formats[io].back());
+    if (*soundio_format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", capitalize(to_string(io))));
 
     auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
     // If the project has a saved sample rate, give it the highest priority.
     Int saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
     if (saved_sample_rate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), saved_sample_rate);
-    // Could just check `device_sample_rates`, but this `supports_sample_rate` function handles devices supporting ranges.
+
+    // Could just check `supported_sample_rates`, but this `supports_sample_rate` function handles devices supporting ranges.
     auto *sample_rate_ptr = &(io == IO_In ? instream->sample_rate : outstream->sample_rate);
     for (const auto &preferred_sample_rate: prioritized_sample_rates) {
         if (soundio_device_supports_sample_rate(devices[io], preferred_sample_rate)) {
@@ -225,14 +246,15 @@ static void create_stream(const IO io) {
         }
     }
     // Fall back to the highest supported sample rate.
-    if (!(*sample_rate_ptr)) *sample_rate_ptr = device_sample_rates[io].back();
+    if (!(*sample_rate_ptr) && !supported_sample_rates.empty()) *sample_rate_ptr = supported_sample_rates[io].back();
+    if (*soundio_format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("No audio {} device sample rate available", to_string(io)));
 }
 static void open_stream(const IO io) {
     if (io == IO_None) return;
 
     int err;
     if ((err = (io == IO_In ? soundio_instream_open(instream) : soundio_outstream_open(outstream)))) {
-        throw std::runtime_error(format("Unable to open {} device: ", to_string(io)) + soundio_strerror(err));
+        throw std::runtime_error(format("Unable to open audio {} device: ", to_string(io)) + soundio_strerror(err));
     }
 
     if (io == IO_In && instream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(instream->layout_error); }
@@ -243,7 +265,7 @@ static void start_stream(const IO io) {
 
     int err;
     if ((err = (io == IO_In ? soundio_instream_start(instream) : soundio_outstream_start(outstream)))) {
-        throw std::runtime_error(format("Unable to start {} device: ", to_string(io)) + soundio_strerror(err));
+        throw std::runtime_error(format("Unable to start audio {} device: ", to_string(io)) + soundio_strerror(err));
     }
 }
 static void destroy_stream(const IO io) {
@@ -259,16 +281,16 @@ int audio() {
     soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
-    int err = s.Audio.Backend == AudioBackend::none ? soundio_connect(soundio) : soundio_connect_backend(soundio, soundio_backend(s.Audio.Backend));
+    int err = s.Audio.Backend == AudioBackend::none ? soundio_connect(soundio) : soundio_connect_backend(soundio, to_soundio_backend(s.Audio.Backend));
     if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
 
     soundio_flush_events(soundio);
 
     // Input/output device setup
-    device_sample_rates.clear();
+    supported_sample_rates.clear();
     for (IO io: {IO_In, IO_Out}) {
         int default_device_index = get_default_device_index(io);
-        if (default_device_index < 0) throw std::runtime_error(format("No {} device found", to_string(io))); // todo move on without input
+        if (default_device_index < 0) throw std::runtime_error(format("No audio {} device found", to_string(io))); // todo move on without input
 
         device_ids[io].clear();
         const auto device_count = get_device_count(io);
@@ -287,15 +309,15 @@ int audio() {
                 }
                 soundio_device_unref(device);
             }
-            if (!found) throw std::runtime_error(format("Invalid {} device id: ", to_string(io)) + string(s.Audio.get_device_id(io)));
+            if (!found) throw std::runtime_error(format("Invalid audio {} device id: ", to_string(io)) + string(s.Audio.get_device_id(io)));
         }
 
         auto *device = get_device(io, device_index);
-        if (!device) throw std::runtime_error(format("Could not get {} device: out of memory", to_string(io)));
+        if (!device) throw std::runtime_error(format("Could not get audio {} device: out of memory", to_string(io)));
         if (device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(device->probe_error));
 
-        for (int i = 0; i < device->sample_rate_count; i++) device_sample_rates[io].push_back(device->sample_rates[i].max);
-        if (device_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", capitalize(to_string(io))));
+        for (int i = 0; i < device->sample_rate_count; i++) supported_sample_rates[io].push_back(device->sample_rates[i].max);
+        if (supported_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", capitalize(to_string(io))));
 
         devices[io] = device;
         create_stream(io);
@@ -512,6 +534,8 @@ int audio() {
             if (outstream->device->id != s.Audio.OutDeviceId) values[s.Audio.OutDeviceId.Path] = outstream->device->id;
             if (instream->sample_rate != s.Audio.InSampleRate) values[s.Audio.InSampleRate.Path] = instream->sample_rate;
             if (outstream->sample_rate != s.Audio.OutSampleRate) values[s.Audio.OutSampleRate.Path] = outstream->sample_rate;
+            if (instream->format != s.Audio.InFormat) values[s.Audio.InFormat.Path] = to_audio_format(instream->format);
+            if (outstream->format != s.Audio.OutFormat) values[s.Audio.OutFormat.Path] = to_audio_format(outstream->format);
             if (!values.empty()) q(set_values{values});
             first_run = false;
         }
@@ -539,7 +563,8 @@ void Audio::update_process() const {
         if (Running) audio_thread = std::thread(audio);
     } else if (thread_running &&
         (instream->device->id != s.Audio.InDeviceId || outstream->device->id != s.Audio.OutDeviceId ||
-            instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != s.Audio.OutSampleRate)) {
+            instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != s.Audio.OutSampleRate ||
+            instream->format != to_soundio_format(s.Audio.InFormat) || outstream->format != to_soundio_format(s.Audio.OutFormat))) {
         // Reset the audio thread to make any sample rate change take effect
         // (except the first change from 0 to a supported sample rate on startup).
         thread_running = false;
@@ -702,8 +727,10 @@ void Audio::draw() const {
 
     if (!device_ids[IO_In].empty()) InDeviceId.Draw(device_ids[IO_In]);
     if (!device_ids[IO_Out].empty()) OutDeviceId.Draw(device_ids[IO_Out]);
-    if (!device_sample_rates[IO_In].empty()) InSampleRate.Draw(device_sample_rates[IO_In]);
-    if (!device_sample_rates[IO_Out].empty()) OutSampleRate.Draw(device_sample_rates[IO_Out]);
+    if (!supported_formats[IO_In].empty()) InFormat.Draw(supported_formats[IO_In]);
+    if (!supported_formats[IO_Out].empty()) OutFormat.Draw(supported_formats[IO_Out]);
+    if (!supported_sample_rates[IO_In].empty()) InSampleRate.Draw(supported_sample_rates[IO_In]);
+    if (!supported_sample_rates[IO_Out].empty()) OutSampleRate.Draw(supported_sample_rates[IO_Out]);
     NewLine();
     if (TreeNode("Devices")) {
         ShowDevices();

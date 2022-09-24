@@ -171,7 +171,9 @@ struct Enum : Base {
         : Enum(parent_path, id, std::move(options), 0, "", help) {}
 
     operator int() const { return value; }
+
     bool Draw() const override;
+    bool Draw(const std::vector<int> &options) const;
     bool DrawMenu() const;
 
     int value;
@@ -331,7 +333,17 @@ inline static std::ostream &operator<<(std::ostream &os, const IO &io) {
 struct Audio : Process {
     using Process::Process;
 
+    // A selection of supported formats, corresponding to `SoundIoFormat`
+    enum IoFormat_ {
+        IoFormat_Invalid,
+        IoFormat_Float32NE,
+        IoFormat_Float64NE,
+        IoFormat_S32NE,
+        IoFormat_S16NE,
+    };
+    using IoFormat = int;
     static const std::vector<int> PrioritizedDefaultSampleRates;
+    static const std::vector<IoFormat> PrioritizedDefaultFormats;
 
     void draw() const override;
 
@@ -398,6 +410,8 @@ struct Audio : Process {
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
     Int InSampleRate{Path, "InSampleRate"};
     Int OutSampleRate{Path, "OutSampleRate"};
+    Enum InFormat{Path, "InFormat", {"Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
+    Enum OutFormat{Path, "OutFormat", {"Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
     Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
     Bool MonitorInput{Path, "MonitorInput", false, "Enabling adds the audio input stream directly to the audio output."};
 
@@ -847,7 +861,7 @@ JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
 JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverShowRect, HoverShowType, HoverShowChannels, HoverShowChildChannels)
 JsonType(Audio::FaustState::FaustDiagram, Settings)
 JsonType(Audio::FaustState, Code, Diagram, Error, Editor, Log)
-JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)
+JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, InFormat, OutFormat, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)
 JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
 JsonType(File, Dialog)

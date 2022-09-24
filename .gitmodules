@@ -45,3 +45,6 @@
 [submodule "lib/range-v3"]
 	path = lib/range-v3
 	url = git@github.com:ericniebler/range-v3.git
+[submodule "lib/r8brain"]
+	path = lib/r8brain
+	url = git@github.com:avaneev/r8brain-free-src.git

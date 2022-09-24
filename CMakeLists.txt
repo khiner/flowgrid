@@ -14,6 +14,7 @@ file(
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
     lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_demo.cpp
     lib/fmt/src/format.cc
+    lib/r8brain/r8bbase.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -26,6 +27,7 @@ include_directories(
     lib/imgui_club/imgui_memory_editor
     lib/fmt/include
     lib/range-v3/include
+    lib/r8brain
 )
 
 # See readme for plans with these libraries

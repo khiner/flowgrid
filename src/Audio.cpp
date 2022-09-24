@@ -404,22 +404,30 @@ int audio() {
                           << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
             }
 
-            // Copy any filled bytes from the input ring buffer to the Faust input buffer.
-            char *read_ptr = soundio_ring_buffer_read_ptr(input_buffer);
-            for (int frame = 0; frame < input_sample_count; frame++) {
-                for (int channel = 0; channel < instream->layout.channel_count; channel++) {
-                    const float value = *(float *) read_ptr;
-                    faust_buffers->set(IO_In, channel, frame, value);
-                    read_ptr += FloatSize;
+            // If the current Faust program accepts inputs, copy any filled bytes from the device to the Faust input buffers.
+            const int faust_in_channel_count = faust_buffers->channel_count(IO_In);
+            if (faust_in_channel_count > 0) {
+                char *read_ptr = soundio_ring_buffer_read_ptr(input_buffer);
+                for (int frame = 0; frame < input_sample_count; frame++) {
+                    for (int channel = 0; channel < instream->layout.channel_count; channel++) {
+                        const float value = *(float *) read_ptr;
+                        if (faust_in_channel_count < channel) {
+                            faust_buffers->set(IO_In, channel, frame, value);
+                        } else {
+                            // Sum any input channels beyond the number of Faust inputs into the last Faust input.
+                            // todo handle the inverse: more Faust input channels than device inputs
+                            faust_buffers->set(IO_In, faust_in_channel_count - 1, frame, faust_buffers->get(IO_In, faust_in_channel_count - 1, frame) + value);
+                        }
+                        read_ptr += FloatSize;
+                    }
                 }
-            }
-            // Not advancing the input read pointer until after any input monitoring below.
-
-            // If ring buffer does not have enough data, et remaining input samples to zero.
-            for (int frame = 0; frame < frame_count_max - input_sample_count; frame++) {
-                for (int channel = 0; channel < instream->layout.channel_count; channel++) {
-                    faust_buffers->set(IO_In, channel, frame, 0);
+                // If the device input buffer does not have enough data filled, set the remaining Faust input samples to zero.
+                for (int frame = 0; frame < frame_count_max - input_sample_count; frame++) {
+                    for (int channel = 0; channel < faust_in_channel_count; channel++) {
+                        faust_buffers->set(IO_In, channel, frame, 0);
+                    }
                 }
+                // Not advancing the input read pointer until after any input monitoring below.
             }
 
             // Compute the Faust output buffer.
@@ -509,8 +517,6 @@ int audio() {
             if (!input_buffer) throw std::runtime_error("Unable to create input buffer: Out of memory");
         }
 
-        faust_buffers = std::make_unique<Buffers>(instream->layout.channel_count, outstream->layout.channel_count);
-
         for (IO io: {IO_In, IO_Out}) start_stream(io);
 
         if (first_run) {
@@ -529,11 +535,8 @@ int audio() {
     }
 
     for (IO io: {IO_In, IO_Out}) destroy_stream(io);
-
-    faust_buffers = nullptr;
     if (input_buffer != input_buffer_direct) soundio_ring_buffer_destroy(input_buffer);
     soundio_ring_buffer_destroy(input_buffer_direct);
-
     soundio_destroy(soundio);
     soundio = nullptr;
 
@@ -689,6 +692,11 @@ void ShowBufferPlots() {
 }
 
 void Audio::draw() const {
+    if (!faust_buffers && c.faust && c.faust->dsp) {
+        faust_buffers = std::make_unique<Buffers>(c.faust->dsp->getNumInputs(), c.faust->dsp->getNumOutputs());
+    } else if (faust_buffers && !(c.faust && c.faust->dsp)) {
+        faust_buffers = nullptr;
+    }
     if (retry_thread) {
         retry_thread = false;
         thread_running = false;

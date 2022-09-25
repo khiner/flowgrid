@@ -13,6 +13,7 @@
 #include <range/v3/view/map.hpp>
 
 #include "faust/dsp/libfaust-signal.h"
+#include "faust/dsp/libfaust-box.h"
 
 #include "../../Helper/basen.h"
 #include "../../Helper/assert.h"

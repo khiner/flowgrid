@@ -3,13 +3,20 @@
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
 #include <soundio/soundio.h>
+#include "faust/dsp/llvm-dsp.h"
 
 #include "Context.h"
 #include "CDSPResampler.h"
+#include "UI/Faust/DrawBox.hh"
 
 #ifndef FAUSTFLOAT
 #define FAUSTFLOAT float
 #endif
+
+// Loose vars here are a sloppy pattern to remove `llvm-dsp` include from `Context.h` header.
+llvm_dsp_factory *dsp_factory;
+dsp *dsp = nullptr;
+Box box = nullptr;
 
 static constexpr int FloatSize = sizeof(float);
 
@@ -423,7 +430,7 @@ int audio() {
         // `input_sample_count` is the number of samples ready to read from the ring buffer.
         // `input_buffer` always stores float32 samples with the same sample rate as the output stream.
         const int input_sample_count = soundio_ring_buffer_fill_count(input_buffer) / FloatSize;
-        const bool compute_faust = s.Audio.FaustRunning && faust_buffers && c.faust && c.faust->dsp;
+        const bool compute_faust = s.Audio.FaustRunning && faust_buffers && dsp;
         if (compute_faust) {
             if (frame_count_max > faust_buffers->num_frames) {
                 cerr << "The output stream buffer only has " << faust_buffers->num_frames
@@ -458,7 +465,7 @@ int audio() {
             }
 
             // Compute the Faust output buffer.
-            c.faust->dsp->compute(frame_count_max, faust_buffers->input, faust_buffers->output);
+            dsp->compute(frame_count_max, faust_buffers->input, faust_buffers->output);
         }
 
         int err;
@@ -574,6 +581,17 @@ int audio() {
 }
 
 static std::thread audio_thread;
+string previous_faust_code;
+int previous_faust_sample_rate = 0;
+
+void destroy_dsp() {
+    if (dsp) {
+        delete dsp;
+        dsp = nullptr;
+        deleteDSPFactory(dsp_factory);
+        destroyLibContext();
+    }
+}
 
 void Audio::update_process() const {
     if (thread_running != Running) {
@@ -590,6 +608,33 @@ void Audio::update_process() const {
         audio_thread.join();
         thread_running = true;
         audio_thread = std::thread(audio);
+    }
+
+    if (s.Audio.Faust.Code.value != previous_faust_code || s.Audio.OutSampleRate != previous_faust_sample_rate) {
+        previous_faust_code = s.Audio.Faust.Code.value;
+        previous_faust_sample_rate = s.Audio.OutSampleRate.value;
+
+        int argc = 0;
+        const char **argv = new const char *[8];
+        argv[argc++] = "-I";
+        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
+
+        destroy_dsp();
+        createLibContext();
+        int num_inputs, num_outputs;
+        string error_msg;
+        box = DSPToBoxes("FlowGrid", s.Audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+        if (box && error_msg.empty()) {
+            static const int optimize_level = -1;
+            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);
+            if (dsp_factory && error_msg.empty()) {
+                dsp = dsp_factory->createDSPInstance();
+                dsp->init(s.Audio.OutSampleRate);
+            }
+        } else {
+            destroyLibContext();
+        }
+        on_box_change(box);
     }
 
     if (soundio_ready && outstream && outstream->volume != OutDeviceVolume) soundio_outstream_set_volume(outstream, OutDeviceVolume);
@@ -723,9 +768,9 @@ void ShowBufferPlots() {
 }
 
 void Audio::draw() const {
-    if (!faust_buffers && c.faust && c.faust->dsp) {
-        faust_buffers = make_unique<Buffers>(c.faust->dsp->getNumInputs(), c.faust->dsp->getNumOutputs());
-    } else if (faust_buffers && !(c.faust && c.faust->dsp)) {
+    if (!faust_buffers && dsp) {
+        faust_buffers = make_unique<Buffers>(dsp->getNumInputs(), dsp->getNumOutputs());
+    } else if (faust_buffers && !dsp) {
         faust_buffers = nullptr;
     }
     if (retry_thread) {

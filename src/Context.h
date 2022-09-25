@@ -4,9 +4,6 @@
 #include <list>
 #include <queue>
 
-#include "faust/dsp/llvm-dsp.h"
-#include "faust/dsp/libfaust-box.h"
-
 #include "Action.h"
 #include "Helper/File.h"
 
@@ -47,15 +44,8 @@ static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForP
 static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
 static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
 
-struct FaustContext {
-    int num_inputs{0}, num_outputs{0};
-    llvm_dsp_factory *dsp_factory;
-    dsp *dsp = nullptr;
-    Box box = nullptr;
-
-    FaustContext(const string &code, int sample_rate, string &error_msg);
-    ~FaustContext();
-};
+class CTree;
+typedef CTree *Box;
 
 struct State : StateData, Drawable {
     State() = default;
@@ -127,7 +117,6 @@ struct Context {
 //    diff_match_patch<string> dmp;
     UIContext *ui{};
     StateStats state_stats;
-    unique_ptr<FaustContext> faust;
 
     Diffs diffs;
     int diff_index = -1;

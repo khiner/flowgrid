@@ -5,34 +5,6 @@
 
 #include "UI/Faust/DrawBox.hh"
 
-FaustContext::FaustContext(const string &code, int sample_rate, string &error_msg) {
-    int argc = 0;
-    const char **argv = new const char *[8];
-    argv[argc++] = "-I";
-    argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-
-    destroyLibContext();
-    createLibContext();
-    box = DSPToBoxes("FlowGrid", code, argc, argv, &num_inputs, &num_outputs, error_msg);
-    if (box && error_msg.empty()) {
-        static const int optimize_level = -1;
-        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);
-        if (dsp_factory && error_msg.empty()) {
-            dsp = dsp_factory->createDSPInstance();
-            dsp->init(sample_rate);
-        }
-    }
-    on_box_change(box);
-}
-
-FaustContext::~FaustContext() {
-    if (!dsp) return;
-
-    delete dsp;
-    dsp = nullptr;
-    deleteDSPFactory(dsp_factory);
-}
-
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
     if (fs::exists(PreferencesPath)) {
         preferences = json::from_msgpack(FileIO::read(PreferencesPath));
@@ -41,9 +13,7 @@ Context::Context() : state_json(state), gesture_begin_state_json(state) {
     }
 }
 
-Context::~Context() {
-    destroyLibContext();
-}
+Context::~Context() = default;
 
 bool Context::is_user_project_path(const fs::path &path) {
     // Using relative path to avoid error: `filesystem error: in equivalent: Operation not supported`
@@ -119,16 +89,6 @@ void Context::update_faust_context() {
     if (s.Audio.OutSampleRate == 0) return; // Sample rate has not been set up yet (set during first audio stream initialization).
 
     has_new_faust_code = true; // todo I hate this. also, might be called due to sample rate change, not code change.
-
-    faust = make_unique<FaustContext>(s.Audio.Faust.Code, s.Audio.OutSampleRate, state.Audio.Faust.Error);
-//    if (faust->dsp) {
-//        StatefulFaustUI faust_ui;
-//        faust->dsp->buildUserInterface(&faust_ui);
-//        faust->dsp->metadata(&faust_ui); // version/author/licence/etc
-//        _s.Audio.Faust.json = faust_ui.
-//    } else {
-//        _s.Audio.Faust.json = "";
-//    }
 }
 
 void Context::clear() {

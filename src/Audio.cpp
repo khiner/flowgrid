@@ -175,9 +175,6 @@ SoundIoRingBuffer *input_buffer = nullptr, *input_buffer_direct = nullptr;
 SoundIoChannelArea *in_areas = nullptr, *out_areas = nullptr;
 unique_ptr<Buffers> faust_buffers;
 
-// Working copies for bookkeeping in read/write callbacks, so others can safely use `in/out_areas` above (e.g. for charting):
-static char *in_area_pointers[SOUNDIO_MAX_CHANNELS], *out_area_pointers[SOUNDIO_MAX_CHANNELS];
-
 static float mic_latency = 0.2; // Seconds todo do better than this guess
 static const int MaxThreadRetries = 5; // Max number of times in a row the audio thread will try again after an error opening the IO streams
 
@@ -287,6 +284,9 @@ static void destroy_stream(const IO io) {
 }
 
 int audio() {
+    // Local copies for bookkeeping in read/write callbacks, so others can safely use the global `in/out_areas` above (e.g. for charting):
+    static char *in_area_pointers[SOUNDIO_MAX_CHANNELS], *out_area_pointers[SOUNDIO_MAX_CHANNELS];
+
     soundio = soundio_create();
     if (!soundio) throw std::runtime_error("Out of memory");
 
@@ -351,10 +351,14 @@ int audio() {
 
     instream->read_callback = [](SoundIoInStream *instream, int frame_count_min, int frame_count_max) {
         char *write_ptr_direct = soundio_ring_buffer_write_ptr(input_buffer_direct);
-        const int free_count = soundio_ring_buffer_free_count(input_buffer_direct) / instream->bytes_per_frame;
-        if (frame_count_min > free_count) throw std::runtime_error("Ring buffer overflow");
+        const int free_count_direct = soundio_ring_buffer_free_count(input_buffer_direct) / instream->bytes_per_frame;
+        const int free_count = soundio_ring_buffer_free_count(input_buffer) / FloatSize;
+        if (frame_count_min > free_count_direct) {
+            std::cerr << format("Ring buffer overflow: free_count:{}, free_count_direct:{}, frame_count_min:{}", free_count, free_count_direct, frame_count_min);
+            exit(1);
+        }
 
-        const int write_frames = min(free_count, frame_count_max);
+        const int write_frames = min(free_count_direct, frame_count_max);
         int frames_left = write_frames;
         int err;
         while (true) {
@@ -369,7 +373,7 @@ int audio() {
 
             if (!in_areas) {
                 // Due to an overflow there is a hole. Fill the hole in the ring buffer with silence.
-                memset(write_ptr_direct, 0, frame_count * instream->bytes_per_frame);
+                memset(write_ptr_direct, 0, frame_count * instream->bytes_per_frame * instream->layout.channel_count);
                 std::cerr << format("Dropped {} frames due to internal overflow", frame_count) << '\n';
             } else {
                 // Make a local copy of the input area pointers for incrementing, so others can read directly from the device areas.
@@ -384,6 +388,7 @@ int audio() {
                     }
                 }
             }
+            soundio_ring_buffer_advance_write_ptr(input_buffer_direct, frame_count * instream->bytes_per_frame * instream->layout.channel_count);
 
             if ((err = soundio_instream_end_read(instream))) {
                 if (err == SoundIoErrorUnderflow) return;
@@ -401,18 +406,18 @@ int audio() {
         // todo currently only handling format changes. Handle sample rate conversion.
         if (input_buffer != input_buffer_direct) {
             auto *write_ptr = (float *) soundio_ring_buffer_write_ptr(input_buffer);
-            char *read_ptr = write_ptr_direct;
+            char *read_ptr = soundio_ring_buffer_read_ptr(input_buffer_direct);
             for (int frame = 0; frame < write_frames; frame++) {
-                for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
+                for (int channel = 0; channel < instream->layout.channel_count; channel++) {
                     *write_ptr = read_sample(read_ptr);
                     read_ptr += instream->bytes_per_sample;
                     write_ptr += 1;
                 }
             }
+
+            soundio_ring_buffer_advance_read_ptr(input_buffer_direct, write_frames * instream->bytes_per_sample * instream->layout.channel_count);
             soundio_ring_buffer_advance_write_ptr(input_buffer, write_frames * FloatSize * instream->layout.channel_count);
         }
-
-        soundio_ring_buffer_advance_write_ptr(input_buffer_direct, write_frames * instream->bytes_per_frame);
     };
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
@@ -556,10 +561,15 @@ int audio() {
     }
 
     for (IO io: {IO_In, IO_Out}) destroy_stream(io);
-    if (input_buffer != input_buffer_direct) soundio_ring_buffer_destroy(input_buffer);
-    soundio_ring_buffer_destroy(input_buffer_direct);
     soundio_destroy(soundio);
     soundio = nullptr;
+
+    if (input_buffer != input_buffer_direct) {
+        soundio_ring_buffer_destroy(input_buffer);
+        input_buffer = nullptr;
+    }
+    soundio_ring_buffer_destroy(input_buffer_direct);
+    input_buffer_direct = nullptr;
 
     return 0;
 }

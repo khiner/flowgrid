@@ -90,7 +90,7 @@ SoundIoBackend to_soundio_backend(const AudioBackend backend) {
         case coreaudio: return SoundIoBackendCoreAudio;
         case wasapi: return SoundIoBackendWasapi;
         case none:
-        default:std::cerr << "Invalid backend: " << backend << ". Defaulting to `SoundIoBackendNone`." << std::endl;
+        default:cerr << "Invalid backend: " << backend << ". Defaulting to `SoundIoBackendNone`.\n";
             return SoundIoBackendNone;
     }
 }
@@ -167,7 +167,7 @@ std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
  * If the input stream's sample rate matches the output stream, and it is using float32 format, `input_buffer` will simply point to `input_buffer_direct`.
  * If the input stream's sample rate matches the output stream, but it is _not_ using float32 format, `input_buffer` will reflect `input_buffer_direct`,
    but with samples converted to float32. No additional latency will be incurred in this case.
- * If the output stream sample rate is different from the input, `input_buffer` will contain the resampled (and possibly reformated) input samples,
+ * If the output stream sample rate is different from the input, `input_buffer` will contain the resampled (and possibly reformatted) input samples,
    with additional sample latency incurred to perform the resampling in blocks.
    todo notes about the exact latency
 */
@@ -232,7 +232,7 @@ static void create_stream(const IO io) {
         if (audio_format != Audio::IoFormat_Invalid) {
             supported_formats[io].push_back(audio_format);
         } else {
-            std::cerr << "Unhandled device format: " << device->formats[i] << '\n';
+            cerr << "Unhandled device format: " << device->formats[i] << '\n';
         }
     }
     if (!(*soundio_format_ptr) && !supported_formats.empty()) *soundio_format_ptr = to_soundio_format(supported_formats[io].back());
@@ -263,8 +263,8 @@ static void open_stream(const IO io) {
         throw std::runtime_error(format("Unable to open audio {} device: ", to_string(io)) + soundio_strerror(err));
     }
 
-    if (io == IO_In && instream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(instream->layout_error); }
-    else if (io == IO_Out && outstream->layout_error) { std::cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(outstream->layout_error); }
+    if (io == IO_In && instream->layout_error) { cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(instream->layout_error); }
+    else if (io == IO_Out && outstream->layout_error) { cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(outstream->layout_error); }
 }
 static void start_stream(const IO io) {
     if (io == IO_None) return;
@@ -344,27 +344,26 @@ int audio() {
     // Input/output sample rates are settled. Set up resampler if needed.
     unique_ptr<r8b::CDSPResampler24> resampler;
     if (instream->sample_rate != outstream->sample_rate) {
-        resampler = std::make_unique<r8b::CDSPResampler24>(instream->sample_rate, outstream->sample_rate, instream->bytes_per_frame / instream->bytes_per_sample);
+        resampler = make_unique<r8b::CDSPResampler24>(instream->sample_rate, outstream->sample_rate, instream->bytes_per_frame / instream->bytes_per_sample);
     }
     read_sample = read_sample_for_format(instream->format);
     write_sample = write_sample_for_format(outstream->format);
 
     instream->read_callback = [](SoundIoInStream *instream, int frame_count_min, int frame_count_max) {
         char *write_ptr_direct = soundio_ring_buffer_write_ptr(input_buffer_direct);
-        const int free_count_direct = soundio_ring_buffer_free_count(input_buffer_direct) / instream->bytes_per_frame;
-        const int free_count = soundio_ring_buffer_free_count(input_buffer) / FloatSize;
-        if (frame_count_min > free_count_direct) {
-            std::cerr << format("Ring buffer overflow: free_count:{}, free_count_direct:{}, frame_count_min:{}", free_count, free_count_direct, frame_count_min);
+        const int free_count = soundio_ring_buffer_free_count(input_buffer_direct) / instream->bytes_per_frame;
+        if (frame_count_min > free_count) {
+            cerr << format("Ring buffer overflow: free_count:{}, frame_count_min:{}", free_count, frame_count_min);
             exit(1);
         }
 
-        const int write_frames = min(free_count_direct, frame_count_max);
+        const int write_frames = min(free_count, frame_count_max);
         int frames_left = write_frames;
         int err;
         while (true) {
             int frame_count = frames_left;
             if ((err = soundio_instream_begin_read(instream, &in_areas, &frame_count))) {
-                std::cerr << "Begin read error: " << soundio_strerror(err) << '\n';
+                cerr << "Begin read error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
 
@@ -374,7 +373,7 @@ int audio() {
             if (!in_areas) {
                 // Due to an overflow there is a hole. Fill the hole in the ring buffer with silence.
                 memset(write_ptr_direct, 0, frame_count * instream->bytes_per_frame * instream->layout.channel_count);
-                std::cerr << format("Dropped {} frames due to internal overflow", frame_count) << '\n';
+                cerr << format("Dropped {} frames due to internal overflow", frame_count) << '\n';
             } else {
                 // Make a local copy of the input area pointers for incrementing, so others can read directly from the device areas.
                 // todo Others assume float32, so we'll need indirect converted buffers when the input stream uses a different format.
@@ -393,7 +392,7 @@ int audio() {
             if ((err = soundio_instream_end_read(instream))) {
                 if (err == SoundIoErrorUnderflow) return;
 
-                std::cerr << "End read error: " << soundio_strerror(err) << std::endl;
+                cerr << "End read error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
 
@@ -427,9 +426,9 @@ int audio() {
         const bool compute_faust = s.Audio.FaustRunning && faust_buffers && c.faust && c.faust->dsp;
         if (compute_faust) {
             if (frame_count_max > faust_buffers->num_frames) {
-                std::cerr << "The output stream buffer only has " << faust_buffers->num_frames
-                          << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count_max << "." << std::endl
-                          << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)" << std::endl;
+                cerr << "The output stream buffer only has " << faust_buffers->num_frames
+                     << " frames, which is smaller than the libsoundio callback buffer size of " << frame_count_max << ".\n"
+                     << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)\n";
             }
 
             // If the current Faust program accepts inputs, copy any filled bytes from the device to the Faust input buffers.
@@ -467,7 +466,7 @@ int audio() {
         while (frames_left > 0) {
             int frame_count = frames_left;
             if ((err = soundio_outstream_begin_write(outstream, &out_areas, &frame_count))) {
-                std::cerr << "Begin write error: " << soundio_strerror(err) << std::endl;
+                cerr << "Begin write error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
 
@@ -502,7 +501,7 @@ int audio() {
 
             if ((err = soundio_outstream_end_write(outstream))) {
                 if (err == SoundIoErrorUnderflow) return;
-                std::cerr << "End write error: " << soundio_strerror(err) << std::endl;
+                cerr << "End write error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
 
@@ -510,7 +509,7 @@ int audio() {
         }
     };
 
-    outstream->underflow_callback = [](SoundIoOutStream *) { std::cerr << "Underflow #" << underflow_count++ << std::endl; };
+    outstream->underflow_callback = [](SoundIoOutStream *) { cerr << "Underflow #" << underflow_count++ << '\n'; };
 
     try {
         for (IO io: {IO_In, IO_Out}) open_stream(io);
@@ -522,7 +521,7 @@ int audio() {
         // If we run into any stream-open failure: signal to try again via `retry_thread`, clean up, and exit.
         if (++retry_thread_attempt > MaxThreadRetries) throw std::runtime_error(e.what());
 
-        std::cerr << e.what() << "\nRetrying (attempt " << retry_thread_attempt << ")\n";
+        cerr << e.what() << "\nRetrying (attempt " << retry_thread_attempt << ")\n";
         retry_thread = true;
     }
 
@@ -725,7 +724,7 @@ void ShowBufferPlots() {
 
 void Audio::draw() const {
     if (!faust_buffers && c.faust && c.faust->dsp) {
-        faust_buffers = std::make_unique<Buffers>(c.faust->dsp->getNumInputs(), c.faust->dsp->getNumOutputs());
+        faust_buffers = make_unique<Buffers>(c.faust->dsp->getNumInputs(), c.faust->dsp->getNumOutputs());
     } else if (faust_buffers && !(c.faust && c.faust->dsp)) {
         faust_buffers = nullptr;
     }

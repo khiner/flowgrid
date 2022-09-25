@@ -81,7 +81,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    gesture_time_remaining_sec = std::max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
+    gesture_time_remaining_sec = max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
     if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) finalize_gesture();
 }
 
@@ -120,7 +120,7 @@ void Context::update_faust_context() {
 
     has_new_faust_code = true; // todo I hate this. also, might be called due to sample rate change, not code change.
 
-    faust = std::make_unique<FaustContext>(s.Audio.Faust.Code, s.Audio.OutSampleRate, state.Audio.Faust.Error);
+    faust = make_unique<FaustContext>(s.Audio.Faust.Code, s.Audio.OutSampleRate, state.Audio.Faust.Error);
 //    if (faust->dsp) {
 //        StatefulFaustUI faust_ui;
 //        faust->dsp->buildUserInterface(&faust_ui);

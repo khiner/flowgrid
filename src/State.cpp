@@ -571,7 +571,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
         const auto latest_update_time = c.state_stats.latest_update_time_for_path.contains(path) ? c.state_stats.latest_update_time_for_path.at(path) : TimePoint{};
         const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
         auto flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
-        flash_color.w = std::max(0.0f, 1 - flash_elapsed_ratio);
+        flash_color.w = max(0.0f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
 
@@ -960,7 +960,7 @@ void FlowGridStyle::draw() const {
                 c.run_queued_actions();
             }
             if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
-                const float min_scale = std::min(DiagramScale.value.x, DiagramScale.value.y);
+                const float min_scale = min(DiagramScale.value.x, DiagramScale.value.y);
                 q(set_value{DiagramScale.Path, ImVec2{min_scale, min_scale}});
             }
             if (ScaleFill) {

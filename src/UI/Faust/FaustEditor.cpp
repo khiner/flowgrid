@@ -307,12 +307,12 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
     std::function<void(std::shared_ptr<ZepMessage>)> callback;
 };
 
-std::unique_ptr<ZepWrapper> zep;
-std::unique_ptr<ZepEditor_ImGui> zep_editor;
+unique_ptr<ZepWrapper> zep;
+unique_ptr<ZepEditor_ImGui> zep_editor;
 
 void zep_init() {
-    zep_editor = std::make_unique<ZepEditor_ImGui>(ZepPath(fs::current_path()));
-    zep = std::make_unique<ZepWrapper>(*zep_editor);
+    zep_editor = make_unique<ZepEditor_ImGui>(ZepPath(fs::current_path()));
+    zep = make_unique<ZepWrapper>(*zep_editor);
 
     auto *display = zep_editor->display;
     display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.0));

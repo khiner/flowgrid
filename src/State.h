@@ -335,7 +335,7 @@ struct Audio : Process {
 
     // A selection of supported formats, corresponding to `SoundIoFormat`
     enum IoFormat_ {
-        IoFormat_Invalid,
+        IoFormat_Invalid = 0,
         IoFormat_Float32NE,
         IoFormat_Float64NE,
         IoFormat_S32NE,
@@ -410,8 +410,8 @@ struct Audio : Process {
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
     Int InSampleRate{Path, "InSampleRate"};
     Int OutSampleRate{Path, "OutSampleRate"};
-    Enum InFormat{Path, "InFormat", {"Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
-    Enum OutFormat{Path, "OutFormat", {"Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
+    Enum InFormat{Path, "InFormat", {"Invalid", "Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
+    Enum OutFormat{Path, "OutFormat", {"Invalid", "Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
     Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
     Bool MonitorInput{Path, "MonitorInput", false, "Enabling adds the audio input stream directly to the audio output."};
 

@@ -67,6 +67,7 @@ SoundIoFormat to_soundio_format(const Audio::IoFormat format) {
         case Audio::IoFormat_Float64NE: return SoundIoFormatFloat64NE;
         case Audio::IoFormat_S32NE: return SoundIoFormatS32NE;
         case Audio::IoFormat_S16NE: return SoundIoFormatS16NE;
+        default: return SoundIoFormatInvalid;
     }
 }
 Audio::IoFormat to_audio_format(const SoundIoFormat format) {
@@ -76,6 +77,7 @@ Audio::IoFormat to_audio_format(const SoundIoFormat format) {
         case SoundIoFormatFloat64NE : return Audio::IoFormat_Float64NE;
         case SoundIoFormatS32NE : return Audio::IoFormat_S32NE;
         case SoundIoFormatS16NE : return Audio::IoFormat_S16NE;
+        default: return Audio::IoFormat_Invalid;
     }
 }
 
@@ -228,7 +230,14 @@ static void create_stream(const IO io) {
         }
     }
     // Fall back to the highest supported format.
-    for (int i = 0; i < device->format_count; i++) supported_formats[io].push_back(to_audio_format(device->formats[i]));
+    for (int i = 0; i < device->format_count; i++) {
+        const auto audio_format = to_audio_format(device->formats[i]);
+        if (audio_format != Audio::IoFormat_Invalid) {
+            supported_formats[io].push_back(audio_format);
+        } else {
+            std::cerr << "Unhandled device format: " << device->formats[i] << '\n';
+        }
+    }
     if (!(*soundio_format_ptr) && !supported_formats.empty()) *soundio_format_ptr = to_soundio_format(supported_formats[io].back());
     if (*soundio_format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", capitalize(to_string(io))));
 
@@ -287,6 +296,7 @@ int audio() {
     soundio_flush_events(soundio);
 
     // Input/output device setup
+    supported_formats.clear();
     supported_sample_rates.clear();
     for (IO io: {IO_In, IO_Out}) {
         int default_device_index = get_default_device_index(io);

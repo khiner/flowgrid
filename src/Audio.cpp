@@ -168,19 +168,17 @@ std::map<IO, std::vector<int>> supported_sample_rates = {{IO_In, {}}, {IO_Out, {
 std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
 
 /**
- Samples from the microphone are always read directly into `input_buffer_direct`, with no sample format/rate conversion.
- `input_buffer` will always contain 64 bit double samples, with the same sample rate as the output stream.
- Details:
- * If the input stream's sample rate matches the output stream, and it is using Float64 format, `input_buffer` will simply point to `input_buffer_direct`.
- * If the input stream's sample rate matches the output stream, but it is _not_ using Float64 format, `input_buffer` will reflect `input_buffer_direct`,
-   but with samples converted to Float64. No additional latency will be incurred in this case.
- * If the output stream sample rate is different from the input, `input_buffer` will contain the resampled (and possibly reformatted) input samples,
-   with additional sample latency incurred to perform the resampling in blocks.
+ Samples from the input (e.g. microphone) are read directly into `input_buffer_direct`,
+ optionally performing sample format conversion, but with no sample _rate_ conversion.
+ * `input_buffer_direct` will contain 64 bit double samples, with the same sample rate as the input stream.
+ * `input_buffer` will contain 64 bit double samples, with the same sample rate as the output stream.
+ * If the input/output stream sample rates are the same, `input_buffer` will simply point to `input_buffer_direct`
    todo notes about the exact latency
 */
 SoundIoRingBuffer *input_buffer = nullptr, *input_buffer_direct = nullptr;
 SoundIoChannelArea *in_areas = nullptr, *out_areas = nullptr;
 unique_ptr<Buffers> faust_buffers;
+unique_ptr<r8b::CDSPResampler24> resampler;
 
 static float mic_latency = 0.2; // Seconds todo do better than this guess
 static const int MaxThreadRetries = 5; // Max number of times in a row the audio thread will try again after an error opening the IO streams
@@ -338,7 +336,6 @@ int audio() {
 //    outstream->layout = *layout;
 
     // Input/output sample rates are settled. Set up resampler if needed.
-    unique_ptr<r8b::CDSPResampler24> resampler;
     if (instream->sample_rate != outstream->sample_rate) {
         resampler = make_unique<r8b::CDSPResampler24>(instream->sample_rate, outstream->sample_rate, instream->bytes_per_frame / instream->bytes_per_sample);
     }
@@ -346,8 +343,8 @@ int audio() {
     write_sample = write_sample_for_format(outstream->format);
 
     instream->read_callback = [](SoundIoInStream *instream, int frame_count_min, int frame_count_max) {
-        char *write_ptr_direct = soundio_ring_buffer_write_ptr(input_buffer_direct);
-        const int free_count = soundio_ring_buffer_free_count(input_buffer_direct) / instream->bytes_per_frame;
+        auto *write_ptr_direct = (double *) soundio_ring_buffer_write_ptr(input_buffer_direct);
+        const int free_count = soundio_ring_buffer_free_count(input_buffer_direct) / SampleSize;
         if (frame_count_min > free_count) {
             cerr << format("Ring buffer overflow: free_count:{}, frame_count_min:{}", free_count, frame_count_min);
             exit(1);
@@ -368,7 +365,7 @@ int audio() {
 
             if (!in_areas) {
                 // Due to an overflow there is a hole. Fill the hole in the ring buffer with silence.
-                memset(write_ptr_direct, 0, frame_count * instream->bytes_per_frame * instream->layout.channel_count);
+                memset(write_ptr_direct, 0, frame_count * SampleSize * instream->layout.channel_count);
                 cerr << format("Dropped {} frames due to internal overflow", frame_count) << '\n';
             } else {
                 // Make a local copy of the input area pointers for incrementing, so others can read directly from the device areas.
@@ -377,13 +374,13 @@ int audio() {
 
                 for (int frame = 0; frame < frame_count; frame += 1) {
                     for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
-                        memcpy(write_ptr_direct, in_area_pointers[channel], instream->bytes_per_sample);
+                        *write_ptr_direct = read_sample(in_area_pointers[channel]);
                         in_area_pointers[channel] += in_areas[channel].step;
-                        write_ptr_direct += instream->bytes_per_sample;
+                        write_ptr_direct += 1;
                     }
                 }
             }
-            soundio_ring_buffer_advance_write_ptr(input_buffer_direct, frame_count * instream->bytes_per_frame * instream->layout.channel_count);
+            soundio_ring_buffer_advance_write_ptr(input_buffer_direct, frame_count * SampleSize * instream->layout.channel_count);
 
             if ((err = soundio_instream_end_read(instream))) {
                 if (err == SoundIoErrorUnderflow) return;
@@ -396,9 +393,8 @@ int audio() {
             if (frames_left <= 0) break;
         }
 
-        // If `input_buffer` doesn't point to `input_buffer_direct`, either the input stream's format is not Float64,
-        // or it has a different sample rate than the output stream.
-        // todo currently only handling format changes. Handle sample rate conversion.
+        // If `input_buffer` doesn't point to `input_buffer_direct`, it has a different sample rate than the output stream.
+        // todo handle sample rate conversion
         if (input_buffer != input_buffer_direct) {
             auto *write_ptr = (double *) soundio_ring_buffer_write_ptr(input_buffer);
             char *read_ptr = soundio_ring_buffer_read_ptr(input_buffer_direct);
@@ -525,14 +521,13 @@ int audio() {
         retry_thread_attempt = 0;
 
         // Initialize the input ring buffer(s) and Faust buffers.
-        const int input_buffer_capacity_samples = ceil(mic_latency * 2 * float(instream->sample_rate));
-        input_buffer_direct = soundio_ring_buffer_create(soundio, input_buffer_capacity_samples * instream->bytes_per_frame);
+        input_buffer_direct = soundio_ring_buffer_create(soundio, int(ceil(mic_latency * 2 * float(instream->sample_rate)) * SampleSize));
         if (!input_buffer_direct) throw std::runtime_error("Unable to create direct input buffer: Out of memory");
 
-        if (instream->format == SoundIoFormatFloat64NE) {
+        if (instream->sample_rate == outstream->sample_rate) {
             input_buffer = input_buffer_direct;
         } else {
-            input_buffer = soundio_ring_buffer_create(soundio, input_buffer_capacity_samples * SampleSize);
+            input_buffer = soundio_ring_buffer_create(soundio, int(ceil(mic_latency * 2 * float(outstream->sample_rate)) * SampleSize));
             if (!input_buffer) throw std::runtime_error("Unable to create input buffer: Out of memory");
         }
 

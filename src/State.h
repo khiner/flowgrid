@@ -336,14 +336,14 @@ struct Audio : Process {
     // A selection of supported formats, corresponding to `SoundIoFormat`
     enum IoFormat_ {
         IoFormat_Invalid = 0,
-        IoFormat_Float32NE,
         IoFormat_Float64NE,
+        IoFormat_Float32NE,
         IoFormat_S32NE,
         IoFormat_S16NE,
     };
     using IoFormat = int;
-    static const std::vector<int> PrioritizedDefaultSampleRates;
     static const std::vector<IoFormat> PrioritizedDefaultFormats;
+    static const std::vector<int> PrioritizedDefaultSampleRates;
 
     void draw() const override;
 
@@ -410,8 +410,8 @@ struct Audio : Process {
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
     Int InSampleRate{Path, "InSampleRate"};
     Int OutSampleRate{Path, "OutSampleRate"};
-    Enum InFormat{Path, "InFormat", {"Invalid", "Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
-    Enum OutFormat{Path, "OutFormat", {"Invalid", "Float32", "Float64", "Short32", "Short16"}, IoFormat_Invalid};
+    Enum InFormat{Path, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
+    Enum OutFormat{Path, "OutFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
     Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
     Bool MonitorInput{Path, "MonitorInput", false, "Enabling adds the audio input stream directly to the audio output."};
 

@@ -1027,8 +1027,8 @@ void ApplicationSettings::draw() const {
 
 const std::vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
 const std::vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
-    IoFormat_Float32NE,
     IoFormat_Float64NE,
+    IoFormat_Float32NE,
     IoFormat_S32NE,
     IoFormat_S16NE,
     IoFormat_Invalid,

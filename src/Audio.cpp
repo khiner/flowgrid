@@ -2,6 +2,10 @@
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_sine.c and
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
+#ifndef FAUSTFLOAT
+#define FAUSTFLOAT double
+#endif
+
 #include <soundio/soundio.h>
 #include "faust/dsp/llvm-dsp.h"
 
@@ -9,16 +13,12 @@
 #include "CDSPResampler.h"
 #include "UI/Faust/DrawBox.hh"
 
-#ifndef FAUSTFLOAT
-#define FAUSTFLOAT float
-#endif
-
 // Loose vars here are a sloppy pattern to remove `llvm-dsp` include from `Context.h` header.
 llvm_dsp_factory *dsp_factory;
 dsp *dsp = nullptr;
 Box box = nullptr;
 
-static constexpr int FloatSize = sizeof(float);
+static constexpr int SampleSize = sizeof(double);
 
 // Used to initialize the static Faust buffer.
 // This is the highest `max_frame_count` value I've seen coming into the output audio callback, using a sample rate of 96kHz
@@ -32,15 +32,15 @@ struct Buffers {
     const int num_frames = MAX_EXPECTED_FRAME_COUNT;
     const int input_count;
     const int output_count;
-    float **input;
-    float **output;
+    double **input;
+    double **output;
 
     Buffers(int num_input_channels, int num_output_channels) :
         input_count(num_input_channels), output_count(num_output_channels) {
-        input = new float *[num_input_channels];
-        output = new float *[num_output_channels];
-        for (int i = 0; i < num_input_channels; i++) { input[i] = new float[MAX_EXPECTED_FRAME_COUNT]; }
-        for (int i = 0; i < num_output_channels; i++) { output[i] = new float[MAX_EXPECTED_FRAME_COUNT]; }
+        input = new double *[num_input_channels];
+        output = new double *[num_output_channels];
+        for (int i = 0; i < num_input_channels; i++) { input[i] = new double[MAX_EXPECTED_FRAME_COUNT]; }
+        for (int i = 0; i < num_output_channels; i++) { output[i] = new double[MAX_EXPECTED_FRAME_COUNT]; }
     }
 
     ~Buffers() {
@@ -52,16 +52,16 @@ struct Buffers {
 
     // todo overload `[]` operator get/set for dimensionality `[2 (input/output)][num_channels][max_num_frames (max between input_count/output_count)]
     int channel_count(IO io) const { return io == IO_In ? input_count : io == IO_Out ? output_count : 0; }
-    float **get_buffer(IO io) const { return io == IO_In ? input : io == IO_Out ? output : nullptr; }
-    float *get_buffer(IO io, int channel) const {
+    double **get_buffer(IO io) const { return io == IO_In ? input : io == IO_Out ? output : nullptr; }
+    double *get_buffer(IO io, int channel) const {
         const auto *buffer = get_buffer(io);
         return buffer ? buffer[channel] : nullptr;
     }
-    inline float get(IO io, int channel, int frame) const {
+    inline double get(IO io, int channel, int frame) const {
         const auto *buffer = get_buffer(io, channel);
         return buffer ? buffer[frame] : 0;
     }
-    inline void set(IO io, int channel, int frame, float value) const {
+    inline void set(IO io, int channel, int frame, double value) const {
         auto *buffer = get_buffer(io, channel);
         if (buffer) buffer[frame] = value;
     }
@@ -70,8 +70,8 @@ struct Buffers {
 SoundIoFormat to_soundio_format(const Audio::IoFormat format) {
     switch (format) {
         case Audio::IoFormat_Invalid: return SoundIoFormatInvalid;
-        case Audio::IoFormat_Float32NE: return SoundIoFormatFloat32NE;
         case Audio::IoFormat_Float64NE: return SoundIoFormatFloat64NE;
+        case Audio::IoFormat_Float32NE: return SoundIoFormatFloat32NE;
         case Audio::IoFormat_S32NE: return SoundIoFormatS32NE;
         case Audio::IoFormat_S16NE: return SoundIoFormatS16NE;
         default: return SoundIoFormatInvalid;
@@ -80,8 +80,8 @@ SoundIoFormat to_soundio_format(const Audio::IoFormat format) {
 Audio::IoFormat to_audio_format(const SoundIoFormat format) {
     switch (format) {
         case SoundIoFormatInvalid : return Audio::IoFormat_Invalid;
-        case SoundIoFormatFloat32NE : return Audio::IoFormat_Float32NE;
         case SoundIoFormatFloat64NE : return Audio::IoFormat_Float64NE;
+        case SoundIoFormatFloat32NE : return Audio::IoFormat_Float32NE;
         case SoundIoFormatS32NE : return Audio::IoFormat_S32NE;
         case SoundIoFormatS16NE : return Audio::IoFormat_S16NE;
         default: return Audio::IoFormat_Invalid;
@@ -102,44 +102,44 @@ SoundIoBackend to_soundio_backend(const AudioBackend backend) {
     }
 }
 
-inline static float read_sample_s16ne(const char *ptr) {
-    const auto value = *(int16_t *) ptr;
-    return 2.0f * float(value) / (float(INT16_MAX) - float(INT16_MIN));
-}
-inline static float read_sample_s32ne(const char *ptr) {
-    const auto value = *(int32_t *) ptr;
-    return 2.0f * float(value) / (float(INT32_MAX) - float(INT32_MIN));
-}
-inline static float read_sample_float32ne(const char *ptr) {
-    const auto value = *(float *) ptr;
-    return float(value);
-}
-inline static float read_sample_float64ne(const char *ptr) {
+inline static double read_sample_float64ne(const char *ptr) {
     const auto value = *(double *) ptr;
-    return float(value);
+    return value;
+}
+inline static double read_sample_float32ne(const char *ptr) {
+    const auto value = *(float *) ptr;
+    return double(value);
+}
+inline static double read_sample_s32ne(const char *ptr) {
+    const auto value = *(int32_t *) ptr;
+    return 2 * double(value) / (double(INT32_MAX) - double(INT32_MIN));
+}
+inline static double read_sample_s16ne(const char *ptr) {
+    const auto value = *(int16_t *) ptr;
+    return 2 * double(value) / (double(INT16_MAX) - double(INT16_MIN));
 }
 
-inline static void write_sample_s16ne(char *ptr, float sample) {
-    auto *buf = (int16_t *) ptr;
-    *buf = int16_t(sample * (float(INT16_MAX) - float(INT16_MIN)) / 2.0);
+inline static void write_sample_float64ne(char *ptr, double sample) {
+    auto *buf = (double *) ptr;
+    *buf = double(sample);
 }
-inline static void write_sample_s32ne(char *ptr, float sample) {
-    auto *buf = (int32_t *) ptr;
-    *buf = int32_t(sample * (float(INT32_MAX) - float(INT32_MIN)) / 2.0);
-}
-inline static void write_sample_float32ne(char *ptr, float sample) {
+inline static void write_sample_float32ne(char *ptr, double sample) {
     auto *buf = (float *) ptr;
     *buf = float(sample);
 }
-inline static void write_sample_float64ne(char *ptr, float sample) {
-    auto *buf = (double *) ptr;
-    *buf = double(sample);
+inline static void write_sample_s32ne(char *ptr, double sample) {
+    auto *buf = (int32_t *) ptr;
+    *buf = int32_t(sample * (double(INT32_MAX) - double(INT32_MIN)) / 2.0);
+}
+inline static void write_sample_s16ne(char *ptr, double sample) {
+    auto *buf = (int16_t *) ptr;
+    *buf = int16_t(sample * (double(INT16_MAX) - double(INT16_MIN)) / 2.0);
 }
 
 auto read_sample_for_format(const SoundIoFormat soundio_format) {
     switch (soundio_format) {
-        case SoundIoFormatFloat32NE: return read_sample_float32ne;
         case SoundIoFormatFloat64NE: return read_sample_float64ne;
+        case SoundIoFormatFloat32NE: return read_sample_float32ne;
         case SoundIoFormatS32NE: return read_sample_s32ne;
         case SoundIoFormatS16NE: return read_sample_s16ne;
         default: throw std::runtime_error(format("No `read_sample` function defined for format {}", soundio_format_string(soundio_format)));
@@ -147,8 +147,8 @@ auto read_sample_for_format(const SoundIoFormat soundio_format) {
 }
 auto write_sample_for_format(const SoundIoFormat soundio_format) {
     switch (soundio_format) {
-        case SoundIoFormatFloat32NE: return write_sample_float32ne;
         case SoundIoFormatFloat64NE: return write_sample_float64ne;
+        case SoundIoFormatFloat32NE: return write_sample_float32ne;
         case SoundIoFormatS32NE: return write_sample_s32ne;
         case SoundIoFormatS16NE: return write_sample_s16ne;
         default: throw std::runtime_error(format("No `write_sample` function defined for format {}", soundio_format_string(soundio_format)));
@@ -156,8 +156,8 @@ auto write_sample_for_format(const SoundIoFormat soundio_format) {
 }
 
 // These IO read/write functions are determined at runtime below.
-static float (*read_sample)(const char *ptr);
-static void (*write_sample)(char *ptr, float sample);
+static double (*read_sample)(const char *ptr);
+static void (*write_sample)(char *ptr, double sample);
 
 SoundIo *soundio = nullptr;
 SoundIoInStream *instream = nullptr;
@@ -169,11 +169,11 @@ std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
 
 /**
  Samples from the microphone are always read directly into `input_buffer_direct`, with no sample format/rate conversion.
- `input_buffer` will always contain 32 bit float samples, with the same sample rate as the output stream.
+ `input_buffer` will always contain 64 bit double samples, with the same sample rate as the output stream.
  Details:
- * If the input stream's sample rate matches the output stream, and it is using float32 format, `input_buffer` will simply point to `input_buffer_direct`.
- * If the input stream's sample rate matches the output stream, but it is _not_ using float32 format, `input_buffer` will reflect `input_buffer_direct`,
-   but with samples converted to float32. No additional latency will be incurred in this case.
+ * If the input stream's sample rate matches the output stream, and it is using Float64 format, `input_buffer` will simply point to `input_buffer_direct`.
+ * If the input stream's sample rate matches the output stream, but it is _not_ using Float64 format, `input_buffer` will reflect `input_buffer_direct`,
+   but with samples converted to Float64. No additional latency will be incurred in this case.
  * If the output stream sample rate is different from the input, `input_buffer` will contain the resampled (and possibly reformatted) input samples,
    with additional sample latency incurred to perform the resampling in blocks.
    todo notes about the exact latency
@@ -222,28 +222,17 @@ static void create_stream(const IO io) {
     if ((io == IO_In && !instream) || (io == IO_Out && !outstream)) throw std::runtime_error("Out of memory");
 
     auto prioritized_formats = Audio::PrioritizedDefaultFormats;
-    // If the project has a saved format, give it the highest priority.
-    Enum saved_format = io == IO_In ? s.Audio.InFormat : s.Audio.OutFormat;
-    if (saved_format != Audio::IoFormat_Invalid) prioritized_formats.insert(prioritized_formats.begin(), Audio::IoFormat(saved_format.value));
-    auto *soundio_format_ptr = &(io == IO_In ? instream->format : outstream->format);
     for (const auto &format: prioritized_formats) {
-        const auto soundio_format = to_soundio_format(format);
-        if (soundio_device_supports_format(devices[io], soundio_format)) {
-            *soundio_format_ptr = soundio_format;
-            break;
+        if (format != Audio::IoFormat_Invalid && soundio_device_supports_format(device, to_soundio_format(format))) {
+            supported_formats[io].emplace_back(format);
         }
     }
-    // Fall back to the highest supported format.
-    for (int i = 0; i < device->format_count; i++) {
-        const auto audio_format = to_audio_format(device->formats[i]);
-        if (audio_format != Audio::IoFormat_Invalid) {
-            supported_formats[io].push_back(audio_format);
-        } else {
-            cerr << "Unhandled device format: " << device->formats[i] << '\n';
-        }
-    }
-    if (!(*soundio_format_ptr) && !supported_formats.empty()) *soundio_format_ptr = to_soundio_format(supported_formats[io].back());
-    if (*soundio_format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", capitalize(to_string(io))));
+    if (supported_formats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", capitalize(to_string(io))));
+
+    const auto saved_format = io == IO_In ? s.Audio.InFormat : s.Audio.OutFormat;
+    // If the project has a saved format, choose it. Otherwise, default to the highest-priority supported format.
+    auto *soundio_format_ptr = &(io == IO_In ? instream->format : outstream->format);
+    *soundio_format_ptr = to_soundio_format(saved_format != Audio::IoFormat_Invalid ? saved_format : supported_formats[io].front());
 
     auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
     // If the project has a saved sample rate, give it the highest priority.
@@ -383,7 +372,7 @@ int audio() {
                 cerr << format("Dropped {} frames due to internal overflow", frame_count) << '\n';
             } else {
                 // Make a local copy of the input area pointers for incrementing, so others can read directly from the device areas.
-                // todo Others assume float32, so we'll need indirect converted buffers when the input stream uses a different format.
+                // todo Others assume Float64, so we'll need indirect converted buffers when the input stream uses a different format.
                 for (int channel = 0; channel < instream->layout.channel_count; channel += 1) in_area_pointers[channel] = in_areas[channel].ptr;
 
                 for (int frame = 0; frame < frame_count; frame += 1) {
@@ -407,11 +396,11 @@ int audio() {
             if (frames_left <= 0) break;
         }
 
-        // If `input_buffer` doesn't point to `input_buffer_direct`, either the input stream's format is not float32,
+        // If `input_buffer` doesn't point to `input_buffer_direct`, either the input stream's format is not Float64,
         // or it has a different sample rate than the output stream.
         // todo currently only handling format changes. Handle sample rate conversion.
         if (input_buffer != input_buffer_direct) {
-            auto *write_ptr = (float *) soundio_ring_buffer_write_ptr(input_buffer);
+            auto *write_ptr = (double *) soundio_ring_buffer_write_ptr(input_buffer);
             char *read_ptr = soundio_ring_buffer_read_ptr(input_buffer_direct);
             for (int frame = 0; frame < write_frames; frame++) {
                 for (int channel = 0; channel < instream->layout.channel_count; channel++) {
@@ -422,14 +411,14 @@ int audio() {
             }
 
             soundio_ring_buffer_advance_read_ptr(input_buffer_direct, write_frames * instream->bytes_per_sample * instream->layout.channel_count);
-            soundio_ring_buffer_advance_write_ptr(input_buffer, write_frames * FloatSize * instream->layout.channel_count);
+            soundio_ring_buffer_advance_write_ptr(input_buffer, write_frames * SampleSize * instream->layout.channel_count);
         }
     };
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*frame_count_min*/, int frame_count_max) {
         // `input_sample_count` is the number of samples ready to read from the ring buffer.
-        // `input_buffer` always stores float32 samples with the same sample rate as the output stream.
-        const int input_sample_count = soundio_ring_buffer_fill_count(input_buffer) / FloatSize;
+        // `input_buffer` always stores Float64 samples with the same sample rate as the output stream.
+        const int input_sample_count = soundio_ring_buffer_fill_count(input_buffer) / SampleSize;
         const bool compute_faust = s.Audio.FaustRunning && faust_buffers && dsp;
         if (compute_faust) {
             if (frame_count_max > faust_buffers->num_frames) {
@@ -441,10 +430,10 @@ int audio() {
             // If the current Faust program accepts inputs, copy any filled bytes from the device to the Faust input buffers.
             const int faust_in_channel_count = faust_buffers->channel_count(IO_In);
             if (faust_in_channel_count > 0) {
-                auto *read_ptr = (float *) soundio_ring_buffer_read_ptr(input_buffer);
+                auto *read_ptr = (double *) soundio_ring_buffer_read_ptr(input_buffer);
                 for (int frame = 0; frame < input_sample_count; frame++) {
                     for (int channel = 0; channel < instream->layout.channel_count; channel++) {
-                        const float value = *read_ptr;
+                        const double value = *read_ptr;
                         if (faust_in_channel_count < channel) {
                             faust_buffers->set(IO_In, channel, frame, value);
                         } else {
@@ -481,13 +470,13 @@ int audio() {
             if (frame_count <= 0) break;
 
             // Make a local copy of the output area pointers for incrementing, so others can read directly from the device areas.
-            // todo Others assume float32, so we'll need indirect converted buffers when the output stream uses a different format.
+            // todo Others assume Float64, so we'll need indirect converted buffers when the output stream uses a different format.
             for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) out_area_pointers[channel] = out_areas[channel].ptr;
 
-            auto *read_ptr = (float *) soundio_ring_buffer_read_ptr(input_buffer);
+            auto *read_ptr = (double *) soundio_ring_buffer_read_ptr(input_buffer);
             for (int frame_inner = 0; frame_inner < frame_count; frame_inner++) {
                 for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) {
-                    float out_sample = 0;
+                    double out_sample = 0;
                     if (!s.Audio.Muted) {
                         // Monitor input directly from the ring buffer.
                         if (s.Audio.MonitorInput) out_sample += *read_ptr;
@@ -504,7 +493,7 @@ int audio() {
                 }
                 read_ptr += 1; // todo xxx this assumes mono input!
             }
-            soundio_ring_buffer_advance_read_ptr(input_buffer, min(input_sample_count, frame_count) * FloatSize);
+            soundio_ring_buffer_advance_read_ptr(input_buffer, min(input_sample_count, frame_count) * SampleSize);
 
             if ((err = soundio_outstream_end_write(outstream))) {
                 if (err == SoundIoErrorUnderflow) return;
@@ -540,10 +529,10 @@ int audio() {
         input_buffer_direct = soundio_ring_buffer_create(soundio, input_buffer_capacity_samples * instream->bytes_per_frame);
         if (!input_buffer_direct) throw std::runtime_error("Unable to create direct input buffer: Out of memory");
 
-        if (instream->format == SoundIoFormatFloat32NE) {
+        if (instream->format == SoundIoFormatFloat64NE) {
             input_buffer = input_buffer_direct;
         } else {
-            input_buffer = soundio_ring_buffer_create(soundio, input_buffer_capacity_samples * FloatSize);
+            input_buffer = soundio_ring_buffer_create(soundio, input_buffer_capacity_samples * SampleSize);
             if (!input_buffer) throw std::runtime_error("Unable to create input buffer: Out of memory");
         }
 
@@ -618,6 +607,7 @@ void Audio::update_process() const {
         const char **argv = new const char *[8];
         argv[argc++] = "-I";
         argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
+        argv[argc++] = "-double";
 
         destroy_dsp();
         createLibContext();
@@ -758,7 +748,7 @@ void ShowBufferPlots() {
                     //  since the area pointer position gets updated in the separate read/write callbacks on the audio thread.
                     //  Hrm.. are the start points of each channel area static after initializing the stream?
                     //  If so, could just set those once on stream init and use them hear!
-                    ImPlot::PlotLine(channel_name, (float *) area[channel_index].ptr, frame_count);
+                    ImPlot::PlotLine(channel_name, (double *) area[channel_index].ptr, frame_count);
                 }
                 ImPlot::EndPlot();
             }

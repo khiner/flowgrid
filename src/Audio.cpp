@@ -182,13 +182,11 @@ unique_ptr<Buffers> faust_buffers;
 unique_ptr<r8b::CDSPResampler24> resampler;
 
 static float mic_latency = 0.2; // Seconds todo do better than this guess
-static const int MaxThreadRetries = 5; // Max number of times in a row the audio thread will try again after an error opening the IO streams
 
 int underflow_count = 0;
 int last_read_frame_count = 0, last_write_frame_count = 0;
 
-bool soundio_ready = false, thread_running = false, first_run = true, retry_thread = false;
-int retry_thread_attempt = 0;
+bool soundio_ready = false, thread_running = false, retry_thread = false;
 
 static int get_device_count(const IO io) {
     switch (io) {
@@ -279,6 +277,9 @@ static void destroy_stream(const IO io) {
 }
 
 int audio() {
+    static const int MaxThreadRetries = 5; // Max number of times in a row the audio thread will try again after an error opening the IO streams
+    static bool first_run = true;
+    static int retry_thread_attempt = 0;
     // Local copies for bookkeeping in read/write callbacks, so others can safely use the global `in/out_areas` above (e.g. for charting):
     static char *in_area_pointers[SOUNDIO_MAX_CHANNELS], *out_area_pointers[SOUNDIO_MAX_CHANNELS];
 
@@ -504,6 +505,7 @@ int audio() {
 
     outstream->underflow_callback = [](SoundIoOutStream *) { cerr << "Underflow #" << underflow_count++ << '\n'; };
 
+    bool failed = false; // Can't trust the global `retry_thread` var, since it's modified outside the thread.
     try {
         for (IO io: {IO_In, IO_Out}) open_stream(io);
     } catch (const std::exception &e) {
@@ -511,17 +513,17 @@ int audio() {
         // It seems sometimes it doesn't fully shut down, so starting up again can error with a
         // [1852797029 OS error](https://developer.apple.com/forums/thread/133990),
         // since it thinks the microphone is being used by another application.
-        // If we run into any stream-open failure: signal to try again via `retry_thread`, clean up, and exit.
+        // If we run into any stream-open failure, signal to try again via `retry_thread`, clean up, and exit.
         if (++retry_thread_attempt > MaxThreadRetries) throw std::runtime_error(e.what());
 
         cerr << e.what() << "\nRetrying (attempt " << retry_thread_attempt << ")\n";
-        retry_thread = true;
+        retry_thread = failed = true;
     }
 
-    if (!retry_thread) {
+    if (!failed) {
         retry_thread_attempt = 0;
 
-        // Initialize the input ring buffer(s) and Faust buffers.
+        // Initialize the input ring buffer(s).
         input_buffer_direct = soundio_ring_buffer_create(soundio, int(ceil(mic_latency * 2 * float(instream->sample_rate)) * SampleSize));
         if (!input_buffer_direct) throw std::runtime_error("Unable to create direct input buffer: Out of memory");
 
@@ -555,12 +557,14 @@ int audio() {
     soundio_destroy(soundio);
     soundio = nullptr;
 
-    if (input_buffer != input_buffer_direct) {
-        soundio_ring_buffer_destroy(input_buffer);
-        input_buffer = nullptr;
+    if (!failed) {
+        if (input_buffer != input_buffer_direct) {
+            soundio_ring_buffer_destroy(input_buffer);
+            input_buffer = nullptr;
+        }
+        soundio_ring_buffer_destroy(input_buffer_direct);
+        input_buffer_direct = nullptr;
     }
-    soundio_ring_buffer_destroy(input_buffer_direct);
-    input_buffer_direct = nullptr;
 
     return 0;
 }
@@ -583,7 +587,7 @@ void Audio::update_process() const {
         thread_running = Running;
         if (audio_thread.joinable()) audio_thread.join();
         if (Running) audio_thread = std::thread(audio);
-    } else if (thread_running &&
+    } else if (soundio_ready &&
         (instream->device->id != s.Audio.InDeviceId || outstream->device->id != s.Audio.OutDeviceId ||
             instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != s.Audio.OutSampleRate ||
             instream->format != to_soundio_format(s.Audio.InFormat) || outstream->format != to_soundio_format(s.Audio.OutFormat))) {
@@ -623,7 +627,7 @@ void Audio::update_process() const {
         on_box_change(box);
     }
 
-    if (soundio_ready && outstream && outstream->volume != OutDeviceVolume) soundio_outstream_set_volume(outstream, OutDeviceVolume);
+    if (soundio_ready && outstream->volume != OutDeviceVolume) soundio_outstream_set_volume(outstream, OutDeviceVolume);
 }
 
 using namespace fg;

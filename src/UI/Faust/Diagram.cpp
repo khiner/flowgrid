@@ -1,4 +1,4 @@
-#include "DrawBox.hh"
+#include "Diagram.hh"
 
 #include <sstream>
 #include <map>
@@ -23,7 +23,7 @@ using Tree = Box;
 
 using Count = unsigned int;
 enum DeviceType { ImGuiDeviceType, SVGDeviceType };
-enum SchemaOrientation { SchemaForward, SchemaReverse };
+enum Diagram { DiagramForward, DiagramReverse };
 
 struct TextStyle {
     enum Justify {
@@ -57,13 +57,13 @@ static inline ImRect scale(const ImRect &r);
 static inline float scale(float f);
 static inline ImVec2 get_scale();
 
-static inline ImGuiDir global_direction(SchemaOrientation orientation) {
+static inline ImGuiDir global_direction(Diagram orientation) {
     const ImGuiDir dir = s.Style.FlowGrid.DiagramDirection;
-    return (dir == ImGuiDir_Right && orientation == SchemaForward) || (dir == ImGuiDir_Left && orientation == SchemaReverse) ?
+    return (dir == ImGuiDir_Right && orientation == DiagramForward) || (dir == ImGuiDir_Left && orientation == DiagramReverse) ?
            ImGuiDir_Right : ImGuiDir_Left;
 }
 
-static inline bool is_lr(SchemaOrientation orientation) { return global_direction(orientation) == ImGuiDir_Right; }
+static inline bool is_lr(Diagram orientation) { return global_direction(orientation) == ImGuiDir_Right; }
 
 // Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
 struct Device {
@@ -77,7 +77,7 @@ struct Device {
     virtual void grouprect(const ImRect &rect, const string &text) = 0; // A labeled grouping
     virtual void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) = 0;
     virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) = 0;
-    virtual void arrow(const ImVec2 &pos, SchemaOrientation orientation) = 0;
+    virtual void arrow(const ImVec2 &pos, Diagram orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
     virtual void dot(const ImVec2 &pos, const ImVec4 &fill_color) = 0;
@@ -191,7 +191,7 @@ struct SVGDevice : Device {
             rgb_color(fill_color), rgb_color(stroke_color), x, y, radius);
     }
 
-    void arrow(const ImVec2 &pos, SchemaOrientation orientation) override {
+    void arrow(const ImVec2 &pos, Diagram orientation) override {
         stream << arrow_pointing_at(at(pos), scale(s.Style.FlowGrid.DiagramArrowSize), orientation, s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine]);
     }
 
@@ -229,7 +229,7 @@ struct SVGDevice : Device {
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, SchemaOrientation orientation, const ImVec4 &color) {
+    static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Diagram orientation, const ImVec4 &color) {
         const float d = is_lr(orientation) ? -1 : 1;
         return get_triangle(ImVec2(pos.x + d * half_sz.x, pos.y - d * half_sz.y), ImVec2(pos.x + d * half_sz.x, pos.y + d * half_sz.y), pos, color, color);
     }
@@ -304,7 +304,7 @@ struct ImGuiDevice : Device {
         if (stroke_color.w != 0) draw_list->AddCircle(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(stroke_color));
     }
 
-    void arrow(const ImVec2 &p, SchemaOrientation orientation) override {
+    void arrow(const ImVec2 &p, Diagram orientation) override {
         ImGui::RenderArrowPointingAt(draw_list,
             at(p) + ImVec2{0, 0.5f},
             scale(s.Style.FlowGrid.DiagramArrowSize),
@@ -334,41 +334,41 @@ struct ImGuiDevice : Device {
     ImDrawList *draw_list;
 };
 
-struct Schema;
+struct Node;
 
-Schema *root_schema; // This diagram is drawn every frame if present.
-std::stack<Schema *> focused_schema_stack;
-const Schema *hovered_schema;
+Node *root_node; // This diagram is drawn every frame if present.
+std::stack<Node *> focused_node_stack;
+const Node *hovered_node;
 
 static string get_box_type(Box t);
 
-// An abstract block diagram schema
-struct Schema {
+// An abstract block diagram node
+struct Node {
     Tree tree;
     const Count in_count, out_count;
-    const std::vector<Schema *> children{};
-    const Count descendents = 0; // The number of boxes within this schema (recursively).
+    const std::vector<Node *> children{};
+    const Count descendents = 0; // The number of boxes within this node (recursively).
     const bool is_top_level;
     ImVec2 position; // Populated in `place`
     ImVec2 size; // Populated in `place_size`
 
-    SchemaOrientation orientation = SchemaForward;
+    Diagram orientation = DiagramForward;
 
-    Schema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0)
+    Node(Tree t, Count in_count, Count out_count, std::vector<Node *> children = {}, Count directDescendents = 0)
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
-          descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Schema *child) { return child->descendents; }), 0)),
+          descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Node *child) { return child->descendents; }), 0)),
         // `DiagramFoldComplexity == 0` means no folding
           is_top_level(s.Style.FlowGrid.DiagramFoldComplexity > 0 && descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity.value)) {}
 
-    virtual ~Schema() = default;
+    virtual ~Node() = default;
 
-    inline Schema *child(Count i) const { return children[i]; }
+    inline Node *child(Count i) const { return children[i]; }
 
     Count io_count(IO io) const { return io == IO_In ? in_count : out_count; };
     Count io_count(IO io, const Count child_index) const { return child_index < children.size() ? children[child_index]->io_count(io) : 0; };
     virtual ImVec2 point(IO io, Count channel) const = 0;
 
-    void place(const DeviceType type, const ImVec2 &new_position, SchemaOrientation new_orientation) {
+    void place(const DeviceType type, const ImVec2 &new_position, Diagram new_orientation) {
         position = new_position;
         orientation = new_orientation;
         _place(type);
@@ -383,16 +383,16 @@ struct Schema {
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
         _draw(device);
-        if ((!hovered_schema || is_inside(*hovered_schema)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
-            hovered_schema = this;
+        if ((!hovered_node || is_inside(*hovered_node)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
+            hovered_node = this;
         }
     };
     inline bool is_lr() const { return ::is_lr(orientation); }
     inline float dir_unit() const { return is_lr() ? 1 : -1; }
-    inline bool is_forward() const { return orientation == SchemaForward; }
+    inline bool is_forward() const { return orientation == DiagramForward; }
     inline float orientation_unit() const { return is_forward() ? 1 : -1; }
-    inline bool is_inside(const Schema &schema) const {
-        return x() > schema.x() && right() < schema.right() && y() > schema.y() && y() < schema.bottom();
+    inline bool is_inside(const Node &node) const {
+        return x() > node.x() && right() < node.right() && y() > node.y() && y() < node.bottom();
     }
 
     inline float x() const { return position.x; }
@@ -405,8 +405,8 @@ struct Schema {
     inline ImRect rect() const { return {position, position + size}; }
     inline ImVec2 mid() const { return position + size / 2; }
 
-    inline Schema *s1() const { return children[0]; }
-    inline Schema *s2() const { return children[1]; }
+    inline Node *s1() const { return children[0]; }
+    inline Node *s2() const { return children[1]; }
 
     inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
     inline static ImVec2 Gap() { return s.Style.FlowGrid.DiagramGap; }
@@ -461,9 +461,9 @@ static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
 static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
 static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
-    if (s.Audio.Faust.Diagram.Settings.ScaleFill && !focused_schema_stack.empty() && ImGui::GetCurrentWindowRead()) {
-        const auto *focused_schema = focused_schema_stack.top();
-        return ImGui::GetWindowSize() / focused_schema->size;
+    if (s.Audio.Faust.Diagram.Settings.ScaleFill && !focused_node_stack.empty() && ImGui::GetCurrentWindowRead()) {
+        const auto *focused_node = focused_node_stack.top();
+        return ImGui::GetWindowSize() / focused_node->size;
     }
     return s.Style.FlowGrid.DiagramScale;
 }
@@ -487,15 +487,15 @@ static string svg_file_name(Tree t) {
     return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>) + format("-{}", unique_id(t)) + ".svg";
 }
 
-void write_svg(Schema *schema, const fs::path &path) {
-    SVGDevice device(path, svg_file_name(schema->tree), schema->size);
-    device.rect(schema->rect(), {.fill_color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]});
-    schema->draw(device);
+void write_svg(Node *node, const fs::path &path) {
+    SVGDevice device(path, svg_file_name(node->tree), node->size);
+    device.rect(node->rect(), {.fill_color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]});
+    node->draw(device);
 }
 
-struct IOSchema : Schema {
-    IOSchema(Tree t, Count in_count, Count out_count, std::vector<Schema *> children = {}, Count directDescendents = 0)
-        : Schema(t, in_count, out_count, std::move(children), directDescendents) {}
+struct IONode : Node {
+    IONode(Tree t, Count in_count, Count out_count, std::vector<Node *> children = {}, Count directDescendents = 0)
+        : Node(t, in_count, out_count, std::move(children), directDescendents) {}
 
     ImVec2 point(IO io, Count i) const override {
         return {
@@ -522,9 +522,9 @@ struct IOSchema : Schema {
 };
 
 // A simple rectangular box with text and inputs/outputs.
-struct BlockSchema : IOSchema {
-    BlockSchema(Tree t, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridCol_DiagramNormal, Schema *inner = nullptr)
-        : IOSchema(t, in_count, out_count, {}, 1), text(std::move(text)), color(color), inner(inner) {}
+struct BlockNode : IONode {
+    BlockNode(Tree t, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridCol_DiagramNormal, Node *inner = nullptr)
+        : IONode(t, in_count, out_count, {}, 1), text(std::move(text)), color(color), inner(inner) {}
 
     void _place_size(const DeviceType type) override {
         const float text_w = text_size(text).x;
@@ -536,7 +536,7 @@ struct BlockSchema : IOSchema {
     }
 
     void _place(const DeviceType type) override {
-        IOSchema::_place(type);
+        IONode::_place(type);
         if (inner && type == SVGDeviceType) inner->place(type);
     }
 
@@ -546,7 +546,7 @@ struct BlockSchema : IOSchema {
         const ImRect &rect = get_frame_rect();
         if (device.type() == SVGDeviceType) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
-            // todo why is draw called twice for each block with an inner child? (or maybe even every schema?)
+            // todo why is draw called twice for each block with an inner child? (or maybe even every node?)
             //  note this is likely double-writing in ImGui too
             if (inner && !fs::exists(svg_device.directory / svg_file_name(inner->tree))) write_svg(inner, svg_device.directory);
             const string &link = inner ? svg_file_name(tree) : "";
@@ -564,7 +564,7 @@ struct BlockSchema : IOSchema {
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, fill_color);
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, fill_color);
             }
-            if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), scaled_rect.GetSize()) && inner) focused_schema_stack.push(inner);
+            if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), scaled_rect.GetSize()) && inner) focused_node_stack.push(inner);
             if (!inner) ImGui::PopStyleColor(2);
             ImGui::PopStyleColor(2);
             ImGui::PopStyleVar(1);
@@ -588,12 +588,12 @@ struct BlockSchema : IOSchema {
 
     const string text;
     const FlowGridCol color;
-    Schema *inner;
+    Node *inner;
 };
 
 // Simple cables (identity box) in parallel.
-struct CableSchema : Schema {
-    CableSchema(Tree t, Count n = 1) : Schema(t, n, n) {}
+struct CableNode : Node {
+    CableNode(Tree t, Count n = 1) : Node(t, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
     void _place_size(const DeviceType) override { size = {0, float(in_count) * WireGap()}; }
@@ -614,8 +614,8 @@ private:
 
 // An inverter is a circle followed by a triangle.
 // It corresponds to '*(-1)', and it's used to create more compact diagrams.
-struct InverterSchema : BlockSchema {
-    InverterSchema(Tree t) : BlockSchema(t, 1, 1, "-1", FlowGridCol_DiagramInverter) {}
+struct InverterNode : BlockNode {
+    InverterNode(Tree t) : BlockNode(t, 1, 1, "-1", FlowGridCol_DiagramInverter) {}
 
     void _place_size(const DeviceType) override { size = ImVec2{2.5f, 1} * WireGap(); }
 
@@ -632,10 +632,10 @@ struct InverterSchema : BlockSchema {
 };
 
 // Cable termination
-struct CutSchema : Schema {
+struct CutNode : Node {
     // A Cut is represented by a small black dot.
     // It has 1 input and no output.
-    CutSchema(Tree t) : Schema(t, 1, 0) {}
+    CutNode(Tree t) : Node(t, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
     void _place_size(const DeviceType) override { size = {0, 1}; }
@@ -652,9 +652,9 @@ struct CutSchema : Schema {
     }
 };
 
-struct ParallelSchema : Schema {
-    ParallelSchema(Tree t, Schema *s1, Schema *s2)
-        : Schema(t, s1->in_count + s2->in_count, s1->out_count + s2->out_count, {s1, s2}) {}
+struct ParallelNode : Node {
+    ParallelNode(Tree t, Node *s1, Node *s2)
+        : Node(t, s1->in_count + s2->in_count, s1->out_count + s2->out_count, {s1, s2}) {}
 
     void _place_size(const DeviceType) override { size = {max(s1()->w(), s2()->w()), s1()->h() + s2()->h()}; }
     void _place(const DeviceType type) override {
@@ -681,8 +681,8 @@ struct ParallelSchema : Schema {
 };
 
 // Place and connect two diagrams in recursive composition
-struct RecursiveSchema : Schema {
-    RecursiveSchema(Tree t, Schema *s1, Schema *s2) : Schema(t, s1->in_count - s2->out_count, s1->out_count, {s1, s2}) {
+struct RecursiveNode : Node {
+    RecursiveNode(Tree t, Node *s1, Node *s2) : Node(t, s1->in_count - s2->out_count, s1->out_count, {s1, s2}) {
         fgassert(s1->in_count >= s2->out_count);
         fgassert(s1->out_count >= s2->in_count);
     }
@@ -694,12 +694,12 @@ struct RecursiveSchema : Schema {
         };
     }
 
-    // The two schemas are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
+    // The two nodes are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
     void _place(const DeviceType type) override {
-        auto *top_schema = children[is_forward() ? 1 : 0];
-        auto *bottom_schema = children[is_forward() ? 0 : 1];
-        top_schema->place(type, position + ImVec2{(w() - top_schema->w()) / 2, 0}, SchemaReverse);
-        bottom_schema->place(type, position + ImVec2{(w() - bottom_schema->w()) / 2, top_schema->h()}, SchemaForward);
+        auto *top_node = children[is_forward() ? 1 : 0];
+        auto *bottom_node = children[is_forward() ? 0 : 1];
+        top_node->place(type, position + ImVec2{(w() - top_node->w()) / 2, 0}, DiagramReverse);
+        bottom_node->place(type, position + ImVec2{(w() - bottom_node->w()) / 2, top_node->h()}, DiagramForward);
     }
 
     void _draw(Device &device) const override {
@@ -744,8 +744,8 @@ struct RecursiveSchema : Schema {
     }
 };
 
-struct BinarySchema : Schema {
-    BinarySchema(Tree t, Schema *s1, Schema *s2) : Schema(t, s1->in_count, s2->out_count, {s1, s2}) {}
+struct BinaryNode : Node {
+    BinaryNode(Tree t, Node *s1, Node *s2) : Node(t, s1->in_count, s2->out_count, {s1, s2}) {}
 
     ImVec2 point(IO io, Count i) const override { return child(io == IO_In ? 0 : 1)->point(io, i); }
 
@@ -762,22 +762,22 @@ struct BinarySchema : Schema {
     virtual float horizontal_gap() const { return (s1()->h() + s2()->h()) * s.Style.FlowGrid.DiagramBinaryHorizontalGapRatio; }
 };
 
-struct SequentialSchema : BinarySchema {
+struct SequentialNode : BinaryNode {
     // The components s1 and s2 must be "compatible" (s1: n->m and s2: m->q).
-    SequentialSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {
+    SequentialNode(Tree t, Node *s1, Node *s2) : BinaryNode(t, s1, s2) {
         fgassert(s1->out_count == s2->in_count);
     }
 
     void _place_size(const DeviceType type) override {
         if (s1()->x() == 0 && s1()->y() == 0 && s2()->x() == 0 && s2()->y() == 0) {
-            s1()->place(type, {0, max(0.0f, s2()->h() - s1()->h()) / 2}, SchemaForward);
-            s2()->place(type, {0, max(0.0f, s1()->h() - s2()->h()) / 2}, SchemaForward);
+            s1()->place(type, {0, max(0.0f, s2()->h() - s1()->h()) / 2}, DiagramForward);
+            s2()->place(type, {0, max(0.0f, s1()->h() - s2()->h()) / 2}, DiagramForward);
         }
-        BinarySchema::_place_size(type);
+        BinaryNode::_place_size(type);
     }
 
     void _place(const DeviceType type) override {
-        BinarySchema::_place(type);
+        BinaryNode::_place(type);
         channels_for_direction = {};
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
             const auto dy = child(1)->point(IO_In, i).y - child(0)->point(IO_Out, i).y;
@@ -835,9 +835,9 @@ private:
 };
 
 // Place and connect two diagrams in merge composition.
-// The outputs of the first schema are merged to the inputs of the second.
-struct MergeSchema : BinarySchema {
-    MergeSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
+// The outputs of the first node are merged to the inputs of the second.
+struct MergeNode : BinaryNode {
+    MergeNode(Tree t, Node *s1, Node *s2) : BinaryNode(t, s1, s2) {}
 
     void _draw(Device &device) const override {
         for (Count i = 0; i < io_count(IO_Out, 0); i++) device.line(child(0)->point(IO_Out, i), child(1)->point(IO_In, i % io_count(IO_In, 1)));
@@ -845,29 +845,29 @@ struct MergeSchema : BinarySchema {
 };
 
 // Place and connect two diagrams in split composition.
-// The outputs the first schema are distributed to the inputs of the second.
-struct SplitSchema : BinarySchema {
-    SplitSchema(Tree t, Schema *s1, Schema *s2) : BinarySchema(t, s1, s2) {}
+// The outputs the first node are distributed to the inputs of the second.
+struct SplitNode : BinaryNode {
+    SplitNode(Tree t, Node *s1, Node *s2) : BinaryNode(t, s1, s2) {}
 
     void _draw(Device &device) const override {
         for (Count i = 0; i < io_count(IO_In, 1); i++) device.line(child(0)->point(IO_Out, i % io_count(IO_Out, 0)), child(1)->point(IO_In, i));
     }
 };
 
-Schema *make_sequential(Tree t, Schema *s1, Schema *s2) {
+Node *make_sequential(Tree t, Node *s1, Node *s2) {
     const auto o = s1->out_count;
     const auto i = s2->in_count;
-    return new SequentialSchema(t,
-        o < i ? new ParallelSchema(t, s1, new CableSchema(t, i - o)) : s1,
-        o > i ? new ParallelSchema(t, s2, new CableSchema(t, o - i)) : s2
+    return new SequentialNode(t,
+        o < i ? new ParallelNode(t, s1, new CableNode(t, i - o)) : s1,
+        o > i ? new ParallelNode(t, s2, new CableNode(t, o - i)) : s2
     );
 }
 
-// A `DecorateSchema` is a schema surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
+// A `DecorateNode` is a node surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
 // If the number of boxes inside is over the `box_complexity` threshold, add additional padding and draw output arrows.
-struct DecorateSchema : IOSchema {
-    DecorateSchema(Tree t, Schema *inner, string text)
-        : IOSchema(t, inner->in_count, inner->out_count, {inner}, 0), text(std::move(text)) {}
+struct DecorateNode : IONode {
+    DecorateNode(Tree t, Node *inner, string text)
+        : IONode(t, inner->in_count, inner->out_count, {inner}, 0), text(std::move(text)) {}
 
     void _place_size(const DeviceType) override {
         const float m = margin(s1());
@@ -895,17 +895,17 @@ struct DecorateSchema : IOSchema {
         return child(0)->point(io, i) + ImVec2{dir_unit() * (io == IO_In ? -1.0f : 1.0f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
-    inline float margin(const Schema *schema = nullptr) const {
-        return s.Style.FlowGrid.DiagramDecorateMargin + ((schema ? schema->is_top_level : is_top_level) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.0f);
+    inline float margin(const Node *node = nullptr) const {
+        return s.Style.FlowGrid.DiagramDecorateMargin + ((node ? node->is_top_level : is_top_level) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.0f);
     }
 
 private:
     string text;
 };
 
-struct RouteSchema : IOSchema {
-    RouteSchema(Tree t, Count in_count, Count out_count, std::vector<int> routes)
-        : IOSchema(t, in_count, out_count), routes(std::move(routes)) {}
+struct RouteNode : IONode {
+    RouteNode(Tree t, Count in_count, Count out_count, std::vector<int> routes)
+        : IONode(t, in_count, out_count), routes(std::move(routes)) {}
 
     void _place_size(const DeviceType) override {
         const float minimal = 3 * WireGap();
@@ -947,8 +947,8 @@ static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
     return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
 }
 
-// Generate a 1->0 block schema for an input slot.
-static Schema *make_input_slot(Tree t) { return new BlockSchema(t, 1, 0, getTreeName(t), FlowGridCol_DiagramSlot); }
+// Generate a 1->0 block node for an input slot.
+static Node *make_input_slot(Tree t) { return new BlockNode(t, 1, 0, getTreeName(t), FlowGridCol_DiagramSlot); }
 
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
@@ -1008,19 +1008,19 @@ static string userInterfaceDescription(Tree box) {
     throw std::runtime_error("ERROR : unknown user interface element");
 }
 
-static Schema *Tree2Schema(Tree t, bool allow_links = true);
+static Node *Tree2Node(Tree t, bool allow_links = true);
 
-// Generate the inside schema of a block diagram according to its type.
-static Schema *Tree2SchemaNode(Tree t) {
-    if (getUserData(t) != nullptr) return new BlockSchema(t, xtendedArity(t), 1, xtendedName(t));
-    if (isInverter(t)) return new InverterSchema(t);
+// Generate the inside node of a block diagram according to its type.
+static Node *Tree2NodeNode(Tree t) {
+    if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
+    if (isInverter(t)) return new InverterNode(t);
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockSchema(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridCol_DiagramNumber);
-    if (isBoxWaveform(t)) return new BlockSchema(t, 0, 2, "waveform{...}");
-    if (isBoxWire(t)) return new CableSchema(t);
-    if (isBoxCut(t)) return new CutSchema(t);
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridCol_DiagramNumber);
+    if (isBoxWaveform(t)) return new BlockNode(t, 0, 2, "waveform{...}");
+    if (isBoxWire(t)) return new CableNode(t);
+    if (isBoxCut(t)) return new CutNode(t);
 
     prim0 p0;
     prim1 p1;
@@ -1028,63 +1028,63 @@ static Schema *Tree2SchemaNode(Tree t) {
     prim3 p3;
     prim4 p4;
     prim5 p5;
-    if (isBoxPrim0(t, &p0)) return new BlockSchema(t, 0, 1, prim0name(p0));
-    if (isBoxPrim1(t, &p1)) return new BlockSchema(t, 1, 1, prim1name(p1));
-    if (isBoxPrim2(t, &p2)) return new BlockSchema(t, 2, 1, prim2name(p2));
-    if (isBoxPrim3(t, &p3)) return new BlockSchema(t, 3, 1, prim3name(p3));
-    if (isBoxPrim4(t, &p4)) return new BlockSchema(t, 4, 1, prim4name(p4));
-    if (isBoxPrim5(t, &p5)) return new BlockSchema(t, 5, 1, prim5name(p5));
+    if (isBoxPrim0(t, &p0)) return new BlockNode(t, 0, 1, prim0name(p0));
+    if (isBoxPrim1(t, &p1)) return new BlockNode(t, 1, 1, prim1name(p1));
+    if (isBoxPrim2(t, &p2)) return new BlockNode(t, 2, 1, prim2name(p2));
+    if (isBoxPrim3(t, &p3)) return new BlockNode(t, 3, 1, prim3name(p3));
+    if (isBoxPrim4(t, &p4)) return new BlockNode(t, 4, 1, prim4name(p4));
+    if (isBoxPrim5(t, &p5)) return new BlockNode(t, 5, 1, prim5name(p5));
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return new BlockSchema(t, ffarity(ff), 1, ffname(ff));
+    if (isBoxFFun(t, ff)) return new BlockNode(t, ffarity(ff), 1, ffname(ff));
 
     Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockSchema(t, 0, 1, tree2str(name));
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockSchema(t, 0, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockSchema(t, 1, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
-    if (isBoxSoundfile(t, label, chan)) return new BlockSchema(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), FlowGridCol_DiagramUi);
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(t, 0, 1, tree2str(name));
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(t, 1, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
+    if (isBoxSoundfile(t, label, chan)) return new BlockNode(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), FlowGridCol_DiagramUi);
 
     Tree a, b;
-    if (isBoxMetadata(t, a, b)) return Tree2Schema(a);
+    if (isBoxMetadata(t, a, b)) return Tree2Node(a);
 
     const bool isVGroup = isBoxVGroup(t, label, a);
     const bool isHGroup = isBoxHGroup(t, label, a);
     const bool isTGroup = isBoxTGroup(t, label, a);
     if (isVGroup || isHGroup || isTGroup) {
         const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
-        return new DecorateSchema(a, Tree2Schema(a), groupId + "group(" + extractName(label) + ")");
+        return new DecorateNode(a, Tree2Node(a), groupId + "group(" + extractName(label) + ")");
     }
-    if (isBoxSeq(t, a, b)) return make_sequential(t, Tree2Schema(a), Tree2Schema(b));
-    if (isBoxPar(t, a, b)) return new ParallelSchema(t, Tree2Schema(a), Tree2Schema(b));
-    if (isBoxSplit(t, a, b)) return new SplitSchema(t, Tree2Schema(a), Tree2Schema(b));
-    if (isBoxMerge(t, a, b)) return new MergeSchema(t, Tree2Schema(a), Tree2Schema(b));
-    if (isBoxRec(t, a, b)) return new RecursiveSchema(t, Tree2Schema(a), Tree2Schema(b));
+    if (isBoxSeq(t, a, b)) return make_sequential(t, Tree2Node(a), Tree2Node(b));
+    if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
+    if (isBoxSplit(t, a, b)) return new SplitNode(t, Tree2Node(a), Tree2Node(b));
+    if (isBoxMerge(t, a, b)) return new MergeNode(t, Tree2Node(a), Tree2Node(b));
+    if (isBoxRec(t, a, b)) return new RecursiveNode(t, Tree2Node(a), Tree2Node(b));
 
-    if (isBoxSlot(t, &i)) return new BlockSchema(t, 0, 1, getTreeName(t), FlowGridCol_DiagramSlot);
+    if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, getTreeName(t), FlowGridCol_DiagramSlot);
 
     if (isBoxSymbolic(t, a, b)) {
-        // Generate an abstraction schema by placing in sequence the input slots and the body.
+        // Generate an abstraction node by placing in sequence the input slots and the body.
         auto *input_slots = make_input_slot(a);
         Tree _a, _b;
         while (isBoxSymbolic(b, _a, _b)) {
-            input_slots = new ParallelSchema(b, input_slots, make_input_slot(_a));
+            input_slots = new ParallelNode(b, input_slots, make_input_slot(_a));
             b = _b;
         }
-        auto *abstraction = make_sequential(b, input_slots, Tree2Schema(b));
-        return getTreeName(t) ? abstraction : new DecorateSchema(t, abstraction, "Abstraction");
+        auto *abstraction = make_sequential(b, input_slots, Tree2Node(b));
+        return getTreeName(t) ? abstraction : new DecorateNode(t, abstraction, "Abstraction");
     }
-    if (isBoxEnvironment(t)) return new BlockSchema(t, 0, 0, "environment{...}");
+    if (isBoxEnvironment(t)) return new BlockNode(t, 0, 0, "environment{...}");
 
     Tree route;
     if (isBoxRoute(t, a, b, route)) {
         int ins, outs;
         std::vector<int> routes;
         // Build n x m cable routing
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(route, routes)) return new RouteSchema(t, ins, outs, routes);
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(route, routes)) return new RouteNode(t, ins, outs, routes);
         throw std::runtime_error("Invalid route expression : " + print_tree(t));
     }
 
-    throw std::runtime_error("ERROR in Tree2SchemaNode, box expression not recognized: " + print_tree(t));
+    throw std::runtime_error("ERROR in Tree2NodeNode, box expression not recognized: " + print_tree(t));
 }
 
 string get_box_type(Box t) {
@@ -1148,7 +1148,7 @@ string get_box_type(Box t) {
     return "";
 }
 
-static bool AllowSchemaLinks = true; // Set to `false` to draw all schemas inline in one big diagram. Set to `true` to split into files (for SVG rendering).
+static bool AllowNodeLinks = true; // Set to `false` to draw all nodes inline in one big diagram. Set to `true` to split into files (for SVG rendering).
 static std::map<Tree, bool> IsTreePureRouting{}; // Avoid recomputing pure-routing property. Needs to be reset whenever box changes!
 
 // Returns `true` if the tree is only made of cut, wires and slots.
@@ -1166,16 +1166,16 @@ static bool isPureRouting(Tree t) {
 }
 
 // This method is called recursively.
-static Schema *Tree2Schema(Tree t, bool allow_links) {
-    auto *node = Tree2SchemaNode(t);
+static Node *Tree2Node(Tree t, bool allow_links) {
+    auto *node = Tree2NodeNode(t);
     if (const char *name = getTreeName(t)) {
-        auto *schema = new DecorateSchema{t, node, name};
-        if (schema->is_top_level && AllowSchemaLinks && allow_links) {
+        auto *decorate_node = new DecorateNode{t, node, name};
+        if (decorate_node->is_top_level && AllowNodeLinks && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
-            return new BlockSchema(t, ins, outs, name, FlowGridCol_DiagramLink, schema);
+            return new BlockNode(t, ins, outs, name, FlowGridCol_DiagramLink, decorate_node);
         }
-        if (!isPureRouting(t)) return schema; // Draw a line around the object with its name.
+        if (!isPureRouting(t)) return decorate_node; // Draw a line around the object with its name.
     }
 
     return node; // normal case
@@ -1183,31 +1183,31 @@ static Schema *Tree2Schema(Tree t, bool allow_links) {
 
 void on_box_change(Box box) {
     IsTreePureRouting.clear();
-    focused_schema_stack = {};
+    focused_node_stack = {};
     if (box) {
-        root_schema = Tree2Schema(box, false); // Ensure top-level is not compressed into a link.
-        focused_schema_stack.push(root_schema);
+        root_node = Tree2Node(box, false); // Ensure top-level is not compressed into a link.
+        focused_node_stack.push(root_node);
     } else {
-        root_schema = nullptr;
+        root_node = nullptr;
     }
 }
 
 static int prev_fold_complexity = 0; // watch and recompile when it changes
 
 void save_box_svg(const string &path) {
-    if (!root_schema) return;
+    if (!root_node) return;
     prev_fold_complexity = s.Style.FlowGrid.DiagramFoldComplexity;
     // Render SVG diagram(s)
     fs::remove_all(path);
     fs::create_directory(path);
-    auto *schema = Tree2Schema(root_schema->tree, false); // Ensure top-level is not compressed into a link.
-    schema->place_size(SVGDeviceType);
-    schema->place(SVGDeviceType);
-    write_svg(schema, path);
+    auto *node = Tree2Node(root_node->tree, false); // Ensure top-level is not compressed into a link.
+    node->place_size(SVGDeviceType);
+    node->place(SVGDeviceType);
+    write_svg(node, path);
 }
 
 void Audio::FaustState::FaustDiagram::draw() const {
-    if (!root_schema) {
+    if (!root_node) {
         // todo don't show empty menu bar in this case
         ImGui::Text("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
         return;
@@ -1232,24 +1232,24 @@ void Audio::FaustState::FaustDiagram::draw() const {
         ImGui::EndMenuBar();
     }
 
-    if (focused_schema_stack.empty()) return;
+    if (focused_node_stack.empty()) return;
 
     if (s.Style.FlowGrid.DiagramFoldComplexity != prev_fold_complexity) {
         prev_fold_complexity = s.Style.FlowGrid.DiagramFoldComplexity;
-        on_box_change(root_schema->tree);
+        on_box_change(root_node->tree);
     }
 
     {
         // Nav menu
-        const bool can_nav = focused_schema_stack.size() > 1;
+        const bool can_nav = focused_node_stack.size() > 1;
         if (!can_nav) ImGui::BeginDisabled();
-        if (ImGui::Button("Top")) while (focused_schema_stack.size() > 1) focused_schema_stack.pop();
+        if (ImGui::Button("Top")) while (focused_node_stack.size() > 1) focused_node_stack.pop();
         ImGui::SameLine();
-        if (ImGui::Button("Back")) focused_schema_stack.pop();
+        if (ImGui::Button("Back")) focused_node_stack.pop();
         if (!can_nav) ImGui::EndDisabled();
     }
 
-    auto *focused = focused_schema_stack.top();
+    auto *focused = focused_node_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
     if (!Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
@@ -1259,13 +1259,13 @@ void Audio::FaustState::FaustDiagram::draw() const {
         ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]));
 
     ImGuiDevice device;
-    hovered_schema = nullptr;
+    hovered_node = nullptr;
     focused->draw(device);
-    if (hovered_schema) {
-        if (Settings.HoverShowRect) hovered_schema->draw_rect(device);
-        if (Settings.HoverShowType) hovered_schema->draw_type(device);
-        if (Settings.HoverShowChannels) hovered_schema->draw_channel_labels(device);
-        if (Settings.HoverShowChildChannels) hovered_schema->draw_child_channel_labels(device);
+    if (hovered_node) {
+        if (Settings.HoverShowRect) hovered_node->draw_rect(device);
+        if (Settings.HoverShowType) hovered_node->draw_type(device);
+        if (Settings.HoverShowChannels) hovered_node->draw_channel_labels(device);
+        if (Settings.HoverShowChildChannels) hovered_node->draw_child_channel_labels(device);
     }
 
     ImGui::EndChild();

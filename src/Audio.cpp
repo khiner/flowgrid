@@ -11,7 +11,7 @@
 
 #include "Context.h"
 #include "CDSPResampler.h"
-#include "UI/Faust/DrawBox.hh"
+#include "UI/Faust/Diagram.hh"
 
 using Sample = double;
 static constexpr int SampleSize = sizeof(Sample);

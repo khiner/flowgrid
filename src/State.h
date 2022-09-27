@@ -309,6 +309,7 @@ struct Tools : Window {
 
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
 
+// Starting at `-1` allows for using `IO` types as array indices.
 enum IO_ {
     IO_None = -1,
     IO_In,
@@ -316,7 +317,8 @@ enum IO_ {
 };
 using IO = IO_;
 
-const IO IO_All[] = {IO_In, IO_Out};
+constexpr IO IO_All[] = {IO_In, IO_Out};
+constexpr int IO_Count = 2;
 
 inline static string to_string(const IO io, const bool shorten = false) {
     switch (io) {

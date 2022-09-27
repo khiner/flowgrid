@@ -431,7 +431,7 @@ int audio() {
                 for (int frame = 0; frame < input_sample_count; frame++) {
                     for (int channel = 0; channel < instream->layout.channel_count; channel++) {
                         const Sample value = *read_ptr;
-                        if (faust_in_channel_count < channel) {
+                        if (channel < faust_in_channel_count) {
                             faust_buffers->set(IO_In, channel, frame, value);
                         } else {
                             // Sum any input channels beyond the number of Faust inputs into the last Faust input.

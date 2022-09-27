@@ -384,19 +384,23 @@ struct Audio : Process {
         FaustDiagram Diagram{Path, "Diagram", "Faust diagram"};
         FaustLog Log{Path, "Log", "Faust log"};
 
-//        String Code{Path, "Code", "Code",
-//                    "import(\"stdfaust.lib\");\n\n"
-//                    "pitchshifter = vgroup(\"Pitch Shifter\", ef.transpose(\n"
-//                    "    hslider(\"window (samples)\", 1000, 50, 10000, 1),\n"
-//                    "    hslider(\"xfade (samples)\", 10, 1, 10000, 1),\n"
-//                    "    hslider(\"shift (semitones) \", 0, -24, +24, 0.1)\n"
-//                    "  )\n"
-//                    ");\n"
-//                    "\n"
-//                    "process = no.noise : pitchshifter;\n"};
-        String Code{Path, "Code", "Code", "import(\"stdfaust.lib\");\n\nprocess = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;"};
-//        String Code{Path, "Code", "Code",
-//                    "import(\"stdfaust.lib\");\nctFreq = hslider(\"cutoffFrequency\",500,50,10000,0.01);\nq = hslider(\"q\",5,1,30,0.1);\ngain = hslider(\"gain\",1,0,1,0.01);\nprocess = no:noise : fi.resonlp(ctFreq,q,gain);"};
+        String Code{Path, "Code", "Code", R"#(import("stdfaust.lib");
+pitchshifter = vgroup("Pitch Shifter", ef.transpose(
+    hslider("window (samples)", 1000, 50, 10000, 1),
+    hslider("xfade (samples)", 10, 1, 10000, 1),
+    hslider("shift (semitones)", 0, -24, +24, 0.1)
+  )
+);
+process = _ : pitchshifter;)#"};
+//        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");
+//process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)"};
+//        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");
+//process = _:fi.highpass(2,1000):_;)"};
+//        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");
+//ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
+//q = hslider("q",5,1,30,0.1);
+//gain = hslider("gain",1,0,1,0.01);
+//process = no:noise : fi.resonlp(ctFreq,q,gain);)"};
         string Error{};
     };
 

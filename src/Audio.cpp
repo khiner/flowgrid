@@ -13,11 +13,6 @@
 #include "CDSPResampler.h"
 #include "UI/Faust/DrawBox.hh"
 
-// Loose vars here are a sloppy pattern to remove `llvm-dsp` include from `Context.h` header.
-llvm_dsp_factory *dsp_factory;
-dsp *dsp = nullptr;
-Box box = nullptr;
-
 using Sample = double;
 static constexpr int SampleSize = sizeof(Sample);
 
@@ -31,39 +26,26 @@ static constexpr int MAX_EXPECTED_FRAME_COUNT = 8192;
 
 struct Buffers {
     const int num_frames = MAX_EXPECTED_FRAME_COUNT;
-    const int input_count;
-    const int output_count;
-    Sample **input;
+    const int channels;
     Sample **output;
 
-    Buffers(int num_input_channels, int num_output_channels) :
-        input_count(num_input_channels), output_count(num_output_channels) {
-        input = new Sample *[num_input_channels];
-        output = new Sample *[num_output_channels];
-        for (int i = 0; i < num_input_channels; i++) { input[i] = new Sample[MAX_EXPECTED_FRAME_COUNT]; }
-        for (int i = 0; i < num_output_channels; i++) { output[i] = new Sample[MAX_EXPECTED_FRAME_COUNT]; }
+    Buffers(int channels) : channels(channels) {
+        output = new Sample *[channels];
+        for (int i = 0; i < channels; i++) { output[i] = new Sample[MAX_EXPECTED_FRAME_COUNT]; }
     }
-
     ~Buffers() {
-        for (int i = 0; i < input_count; i++) { delete[] input[i]; }
-        for (int i = 0; i < output_count; i++) { delete[] output[i]; }
-        delete[] input;
+        for (int i = 0; i < channels; i++) { delete[] output[i]; }
         delete[] output;
     }
 
-    // todo overload `[]` operator get/set for dimensionality `[2 (input/output)][num_channels][max_num_frames (max between input_count/output_count)]
-    int channel_count(IO io) const { return io == IO_In ? input_count : io == IO_Out ? output_count : 0; }
-    Sample **get_buffer(IO io) const { return io == IO_In ? input : io == IO_Out ? output : nullptr; }
-    Sample *get_buffer(IO io, int channel) const {
-        const auto *buffer = get_buffer(io);
-        return buffer ? buffer[channel] : nullptr;
-    }
-    inline Sample get(IO io, int channel, int frame) const {
-        const auto *buffer = get_buffer(io, channel);
+    Sample *get_buffer(int channel) const { return channel < channels ? output[channel] : nullptr; }
+
+    inline Sample get(int channel, int frame) const {
+        const auto *buffer = get_buffer(channel);
         return buffer ? buffer[frame] : 0;
     }
-    inline void set(IO io, int channel, int frame, Sample value) const {
-        auto *buffer = get_buffer(io, channel);
+    inline void set(int channel, int frame, Sample value) const {
+        auto *buffer = get_buffer(channel);
         if (buffer) buffer[frame] = value;
     }
 };
@@ -178,8 +160,14 @@ std::map<IO, SoundIoDevice *> devices = {{IO_In, nullptr}, {IO_Out, nullptr}};
 */
 SoundIoRingBuffer *input_buffer = nullptr, *input_buffer_direct = nullptr;
 SoundIoChannelArea *in_areas = nullptr, *out_areas = nullptr;
-unique_ptr<Buffers> faust_buffers;
+unique_ptr<Buffers> faust_output_buffer;
+Sample **faust_input_buffer;
 unique_ptr<r8b::CDSPResampler24> resampler;
+
+// Faust vars
+llvm_dsp_factory *dsp_factory;
+dsp *dsp = nullptr;
+Box box = nullptr;
 
 static float mic_latency = 0.2; // Seconds todo do better than this guess
 
@@ -207,6 +195,13 @@ static int get_default_device_index(const IO io) {
         case IO_In : return soundio_default_input_device_index(soundio);
         case IO_Out : return soundio_default_output_device_index(soundio);
         case IO_None : return -1;
+    }
+}
+static int get_channel_count(const IO io) {
+    switch (io) {
+        case IO_In : return instream ? instream->layout.channel_count : 0;
+        case IO_Out : return outstream ? outstream->layout.channel_count : 0;
+        case IO_None : return 0;
     }
 }
 
@@ -338,6 +333,7 @@ int audio() {
 //    outstream->layout = *layout;
 
     instream->read_callback = [](SoundIoInStream *instream, int min_frames, int max_frames) {
+        const auto channel_count = instream->layout.channel_count;
         auto *write_ptr_direct = (Sample *) soundio_ring_buffer_write_ptr(input_buffer_direct);
         const int available_write_frames = soundio_ring_buffer_free_count(input_buffer_direct) / SampleSize;
         if (min_frames > available_write_frames) {
@@ -360,22 +356,22 @@ int audio() {
 
             if (!in_areas) {
                 // Due to an overflow there is a hole. Fill the hole in the ring buffer with silence.
-                memset(write_ptr_direct, 0, inner_frames * SampleSize * instream->layout.channel_count);
+                memset(write_ptr_direct, 0, inner_frames * SampleSize * channel_count);
                 cerr << format("Dropped {} frames due to internal overflow", inner_frames) << '\n';
             } else {
                 // Make a local copy of the input area pointers for incrementing, so others can read directly from the device areas.
                 // todo Others assume doubles, so we'll need indirect converted buffers when the input stream uses a different format.
-                for (int channel = 0; channel < instream->layout.channel_count; channel += 1) in_area_pointers[channel] = in_areas[channel].ptr;
+                for (int channel = 0; channel < channel_count; channel += 1) in_area_pointers[channel] = in_areas[channel].ptr;
 
                 for (int frame = 0; frame < inner_frames; frame += 1) {
-                    for (int channel = 0; channel < instream->layout.channel_count; channel += 1) {
+                    for (int channel = 0; channel < channel_count; channel += 1) {
                         *write_ptr_direct = read_sample(in_area_pointers[channel]);
                         in_area_pointers[channel] += in_areas[channel].step;
                         write_ptr_direct += 1;
                     }
                 }
             }
-            soundio_ring_buffer_advance_write_ptr(input_buffer_direct, inner_frames * SampleSize * instream->layout.channel_count);
+            soundio_ring_buffer_advance_write_ptr(input_buffer_direct, inner_frames * SampleSize * channel_count);
 
             if ((err = soundio_instream_end_read(instream))) {
                 if (err == SoundIoErrorUnderflow) return;
@@ -404,7 +400,7 @@ int audio() {
             soundio_ring_buffer_advance_read_ptr(input_buffer_direct, resample_input_bytes);
 
             if (resampled_frames > 0) {
-                const int output_bytes = resampled_frames * SampleSize * instream->layout.channel_count;
+                const int output_bytes = resampled_frames * SampleSize * channel_count;
                 auto *write_ptr = (Sample *) soundio_ring_buffer_write_ptr(input_buffer);
                 memcpy(write_ptr, resampled_buffer, output_bytes);
                 soundio_ring_buffer_advance_write_ptr(input_buffer, output_bytes);
@@ -413,45 +409,27 @@ int audio() {
     };
 
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*min_frames*/, int max_frames) {
-        // `input_sample_count` is the number of samples ready to read from the ring buffer.
-        // `input_buffer` always stores `Sample`s with the same sample rate as the output stream.
+        const auto channel_count = outstream->layout.channel_count;
         const int input_sample_count = soundio_ring_buffer_fill_count(input_buffer) / SampleSize;
-        const bool compute_faust = s.Audio.FaustRunning && faust_buffers && dsp;
+        const bool compute_faust = s.Audio.FaustRunning && faust_output_buffer && dsp;
         if (compute_faust) {
-            if (max_frames > faust_buffers->num_frames) {
-                cerr << "The output stream buffer only has " << faust_buffers->num_frames
+            if (max_frames > faust_output_buffer->num_frames) {
+                cerr << "The output stream buffer only has " << faust_output_buffer->num_frames
                      << " frames, which is smaller than the libsoundio callback buffer size of " << max_frames << ".\n"
                      << "(Increase `AudioContext.MAX_EXPECTED_FRAME_COUNT`.)\n";
             }
 
-            // If the current Faust program accepts inputs, copy any filled bytes from the device to the Faust input buffers.
-            const int faust_in_channel_count = faust_buffers->channel_count(IO_In);
-            if (faust_in_channel_count > 0) {
-                auto *read_ptr = (Sample *) soundio_ring_buffer_read_ptr(input_buffer);
-                for (int frame = 0; frame < input_sample_count; frame++) {
-                    for (int channel = 0; channel < instream->layout.channel_count; channel++) {
-                        const Sample value = *read_ptr;
-                        if (channel < faust_in_channel_count) {
-                            faust_buffers->set(IO_In, channel, frame, value);
-                        } else {
-                            // Sum any input channels beyond the number of Faust inputs into the last Faust input.
-                            // todo handle the inverse: more Faust input channels than device inputs
-                            faust_buffers->set(IO_In, faust_in_channel_count - 1, frame, faust_buffers->get(IO_In, faust_in_channel_count - 1, frame) + value);
-                        }
-                        read_ptr += 1;
-                    }
-                }
-                // If the device input buffer does not have enough data filled, set the remaining Faust input samples to zero.
-                for (int frame = 0; frame < max_frames - input_sample_count; frame++) {
-                    for (int channel = 0; channel < faust_in_channel_count; channel++) {
-                        faust_buffers->set(IO_In, channel, frame, 0);
-                    }
-                }
-                // Not advancing the input read pointer until after any input monitoring below.
-            }
+            // If the device input buffer does not have enough data filled, set the remaining Faust input samples to zero.
+//            const int remaining_frames = max_frames - input_sample_count;
 
-            // Compute the Faust output buffer.
-            dsp->compute(max_frames, faust_buffers->input, faust_buffers->output);
+            if (dsp->getNumInputs() > 0 && get_channel_count(IO_In) == 1) {
+                auto *read_ptr = (Sample *) soundio_ring_buffer_read_ptr(input_buffer);
+                // Point the first audio input channel to every Faust input channel
+                // Not advancing the input read pointer until after any input monitoring below.
+                // todo this works for 1:1 case, but need to properly handle input routing between more channels on either side
+                for (int i = 0; i < dsp->getNumInputs(); i++) faust_input_buffer[i] = read_ptr;
+            }
+            dsp->compute(max_frames, faust_input_buffer, faust_output_buffer->output);
         }
 
         int err;
@@ -468,20 +446,18 @@ int audio() {
 
             // Make a local copy of the output area pointers for incrementing, so others can read directly from the device areas.
             // todo Others assume doubles, so we'll need indirect converted buffers when the output stream uses a different format.
-            for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) out_area_pointers[channel] = out_areas[channel].ptr;
+            for (int channel = 0; channel < channel_count; channel += 1) out_area_pointers[channel] = out_areas[channel].ptr;
 
             auto *read_ptr = (Sample *) soundio_ring_buffer_read_ptr(input_buffer);
             for (int inner_frame = 0; inner_frame < inner_frames; inner_frame++) {
-                for (int channel = 0; channel < outstream->layout.channel_count; channel += 1) {
+                for (int channel = 0; channel < channel_count; channel += 1) {
                     Sample out_sample = 0;
                     if (!s.Audio.Muted) {
                         // Monitor input directly from the ring buffer.
                         if (s.Audio.MonitorInput) out_sample += *read_ptr;
                         if (compute_faust) {
-                            out_sample += faust_buffers->get(
-                                IO_Out, min(channel, faust_buffers->channel_count(IO_Out) - 1),
-                                max_frames - remaining_frames + inner_frame // outer frame index
-                            );
+                            const int outer_frame = max_frames - remaining_frames + inner_frame;
+                            out_sample += faust_output_buffer->get(min(channel, dsp->getNumOutputs() - 1), outer_frame);
                         }
                     }
 
@@ -765,10 +741,13 @@ void ShowBufferPlots() {
 }
 
 void Audio::draw() const {
-    if (!faust_buffers && dsp) {
-        faust_buffers = make_unique<Buffers>(dsp->getNumInputs(), dsp->getNumOutputs());
-    } else if (faust_buffers && !dsp) {
-        faust_buffers = nullptr;
+    if (!faust_output_buffer && dsp) {
+        faust_output_buffer = make_unique<Buffers>(dsp->getNumOutputs());
+        faust_input_buffer = new Sample *[dsp->getNumInputs()];
+    } else if (faust_output_buffer && !dsp) {
+        faust_output_buffer = nullptr;
+        delete[] faust_input_buffer;
+        faust_input_buffer = nullptr;
     }
     if (retry_thread) {
         retry_thread = false;

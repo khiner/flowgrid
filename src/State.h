@@ -378,6 +378,11 @@ struct Audio : Process {
             DiagramSettings Settings{Path, "Settings"};
         };
 
+        struct FaustParams : Window {
+            using Window::Window;
+            void draw() const override;
+        };
+
         // todo move to top-level Log
         struct FaustLog : Window {
             using Window::Window;
@@ -386,6 +391,7 @@ struct Audio : Process {
 
         FaustEditor Editor{Path, "Editor", "Faust editor"};
         FaustDiagram Diagram{Path, "Diagram", "Faust diagram"};
+        FaustParams Params{Path, "Params", "Faust params"};
         FaustLog Log{Path, "Log", "Faust log"};
 
         String Code{Path, "Code", "Code", R"#(import("stdfaust.lib");
@@ -867,8 +873,9 @@ JsonType(Process, Running)
 JsonType(ApplicationSettings, Visible, GestureDurationSec)
 JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
 JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverShowRect, HoverShowType, HoverShowChannels, HoverShowChildChannels)
-JsonType(Audio::FaustState::FaustDiagram, Settings)
-JsonType(Audio::FaustState, Code, Diagram, Error, Editor, Log)
+JsonType(Audio::FaustState::FaustDiagram, Visible, Settings)
+JsonType(Audio::FaustState::FaustParams, Visible)
+JsonType(Audio::FaustState, Code, Diagram, Params, Error, Editor, Log)
 JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, InFormat, OutFormat, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)
 JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
 JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)

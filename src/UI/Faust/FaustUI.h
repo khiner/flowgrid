@@ -15,7 +15,8 @@ using Real = Sample;
 // at different locations in the UI hierarchy) can be used to access any created widget.
 // See Faust's `APIUI` for possible extensions (response curves, gyro, ...).
 
-struct FAUST_API FaustUI : UI, PathBuilder {
+class FAUST_API FaustUI : public UI, public PathBuilder {
+public:
     FaustUI() = default;
     ~FaustUI() override = default;
 
@@ -29,6 +30,7 @@ struct FAUST_API FaustUI : UI, PathBuilder {
         WidgetType_VBargraph,
     };
     struct Widget {
+        std::string label;
         WidgetType type;
         Real *zone;
         Real min, max; // Only meaningful for sliders, num-entries, and bar graphs.
@@ -108,7 +110,7 @@ struct FAUST_API FaustUI : UI, PathBuilder {
 
 private:
     void add_widget(const std::string &label, const WidgetType type, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        widgets.push_back({type, zone, min, max, init, step});
+        widgets.push_back({label, type, zone, min, max, init, step});
         const int index = int(widgets.size() - 1);
         std::string path = buildPath(label);
         fFullPaths.push_back(path);

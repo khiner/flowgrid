@@ -254,6 +254,8 @@ void State::draw() const {
                 Audio.ToggleMenuItem();
                 if (BeginMenu("Faust")) {
                     Audio.Faust.Editor.ToggleMenuItem();
+                    Audio.Faust.Diagram.ToggleMenuItem();
+                    Audio.Faust.Params.ToggleMenuItem();
                     Audio.Faust.Log.ToggleMenuItem();
                     EndMenu();
                 }
@@ -283,6 +285,7 @@ void State::draw() const {
 
         Audio.Faust.Editor.Dock(faust_editor_node_id);
         Audio.Faust.Diagram.Dock(faust_editor_node_id);
+        Audio.Faust.Params.Dock(faust_editor_node_id);
         Audio.Faust.Log.Dock(faust_log_node_id);
 
         StateViewer.Dock(state_node_id);
@@ -305,6 +308,7 @@ void State::draw() const {
 
     Audio.Faust.Editor.DrawWindow(ImGuiWindowFlags_MenuBar);
     Audio.Faust.Diagram.DrawWindow(ImGuiWindowFlags_MenuBar);
+    Audio.Faust.Params.DrawWindow();
     Audio.Faust.Log.DrawWindow();
 
     StateViewer.DrawWindow(ImGuiWindowFlags_MenuBar);

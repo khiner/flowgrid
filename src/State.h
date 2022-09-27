@@ -314,8 +314,9 @@ enum IO_ {
     IO_In,
     IO_Out,
 };
-
 using IO = IO_;
+
+const IO IO_All[] = {IO_In, IO_Out};
 
 inline static string to_string(const IO io, const bool shorten = false) {
     switch (io) {

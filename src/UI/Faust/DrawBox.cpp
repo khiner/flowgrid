@@ -425,7 +425,7 @@ struct Schema {
         device.text(position, type_label, {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Left, .padding_right=-padding, .padding_bottom=-padding});
     }
     void draw_channel_labels(Device &device) const {
-        for (const IO io: {IO_In, IO_Out}) {
+        for (const IO io: IO_All) {
             for (Count channel = 0; channel < io_count(io); channel++) {
                 device.text(
                     point(io, channel),
@@ -437,7 +437,7 @@ struct Schema {
         }
     }
     void draw_child_channel_labels(Device &device) const {
-        for (const IO io: {IO_In, IO_Out}) {
+        for (const IO io: IO_All) {
             for (Count ci = 0; ci < children.size(); ci++) {
                 for (Count channel = 0; channel < io_count(io, ci); channel++) {
                     device.text(
@@ -576,7 +576,7 @@ struct BlockSchema : IOSchema {
 
     void draw_connections(Device &device) const {
         const ImVec2 d = {dir_unit() * XGap(), 0};
-        for (const IO io: {IO_In, IO_Out}) {
+        for (const IO io: IO_All) {
             const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);
@@ -665,7 +665,7 @@ struct ParallelSchema : Schema {
     }
 
     void _draw(Device &device) const override {
-        for (const IO io: {IO_In, IO_Out}) {
+        for (const IO io: IO_All) {
             for (Count i = 0; i < io_count(io); i++) {
                 device.line(point(io, i), i < io_count(io, 0) ? child(0)->point(io, i) : child(1)->point(io, i - io_count(io, 0)));
             }
@@ -882,7 +882,7 @@ struct DecorateSchema : IOSchema {
     void _draw(Device &device) const override {
         const float m = 2.0f * (is_top_level ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.0f) + s.Style.FlowGrid.DiagramDecorateMargin;
         device.grouprect({position + ImVec2{m, m} / 2, position + size - ImVec2{m, m} / 2}, text);
-        for (const IO io: {IO_In, IO_Out}) {
+        for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && is_top_level;
             for (Count i = 0; i < io_count(io); i++) {
                 device.line(child(0)->point(io, i), point(io, i) - ImVec2{has_arrow ? dir_unit() * s.Style.FlowGrid.DiagramArrowSize.value.x : 0, 0});
@@ -923,7 +923,7 @@ struct RouteSchema : IOSchema {
 
         // Input/output & route wires
         const auto d = ImVec2{dir_unit() * XGap(), 0};
-        for (const IO io: {IO_In, IO_Out}) {
+        for (const IO io: IO_All) {
             const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);

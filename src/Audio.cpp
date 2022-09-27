@@ -262,7 +262,7 @@ int audio() {
     // Input/output device setup
     supported_formats.clear();
     supported_sample_rates.clear();
-    for (IO io: {IO_In, IO_Out}) {
+    for (IO io: IO_All) {
         int default_device_index = get_default_device_index(io);
         if (default_device_index < 0) throw std::runtime_error(format("No audio {} device found", to_string(io))); // todo move on without input
 
@@ -455,7 +455,7 @@ int audio() {
 
     bool failed = false; // Can't trust the global `retry_thread` var, since it's modified outside the thread.
     try {
-        for (IO io: {IO_In, IO_Out}) open_stream(io);
+        for (IO io: IO_All) open_stream(io);
     } catch (const std::exception &e) {
         // On Mac, sometimes microphone input stream open will fail if it's already been opened and closed recently.
         // It seems sometimes it doesn't fully shut down, so starting up again can error with a
@@ -490,7 +490,7 @@ int audio() {
         read_sample = read_sample_for_format(instream->format);
         write_sample = write_sample_for_format(outstream->format);
 
-        for (IO io: {IO_In, IO_Out}) start_stream(io);
+        for (IO io: IO_All) start_stream(io);
 
         if (first_run) {
             std::map < JsonPath, json > values;
@@ -509,7 +509,7 @@ int audio() {
         soundio_ready = false;
     }
 
-    for (IO io: {IO_In, IO_Out}) destroy_stream(io);
+    for (IO io: IO_All) destroy_stream(io);
     soundio_destroy(soundio);
     soundio = nullptr;
 
@@ -632,7 +632,7 @@ void ShowDevice(const SoundIoDevice &device, bool is_default) {
 
 // Based on https://github.com/andrewrk/libsoundio/blob/master/example/sio_list_devices.c
 void ShowDevices() {
-    for (const IO io: {IO_In, IO_Out}) {
+    for (const IO io: IO_All) {
         const auto device_count = get_device_count(io);
         const string &io_label = capitalize(to_string(io));
         if (TreeNodeEx(format("{} devices ({})", io_label, device_count).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -683,7 +683,7 @@ void ShowStreams() {
 }
 
 void ShowBufferPlots() {
-    for (IO io: {IO_In, IO_Out}) {
+    for (IO io: IO_All) {
         const bool is_in = io == IO_In;
         if (TreeNode(capitalize(to_string(io)).c_str())) {
             const auto *area = is_in ? in_areas : out_areas;

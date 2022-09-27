@@ -7,6 +7,7 @@
 
 #include "JsonType.h"
 #include "Helper/String.h"
+#include "Helper/Sample.h"
 
 using namespace fmt;
 

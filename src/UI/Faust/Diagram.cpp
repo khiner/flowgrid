@@ -18,6 +18,7 @@
 #include "../../Helper/basen.h"
 #include "../../Helper/assert.h"
 #include "../Widgets.h"
+#include "FaustUI.h"
 
 using Tree = Box;
 
@@ -339,6 +340,7 @@ struct Node;
 Node *root_node; // This diagram is drawn every frame if present.
 std::stack<Node *> focused_node_stack;
 const Node *hovered_node;
+FaustUI *interface;
 
 static string get_box_type(Box t);
 
@@ -818,7 +820,7 @@ struct SequentialNode : BinaryNode {
 
         ImGuiDir prev_dir = ImGuiDir_None;
         Count size = 0;
-        std::map < ImGuiDir, Count > MaxGroupSize; // Store the size of the largest group for each direction.
+        std::map<ImGuiDir, Count> MaxGroupSize; // Store the size of the largest group for each direction.
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
             const float yd = child(1)->point(IO_In, i).y - child(0)->point(IO_Out, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
@@ -990,8 +992,8 @@ static bool isIntTree(Tree t, std::vector<int> &v) {
     throw std::runtime_error("Not a valid list of numbers : " + print_tree(t));
 }
 
-// Convert user interface element into a textual representation
-static string userInterfaceDescription(Tree box) {
+// Convert user interface box into a textual representation
+static string get_ui_description(const Tree box) {
     Tree t1, label, cur, min, max, step, chan;
     if (isBoxButton(box, label)) return "button(" + extractName(label) + ')';
     if (isBoxCheckbox(box, label)) return "checkbox(" + extractName(label) + ')';
@@ -1006,6 +1008,26 @@ static string userInterfaceDescription(Tree box) {
     if (isBoxSoundfile(box, label, chan)) return "soundfile(" + extractName(label) + ", " + print_tree(chan) + ')';
 
     throw std::runtime_error("ERROR : unknown user interface element");
+}
+
+// Convert user interface box into a label that can be used to retrieve widget details
+static string get_ui_label(const Tree box) {
+    Tree t1, label, cur, min, max, step, chan;
+    if (isBoxButton(box, label)
+        || isBoxCheckbox(box, label)
+        || isBoxVSlider(box, label, cur, min, max, step)
+        || isBoxHSlider(box, label, cur, min, max, step)
+        || isBoxVGroup(box, label, t1)
+        || isBoxHGroup(box, label, t1)
+        || isBoxTGroup(box, label, t1)
+        || isBoxHBargraph(box, label, min, max)
+        || isBoxVBargraph(box, label, min, max)
+        || isBoxNumEntry(box, label, cur, min, max, step)
+        || isBoxSoundfile(box, label, chan)) {
+        return extractName(label);
+    }
+
+    return "";
 }
 
 static Node *Tree2Node(Tree t, bool allow_links = true);
@@ -1040,9 +1062,9 @@ static Node *Tree2NodeNode(Tree t) {
 
     Tree label, chan, type, name, file;
     if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(t, 0, 1, tree2str(name));
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(t, 1, 1, userInterfaceDescription(t), FlowGridCol_DiagramUi);
-    if (isBoxSoundfile(t, label, chan)) return new BlockNode(t, 2, 2 + tree2int(chan), userInterfaceDescription(t), FlowGridCol_DiagramUi);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, get_ui_description(t), FlowGridCol_DiagramUi);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(t, 1, 1, get_ui_description(t), FlowGridCol_DiagramUi);
+    if (isBoxSoundfile(t, label, chan)) return new BlockNode(t, 2, 2 + tree2int(chan), get_ui_description(t), FlowGridCol_DiagramUi);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
@@ -1181,9 +1203,10 @@ static Node *Tree2Node(Tree t, bool allow_links) {
     return node; // normal case
 }
 
-void on_box_change(Box box) {
+void on_box_change(Box box, FaustUI *ui) {
     IsTreePureRouting.clear();
     focused_node_stack = {};
+    interface = ui;
     if (box) {
         root_node = Tree2Node(box, false); // Ensure top-level is not compressed into a link.
         focused_node_stack.push(root_node);
@@ -1236,7 +1259,7 @@ void Audio::FaustState::FaustDiagram::draw() const {
 
     if (s.Style.FlowGrid.DiagramFoldComplexity != prev_fold_complexity) {
         prev_fold_complexity = s.Style.FlowGrid.DiagramFoldComplexity;
-        on_box_change(root_node->tree);
+        on_box_change(root_node->tree, interface);
     }
 
     {
@@ -1266,6 +1289,16 @@ void Audio::FaustState::FaustDiagram::draw() const {
         if (Settings.HoverShowType) hovered_node->draw_type(device);
         if (Settings.HoverShowChannels) hovered_node->draw_channel_labels(device);
         if (Settings.HoverShowChildChannels) hovered_node->draw_child_channel_labels(device);
+
+        if (interface) {
+            const string label = get_ui_label(hovered_node->tree);
+            if (!label.empty()) {
+                const auto *widget = interface->get_widget(label);
+                if (widget) {
+                    cout << "Found widget: " << label << '\n';
+                }
+            }
+        }
     }
 
     ImGui::EndChild();

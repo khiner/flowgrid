@@ -2,18 +2,16 @@
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_sine.c and
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
-#ifndef FAUSTFLOAT
-#define FAUSTFLOAT double
-#endif
-
 #include <soundio/soundio.h>
+
+#include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
 #include "Context.h"
 #include "CDSPResampler.h"
 #include "UI/Faust/Diagram.hh"
+#include "UI/Faust/FaustUI.h"
 
-using Sample = double;
 static constexpr int SampleSize = sizeof(Sample);
 
 // Used to initialize the static Faust buffer.
@@ -141,6 +139,7 @@ unique_ptr<r8b::CDSPResampler24> resampler;
 Box box = nullptr;
 llvm_dsp_factory *dsp_factory;
 dsp *dsp = nullptr;
+unique_ptr<FaustUI> faust_ui;
 int faust_output_channels = 0; // Cache so we can destroy buffers after `dsp` is destroyed todo investigate using `std::span`
 
 static float mic_latency = 0.2; // Seconds todo do better than this guess
@@ -492,7 +491,7 @@ int audio() {
         for (IO io: IO_All) start_stream(io);
 
         if (first_run) {
-            std::map < JsonPath, json > values;
+            std::map<JsonPath, json> values;
             if (instream->device->id != s.Audio.InDeviceId) values[s.Audio.InDeviceId.Path] = instream->device->id;
             if (outstream->device->id != s.Audio.OutDeviceId) values[s.Audio.OutDeviceId.Path] = outstream->device->id;
             if (instream->sample_rate != s.Audio.InSampleRate) values[s.Audio.InSampleRate.Path] = instream->sample_rate;
@@ -575,11 +574,14 @@ void Audio::update_process() const {
             if (dsp_factory && error_msg.empty()) {
                 dsp = dsp_factory->createDSPInstance();
                 dsp->init(s.Audio.OutSampleRate);
+                faust_ui = make_unique<FaustUI>();
+                dsp->buildUserInterface(faust_ui.get());
             }
         } else {
+            faust_ui = nullptr;
             destroyLibContext();
         }
-        on_box_change(box);
+        on_box_change(box, faust_ui.get());
     }
 
     if (soundio_ready && outstream->volume != OutDeviceVolume) soundio_outstream_set_volume(outstream, OutDeviceVolume);

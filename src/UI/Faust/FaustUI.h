@@ -20,27 +20,47 @@ public:
     FaustUI() = default;
     ~FaustUI() override = default;
 
-    enum WidgetType {
-        WidgetType_Button = 0,
-        WidgetType_CheckButton,
-        WidgetType_VSlider,
-        WidgetType_HSlider,
-        WidgetType_NumEntry,
-        WidgetType_HBargraph,
-        WidgetType_VBargraph,
+    enum ItemType {
+        // Containers
+        ItemType_HGroup,
+        ItemType_VGroup,
+        ItemType_TGroup,
+
+        // Widgets
+        ItemType_Button,
+        ItemType_CheckButton,
+        ItemType_VSlider,
+        ItemType_HSlider,
+        ItemType_NumEntry,
+        ItemType_HBargraph,
+        ItemType_VBargraph,
     };
-    struct Widget {
-        std::string label;
-        WidgetType type;
-        Real *zone;
-        Real min, max; // Only meaningful for sliders, num-entries, and bar graphs.
-        Real init, step; // Only meaningful for sliders and num-entries.
+    struct Item {
+        const ItemType type{ItemType_VGroup};
+        const std::string label;
+        Real *zone{nullptr}; // Only meaningful for widget items (not container items)
+        const Real min{0}, max{0}; // Only meaningful for sliders, num-entries, and bar graphs.
+        const Real init{0}, step{0}; // Only meaningful for sliders and num-entries.
+        std::vector<Item> items{}; // Only populated for container items (groups)
     };
 
-    void openTabBox(const char *label) override { pushLabel(label); }
-    void openHorizontalBox(const char *label) override { pushLabel(label); }
-    void openVerticalBox(const char *label) override { pushLabel(label); }
+    void openHorizontalBox(const char *label) override {
+        pushLabel(label);
+        ui.push_back({ItemType_HGroup, label});
+        group_active = true;
+    }
+    void openVerticalBox(const char *label) override {
+        pushLabel(label);
+        ui.push_back({ItemType_VGroup, label});
+        group_active = true;
+    }
+    void openTabBox(const char *label) override {
+        pushLabel(label);
+        ui.push_back({ItemType_TGroup, label});
+        group_active = true;
+    }
     void closeBox() override {
+        group_active = false;
         if (popLabel()) {
             computeShortNames();
             for (const auto &it: fFullPaths) index_for_shortname[fFull2Short[it]] = index_for_path[it];
@@ -49,34 +69,36 @@ public:
 
     // Active widgets
     void addButton(const char *label, Real *zone) override {
-        add_widget(label, WidgetType_Button, zone);
+        add_ui_item(ItemType_Button, label, zone);
     }
     void addCheckButton(const char *label, Real *zone) override {
-        add_widget(label, WidgetType_CheckButton, zone);
+        add_ui_item(ItemType_CheckButton, label, zone);
     }
     void addHorizontalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        add_widget(label, WidgetType_HSlider, zone, min, max, init, step);
+        add_ui_item(ItemType_HSlider, label, zone, min, max, init, step);
     }
     void addVerticalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        add_widget(label, WidgetType_VSlider, zone, min, max, init, step);
+        add_ui_item(ItemType_VSlider, label, zone, min, max, init, step);
     }
     void addNumEntry(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        add_widget(label, WidgetType_NumEntry, zone, min, max, init, step);
+        add_ui_item(ItemType_NumEntry, label, zone, min, max, init, step);
     }
 
     // Passive widgets
     void addHorizontalBargraph(const char *label, Real *zone, Real min, Real max) override {
-        add_widget(label, WidgetType_HBargraph, zone, min, max);
+        add_ui_item(ItemType_HBargraph, label, zone, min, max);
     }
     void addVerticalBargraph(const char *label, Real *zone, Real min, Real max) override {
-        add_widget(label, WidgetType_VBargraph, zone, min, max);
+        add_ui_item(ItemType_VBargraph, label, zone, min, max);
     }
 
     // Soundfile
     void addSoundfile(const char *label, const char *filename, Soundfile **sf_zone) override {}
 
     // Metadata declaration
-    void declare(Real *zone, const char *key, const char *val) override {}
+    void declare(Real *zone, const char *key, const char *val) override {
+        cout << "declare: " << key << ": " << val << '\n';
+    }
 
     // `id` can be any of label/shortname/path.
     Real get(const std::string &id) {
@@ -98,27 +120,30 @@ public:
         *widget->zone = value;
     }
 
-    Widget *get_widget(const std::string &id) {
-        if (index_for_path.contains(id)) return &widgets[index_for_path[id]];
-        if (index_for_shortname.contains(id)) return &widgets[index_for_shortname[id]];
-        if (index_for_label.contains(id)) return &widgets[index_for_label[id]];
+    Item *get_widget(const std::string &id) {
+        if (index_for_path.contains(id)) return &ui[index_for_path[id]];
+        if (index_for_shortname.contains(id)) return &ui[index_for_shortname[id]];
+        if (index_for_label.contains(id)) return &ui[index_for_label[id]];
 
         return nullptr;
     }
 
-    std::vector<Widget> widgets;
+    std::vector<Item> ui{};
 
 private:
-    void add_widget(const std::string &label, const WidgetType type, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        widgets.push_back({label, type, zone, min, max, init, step});
-        const int index = int(widgets.size() - 1);
+    void add_ui_item(const ItemType type, const std::string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
+        auto &items = group_active ? ui.back().items : ui;
+        items.push_back({type, label, zone, min, max, init, step});
+
+        const int index = int(ui.size() - 1);
         std::string path = buildPath(label);
         fFullPaths.push_back(path);
         index_for_path[path] = index;
         index_for_label[label] = index;
     }
 
-    std::map<std::string, int> index_for_label;
-    std::map<std::string, int> index_for_shortname;
-    std::map<std::string, int> index_for_path;
+    bool group_active{false};
+    std::map<std::string, int> index_for_label{};
+    std::map<std::string, int> index_for_shortname{};
+    std::map<std::string, int> index_for_path{};
 };

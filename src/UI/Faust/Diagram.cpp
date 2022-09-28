@@ -1294,33 +1294,39 @@ void Audio::FaustState::FaustDiagram::draw() const {
     ImGui::EndChild();
 }
 
-void DrawWidget(const FaustUI::Widget &w) {
-    const auto type = w.type;
-    if (type == FaustUI::WidgetType_Button) {
-        *w.zone = double(ImGui::Button(w.label.c_str()));
-    } else if (type == FaustUI::WidgetType_CheckButton) {
-        auto checked = bool(*w.zone);
-        ImGui::Checkbox(w.label.c_str(), &checked);
-        *w.zone = double(checked);
-    } else if (type == FaustUI::WidgetType_HSlider) {
-        auto value = float(*w.zone);
-        ImGui::SliderFloat(w.label.c_str(), &value, float(w.min), float(w.max));
-        *w.zone = double(value);
-    } else if (type == FaustUI::WidgetType_VSlider) {
-        auto value = float(*w.zone);
-        ImGui::SliderFloat(w.label.c_str(), &value, float(w.min), float(w.max), "", ImGuiSliderFlags_Vertical);
-        *w.zone = double(value);
-    } else if (type == FaustUI::WidgetType_NumEntry) {
-    } else if (type == FaustUI::WidgetType_HBargraph) {
-    } else if (type == FaustUI::WidgetType_VBargraph) {
+void DrawUiItem(const FaustUI::Item &item) {
+    const auto type = item.type;
+    if (type == FaustUI::ItemType_HGroup) {
+        for (const auto &inner_item: item.items) DrawUiItem(inner_item);
+    } else if (type == FaustUI::ItemType_VGroup) {
+        for (const auto &inner_item: item.items) DrawUiItem(inner_item);
+    } else if (type == FaustUI::ItemType_TGroup) {
+        for (const auto &inner_item: item.items) DrawUiItem(inner_item);
+    } else if (type == FaustUI::ItemType_Button) {
+        *item.zone = Real(ImGui::Button(item.label.c_str()));
+    } else if (type == FaustUI::ItemType_CheckButton) {
+        auto checked = bool(*item.zone);
+        ImGui::Checkbox(item.label.c_str(), &checked);
+        *item.zone = Real(checked);
+    } else if (type == FaustUI::ItemType_HSlider) {
+        auto value = float(*item.zone);
+        ImGui::SliderFloat(item.label.c_str(), &value, float(item.min), float(item.max));
+        *item.zone = Real(value);
+    } else if (type == FaustUI::ItemType_VSlider) {
+        auto value = float(*item.zone);
+        ImGui::SliderFloat(item.label.c_str(), &value, float(item.min), float(item.max), "", ImGuiSliderFlags_Vertical);
+        *item.zone = Real(value);
+    } else if (type == FaustUI::ItemType_NumEntry) {
+    } else if (type == FaustUI::ItemType_HBargraph) {
+    } else if (type == FaustUI::ItemType_VBargraph) {
     }
 }
 
 void Audio::FaustState::FaustParams::draw() const {
     if (!interface) return;
 
-    for (const auto &widget: interface->widgets) {
-        DrawWidget(widget);
+    for (const auto &item: interface->ui) {
+        DrawUiItem(item);
     }
     if (hovered_node) {
         const string label = get_ui_label(hovered_node->tree);

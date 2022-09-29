@@ -88,13 +88,15 @@ struct Device {
     ImVec2 offset{};
 };
 
+using namespace ImGui;
+
 // ImGui saves font name as "{Name}.{Ext}, {Size}px"
 static inline string get_font_name() {
-    const string name = ImGui::GetFont()->GetDebugName();
+    const string name = GetFont()->GetDebugName();
     return name.substr(0, name.find_first_of('.'));
 }
 static inline string get_font_path() {
-    const string name = ImGui::GetFont()->GetDebugName();
+    const string name = GetFont()->GetDebugName();
     return format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
 }
 static inline string get_font_base64() {
@@ -109,7 +111,7 @@ static inline string get_font_base64() {
     return base64_for_font_name.at(font_name);
 }
 
-static ImVec2 text_size(const string &text) { return ImGui::CalcTextSize(text.c_str()); }
+static ImVec2 text_size(const string &text) { return CalcTextSize(text.c_str()); }
 
 struct SVGDevice : Device {
     SVGDevice(fs::path directory, string file_name, ImVec2 size) : directory(std::move(directory)), file_name(std::move(file_name)) {
@@ -246,7 +248,7 @@ struct SVGDevice : Device {
 
     // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
     // Determined empirically to make the two renderings look the same.
-    static float get_font_size() { return scale(ImGui::GetTextLineHeight()) * 0.8f; }
+    static float get_font_size() { return scale(GetTextLineHeight()) * 0.8f; }
 
     fs::path directory;
     string file_name;
@@ -256,22 +258,22 @@ private:
 };
 
 struct ImGuiDevice : Device {
-    ImGuiDevice() : Device(ImGui::GetCursorScreenPos()), draw_list(ImGui::GetWindowDrawList()) {}
+    ImGuiDevice() : Device(GetCursorScreenPos()), draw_list(GetWindowDrawList()) {}
 
     DeviceType type() override { return ImGuiDeviceType; }
 
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
-        if (fill_color.w != 0) draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(fill_color), corner_radius);
-        if (stroke_color.w != 0) draw_list->AddRect(at(rect.Min), at(rect.Max), ImGui::ColorConvertFloat4ToU32(stroke_color), corner_radius);
+        if (fill_color.w != 0) draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ColorConvertFloat4ToU32(fill_color), corner_radius);
+        if (stroke_color.w != 0) draw_list->AddRect(at(rect.Min), at(rect.Max), ColorConvertFloat4ToU32(stroke_color), corner_radius);
     }
 
     void grouprect(const ImRect &rect, const string &text) override {
         const auto &a = at(rect.Min);
         const auto &b = at(rect.Max);
         const auto &text_top_left = at(rect.Min + ImVec2{DecorateLabelOffset, 0});
-        const auto &stroke_color = ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke]);
-        const auto &label_color = ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle]);
+        const auto &stroke_color = ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke]);
+        const auto &label_color = ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle]);
 
         // Decorate a potentially rounded outline rect with a break in the top-left (to the right of max rounding) for the label text
         const float rad = scale(s.Style.FlowGrid.DiagramDecorateCornerRadius);
@@ -293,24 +295,24 @@ struct ImGuiDevice : Device {
             draw_list->PathLineTo(text_top_left - padding);
             draw_list->PathStroke(stroke_color, ImDrawFlags_None, line_width);
         }
-        draw_list->AddText(text_top_left - ImVec2{0, ImGui::GetFontSize() / 2}, label_color, text.c_str());
+        draw_list->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, label_color, text.c_str());
     }
 
     void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
-        draw_list->AddTriangle(at(p1), at(p2), at(p3), ImGui::ColorConvertFloat4ToU32(color));
+        draw_list->AddTriangle(at(p1), at(p2), at(p3), ColorConvertFloat4ToU32(color));
     }
 
     void circle(const ImVec2 &p, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
-        if (fill_color.w != 0) draw_list->AddCircleFilled(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(fill_color));
-        if (stroke_color.w != 0) draw_list->AddCircle(at(p), scale(radius), ImGui::ColorConvertFloat4ToU32(stroke_color));
+        if (fill_color.w != 0) draw_list->AddCircleFilled(at(p), scale(radius), ColorConvertFloat4ToU32(fill_color));
+        if (stroke_color.w != 0) draw_list->AddCircle(at(p), scale(radius), ColorConvertFloat4ToU32(stroke_color));
     }
 
     void arrow(const ImVec2 &p, Diagram orientation) override {
-        ImGui::RenderArrowPointingAt(draw_list,
+        RenderArrowPointingAt(draw_list,
             at(p) + ImVec2{0, 0.5f},
             scale(s.Style.FlowGrid.DiagramArrowSize),
             global_direction(orientation),
-            ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine])
+            ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine])
         );
     }
 
@@ -318,18 +320,18 @@ struct ImGuiDevice : Device {
         const auto &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
         const auto width = scale(s.Style.FlowGrid.DiagramWireWidth);
         // ImGui adds {0.5, 0.5} to line points.
-        draw_list->AddLine(at(start) - ImVec2{0.5f, 0}, at(end) - ImVec2{0.5f, 0}, ImGui::ColorConvertFloat4ToU32(color), width);
+        draw_list->AddLine(at(start) - ImVec2{0.5f, 0}, at(end) - ImVec2{0.5f, 0}, ColorConvertFloat4ToU32(color), width);
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style] = style;
         const auto &text_pos = p - ImVec2{padding_right, padding_bottom} - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / ImVec2{2, 1} : text_size(text));
-        draw_list->AddText(at(text_pos), ImGui::ColorConvertFloat4ToU32(color), text.c_str());
+        draw_list->AddText(at(text_pos), ColorConvertFloat4ToU32(color), text.c_str());
     }
 
     void dot(const ImVec2 &p, const ImVec4 &fill_color) override {
         const float radius = scale(s.Style.FlowGrid.DiagramOrientationMarkRadius);
-        draw_list->AddCircleFilled(at(p), radius, ImGui::ColorConvertFloat4ToU32(fill_color));
+        draw_list->AddCircleFilled(at(p), radius, ColorConvertFloat4ToU32(fill_color));
     }
 
     ImDrawList *draw_list;
@@ -385,7 +387,7 @@ struct Node {
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
         _draw(device);
-        if ((!hovered_node || is_inside(*hovered_node)) && ImGui::IsMouseHoveringRect(device.at(position), device.at(position + size))) {
+        if ((!hovered_node || is_inside(*hovered_node)) && IsMouseHoveringRect(device.at(position), device.at(position + size))) {
             hovered_node = this;
         }
     };
@@ -463,9 +465,9 @@ static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
 static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
 static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
-    if (s.Audio.Faust.Diagram.Settings.ScaleFill && !focused_node_stack.empty() && ImGui::GetCurrentWindowRead()) {
+    if (s.Audio.Faust.Diagram.Settings.ScaleFill && !focused_node_stack.empty() && GetCurrentWindowRead()) {
         const auto *focused_node = focused_node_stack.top();
-        return ImGui::GetWindowSize() / focused_node->size;
+        return GetWindowSize() / focused_node->size;
     }
     return s.Style.FlowGrid.DiagramScale;
 }
@@ -556,21 +558,21 @@ struct BlockNode : IONode {
             svg_device.text(mid(), text, {.color=text_color}, link);
         } else {
             const ImRect &scaled_rect = scale(ImRect{position + Gap(), position + size - Gap()});
-            const auto cursor_pos = ImGui::GetCursorPos();
-            ImGui::SetCursorPos(scaled_rect.Min);
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, s.Style.FlowGrid.DiagramBoxCornerRadius);
-            ImGui::PushStyleColor(ImGuiCol_Button, fill_color);
-            ImGui::PushStyleColor(ImGuiCol_Text, text_color);
+            const auto cursor_pos = GetCursorPos();
+            SetCursorPos(scaled_rect.Min);
+            PushStyleVar(ImGuiStyleVar_FrameRounding, s.Style.FlowGrid.DiagramBoxCornerRadius);
+            PushStyleColor(ImGuiCol_Button, fill_color);
+            PushStyleColor(ImGuiCol_Text, text_color);
             if (!inner) {
                 // Emulate disabled behavior, but without making color dimmer, by just allowing clicks but not changing color.
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, fill_color);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, fill_color);
+                PushStyleColor(ImGuiCol_ButtonHovered, fill_color);
+                PushStyleColor(ImGuiCol_ButtonActive, fill_color);
             }
-            if (ImGui::Button(format("{}##{}", text, unique_id(this)).c_str(), scaled_rect.GetSize()) && inner) focused_node_stack.push(inner);
-            if (!inner) ImGui::PopStyleColor(2);
-            ImGui::PopStyleColor(2);
-            ImGui::PopStyleVar(1);
-            ImGui::SetCursorPos(cursor_pos);
+            if (Button(format("{}##{}", text, unique_id(this)).c_str(), scaled_rect.GetSize()) && inner) focused_node_stack.push(inner);
+            if (!inner) PopStyleColor(2);
+            PopStyleColor(2);
+            PopStyleVar(1);
+            SetCursorPos(cursor_pos);
         }
         draw_orientation_mark(device);
         draw_connections(device);
@@ -1232,27 +1234,27 @@ void save_box_svg(const string &path) {
 void Audio::FaustState::FaustDiagram::draw() const {
     if (!root_node) {
         // todo don't show empty menu bar in this case
-        ImGui::Text("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
+        Text("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
         return;
     }
 
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
+    if (BeginMenuBar()) {
+        if (BeginMenu("File")) {
             fg::MenuItem(action::id<show_save_faust_svg_file_dialog>);
-            ImGui::EndMenu();
+            EndMenu();
         }
-        if (ImGui::BeginMenu("View")) {
+        if (BeginMenu("View")) {
             fg::ToggleMenuItem(Settings.ScaleFill);
-            if (ImGui::BeginMenu("Hover")) {
+            if (BeginMenu("Hover")) {
                 fg::ToggleMenuItem(Settings.HoverShowRect);
                 fg::ToggleMenuItem(Settings.HoverShowType);
                 fg::ToggleMenuItem(Settings.HoverShowChannels);
                 fg::ToggleMenuItem(Settings.HoverShowChildChannels);
-                ImGui::EndMenu();
+                EndMenu();
             }
-            ImGui::EndMenu();
+            EndMenu();
         }
-        ImGui::EndMenuBar();
+        EndMenuBar();
     }
 
     if (focused_node_stack.empty()) return;
@@ -1265,21 +1267,21 @@ void Audio::FaustState::FaustDiagram::draw() const {
     {
         // Nav menu
         const bool can_nav = focused_node_stack.size() > 1;
-        if (!can_nav) ImGui::BeginDisabled();
-        if (ImGui::Button("Top")) while (focused_node_stack.size() > 1) focused_node_stack.pop();
-        ImGui::SameLine();
-        if (ImGui::Button("Back")) focused_node_stack.pop();
-        if (!can_nav) ImGui::EndDisabled();
+        if (!can_nav) BeginDisabled();
+        if (Button("Top")) while (focused_node_stack.size() > 1) focused_node_stack.pop();
+        SameLine();
+        if (Button("Back")) focused_node_stack.pop();
+        if (!can_nav) EndDisabled();
     }
 
     auto *focused = focused_node_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    if (!Settings.ScaleFill) ImGui::SetNextWindowContentSize(scale(focused->size));
-    ImGui::BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    ImGui::GetCurrentWindow()->FontWindowScale = scale(1);
-    ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetWindowPos(), ImGui::GetWindowPos() + ImGui::GetWindowSize(),
-        ImGui::ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]));
+    if (!Settings.ScaleFill) SetNextWindowContentSize(scale(focused->size));
+    BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    GetCurrentWindow()->FontWindowScale = scale(1);
+    GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(),
+        ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]));
 
     ImGuiDevice device;
     hovered_node = nullptr;
@@ -1291,50 +1293,88 @@ void Audio::FaustState::FaustDiagram::draw() const {
         if (Settings.HoverShowChildChannels) hovered_node->draw_child_channel_labels(device);
     }
 
-    ImGui::EndChild();
+    EndChild();
 }
+
+static constexpr FaustUI::ItemType ShortItems[]{
+    FaustUI::ItemType_Button,
+    FaustUI::ItemType_CheckButton,
+    FaustUI::ItemType_HSlider,
+    FaustUI::ItemType_NumEntry,
+    FaustUI::ItemType_HBargraph,
+};
 
 void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size) {
     const auto type = item.type;
     const auto &label = item.label;
+    const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
     if (type == FaustUI::ItemType_HGroup) {
-        const ImVec2 item_size = {size.x / float(item.items.size()), size.y};
-        for (const auto &inner_item: item.items) {
+        GetWindowDrawList()->AddRectFilled(GetCursorScreenPos(), GetCursorScreenPos() + size, group_bg_color);
+        Text("%s", label.c_str());
+        const ImVec2 item_size = {size.x / float(item.items.size()), size.y - GetTextLineHeightWithSpacing()};
+        const auto before_y = GetCursorPosY();
+        const auto item_height = GetFontSize() + GetStyle().FramePadding.y * 2;
+        const auto item_y = before_y + (item_size.y - item_height) / 2;
+        for (Count i = 0; i < item.items.size(); i++) {
+            const auto &inner_item = item.items[i];
+            const bool center = std::find(std::begin(ShortItems), std::end(ShortItems), inner_item.type) != std::end(ShortItems);
+            if (center) SetCursorPosY(item_y);
             DrawUiItem(inner_item, item_size);
-            ImGui::SameLine();
+            if (i != item.items.size() - 1) {
+                SameLine();
+                SetCursorPos({GetCursorPosX(), before_y});
+            }
         }
     } else if (type == FaustUI::ItemType_VGroup) {
-        const ImVec2 item_size = {size.x, size.y / float(item.items.size())};
+        GetWindowDrawList()->AddRectFilled(GetCursorScreenPos(), GetCursorScreenPos() + size, group_bg_color);
+        Text("%s", label.c_str());
+        const ImVec2 item_size = {size.x, (size.y - GetTextLineHeightWithSpacing()) / float(item.items.size())};
         for (const auto &inner_item: item.items) DrawUiItem(inner_item, item_size);
     } else {
         if (type == FaustUI::ItemType_TGroup) {
-            ImGui::BeginTabBar(label.c_str());
+            BeginTabBar(label.c_str());
             for (const auto &inner_item: item.items) {
-                if (ImGui::BeginTabItem(inner_item.label.c_str())) {
-                    DrawUiItem(inner_item, {size.x, size.y - ImGui::GetFontSize()});
-                    ImGui::EndTabItem();
+                if (BeginTabItem(inner_item.label.c_str())) {
+                    DrawUiItem(inner_item, {size.x, size.y - GetFontSize()});
+                    EndTabItem();
                 }
             }
-            ImGui::EndTabBar();
+            EndTabBar();
         } else {
+            if (type == FaustUI::ItemType_HSlider || type == FaustUI::ItemType_NumEntry) {
+                SetNextItemWidth(size.x - text_size(label).x - GetFontSize());
+            } else {
+                SetNextItemWidth(size.x);
+            }
             if (type == FaustUI::ItemType_Button) {
-                *item.zone = Real(ImGui::Button(label.c_str()));
+                *item.zone = Real(Button(label.c_str()));
             } else if (type == FaustUI::ItemType_CheckButton) {
                 auto checked = bool(*item.zone);
-                ImGui::Checkbox(label.c_str(), &checked);
+                Checkbox(label.c_str(), &checked);
                 *item.zone = Real(checked);
             } else if (type == FaustUI::ItemType_HSlider) {
-                ImGui::SetNextItemWidth(size.x - text_size(label).x - ImGui::GetFontSize());
                 auto value = float(*item.zone);
-                ImGui::SliderFloat(label.c_str(), &value, float(item.min), float(item.max));
+                SliderFloat(label.c_str(), &value, float(item.min), float(item.max), "%.2f");
                 *item.zone = Real(value);
             } else if (type == FaustUI::ItemType_VSlider) {
                 auto value = float(*item.zone);
-                ImGui::VSliderFloat(label.c_str(), {ImGui::GetFontSize() * 2, size.y}, &value, float(item.min), float(item.max));
+                VSliderFloat(label.c_str(), {GetFontSize() * 2, size.y}, &value, float(item.min), float(item.max), "%.1f");
                 *item.zone = Real(value);
             } else if (type == FaustUI::ItemType_NumEntry) {
+                auto value = float(*item.zone);
+                InputFloat(label.c_str(), &value, float(item.step));
+                *item.zone = Real(value);
             } else if (type == FaustUI::ItemType_HBargraph) {
+                auto value = float(*item.zone);
+                ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
+                SameLine(0.0f, GetStyle().ItemInnerSpacing.x);
+                Text("Progress Bar");
             } else if (type == FaustUI::ItemType_VBargraph) {
+                // todo https://github.com/ocornut/imgui/issues/5263
+                auto value = float(*item.zone);
+                ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
+                SameLine(0.0f, GetStyle().ItemInnerSpacing.x);
+                Text("Progress Bar");
             }
         }
     }
@@ -1344,7 +1384,7 @@ void Audio::FaustState::FaustParams::draw() const {
     if (!interface) return;
 
     for (const auto &item: interface->ui) {
-        DrawUiItem(item, ImGui::GetContentRegionAvail());
+        DrawUiItem(item, GetWindowSize());
     }
     if (hovered_node) {
         const string label = get_ui_label(hovered_node->tree);

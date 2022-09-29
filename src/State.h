@@ -412,7 +412,7 @@ struct Audio : Process {
 //gain = hslider("gain",1,0,1,0.01);
 //process = no:noise : fi.resonlp(ctFreq,q,gain);)"};
 
-// From Faust::UITester.dsp
+// Based on Faust::UITester.dsp
         String Code{Path, "Code", "Code", R"#(import("stdfaust.lib");
 declare name "UI Tester";
 declare version "1.0";
@@ -482,7 +482,7 @@ hmisc = hgroup("hmisc",
     hslider("hslider", 60, 0, 127, 0.1),
     nentry("num [unit:f]", 60, 0, 127, 0.1),
     vbargraph("vbar", 0, 127),
-    hbargraph("hbar", 0, 127)
+    (60 : hbargraph("hbar", 0, 127))
 );
 
 //------------------------- Process --------------------------------

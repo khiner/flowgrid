@@ -101,7 +101,7 @@ struct ZepEditor_ImGui : ZepEditor {
     explicit ZepEditor_ImGui(const ZepPath &root, uint32_t flags = 0, ZepFileSystem *pFileSystem = nullptr)
         : ZepEditor(new ZepDisplay_ImGui(), root, flags, pFileSystem) {}
 
-    bool sendImGuiKeyPressToBuffer(ImGuiKey key, ImGuiKeyModFlags mod = ImGuiKeyModFlags_None) {
+    bool sendImGuiKeyPressToBuffer(ImGuiKey key, ImGuiModFlags mod = ImGuiModFlags_None) {
         if (ImGui::IsKeyPressed(key)) {
             GetActiveBuffer()->GetMode()->AddKeyPress(key, mod);
             return true;
@@ -120,7 +120,7 @@ struct ZepEditor_ImGui : ZepEditor {
     void HandleInput() override {
         auto &io = ImGui::GetIO();
         bool handled = false;
-        ImGuiKeyModFlags mod = 0;
+        ImGuiModFlags mod = 0;
 
         static std::vector<ImGuiKey> F_KEYS = {
             ImGuiKey_F1,
@@ -146,8 +146,8 @@ struct ZepEditor_ImGui : ZepEditor {
         handleMouseEventAndHideFromImGui(0, ZepMouseButton::Left, false);
         handleMouseEventAndHideFromImGui(1, ZepMouseButton::Right, false);
 
-        if (io.KeyCtrl) mod |= ImGuiKeyModFlags_Ctrl;
-        if (io.KeyShift) mod |= ImGuiKeyModFlags_Shift;
+        if (io.KeyCtrl) mod |= ImGuiModFlags_Ctrl;
+        if (io.KeyShift) mod |= ImGuiModFlags_Shift;
 
         const auto *buffer = GetActiveBuffer();
         if (!buffer) return;
@@ -182,7 +182,7 @@ struct ZepEditor_ImGui : ZepEditor {
                 SetGlobalMode(ZepMode_Vim::StaticName());
                 handled = true;
             } else {
-                for (ImGuiKey key = ImGuiKey_A; key < ImGuiKey_Z; key++) {
+                for (ImGuiKey key = ImGuiKey_A; key < ImGuiKey_Z; key = ImGuiKey(key + 1)) {
                     if (ImGui::IsKeyPressed(key)) {
                         buffer->GetMode()->AddKeyPress(key, mod);
                         handled = true;
@@ -199,7 +199,7 @@ struct ZepEditor_ImGui : ZepEditor {
         if (!handled) {
             for (ImWchar ch: io.InputQueueCharacters) {
                 if (ch == '\r') continue; // Ignore '\r' - sometimes ImGui generates it!
-                ImGuiKey key = ch - 'a' + ImGuiKey_A;
+                ImGuiKey key = ImGuiKey(ch - 'a' + ImGuiKey_A);
                 buffer->GetMode()->AddKeyPress(key, mod);
             }
         }

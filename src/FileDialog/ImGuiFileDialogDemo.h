@@ -7,7 +7,7 @@
 namespace IGFD {
 
 void InitializeDemo();
-void ShowDemo();
+void ShowDemoWindow();
 void CleanupDemo();
 
 }

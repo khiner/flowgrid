@@ -1041,15 +1041,15 @@ const std::vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
 void Demo::draw() const {
     if (BeginTabBar("##Demos")) {
         if (BeginTabItem("ImGui")) {
-            ShowDemo();
+            ShowDemoWindow();
             EndTabItem();
         }
         if (BeginTabItem("ImPlot")) {
-            ImPlot::ShowDemo();
+            ImPlot::ShowDemoWindow();
             EndTabItem();
         }
         if (BeginTabItem("ImGuiFileDialog")) {
-            IGFD::ShowDemo();
+            IGFD::ShowDemoWindow();
             EndTabItem();
         }
         EndTabBar();
@@ -1201,8 +1201,8 @@ void Metrics::FlowGridMetrics::draw() const {
                    "Thus, it's important to keep action data small.");
     }
 }
-void Metrics::ImGuiMetrics::draw() const { ShowMetrics(); }
-void Metrics::ImPlotMetrics::draw() const { ImPlot::ShowMetrics(); }
+void Metrics::ImGuiMetrics::draw() const { ShowMetricsWindow(); }
+void Metrics::ImPlotMetrics::draw() const { ImPlot::ShowMetricsWindow(); }
 
 void Metrics::draw() const {
     if (BeginTabBar("##Metrics")) {
@@ -1227,7 +1227,7 @@ void Tools::draw() const {
         if (BeginTabItem("ImGui")) {
             if (BeginTabBar("##ImGui_Tools")) {
                 if (BeginTabItem("Debug log")) {
-                    ShowDebugLog();
+                    ShowDebugLogWindow();
                     EndTabItem();
                 }
                 EndTabBar();

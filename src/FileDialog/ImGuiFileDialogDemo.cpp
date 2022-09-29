@@ -162,7 +162,7 @@ void IGFD::InitializeDemo() {
 #endif
 }
 
-void IGFD::ShowDemo() {
+void IGFD::ShowDemoWindow() {
 #ifdef USE_EXPLORATION_BY_KEYS
     static float flashingAttenuationInSeconds = 1.0f;
     if (ImGui::Button("R##resetflashlifetime")) {

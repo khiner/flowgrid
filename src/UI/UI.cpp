@@ -144,11 +144,11 @@ void render_frame(RenderContext &rc) {
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
 
-const std::map<string, ImGuiKeyModFlags> mod_keys{
-    {"shift", ImGuiKeyModFlags_Shift},
-    {"ctrl", ImGuiKeyModFlags_Ctrl},
-    {"alt", ImGuiKeyModFlags_Alt},
-    {"cmd", ImGuiKeyModFlags_Super},
+const std::map<string, ImGuiModFlags> mod_keys{
+    {"shift", ImGuiModFlags_Shift},
+    {"ctrl", ImGuiModFlags_Ctrl},
+    {"alt", ImGuiModFlags_Alt},
+    {"cmd", ImGuiModFlags_Super},
 };
 
 // Handles any number of mods, along with any single non-mod character.
@@ -164,8 +164,8 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 
     tokens.pop_back();
 
-    ImGuiKey key = command[0] - 'a' + ImGuiKey_A;
-    ImGuiKeyModFlags mod_flags = ImGuiKeyModFlags_None;
+    ImGuiKey key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);
+    ImGuiModFlags mod_flags = ImGuiModFlags_None;
     while (!tokens.empty()) {
         mod_flags |= mod_keys.at(tokens.back());
         tokens.pop_back();
@@ -184,7 +184,7 @@ const auto key_map = action::shortcut_for_id | transform([](const auto &entry) {
 //  Then map from action_id to KeyShortcut. See `faust_editor::HandleInput`.
 bool is_shortcut_pressed(const KeyShortcut &key_shortcut) {
     const auto &[mod, key] = key_shortcut;
-    return mod == ImGui::GetMergedModFlags() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
+    return mod == ImGui::GetIO().KeyMods && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
 
 RenderContext render_context;

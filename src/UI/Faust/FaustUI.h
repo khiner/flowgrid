@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <map>
+#include <stack>
 #include <string>
 #include <iostream>
 
@@ -46,21 +47,21 @@ public:
 
     void openHorizontalBox(const char *label) override {
         pushLabel(label);
-        ui.push_back({ItemType_HGroup, label});
-        group_active = true;
+        active_items().push_back({ItemType_HGroup, label});
+        groups.push(&active_items().back());
     }
     void openVerticalBox(const char *label) override {
         pushLabel(label);
-        ui.push_back({ItemType_VGroup, label});
-        group_active = true;
+        active_items().push_back({ItemType_VGroup, label});
+        groups.push(&active_items().back());
     }
     void openTabBox(const char *label) override {
         pushLabel(label);
-        ui.push_back({ItemType_TGroup, label});
-        group_active = true;
+        active_items().push_back({ItemType_TGroup, label});
+        groups.push(&active_items().back());
     }
     void closeBox() override {
-        group_active = false;
+        groups.pop();
         if (popLabel()) {
             computeShortNames();
             for (const auto &it: fFullPaths) index_for_shortname[fFull2Short[it]] = index_for_path[it];
@@ -132,8 +133,7 @@ public:
 
 private:
     void add_ui_item(const ItemType type, const std::string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        auto &items = group_active ? ui.back().items : ui;
-        items.push_back({type, label, zone, min, max, init, step});
+        active_items().push_back({type, label, zone, min, max, init, step});
 
         const int index = int(ui.size() - 1);
         std::string path = buildPath(label);
@@ -142,7 +142,9 @@ private:
         index_for_label[label] = index;
     }
 
-    bool group_active{false};
+    std::vector<Item> &active_items() { return groups.empty() ? ui : groups.top()->items; }
+
+    std::stack<Item *> groups{};
     std::map<std::string, int> index_for_label{};
     std::map<std::string, int> index_for_shortname{};
     std::map<std::string, int> index_for_path{};

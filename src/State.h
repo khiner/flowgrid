@@ -481,7 +481,7 @@ hmisc = hgroup("hmisc",
     button("button"),
     hslider("hslider", 60, 0, 127, 0.1),
     nentry("num [unit:f]", 60, 0, 127, 0.1),
-    vbargraph("vbar", 0, 127),
+    (60 : vbargraph("vbar", 0, 127)),
     (60 : hbargraph("hbar", 0, 127))
 );
 

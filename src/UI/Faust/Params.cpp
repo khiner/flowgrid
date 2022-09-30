@@ -23,7 +23,6 @@ static constexpr ItemType ShortItems[]{
     ItemType_HSlider,
     ItemType_NumEntry,
     ItemType_HBargraph,
-    ItemType_VBargraph, // todo only for now
 };
 static constexpr ItemType LabeledItems[]{
     ItemType_HSlider,
@@ -34,7 +33,7 @@ static constexpr ItemType LabeledItems[]{
 
 FaustUI *interface;
 
-bool header_titles = true; // todo style config
+bool header_titles = false; // todo style config
 bool center_vertical = true; // todo style config
 
 void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType parent_type = ItemType_None) {
@@ -51,10 +50,10 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         const float group_height = size.y - (show_label ? GetTextLineHeightWithSpacing() : 0);
         if (type == ItemType_HGroup) {
             if (BeginTable(label, int(inner_items.size()), ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
-                const ImVec2 item_size = {size.x / float(inner_items.size()), group_height };
+                const ImVec2 item_size = {size.x / float(inner_items.size()), group_height};
                 for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
                 if (header_titles) TableHeadersRow();
-                for (const auto &inner_item : inner_items) {
+                for (const auto &inner_item: inner_items) {
                     TableNextColumn();
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
                     DrawUiItem(inner_item, item_size, type);
@@ -64,7 +63,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         } else if (type == ItemType_VGroup) {
             if (BeginTable(label, 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
                 const ImVec2 item_size = {size.x, group_height / float(inner_items.size())};
-                for (const auto &inner_item : inner_items) {
+                for (const auto &inner_item: inner_items) {
                     TableNextRow(ImGuiTableRowFlags_None, item_size.y);
                     TableSetColumnIndex(0);
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
@@ -109,17 +108,29 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             auto value = float(*item.zone);
             InputFloat(title, &value, float(item.step));
             *item.zone = Real(value);
-        } else if (type == ItemType_HBargraph) {
+        } else if (type == ItemType_HBargraph || type == ItemType_VBargraph) {
+            // Similar to `ImGui::ProgressBar`, but handling vertical as well as horizontal,
+            // and always showing value in the same place (middle for horizontal, top for vertical).
+            const bool is_h = type == ItemType_HBargraph;
+            const auto &draw_list = GetWindowDrawList();
+            const auto &cursor_pos = GetCursorScreenPos();
             const auto value = float(*item.zone);
-            ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
-            if (show_label) {
-                SameLine();
-                Text("%s", title);
-            }
-        } else if (type == ItemType_VBargraph) {
-            // todo https://github.com/ocornut/imgui/issues/5263
-            const auto value = float(*item.zone);
-            ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
+            const auto fraction = (value - float(item.min)) / float(item.max);
+            const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), GetTextLineHeight()} : ImVec2{GetFontSize() * 2, size.y};
+            draw_list->AddRectFilled(cursor_pos, cursor_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), GetStyle().FrameRounding);
+            draw_list->AddRectFilled(
+                cursor_pos + ImVec2{0, is_h ? 0 : fraction * rect_size.y},
+                cursor_pos + ImVec2{is_h ? rect_size.x : fraction * rect_size.x, rect_size.y},
+                GetColorU32(ImGuiCol_PlotHistogram),
+                GetStyle().FrameRounding,
+                is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
+            );
+            const string value_text = is_h ? format("{:.2f}", value) : format("{:.1f}", value);
+            const auto &text_offset = rect_size / 2 - CalcTextSize(value_text.c_str()) / 2;
+            draw_list->AddText(
+                cursor_pos + (is_h ? text_offset : ImVec2{text_offset.x, GetStyle().FramePadding.y}),
+                GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str())
+            );
             if (show_label) {
                 SameLine();
                 Text("%s", title);
@@ -136,7 +147,8 @@ void Audio::FaustState::FaustParams::draw() const {
         return;
     }
 
-    for (const auto &item: interface->ui) DrawUiItem(item, GetWindowSize());
+    const auto &size = GetContentRegionAvail();
+    for (const auto &item: interface->ui) DrawUiItem(item, {size.x, size.y / float(interface->ui.size())});
 
 //    if (hovered_node) {
 //        const string label = get_ui_label(hovered_node->tree);

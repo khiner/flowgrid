@@ -1296,86 +1296,98 @@ void Audio::FaustState::FaustDiagram::draw() const {
     EndChild();
 }
 
-static constexpr FaustUI::ItemType ShortItems[]{
-    FaustUI::ItemType_Button,
-    FaustUI::ItemType_CheckButton,
-    FaustUI::ItemType_HSlider,
-    FaustUI::ItemType_NumEntry,
-    FaustUI::ItemType_HBargraph,
+using ItemType = FaustUI::ItemType;
+using enum FaustUI::ItemType;
+
+static constexpr ItemType GroupItems[]{
+    ItemType_HGroup,
+    ItemType_VGroup,
+    ItemType_TGroup,
+};
+static constexpr ItemType ShortItems[]{
+    ItemType_Button,
+    ItemType_CheckButton,
+    ItemType_HSlider,
+    ItemType_NumEntry,
+    ItemType_HBargraph,
+    ItemType_VBargraph, // todo only for now
+};
+static constexpr ItemType LabeledItems[]{
+    ItemType_HSlider,
+    ItemType_NumEntry,
+    ItemType_HBargraph,
+    ItemType_VBargraph,
 };
 
 void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size) {
     const auto type = item.type;
-    const auto &label = item.label;
+    const char *label = item.label.c_str();
     const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
-    if (type == FaustUI::ItemType_HGroup) {
+    const auto &inner_items = item.items;
+
+    if (type == ItemType_HGroup || type == ItemType_VGroup) {
         GetWindowDrawList()->AddRectFilled(GetCursorScreenPos(), GetCursorScreenPos() + size, group_bg_color);
-        Text("%s", label.c_str());
-        const ImVec2 item_size = {size.x / float(item.items.size()), size.y - GetTextLineHeightWithSpacing()};
+        Text("%s", label);
+    }
+    if (type == ItemType_HGroup) {
+        const ImVec2 item_size = {size.x / float(inner_items.size()), size.y - GetTextLineHeightWithSpacing()};
         const auto before_y = GetCursorPosY();
         const auto item_height = GetFontSize() + GetStyle().FramePadding.y * 2;
         const auto item_y = before_y + (item_size.y - item_height) / 2;
-        for (Count i = 0; i < item.items.size(); i++) {
-            const auto &inner_item = item.items[i];
+        for (Count i = 0; i < inner_items.size(); i++) {
+            const auto &inner_item = inner_items[i];
             const bool center = std::find(std::begin(ShortItems), std::end(ShortItems), inner_item.type) != std::end(ShortItems);
             if (center) SetCursorPosY(item_y);
             DrawUiItem(inner_item, item_size);
-            if (i != item.items.size() - 1) {
+            if (i != inner_items.size() - 1) {
                 SameLine();
-                SetCursorPos({GetCursorPosX(), before_y});
+                SetCursorPos({float(i + 1) * item_size.x, before_y});
             }
         }
-    } else if (type == FaustUI::ItemType_VGroup) {
-        GetWindowDrawList()->AddRectFilled(GetCursorScreenPos(), GetCursorScreenPos() + size, group_bg_color);
-        Text("%s", label.c_str());
-        const ImVec2 item_size = {size.x, (size.y - GetTextLineHeightWithSpacing()) / float(item.items.size())};
-        for (const auto &inner_item: item.items) DrawUiItem(inner_item, item_size);
+    } else if (type == ItemType_VGroup) {
+        const ImVec2 item_size = {size.x, (size.y - GetTextLineHeightWithSpacing()) / float(inner_items.size())};
+        for (const auto &inner_item: inner_items) DrawUiItem(inner_item, item_size);
+    } else if (type == ItemType_TGroup) {
+        BeginTabBar(label);
+        for (const auto &inner_item: inner_items) {
+            if (BeginTabItem(inner_item.label.c_str())) {
+                DrawUiItem(inner_item, {size.x, size.y - GetFontSize()});
+                EndTabItem();
+            }
+        }
+        EndTabBar();
     } else {
-        if (type == FaustUI::ItemType_TGroup) {
-            BeginTabBar(label.c_str());
-            for (const auto &inner_item: item.items) {
-                if (BeginTabItem(inner_item.label.c_str())) {
-                    DrawUiItem(inner_item, {size.x, size.y - GetFontSize()});
-                    EndTabItem();
-                }
-            }
-            EndTabBar();
-        } else {
-            if (type == FaustUI::ItemType_HSlider || type == FaustUI::ItemType_NumEntry) {
-                SetNextItemWidth(size.x - text_size(label).x - GetFontSize());
-            } else {
-                SetNextItemWidth(size.x);
-            }
-            if (type == FaustUI::ItemType_Button) {
-                *item.zone = Real(Button(label.c_str()));
-            } else if (type == FaustUI::ItemType_CheckButton) {
-                auto checked = bool(*item.zone);
-                Checkbox(label.c_str(), &checked);
-                *item.zone = Real(checked);
-            } else if (type == FaustUI::ItemType_HSlider) {
-                auto value = float(*item.zone);
-                SliderFloat(label.c_str(), &value, float(item.min), float(item.max), "%.2f");
-                *item.zone = Real(value);
-            } else if (type == FaustUI::ItemType_VSlider) {
-                auto value = float(*item.zone);
-                VSliderFloat(label.c_str(), {GetFontSize() * 2, size.y}, &value, float(item.min), float(item.max), "%.1f");
-                *item.zone = Real(value);
-            } else if (type == FaustUI::ItemType_NumEntry) {
-                auto value = float(*item.zone);
-                InputFloat(label.c_str(), &value, float(item.step));
-                *item.zone = Real(value);
-            } else if (type == FaustUI::ItemType_HBargraph) {
-                auto value = float(*item.zone);
-                ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
-                SameLine(0.0f, GetStyle().ItemInnerSpacing.x);
-                Text("Progress Bar");
-            } else if (type == FaustUI::ItemType_VBargraph) {
-                // todo https://github.com/ocornut/imgui/issues/5263
-                auto value = float(*item.zone);
-                ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
-                SameLine(0.0f, GetStyle().ItemInnerSpacing.x);
-                Text("Progress Bar");
-            }
+        const bool labeled = std::find(std::begin(LabeledItems), std::end(LabeledItems), type) != std::end(LabeledItems);
+        SetNextItemWidth(size.x - (labeled ? (text_size(label).x + GetFontSize()) : 0));
+        if (type == ItemType_Button) {
+            *item.zone = Real(Button(label));
+        } else if (type == ItemType_CheckButton) {
+            auto checked = bool(*item.zone);
+            Checkbox(label, &checked);
+            *item.zone = Real(checked);
+        } else if (type == ItemType_HSlider) {
+            auto value = float(*item.zone);
+            SliderFloat(label, &value, float(item.min), float(item.max), "%.2f");
+            *item.zone = Real(value);
+        } else if (type == ItemType_VSlider) {
+            auto value = float(*item.zone);
+            VSliderFloat(label, {GetFontSize() * 2, size.y}, &value, float(item.min), float(item.max), "%.1f");
+            *item.zone = Real(value);
+        } else if (type == ItemType_NumEntry) {
+            auto value = float(*item.zone);
+            InputFloat(label, &value, float(item.step));
+            *item.zone = Real(value);
+        } else if (type == ItemType_HBargraph) {
+            const auto value = float(*item.zone);
+            ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
+            SameLine();
+            Text("%s", label);
+        } else if (type == ItemType_VBargraph) {
+            // todo https://github.com/ocornut/imgui/issues/5263
+            const auto value = float(*item.zone);
+            ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
+            SameLine();
+            Text("%s", label);
         }
     }
 }

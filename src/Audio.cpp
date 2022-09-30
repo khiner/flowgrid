@@ -9,8 +9,8 @@
 
 #include "Context.h"
 #include "CDSPResampler.h"
-#include "UI/Faust/Diagram.hh"
-#include "UI/Faust/FaustUI.h"
+#include "UI/Faust/Diagram.h"
+#include "UI/Faust/Params.h"
 
 static constexpr int SampleSize = sizeof(Sample);
 
@@ -581,7 +581,8 @@ void Audio::update_process() const {
             faust_ui = nullptr;
             destroyLibContext();
         }
-        on_box_change(box, faust_ui.get());
+        on_box_change(box);
+        on_ui_change(faust_ui.get());
     }
 
     if (soundio_ready && outstream->volume != OutDeviceVolume) soundio_outstream_set_volume(outstream, OutDeviceVolume);

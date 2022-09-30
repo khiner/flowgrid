@@ -3,7 +3,7 @@
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "UI/Faust/Diagram.hh"
+#include "UI/Faust/Diagram.h"
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
     if (fs::exists(PreferencesPath)) {

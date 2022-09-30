@@ -22,6 +22,7 @@ public:
     ~FaustUI() override = default;
 
     enum ItemType {
+        ItemType_None = 0,
         // Containers
         ItemType_HGroup,
         ItemType_VGroup,
@@ -37,7 +38,7 @@ public:
         ItemType_VBargraph,
     };
     struct Item {
-        const ItemType type{ItemType_VGroup};
+        const ItemType type{ItemType_None};
         const std::string label;
         Real *zone{nullptr}; // Only meaningful for widget items (not container items)
         const Real min{0}, max{0}; // Only meaningful for sliders, num-entries, and bar graphs.

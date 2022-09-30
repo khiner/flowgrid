@@ -1319,85 +1319,106 @@ static constexpr ItemType LabeledItems[]{
     ItemType_VBargraph,
 };
 
-void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size) {
+bool header_titles = true; // todo style config
+bool center_vertical = true; // todo style config
+
+void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType parent_type = ItemType_None) {
+    const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
+
     const auto type = item.type;
     const char *label = item.label.c_str();
-    const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
+    const bool show_label = parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && header_titles);
     const auto &inner_items = item.items;
+    const bool is_group = std::find(std::begin(GroupItems), std::end(GroupItems), type) != std::end(GroupItems);
 
-    if (type == ItemType_HGroup || type == ItemType_VGroup) {
-        GetWindowDrawList()->AddRectFilled(GetCursorScreenPos(), GetCursorScreenPos() + size, group_bg_color);
-        Text("%s", label);
-    }
-    if (type == ItemType_HGroup) {
-        const ImVec2 item_size = {size.x / float(inner_items.size()), size.y - GetTextLineHeightWithSpacing()};
-        const auto before_y = GetCursorPosY();
-        const auto item_height = GetFontSize() + GetStyle().FramePadding.y * 2;
-        const auto item_y = before_y + (item_size.y - item_height) / 2;
-        for (Count i = 0; i < inner_items.size(); i++) {
-            const auto &inner_item = inner_items[i];
-            const bool center = std::find(std::begin(ShortItems), std::end(ShortItems), inner_item.type) != std::end(ShortItems);
-            if (center) SetCursorPosY(item_y);
-            DrawUiItem(inner_item, item_size);
-            if (i != inner_items.size() - 1) {
-                SameLine();
-                SetCursorPos({float(i + 1) * item_size.x, before_y});
+    if (is_group) {
+        if (show_label) Text("%s", label);
+        const float group_height = size.y - (show_label ? GetTextLineHeightWithSpacing() : 0);
+        if (type == ItemType_HGroup) {
+            if (BeginTable(label, int(inner_items.size()), ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
+                const ImVec2 item_size = {size.x / float(inner_items.size()), group_height };
+                for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
+                if (header_titles) TableHeadersRow();
+                for (const auto &inner_item : inner_items) {
+                    TableNextColumn();
+                    TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
+                    DrawUiItem(inner_item, item_size, type);
+                }
+                EndTable();
             }
-        }
-    } else if (type == ItemType_VGroup) {
-        const ImVec2 item_size = {size.x, (size.y - GetTextLineHeightWithSpacing()) / float(inner_items.size())};
-        for (const auto &inner_item: inner_items) DrawUiItem(inner_item, item_size);
-    } else if (type == ItemType_TGroup) {
-        BeginTabBar(label);
-        for (const auto &inner_item: inner_items) {
-            if (BeginTabItem(inner_item.label.c_str())) {
-                DrawUiItem(inner_item, {size.x, size.y - GetFontSize()});
-                EndTabItem();
+        } else if (type == ItemType_VGroup) {
+            if (BeginTable(label, 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
+                const ImVec2 item_size = {size.x, group_height / float(inner_items.size())};
+                for (const auto &inner_item : inner_items) {
+                    TableNextRow(ImGuiTableRowFlags_None, item_size.y);
+                    TableSetColumnIndex(0);
+                    TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
+                    DrawUiItem(inner_item, item_size, type);
+                }
+                EndTable();
             }
+        } else if (type == ItemType_TGroup) {
+            BeginTabBar(label);
+            for (const auto &inner_item: inner_items) {
+                if (BeginTabItem(inner_item.label.c_str())) {
+                    DrawUiItem(inner_item, {size.x, group_height - GetTextLineHeightWithSpacing()}, type);
+                    EndTabItem();
+                }
+            }
+            EndTabBar();
         }
-        EndTabBar();
     } else {
-        const bool labeled = std::find(std::begin(LabeledItems), std::end(LabeledItems), type) != std::end(LabeledItems);
-        SetNextItemWidth(size.x - (labeled ? (text_size(label).x + GetFontSize()) : 0));
+        const bool labeled = show_label && std::find(std::begin(LabeledItems), std::end(LabeledItems), type) != std::end(LabeledItems);
+        SetNextItemWidth(GetContentRegionAvail().x - (labeled ? (text_size(label).x + GetFontSize()) : 0));
+        const float before_y = GetCursorPosY();
+        const bool is_short = std::find(std::begin(ShortItems), std::end(ShortItems), type) != std::end(ShortItems);
+        const bool should_center_vertical = is_short && center_vertical;
+        if (should_center_vertical) SetCursorPosY(before_y + (size.y - GetTextLineHeightWithSpacing()) / 2);
+
+        const char *title = show_label ? label : "";
         if (type == ItemType_Button) {
             *item.zone = Real(Button(label));
         } else if (type == ItemType_CheckButton) {
             auto checked = bool(*item.zone);
-            Checkbox(label, &checked);
+            Checkbox(title, &checked);
             *item.zone = Real(checked);
         } else if (type == ItemType_HSlider) {
             auto value = float(*item.zone);
-            SliderFloat(label, &value, float(item.min), float(item.max), "%.2f");
+            SliderFloat(title, &value, float(item.min), float(item.max), "%.2f");
             *item.zone = Real(value);
         } else if (type == ItemType_VSlider) {
             auto value = float(*item.zone);
-            VSliderFloat(label, {GetFontSize() * 2, size.y}, &value, float(item.min), float(item.max), "%.1f");
+            VSliderFloat(title, {GetFontSize() * 2, size.y}, &value, float(item.min), float(item.max), "%.1f");
             *item.zone = Real(value);
         } else if (type == ItemType_NumEntry) {
             auto value = float(*item.zone);
-            InputFloat(label, &value, float(item.step));
+            InputFloat(title, &value, float(item.step));
             *item.zone = Real(value);
         } else if (type == ItemType_HBargraph) {
             const auto value = float(*item.zone);
             ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
-            SameLine();
-            Text("%s", label);
+            if (show_label) {
+                SameLine();
+                Text("%s", title);
+            }
         } else if (type == ItemType_VBargraph) {
             // todo https://github.com/ocornut/imgui/issues/5263
             const auto value = float(*item.zone);
             ProgressBar((value - float(item.min)) / float(item.max), {0, 0}, format("{:.2f}", value).c_str());
-            SameLine();
-            Text("%s", label);
+            if (show_label) {
+                SameLine();
+                Text("%s", title);
+            }
         }
+        if (should_center_vertical) SetCursorPosY(before_y);
     }
 }
 
 void Audio::FaustState::FaustParams::draw() const {
     if (!interface) return;
 
-    for (const auto &item: interface->ui) {
-        DrawUiItem(item, GetWindowSize());
-    }
+    for (const auto &item: interface->ui) DrawUiItem(item, GetWindowSize());
+
     if (hovered_node) {
         const string label = get_ui_label(hovered_node->tree);
         if (!label.empty()) {

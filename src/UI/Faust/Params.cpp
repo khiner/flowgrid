@@ -10,7 +10,8 @@ void on_ui_change(FaustUI *);
 void save_box_svg(const string &path);
 using namespace ImGui;
 using ItemType = FaustUI::ItemType;
-using enum FaustUI::ItemType;
+using
+enum FaustUI::ItemType;
 
 static constexpr ItemType GroupItems[]{
     ItemType_HGroup,
@@ -44,10 +45,12 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
     const bool show_label = parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && header_titles);
     const auto &inner_items = item.items;
     const bool is_group = std::find(std::begin(GroupItems), std::end(GroupItems), type) != std::end(GroupItems);
+    const float font_height = GetFontSize();
+    const auto style = GetStyle();
 
     if (is_group) {
         if (show_label) Text("%s", label);
-        const float group_height = size.y - (show_label ? GetTextLineHeightWithSpacing() : 0);
+        const float group_height = size.y - (show_label ? font_height + style.ItemSpacing.y : 0);
         if (type == ItemType_HGroup) {
             if (BeginTable(label, int(inner_items.size()), ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
                 const ImVec2 item_size = {size.x / float(inner_items.size()), group_height};
@@ -75,7 +78,8 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             BeginTabBar(label);
             for (const auto &inner_item: inner_items) {
                 if (BeginTabItem(inner_item.label.c_str())) {
-                    DrawUiItem(inner_item, {size.x, group_height - GetTextLineHeightWithSpacing()}, type);
+                    const float tab_height = font_height + style.FramePadding.y;
+                    DrawUiItem(inner_item, {size.x, group_height - tab_height}, type);
                     EndTabItem();
                 }
             }
@@ -87,7 +91,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         const float before_y = GetCursorPosY();
         const bool is_short = std::find(std::begin(ShortItems), std::end(ShortItems), type) != std::end(ShortItems);
         const bool should_center_vertical = is_short && center_vertical;
-        if (should_center_vertical) SetCursorPosY(before_y + (size.y - GetTextLineHeightWithSpacing()) / 2);
+        if (should_center_vertical) SetCursorPosY(before_y + (size.y - (font_height + style.FramePadding.y)) / 2);
 
         const char *title = show_label ? label : "";
         if (type == ItemType_Button) {
@@ -111,29 +115,35 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         } else if (type == ItemType_HBargraph || type == ItemType_VBargraph) {
             // Similar to `ImGui::ProgressBar`, but handling vertical as well as horizontal,
             // and always showing value in the same place (middle for horizontal, top for vertical).
+            // Horizontal labels are placed to the right of the rect.
+            // Vertical labels are placed below the rect.
+
+            const auto value = float(*item.zone);
             const bool is_h = type == ItemType_HBargraph;
             const auto &draw_list = GetWindowDrawList();
             const auto &cursor_pos = GetCursorScreenPos();
-            const auto value = float(*item.zone);
             const auto fraction = (value - float(item.min)) / float(item.max);
-            const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), GetTextLineHeight()} : ImVec2{GetFontSize() * 2, size.y};
-            draw_list->AddRectFilled(cursor_pos, cursor_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), GetStyle().FrameRounding);
+            const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), font_height + style.FramePadding.y * 2} : ImVec2{GetFontSize() * 2, size.y - (font_height + style.FramePadding.y * 2)};
+            draw_list->AddRectFilled(cursor_pos, cursor_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
             draw_list->AddRectFilled(
                 cursor_pos + ImVec2{0, is_h ? 0 : fraction * rect_size.y},
-                cursor_pos + ImVec2{is_h ? rect_size.x : fraction * rect_size.x, rect_size.y},
+                cursor_pos + ImVec2{is_h ? fraction * rect_size.x : rect_size.x, rect_size.y},
                 GetColorU32(ImGuiCol_PlotHistogram),
-                GetStyle().FrameRounding,
+                style.FrameRounding,
                 is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
             );
             const string value_text = is_h ? format("{:.2f}", value) : format("{:.1f}", value);
-            const auto &text_offset = rect_size / 2 - CalcTextSize(value_text.c_str()) / 2;
+            const auto &text_offset = (rect_size - CalcTextSize(value_text.c_str())) / 2;
             draw_list->AddText(
-                cursor_pos + (is_h ? text_offset : ImVec2{text_offset.x, GetStyle().FramePadding.y}),
+                cursor_pos + (is_h ? text_offset : text_offset + ImVec2{0, 0}),
                 GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str())
             );
             if (show_label) {
-                SameLine();
-                Text("%s", title);
+                draw_list->AddText(
+                    cursor_pos + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - CalcTextSize(title).x) / 2,
+                                        is_h ? style.FramePadding.y : rect_size.y + style.FramePadding.y},
+                    GetColorU32(ImGuiCol_Text), title, FindRenderedTextEnd(title)
+                );
             }
         }
         if (should_center_vertical) SetCursorPosY(before_y);

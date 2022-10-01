@@ -86,31 +86,32 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
     const bool show_label = parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && fg_style.ParamsHeaderTitles);
     const auto &inner_items = item.items;
     const bool is_group = std::find(std::begin(GroupItems), std::end(GroupItems), type) != std::end(GroupItems);
-    const float font_height = GetFontSize();
 
     if (is_group) {
         if (show_label) Text("%s", label);
-        const float group_height = size.y - (show_label ? font_height + style.ItemSpacing.y : 0);
+        const float group_height = size.y - (show_label ? GetTextLineHeightWithSpacing() : 0);
         if (type == ItemType_HGroup) {
             if (BeginTable(label, int(inner_items.size()), ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
-                const ImVec2 item_size = {size.x / float(inner_items.size()), group_height};
                 for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
                 if (fg_style.ParamsHeaderTitles) TableHeadersRow();
+
+                const ImVec2 row_size = {size.x / float(inner_items.size()), group_height - (fg_style.ParamsHeaderTitles ? (GetFontSize() + style.CellPadding.y * 2) : 0)};
+                TableNextRow(ImGuiTableRowFlags_None, row_size.y);
                 for (const auto &inner_item: inner_items) {
                     TableNextColumn();
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
-                    DrawUiItem(inner_item, item_size, type);
+                    DrawUiItem(inner_item, {row_size.x, row_size.y - style.CellPadding.y * 2}, type);
                 }
                 EndTable();
             }
         } else if (type == ItemType_VGroup) {
             if (BeginTable(label, 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
-                const ImVec2 item_size = {size.x, group_height / float(inner_items.size())};
+                const ImVec2 row_size = {size.x, group_height / float(inner_items.size())};
                 for (const auto &inner_item: inner_items) {
-                    TableNextRow(ImGuiTableRowFlags_None, item_size.y);
+                    TableNextRow(ImGuiTableRowFlags_None, row_size.y);
                     TableSetColumnIndex(0);
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
-                    DrawUiItem(inner_item, item_size, type);
+                    DrawUiItem(inner_item, {row_size.x, row_size.y - style.CellPadding.y * 2}, type);
                 }
                 EndTable();
             }
@@ -118,7 +119,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             BeginTabBar(label);
             for (const auto &inner_item: inner_items) {
                 if (BeginTabItem(inner_item.label.c_str())) {
-                    const float tab_height = font_height + style.FramePadding.y;
+                    const float tab_height = GetFrameHeight();
                     DrawUiItem(inner_item, {size.x, group_height - tab_height}, type);
                     EndTabItem();
                 }
@@ -131,7 +132,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         const float before_y = GetCursorPosY();
         const bool is_short = std::find(std::begin(ShortItems), std::end(ShortItems), type) != std::end(ShortItems);
         const bool should_center_vertical = is_short && fg_style.ParamsCenterVertical;
-        if (should_center_vertical) SetCursorPosY(before_y + (size.y - (font_height + style.FramePadding.y)) / 2);
+        if (should_center_vertical) SetCursorPosY(before_y + (size.y - GetFrameHeight()) / 2);
 
         const char *title = show_label ? label : "";
         if (type == ItemType_Button) {
@@ -167,7 +168,7 @@ void Audio::FaustState::FaustParams::draw() const {
         return;
     }
 
-    const auto &size = GetContentRegionAvail();
+    const auto &size = GetContentRegionAvail() - GetStyle().WindowPadding;
     for (const auto &item: interface->ui) DrawUiItem(item, {size.x, size.y / float(interface->ui.size())});
 
 //    if (hovered_node) {

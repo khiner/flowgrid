@@ -13,6 +13,8 @@ using ItemType = FaustUI::ItemType;
 using
 enum FaustUI::ItemType;
 
+using std::min, std::max;
+
 static constexpr ItemType GroupItems[]{
     ItemType_HGroup,
     ItemType_VGroup,
@@ -37,33 +39,41 @@ FaustUI *interface;
 bool header_titles = false; // todo style config
 bool center_vertical = true; // todo style config
 
-// Similar to `ImGui::ProgressBar`, but with horizontal/vertical switch.
+// todo flag for value text to follow the value like `ImGui::ProgressBar`
+enum ValueBarFlags_ {
+    ValueBarFlags_None = 0,
+    ValueBarFlags_Vertical,
+};
+using ValueBarFlags = int;
+
+// Similar to `ImGui::ProgressBar`, but with a horizontal/vertical switch.
 // The value text doesn't follow the value like `ImGui::ProgressBar`.
 // Here it's simply displayed in the middle of the bar.
 // Horizontal labels are placed to the right of the rect.
 // Vertical labels are placed below the rect.
-// todo flag for value text to follow the value like `ImGui::ProgressBar`
-void ValueBar(const float value, const char *label, const ImVec2 &size, const float min_value = 0, const float max_value = 1, const bool is_h = true) {
-    const auto style = GetStyle();
+void ValueBar(const float value, const char *label, const ImVec2 &size, const float min_value = 0, const float max_value = 1, const ValueBarFlags flags = ValueBarFlags_None) {
+    const bool is_h = !(flags & ValueBarFlags_Vertical);
+    const auto &style = GetStyle();
     const auto &draw_list = GetWindowDrawList();
     const auto &cursor_pos = GetCursorScreenPos();
-    const auto fraction = (value - min_value) / max_value;
+    const float fraction = (value - min_value) / max_value;
     const float frame_height = GetFrameHeight();
+    const float label_text_w = label ? CalcTextSize(label).x : 0;
     const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), frame_height} : ImVec2{GetFontSize() * 2, size.y - frame_height};
+    const auto &rect_start = cursor_pos + ImVec2{is_h ? 0 : max(0.0f, (label_text_w - rect_size.x) / 2), 0};
 
-    draw_list->AddRectFilled(cursor_pos, cursor_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
+    draw_list->AddRectFilled(rect_start, rect_start + rect_size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
     draw_list->AddRectFilled(
-        cursor_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * rect_size.y},
-        cursor_pos + rect_size * ImVec2{is_h ? fraction : 1, 1},
+        rect_start + ImVec2{0, is_h ? 0 : (1 - fraction) * rect_size.y},
+        rect_start + rect_size * ImVec2{is_h ? fraction : 1, 1},
         GetColorU32(ImGuiCol_PlotHistogram),
         style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
     );
     const string value_text = is_h ? format("{:.2f}", value) : format("{:.1f}", value);
-    const auto &text_offset = (rect_size - CalcTextSize(value_text.c_str())) / 2;
-    draw_list->AddText(cursor_pos + text_offset, GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str()));
+    draw_list->AddText(rect_start + (rect_size - CalcTextSize(value_text.c_str())) / 2, GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str()));
     if (label) {
         draw_list->AddText(
-            cursor_pos + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - CalcTextSize(label).x) / 2, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
+            rect_start + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - label_text_w) / 2, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
             GetColorU32(ImGuiCol_Text), label, FindRenderedTextEnd(label)
         );
     }
@@ -146,7 +156,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             *item.zone = Real(value);
         } else if (type == ItemType_HBargraph || type == ItemType_VBargraph) {
             const auto value = float(*item.zone);
-            ValueBar(value, title, size, float(item.min), float(item.max), type == ItemType_HBargraph);
+            ValueBar(value, title, size, float(item.min), float(item.max), type == ItemType_HBargraph ? ValueBarFlags_None : ValueBarFlags_Vertical);
         }
         if (should_center_vertical) SetCursorPosY(before_y);
     }

@@ -409,6 +409,9 @@ int audio() {
                     for (int i = 0; i < dsp->getNumInputs(); i++) faust_buffers[IO_In][i] = read_ptr;
                 }
 
+                // todo need to synchronize somehow to ensure `dsp`/`faust_buffers` haven't been destroyed since initializing `compute_faust`
+                //  but ofc needs to be lock free here in the callback
+                //  This isn't theoretical! I can easily produce crashes by modifying Faust code.
                 dsp->compute(inner_frames, faust_buffers[IO_In], faust_buffers[IO_Out]);
             }
 

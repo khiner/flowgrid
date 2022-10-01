@@ -605,6 +605,9 @@ struct FlowGridStyle : StateMember, Drawable {
     Vec2 DiagramArrowSize{Path, "DiagramArrowSize", {3, 2}, 1, 10};
     Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
 
+    Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
+    Bool ParamsCenterVertical{Path, "ParamsCenterVertical", true};
+
     void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
         Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
@@ -974,9 +977,11 @@ JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRou
 JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
     MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec, DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
+JsonType(FlowGridStyle, Colors, FlashDurationSec,
+    DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
     DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap,
-    DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius)
+    DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
+    ParamsHeaderTitles, ParamsCenterVertical)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

@@ -1,7 +1,7 @@
 #include "FaustUI.h"
 
 #include "imgui.h"
-#include "../../State.h"
+#include "../../Context.h"
 
 class FaustUI;
 
@@ -36,9 +36,6 @@ static constexpr ItemType LabeledItems[]{
 
 FaustUI *interface;
 
-bool header_titles = false; // todo style config
-bool center_vertical = true; // todo style config
-
 // todo flag for value text to follow the value like `ImGui::ProgressBar`
 enum ValueBarFlags_ {
     ValueBarFlags_None = 0,
@@ -58,9 +55,9 @@ void ValueBar(const float value, const char *label, const ImVec2 &size, const fl
     const auto &cursor_pos = GetCursorScreenPos();
     const float fraction = (value - min_value) / max_value;
     const float frame_height = GetFrameHeight();
-    const float label_text_w = label ? CalcTextSize(label).x : 0;
-    const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), frame_height} : ImVec2{GetFontSize() * 2, size.y - frame_height};
-    const auto &rect_start = cursor_pos + ImVec2{is_h ? 0 : max(0.0f, (label_text_w - rect_size.x) / 2), 0};
+    const auto &label_size = strlen(label) > 0 ? ImVec2{CalcTextSize(label).x, frame_height} : ImVec2{0, 0};
+    const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), frame_height} : ImVec2{GetFontSize() * 2, size.y - label_size.y};
+    const auto &rect_start = cursor_pos + ImVec2{is_h ? 0 : max(0.0f, (label_size.x - rect_size.x) / 2), 0};
 
     draw_list->AddRectFilled(rect_start, rect_start + rect_size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
     draw_list->AddRectFilled(
@@ -73,7 +70,7 @@ void ValueBar(const float value, const char *label, const ImVec2 &size, const fl
     draw_list->AddText(rect_start + (rect_size - CalcTextSize(value_text.c_str())) / 2, GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str()));
     if (label) {
         draw_list->AddText(
-            rect_start + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - label_text_w) / 2, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
+            rect_start + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - label_size.x) / 2, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
             GetColorU32(ImGuiCol_Text), label, FindRenderedTextEnd(label)
         );
     }
@@ -82,13 +79,14 @@ void ValueBar(const float value, const char *label, const ImVec2 &size, const fl
 void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType parent_type = ItemType_None) {
     const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
 
+    const auto &style = GetStyle();
+    const auto &fg_style = s.Style.FlowGrid;
     const auto type = item.type;
     const char *label = item.label.c_str();
-    const bool show_label = parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && header_titles);
+    const bool show_label = parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && fg_style.ParamsHeaderTitles);
     const auto &inner_items = item.items;
     const bool is_group = std::find(std::begin(GroupItems), std::end(GroupItems), type) != std::end(GroupItems);
     const float font_height = GetFontSize();
-    const auto style = GetStyle();
 
     if (is_group) {
         if (show_label) Text("%s", label);
@@ -97,7 +95,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             if (BeginTable(label, int(inner_items.size()), ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
                 const ImVec2 item_size = {size.x / float(inner_items.size()), group_height};
                 for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
-                if (header_titles) TableHeadersRow();
+                if (fg_style.ParamsHeaderTitles) TableHeadersRow();
                 for (const auto &inner_item: inner_items) {
                     TableNextColumn();
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
@@ -132,7 +130,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         SetNextItemWidth(GetContentRegionAvail().x - (labeled ? (CalcTextSize(label).x + GetFontSize()) : 0));
         const float before_y = GetCursorPosY();
         const bool is_short = std::find(std::begin(ShortItems), std::end(ShortItems), type) != std::end(ShortItems);
-        const bool should_center_vertical = is_short && center_vertical;
+        const bool should_center_vertical = is_short && fg_style.ParamsCenterVertical;
         if (should_center_vertical) SetCursorPosY(before_y + (size.y - (font_height + style.FramePadding.y)) / 2);
 
         const char *title = show_label ? label : "";

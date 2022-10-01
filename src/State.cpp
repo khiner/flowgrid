@@ -992,7 +992,11 @@ void FlowGridStyle::draw() const {
             DiagramWireWidth.Draw();
             DiagramArrowSize.Draw();
             DiagramInverterRadius.Draw();
-
+            EndTabItem();
+        }
+        if (BeginTabItem("Faust params")) {
+            ParamsHeaderTitles.Draw();
+            ParamsCenterVertical.Draw();
             EndTabItem();
         }
 

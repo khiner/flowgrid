@@ -606,6 +606,7 @@ struct FlowGridStyle : StateMember, Drawable {
     Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
 
     Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
+    Bool ParamsCenterHorizontal{Path, "ParamsCenterHorizontal", true};
     Bool ParamsCenterVertical{Path, "ParamsCenterVertical", true};
 
     void ColorsDark() {
@@ -981,7 +982,7 @@ JsonType(FlowGridStyle, Colors, FlashDurationSec,
     DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
     DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap,
     DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
-    ParamsHeaderTitles, ParamsCenterVertical)
+    ParamsHeaderTitles, ParamsCenterHorizontal, ParamsCenterVertical)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

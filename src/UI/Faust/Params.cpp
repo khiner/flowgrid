@@ -20,7 +20,7 @@ static constexpr ItemType GroupItems[]{
     ItemType_VGroup,
     ItemType_TGroup,
 };
-static constexpr ItemType ShortItems[]{
+static constexpr ItemType HorizontalItems[]{
     ItemType_Button,
     ItemType_CheckButton,
     ItemType_HSlider,
@@ -36,6 +36,13 @@ static constexpr ItemType LabeledItems[]{
 
 FaustUI *interface;
 
+enum Alignment_ {
+    Alignment_Left,
+    Alignment_Center,
+    Alignment_Right,
+};
+using Alignment = int;
+
 // todo flag for value text to follow the value like `ImGui::ProgressBar`
 enum ValueBarFlags_ {
     ValueBarFlags_None = 0,
@@ -47,8 +54,10 @@ using ValueBarFlags = int;
 // The value text doesn't follow the value like `ImGui::ProgressBar`.
 // Here it's simply displayed in the middle of the bar.
 // Horizontal labels are placed to the right of the rect.
-// Vertical labels are placed below the rect.
-void ValueBar(const float value, const char *label, const ImVec2 &size, const float min_value = 0, const float max_value = 1, const ValueBarFlags flags = ValueBarFlags_None) {
+// Vertical labels are placed below the rect. `label_alignment` currently only applies to vertical bar labels.
+// **Assumes the current cursor position is where you want the top-left of the rectangle to be (for both horizontal and vertical).**
+void ValueBar(const float value, const char *label, const ImVec2 &size, const float min_value = 0, const float max_value = 1,
+              const ValueBarFlags flags = ValueBarFlags_None, const Alignment label_alignment = Alignment_Left) {
     const bool is_h = !(flags & ValueBarFlags_Vertical);
     const auto &style = GetStyle();
     const auto &draw_list = GetWindowDrawList();
@@ -56,8 +65,8 @@ void ValueBar(const float value, const char *label, const ImVec2 &size, const fl
     const float fraction = (value - min_value) / max_value;
     const float frame_height = GetFrameHeight();
     const auto &label_size = strlen(label) > 0 ? ImVec2{CalcTextSize(label).x, frame_height} : ImVec2{0, 0};
-    const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), frame_height} : ImVec2{GetFontSize() * 2, size.y - label_size.y};
-    const auto &rect_start = cursor_pos + ImVec2{is_h ? 0 : max(0.0f, (label_size.x - rect_size.x) / 2), 0};
+    const auto &rect_size = ImVec2{CalcItemWidth(), is_h ? frame_height : size.y - label_size.y};
+    const auto &rect_start = cursor_pos;
 
     draw_list->AddRectFilled(rect_start, rect_start + rect_size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
     draw_list->AddRectFilled(
@@ -69,8 +78,13 @@ void ValueBar(const float value, const char *label, const ImVec2 &size, const fl
     const string value_text = is_h ? format("{:.2f}", value) : format("{:.1f}", value);
     draw_list->AddText(rect_start + (rect_size - CalcTextSize(value_text.c_str())) / 2, GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str()));
     if (label) {
+        const float text_x = is_h ? rect_size.x + style.ItemInnerSpacing.x :
+            label_alignment == Alignment_Left ? 0 :
+            label_alignment == Alignment_Center ? (rect_size.x - label_size.x) / 2 :
+            -label_size.x; // Alignment_Right
+
         draw_list->AddText(
-            rect_start + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - label_size.x) / 2, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
+            rect_start + ImVec2{text_x, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
             GetColorU32(ImGuiCol_Text), label, FindRenderedTextEnd(label)
         );
     }
@@ -86,6 +100,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
     const bool show_label = parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && fg_style.ParamsHeaderTitles);
     const auto &inner_items = item.items;
     const bool is_group = std::find(std::begin(GroupItems), std::end(GroupItems), type) != std::end(GroupItems);
+    const float frame_height = GetFrameHeight();
 
     if (is_group) {
         if (show_label) Text("%s", label);
@@ -93,11 +108,12 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         if (type == ItemType_HGroup || type == ItemType_VGroup) {
             const bool is_h = type == ItemType_HGroup;
             const int column_count = is_h ? 1 : int(inner_items.size());
-            const ImVec2 row_size = {size.x,
-                                     max(
-                                         GetFrameHeight() + 2 * style.CellPadding.y, // Ensure the row is at least big enough to fit a frame.
-                                         is_h ? (group_height - (fg_style.ParamsHeaderTitles ? (GetFontSize() + style.CellPadding.y * 2) : 0)) : group_height / float(inner_items.size())
-                                     )
+            const ImVec2 row_size = {
+                size.x,
+                max(
+                    frame_height + 2 * style.CellPadding.y, // Ensure the row is at least big enough to fit a frame.
+                    is_h ? (group_height - (fg_style.ParamsHeaderTitles ? frame_height : 0)) : group_height / float(inner_items.size())
+                )
             };
             const ImVec2 item_size = {row_size.x / float(column_count), row_size.y - style.CellPadding.y * 2};
             if (BeginTable(label, is_h ? int(inner_items.size()) : 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
@@ -118,20 +134,24 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             BeginTabBar(label);
             for (const auto &inner_item: inner_items) {
                 if (BeginTabItem(inner_item.label.c_str())) {
-                    const float tab_height = GetFrameHeight();
-                    DrawUiItem(inner_item, {size.x, group_height - tab_height}, type);
+                    DrawUiItem(inner_item, {size.x, group_height - frame_height}, type);
                     EndTabItem();
                 }
             }
             EndTabBar();
         }
     } else {
+        const bool is_h = std::find(std::begin(HorizontalItems), std::end(HorizontalItems), type) != std::end(HorizontalItems);
         const bool labeled = show_label && std::find(std::begin(LabeledItems), std::end(LabeledItems), type) != std::end(LabeledItems);
-        SetNextItemWidth(GetContentRegionAvail().x - (labeled ? (CalcTextSize(label).x + GetFontSize()) : 0));
-        const float before_y = GetCursorPosY();
-        const bool is_short = std::find(std::begin(ShortItems), std::end(ShortItems), type) != std::end(ShortItems);
-        const bool should_center_vertical = is_short && fg_style.ParamsCenterVertical;
-        if (should_center_vertical) SetCursorPosY(before_y + (size.y - GetFrameHeight()) / 2);
+        const float item_w = is_h ? GetContentRegionAvail().x - (labeled ? CalcTextSize(label).x + GetFontSize() : 0) : frame_height;
+        SetNextItemWidth(item_w);
+
+        const bool center_horizontal = !is_h && fg_style.ParamsCenterHorizontal;
+        const bool center_vertical = is_h && fg_style.ParamsCenterVertical;
+
+        const auto old_cursor = GetCursorPos();
+        if (center_horizontal) SetCursorPosX(old_cursor.x + (GetContentRegionAvail().x - item_w) / 2);
+        if (center_vertical) SetCursorPosY(old_cursor.y + (size.y - frame_height) / 2);
 
         const char *title = show_label ? label : "";
         if (type == ItemType_Button) {
@@ -146,7 +166,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             *item.zone = Real(value);
         } else if (type == ItemType_VSlider) {
             auto value = float(*item.zone);
-            VSliderFloat(title, {GetFontSize() * 2, size.y}, &value, float(item.min), float(item.max), "%.1f");
+            VSliderFloat(title, {item_w, size.y}, &value, float(item.min), float(item.max), "%.1f");
             *item.zone = Real(value);
         } else if (type == ItemType_NumEntry) {
             auto value = float(*item.zone);
@@ -154,9 +174,14 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             *item.zone = Real(value);
         } else if (type == ItemType_HBargraph || type == ItemType_VBargraph) {
             const auto value = float(*item.zone);
-            ValueBar(value, title, size, float(item.min), float(item.max), type == ItemType_HBargraph ? ValueBarFlags_None : ValueBarFlags_Vertical);
+            ValueBar(
+                value, title, size, float(item.min), float(item.max),
+                is_h ? ValueBarFlags_None : ValueBarFlags_Vertical,
+                is_h ? Alignment_Left : (fg_style.ParamsCenterHorizontal ? Alignment_Center : Alignment_Left)
+            );
         }
-        if (should_center_vertical) SetCursorPosY(before_y);
+        if (center_horizontal) SetCursorPosX(old_cursor.x);
+        if (center_vertical) SetCursorPosY(old_cursor.y);
     }
 }
 

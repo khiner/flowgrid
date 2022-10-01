@@ -43,32 +43,27 @@ bool center_vertical = true; // todo style config
 // Horizontal labels are placed to the right of the rect.
 // Vertical labels are placed below the rect.
 // todo flag for value text to follow the value like `ImGui::ProgressBar`
-void ProgressishBar(const float value, const char *label, const ImVec2 &size, const float min_value=0, const float max_value=1, const bool is_h=true) {
+void ValueBar(const float value, const char *label, const ImVec2 &size, const float min_value = 0, const float max_value = 1, const bool is_h = true) {
     const auto style = GetStyle();
     const auto &draw_list = GetWindowDrawList();
     const auto &cursor_pos = GetCursorScreenPos();
     const auto fraction = (value - min_value) / max_value;
-    const float font_height = GetFontSize();
-    const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), font_height + style.FramePadding.y * 2} : ImVec2{GetFontSize() * 2, size.y - (font_height + style.FramePadding.y * 2)};
+    const float frame_height = GetFrameHeight();
+    const auto &rect_size = is_h ? ImVec2{CalcItemWidth(), frame_height} : ImVec2{GetFontSize() * 2, size.y - frame_height};
 
     draw_list->AddRectFilled(cursor_pos, cursor_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
     draw_list->AddRectFilled(
-        cursor_pos + ImVec2{0, is_h ? 0 : fraction * rect_size.y},
-        cursor_pos + ImVec2{is_h ? fraction * rect_size.x : rect_size.x, rect_size.y},
+        cursor_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * rect_size.y},
+        cursor_pos + rect_size * ImVec2{is_h ? fraction : 1, 1},
         GetColorU32(ImGuiCol_PlotHistogram),
-        style.FrameRounding,
-        is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
+        style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
     );
     const string value_text = is_h ? format("{:.2f}", value) : format("{:.1f}", value);
     const auto &text_offset = (rect_size - CalcTextSize(value_text.c_str())) / 2;
-    draw_list->AddText(
-        cursor_pos + (is_h ? text_offset : text_offset + ImVec2{0, 0}),
-        GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str())
-    );
+    draw_list->AddText(cursor_pos + text_offset, GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str()));
     if (label) {
         draw_list->AddText(
-            cursor_pos + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - CalcTextSize(label).x) / 2,
-                                is_h ? style.FramePadding.y : rect_size.y + style.FramePadding.y},
+            cursor_pos + ImVec2{is_h ? rect_size.x + style.ItemInnerSpacing.x : (rect_size.x - CalcTextSize(label).x) / 2, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
             GetColorU32(ImGuiCol_Text), label, FindRenderedTextEnd(label)
         );
     }
@@ -151,7 +146,7 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             *item.zone = Real(value);
         } else if (type == ItemType_HBargraph || type == ItemType_VBargraph) {
             const auto value = float(*item.zone);
-            ProgressishBar(value, title, size, float(item.min), float(item.max), type == ItemType_HBargraph);
+            ValueBar(value, title, size, float(item.min), float(item.max), type == ItemType_HBargraph);
         }
         if (should_center_vertical) SetCursorPosY(before_y);
     }

@@ -90,28 +90,27 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
     if (is_group) {
         if (show_label) Text("%s", label);
         const float group_height = size.y - (show_label ? GetTextLineHeightWithSpacing() : 0);
-        if (type == ItemType_HGroup) {
-            if (BeginTable(label, int(inner_items.size()), ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
-                for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
-                if (fg_style.ParamsHeaderTitles) TableHeadersRow();
-
-                const ImVec2 row_size = {size.x / float(inner_items.size()), group_height - (fg_style.ParamsHeaderTitles ? (GetFontSize() + style.CellPadding.y * 2) : 0)};
-                TableNextRow(ImGuiTableRowFlags_None, row_size.y);
+        if (type == ItemType_HGroup || type == ItemType_VGroup) {
+            const bool is_h = type == ItemType_HGroup;
+            const int column_count = is_h ? 1 : int(inner_items.size());
+            const ImVec2 row_size = {size.x,
+                                     max(
+                                         GetFrameHeight() + 2 * style.CellPadding.y, // Ensure the row is at least big enough to fit a frame.
+                                         is_h ? (group_height - (fg_style.ParamsHeaderTitles ? (GetFontSize() + style.CellPadding.y * 2) : 0)) : group_height / float(inner_items.size())
+                                     )
+            };
+            const ImVec2 item_size = {row_size.x / float(column_count), row_size.y - style.CellPadding.y * 2};
+            if (BeginTable(label, is_h ? int(inner_items.size()) : 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
+                if (is_h) {
+                    for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
+                    if (fg_style.ParamsHeaderTitles) TableHeadersRow();
+                    TableNextRow(ImGuiTableRowFlags_None, row_size.y);
+                }
                 for (const auto &inner_item: inner_items) {
+                    if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_size.y);
                     TableNextColumn();
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
-                    DrawUiItem(inner_item, {row_size.x, row_size.y - style.CellPadding.y * 2}, type);
-                }
-                EndTable();
-            }
-        } else if (type == ItemType_VGroup) {
-            if (BeginTable(label, 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
-                const ImVec2 row_size = {size.x, group_height / float(inner_items.size())};
-                for (const auto &inner_item: inner_items) {
-                    TableNextRow(ImGuiTableRowFlags_None, row_size.y);
-                    TableSetColumnIndex(0);
-                    TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
-                    DrawUiItem(inner_item, {row_size.x, row_size.y - style.CellPadding.y * 2}, type);
+                    DrawUiItem(inner_item, item_size, type);
                 }
                 EndTable();
             }

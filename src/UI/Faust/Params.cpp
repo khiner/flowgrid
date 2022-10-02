@@ -26,33 +26,41 @@ FaustUI *interface;
 // todo flag for value text to follow the value like `ImGui::ProgressBar`
 enum ValueBarFlags_ {
     ValueBarFlags_None = 0,
-    ValueBarFlags_Vertical,
+    ValueBarFlags_Vertical = 1 << 0,
+    ValueBarFlags_ReadOnly = 1 << 1,
 };
 using ValueBarFlags = int;
 
-// Similar to `ImGui::ProgressBar`, but with a horizontal/vertical switch.
-// The value text doesn't follow the value like `ImGui::ProgressBar`.
-// Here it's simply displayed in the middle of the bar.
+// When `ReadOnly` is set, this is similar to `ImGui::ProgressBar`, but it has a horizontal/vertical switch,
+// and the value text doesn't follow the value position (it stays in the middle).
+// If `ReadOnly` is not set, this delegates to `SliderFloat`/`VSliderFloat`, but renders the value & label independently.
 // Horizontal labels are placed to the right of the rect.
-// Vertical labels are placed below the rect.
+// Vertical labels are placed below the rect, respecting the passed in alignment.
 // `size` is the rectangle size.
 // **Assumes the current cursor position is where you want the top-left of the rectangle to be.**
-void ValueBar(const float value, const char *label, const ImVec2 &size, const float min_value = 0, const float max_value = 1,
+void ValueBar(const char *label, float *value, const ImVec2 &size, const float min_value = 0, const float max_value = 1,
               const ValueBarFlags flags = ValueBarFlags_None, const Align align = {HAlign_Center, VAlign_Center}) {
     const bool is_h = !(flags & ValueBarFlags_Vertical);
     const auto &style = GetStyle();
     const auto &draw_list = GetWindowDrawList();
     const auto &pos = GetCursorScreenPos();
-    const float fraction = (value - min_value) / max_value;
 
-    draw_list->AddRectFilled(pos, pos + size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
-    draw_list->AddRectFilled(
-        pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
-        pos + size * ImVec2{is_h ? fraction : 1, 1},
-        GetColorU32(ImGuiCol_PlotHistogram),
-        style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
-    );
-    const string value_text = is_h ? format("{:.2f}", value) : format("{:.1f}", value);
+    if (flags & ValueBarFlags_ReadOnly) {
+        const float fraction = (*value - min_value) / max_value;
+        draw_list->AddRectFilled(pos, pos + size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
+        draw_list->AddRectFilled(
+            pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
+            pos + size * ImVec2{is_h ? fraction : 1, 1},
+            GetColorU32(ImGuiCol_PlotHistogram),
+            style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
+        );
+    } else {
+        // Draw ImGui widget without value or label text.
+        if (is_h) SliderFloat("", value, min_value, max_value, "");
+        else VSliderFloat("", size, value, min_value, max_value, "");
+    }
+
+    const string value_text = format("{:.2f}", *value);
     draw_list->AddText(pos + (size - CalcTextSize(value_text.c_str())) / 2, GetColorU32(ImGuiCol_Text), value_text.c_str());
     if (label) {
         const float label_w = strlen(label) > 0 ? CalcTextSize(label).x : 0;
@@ -165,25 +173,18 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             auto checked = bool(*item.zone);
             Checkbox(title, &checked);
             *item.zone = Real(checked);
-        } else if (type == ItemType_HSlider) {
-            auto value = float(*item.zone);
-            SliderFloat(title, &value, float(item.min), float(item.max), "%.2f");
-            *item.zone = Real(value);
-        } else if (type == ItemType_VSlider) {
-            auto value = float(*item.zone);
-            VSliderFloat(title, item_size, &value, float(item.min), float(item.max), "%.1f");
-            *item.zone = Real(value);
         } else if (type == ItemType_NumEntry) {
             auto value = float(*item.zone);
             InputFloat(title, &value, float(item.step));
             *item.zone = Real(value);
-        } else if (type == ItemType_HBargraph || type == ItemType_VBargraph) {
-            const auto value = float(*item.zone);
-            ValueBar(
-                value, title, item_size, float(item.min), float(item.max),
-                type == ItemType_HBargraph ? ValueBarFlags_None : ValueBarFlags_Vertical,
-                {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical}
-            );
+        } else if (type == ItemType_HSlider || type == ItemType_VSlider || type == ItemType_HBargraph || type == ItemType_VBargraph) {
+            auto value = float(*item.zone);
+
+            ValueBarFlags flags = ValueBarFlags_None;
+            if (type == ItemType_HBargraph || type == ItemType_VBargraph) flags |= ValueBarFlags_ReadOnly;
+            if (type == ItemType_VBargraph || type == ItemType_VSlider) flags |= ValueBarFlags_Vertical;
+            ValueBar(title, &value, item_size, float(item.min), float(item.max), flags, {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical});
+            if (!(flags & ValueBarFlags_ReadOnly)) *item.zone = Real(value);
         }
         SetCursorPos(old_cursor);
     }

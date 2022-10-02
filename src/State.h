@@ -572,6 +572,24 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
+enum HAlign_ {
+    HAlign_Left,
+    HAlign_Center,
+    HAlign_Right,
+};
+enum VAlign_ {
+    VAlign_Top,
+    VAlign_Center,
+    VAlign_Bottom,
+};
+using HAlign = int;
+using VAlign = int;
+
+struct ImVec2i {
+    int x, y;
+};
+using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
+
 struct FlowGridStyle : StateMember, Drawable {
     FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
         ColorsDark();
@@ -606,8 +624,8 @@ struct FlowGridStyle : StateMember, Drawable {
     Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
 
     Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
-    Bool ParamsCenterHorizontal{Path, "ParamsCenterHorizontal", true};
-    Bool ParamsCenterVertical{Path, "ParamsCenterVertical", true};
+    Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
+    Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
 
     void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
@@ -982,7 +1000,7 @@ JsonType(FlowGridStyle, Colors, FlashDurationSec,
     DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
     DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap,
     DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
-    ParamsHeaderTitles, ParamsCenterHorizontal, ParamsCenterVertical)
+    ParamsHeaderTitles, ParamsAlignmentHorizontal, ParamsAlignmentVertical)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

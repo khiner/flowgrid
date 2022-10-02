@@ -99,8 +99,8 @@ $ ./FlowGrid
 ### Audio
 
 * [Faust](https://github.com/grame-cncm/faust) for DSP
-* [libsoundio](https://github.com/andrewrk/libsoundio) for the audio backend, and for its memory-mapped ring buffer, used to buffer audio input and resampling
-* [r8brain-free-src](https://github.com/avaneev/r8brain-free-src/) for audio resampling, currently only used when monitoring an audio input stream with a different sample rate than the output stream
+* [libsoundio](https://github.com/andrewrk/libsoundio) for the audio backend, and for its memory-mapped ring buffer
+* [r8brain-free-src](https://github.com/avaneev/r8brain-free-src/) for audio resampling, currently only used when monitoring an audio input stream with a sample rate different from the output stream
 
 ### UI/UX
 

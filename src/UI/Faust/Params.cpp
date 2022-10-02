@@ -36,13 +36,6 @@ static constexpr ItemType LabeledItems[]{
 
 FaustUI *interface;
 
-enum Alignment_ {
-    Alignment_Left,
-    Alignment_Center,
-    Alignment_Right,
-};
-using Alignment = int;
-
 // todo flag for value text to follow the value like `ImGui::ProgressBar`
 enum ValueBarFlags_ {
     ValueBarFlags_None = 0,
@@ -54,10 +47,11 @@ using ValueBarFlags = int;
 // The value text doesn't follow the value like `ImGui::ProgressBar`.
 // Here it's simply displayed in the middle of the bar.
 // Horizontal labels are placed to the right of the rect.
-// Vertical labels are placed below the rect. `label_alignment` currently only applies to vertical bar labels.
-// **Assumes the current cursor position is where you want the top-left of the rectangle to be (for both horizontal and vertical).**
+// Vertical labels are placed below the rect.
+// **Assumes the current cursor position is where you want the top-left of the rectangle to be.**
+// **Assumes the current item width is set to the desired width of the bar (long side for horizontal, short side for vertical).**
 void ValueBar(const float value, const char *label, const ImVec2 &size, const float min_value = 0, const float max_value = 1,
-              const ValueBarFlags flags = ValueBarFlags_None, const Alignment label_alignment = Alignment_Left) {
+              const ValueBarFlags flags = ValueBarFlags_None, const Align align = {HAlign_Center, VAlign_Center}) {
     const bool is_h = !(flags & ValueBarFlags_Vertical);
     const auto &style = GetStyle();
     const auto &draw_list = GetWindowDrawList();
@@ -79,9 +73,9 @@ void ValueBar(const float value, const char *label, const ImVec2 &size, const fl
     draw_list->AddText(rect_start + (rect_size - CalcTextSize(value_text.c_str())) / 2, GetColorU32(ImGuiCol_Text), value_text.c_str(), FindRenderedTextEnd(value_text.c_str()));
     if (label) {
         const float text_x = is_h ? rect_size.x + style.ItemInnerSpacing.x :
-            label_alignment == Alignment_Left ? 0 :
-            label_alignment == Alignment_Center ? (rect_size.x - label_size.x) / 2 :
-            -label_size.x; // Alignment_Right
+            align.x == HAlign_Left ? 0 :
+            align.x == HAlign_Center ? (rect_size.x - label_size.x) / 2 :
+            -label_size.x; // HAlign_Right
 
         draw_list->AddText(
             rect_start + ImVec2{text_x, style.FramePadding.y + (is_h ? 0 : rect_size.y)},
@@ -146,12 +140,16 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
         const float item_w = is_h ? GetContentRegionAvail().x - (labeled ? CalcTextSize(label).x + GetFontSize() : 0) : frame_height;
         SetNextItemWidth(item_w);
 
-        const bool center_horizontal = !is_h && fg_style.ParamsCenterHorizontal;
-        const bool center_vertical = is_h && fg_style.ParamsCenterVertical;
-
         const auto old_cursor = GetCursorPos();
-        if (center_horizontal) SetCursorPosX(old_cursor.x + (GetContentRegionAvail().x - item_w) / 2);
-        if (center_vertical) SetCursorPosY(old_cursor.y + (size.y - frame_height) / 2);
+        if (is_h) {
+            const auto alignment = fg_style.ParamsAlignmentVertical;
+            const float available = size.y;
+            SetCursorPosY(old_cursor.y + (alignment == VAlign_Top ? 0 : alignment == VAlign_Center ? (available - frame_height) / 2 : available - frame_height));
+        } else {
+            const auto alignment = fg_style.ParamsAlignmentHorizontal;
+            const float available = GetContentRegionAvail().x;
+            SetCursorPosX(old_cursor.x + (alignment == HAlign_Left ? 0 : alignment == HAlign_Center ? (available - frame_height) / 2 : available - frame_height));
+        }
 
         const char *title = show_label ? label : "";
         if (type == ItemType_Button) {
@@ -177,11 +175,10 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             ValueBar(
                 value, title, size, float(item.min), float(item.max),
                 is_h ? ValueBarFlags_None : ValueBarFlags_Vertical,
-                is_h ? Alignment_Left : (fg_style.ParamsCenterHorizontal ? Alignment_Center : Alignment_Left)
+                {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical}
             );
         }
-        if (center_horizontal) SetCursorPosX(old_cursor.x);
-        if (center_vertical) SetCursorPosY(old_cursor.y);
+        SetCursorPos(old_cursor);
     }
 }
 

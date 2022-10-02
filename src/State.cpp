@@ -996,8 +996,8 @@ void FlowGridStyle::draw() const {
         }
         if (BeginTabItem("Faust params")) {
             ParamsHeaderTitles.Draw();
-            ParamsCenterHorizontal.Draw();
-            ParamsCenterVertical.Draw();
+            ParamsAlignmentHorizontal.Draw();
+            ParamsAlignmentVertical.Draw();
             EndTabItem();
         }
 

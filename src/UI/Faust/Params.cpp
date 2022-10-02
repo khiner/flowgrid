@@ -15,12 +15,6 @@ enum FaustUI::ItemType;
 
 using std::min, std::max;
 
-static constexpr ItemType GroupItems[]{
-    ItemType_HGroup,
-    ItemType_VGroup,
-    ItemType_TGroup,
-};
-
 FaustUI *interface;
 
 // todo flag for value text to follow the value like `ImGui::ProgressBar`
@@ -113,20 +107,32 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
     const char *label = item.label.c_str();
     const bool show_label = type == ItemType_Button || (parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && fg_style.ParamsHeaderTitles));
     const auto &inner_items = item.items;
-    const bool is_group = std::find(std::begin(GroupItems), std::end(GroupItems), type) != std::end(GroupItems);
     const float frame_height = GetFrameHeight();
 
-    if (is_group) {
+    if (type == ItemType_TGroup || type == ItemType_HGroup || type == ItemType_VGroup) {
         if (show_label) Text("%s", label);
         const float group_height = size.y - (show_label ? GetTextLineHeightWithSpacing() : 0);
-        if (type == ItemType_HGroup || type == ItemType_VGroup) {
+
+        if (type == ItemType_TGroup) {
+            BeginTabBar(label);
+            for (const auto &inner_item: inner_items) {
+                if (BeginTabItem(inner_item.label.c_str())) {
+                    // In addition to the group contents, account for the tab height and the space between the tabs and the content.
+                    DrawUiItem(inner_item, {size.x, group_height - frame_height - style.ItemSpacing.y}, type);
+                    EndTabItem();
+                }
+            }
+            EndTabBar();
+        } else {
             const bool is_h = type == ItemType_HGroup;
             const int column_count = is_h ? 1 : int(inner_items.size());
-            const float cell_frame_height = frame_height + 2 * style.CellPadding.y;
             const ImVec2 row_size = {
                 size.x,
                 // Ensure the row is at least big enough to fit two frames.
-                max(cell_frame_height + frame_height, is_h ? (group_height - (fg_style.ParamsHeaderTitles ? cell_frame_height : 0)) : group_height / float(inner_items.size()))
+                max(
+                    2 * frame_height + 2 * style.CellPadding.y,
+                    is_h ? (group_height - (fg_style.ParamsHeaderTitles ? GetFontSize() + 2 * style.CellPadding.y : 0)) : group_height / float(inner_items.size())
+                )
             };
             if (BeginTable(label, is_h ? int(inner_items.size()) : 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
                 const ImVec2 cell_size = ImVec2{row_size.x / float(column_count), row_size.y} - style.CellPadding * 2;
@@ -143,15 +149,6 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
                 }
                 EndTable();
             }
-        } else if (type == ItemType_TGroup) {
-            BeginTabBar(label);
-            for (const auto &inner_item: inner_items) {
-                if (BeginTabItem(inner_item.label.c_str())) {
-                    DrawUiItem(inner_item, {size.x, group_height - frame_height}, type);
-                    EndTabItem();
-                }
-            }
-            EndTabBar();
         }
     } else {
         const char *title = show_label ? label : "";
@@ -198,7 +195,7 @@ void Audio::FaustState::FaustParams::draw() const {
         return;
     }
 
-    const auto &size = GetContentRegionAvail() - GetStyle().WindowPadding;
+    const auto &size = GetContentRegionAvail();
     for (const auto &item: interface->ui) DrawUiItem(item, {size.x, size.y / float(interface->ui.size())});
 
 //    if (hovered_node) {

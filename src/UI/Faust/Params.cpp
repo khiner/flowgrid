@@ -38,7 +38,7 @@ using ValueBarFlags = int;
 // Vertical labels are placed below the rect, respecting the passed in alignment.
 // `size` is the rectangle size.
 // **Assumes the current cursor position is where you want the top-left of the rectangle to be.**
-void ValueBar(const char *label, float *value, const ImVec2 &size, const float min_value = 0, const float max_value = 1,
+void ValueBar(const char *id, const char *label, float *value, const ImVec2 &size, const float min_value = 0, const float max_value = 1,
               const ValueBarFlags flags = ValueBarFlags_None, const Align align = {HAlign_Center, VAlign_Center}) {
     const bool is_h = !(flags & ValueBarFlags_Vertical);
     const auto &style = GetStyle();
@@ -56,8 +56,8 @@ void ValueBar(const char *label, float *value, const ImVec2 &size, const float m
         );
     } else {
         // Draw ImGui widget without value or label text.
-        if (is_h) SliderFloat("", value, min_value, max_value, "");
-        else VSliderFloat("", size, value, min_value, max_value, "");
+        if (is_h) SliderFloat(id, value, min_value, max_value, "");
+        else VSliderFloat(id, size, value, min_value, max_value, "");
     }
 
     const string value_text = format("{:.2f}", *value);
@@ -183,7 +183,8 @@ void DrawUiItem(const FaustUI::Item &item, const ImVec2 &size, const ItemType pa
             ValueBarFlags flags = ValueBarFlags_None;
             if (type == ItemType_HBargraph || type == ItemType_VBargraph) flags |= ValueBarFlags_ReadOnly;
             if (type == ItemType_VBargraph || type == ItemType_VSlider) flags |= ValueBarFlags_Vertical;
-            ValueBar(title, &value, item_size, float(item.min), float(item.max), flags, {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical});
+            const string id = format("##{}", label);
+            ValueBar(id.c_str(), title, &value, item_size, float(item.min), float(item.max), flags, {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical});
             if (!(flags & ValueBarFlags_ReadOnly)) *item.zone = Real(value);
         }
         SetCursorPos(old_cursor);

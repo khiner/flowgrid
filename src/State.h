@@ -1,7 +1,6 @@
 #pragma once
 
 #include <set>
-#include <range/v3/view/drop.hpp>
 
 #include "ImGuiFileDialog.h"
 #include "UI/UIContext.h"
@@ -190,7 +189,6 @@ struct Enum : Base {
 // todo support mixed types - see `ImGui::CheckboxFlagsT`
 // todo support nested categories
 // todo make a `FlowGridParamsTableFlags` field.
-// todo combine current `Bool` fields into flags.
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
 struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
@@ -198,8 +196,9 @@ struct Flags : Base {
     // todo support escaped '/?'
     Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, int value = 0, const string &name = "", const string &help = "")
         : Base(parent_path, id, name), value(value), names_and_help(names | transform([](const string &name) {
-        const auto &name_and_help = name | views::split('?') | to<std::vector<string>>;
-        return std::pair(name_and_help[0], name_and_help | views::drop(1) | views::join("") | to<string>);
+        const auto help_split = name.find_first_of('?');
+        const bool found = help_split != string::npos;
+        return std::pair<string, string>(found ? name.substr(0, help_split) : name, found ? name.substr(help_split + 1) : "");
     }) | to<std::vector<std::pair<string, string>>>) {
         this->help = help;
     }
@@ -415,7 +414,10 @@ struct Audio : Process {
                 Bool ScaleFill{Path, "ScaleFill", "Scale to fill the window. This and `DiagramScale` are mutually exclusive. (Setting this to `true` makes `DiagramScale` inactive.)", false};
                 Flags HoverFlags{
                     Path, "HoverFlags",
-                    {"ShowRect", "ShowType", "ShowChannels", "ShowChildChannels"},
+                    {"ShowRect?Display the hovered node's bounding rectangle",
+                     "ShowType?Display the hovered node's box type",
+                     "ShowChannels?Display the hovered node's channel points and indices",
+                     "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
                     "Hovering over a node in the graph will display the selected information"
                 };
             };

@@ -2,6 +2,7 @@
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_sine.c and
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
+#include <thread>
 #include <soundio/soundio.h>
 
 #include "Helper/Sample.h" // Must be included before any Faust includes

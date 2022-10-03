@@ -1,10 +1,6 @@
 #pragma once
 
-#include <set>
-
-#include "ImGuiFileDialog.h"
 #include "UI/UIContext.h"
-
 #include "JsonType.h"
 #include "Helper/String.h"
 #include "Helper/Sample.h"
@@ -547,14 +543,17 @@ process = tgroup("grp 1",
     FaustState Faust{Path, "Faust"};
 };
 
+using ImGuiFileDialogFlags = int;
+constexpr int FileDialogFlags_Modal = 1 << 27; // Copied from ImGuiFileDialog source with a different name to avoid redefinition. Brittle but we can avoid an include this way.
+
 struct File : StateMember {
     using StateMember::StateMember;
 
     struct DialogData {
         // Always open as a modal to avoid user activity outside the dialog.
         DialogData(string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "",
-                   const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_None)
-            : Visible{false}, SaveMode(save_mode), MaxNumSelections(max_num_selections), Flags(flags | ImGuiFileDialogFlags_Modal),
+                   const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
+            : Visible{false}, SaveMode(save_mode), MaxNumSelections(max_num_selections), Flags(flags | FileDialogFlags_Modal),
               Title(std::move(title)), Filters(std::move(filters)), FilePath(std::move(file_path)), DefaultFileName(std::move(default_file_name)) {};
 
         bool Visible;

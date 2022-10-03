@@ -1,5 +1,6 @@
 #include "Context.h"
 
+#include "ImGuiFileDialog.h"
 #include "imgui_memory_editor.h"
 #include <range/v3/view/iota.hpp>
 

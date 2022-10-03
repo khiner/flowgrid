@@ -27,11 +27,11 @@ void HelpMarker(const char *help) {
 }
 
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
-void Field::Base::HelpMarker(const bool after) const {
-    if (help.empty()) return;
+void StateMember::HelpMarker(const bool after) const {
+    if (Help.empty()) return;
 
     if (after) SameLine();
-    ::HelpMarker(help.c_str());
+    ::HelpMarker(Help.c_str());
     if (!after) SameLine();
 }
 

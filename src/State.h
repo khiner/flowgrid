@@ -40,12 +40,30 @@ JsonType(ImVec2, x, y)
 JsonType(ImVec4, w, x, y, z)
 JsonType(ImVec2ih, x, y)
 
+// Split the string on '?'.
+// If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
+// todo don't split on escaped '\?'
+static std::pair<string, string> parse_help_text(const string &str) {
+    const auto help_split = str.find_first_of('?');
+    const bool found = help_split != string::npos;
+    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
+}
+
 struct StateMember {
-    StateMember(const JsonPath &parent_path, const string &id, const string &name = "")
-        : Path(parent_path / id), ID(id), Name(name.empty() ? snake_case_to_sentence_case(id) : name) {}
+    StateMember(const JsonPath &parent_path, const string &id, const string &name_and_help = "")
+        : Path(parent_path / id), ID(id) {
+        const auto &[name, help] = parse_help_text(name_and_help);
+        Name = name.empty() ? snake_case_to_sentence_case(id) : name;
+        Help = help;
+    }
 
     JsonPath Path; // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
-    string ID, Name;
+    string ID, Name, Help;
+
+protected:
+    // Helper to display a (?) mark which shows a tooltip when hovered.
+    // Similar to the one in `imgui_demo.cpp`.
+    void HelpMarker(bool after = true) const;
 };
 
 struct Drawable {
@@ -56,24 +74,12 @@ struct Drawable {
 namespace Field {
 struct Base : StateMember {
     using StateMember::StateMember;
-
     virtual bool Draw() const = 0;
-
-    string help;
-
-protected:
-    // Helper to display a (?) mark which shows a tooltip when hovered.
-    // Similar to the one in `imgui_demo.cpp`.
-    void HelpMarker(bool after = true) const;
 };
 
 struct Bool : Base {
-    Bool(const JsonPath &parent_path, const string &id, const string &name = "", bool value = false, const string &help = "")
-        : Base(parent_path, id, name), value(value) {
-        this->help = help;
-    }
-    Bool(const JsonPath &parent_path, const string &id, bool value, const string &help = "")
-        : Bool(parent_path, id, "", value, help) {}
+    Bool(const JsonPath &parent_path, const string &id, const string &name = "", bool value = false) : Base(parent_path, id, name), value(value) {}
+    Bool(const JsonPath &parent_path, const string &id, bool value) : Bool(parent_path, id, "", value) {}
 
     operator bool() const { return value; }
     Bool &operator=(bool v) {
@@ -88,12 +94,8 @@ struct Bool : Base {
 };
 
 struct Int : Base {
-    Int(const JsonPath &parent_path, const string &id, const string &name = "", int value = 0, int min = 0, int max = 100, const string &help = "")
-        : Base(parent_path, id, name), value(value), min(min), max(max) {
-        this->help = help;
-    }
-    Int(const JsonPath &parent_path, const string &id, int value, int min = 0, int max = 100, const string &help = "")
-        : Int(parent_path, id, "", value, min, max, help) {}
+    Int(const JsonPath &parent_path, const string &id, int value = 0, int min = 0, int max = 100, const string &name = "")
+        : Base(parent_path, id, name), value(value), min(min), max(max) {}
 
     operator int() const { return value; }
     Int &operator=(int v) {
@@ -108,12 +110,8 @@ struct Int : Base {
 };
 
 struct Float : Base {
-    Float(const JsonPath &parent_path, const string &id, const string &name = "", float value = 0, float min = 0, float max = 1, const string &help = "")
-        : Base(parent_path, id, name), value(value), min(min), max(max) {
-        this->help = help;
-    }
-    Float(const JsonPath &parent_path, const string &id, float value, float min = 0, float max = 1, const string &help = "")
-        : Float(parent_path, id, "", value, min, max, help) {}
+    Float(const JsonPath &parent_path, const string &id, float value = 0, float min = 0, float max = 1, const string &name = "")
+        : Base(parent_path, id, name), value(value), min(min), max(max) {}
 
     operator float() const { return value; }
     Float &operator=(float v) {
@@ -129,12 +127,8 @@ struct Float : Base {
 };
 
 struct Vec2 : Base {
-    Vec2(const JsonPath &parent_path, const string &id, const string &name = "", ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &help = "")
-        : Base(parent_path, id, name), value(value), min(min), max(max) {
-        this->help = help;
-    }
-    Vec2(const JsonPath &parent_path, const string &id, ImVec2 value, float min = 0, float max = 1, const string &help = "")
-        : Vec2(parent_path, id, "", value, min, max, help) {}
+    Vec2(const JsonPath &parent_path, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &name = "")
+        : Base(parent_path, id, name), value(value), min(min), max(max) {}
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v) {
@@ -169,12 +163,10 @@ struct String : Base {
 };
 
 struct Enum : Base {
-    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names, int value = 0, const string &name = "", const string &help = "")
-        : Base(parent_path, id, name), value(value), names(std::move(names)) {
-        this->help = help;
-    }
-    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names, const string &help = "")
-        : Enum(parent_path, id, std::move(names), 0, "", help) {}
+    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names, int value = 0, const string &name = "")
+        : Base(parent_path, id, name), value(value), names(std::move(names)) {}
+    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names)
+        : Enum(parent_path, id, std::move(names), 0, "") {}
 
     operator int() const { return value; }
 
@@ -193,17 +185,10 @@ struct Enum : Base {
 struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    // todo support escaped '/?'
-    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, int value = 0, const string &name = "", const string &help = "")
-        : Base(parent_path, id, name), value(value), names_and_help(names | transform([](const string &name) {
-        const auto help_split = name.find_first_of('?');
-        const bool found = help_split != string::npos;
-        return std::pair<string, string>(found ? name.substr(0, help_split) : name, found ? name.substr(help_split + 1) : "");
-    }) | to<std::vector<std::pair<string, string>>>) {
-        this->help = help;
-    }
-    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, const string &help = "")
-        : Flags(parent_path, id, names, 0, "", help) {}
+    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, int value = 0, const string &name = "")
+        : Base(parent_path, id, name), value(value), names_and_help(names | transform(parse_help_text) | to<std::vector<std::pair<string, string>>>) {}
+    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names)
+        : Flags(parent_path, id, names, 0, "") {}
     operator int() const { return value; }
 
     bool Draw() const override;
@@ -260,7 +245,7 @@ struct Process : Window {
     void draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool Running{Path, "Running", true, format("Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name))};
+    Bool Running{Path, "Running", format("?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
 };
 
 struct ApplicationSettings : Window {
@@ -276,17 +261,17 @@ struct StateViewer : Window {
 
     enum LabelMode { Annotated, Raw };
     Enum LabelMode{
-        Path, "LabelMode", {"Annotated", "Raw"},
-        "The raw JSON state doesn't store keys for all items.\n"
+        Path, "LabelMode", {"Annotated", "Raw"}, Annotated,
+        "?The raw JSON state doesn't store keys for all items.\n"
         "For example, the main `ui.style.colors` state is a list.\n\n"
         "'Annotated' mode shows (highlighted) labels for such state items.\n"
         "'Raw' mode shows the state exactly as it is in the raw JSON state."
     };
     Bool AutoSelect{
-        Path, "AutoSelect", "Auto-select", true,
-        "When auto-select is enabled, state changes automatically open.\n"
+        Path, "AutoSelect",
+        "Auto-select?When auto-select is enabled, state changes automatically open.\n"
         "The state viewer to the changed state node(s), closing all other state nodes.\n"
-        "State menu items can only be opened or closed manually if auto-select is disabled."
+        "State menu items can only be opened or closed manually if auto-select is disabled.", true,
     };
 };
 
@@ -411,14 +396,15 @@ struct Audio : Process {
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
-                Bool ScaleFill{Path, "ScaleFill", "Scale to fill the window. This and `DiagramScale` are mutually exclusive. (Setting this to `true` makes `DiagramScale` inactive.)", false};
+                Bool ScaleFill{Path, "ScaleFill", "?Scale to fill the window. This and `DiagramScale` are mutually exclusive. (Setting this to `true` makes `DiagramScale` inactive.)", false};
                 Flags HoverFlags{
                     Path, "HoverFlags",
                     {"ShowRect?Display the hovered node's bounding rectangle",
                      "ShowType?Display the hovered node's box type",
                      "ShowChannels?Display the hovered node's channel points and indices",
                      "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
-                    "Hovering over a node in the graph will display the selected information"
+                    FaustDiagramHoverFlags_None,
+                    "?Hovering over a node in the graph will display the selected information",
                 };
             };
 
@@ -546,8 +532,8 @@ process = tgroup("grp 1",
     void update_process() const override;
     String get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Bool FaustRunning{Path, "FaustRunning", true, "Disabling completely skips Faust computation when computing audio output."};
-    Bool Muted{Path, "Muted", true, "Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load."};
+    Bool FaustRunning{Path, "FaustRunning", "?Disabling completely skips Faust computation when computing audio output.", true};
+    Bool Muted{Path, "Muted", "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true};
     AudioBackend Backend = none;
     String InDeviceId{Path, "InDeviceId", "In device ID"};
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
@@ -556,7 +542,7 @@ process = tgroup("grp 1",
     Enum InFormat{Path, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
     Enum OutFormat{Path, "OutFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
     Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
-    Bool MonitorInput{Path, "MonitorInput", false, "Enabling adds the audio input stream directly to the audio output."};
+    Bool MonitorInput{Path, "MonitorInput", "?Enabling adds the audio input stream directly to the audio output.", false};
 
     FaustState Faust{Path, "Faust"};
 };
@@ -649,9 +635,11 @@ struct FlowGridStyle : StateMember, Drawable {
     ImVec4 Colors[FlowGridCol_COUNT];
     Float FlashDurationSec{Path, "FlashDurationSec", 0.6, 0, 5};
 
-    Int DiagramFoldComplexity{Path, "DiagramFoldComplexity", 3, 0, 20,
-                              "Number of boxes within a diagram before folding into a sub-diagram. Setting to zero disables folding altogether, for a fully-expanded diagram."};
-    Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
+    Int DiagramFoldComplexity{
+        Path, "DiagramFoldComplexity", 3, 0, 20,
+        "?Number of boxes within a diagram before folding into a sub-diagram.\n"
+        "Setting to zero disables folding altogether, for a fully-expanded diagram."};
+    Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "?Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
     Vec2 DiagramScale{Path, "DiagramScale", {1, 1}, 0.1, 10};
     Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
     Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
@@ -819,7 +807,7 @@ struct Style : Window {
         // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
         Float Alpha{Path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Float DisabledAlpha{Path, "DisabledAlpha", 0.6, 0, 1, "Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
+        Float DisabledAlpha{Path, "DisabledAlpha", 0.6, 0, 1, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
         Vec2 WindowPadding{Path, "WindowPadding", ImVec2(8, 8), 0, 20};
         Float WindowRounding{Path, "WindowRounding", 0, 0, 12};
         Float WindowBorderSize{Path, "WindowBorderSize", 1};
@@ -848,16 +836,16 @@ struct Style : Window {
         Float TabBorderSize{Path, "TabBorderSize", 0};
         Float TabMinWidthForCloseButton{Path, "TabMinWidthForCloseButton", 0};
         Enum ColorButtonPosition{Path, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
-        Vec2 ButtonTextAlign{Path, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "Alignment applies when a button is larger than its text content."};
-        Vec2 SelectableTextAlign{Path, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "Alignment applies when a selectable is larger than its text content."};
+        Vec2 ButtonTextAlign{Path, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "?Alignment applies when a button is larger than its text content."};
+        Vec2 SelectableTextAlign{Path, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "?Alignment applies when a selectable is larger than its text content."};
         Vec2 DisplayWindowPadding{Path, "DisplayWindowPadding", ImVec2(19, 19)};
-        Vec2 DisplaySafeAreaPadding{Path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
+        Vec2 DisplaySafeAreaPadding{Path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
         Float MouseCursorScale{Path, "MouseCursorScale", 1};
-        Bool AntiAliasedLines{Path, "AntiAliasedLines", "Anti-aliased lines", true, "When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
-        Bool AntiAliasedLinesUseTex{Path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture", true,
-                                    "Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering)."};
+        Bool AntiAliasedLines{Path, "AntiAliasedLines", "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true};
+        Bool AntiAliasedLinesUseTex{Path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).",
+                                    true};
         Bool AntiAliasedFill{Path, "AntiAliasedFill", "Anti-aliased fill", true};
-        Float CurveTessellationTol{Path, "CurveTessellationTol", "Curve tesselation tolerance", 1.25, 0.1, 10};
+        Float CurveTessellationTol{Path, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
         Float CircleTessellationMaxError{Path, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
     };

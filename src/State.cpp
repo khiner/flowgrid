@@ -105,16 +105,15 @@ bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
 bool Field::Vec2::Draw() const { return Draw("%.3f"); }
 
 bool Field::Enum::Draw() const {
-    return Draw(views::ints(0, int(options.size())) | to<std::vector<int>>); // todo if I stick with this pattern, cache.
+    return Draw(views::ints(0, int(names.size())) | to<std::vector<int>>); // todo if I stick with this pattern, cache.
 }
-
 bool Field::Enum::Draw(const std::vector<int> &choices) const {
     bool edited = false;
-    if (BeginCombo(Name.c_str(), options[value].c_str())) {
+    if (BeginCombo(Name.c_str(), names[value].c_str())) {
         for (int choice: choices) {
             const bool is_selected = choice == value;
-            const auto &option = options[choice];
-            if (Selectable(option.c_str(), is_selected)) {
+            const auto &name = names[choice];
+            if (Selectable(name.c_str(), is_selected)) {
                 q(set_value{Path, choice});
                 edited = true;
             }
@@ -130,10 +129,54 @@ bool Field::Enum::DrawMenu() const {
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
-        for (int i = 0; i < int(options.size()); i++) {
+        for (int i = 0; i < int(names.size()); i++) {
             const bool is_selected = value == i;
-            if (MenuItem(options[i].c_str(), nullptr, is_selected)) {
+            if (MenuItem(names[i].c_str(), nullptr, is_selected)) {
                 q(set_value{Path, i});
+                edited = true;
+            }
+            if (is_selected) SetItemDefaultFocus();
+        }
+        EndMenu();
+    }
+    return edited;
+}
+
+bool Field::Flags::Draw() const {
+    bool edited = false;
+    if (TreeNodeEx(Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        for (int i = 0; i < int(names_and_help.size()); i++) {
+            const auto &[name, help] = names_and_help[i];
+            const int option_mask = 1 << i;
+            bool is_selected = option_mask & value;
+            if (Checkbox(name.c_str(), &is_selected)) {
+                q(set_value{Path, value ^ option_mask}); // toggle bit
+                edited = true;
+            }
+            if (!help.empty()) {
+                SameLine();
+                HelpMarker(help.c_str());
+            }
+        }
+        TreePop();
+    }
+    HelpMarker();
+    return edited;
+}
+bool Field::Flags::DrawMenu() const {
+    HelpMarker(false);
+    bool edited = false;
+    if (BeginMenu(Name.c_str())) {
+        for (int i = 0; i < int(names_and_help.size()); i++) {
+            const auto &[name, help] = names_and_help[i];
+            const int option_mask = 1 << i;
+            const bool is_selected = option_mask & value;
+            if (!help.empty()) {
+                HelpMarker(help.c_str());
+                SameLine();
+            }
+            if (MenuItem(name.c_str(), nullptr, is_selected)) {
+                q(set_value{Path, value ^ option_mask}); // toggle bit
                 edited = true;
             }
             if (is_selected) SetItemDefaultFocus();
@@ -147,7 +190,6 @@ bool Field::String::Draw() const {
     Text("%s", value.c_str());
     return false;
 }
-
 bool Field::String::Draw(const std::vector<string> &options) const {
     bool edited = false;
     if (BeginCombo(Name.c_str(), value.c_str())) {

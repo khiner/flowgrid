@@ -1,6 +1,7 @@
 #pragma once
 
 #include <set>
+#include <range/v3/view/drop.hpp>
 
 #include "ImGuiFileDialog.h"
 #include "UI/UIContext.h"
@@ -62,7 +63,8 @@ struct Base : StateMember {
     string help;
 
 protected:
-    // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
+    // Helper to display a (?) mark which shows a tooltip when hovered.
+    // Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 };
 
@@ -85,6 +87,7 @@ struct Bool : Base {
 
     bool value;
 };
+
 struct Int : Base {
     Int(const JsonPath &parent_path, const string &id, const string &name = "", int value = 0, int min = 0, int max = 100, const string &help = "")
         : Base(parent_path, id, name), value(value), min(min), max(max) {
@@ -125,6 +128,7 @@ struct Float : Base {
 
     float value, min, max;
 };
+
 struct Vec2 : Base {
     Vec2(const JsonPath &parent_path, const string &id, const string &name = "", ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &help = "")
         : Base(parent_path, id, name), value(value), min(min), max(max) {
@@ -145,6 +149,7 @@ struct Vec2 : Base {
     ImVec2 value;
     float min, max;
 };
+
 struct String : Base {
     String(const JsonPath &parent_path, const string &id, const string &name = "", string value = "")
         : Base(parent_path, id, name), value(std::move(value)) {}
@@ -163,13 +168,14 @@ struct String : Base {
 
     string value;
 };
+
 struct Enum : Base {
-    Enum(const JsonPath &parent_path, const string &id, std::vector<string> options, int value = 0, const string &name = "", const string &help = "")
-        : Base(parent_path, id, name), value(value), options(std::move(options)) {
+    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names, int value = 0, const string &name = "", const string &help = "")
+        : Base(parent_path, id, name), value(value), names(std::move(names)) {
         this->help = help;
     }
-    Enum(const JsonPath &parent_path, const string &id, std::vector<string> options, const string &help = "")
-        : Enum(parent_path, id, std::move(options), 0, "", help) {}
+    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names, const string &help = "")
+        : Enum(parent_path, id, std::move(names), 0, "", help) {}
 
     operator int() const { return value; }
 
@@ -178,9 +184,37 @@ struct Enum : Base {
     bool DrawMenu() const;
 
     int value;
-    std::vector<string> options;
+    std::vector<string> names;
 };
-}
+
+// todo support mixed types - see `ImGui::CheckboxFlagsT`
+// todo support nested categories
+// todo make a `FlowGridParamsTableFlags` field.
+// todo combine current `Bool` fields into flags.
+// todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
+struct Flags : Base {
+    // All text after an optional '?' character for each name will be interpreted as an item help string.
+    // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
+    // todo support escaped '/?'
+    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, int value = 0, const string &name = "", const string &help = "")
+        : Base(parent_path, id, name), value(value), names_and_help(names | transform([](const string &name) {
+        const auto &name_and_help = name | views::split('?') | to<std::vector<string>>;
+        return std::pair(name_and_help[0], name_and_help | views::drop(1) | views::join("") | to<string>);
+    }) | to<std::vector<std::pair<string, string>>>) {
+        this->help = help;
+    }
+    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, const string &help = "")
+        : Flags(parent_path, id, names, 0, "", help) {}
+
+    operator int() const { return value; }
+
+    bool Draw() const override;
+    bool DrawMenu() const;
+
+    int value;
+    std::vector<std::pair<string, string>> names_and_help;
+};
+} // End `Field` namespace
 
 using namespace Field;
 
@@ -202,6 +236,9 @@ inline void from_json(const json &j, String &field) { field.value = j; }
 
 inline void to_json(json &j, const Enum &field) { j = field.value; }
 inline void from_json(const json &j, Enum &field) { field.value = j; }
+
+inline void to_json(json &j, const Flags &field) { j = field.value; }
+inline void from_json(const json &j, Flags &field) { field.value = j; }
 }
 
 struct Window : StateMember, Drawable {

@@ -205,7 +205,6 @@ struct Flags : Base {
     }
     Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, const string &help = "")
         : Flags(parent_path, id, names, 0, "", help) {}
-
     operator int() const { return value; }
 
     bool Draw() const override;
@@ -371,6 +370,15 @@ inline static std::ostream &operator<<(std::ostream &os, const IO &io) {
     return os;
 }
 
+enum FaustDiagramHoverFlags_ {
+    FaustDiagramHoverFlags_None = 0,
+    FaustDiagramHoverFlags_ShowRect = 1 << 0,
+    FaustDiagramHoverFlags_ShowType = 1 << 1,
+    FaustDiagramHoverFlags_ShowChannels = 1 << 2,
+    FaustDiagramHoverFlags_ShowChildChannels = 1 << 3,
+};
+using FaustDiagramHoverFlags = int;
+
 struct Audio : Process {
     using Process::Process;
 
@@ -404,12 +412,12 @@ struct Audio : Process {
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
-
-                Bool ScaleFill{Path, "ScaleFill", "Scale to window", false}; // This and `style.FlowGrid.DiagramScale` below are mutually exclusive (Setting this to `true` makes `DiagramScale` inactive.)
-                Bool HoverShowRect{Path, "HoverShowRect", false};
-                Bool HoverShowType{Path, "HoverShowType", false};
-                Bool HoverShowChannels{Path, "HoverShowChannels", false};
-                Bool HoverShowChildChannels{Path, "HoverShowChildChannels", false};
+                Bool ScaleFill{Path, "ScaleFill", "Scale to fill the window. This and `DiagramScale` are mutually exclusive. (Setting this to `true` makes `DiagramScale` inactive.)", false};
+                Flags HoverFlags{
+                    Path, "HoverFlags",
+                    {"ShowRect", "ShowType", "ShowChannels", "ShowChildChannels"},
+                    "Hovering over a node in the graph will display the selected information"
+                };
             };
 
             DiagramSettings Settings{Path, "Settings"};
@@ -1013,7 +1021,7 @@ JsonType(Process, Running)
 
 JsonType(ApplicationSettings, Visible, GestureDurationSec)
 JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
-JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverShowRect, HoverShowType, HoverShowChannels, HoverShowChildChannels)
+JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverFlags)
 JsonType(Audio::FaustState::FaustDiagram, Visible, Settings)
 JsonType(Audio::FaustState::FaustParams, Visible)
 JsonType(Audio::FaustState, Code, Diagram, Params, Error, Editor, Log)

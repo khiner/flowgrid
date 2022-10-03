@@ -1242,13 +1242,7 @@ void Audio::FaustState::FaustDiagram::draw() const {
         }
         if (BeginMenu("View")) {
             fg::ToggleMenuItem(Settings.ScaleFill);
-            if (BeginMenu("Hover")) {
-                fg::ToggleMenuItem(Settings.HoverShowRect);
-                fg::ToggleMenuItem(Settings.HoverShowType);
-                fg::ToggleMenuItem(Settings.HoverShowChannels);
-                fg::ToggleMenuItem(Settings.HoverShowChildChannels);
-                EndMenu();
-            }
+            Settings.HoverFlags.DrawMenu();
             EndMenu();
         }
         EndMenuBar();
@@ -1284,10 +1278,10 @@ void Audio::FaustState::FaustDiagram::draw() const {
     hovered_node = nullptr;
     focused->draw(device);
     if (hovered_node) {
-        if (Settings.HoverShowRect) hovered_node->draw_rect(device);
-        if (Settings.HoverShowType) hovered_node->draw_type(device);
-        if (Settings.HoverShowChannels) hovered_node->draw_channel_labels(device);
-        if (Settings.HoverShowChildChannels) hovered_node->draw_child_channel_labels(device);
+        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowRect) hovered_node->draw_rect(device);
+        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowType) hovered_node->draw_type(device);
+        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowChannels) hovered_node->draw_channel_labels(device);
+        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowChildChannels) hovered_node->draw_child_channel_labels(device);
     }
 
     EndChild();

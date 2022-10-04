@@ -457,16 +457,21 @@ void State::update(const Action &action) {
 ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
     SaveIniSettingsToMemory(); // Populates the `Settings` context members
     Nodes = ctx->DockContext.NodesSettings; // already an ImVector
-    // Convert `ImChunkStream`s to `ImVector`s.
+    // Convert `ImChunkStream` to `ImVector`.
     for (auto *ws = ctx->SettingsWindows.begin(); ws != nullptr; ws = ctx->SettingsWindows.next_chunk(ws)) {
         Windows.push_back(*ws);
     }
     for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
-        Tables.push_back(*ts);
+        ImGuiTableColumnSettings *column_settings = ts->GetColumnSettings();
+        const auto *table = TableFindByID(ts->ID);
+        ImGuiTableColumn *column = table->Columns.Data;
+        std::vector<TableColumnSettings> cs;
+        for (int n = 0; n < ts->ColumnsCount; n++, column++, column_settings++) cs.emplace_back(*column_settings);
+        Tables.push_back({*ts, cs});
     }
 }
 
-// Copied from `imgui.cpp`
+// Copied from `imgui.cpp::ApplyWindowSettings`
 static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settings) {
     if (!window) return; // TODO log
 
@@ -484,7 +489,47 @@ static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settin
     window->DockOrder = settings->DockOrder;
 }
 
-void Style::ImGuiStyleMember::populate_context(ImGuiContext *ctx) const {
+// Adapted from `imgui_tables.cpp::TableLoadSettings`
+static void ApplyTableSettings(ImGuiTable *table, const TableSettings &settings) {
+    if (!table) return; // todo log
+
+    ImGuiContext &g = *GImGui;
+    table->IsSettingsRequestLoad = false; // todo remove this var/behavior?
+    table->SettingsLoadedFlags = settings.Table.SaveFlags; // todo remove this var/behavior?
+    table->RefScale = settings.Table.RefScale;
+
+    // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
+    ImU64 display_order_mask = 0;
+    for (const auto &column_settings: settings.Columns) {
+        int column_n = column_settings.Index;
+        if (column_n < 0 || column_n >= table->ColumnsCount)
+            continue;
+
+        ImGuiTableColumn *column = &table->Columns[column_n];
+        if (settings.Table.SaveFlags & ImGuiTableFlags_Resizable) {
+            if (column_settings.IsStretch) column->StretchWeight = column_settings.WidthOrWeight;
+            else column->WidthRequest = column_settings.WidthOrWeight;
+            column->AutoFitQueue = 0x00;
+        }
+        column->DisplayOrder = settings.Table.SaveFlags & ImGuiTableFlags_Reorderable ? column_settings.DisplayOrder : (ImGuiTableColumnIdx) column_n;
+        display_order_mask |= (ImU64) 1 << column->DisplayOrder;
+        column->IsUserEnabled = column->IsUserEnabledNextFrame = column_settings.IsEnabled;
+        column->SortOrder = column_settings.SortOrder;
+        column->SortDirection = column_settings.SortDirection;
+    }
+
+    // Validate and fix invalid display order data
+    const ImU64 expected_display_order_mask = settings.Table.ColumnsCount == 64 ? ~0 : ((ImU64) 1 << settings.Table.ColumnsCount) - 1;
+    if (display_order_mask != expected_display_order_mask)
+        for (int column_n = 0; column_n < table->ColumnsCount; column_n++)
+            table->Columns[column_n].DisplayOrder = (ImGuiTableColumnIdx) column_n;
+
+    // Rebuild index
+    for (int column_n = 0; column_n < table->ColumnsCount; column_n++)
+        table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx) column_n;
+}
+
+void Style::ImGuiStyleMember::apply(ImGuiContext *ctx) const {
     auto &style = ctx->Style;
     style.Alpha = Alpha;
     style.DisabledAlpha = DisabledAlpha;
@@ -529,7 +574,7 @@ void Style::ImGuiStyleMember::populate_context(ImGuiContext *ctx) const {
     for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = Colors[i];
 }
 
-void Style::ImPlotStyleMember::populate_context(ImPlotContext *ctx) const {
+void Style::ImPlotStyleMember::apply(ImPlotContext *ctx) const {
     auto &style = ctx->Style;
     style.LineWeight = LineWeight;
     style.Marker = Marker;
@@ -566,17 +611,18 @@ void Style::ImPlotStyleMember::populate_context(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
-void ImGuiSettings::populate_context(ImGuiContext *ctx) const {
-    /** Clear **/
+void ImGuiSettings::apply(ImGuiContext *ctx) const {
+    // Clear
     DockSettingsHandler_ClearAll(ctx, nullptr);
 
-    /** Apply **/
+    // Apply
     for (auto ws: Windows) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
+    for (auto &ts: Tables) ApplyTableSettings(TableFindByID(ts.Table.ID), ts);
 
     ctx->DockContext.NodesSettings = Nodes; // already an ImVector
     DockSettingsHandler_ApplyAll(ctx, nullptr);
 
-    /** Other housekeeping to emulate `LoadIniSettingsFromMemory` **/
+    // Other housekeeping to emulate `LoadIniSettingsFromMemory`
     ctx->SettingsLoaded = true;
     ctx->SettingsDirty = false;
 }

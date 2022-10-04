@@ -176,7 +176,6 @@ struct Enum : Base {
 
 // todo support mixed types - see `ImGui::CheckboxFlagsT`
 // todo support nested categories
-// todo make a `FlowGridParamsTableFlags` field.
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
 struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
@@ -889,7 +888,7 @@ struct Style : Window {
             ImGui::StyleColorsDark(Colors);
         }
 
-        void populate_context(ImGuiContext *ctx) const;
+        void apply(ImGuiContext *ctx) const;
         void draw() const override;
 
         // See `ImGuiStyle` for field descriptions.
@@ -945,7 +944,7 @@ struct Style : Window {
             ImPlot::StyleColorsAuto(Colors);
         }
 
-        void populate_context(ImPlotContext *ctx) const;
+        void apply(ImPlotContext *ctx) const;
         void draw() const override;
 
         // See `ImPlotStyle` for field descriptions.
@@ -1012,13 +1011,38 @@ struct ImGuiDockNodeSettings {
     ImVec2ih SizeRef{};
 };
 
+// ImGui exposes the `ImGuiTableColumnSettings` definition in `imgui_internal.h`.
+// However, its `SortDirection`, `IsEnabled` & `IsStretch` members are defined as bitfields (e.g. `ImU8 SortDirection : 2`),
+// and I can't figure out how to JSON-encode/decode those.
+// This definition is the same, but using
+struct TableColumnSettings {
+    float WidthOrWeight;
+    ImGuiID UserID;
+    ImGuiTableColumnIdx Index;
+    ImGuiTableColumnIdx DisplayOrder;
+    ImGuiTableColumnIdx SortOrder;
+    ImU8 SortDirection;
+    bool IsEnabled; // "Visible" in ini file
+    bool IsStretch;
+
+    TableColumnSettings() = default;
+    TableColumnSettings(const ImGuiTableColumnSettings &tcs)
+        : WidthOrWeight(tcs.WidthOrWeight), UserID(tcs.UserID), Index(tcs.Index), DisplayOrder(tcs.DisplayOrder),
+          SortOrder(tcs.SortOrder), SortDirection(tcs.SortDirection), IsEnabled(tcs.IsEnabled), IsStretch(tcs.IsStretch) {}
+};
+
+struct TableSettings {
+    ImGuiTableSettings Table;
+    std::vector<TableColumnSettings> Columns;
+};
+
 struct ImGuiSettingsData {
     ImGuiSettingsData() = default;
     explicit ImGuiSettingsData(ImGuiContext *ctx);
 
     ImVector<ImGuiDockNodeSettings> Nodes;
     ImVector<ImGuiWindowSettings> Windows;
-    ImVector<ImGuiTableSettings> Tables;
+    std::vector<TableSettings> Tables;
 };
 
 struct ImGuiSettings : StateMember, ImGuiSettingsData {
@@ -1032,8 +1056,7 @@ struct ImGuiSettings : StateMember, ImGuiSettingsData {
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized .ini text format.
-    // TODO table settings
-    void populate_context(ImGuiContext *ctx) const;
+    void apply(ImGuiContext *ctx) const;
 };
 
 const JsonPath RootPath{""};
@@ -1057,8 +1080,7 @@ struct StateData {
 };
 
 // Types for [json-patch](https://jsonpatch.com)
-// For a much more well-defined schema, see https://json.schemastore.org/json-patch
-// A JSON-schema validation lib like https://github.com/tristanpenman/valijson
+// For a much more well-defined schema, see https://json.schemastore.org/json-patch.
 
 enum JsonPatchOpType {
     Add,
@@ -1132,6 +1154,8 @@ JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
 JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
 JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
+JsonType(TableColumnSettings, WidthOrWeight, UserID, Index, DisplayOrder, SortOrder, SortDirection, IsEnabled, IsStretch)
+JsonType(TableSettings, Table, Columns)
 JsonType(ImGuiSettingsData, Nodes, Windows, Tables)
 
 JsonType(Processes, UI)

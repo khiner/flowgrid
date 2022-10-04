@@ -138,7 +138,7 @@ void DrawUiItem(const FaustUI::Item &item, const float height, const ItemType pa
                     is_h ? (group_height - (fg_style.ParamsHeaderTitles ? GetFontSize() + 2 * style.CellPadding.y : 0)) : group_height / float(inner_items.size())
                 )
             };
-            if (BeginTable(label, is_h ? int(inner_items.size()) : 1, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable)) {
+            if (BeginTable(label, is_h ? int(inner_items.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags))) {
                 if (is_h) {
                     for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
                     if (fg_style.ParamsHeaderTitles) TableHeadersRow();

@@ -1043,6 +1043,8 @@ void FlowGridStyle::draw() const {
             ParamsHeaderTitles.Draw();
             ParamsAlignmentHorizontal.Draw();
             ParamsAlignmentVertical.Draw();
+            Spacing();
+            ParamsTableFlags.Draw();
             EndTabItem();
         }
 

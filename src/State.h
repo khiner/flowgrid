@@ -183,8 +183,7 @@ struct Flags : Base {
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
     Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, int value = 0, const string &name = "")
         : Base(parent_path, id, name), value(value), names_and_help(names | transform(parse_help_text) | to<std::vector<std::pair<string, string>>>) {}
-    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names)
-        : Flags(parent_path, id, names, 0, "") {}
+
     operator int() const { return value; }
 
     bool Draw() const override;
@@ -194,6 +193,94 @@ struct Flags : Base {
     std::vector<std::pair<string, string>> names_and_help;
 };
 } // End `Field` namespace
+
+// Subset of `ImGuiTableFlags`.
+enum TableFlags_ {
+    // Features
+    TableFlags_Resizable = 1 << 0,
+    TableFlags_Reorderable = 1 << 1,
+    TableFlags_Hideable = 1 << 2,
+    TableFlags_Sortable = 1 << 3,
+    TableFlags_ContextMenuInBody = 1 << 4,
+    // Decorations
+    TableFlags_BordersInnerH = 1 << 5,
+    TableFlags_BordersOuterH = 1 << 6,
+    TableFlags_BordersInnerV = 1 << 7,
+    TableFlags_BordersOuterV = 1 << 8,
+    // todo support combinations in `Flags::Draw`
+//    TableFlags_BordersH                   = ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuterH,
+//    TableFlags_BordersV                   = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersOuterV,
+//    TableFlags_BordersInner               = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersInnerH,
+//    TableFlags_BordersOuter               = ImGuiTableFlags_BordersOuterV | ImGuiTableFlags_BordersOuterH,
+//    TableFlags_Borders                    = ImGuiTableFlags_BordersInner | ImGuiTableFlags_BordersOuter,
+//    TableFlags_Borders                    = ImGuiTableFlags_BordersInner | ImGuiTableFlags_BordersOuter,
+    TableFlags_NoBordersInBody = 1 << 9,
+    TableFlags_NoBordersInBodyUntilResize = 1 << 10,
+    // Sizing Policy
+    TableFlags_SizingFixedFit = 1 << 11,
+    TableFlags_SizingFixedSame = 1 << 12,
+    TableFlags_SizingStretchProp = 1 << 13,
+    TableFlags_SizingStretchSame = 1 << 14,
+    // Sizing Extra Option
+    TableFlags_NoHostExtendX = 1 << 15,
+    // Padding/Sorting
+    TableFlags_PadOuterX = 1 << 16,
+    TableFlags_NoPadOuterX = 1 << 17,
+    TableFlags_NoPadInnerX = 1 << 18,
+    TableFlags_SortTristate = 1 << 19,
+    TableFlags_Borders = 1 << 20,
+};
+using TableFlags = int;
+
+static const std::vector<string> TableFlagsNames{
+    "Resizable?Enable resizing columns",
+    "Reorderable?Enable reordering columns in header row",
+    "Hideable?Enable hiding/disabling columns in context menu",
+    "Sortable?Enable sorting",
+    "ContextMenuInBody?Right-click on columns body/contents will display table context menu. By default it is available in headers row.",
+    "BordersInnerH?Draw horizontal borders between rows",
+    "BordersOuterH?Draw horizontal borders at the top and bottom",
+    "BordersInnerV?Draw vertical borders between columns",
+    "BordersOuterV?Draw vertical borders on the left and right sides",
+    "NoBordersInBody?Disable vertical borders in columns Body (borders will always appear in Headers)",
+    "NoBordersInBodyUntilResize?Disable vertical borders in columns Body until hovered for resize (borders will always appear in Headers)",
+    "SizingFixedFit?Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width",
+    "SizingFixedSame?Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching the maximum contents width of all columns. Implicitly enable ImGuiTableFlags_NoKeepColumnsVisible",
+    "SizingStretchProp?Columns default to _WidthStretch with default weights proportional to each columns contents widths",
+    "SizingStretchSame?Columns default to _WidthStretch with default weights all equal, unless overridden by TableSetupColumn()",
+    "NoHostExtendX?Make outer width auto-fit to columns, overriding outer_size.x value. Only available when stretch columns are not used",
+    "PadOuterX?Default if 'BordersOuterV' is on. Enable outermost padding. Generally desirable if you have headers.",
+    "NoPadOuterX?Default if 'BordersOuterV' is off. Disable outermost padding.",
+    "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
+    "SortTristate?Allow no sorting and disable default sorting",
+    "Borders?Draw all borders",
+};
+
+static ImGuiTableFlags TableFlagsToImgui(TableFlags flags) {
+    ImGuiTableFlags imgui_flags = ImGuiTableFlags_None;
+    if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
+    if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
+    if (flags & TableFlags_Hideable) imgui_flags |= ImGuiTableFlags_Hideable;
+    if (flags & TableFlags_Sortable) imgui_flags |= ImGuiTableFlags_Sortable;
+    if (flags & TableFlags_ContextMenuInBody) imgui_flags |= ImGuiTableFlags_ContextMenuInBody;
+    if (flags & TableFlags_BordersInnerH) imgui_flags |= ImGuiTableFlags_BordersInnerH;
+    if (flags & TableFlags_BordersOuterH) imgui_flags |= ImGuiTableFlags_BordersOuterH;
+    if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
+    if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
+    if (flags & TableFlags_Borders) imgui_flags |= ImGuiTableFlags_Borders;
+    if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
+    if (flags & TableFlags_NoBordersInBodyUntilResize) imgui_flags |= ImGuiTableFlags_NoBordersInBodyUntilResize;
+    if (flags & TableFlags_SizingFixedFit) imgui_flags |= ImGuiTableFlags_SizingFixedFit;
+    if (flags & TableFlags_SizingFixedSame) imgui_flags |= ImGuiTableFlags_SizingFixedSame;
+    if (flags & TableFlags_SizingStretchProp) imgui_flags |= ImGuiTableFlags_SizingStretchProp;
+    if (flags & TableFlags_SizingStretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
+    if (flags & TableFlags_NoHostExtendX) imgui_flags |= ImGuiTableFlags_NoHostExtendX;
+    if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
+    if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
+    if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
+    if (flags & TableFlags_SortTristate) imgui_flags |= ImGuiTableFlags_SortTristate;
+    return imgui_flags;
+}
 
 using namespace Field;
 
@@ -663,6 +750,7 @@ struct FlowGridStyle : StateMember, Drawable {
     Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
     Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
     Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
+    Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagsNames, TableFlags_Borders | TableFlags_Resizable | TableFlags_Reorderable | TableFlags_Hideable};
 
     void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
@@ -1037,7 +1125,7 @@ JsonType(FlowGridStyle, Colors, FlashDurationSec,
     DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
     DiagramScaleFill, DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap,
     DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
-    ParamsHeaderTitles, ParamsAlignmentHorizontal, ParamsAlignmentVertical)
+    ParamsHeaderTitles, ParamsAlignmentHorizontal, ParamsAlignmentVertical, ParamsTableFlags)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

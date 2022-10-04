@@ -58,7 +58,9 @@ void ValueBar(const char *id, const char *label, float *value, const float heigh
     }
 
     const string value_text = format("{:.2f}", *value);
-    draw_list->AddText(pos + (size - CalcTextSize(value_text.c_str())) / 2, GetColorU32(ImGuiCol_Text), value_text.c_str());
+    const float value_text_w = CalcTextSize(value_text.c_str()).x;
+    const float value_text_x = align.x == HAlign_Left ? 0 : align.x == HAlign_Center ? (size.x - value_text_w) / 2 : -value_text_w + size.x;
+    draw_list->AddText(pos + ImVec2{value_text_x, (size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());
     if (label) {
         const float label_w = strlen(label) > 0 ? CalcTextSize(label).x : 0;
         const float label_x = is_h ? size.x + style.ItemInnerSpacing.x : align.x == HAlign_Left ? 0 : align.x == HAlign_Center ? (size.x - label_w) / 2 : -label_w + size.x;

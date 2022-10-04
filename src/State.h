@@ -392,7 +392,6 @@ struct Audio : Process {
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
-                Bool ScaleFill{Path, "ScaleFill", "?Scale to fill the window. This and `DiagramScale` are mutually exclusive. (Setting this to `true` makes `DiagramScale` inactive.)", false};
                 Flags HoverFlags{
                     Path, "HoverFlags",
                     {"ShowRect?Display the hovered node's bounding rectangle",
@@ -639,6 +638,10 @@ struct FlowGridStyle : StateMember, Drawable {
         "?Number of boxes within a diagram before folding into a sub-diagram.\n"
         "Setting to zero disables folding altogether, for a fully-expanded diagram."};
     Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "?Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
+    Bool DiagramScaleFill{
+        Path, "DiagramScaleFill",
+        "?Scale to fill the window.\n"
+        "Enabling this setting deactivates other diagram scale settings.", false};
     Vec2 DiagramScale{Path, "DiagramScale", {1, 1}, 0.1, 10};
     Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
     Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
@@ -1010,7 +1013,7 @@ JsonType(Process, Running)
 
 JsonType(ApplicationSettings, Visible, GestureDurationSec)
 JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
-JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, ScaleFill, HoverFlags)
+JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, HoverFlags)
 JsonType(Audio::FaustState::FaustDiagram, Visible, Settings)
 JsonType(Audio::FaustState::FaustParams, Visible)
 JsonType(Audio::FaustState, Code, Diagram, Params, Error, Editor, Log)
@@ -1032,8 +1035,8 @@ JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight,
     Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
 JsonType(FlowGridStyle, Colors, FlashDurationSec,
     DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
-    DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap, DiagramGap,
-    DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
+    DiagramScaleFill, DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap,
+    DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
     ParamsHeaderTitles, ParamsAlignmentHorizontal, ParamsAlignmentVertical)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 

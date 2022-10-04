@@ -995,7 +995,7 @@ void FlowGridStyle::draw() const {
     if (BeginTabBar("##FlowGridStyleEditor")) {
         if (BeginTabItem("Faust diagram")) {
             DiagramFoldComplexity.Draw();
-            const bool ScaleFill = s.Audio.Faust.Diagram.Settings.ScaleFill;
+            const bool ScaleFill = DiagramScaleFill;
             if (ScaleFill) ImGui::BeginDisabled();
             const auto scale_before = DiagramScale.value;
             if (DiagramScale.Draw() && DiagramScaleLinked) {
@@ -1006,13 +1006,15 @@ void FlowGridStyle::draw() const {
                                                ImVec2{scale_after.y, scale_after.y}});
                 c.run_queued_actions();
             }
+            DiagramScaleFill.Draw();
+            SameLine();
             if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
                 const float min_scale = min(DiagramScale.value.x, DiagramScale.value.y);
                 q(set_value{DiagramScale.Path, ImVec2{min_scale, min_scale}});
             }
             if (ScaleFill) {
                 SameLine();
-                Text("Uncheck Style->ScaleFill in the 'Faust diagram' window to edit scale settings.");
+                Text("Uncheck 'ScaleFill' to edit scale settings.");
                 ImGui::EndDisabled();
             }
             DiagramDirection.Draw();

@@ -116,7 +116,7 @@ struct SVGDevice : Device {
     SVGDevice(fs::path directory, string file_name, ImVec2 size) : directory(std::move(directory)), file_name(std::move(file_name)) {
         const auto &[w, h] = scale(size);
         stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        stream << (s.Audio.Faust.Diagram.Settings.ScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        stream << (s.Style.FlowGrid.DiagramScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         stream << format(R"(
@@ -463,7 +463,7 @@ static inline ImVec2 scale(const ImVec2 &p) { return p * get_scale(); }
 static inline ImRect scale(const ImRect &r) { return {scale(r.Min), scale(r.Max)}; }
 static inline float scale(const float f) { return f * get_scale().y; }
 static inline ImVec2 get_scale() {
-    if (s.Audio.Faust.Diagram.Settings.ScaleFill && !focused_node_stack.empty() && GetCurrentWindowRead()) {
+    if (s.Style.FlowGrid.DiagramScaleFill && !focused_node_stack.empty() && GetCurrentWindowRead()) {
         const auto *focused_node = focused_node_stack.top();
         return GetWindowSize() / focused_node->size;
     }
@@ -1241,7 +1241,6 @@ void Audio::FaustState::FaustDiagram::draw() const {
             EndMenu();
         }
         if (BeginMenu("View")) {
-            fg::ToggleMenuItem(Settings.ScaleFill);
             Settings.HoverFlags.DrawMenu();
             EndMenu();
         }
@@ -1268,7 +1267,7 @@ void Audio::FaustState::FaustDiagram::draw() const {
     auto *focused = focused_node_stack.top();
     focused->place_size(ImGuiDeviceType);
     focused->place(ImGuiDeviceType);
-    if (!Settings.ScaleFill) SetNextWindowContentSize(scale(focused->size));
+    if (!s.Style.FlowGrid.DiagramScaleFill) SetNextWindowContentSize(scale(focused->size));
     BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(),

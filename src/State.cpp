@@ -143,20 +143,40 @@ bool Field::Enum::DrawMenu() const {
     return edited;
 }
 
+bool DrawFlagItem(const Flags &flags, const FlagItem &item, int *index) {
+    bool edited = false;
+    if (!item.Items.empty()) {
+        if (TreeNodeEx(flags.Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            for (const auto &inner_item: item.Items) {
+                if (DrawFlagItem(flags, inner_item, index)) {
+                    edited = true;
+                }
+            }
+            TreePop();
+        }
+    } else {
+        const int option_mask = 1 << *index;
+        bool is_selected = option_mask & flags.value;
+        if (Checkbox(item.Name.c_str(), &is_selected)) {
+            q(set_value{flags.Path, flags.value ^ option_mask}); // toggle bit
+            edited = true;
+        }
+        if (!item.Help.empty()) {
+            SameLine();
+            ::HelpMarker(item.Help.c_str());
+        }
+        *index += 1;
+    }
+    return edited;
+}
+
 bool Field::Flags::Draw() const {
     bool edited = false;
     if (TreeNodeEx(Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        for (int i = 0; i < int(names_and_help.size()); i++) {
-            const auto &[flag_name, flag_help] = names_and_help[i];
-            const int option_mask = 1 << i;
-            bool is_selected = option_mask & value;
-            if (Checkbox(flag_name.c_str(), &is_selected)) {
-                q(set_value{Path, value ^ option_mask}); // toggle bit
+        int index = 0;
+        for (const auto &item: items) {
+            if (DrawFlagItem(*this, item, &index)) {
                 edited = true;
-            }
-            if (!flag_help.empty()) {
-                SameLine();
-                ::HelpMarker(flag_help.c_str());
             }
         }
         TreePop();
@@ -168,15 +188,15 @@ bool Field::Flags::DrawMenu() const {
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
-        for (int i = 0; i < int(names_and_help.size()); i++) {
-            const auto &[flag_name, flag_help] = names_and_help[i];
+        for (int i = 0; i < int(items.size()); i++) {
+            const auto &item = items[i];
             const int option_mask = 1 << i;
             const bool is_selected = option_mask & value;
-            if (!flag_help.empty()) {
-                ::HelpMarker(flag_help.c_str());
+            if (!item.Help.empty()) {
+                ::HelpMarker(item.Help.c_str());
                 SameLine();
             }
-            if (MenuItem(flag_name.c_str(), nullptr, is_selected)) {
+            if (MenuItem(item.Name.c_str(), nullptr, is_selected)) {
                 q(set_value{Path, value ^ option_mask}); // toggle bit
                 edited = true;
             }
@@ -493,7 +513,6 @@ static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settin
 static void ApplyTableSettings(ImGuiTable *table, const TableSettings &settings) {
     if (!table) return; // todo log
 
-    ImGuiContext &g = *GImGui;
     table->IsSettingsRequestLoad = false; // todo remove this var/behavior?
     table->SettingsLoadedFlags = settings.Table.SaveFlags; // todo remove this var/behavior?
     table->RefScale = settings.Table.RefScale;

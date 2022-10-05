@@ -174,14 +174,24 @@ struct Enum : Base {
     std::vector<string> names;
 };
 
-// todo support mixed types - see `ImGui::CheckboxFlagsT`
-// todo support nested categories
+struct FlagItem {
+    FlagItem(const char *name_and_help, std::vector<FlagItem> items = {}) : Items(std::move(items)) {
+        const auto &[name, help] = parse_help_text(name_and_help);
+        Name = name;
+        Help = help;
+    }
+
+    string Name;
+    string Help;
+    std::vector<FlagItem> Items;
+};
+
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
 struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(const JsonPath &parent_path, const string &id, const std::vector<string> &names, int value = 0, const string &name = "")
-        : Base(parent_path, id, name), value(value), names_and_help(names | transform(parse_help_text) | to<std::vector<std::pair<string, string>>>) {}
+    Flags(const JsonPath &parent_path, const string &id, const std::vector<FlagItem> &items, int value = 0, const string &name = "")
+        : Base(parent_path, id, name), value(value), items(items | transform([](auto &child_shorthand) { return FlagItem(child_shorthand); }) | to<std::vector<FlagItem>>) {}
 
     operator int() const { return value; }
 
@@ -189,9 +199,11 @@ struct Flags : Base {
     bool DrawMenu() const;
 
     int value;
-    std::vector<std::pair<string, string>> names_and_help;
+    std::vector<FlagItem> items;
 };
 } // End `Field` namespace
+
+using namespace Field;
 
 // Subset of `ImGuiTableFlags`.
 enum TableFlags_ {
@@ -206,13 +218,12 @@ enum TableFlags_ {
     TableFlags_BordersOuterH = 1 << 6,
     TableFlags_BordersInnerV = 1 << 7,
     TableFlags_BordersOuterV = 1 << 8,
-    // todo support combinations in `Flags::Draw`
-//    TableFlags_BordersH                   = ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuterH,
-//    TableFlags_BordersV                   = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersOuterV,
-//    TableFlags_BordersInner               = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersInnerH,
-//    TableFlags_BordersOuter               = ImGuiTableFlags_BordersOuterV | ImGuiTableFlags_BordersOuterH,
-//    TableFlags_Borders                    = ImGuiTableFlags_BordersInner | ImGuiTableFlags_BordersOuter,
-//    TableFlags_Borders                    = ImGuiTableFlags_BordersInner | ImGuiTableFlags_BordersOuter,
+    TableFlags_BordersH = TableFlags_BordersInnerH | TableFlags_BordersOuterH,
+    TableFlags_BordersV = TableFlags_BordersInnerV | TableFlags_BordersOuterV,
+    // todo support flags belonging to more than one combination
+//    TableFlags_BordersInner = TableFlags_BordersInnerV | TableFlags_BordersInnerH,
+//    TableFlags_BordersOuter = TableFlags_BordersOuterV | TableFlags_BordersOuterH,
+    TableFlags_Borders = TableFlags_BordersH | TableFlags_BordersV,
     TableFlags_NoBordersInBody = 1 << 9,
     TableFlags_NoBordersInBodyUntilResize = 1 << 10,
     // Sizing Policy
@@ -227,20 +238,31 @@ enum TableFlags_ {
     TableFlags_NoPadOuterX = 1 << 17,
     TableFlags_NoPadInnerX = 1 << 18,
     TableFlags_SortTristate = 1 << 19,
-    TableFlags_Borders = 1 << 20,
 };
 using TableFlags = int;
 
-static const std::vector<string> TableFlagsNames{
+static const std::vector<FlagItem> TableFlagItems{
     "Resizable?Enable resizing columns",
     "Reorderable?Enable reordering columns in header row",
     "Hideable?Enable hiding/disabling columns in context menu",
     "Sortable?Enable sorting",
     "ContextMenuInBody?Right-click on columns body/contents will display table context menu. By default it is available in headers row.",
-    "BordersInnerH?Draw horizontal borders between rows",
-    "BordersOuterH?Draw horizontal borders at the top and bottom",
-    "BordersInnerV?Draw vertical borders between columns",
-    "BordersOuterV?Draw vertical borders on the left and right sides",
+    {"Borders?Draw all borders",
+     {
+         {"BordersH?Draw horizontal borders",
+          {
+              "BordersInnerH?Draw horizontal borders between rows",
+              "BordersOuterH?Draw horizontal borders at the top and bottom",
+          }
+         },
+         {"BordersV?Draw vertical borders",
+          {
+              "BordersInnerV?Draw vertical borders between columns",
+              "BordersOuterV?Draw vertical borders on the left and right sides",
+          }
+         }
+     }
+    },
     "NoBordersInBody?Disable vertical borders in columns Body (borders will always appear in Headers)",
     "NoBordersInBodyUntilResize?Disable vertical borders in columns Body until hovered for resize (borders will always appear in Headers)",
     "SizingFixedFit?Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width",
@@ -252,7 +274,6 @@ static const std::vector<string> TableFlagsNames{
     "NoPadOuterX?Default if 'BordersOuterV' is off. Disable outermost padding.",
     "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
     "SortTristate?Allow no sorting and disable default sorting",
-    "Borders?Draw all borders",
 };
 
 static ImGuiTableFlags TableFlagsToImgui(TableFlags flags) {
@@ -266,6 +287,10 @@ static ImGuiTableFlags TableFlagsToImgui(TableFlags flags) {
     if (flags & TableFlags_BordersOuterH) imgui_flags |= ImGuiTableFlags_BordersOuterH;
     if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
     if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
+    if (flags & TableFlags_BordersH) imgui_flags |= ImGuiTableFlags_BordersH;
+    if (flags & TableFlags_BordersV) imgui_flags |= ImGuiTableFlags_BordersV;
+//    if (flags & TableFlags_BordersInner) imgui_flags |= ImGuiTableFlags_BordersInner;
+//    if (flags & TableFlags_BordersOuter) imgui_flags |= ImGuiTableFlags_BordersOuter;
     if (flags & TableFlags_Borders) imgui_flags |= ImGuiTableFlags_Borders;
     if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
     if (flags & TableFlags_NoBordersInBodyUntilResize) imgui_flags |= ImGuiTableFlags_NoBordersInBodyUntilResize;
@@ -280,8 +305,6 @@ static ImGuiTableFlags TableFlagsToImgui(TableFlags flags) {
     if (flags & TableFlags_SortTristate) imgui_flags |= ImGuiTableFlags_SortTristate;
     return imgui_flags;
 }
-
-using namespace Field;
 
 namespace nlohmann {
 inline void to_json(json &j, const Bool &field) { j = field.value; }
@@ -749,7 +772,7 @@ struct FlowGridStyle : StateMember, Drawable {
     Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
     Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
     Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
-    Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagsNames, TableFlags_Borders | TableFlags_Resizable | TableFlags_Reorderable | TableFlags_Hideable};
+    Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Resizable | TableFlags_Reorderable | TableFlags_Hideable};
 
     void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};

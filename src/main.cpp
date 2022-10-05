@@ -7,6 +7,16 @@ Context &c = context;
 const State &s = c.s;
 const json &sj = c.sj;
 
+bool q(Action &&a, bool flush) {
+    // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
+    // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
+    // return queue.enqueue(a);
+
+    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame (see `main.cpp`).
+    if (flush) c.run_queued_actions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
+    return true;
+}
+
 /**md
  # Notes
 

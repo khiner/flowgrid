@@ -8,10 +8,13 @@
 #include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
-#include "Context.h"
 #include "CDSPResampler.h"
+#include "UI/Faust/FaustUI.h"
 #include "UI/Faust/Diagram.h"
 #include "UI/Faust/Params.h"
+
+#include "State.h"
+#include "Helper/File.h"
 
 static constexpr int SampleSize = sizeof(Sample);
 

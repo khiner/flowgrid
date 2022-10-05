@@ -1,5 +1,5 @@
 #pragma once
 
-#include "FaustUI.h"
+class FaustUI;
 
 void on_ui_change(FaustUI *);

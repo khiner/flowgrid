@@ -1,7 +1,6 @@
 #include "FaustUI.h"
 
-#include "imgui.h"
-#include "../../Context.h"
+#include "../../State.h"
 
 class FaustUI;
 

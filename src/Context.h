@@ -1,11 +1,10 @@
 #pragma once
 
-#include <iostream>
 #include <list>
 #include <queue>
 #include <set>
 
-#include "Action.h"
+#include "State.h"
 #include "Helper/File.h"
 
 struct Preferences {
@@ -13,14 +12,6 @@ struct Preferences {
 };
 
 JsonType(Preferences, recently_opened_paths)
-
-namespace FlowGrid {}
-namespace fg = FlowGrid;
-using Action = action::Action;
-
-using std::cout, std::cerr;
-using std::unique_ptr, std::make_unique;
-using std::min, std::max;
 
 const std::map<ProjectFormat, string> ExtensionForProjectFormat{
     {StateFormat, ".fls"},
@@ -47,21 +38,6 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
 
 class CTree;
 typedef CTree *Box;
-
-struct State : StateData, Drawable {
-    State() = default;
-
-    // Don't copy/assign reference members!
-    explicit State(const StateData &other) : StateData(other) {}
-
-    State &operator=(const State &other) {
-        StateData::operator=(other);
-        return *this;
-    }
-
-    void draw() const override;
-    void update(const Action &); // State is only updated via `context.on_action(action)`
-};
 
 using UIContextFlags = int;
 enum UIContextFlags_ {
@@ -165,31 +141,6 @@ private:
 };
 
 /**
- * Declare a full name & convenient shorthand for the global `Context` & `State` instances.
- * _These are instantiated in `main.cpp`._
+Declare a full name & convenient shorthand for the global `Context` instance, _instantiated in `main.cpp`_.
 */
 extern Context context, &c;
-extern const State &s;
-extern const json &sj;
-
-// This is the main action-queue method.
-// Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
-// This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
-inline bool q(Action &&a, bool flush = false) {
-    // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
-    // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
-    // return queue.enqueue(a);
-
-    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame (see `main.cpp`).
-    if (flush) c.run_queued_actions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
-    return true;
-}
-
-/**md
-# Usage
-
-```cpp
-State &state = c.s;
-Audio audio = s.Audio; // Or just access the (read-only) `state` members directly
-```
- */

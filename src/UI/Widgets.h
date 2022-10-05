@@ -1,6 +1,12 @@
 #pragma once
 
-#include "../State.h"
+#include <string>
+#include "../JsonType.h"
+
+struct StateMember;
+using ActionID = size_t;
+using ImGuiColorEditFlags = int;
+using std::string;
 
 namespace FlowGrid {
 
@@ -8,7 +14,6 @@ void gestured();
 
 bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
 
-using ActionID = size_t; // duplicate definition to avoid importing `Action.h`
 void MenuItem(ActionID); // For actions with no data members.
 void ToggleMenuItem(const StateMember &);
 

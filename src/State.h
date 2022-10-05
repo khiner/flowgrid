@@ -1,5 +1,22 @@
 #pragma once
 
+/**
+ * `StateData` is a data-only struct which fully describes the application at any point in time.
+ *
+ * The entire codebase has read-only access to the immutable, single source-of-truth application `State` instance `s`,
+ * which also provides `draw()` and `update()` methods.
+ *
+  * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
+ *   but expensive-to-compute derivations of their core (minimal but complete) data members.
+ *  Many `{Stateful}` structs also implement convenience methods for complex state updates across multiple fields,
+ *    or for generating less-frequently needed derived data.
+ *
+ * The global `const State &s` instance is declared here, instantiated in `Context.h`, and assigned in `main.cpp`.
+ * The global `Context c` instance updates `s` when it receives an `Action` instance via the global `q(Action)` action queue method.
+ */
+
+#include <iostream>
+
 #include "UI/UIContext.h"
 #include "JsonType.h"
 #include "Helper/String.h"
@@ -7,24 +24,12 @@
 
 using namespace fmt;
 
-// E.g. '/foo/bar/baz' => 'baz'
-inline string path_variable_name(const JsonPath &path) { return path.back(); }
+namespace FlowGrid {}
+namespace fg = FlowGrid;
 
-inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
-
-/**
- * `StateData` is a data-only struct which fully describes the application at any point in time.
- *
- * The entire codebase has read-only access to the immutable, single source-of-truth application `State` instance `s`.
- * The global `Context c` instance updates `s` when it receives an `Action` instance via the global `q(Action)` action queue method.
- *
-  * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
- *   but expensive-to-compute derivations of their core (minimal but complete) data members.
- *  Many `{Stateful}` structs also implement convenience methods for complex state updates across multiple fields,
- *    or for generating less-frequently needed derived data.
- *
- * **The global `const StateData &s` instance is declared in `context.h` and instantiated in `main.cpp`.**
- */
+using std::cout, std::cerr;
+using std::unique_ptr, std::make_unique;
+using std::min, std::max;
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
@@ -32,9 +37,10 @@ using Clock = std::chrono::system_clock; // Main system clock
 using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
 
-JsonType(ImVec2, x, y)
-JsonType(ImVec4, w, x, y, z)
-JsonType(ImVec2ih, x, y)
+
+// E.g. '/foo/bar/baz' => 'baz'
+inline string path_variable_name(const JsonPath &path) { return path.back(); }
+inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
 
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
@@ -44,6 +50,10 @@ static std::pair<string, string> parse_help_text(const string &str) {
     const bool found = help_split != string::npos;
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
 }
+
+JsonType(ImVec2, x, y)
+JsonType(ImVec4, w, x, y, z)
+JsonType(ImVec2ih, x, y)
 
 struct StateMember {
     StateMember(const JsonPath &parent_path, const string &id, const string &name_and_help = "")
@@ -277,29 +287,6 @@ static ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizi
     else if (sizing == TableSizingPolicy_SizingStretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
 
     return imgui_flags;
-}
-
-namespace nlohmann {
-inline void to_json(json &j, const Bool &field) { j = field.value; }
-inline void from_json(const json &j, Bool &field) { field.value = j; }
-
-inline void to_json(json &j, const Float &field) { j = field.value; }
-inline void from_json(const json &j, Float &field) { field.value = j; }
-
-inline void to_json(json &j, const Vec2 &field) { j = field.value; }
-inline void from_json(const json &j, Vec2 &field) { field.value = j; }
-
-inline void to_json(json &j, const Int &field) { j = field.value; }
-inline void from_json(const json &j, Int &field) { field.value = j; }
-
-inline void to_json(json &j, const String &field) { j = field.value; }
-inline void from_json(const json &j, String &field) { field.value = j; }
-
-inline void to_json(json &j, const Enum &field) { j = field.value; }
-inline void from_json(const json &j, Enum &field) { field.value = j; }
-
-inline void to_json(json &j, const Flags &field) { j = field.value; }
-inline void from_json(const json &j, Flags &field) { field.value = j; }
 }
 
 struct Window : StateMember, Drawable {
@@ -1109,58 +1096,226 @@ struct BidirectionalStateDiff {
 };
 using Diffs = std::vector<BidirectionalStateDiff>;
 
-NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
-    { Add, "add" },
-    { Remove, "remove" },
-    { Replace, "replace" },
-    { Copy, "copy" },
-    { Move, "move" },
-    { Test, "test" },
-})
+//-----------------------------------------------------------------------------
+// [SECTION] Actions
+//-----------------------------------------------------------------------------
 
-JsonType(JsonPatchOp, path, op, value, from) // lower-case since these are deserialized and passed directly to json-lib.
-JsonType(BidirectionalStateDiff, Forward, Reverse, Time)
+/**
+ An `Action` is an immutable representation of a user interaction event.
+ Each action stores all information needed to apply the action to the global `State` instance.
 
-JsonType(Window, Visible)
-JsonType(Process, Running)
+ Conventions:
+ * Static members
+   - _Not relevant as there aren't any static members atm, but note to future-self._
+   - Any static members should be prefixed with an underscore to avoid name collisions with data members.
+   - All such static members are declared _after_ data members, to allow for default construction using only non-static members.
+   - Note that adding static members does not increase the size of the parent `Action` variant.
+     (You can verify this by looking at the 'Action variant size' in the FlowGrid metrics window.)
+ * Large action structs
+   - Use JSON types for actions that hold very large structured data.
+     An `Action` is a `std::variant`, which can hold any type, and thus must be large enough to hold its largest type.
+*/
 
-JsonType(ApplicationSettings, Visible, GestureDurationSec)
-JsonType(Audio::FaustState::FaustEditor, Visible, FileName)
-JsonType(Audio::FaustState::FaustDiagram::DiagramSettings, HoverFlags)
-JsonType(Audio::FaustState::FaustDiagram, Visible, Settings)
-JsonType(Audio::FaustState::FaustParams, Visible)
-JsonType(Audio::FaustState, Code, Diagram, Params, Error, Editor, Log)
-JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, InFormat, OutFormat, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)
-JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
-JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
-JsonType(File, Dialog)
-JsonType(StateViewer, Visible, LabelMode, AutoSelect)
-JsonType(ProjectPreview, Visible, Format, Raw)
-JsonType(Metrics::FlowGridMetrics, ShowRelativePaths)
-JsonType(Metrics, Visible, FlowGrid)
+// Utility to make a variant visitor out of lambdas, using the "overloaded pattern" described
+// [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
+template<class... Ts>
+struct visitor : Ts ... {
+    using Ts::operator()...;
+};
 
-JsonType(Style::ImGuiStyleMember, Alpha, DisabledAlpha, WindowPadding, WindowRounding, WindowBorderSize, WindowMinSize, WindowTitleAlign, WindowMenuButtonPosition, ChildRounding, ChildBorderSize, PopupRounding,
-    PopupBorderSize, FramePadding, FrameRounding, FrameBorderSize, ItemSpacing, ItemInnerSpacing, CellPadding, TouchExtraPadding, IndentSpacing, ColumnsMinSpacing, ScrollbarSize, ScrollbarRounding, GrabMinSize,
-    GrabRounding, LogSliderDeadzone, TabRounding, TabBorderSize, TabMinWidthForCloseButton, ColorButtonPosition, ButtonTextAlign, SelectableTextAlign, DisplayWindowPadding, DisplaySafeAreaPadding, MouseCursorScale,
-    AntiAliasedLines, AntiAliasedLinesUseTex, AntiAliasedFill, CurveTessellationTol, CircleTessellationMaxError, Colors)
-JsonType(Style::ImPlotStyleMember, LineWeight, Marker, MarkerSize, MarkerWeight, FillAlpha, ErrorBarSize, ErrorBarWeight, DigitalBitHeight, DigitalBitGap, PlotBorderSize, MinorAlpha, MajorTickLen, MinorTickLen,
-    MajorTickSize, MinorTickSize, MajorGridSize, MinorGridSize, PlotPadding, LabelPadding, LegendPadding, LegendInnerPadding, LegendSpacing, MousePosPadding, AnnotationPadding, FitPadding, PlotDefaultSize, PlotMinSize,
-    Colors, Colormap, UseLocalTime, UseISO8601, Use24HourClock)
-JsonType(FlowGridStyle, Colors, FlashDurationSec,
-    DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
-    DiagramScaleFill, DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap,
-    DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
-    ParamsHeaderTitles, ParamsAlignmentHorizontal, ParamsAlignmentVertical, ParamsTableFlags, ParamsTableSizingPolicy)
-JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
+template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 
-// Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.
-JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
-JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
-JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
-JsonType(TableColumnSettings, WidthOrWeight, UserID, Index, DisplayOrder, SortOrder, SortDirection, IsEnabled, IsStretch)
-JsonType(TableSettings, Table, Columns)
-JsonType(ImGuiSettingsData, Nodes, Windows, Tables)
+namespace Actions {
+struct undo {};
+struct redo {};
+struct set_diff_index { int diff_index; };
 
-JsonType(Processes, UI)
+struct open_project { string path; };
+struct open_empty_project {};
+struct open_default_project {};
+struct show_open_project_dialog {};
 
-JsonType(StateData, ApplicationSettings, Audio, File, Style, ImGuiSettings, Processes, StateViewer, StateMemoryEditor, PathUpdateFrequency, ProjectPreview, Demo, Metrics, Tools);
+struct open_file_dialog { File::DialogData dialog; }; // todo store as json and check effect on action size
+struct close_file_dialog {};
+
+struct save_project { string path; };
+struct save_current_project {};
+struct save_default_project {};
+struct show_save_project_dialog {};
+
+struct close_application {};
+
+struct set_value { JsonPath path; json value; };
+struct set_values { std::map<JsonPath, json> values; };
+//struct patch_value { JsonPatch patch; };
+struct toggle_value { JsonPath path; };
+
+struct set_imgui_color_style { int id; };
+struct set_implot_color_style { int id; };
+struct set_flowgrid_color_style { int id; };
+struct set_flowgrid_diagram_color_style { int id; };
+struct set_flowgrid_diagram_layout_style { int id; };
+
+struct show_open_faust_file_dialog {};
+struct show_save_faust_file_dialog {};
+struct show_save_faust_svg_file_dialog {};
+struct save_faust_file { string path; };
+struct open_faust_file { string path; };
+struct save_faust_svg_file { string path; };
+} // End `Action` namespace
+
+using namespace Actions;
+
+using Action = std::variant<
+    undo, redo, set_diff_index,
+    open_project, open_empty_project, open_default_project, show_open_project_dialog,
+    save_project, save_default_project, save_current_project, show_save_project_dialog,
+    open_file_dialog, close_file_dialog,
+    close_application,
+
+    set_value, set_values, toggle_value,
+
+    set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
+    set_flowgrid_diagram_layout_style,
+
+    show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
+    open_faust_file, save_faust_file, save_faust_svg_file
+>;
+
+namespace action {
+using ID = size_t;
+
+using Gesture = std::vector<Action>;
+using Gestures = std::vector<Gesture>;
+
+// Default-construct an action by its variant index (which is also its `ID`).
+// From https://stackoverflow.com/a/60567091/780425
+template<ID I = 0>
+Action create(ID index) {
+    if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + std::to_string(I + index) + " out of bounds"};
+    else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
+}
+
+// Get the index for action variant type.
+// From https://stackoverflow.com/a/66386518/780425
+
+#include "Boost/mp11/mp_find.h"
+
+// E.g. `const ActionId action_id = id<action>`
+// An action's ID is its index in the `Action` variant.
+// Down the road, this means `Action` would need to be append-only (no order changes) for backwards compatibility.
+// Not worried about that right now, since that should be an easy piece to replace with some uuid system later.
+// Index is simplest.
+template<typename T>
+constexpr size_t id = mp_find<Action, T>::value;
+
+#define ActionName(action_var_name) snake_case_to_sentence_case(#action_var_name)
+
+// todo find a performant way to not compile if not exhaustive.
+//  Could use a visitor on the action...
+static const std::map<ID, string> name_for_id{
+    {id<undo>, ActionName(undo)},
+    {id<redo>, ActionName(redo)},
+    {id<set_diff_index>, ActionName(set_diff_index)},
+
+    {id<open_project>, ActionName(open_project)},
+    {id<open_empty_project>, ActionName(open_empty_project)},
+    {id<open_default_project>, ActionName(open_default_project)},
+    {id<show_open_project_dialog>, ActionName(show_open_project_dialog)},
+
+    {id<open_file_dialog>, ActionName(open_file_dialog)},
+    {id<close_file_dialog>, ActionName(close_file_dialog)},
+
+    {id<save_project>, ActionName(save_project)},
+    {id<save_default_project>, ActionName(save_default_project)},
+    {id<save_current_project>, ActionName(save_current_project)},
+    {id<show_save_project_dialog>, ActionName(show_save_project_dialog)},
+
+    {id<close_application>, ActionName(close_application)},
+
+    {id<set_value>, ActionName(set_value)},
+    {id<set_values>, ActionName(set_values)},
+    {id<toggle_value>, ActionName(toggle_value)},
+//    {id<patch_value>,              ActionName(patch_value)},
+
+    {id<set_imgui_color_style>, "Set ImGui color style"},
+    {id<set_implot_color_style>, "Set ImPlot color style"},
+    {id<set_flowgrid_color_style>, "Set FlowGrid color style"},
+    {id<set_flowgrid_diagram_color_style>, "Set FlowGrid diagram color style"},
+    {id<set_flowgrid_diagram_color_style>, "Set FlowGrid diagram layout style"},
+
+    {id<show_open_faust_file_dialog>, "Show open Faust file dialog"},
+    {id<show_save_faust_file_dialog>, "Show save Faust file dialog"},
+    {id<show_save_faust_svg_file_dialog>, "Show save Faust SVG file dialog"},
+    {id<open_faust_file>, "Open Faust file"},
+    {id<save_faust_file>, "Save Faust file"},
+    {id<save_faust_svg_file>, "Save Faust SVG file"},
+};
+
+// An action's menu label is its name, except for a few exceptions.
+static const std::map<ID, string> menu_label_for_id{
+    {id<show_open_project_dialog>, "Open project"},
+    {id<open_empty_project>, "New project"},
+    {id<save_current_project>, "Save project"},
+    {id<show_save_project_dialog>, "Save project as..."},
+    {id<show_open_faust_file_dialog>, "Open DSP file"},
+    {id<show_save_faust_file_dialog>, "Save DSP as..."},
+    {id<show_save_faust_svg_file_dialog>, "Export SVG"},
+};
+
+const std::map<ID, string> shortcut_for_id = {
+    {id<undo>, "cmd+z"},
+    {id<redo>, "shift+cmd+z"},
+    {id<open_empty_project>, "cmd+n"},
+    {id<show_open_project_dialog>, "cmd+o"},
+    {id<save_current_project>, "cmd+s"},
+    {id<open_default_project>, "shift+cmd+o"},
+    {id<save_default_project>, "shift+cmd+s"},
+};
+
+static constexpr ID get_id(const Action &action) { return action.index(); }
+static string get_name(const Action &action) { return name_for_id.at(get_id(action)); }
+
+static const char *get_menu_label(ID action_id) {
+    if (menu_label_for_id.contains(action_id)) return menu_label_for_id.at(action_id).c_str();
+    return name_for_id.at(action_id).c_str();
+}
+
+Gesture merge_gesture(const Gesture &);
+} // End `Action` namespace
+
+using ActionID = action::ID;
+using action::Gesture;
+using action::Gestures;
+
+struct State : StateData, Drawable {
+    State() = default;
+
+    // Don't copy/assign reference members!
+    explicit State(const StateData &other) : StateData(other) {}
+
+    State &operator=(const State &other) {
+        StateData::operator=(other);
+        return *this;
+    }
+
+    void draw() const override;
+    void update(const Action &); // State is only updated via `context.on_action(action)`
+};
+
+/**
+Declare a full name & convenient shorthand for the global `Context` & `State` instances.
+_These are instantiated in `main.cpp`._
+
+Usage:
+```cpp
+Audio audio = s.Audio; // Or just access the (read-only) `state` members directly
+```
+*/
+extern const State &s;
+extern const json &sj;
+
+// This is the main action-queue method.
+// Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
+// This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
+bool q(Action &&a, bool flush = false);

@@ -218,20 +218,24 @@ enum TableFlags_ {
     TableFlags_BordersOuterV = 1 << 8,
     TableFlags_Borders = TableFlags_BordersInnerH | TableFlags_BordersOuterH | TableFlags_BordersInnerV | TableFlags_BordersOuterV,
     TableFlags_NoBordersInBody = 1 << 9,
-    // Sizing Policy todo should be mutually exclusive (just use an Enum, don't try and make this work with Flags!)
-    TableFlags_SizingFixedFit = 1 << 10,
-    TableFlags_SizingFixedSame = 1 << 11,
-    TableFlags_SizingStretchProp = 1 << 12,
-    TableFlags_SizingStretchSame = 1 << 13,
     // Sizing Extra Option
-    TableFlags_NoHostExtendX = 1 << 14,
+    TableFlags_NoHostExtendX = 1 << 10,
     // Padding
-    TableFlags_PadOuterX = 1 << 15,
-    TableFlags_NoPadOuterX = 1 << 16,
-    TableFlags_NoPadInnerX = 1 << 17,
+    TableFlags_PadOuterX = 1 << 11,
+    TableFlags_NoPadOuterX = 1 << 12,
+    TableFlags_NoPadInnerX = 1 << 13,
 };
 // todo 'Condensed' preset, with NoHostExtendX, NoBordersInBody, NoPadOuterX
 using TableFlags = int;
+
+enum TableSizingPolicy_ {
+    TableSizingPolicy_None = 0,
+    TableSizingPolicy_SizingFixedFit,
+    TableSizingPolicy_SizingFixedSame,
+    TableSizingPolicy_SizingStretchProp,
+    TableSizingPolicy_SizingStretchSame,
+};
+using TableSizingPolicy = int;
 
 static const std::vector<Flags::Item> TableFlagItems{
     "Resizable?Enable resizing columns",
@@ -244,17 +248,13 @@ static const std::vector<Flags::Item> TableFlagItems{
     "BordersInnerV?Draw vertical borders between columns",
     "BordersOuterV?Draw vertical borders on the left and right sides",
     "NoBordersInBody?Disable vertical borders in columns Body (borders will always appear in Headers)",
-    "SizingFixedFit?Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width",
-    "SizingFixedSame?Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching the maximum contents width of all columns. Implicitly enable ImGuiTableFlags_NoKeepColumnsVisible",
-    "SizingStretchProp?Columns default to _WidthStretch with default weights proportional to each columns contents widths",
-    "SizingStretchSame?Columns default to _WidthStretch with default weights all equal, unless overridden by TableSetupColumn()",
     "NoHostExtendX?Make outer width auto-fit to columns, overriding outer_size.x value. Only available when stretch columns are not used",
     "PadOuterX?Default if 'BordersOuterV' is on. Enable outermost padding. Generally desirable if you have headers.",
     "NoPadOuterX?Default if 'BordersOuterV' is off. Disable outermost padding.",
     "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
 };
 
-static ImGuiTableFlags TableFlagsToImgui(TableFlags flags) {
+static ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizingPolicy sizing) {
     ImGuiTableFlags imgui_flags = ImGuiTableFlags_None;
     if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
     if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
@@ -266,14 +266,16 @@ static ImGuiTableFlags TableFlagsToImgui(TableFlags flags) {
     if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
     if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
     if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
-    if (flags & TableFlags_SizingFixedFit) imgui_flags |= ImGuiTableFlags_SizingFixedFit;
-    if (flags & TableFlags_SizingFixedSame) imgui_flags |= ImGuiTableFlags_SizingFixedSame;
-    if (flags & TableFlags_SizingStretchProp) imgui_flags |= ImGuiTableFlags_SizingStretchProp;
-    if (flags & TableFlags_SizingStretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
     if (flags & TableFlags_NoHostExtendX) imgui_flags |= ImGuiTableFlags_NoHostExtendX;
     if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
     if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
     if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
+
+    if (sizing == TableSizingPolicy_SizingFixedFit) imgui_flags |= ImGuiTableFlags_SizingFixedFit;
+    else if (sizing == TableSizingPolicy_SizingFixedSame) imgui_flags |= ImGuiTableFlags_SizingFixedSame;
+    else if (sizing == TableSizingPolicy_SizingStretchProp) imgui_flags |= ImGuiTableFlags_SizingStretchProp;
+    else if (sizing == TableSizingPolicy_SizingStretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
+
     return imgui_flags;
 }
 
@@ -744,6 +746,13 @@ struct FlowGridStyle : StateMember, Drawable {
     Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
     Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
     Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Resizable | TableFlags_Reorderable | TableFlags_Hideable};
+    Enum ParamsTableSizingPolicy{
+        Path, "ParamsTableSizingPolicy", {"None", "FixedFit", "FaxedSame", "StretchProp", "StretchSame"}, TableSizingPolicy_None,
+        "?None: No sizing policy.\n"
+        "FixedFit: Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width\n"
+        "FixedSame: Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching the maximum contents width of all columns. Implicitly enable ImGuiTableFlags_NoKeepColumnsVisible\n"
+        "StretchProp: Columns default to _WidthStretch with default weights proportional to each columns contents widths\n"
+        "StretchSame: Columns default to _WidthStretch with default weights all equal, unless overridden by TableSetupColumn()"};
 
     void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
@@ -1141,7 +1150,7 @@ JsonType(FlowGridStyle, Colors, FlashDurationSec,
     DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
     DiagramScaleFill, DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap,
     DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
-    ParamsHeaderTitles, ParamsAlignmentHorizontal, ParamsAlignmentVertical, ParamsTableFlags)
+    ParamsHeaderTitles, ParamsAlignmentHorizontal, ParamsAlignmentVertical, ParamsTableFlags, ParamsTableSizingPolicy)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

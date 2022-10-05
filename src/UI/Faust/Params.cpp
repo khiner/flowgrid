@@ -140,13 +140,13 @@ void DrawUiItem(const FaustUI::Item &item, const float height, const ItemType pa
                     is_h ? (group_height - (fg_style.ParamsHeaderTitles ? GetFontSize() + 2 * style.CellPadding.y : 0)) : group_height / float(inner_items.size())
                 )
             };
-            if (BeginTable(label, is_h ? int(inner_items.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags))) {
+            if (BeginTable(label, is_h ? int(inner_items.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags, fg_style.ParamsTableSizingPolicy))) {
                 if (is_h) {
                     for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
                     if (fg_style.ParamsHeaderTitles) TableHeadersRow();
                     TableNextRow(ImGuiTableRowFlags_None, row_size.y);
                 }
-                const float cell_height = row_size.y - style.CellPadding.y * 2;
+                const float cell_height = row_size.y - 2 * style.CellPadding.y;
                 for (const auto &inner_item: inner_items) {
                     if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_size.y);
                     TableNextColumn();

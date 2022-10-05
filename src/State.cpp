@@ -146,17 +146,17 @@ bool Field::Enum::DrawMenu() const {
 bool Field::Flags::Draw() const {
     bool edited = false;
     if (TreeNodeEx(Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        for (int i = 0; i < int(names_and_help.size()); i++) {
-            const auto &[flag_name, flag_help] = names_and_help[i];
+        for (int i = 0; i < int(items.size()); i++) {
+            const auto &item = items[i];
             const int option_mask = 1 << i;
             bool is_selected = option_mask & value;
-            if (Checkbox(flag_name.c_str(), &is_selected)) {
+            if (Checkbox(item.Name.c_str(), &is_selected)) {
                 q(set_value{Path, value ^ option_mask}); // toggle bit
                 edited = true;
             }
-            if (!flag_help.empty()) {
+            if (!item.Help.empty()) {
                 SameLine();
-                ::HelpMarker(flag_help.c_str());
+                ::HelpMarker(item.Help.c_str());
             }
         }
         TreePop();
@@ -168,15 +168,15 @@ bool Field::Flags::DrawMenu() const {
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
-        for (int i = 0; i < int(names_and_help.size()); i++) {
-            const auto &[flag_name, flag_help] = names_and_help[i];
+        for (int i = 0; i < int(items.size()); i++) {
+            const auto &item = items[i];
             const int option_mask = 1 << i;
             const bool is_selected = option_mask & value;
-            if (!flag_help.empty()) {
-                ::HelpMarker(flag_help.c_str());
+            if (!item.Help.empty()) {
+                ::HelpMarker(item.Help.c_str());
                 SameLine();
             }
-            if (MenuItem(flag_name.c_str(), nullptr, is_selected)) {
+            if (MenuItem(item.Name.c_str(), nullptr, is_selected)) {
                 q(set_value{Path, value ^ option_mask}); // toggle bit
                 edited = true;
             }

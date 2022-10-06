@@ -3,7 +3,7 @@
 #include "ImGuiFileDialogDemo.h"
 #include "ImGuiFileDialog.h"
 
-#include "../State.h"
+#include "../App.h"
 
 inline bool RadioButtonLabeled(const char *label, const char *help, bool active, bool disabled) {
     using namespace ImGui;

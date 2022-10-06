@@ -9,7 +9,7 @@
 #include "faust/dsp/llvm-dsp.h"
 
 #include "CDSPResampler.h"
-#include "State.h"
+#include "App.h"
 #include "Helper/File.h"
 #include "UI/Faust/FaustUI.h"
 

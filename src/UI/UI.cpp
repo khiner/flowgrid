@@ -6,7 +6,7 @@
 #include "zep/stringutils.h"
 
 #include "UI.h"
-#include "../State.h"
+#include "../App.h"
 #include "../StateJson.h"
 
 #include "Faust/FaustEditor.h"

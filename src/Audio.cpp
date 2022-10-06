@@ -9,12 +9,9 @@
 #include "faust/dsp/llvm-dsp.h"
 
 #include "CDSPResampler.h"
-#include "UI/Faust/FaustUI.h"
-#include "UI/Faust/Diagram.h"
-#include "UI/Faust/Params.h"
-
 #include "State.h"
 #include "Helper/File.h"
+#include "UI/Faust/FaustUI.h"
 
 static constexpr int SampleSize = sizeof(Sample);
 

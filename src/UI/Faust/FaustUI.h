@@ -10,6 +10,7 @@
 #include "faust/gui/UI.h"
 #include "faust/gui/PathBuilder.h"
 
+using std::string;
 using Real = Sample;
 
 // Label, shortname, or complete path (to discriminate between possibly identical labels
@@ -148,3 +149,9 @@ private:
     std::map<std::string, int> index_for_shortname{};
     std::map<std::string, int> index_for_path{};
 };
+
+class CTree;
+typedef CTree *Box;
+void on_ui_change(FaustUI *);
+void on_box_change(Box);
+void save_box_svg(const string &path);

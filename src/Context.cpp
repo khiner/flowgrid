@@ -4,7 +4,7 @@
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "UI/Faust/Diagram.h"
+void save_box_svg(const string &path); // defined in FaustUI
 
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
     if (fs::exists(PreferencesPath)) {

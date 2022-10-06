@@ -21,7 +21,7 @@
 //-----------------------------------------------------------------------------
 
 using Count = unsigned int;
-enum DeviceType { ImGuiDeviceType, SVGDeviceType };
+enum DeviceType { DeviceType_ImGui, DeviceType_SVG };
 enum Diagram { DiagramForward, DiagramReverse };
 
 struct TextStyle {
@@ -133,7 +133,7 @@ struct SVGDevice : Device {
         FileIO::write(directory / file_name, stream.str());
     }
 
-    DeviceType type() override { return SVGDeviceType; }
+    DeviceType type() override { return DeviceType_SVG; }
 
     static string xml_sanitize(const string &name) {
         static std::map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
@@ -258,7 +258,7 @@ private:
 struct ImGuiDevice : Device {
     ImGuiDevice() : Device(GetCursorScreenPos()), draw_list(GetWindowDrawList()) {}
 
-    DeviceType type() override { return ImGuiDeviceType; }
+    DeviceType type() override { return DeviceType_ImGui; }
 
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
@@ -384,7 +384,8 @@ struct Node {
     void draw(Device &device) const {
         for (const auto *child: children) child->draw(device);
         _draw(device);
-        if ((!hovered_node || is_inside(*hovered_node)) && IsMouseHoveringRect(device.at(position), device.at(position + size))) {
+        if (device.type() == DeviceType_ImGui &&
+            (!hovered_node || is_inside(*hovered_node) && IsMouseHoveringRect(device.at(position), device.at(position + size)))) {
             hovered_node = this;
         }
     };
@@ -533,19 +534,19 @@ struct BlockNode : IONode {
             max(3 * WireGap(), 2 * XGap() + text_w),
             max(3.0f, float(max(in_count, out_count))) * WireGap(),
         };
-        if (inner && type == SVGDeviceType) inner->place_size(type);
+        if (inner && type == DeviceType_SVG) inner->place_size(type);
     }
 
     void _place(const DeviceType type) override {
         IONode::_place(type);
-        if (inner && type == SVGDeviceType) inner->place(type);
+        if (inner && type == DeviceType_SVG) inner->place(type);
     }
 
     void _draw(Device &device) const override {
         const auto &fill_color = s.Style.FlowGrid.Colors[color];
         const auto &text_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramText];
         const ImRect &rect = get_frame_rect();
-        if (device.type() == SVGDeviceType) {
+        if (device.type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             // todo why is draw called twice for each block with an inner child? (or maybe even every node?)
             //  note this is likely double-writing in ImGui too
@@ -1222,8 +1223,8 @@ void save_box_svg(const string &path) {
     fs::remove_all(path);
     fs::create_directory(path);
     auto *node = Tree2Node(root_node->tree, false); // Ensure top-level is not compressed into a link.
-    node->place_size(SVGDeviceType);
-    node->place(SVGDeviceType);
+    node->place_size(DeviceType_SVG);
+    node->place(DeviceType_SVG);
     write_svg(node, path);
 }
 
@@ -1264,8 +1265,8 @@ void Audio::FaustState::FaustDiagram::draw() const {
     }
 
     auto *focused = focused_node_stack.top();
-    focused->place_size(ImGuiDeviceType);
-    focused->place(ImGuiDeviceType);
+    focused->place_size(DeviceType_ImGui);
+    focused->place(DeviceType_ImGui);
     if (!s.Style.FlowGrid.DiagramScaleFill) SetNextWindowContentSize(scale(focused->size));
     BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = scale(1);

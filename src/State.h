@@ -4,19 +4,21 @@
  * `StateData` is a data-only struct which fully describes the application at any point in time.
  *
  * The entire codebase has read-only access to the immutable, single source-of-truth application `State` instance `s`,
- * which also provides `draw()` and `update()` methods.
+ * which also provides `draw()` and `update(const Action &)` methods.
  *
   * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
  *   but expensive-to-compute derivations of their core (minimal but complete) data members.
  *  Many `{Stateful}` structs also implement convenience methods for complex state updates across multiple fields,
  *    or for generating less-frequently needed derived data.
  *
- * The global `const State &s` instance is declared here, instantiated in `Context.h`, and assigned in `main.cpp`.
- * The global `Context c` instance updates `s` when it receives an `Action` instance via the global `q(Action)` action queue method.
+ * The global `const State &s` instance is declared here, instantiated in the `Context` constructor, and assigned in `main.cpp`.
  */
 
 #include <iostream>
 #include <list>
+#include <queue>
+#include <set>
+
 #include "nlohmann/json.hpp"
 #include "fmt/chrono.h"
 
@@ -25,22 +27,23 @@
 #include "Helper/Sample.h"
 #include "Helper/File.h"
 
-using namespace fmt;
-
 namespace FlowGrid {}
 namespace fg = FlowGrid;
+
+using namespace fmt;
 using namespace nlohmann;
-using std::nullopt;
-using JsonPath = json::json_pointer;
-using std::cout, std::cerr;
-using std::unique_ptr, std::make_unique;
-using std::min, std::max;
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 using Clock = std::chrono::system_clock; // Main system clock
 using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
+
+using std::nullopt;
+using JsonPath = json::json_pointer;
+using std::cout, std::cerr;
+using std::unique_ptr, std::make_unique;
+using std::min, std::max;
 
 // E.g. '/foo/bar/baz' => 'baz'
 inline string path_variable_name(const JsonPath &path) { return path.back(); }
@@ -1292,6 +1295,10 @@ using ActionID = action::ID;
 using action::Gesture;
 using action::Gestures;
 
+//-----------------------------------------------------------------------------
+// [SECTION] Main `State` class
+//-----------------------------------------------------------------------------
+
 struct State : StateData, Drawable {
     State() = default;
 
@@ -1305,6 +1312,136 @@ struct State : StateData, Drawable {
 
     void draw() const override;
     void update(const Action &); // State is only updated via `context.on_action(action)`
+};
+
+//-----------------------------------------------------------------------------
+// [SECTION] Main `Context` class
+//-----------------------------------------------------------------------------
+
+const std::map<ProjectFormat, string> ExtensionForProjectFormat{
+    {StateFormat, ".fls"},
+    {DiffFormat, ".fld"},
+    {ActionFormat, ".fla"},
+};
+
+// todo derive from above map
+const std::map<string, ProjectFormat> ProjectFormatForExtension{
+    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
+    {ExtensionForProjectFormat.at(DiffFormat), DiffFormat},
+    {ExtensionForProjectFormat.at(ActionFormat), ActionFormat},
+};
+
+static const std::set<string> AllProjectExtensions = {".fls", ".fld", ".fla"}; // todo derive from map
+static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
+static const string PreferencesFileExtension = ".flp";
+static const string FaustDspFileExtension = ".dsp";
+
+static const fs::path InternalPath = ".flowgrid";
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
+static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
+
+class CTree;
+typedef CTree *Box;
+
+using UIContextFlags = int;
+enum UIContextFlags_ {
+    UIContextFlags_None = 0,
+    UIContextFlags_ImGuiSettings = 1 << 0,
+    UIContextFlags_ImGuiStyle = 1 << 1,
+    UIContextFlags_ImPlotStyle = 1 << 2,
+};
+
+enum Direction { Forward, Reverse };
+
+struct StateStats {
+    struct Plottable {
+        std::vector<const char *> labels;
+        std::vector<ImU64> values;
+    };
+
+    std::vector<JsonPath> latest_updated_paths{};
+    std::map<JsonPath, std::vector<TimePoint>> gesture_update_times_for_path{};
+    std::map<JsonPath, std::vector<TimePoint>> committed_update_times_for_path{};
+    std::map<JsonPath, TimePoint> latest_update_time_for_path{};
+    Plottable PathUpdateFrequency;
+
+    void apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_gesture);
+
+private:
+    Plottable create_path_update_frequency_plottable();
+};
+
+struct Context {
+    Context();
+    ~Context();
+
+    static bool is_user_project_path(const fs::path &);
+    bool project_has_changes() const;
+    void save_empty_project();
+
+    bool clear_preferences();
+
+    json get_project_json(ProjectFormat format = StateFormat);
+
+    void enqueue_action(const Action &);
+    void run_queued_actions(bool force_finalize_gesture = false);
+    bool action_allowed(ActionID) const;
+    bool action_allowed(const Action &) const;
+
+    void clear();
+
+    void update_ui_context(UIContextFlags flags);
+    void update_faust_context();
+
+    Preferences preferences;
+
+    UIContext *ui{};
+    StateStats state_stats;
+
+    Diffs diffs;
+    int diff_index = -1;
+
+    Gesture active_gesture; // uncompressed, uncommitted
+    Gestures gestures; // compressed, committed gesture history
+    JsonPatch active_gesture_patch;
+
+    std::optional<fs::path> current_project_path;
+    size_t project_start_gesture_count = gestures.size();
+
+    ImFont *defaultFont{};
+    ImFont *fixedWidthFont{};
+
+    bool is_widget_gesturing{};
+    bool has_new_faust_code{};
+    TimePoint gesture_start_time{};
+    float gesture_time_remaining_sec{};
+
+    // Read-only public shorthand state references:
+    const State &s = state;
+    const json &sj = state_json;
+
+private:
+    void on_action(const Action &); // This is the only method that modifies `state`.
+    void finalize_gesture();
+    void on_patch(const Action &action, const JsonPatch &patch); // Called after every state-changing action
+    void set_diff_index(int diff_index);
+    void increment_diff_index(int diff_index_delta);
+    void on_set_value(const JsonPath &path);
+
+    // Takes care of all side effects needed to put the app into the provided application state json.
+    // This function can be run at any time, but it's not thread-safe.
+    // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
+    // This is especially the case when assigning to `state_json`, which is not an atomic operation like assigning to `_state` is.
+    void open_project(const fs::path &);
+    bool save_project(const fs::path &);
+    void set_current_project_path(const fs::path &path);
+    bool write_preferences() const;
+
+    State state{};
+    std::queue<const Action> queued_actions;
+    json state_json, gesture_begin_state_json; // `state_json` always reflects `state`. `gesture_begin_state_json` is only updated on gesture-end (for diff calculation).
+    int gesture_begin_diff_index = -1;
 };
 
 //-----------------------------------------------------------------------------
@@ -1343,18 +1480,32 @@ void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_fla
 //-----------------------------------------------------------------------------
 
 /**
-Declare a full name & convenient shorthand for the global state (`s)` and state JSON (`sj`) instances.
-_These are initialized in `Context` and assigned in `main.cpp`._
+ Declare a full name & convenient shorthand for:
+ - The global state instance `s`
+ - The global state JSON instance `sj`
+ - The global context instances `c = context`
 
-Usage:
+The state instances are initialized in `Context` and assigned in `main.cpp`.
+The context instance is initialized and and assigned in `main.cpp`.
+
+Usage example:
 ```cpp
-Audio audio = s.Audio; // Or just access the (read-only) `state` members directly
+// Get the canonical application audio state:
+const Audio &audio = s.Audio; // Or just access the (read-only) `state` members directly
+
+// Get the currently active gesture (collection of actions) from the global application context:
+ const Gesture &active_gesture = c.active_gesture;
 ```
 */
+
 extern const State &s;
 extern const json &sj;
+extern Context context, &c;
 
-// This is the main action-queue method.
-// Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
-// This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
+/**
+ This is the main action-queue method.
+ Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
+ This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
+*/
+
 bool q(Action &&a, bool flush = false);

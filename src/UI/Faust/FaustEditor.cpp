@@ -1,5 +1,5 @@
 #include "FaustEditor.h"
-#include "../../Context.h" // todo remove dependency on context (just for default font and `has_new_faust_code`)
+#include "../../State.h"
 
 #include "zep/editor.h"
 #include "zep/regress.h"

@@ -1,0 +1,5 @@
+{
+    "name": "Launch:Debug",
+    "program": "build/",
+    "cwd": "build/"
+}

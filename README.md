@@ -64,8 +64,8 @@ $ brew link llvm --force
 
 * **CLion:** I use CLion to develop this application, so that's the only IDE I can attest to working smoothly.
   You should be able to just open the project in CLion and run the saved `FlowGrid | Debug` configuration.
-* **VSCode:** I don't actively use VSCode for FlowGrid (although I would if its refactoring capabilities were stronger).
-  However, last I tried, I was able to build and ran the app just fine by simply opening the project in the usual way, and using the CMake extension.
+* **VSCode:** The `.vscode/launch.json` config has a single debug launch profile.
+  - I am evaluating VSCode for development since CLion has been losing syntax highlighting/autocomplete/etc. for me for very large (>1000 line) files (which this project has).
 
 #### Manual clean/build/run
 

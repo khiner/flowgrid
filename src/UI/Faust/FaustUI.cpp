@@ -4,20 +4,17 @@
 #include <map>
 #include <stack>
 
-#include "../../App.h"
-
 #include <range/v3/algorithm/contains.hpp>
+#include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
-#include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/view/map.hpp>
 
 #include "faust/dsp/libfaust-signal.h"
 #include "faust/dsp/libfaust-box.h"
 
-#include "../../Helper/File.h"
+#include "../../App.h"
 #include "../../Helper/basen.h"
-#include "../../Helper/assert.h"
 
 //-----------------------------------------------------------------------------
 // [SECTION] Diagram
@@ -651,7 +648,7 @@ struct CutNode : Node {
 
     // A Cut has only one input point
     ImVec2 point(IO io, Count) const override {
-        fgassert(io == IO_In);
+        assert(io == IO_In);
         return {x(), mid().y};
     }
 };
@@ -687,8 +684,8 @@ struct ParallelNode : Node {
 // Place and connect two diagrams in recursive composition
 struct RecursiveNode : Node {
     RecursiveNode(Tree t, Node *s1, Node *s2) : Node(t, s1->in_count - s2->out_count, s1->out_count, {s1, s2}) {
-        fgassert(s1->in_count >= s2->out_count);
-        fgassert(s1->out_count >= s2->in_count);
+        assert(s1->in_count >= s2->out_count);
+        assert(s1->out_count >= s2->in_count);
     }
 
     void _place_size(const DeviceType) override {
@@ -769,7 +766,7 @@ struct BinaryNode : Node {
 struct SequentialNode : BinaryNode {
     // The components s1 and s2 must be "compatible" (s1: n->m and s2: m->q).
     SequentialNode(Tree t, Node *s1, Node *s2) : BinaryNode(t, s1, s2) {
-        fgassert(s1->out_count == s2->in_count);
+        assert(s1->out_count == s2->in_count);
     }
 
     void _place_size(const DeviceType type) override {

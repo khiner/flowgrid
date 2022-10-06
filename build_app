@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Default to debug (specify --release for release-mode)
+if [ $# -eq 0 ] || [ $1 != "--release" ]; then
+    # Debug
+    rm -rf cmake-build-debug # Clean
+    CC=clang CXX=clang++ cmake -B cmake-build-debug # Configure
+    time CC=clang CXX=clang++ cmake --build cmake-build-debug --target FlowGrid -- -j 8 # Build
+else
+    # Release
+    rm -rf cmake-build # Clean
+    CC=clang CXX=clang++ cmake -B cmake-build -D CMAKE_BUILD_TYPE=Release # Configure
+    time CC=clang CXX=clang++ cmake --build cmake-build --target FlowGrid -- -j 8 # Build
+fi

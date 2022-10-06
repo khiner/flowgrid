@@ -69,30 +69,32 @@ $ brew link llvm --force
 
 #### Manual clean/build/run
 
-Clean and rebuild the project:
+Clean and build the project in a directory named `cmake-build-debug`:
 
 ```sh
-$ rm -rf cmake-build-debug # clean
-$ cmake -B cmake-build-debug # create
-$ cmake --build cmake-build-debug --target FlowGrid -- -j 8 # make
+$ rm -rf cmake-build-debug # Clean 
+$ cmake -B cmake-build-debug # Configure
+$ cmake --build cmake-build-debug --target FlowGrid -- -j 8 # Build
 ```
 
-The `rebuild` script does exactly this:
+The `build` script does exactly this.
+It also accepts a `--release` arg to create a release build in `cmake-build`:
 
 ```sh
-$ ./rebuild
+$ ./build # Debug build
+$ ./build --release # Release build
 ```
 
 The application should now be fully rebuilt and ready to run.
-If this isn't the case for you, please [file an issue](https://github.com/khiner/flowgrid/issues/new), providing your environment and any other relevant details, and I will try and fix it!
-
-To run the freshly (re-)built application:
+To run the freshly built application:
 
 ```sh
 # The application assumes it's being run from the build directory when locating its resource files (e.g. font files).
-$ cd make-build-debug
+$ cd make-build-debug # or `cd make-build` for a release build
 $ ./FlowGrid
 ```
+
+If the build/run doesn't work for you, please [file an issue](https://github.com/khiner/flowgrid/issues/new), providing your environment and any other relevant details, and I will try and fix it!
 
 ## [**Stack**](#stack)
 

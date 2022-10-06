@@ -7,7 +7,6 @@
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
 #include "zep/tab_window.h"
-#include "../Widgets.h"
 
 using namespace Zep;
 

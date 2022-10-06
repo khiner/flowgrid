@@ -18,7 +18,6 @@
 #include "../../Helper/File.h"
 #include "../../Helper/basen.h"
 #include "../../Helper/assert.h"
-#include "../Widgets.h"
 
 //-----------------------------------------------------------------------------
 // [SECTION] Diagram

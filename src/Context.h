@@ -1,17 +1,9 @@
 #pragma once
 
-#include <list>
 #include <queue>
 #include <set>
 
 #include "State.h"
-#include "Helper/File.h"
-
-struct Preferences {
-    std::list<fs::path> recently_opened_paths;
-};
-
-JsonType(Preferences, recently_opened_paths)
 
 const std::map<ProjectFormat, string> ExtensionForProjectFormat{
     {StateFormat, ".fls"},

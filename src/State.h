@@ -16,17 +16,22 @@
  */
 
 #include <iostream>
+#include <list>
+#include "nlohmann/json.hpp"
+#include "fmt/chrono.h"
 
 #include "UI/UIContext.h"
-#include "JsonType.h"
 #include "Helper/String.h"
 #include "Helper/Sample.h"
+#include "Helper/File.h"
 
 using namespace fmt;
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
-
+using namespace nlohmann;
+using std::nullopt;
+using JsonPath = json::json_pointer;
 using std::cout, std::cerr;
 using std::unique_ptr, std::make_unique;
 using std::min, std::max;
@@ -36,7 +41,6 @@ using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 using Clock = std::chrono::system_clock; // Main system clock
 using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
-
 
 // E.g. '/foo/bar/baz' => 'baz'
 inline string path_variable_name(const JsonPath &path) { return path.back(); }
@@ -51,9 +55,9 @@ static std::pair<string, string> parse_help_text(const string &str) {
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
 }
 
-JsonType(ImVec2, x, y)
-JsonType(ImVec4, w, x, y, z)
-JsonType(ImVec2ih, x, y)
+struct Preferences {
+    std::list<fs::path> recently_opened_paths;
+};
 
 struct StateMember {
     StateMember(const JsonPath &parent_path, const string &id, const string &name_and_help = "")
@@ -1303,9 +1307,44 @@ struct State : StateData, Drawable {
     void update(const Action &); // State is only updated via `context.on_action(action)`
 };
 
+//-----------------------------------------------------------------------------
+// [SECTION] Widgets
+//-----------------------------------------------------------------------------
+
+namespace FlowGrid {
+
+void gestured();
+
+bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
+
+void MenuItem(ActionID); // For actions with no data members.
+void ToggleMenuItem(const StateMember &);
+
+enum JsonTreeNodeFlags_ {
+    JsonTreeNodeFlags_None = 0,
+    JsonTreeNodeFlags_Highlighted = 1 << 0,
+    JsonTreeNodeFlags_Disabled = 1 << 1,
+    JsonTreeNodeFlags_DefaultOpen = 1 << 2,
+};
+using JsonTreeNodeFlags = int;
+
+bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr);
+
+// If `label` is empty, `JsonTree` will simply show the provided json `value` (object/array/raw value), with no nesting.
+// For a non-empty `label`:
+//   * If the provided `value` is an array or object, it will show as a nested `JsonTreeNode` with `label` as its parent.
+//   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
+void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
+
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] Globals
+//-----------------------------------------------------------------------------
+
 /**
-Declare a full name & convenient shorthand for the global `Context` & `State` instances.
-_These are instantiated in `main.cpp`._
+Declare a full name & convenient shorthand for the global state (`s)` and state JSON (`sj`) instances.
+_These are initialized in `Context` and assigned in `main.cpp`._
 
 Usage:
 ```cpp

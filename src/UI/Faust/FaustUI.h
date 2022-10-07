@@ -96,10 +96,10 @@ public:
     }
 
     // Soundfile
-    void addSoundfile(const char *label, const char *filename, Soundfile **sf_zone) override {}
+    void addSoundfile(const char *, const char *, Soundfile **) override {}
 
     // Metadata declaration
-    void declare(Real *zone, const char *key, const char *val) override {}
+    void declare(Real *, const char *, const char *) override {}
 
     // `id` can be any of label/shortname/path.
     Real get(const std::string &id) {

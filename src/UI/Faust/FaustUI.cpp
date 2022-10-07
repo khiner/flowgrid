@@ -385,7 +385,7 @@ struct Node {
         for (const auto *child: children) child->draw(device);
         _draw(device);
         if (device.type() == DeviceType_ImGui &&
-            (!hovered_node || is_inside(*hovered_node) && IsMouseHoveringRect(device.at(position), device.at(position + size)))) {
+            (!hovered_node || (is_inside(*hovered_node) && IsMouseHoveringRect(device.at(position), device.at(position + size))))) {
             hovered_node = this;
         }
     };
@@ -1011,24 +1011,24 @@ static string get_ui_description(const Tree box) {
 }
 
 // Convert user interface box into a label that can be used to retrieve widget details
-static string get_ui_label(const Tree box) {
-    Tree t1, label, cur, min, max, step, chan;
-    if (isBoxButton(box, label)
-        || isBoxCheckbox(box, label)
-        || isBoxVSlider(box, label, cur, min, max, step)
-        || isBoxHSlider(box, label, cur, min, max, step)
-        || isBoxVGroup(box, label, t1)
-        || isBoxHGroup(box, label, t1)
-        || isBoxTGroup(box, label, t1)
-        || isBoxHBargraph(box, label, min, max)
-        || isBoxVBargraph(box, label, min, max)
-        || isBoxNumEntry(box, label, cur, min, max, step)
-        || isBoxSoundfile(box, label, chan)) {
-        return extractName(label);
-    }
-
-    return "";
-}
+//static string get_ui_label(const Tree box) {
+//    Tree t1, label, cur, min, max, step, chan;
+//    if (isBoxButton(box, label)
+//        || isBoxCheckbox(box, label)
+//        || isBoxVSlider(box, label, cur, min, max, step)
+//        || isBoxHSlider(box, label, cur, min, max, step)
+//        || isBoxVGroup(box, label, t1)
+//        || isBoxHGroup(box, label, t1)
+//        || isBoxTGroup(box, label, t1)
+//        || isBoxHBargraph(box, label, min, max)
+//        || isBoxVBargraph(box, label, min, max)
+//        || isBoxNumEntry(box, label, cur, min, max, step)
+//        || isBoxSoundfile(box, label, chan)) {
+//        return extractName(label);
+//    }
+//
+//    return "";
+//}
 
 static Node *Tree2Node(Tree t, bool allow_links = true);
 

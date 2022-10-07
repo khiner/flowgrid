@@ -91,8 +91,7 @@ struct Base : StateMember {
 };
 
 struct Bool : Base {
-    Bool(const JsonPath &parent_path, const string &id, const string &name = "", bool value = false) : Base(parent_path, id, name), value(value) {}
-    Bool(const JsonPath &parent_path, const string &id, bool value) : Bool(parent_path, id, "", value) {}
+    Bool(const JsonPath &parent_path, const string &id, bool value = false, const string &name = "") : Base(parent_path, id, name), value(value) {}
 
     operator bool() const { return value; }
     Bool &operator=(bool v) {
@@ -271,30 +270,7 @@ static const std::vector<Flags::Item> TableFlagItems{
     "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
 };
 
-static ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizingPolicy sizing) {
-    ImGuiTableFlags imgui_flags = ImGuiTableFlags_None;
-    if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
-    if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
-    if (flags & TableFlags_Hideable) imgui_flags |= ImGuiTableFlags_Hideable;
-    if (flags & TableFlags_Sortable) imgui_flags |= ImGuiTableFlags_Sortable;
-    if (flags & TableFlags_ContextMenuInBody) imgui_flags |= ImGuiTableFlags_ContextMenuInBody;
-    if (flags & TableFlags_BordersInnerH) imgui_flags |= ImGuiTableFlags_BordersInnerH;
-    if (flags & TableFlags_BordersOuterH) imgui_flags |= ImGuiTableFlags_BordersOuterH;
-    if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
-    if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
-    if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
-    if (flags & TableFlags_NoHostExtendX) imgui_flags |= ImGuiTableFlags_NoHostExtendX;
-    if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
-    if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
-    if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
-
-    if (sizing == TableSizingPolicy_SizingFixedFit) imgui_flags |= ImGuiTableFlags_SizingFixedFit;
-    else if (sizing == TableSizingPolicy_SizingFixedSame) imgui_flags |= ImGuiTableFlags_SizingFixedSame;
-    else if (sizing == TableSizingPolicy_SizingStretchProp) imgui_flags |= ImGuiTableFlags_SizingStretchProp;
-    else if (sizing == TableSizingPolicy_SizingStretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
-
-    return imgui_flags;
-}
+ImGuiTableFlags TableFlagsToImgui(TableFlags flags, TableSizingPolicy sizing);
 
 struct Window : StateMember, Drawable {
     using StateMember::StateMember;
@@ -317,7 +293,7 @@ struct Process : Window {
     void draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool Running{Path, "Running", format("?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
+    Bool Running{Path, "Running", true, format("?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name))};
 };
 
 struct ApplicationSettings : Window {
@@ -340,10 +316,10 @@ struct StateViewer : Window {
         "'Raw' mode shows the state exactly as it is in the raw JSON state."
     };
     Bool AutoSelect{
-        Path, "AutoSelect",
+        Path, "AutoSelect", true,
         "Auto-select?When auto-select is enabled, state changes automatically open.\n"
         "The state viewer to the changed state node(s), closing all other state nodes.\n"
-        "State menu items can only be opened or closed manually if auto-select is disabled.", true,
+        "State menu items can only be opened or closed manually if auto-select is disabled."
     };
 };
 
@@ -603,8 +579,8 @@ process = tgroup("grp 1",
     void update_process() const override;
     String get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Bool FaustRunning{Path, "FaustRunning", "?Disabling completely skips Faust computation when computing audio output.", true};
-    Bool Muted{Path, "Muted", "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true};
+    Bool FaustRunning{Path, "FaustRunning", true, "?Disabling completely skips Faust computation when computing audio output."};
+    Bool Muted{Path, "Muted", true, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load."};
     AudioBackend Backend = none;
     String InDeviceId{Path, "InDeviceId", "In device ID"};
     String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
@@ -613,7 +589,7 @@ process = tgroup("grp 1",
     Enum InFormat{Path, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
     Enum OutFormat{Path, "OutFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
     Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
-    Bool MonitorInput{Path, "MonitorInput", "?Enabling adds the audio input stream directly to the audio output.", false};
+    Bool MonitorInput{Path, "MonitorInput", false, "?Enabling adds the audio input stream directly to the audio output."};
 
     FaustState Faust{Path, "Faust"};
 };
@@ -713,11 +689,11 @@ struct FlowGridStyle : StateMember, Drawable {
         Path, "DiagramFoldComplexity", 3, 0, 20,
         "?Number of boxes within a diagram before folding into a sub-diagram.\n"
         "Setting to zero disables folding altogether, for a fully-expanded diagram."};
-    Bool DiagramScaleLinked{Path, "DiagramScaleLinked", "?Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
+    Bool DiagramScaleLinked{Path, "DiagramScaleLinked", true, "?Link X/Y"}; // Link X/Y scale sliders, forcing them to the same value.
     Bool DiagramScaleFill{
-        Path, "DiagramScaleFill",
+        Path, "DiagramScaleFill", false,
         "?Scale to fill the window.\n"
-        "Enabling this setting deactivates other diagram scale settings.", false};
+        "Enabling this setting deactivates other diagram scale settings."};
     Vec2 DiagramScale{Path, "DiagramScale", {1, 1}, 0.1, 10};
     Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
     Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
@@ -927,10 +903,10 @@ struct Style : Window {
         Vec2 DisplayWindowPadding{Path, "DisplayWindowPadding", ImVec2(19, 19)};
         Vec2 DisplaySafeAreaPadding{Path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
         Float MouseCursorScale{Path, "MouseCursorScale", 1};
-        Bool AntiAliasedLines{Path, "AntiAliasedLines", "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true};
-        Bool AntiAliasedLinesUseTex{Path, "AntiAliasedLinesUseTex", "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).",
-                                    true};
-        Bool AntiAliasedFill{Path, "AntiAliasedFill", "Anti-aliased fill", true};
+        Bool AntiAliasedLines{Path, "AntiAliasedLines", true, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
+        Bool AntiAliasedLinesUseTex{Path, "AntiAliasedLinesUseTex", true,
+                                    "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering)."};
+        Bool AntiAliasedFill{Path, "AntiAliasedFill", true, "Anti-aliased fill"};
         Float CurveTessellationTol{Path, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
         Float CircleTessellationMaxError{Path, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
@@ -1220,7 +1196,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-static const std::map<ID, string> name_for_id{
+const std::map<ID, string> name_for_id{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_diff_index>, ActionName(set_diff_index)},
@@ -1259,17 +1235,6 @@ static const std::map<ID, string> name_for_id{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-// An action's menu label is its name, except for a few exceptions.
-static const std::map<ID, string> menu_label_for_id{
-    {id<show_open_project_dialog>, "Open project"},
-    {id<open_empty_project>, "New project"},
-    {id<save_current_project>, "Save project"},
-    {id<show_save_project_dialog>, "Save project as..."},
-    {id<show_open_faust_file_dialog>, "Open DSP file"},
-    {id<show_save_faust_file_dialog>, "Save DSP as..."},
-    {id<show_save_faust_svg_file_dialog>, "Export SVG"},
-};
-
 const std::map<ID, string> shortcut_for_id = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
@@ -1280,16 +1245,12 @@ const std::map<ID, string> shortcut_for_id = {
     {id<save_default_project>, "shift+cmd+s"},
 };
 
-static constexpr ID get_id(const Action &action) { return action.index(); }
-static string get_name(const Action &action) { return name_for_id.at(get_id(action)); }
-
-static const char *get_menu_label(ID action_id) {
-    if (menu_label_for_id.contains(action_id)) return menu_label_for_id.at(action_id).c_str();
-    return name_for_id.at(action_id).c_str();
-}
+constexpr ID get_id(const Action &action) { return action.index(); }
+string get_name(const Action &action);
+const char *get_menu_label(ID action_id);
 
 Gesture merge_gesture(const Gesture &);
-} // End `Action` namespace
+} // End `action` namespace
 
 using ActionID = action::ID;
 using action::Gesture;
@@ -1301,6 +1262,7 @@ using action::Gestures;
 
 struct State : StateData, Drawable {
     State() = default;
+    State(const State &) = default;
 
     // Don't copy/assign reference members!
     explicit State(const StateData &other) : StateData(other) {}

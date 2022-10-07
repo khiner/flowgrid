@@ -141,11 +141,10 @@ Box box = nullptr;
 llvm_dsp_factory *dsp_factory;
 dsp *dsp = nullptr;
 unique_ptr<FaustUI> faust_ui;
-int faust_output_channels = 0; // Cache so we can destroy buffers after `dsp` is destroyed todo investigate using `std::span`
 
 static float mic_latency = 0.2; // Seconds todo do better than this guess
 int underflow_count = 0, last_read_frame_count = 0, last_write_frame_count = 0;
-bool soundio_ready = false, thread_running = false, retry_thread = false;
+bool soundio_ready = false, thread_running = false, retry_thread = false, faust_ready = false;
 
 static int get_device_count(const IO io) {
     switch (io) {
@@ -385,7 +384,7 @@ int audio() {
         const int input_sample_count = soundio_ring_buffer_fill_count(input_buffer) / SampleSize;
         // If the device input buffer does not have enough data filled, set the remaining Faust input samples to zero.
 //            const int remaining_frames = max_frames - input_sample_count;
-        const bool compute_faust = s.Audio.FaustRunning && faust_buffers[IO_Out] && dsp;
+        const bool compute_faust = s.Audio.FaustRunning && faust_ready;
 
         int err;
         int remaining_frames = max_frames;
@@ -410,10 +409,7 @@ int audio() {
                     for (int i = 0; i < dsp->getNumInputs(); i++) faust_buffers[IO_In][i] = read_ptr;
                 }
 
-                // todo need to synchronize somehow to ensure `dsp`/`faust_buffers` haven't been destroyed since initializing `compute_faust`
-                //  but ofc needs to be lock free here in the callback
-                //  This isn't theoretical! I can easily produce crashes by modifying Faust code.
-                dsp->compute(inner_frames, faust_buffers[IO_In], faust_buffers[IO_Out]);
+                if (faust_ready) dsp->compute(inner_frames, faust_buffers[IO_In], faust_buffers[IO_Out]);
             }
 
             last_write_frame_count = inner_frames;
@@ -531,15 +527,6 @@ static std::thread audio_thread;
 string previous_faust_code;
 int previous_faust_sample_rate = 0;
 
-void destroy_dsp() {
-    if (dsp) {
-        delete dsp;
-        dsp = nullptr;
-        deleteDSPFactory(dsp_factory);
-        destroyLibContext();
-    }
-}
-
 void Audio::update_process() const {
     if (thread_running != Running) {
         thread_running = Running;
@@ -561,29 +548,52 @@ void Audio::update_process() const {
         previous_faust_code = s.Audio.Faust.Code.value;
         previous_faust_sample_rate = s.Audio.OutSampleRate.value;
 
-        int argc = 0;
-        const char **argv = new const char *[8];
-        argv[argc++] = "-I";
-        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-        argv[argc++] = "-double";
-
-        destroy_dsp();
-        createLibContext();
-        int num_inputs, num_outputs;
         string error_msg;
-        box = DSPToBoxes("FlowGrid", s.Audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+        if (s.Audio.Faust.Code && s.Audio.OutSampleRate) {
+            int argc = 0;
+            const char **argv = new const char *[8];
+            argv[argc++] = "-I";
+            argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
+            argv[argc++] = "-double";
+
+            createLibContext();
+            int num_inputs, num_outputs;
+            box = DSPToBoxes("FlowGrid", s.Audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+        }
         if (box && error_msg.empty()) {
             static const int optimize_level = -1;
             dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);
             if (dsp_factory && error_msg.empty()) {
                 dsp = dsp_factory->createDSPInstance();
                 dsp->init(s.Audio.OutSampleRate);
+
+                // Init `faust_buffers`
+                for (const IO io: IO_All) {
+                    const int channels = io == IO_In ? dsp->getNumInputs() : dsp->getNumOutputs();
+                    if (channels > 0) faust_buffers[io] = new Sample *[channels];
+                }
+                for (int i = 0; i < dsp->getNumOutputs(); i++) { faust_buffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
+                faust_ready = true;
+
                 faust_ui = make_unique<FaustUI>();
                 dsp->buildUserInterface(faust_ui.get());
             }
         } else {
             faust_ui = nullptr;
-            destroyLibContext();
+            faust_ready = false;
+
+            if (dsp) {
+                // Destroy `faust_buffers`
+                for (int i = 0; i < dsp->getNumOutputs(); i++) { delete[] faust_buffers[IO_Out][i]; }
+                for (const IO io: IO_All) {
+                    delete[] faust_buffers[io];
+                    faust_buffers[io] = nullptr;
+                }
+                delete dsp;
+                dsp = nullptr;
+                deleteDSPFactory(dsp_factory);
+                destroyLibContext();
+            }
         }
         on_box_change(box);
         on_ui_change(faust_ui.get());
@@ -720,21 +730,6 @@ void ShowBufferPlots() {
 }
 
 void Audio::draw() const {
-    if (!faust_buffers[IO_Out] && dsp) {
-        for (const IO io: IO_All) {
-            const int channels = io == IO_In ? dsp->getNumInputs() : dsp->getNumOutputs();
-            if (channels > 0) faust_buffers[io] = new Sample *[channels];
-        }
-        faust_output_channels = dsp->getNumOutputs();
-        for (int i = 0; i < faust_output_channels; i++) { faust_buffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
-    } else if (faust_buffers[IO_Out] && !dsp) {
-        for (int i = 0; i < faust_output_channels; i++) { delete[] faust_buffers[IO_Out][i]; }
-        faust_output_channels = 0;
-        for (const IO io: IO_All) {
-            delete[] faust_buffers[io];
-            faust_buffers[io] = nullptr;
-        }
-    }
     if (retry_thread) {
         retry_thread = false;
         thread_running = false;

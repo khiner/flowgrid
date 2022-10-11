@@ -1385,7 +1385,7 @@ float CalcItemHeight(const ItemType type, const char *label, const float availab
 #include <range/v3/algorithm/max.hpp>
 
 // Width is determined from `GetContentRegionAvail()`
-void DrawUiItem(const FaustUI::Item &item, const float height, const ItemType parent_type = ItemType_None) {
+void DrawUiItem(const FaustUI::Item &item, const float available_height, const ItemType parent_type = ItemType_None) {
     const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
 
     const float width = GetContentRegionAvail().x;
@@ -1393,14 +1393,14 @@ void DrawUiItem(const FaustUI::Item &item, const float height, const ItemType pa
     const auto &fg_style = s.Style.FlowGrid;
     const auto type = item.type;
     const char *label = item.label.c_str();
-    const bool show_label = type == ItemType_Button || (parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && fg_style.ParamsHeaderTitles));
+    const bool show_label = strlen(label) > 0 && (type == ItemType_Button || (parent_type != ItemType_TGroup && !(parent_type == ItemType_HGroup && fg_style.ParamsHeaderTitles)));
     const auto &inner_items = item.items;
     const float frame_height = GetFrameHeight();
 
-    if (type == ItemType_TGroup || type == ItemType_HGroup || type == ItemType_VGroup) {
+    if (type == ItemType_None || type == ItemType_TGroup || type == ItemType_HGroup || type == ItemType_VGroup) {
         if (show_label) Text("%s", label);
 
-        const float group_height = height - (show_label ? GetTextLineHeightWithSpacing() : 0);
+        const float group_height = available_height - (show_label ? GetTextLineHeightWithSpacing() : 0);
         if (type == ItemType_TGroup) {
             BeginTabBar(label);
             for (const auto &inner_item: inner_items) {
@@ -1413,30 +1413,34 @@ void DrawUiItem(const FaustUI::Item &item, const float height, const ItemType pa
             EndTabBar();
         } else {
             const bool is_h = type == ItemType_HGroup;
-            if (BeginTable(label, is_h ? int(inner_items.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags, fg_style.ParamsTableSizingPolicy))) {
-                const float max_item_height = ranges::max(item.items | transform([&fg_style, height, frame_height](const auto &child) {
-                    return CalcItemHeight(child.type,
-                        "", // todo condition on `show_label`, like below, for child.. needs refactoring
-                        max(fg_style.ParamsMinVerticalItemHeight * frame_height, fg_style.ParamsStretchRowHeight ? height : 0.0f) // todo DRY with `item_height` below
-                    );
-                }));
-                const float row_min_height =
-                    fg_style.ParamsStretchRowHeight ?
-                    is_h ? group_height - (fg_style.ParamsHeaderTitles ? GetFontSize() + 2 * style.CellPadding.y : 0) : group_height / float(inner_items.size()) :
-                    is_h ? max_item_height : 0;
-                if (is_h) {
-                    for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
-                    if (fg_style.ParamsHeaderTitles) TableHeadersRow();
-                    TableNextRow(ImGuiTableRowFlags_None, row_min_height);
+            const float max_item_height = ranges::max(item.items | transform([&fg_style, available_height, frame_height](const auto &child) {
+                return CalcItemHeight(child.type,
+                    "", // todo condition on `show_label`, like below, for child.. needs refactoring
+                    max(fg_style.ParamsMinVerticalItemHeight * frame_height, fg_style.ParamsStretchRowHeight ? available_height : 0.0f) // todo DRY with `item_height` below
+                );
+            }));
+            const float row_min_height =
+                fg_style.ParamsStretchRowHeight ?
+                is_h ? group_height - (fg_style.ParamsHeaderTitles ? GetFontSize() + 2 * style.CellPadding.y : 0) : group_height / float(inner_items.size()) :
+                is_h ? max_item_height : 0;
+            const float cell_height = max(frame_height, row_min_height - (type == ItemType_None ? 0 : 2 * style.CellPadding.y));
+            if (type == ItemType_None) { // Root group (treated as a vertical group but not as a table)
+                for (const auto &inner_item: inner_items) DrawUiItem(inner_item, cell_height, type);
+            } else {
+                if (BeginTable(label, is_h ? int(inner_items.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags, fg_style.ParamsTableSizingPolicy))) {
+                    if (is_h) {
+                        for (const auto &inner_item: inner_items) TableSetupColumn(inner_item.label.c_str());
+                        if (fg_style.ParamsHeaderTitles) TableHeadersRow();
+                        TableNextRow(ImGuiTableRowFlags_None, row_min_height);
+                    }
+                    for (const auto &inner_item: inner_items) {
+                        if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
+                        TableNextColumn();
+                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
+                        DrawUiItem(inner_item, cell_height, type);
+                    }
+                    EndTable();
                 }
-                const float cell_height = max(frame_height, row_min_height - 2 * style.CellPadding.y);
-                for (const auto &inner_item: inner_items) {
-                    if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
-                    TableNextColumn();
-                    TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
-                    DrawUiItem(inner_item, cell_height, type);
-                }
-                EndTable();
             }
         }
     } else {
@@ -1444,14 +1448,14 @@ void DrawUiItem(const FaustUI::Item &item, const float height, const ItemType pa
         SetNextItemWidth(CalcItemWidth(type, title, width));
 
         const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
-        const ImVec2 item_size_with_label = {CalcItemWidth(type, title, width, true), CalcItemHeight(type, title, height, true)}; // Includes label space
+        const ImVec2 item_size_with_label = {CalcItemWidth(type, title, width, true), CalcItemHeight(type, title, available_height, true)}; // Includes label space
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{
             alignment.x == HAlign_Left ? 0 : alignment.x == HAlign_Center ? (width - item_size_with_label.x) / 2 : width - item_size_with_label.x,
-            alignment.y == VAlign_Top ? 0 : alignment.y == VAlign_Center ? (height - item_size_with_label.y) / 2 : height - item_size_with_label.y
+            alignment.y == VAlign_Top ? 0 : alignment.y == VAlign_Center ? (available_height - item_size_with_label.y) / 2 : available_height - item_size_with_label.y
         });
 
-        const float item_height = CalcItemHeight(type, title, max(fg_style.ParamsMinVerticalItemHeight * frame_height, fg_style.ParamsStretchRowHeight ? height : 0.0f));
+        const float item_height = CalcItemHeight(type, title, max(fg_style.ParamsMinVerticalItemHeight * frame_height, fg_style.ParamsStretchRowHeight ? available_height : 0.0f));
         if (type == ItemType_Button) {
             *item.zone = Real(Button(title));
         } else if (type == ItemType_CheckButton) {
@@ -1483,8 +1487,7 @@ void Audio::FaustState::FaustParams::draw() const {
         return;
     }
 
-    const float item_height = GetContentRegionAvail().y / float(interface->ui.size());
-    for (const auto &item: interface->ui) DrawUiItem(item, item_height);
+    DrawUiItem(interface->ui, GetContentRegionAvail().y);
 
 //    if (hovered_node) {
 //        const string label = get_ui_label(hovered_node->tree);

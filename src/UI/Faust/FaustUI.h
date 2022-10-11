@@ -49,18 +49,18 @@ public:
 
     void openHorizontalBox(const char *label) override {
         pushLabel(label);
-        active_items().push_back({ItemType_HGroup, label});
-        groups.push(&active_items().back());
+        active_group().items.push_back({ItemType_HGroup, label});
+        groups.push(&active_group().items.back());
     }
     void openVerticalBox(const char *label) override {
         pushLabel(label);
-        active_items().push_back({ItemType_VGroup, label});
-        groups.push(&active_items().back());
+        active_group().items.push_back({ItemType_VGroup, label});
+        groups.push(&active_group().items.back());
     }
     void openTabBox(const char *label) override {
         pushLabel(label);
-        active_items().push_back({ItemType_TGroup, label});
-        groups.push(&active_items().back());
+        active_group().items.push_back({ItemType_TGroup, label});
+        groups.push(&active_group().items.back());
     }
     void closeBox() override {
         groups.pop();
@@ -122,27 +122,27 @@ public:
     }
 
     Item *get_widget(const std::string &id) {
-        if (index_for_path.contains(id)) return &ui[index_for_path[id]];
-        if (index_for_shortname.contains(id)) return &ui[index_for_shortname[id]];
-        if (index_for_label.contains(id)) return &ui[index_for_label[id]];
+        if (index_for_path.contains(id)) return &ui.items[index_for_path[id]];
+        if (index_for_shortname.contains(id)) return &ui.items[index_for_shortname[id]];
+        if (index_for_label.contains(id)) return &ui.items[index_for_label[id]];
 
         return nullptr;
     }
 
-    std::vector<Item> ui{};
+    Item ui{ItemType_None, ""};
 
 private:
     void add_ui_item(const ItemType type, const std::string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        active_items().push_back({type, label, zone, min, max, init, step});
+        active_group().items.push_back({type, label, zone, min, max, init, step});
 
-        const int index = int(ui.size() - 1);
+        const int index = int(ui.items.size() - 1);
         std::string path = buildPath(label);
         fFullPaths.push_back(path);
         index_for_path[path] = index;
         index_for_label[label] = index;
     }
 
-    std::vector<Item> &active_items() { return groups.empty() ? ui : groups.top()->items; }
+    Item &active_group() { return groups.empty() ? ui : *groups.top(); }
 
     std::stack<Item *> groups{};
     std::map<std::string, int> index_for_label{};

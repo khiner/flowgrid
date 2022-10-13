@@ -2,7 +2,7 @@
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_sine.c and
 // * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
 
-#include <thread>
+#include <thread> // For sleep fn
 #include <soundio/soundio.h>
 
 #include "Helper/Sample.h" // Must be included before any Faust includes
@@ -144,7 +144,7 @@ unique_ptr<FaustUI> faust_ui;
 
 static float mic_latency = 0.2; // Seconds todo do better than this guess
 int underflow_count = 0, last_read_frame_count = 0, last_write_frame_count = 0;
-bool soundio_ready = false, thread_running = false, retry_thread = false, faust_ready = false;
+bool soundio_ready = false, faust_ready = false;
 
 static int get_device_count(const IO io) {
     switch (io) {
@@ -241,10 +241,7 @@ static void destroy_stream(const IO io) {
     soundio_device_unref(devices[io]);
 }
 
-int audio() {
-    static const int MaxThreadRetries = 5; // Max number of times in a row the audio thread will try again after an error opening the IO streams
-    static bool first_run = true;
-    static int retry_thread_attempt = 0;
+void setup_audio() {
     // Local copies for bookkeeping in read/write callbacks, so others can safely use the global `areas` pointers above (e.g. for charting):
     static char *area_pointers[2][SOUNDIO_MAX_CHANNELS];
 
@@ -382,8 +379,6 @@ int audio() {
     outstream->write_callback = [](SoundIoOutStream *outstream, int /*min_frames*/, int max_frames) {
         const auto channel_count = outstream->layout.channel_count;
         const int input_sample_count = soundio_ring_buffer_fill_count(input_buffer) / SampleSize;
-        // If the device input buffer does not have enough data filled, set the remaining Faust input samples to zero.
-//            const int remaining_frames = max_frames - input_sample_count;
         const bool compute_faust = s.Audio.FaustRunning && faust_ready;
 
         int err;
@@ -451,72 +446,38 @@ int audio() {
 
     outstream->underflow_callback = [](SoundIoOutStream *) { cerr << "Underflow #" << underflow_count++ << '\n'; };
 
-    bool failed = false; // Can't trust the global `retry_thread` var, since it's modified outside the thread.
-    try {
-        for (IO io: IO_All) open_stream(io);
-    } catch (const std::exception &e) {
-        // On Mac, sometimes microphone input stream open will fail if it's already been opened and closed recently.
-        // It seems sometimes it doesn't fully shut down, so starting up again can error with a
-        // [1852797029 OS error](https://developer.apple.com/forums/thread/133990),
-        // since it thinks the microphone is being used by another application.
-        // If we run into any stream-open failure, signal to try again via `retry_thread`, clean up, and exit.
-        if (++retry_thread_attempt > MaxThreadRetries) throw std::runtime_error(e.what());
+    for (IO io: IO_All) open_stream(io);
 
-        cerr << e.what() << "\nRetrying (attempt " << retry_thread_attempt << ")\n";
-        retry_thread = failed = true;
+    // Set up resampler if needed.
+    if (instream->sample_rate != outstream->sample_rate) {
+        resampler = make_unique<r8b::CDSPResampler24>(instream->sample_rate, outstream->sample_rate, 1024); // todo can we get max frame size here?
     }
 
-    if (!failed) {
-        retry_thread_attempt = 0;
+    // Initialize the input ring buffer(s).
+    input_buffer_direct = soundio_ring_buffer_create(soundio, int(ceil(mic_latency * 2 * float(instream->sample_rate)) * SampleSize));
+    if (!input_buffer_direct) throw std::runtime_error("Unable to create direct input buffer: Out of memory");
 
-        // Set up resampler if needed.
-        if (instream->sample_rate != outstream->sample_rate) {
-            resampler = make_unique<r8b::CDSPResampler24>(instream->sample_rate, outstream->sample_rate, 1024); // todo can we get max frame size here?
-        }
-
-        // Initialize the input ring buffer(s).
-        input_buffer_direct = soundio_ring_buffer_create(soundio, int(ceil(mic_latency * 2 * float(instream->sample_rate)) * SampleSize));
-        if (!input_buffer_direct) throw std::runtime_error("Unable to create direct input buffer: Out of memory");
-
-        if (instream->sample_rate == outstream->sample_rate) {
-            input_buffer = input_buffer_direct;
-        } else {
-            input_buffer = soundio_ring_buffer_create(soundio, int(ceil(mic_latency * 2 * float(outstream->sample_rate)) * SampleSize));
-            if (!input_buffer) throw std::runtime_error("Unable to create input buffer: Out of memory");
-        }
-
-        read_sample = read_sample_for_format(instream->format);
-        write_sample = write_sample_for_format(outstream->format);
-
-        for (IO io: IO_All) start_stream(io);
-
-        if (first_run) {
-            std::map<JsonPath, json> values;
-            if (instream->device->id != s.Audio.InDeviceId) values[s.Audio.InDeviceId.Path] = instream->device->id;
-            if (outstream->device->id != s.Audio.OutDeviceId) values[s.Audio.OutDeviceId.Path] = outstream->device->id;
-            if (instream->sample_rate != s.Audio.InSampleRate) values[s.Audio.InSampleRate.Path] = instream->sample_rate;
-            if (outstream->sample_rate != s.Audio.OutSampleRate) values[s.Audio.OutSampleRate.Path] = outstream->sample_rate;
-            if (instream->format != s.Audio.InFormat) values[s.Audio.InFormat.Path] = to_audio_format(instream->format);
-            if (outstream->format != s.Audio.OutFormat) values[s.Audio.OutFormat.Path] = to_audio_format(outstream->format);
-            if (!values.empty()) {
-                // First run ever. Flush and clear the undo buffer since this has affected state without any user input.
-                // todo pull initialization out of the audio thread.
-                q(set_values{values}, true);
-                c.clear();
-            }
-            first_run = false;
-        }
-
-        soundio_ready = true;
-        while (thread_running) {}
-        soundio_ready = false;
+    if (instream->sample_rate == outstream->sample_rate) {
+        input_buffer = input_buffer_direct;
+    } else {
+        input_buffer = soundio_ring_buffer_create(soundio, int(ceil(mic_latency * 2 * float(outstream->sample_rate)) * SampleSize));
+        if (!input_buffer) throw std::runtime_error("Unable to create input buffer: Out of memory");
     }
 
+    read_sample = read_sample_for_format(instream->format);
+    write_sample = write_sample_for_format(outstream->format);
+
+    for (IO io: IO_All) start_stream(io);
+    soundio_ready = true;
+}
+
+void teardown_audio(bool startup_failed = false) {
+    soundio_ready = false;
     for (IO io: IO_All) destroy_stream(io);
     soundio_destroy(soundio);
     soundio = nullptr;
 
-    if (!failed) {
+    if (!startup_failed) {
         if (input_buffer != input_buffer_direct) {
             soundio_ring_buffer_destroy(input_buffer);
             input_buffer = nullptr;
@@ -524,29 +485,58 @@ int audio() {
         soundio_ring_buffer_destroy(input_buffer_direct);
         input_buffer_direct = nullptr;
     }
-
-    return 0;
 }
 
-static std::thread audio_thread;
+void retrying_setup_audio() {
+    static const int MaxRetries = 5;
+    static int retry_attempt = 0;
+
+    try {
+        setup_audio();
+        retry_attempt = 0;
+    } catch (const std::exception &e) {
+        // On Mac, sometimes microphone input stream open will fail if it's already been opened and closed recently.
+        // It seems sometimes it doesn't fully shut down, so starting up again can error with a
+        // [1852797029 OS error](https://developer.apple.com/forums/thread/133990),
+        // since it thinks the microphone is being used by another application.
+        if (++retry_attempt > MaxRetries) throw std::runtime_error(e.what());
+
+        cerr << e.what() << "\nRetrying (attempt " << retry_attempt << ")\n";
+        teardown_audio(true);
+        std::this_thread::sleep_for(100ms * (1 << (retry_attempt - 1))); // Start at 100ms and double after each additional retry.
+        retrying_setup_audio();
+    }
+}
+
 string previous_faust_code;
 int previous_faust_sample_rate = 0;
 
 void Audio::update_process() const {
-    if (thread_running != Running) {
-        thread_running = Running;
-        if (audio_thread.joinable()) audio_thread.join();
-        if (Running) audio_thread = std::thread(audio);
+    if (Running && !soundio) {
+        retrying_setup_audio();
+    } else if (!Running && soundio) {
+        teardown_audio();
     } else if (soundio_ready &&
         (instream->device->id != s.Audio.InDeviceId || outstream->device->id != s.Audio.OutDeviceId ||
             instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != s.Audio.OutSampleRate ||
             instream->format != to_soundio_format(s.Audio.InFormat) || outstream->format != to_soundio_format(s.Audio.OutFormat))) {
-        // Reset the audio thread to make any sample rate change take effect
-        // (except the first change from 0 to a supported sample rate on startup).
-        thread_running = false;
-        audio_thread.join();
-        thread_running = true;
-        audio_thread = std::thread(audio);
+        // Reset to make any audio config changes take effect.
+        teardown_audio();
+        retrying_setup_audio();
+    }
+
+    static bool first_run = true;
+    if (first_run) {
+        first_run = false;
+
+        static std::map<JsonPath, json> values;
+        if (instream->device->id != s.Audio.InDeviceId) values[s.Audio.InDeviceId.Path] = instream->device->id;
+        if (outstream->device->id != s.Audio.OutDeviceId) values[s.Audio.OutDeviceId.Path] = outstream->device->id;
+        if (instream->sample_rate != s.Audio.InSampleRate) values[s.Audio.InSampleRate.Path] = instream->sample_rate;
+        if (outstream->sample_rate != s.Audio.OutSampleRate) values[s.Audio.OutSampleRate.Path] = outstream->sample_rate;
+        if (instream->format != s.Audio.InFormat) values[s.Audio.InFormat.Path] = to_audio_format(instream->format);
+        if (outstream->format != s.Audio.OutFormat) values[s.Audio.OutFormat.Path] = to_audio_format(outstream->format);
+        if (!values.empty()) q(set_values{values}, true);
     }
 
     if (s.Audio.Faust.Code.value != previous_faust_code || s.Audio.OutSampleRate != previous_faust_sample_rate) {
@@ -722,9 +712,9 @@ void ShowBufferPlots() {
                     const char *channel_name = soundio_get_channel_name(channel);
                     // todo Adapt the pointer casting to the sample format.
                     //  Also, this works but very scary and I can't even justify why this seems to work so well,
-                    //  since the area pointer position gets updated in the separate read/write callbacks on the audio thread.
+                    //  since the area pointer position gets updated in the separate read/write callbacks.
                     //  Hrm.. are the start points of each channel area static after initializing the stream?
-                    //  If so, could just set those once on stream init and use them hear!
+                    //  If so, could just set those once on stream init and use them here!
                     ImPlot::PlotLine(channel_name, (Sample *) area[channel_index].ptr, frame_count);
                 }
                 ImPlot::EndPlot();
@@ -735,11 +725,6 @@ void ShowBufferPlots() {
 }
 
 void Audio::draw() const {
-    if (retry_thread) {
-        retry_thread = false;
-        thread_running = false;
-        update_process();
-    }
     Running.Draw();
     if (!soundio_ready) {
         Text("No audio context created yet");

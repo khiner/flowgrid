@@ -69,13 +69,12 @@ struct knob {
     bool is_active, is_hovered, value_changed;
     float radius, angle, angle_min, angle_max, t;
 
-    knob(const char *_label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float speed, float _radius, const char *format, KnobFlags flags) {
-        radius = _radius;
-        t = ((float) *p_value - v_min) / (v_max - v_min);
+    knob(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float speed, float radius, const char *format, KnobFlags flags)
+        : radius(radius), t(float(*p_value - v_min) / (v_max - v_min)) {
 
         // Handle dragging
-        InvisibleButton(_label, ImVec2{radius, radius} * 2);
-        const auto gid = GetID(_label);
+        InvisibleButton(label, ImVec2{radius, radius} * 2);
+        const auto gid = GetID(label);
         ImGuiSliderFlags drag_flags = ImGuiSliderFlags_None;
         if (!(flags & KnobFlags_DragHorizontal)) drag_flags |= ImGuiSliderFlags_Vertical;
 

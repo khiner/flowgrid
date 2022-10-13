@@ -1486,9 +1486,9 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             SetCursorPos(old_cursor + ImVec2{0, constrained_height});
         } else if (type == ItemType_Knob) {
             auto value = float(*item.zone);
-            KnobFlags flags = KnobFlags_None;
+            KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
-            Knobs::Knob(label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps);
+            Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps);
             *item.zone = Real(value);
         }
     }

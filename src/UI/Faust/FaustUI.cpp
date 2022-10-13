@@ -15,6 +15,7 @@
 
 #include "../../App.h"
 #include "../../Helper/basen.h"
+#include "../Knob.h"
 
 //-----------------------------------------------------------------------------
 // [SECTION] Diagram
@@ -993,7 +994,7 @@ static bool isIntTree(Tree t, std::vector<int> &v) {
 }
 
 // Convert user interface box into a textual representation
-static string get_ui_description(const Tree box) {
+static string get_ui_description(Tree box) {
     Tree t1, label, cur, min, max, step, chan;
     if (isBoxButton(box, label)) return "button(" + extractName(label) + ')';
     if (isBoxCheckbox(box, label)) return "checkbox(" + extractName(label) + ')';
@@ -1350,33 +1351,35 @@ void ValueBar(const char *id, const char *label, float *value, const float heigh
 float CalcItemWidth(const ItemType type, const string &label, const float available_width, const bool include_label = false) {
     const float label_width = !label.empty() ? CalcTextSize(label.c_str()).x + GetStyle().FramePadding.x * 2 : 0;
     switch (type) {
-        case FaustUI::ItemType_HSlider:
-        case FaustUI::ItemType_NumEntry:
-        case FaustUI::ItemType_HBargraph:return available_width - (include_label ? 0 : label_width);
-        case FaustUI::ItemType_VBargraph:
-        case FaustUI::ItemType_VSlider:
-        case FaustUI::ItemType_CheckButton:return GetFrameHeight();
-        case FaustUI::ItemType_Button:return label_width;
-        case FaustUI::ItemType_HGroup:
-        case FaustUI::ItemType_VGroup:
-        case FaustUI::ItemType_TGroup:
-        case FaustUI::ItemType_None:return available_width;
+        case ItemType_HSlider:
+        case ItemType_NumEntry:
+        case ItemType_HBargraph:return available_width - (include_label ? 0 : label_width);
+        case ItemType_VBargraph:
+        case ItemType_VSlider:
+        case ItemType_CheckButton:return GetFrameHeight();
+        case ItemType_Button:return label_width;
+        case ItemType_Knob:
+        case ItemType_HGroup:
+        case ItemType_VGroup:
+        case ItemType_TGroup:
+        case ItemType_None:return available_width;
     }
 }
 float CalcItemHeight(const ItemType type, const float suggested_height) {
     const float frame_height = GetFrameHeight();
     switch (type) {
-        case FaustUI::ItemType_VBargraph:
-        case FaustUI::ItemType_VSlider:return max(s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height, suggested_height);
-        case FaustUI::ItemType_HSlider:
-        case FaustUI::ItemType_NumEntry:
-        case FaustUI::ItemType_HBargraph:
-        case FaustUI::ItemType_CheckButton:
-        case FaustUI::ItemType_Button:return frame_height;
-        case FaustUI::ItemType_HGroup:
-        case FaustUI::ItemType_VGroup:
-        case FaustUI::ItemType_TGroup:
-        case FaustUI::ItemType_None:return suggested_height;
+        case ItemType_VBargraph:
+        case ItemType_VSlider:return max(s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height, suggested_height);
+        case ItemType_HSlider:
+        case ItemType_NumEntry:
+        case ItemType_HBargraph:
+        case ItemType_CheckButton:
+        case ItemType_Button:return frame_height;
+        case ItemType_Knob:
+        case ItemType_HGroup:
+        case ItemType_VGroup:
+        case ItemType_TGroup:
+        case ItemType_None:return suggested_height;
     }
 }
 
@@ -1480,6 +1483,12 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             ValueBar(format("##{}", item.label).c_str(), label.c_str(), &value, rect_height, float(item.min), float(item.max), flags, alignment);
             if (!(flags & ValueBarFlags_ReadOnly)) *item.zone = Real(value);
             SetCursorPos(old_cursor + ImVec2{0, constrained_height});
+        } else if (type == ItemType_Knob) {
+            auto value = float(*item.zone);
+            KnobFlags flags = KnobFlags_None;
+            const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
+            Knobs::Knob(label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, 0, flags, steps);
+            *item.zone = Real(value);
         }
     }
 }

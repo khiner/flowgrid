@@ -8,6 +8,7 @@
 
 #include "../../Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/gui/UI.h"
+#include "faust/gui/MetaDataUI.h"
 #include "faust/gui/PathBuilder.h"
 
 using std::string;
@@ -17,7 +18,7 @@ using Real = Sample;
 // at different locations in the UI hierarchy) can be used to access any created widget.
 // See Faust's `APIUI` for possible extensions (response curves, gyro, ...).
 
-class FAUST_API FaustUI : public UI, public PathBuilder {
+class FAUST_API FaustUI : public UI, public MetaDataUI, public PathBuilder {
 public:
     FaustUI() = default;
     ~FaustUI() override = default;
@@ -37,6 +38,9 @@ public:
         ItemType_NumEntry,
         ItemType_HBargraph,
         ItemType_VBargraph,
+
+        // Types specified with metadata
+        ItemType_Knob,
     };
     struct Item {
         const ItemType type{ItemType_None};
@@ -78,10 +82,12 @@ public:
         add_ui_item(ItemType_CheckButton, label, zone);
     }
     void addHorizontalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        add_ui_item(ItemType_HSlider, label, zone, min, max, init, step);
+        const auto type = isKnob(zone) ? ItemType_Knob : ItemType_HSlider;
+        add_ui_item(type, label, zone, min, max, init, step);
     }
     void addVerticalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        add_ui_item(ItemType_VSlider, label, zone, min, max, init, step);
+        const auto type = isKnob(zone) ? ItemType_Knob : ItemType_VSlider;
+        add_ui_item(type, label, zone, min, max, init, step);
     }
     void addNumEntry(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
         add_ui_item(ItemType_NumEntry, label, zone, min, max, init, step);
@@ -99,7 +105,9 @@ public:
     void addSoundfile(const char *, const char *, Soundfile **) override {}
 
     // Metadata declaration
-    void declare(Real *, const char *, const char *) override {}
+    void declare(Real *zone, const char *key, const char *value) override {
+        MetaDataUI::declare(zone, key, value);
+    }
 
     // `id` can be any of label/shortname/path.
     Real get(const std::string &id) {

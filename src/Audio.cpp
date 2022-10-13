@@ -498,7 +498,12 @@ int audio() {
             if (outstream->sample_rate != s.Audio.OutSampleRate) values[s.Audio.OutSampleRate.Path] = outstream->sample_rate;
             if (instream->format != s.Audio.InFormat) values[s.Audio.InFormat.Path] = to_audio_format(instream->format);
             if (outstream->format != s.Audio.OutFormat) values[s.Audio.OutFormat.Path] = to_audio_format(outstream->format);
-            if (!values.empty()) q(set_values{values});
+            if (!values.empty()) {
+                // First run ever. Flush and clear the undo buffer since this has affected state without any user input.
+                // todo pull initialization out of the audio thread.
+                q(set_values{values}, true);
+                c.clear();
+            }
             first_run = false;
         }
 

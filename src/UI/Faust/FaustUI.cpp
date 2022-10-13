@@ -1452,12 +1452,12 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
     } else {
         SetNextItemWidth(CalcItemWidth(type, label, width, false)); // For item rects - doesn't include label space
         const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
-        const ImVec2 item_size_with_label = {CalcItemWidth(type, label, width, true), CalcItemHeight(type, suggested_height)}; // Includes label space
-        const float constrained_height = max(item_size_with_label.y, suggested_height);
+        const ImVec2 item_size = {CalcItemWidth(type, label, width, true), CalcItemHeight(type, suggested_height)}; // Includes label space
+        const float constrained_height = max(item_size.y, suggested_height);
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{
-            alignment.x == HAlign_Left ? 0 : alignment.x == HAlign_Center ? (width - item_size_with_label.x) / 2 : width - item_size_with_label.x,
-            alignment.y == VAlign_Top ? 0 : alignment.y == VAlign_Center ? (constrained_height - item_size_with_label.y) / 2 : constrained_height - item_size_with_label.y
+            alignment.x == HAlign_Left ? 0 : alignment.x == HAlign_Center ? (width - item_size.x) / 2 : width - item_size.x,
+            alignment.y == VAlign_Top ? 0 : alignment.y == VAlign_Center ? (constrained_height - item_size.y) / 2 : constrained_height - item_size.y
         });
 
         if (type == ItemType_Button) {
@@ -1472,13 +1472,12 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             *item.zone = Real(value);
         } else if (type == ItemType_HSlider || type == ItemType_VSlider || type == ItemType_HBargraph || type == ItemType_VBargraph) {
             auto value = float(*item.zone);
-            const float item_height = item_size_with_label.y;
             ValueBarFlags flags = ValueBarFlags_None;
             if (type == ItemType_HBargraph || type == ItemType_VBargraph) flags |= ValueBarFlags_ReadOnly;
             if (type == ItemType_VBargraph || type == ItemType_VSlider) flags |= ValueBarFlags_Vertical;
 
-            const float rect_height = flags & ValueBarFlags_Vertical && !label.empty() ? item_height - frame_height : item_height;
-            ValueBar(format("##{}", item.label).c_str(), label.c_str(), &value, rect_height, float(item.min), float(item.max), flags, {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical});
+            const float rect_height = item_size.y - (flags & ValueBarFlags_Vertical && !label.empty() ? frame_height : 0);
+            ValueBar(format("##{}", item.label).c_str(), label.c_str(), &value, rect_height, float(item.min), float(item.max), flags, alignment);
             if (!(flags & ValueBarFlags_ReadOnly)) *item.zone = Real(value);
             SetCursorPos(old_cursor + ImVec2{0, constrained_height});
         }

@@ -166,7 +166,7 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 
     tokens.pop_back();
 
-    ImGuiKey key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);
+    auto key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);
     ImGuiModFlags mod_flags = ImGuiModFlags_None;
     while (!tokens.empty()) {
         mod_flags |= mod_keys.at(tokens.back());

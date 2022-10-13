@@ -1352,8 +1352,10 @@ float CalcItemWidth(const ItemType type, const string &label, const float availa
     const float label_width = !label.empty() ? CalcTextSize(label.c_str()).x + GetStyle().FramePadding.x * 2 : 0;
     const float frame_height = GetFrameHeight();
     switch (type) {
-        case ItemType_HSlider:
+        // todo impose min-width for horizontal items (more for `NumEntry`) & default table props to `StretchProp`
+        // todo config to place labels above horizontal items
         case ItemType_NumEntry:
+        case ItemType_HSlider:
         case ItemType_HBargraph:return available_width - (include_label ? 0 : label_width);
         case ItemType_VBargraph:
         case ItemType_VSlider:
@@ -1366,6 +1368,8 @@ float CalcItemWidth(const ItemType type, const string &label, const float availa
         case ItemType_None:return available_width;
     }
 }
+
+// Includes label space (regardless of config!)
 float CalcItemHeight(const ItemType type, const float suggested_height) {
     const float frame_height = GetFrameHeight();
     switch (type) {
@@ -1376,6 +1380,7 @@ float CalcItemHeight(const ItemType type, const float suggested_height) {
         case ItemType_HBargraph:
         case ItemType_CheckButton:
         case ItemType_Button:return frame_height;
+        // Extra `2 * frame_height` for label above knob and value entry below knob.
         case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + 2 * frame_height;
         case ItemType_HGroup:
         case ItemType_VGroup:
@@ -1456,7 +1461,9 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
     } else {
         SetNextItemWidth(CalcItemWidth(type, label, width, false)); // For item contents, not including label space
         const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
-        const ImVec2 item_size = {CalcItemWidth(type, label, width, true), CalcItemHeight(type, suggested_height)}; // Includes label space
+        ImVec2 item_size = {CalcItemWidth(type, label, width, true), CalcItemHeight(type, suggested_height)}; // Includes label space
+        if (type == ItemType_Knob && !has_label) item_size.y -= frame_height; // Account for optional label above knob. Not great that this is special-cased.
+
         const float constrained_height = max(item_size.y, suggested_height);
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{

@@ -1350,15 +1350,16 @@ void ValueBar(const char *id, const char *label, float *value, const float heigh
 
 float CalcItemWidth(const ItemType type, const string &label, const float available_width, const bool include_label = false) {
     const float label_width = !label.empty() ? CalcTextSize(label.c_str()).x + GetStyle().FramePadding.x * 2 : 0;
+    const float frame_height = GetFrameHeight();
     switch (type) {
         case ItemType_HSlider:
         case ItemType_NumEntry:
         case ItemType_HBargraph:return available_width - (include_label ? 0 : label_width);
         case ItemType_VBargraph:
         case ItemType_VSlider:
-        case ItemType_CheckButton:return GetFrameHeight();
+        case ItemType_CheckButton:return frame_height;
         case ItemType_Button:return label_width;
-        case ItemType_Knob:
+        case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height;
         case ItemType_HGroup:
         case ItemType_VGroup:
         case ItemType_TGroup:
@@ -1375,7 +1376,7 @@ float CalcItemHeight(const ItemType type, const float suggested_height) {
         case ItemType_HBargraph:
         case ItemType_CheckButton:
         case ItemType_Button:return frame_height;
-        case ItemType_Knob:
+        case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + 2 * frame_height;
         case ItemType_HGroup:
         case ItemType_VGroup:
         case ItemType_TGroup:
@@ -1424,9 +1425,9 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             if (fg_style.ParamsStretchRowHeight || is_h) {
                 if (is_h) {
                     const float suggested_hor_item_height = (is_height_constrained ? group_height - (fg_style.ParamsHeaderTitles ? GetFontSize() + cell_padding : 0) : 0) - cell_padding;
-                    suggested_item_height = ranges::max(item.items | transform([suggested_hor_item_height](const auto &child) {
+                    suggested_item_height = max(suggested_hor_item_height, ranges::max(item.items | transform([suggested_hor_item_height](const auto &child) {
                         return CalcItemHeight(child.type, suggested_hor_item_height);
-                    }));
+                    })));
                 } else {
                     suggested_item_height = group_height / float(children.size()) - cell_padding;
                 }
@@ -1453,7 +1454,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             }
         }
     } else {
-        SetNextItemWidth(CalcItemWidth(type, label, width, false)); // For item rects - doesn't include label space
+        SetNextItemWidth(CalcItemWidth(type, label, width, false)); // For item contents, not including label space
         const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
         const ImVec2 item_size = {CalcItemWidth(type, label, width, true), CalcItemHeight(type, suggested_height)}; // Includes label space
         const float constrained_height = max(item_size.y, suggested_height);
@@ -1487,7 +1488,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             auto value = float(*item.zone);
             KnobFlags flags = KnobFlags_None;
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
-            Knobs::Knob(label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, 0, flags, steps);
+            Knobs::Knob(label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps);
             *item.zone = Real(value);
         }
     }

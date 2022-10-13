@@ -714,7 +714,8 @@ struct FlowGridStyle : StateMember, Drawable {
 
     Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
     Bool ParamsStretchRowHeight{Path, "ParamsStretchRowHeight", true};
-    Float ParamsMinVerticalItemHeight{Path, "ParamsMinVerticalItemHeight", 4, 2, 10}; // In frame-height units
+    Float ParamsMinVerticalItemHeight{Path, "ParamsMinVerticalItemHeight", 4, 2, 8}; // In frame-height units
+    Float ParamsMinKnobItemSize{Path, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
     Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
     Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
     Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Resizable | TableFlags_Reorderable | TableFlags_Hideable};

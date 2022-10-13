@@ -1237,6 +1237,7 @@ void FlowGridStyle::draw() const {
             ParamsHeaderTitles.Draw();
             ParamsStretchRowHeight.Draw();
             ParamsMinVerticalItemHeight.Draw();
+            ParamsMinKnobItemSize.Draw();
             ParamsAlignmentHorizontal.Draw();
             ParamsAlignmentVertical.Draw();
             Spacing();

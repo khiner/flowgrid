@@ -67,25 +67,20 @@ template<typename DataType>
 struct knob {
     ImVec2 center;
     bool is_active, is_hovered, value_changed;
-    float radius, angle, angle_min, angle_max, t;
+    float radius, t, angle_min, angle_max, angle;
 
     knob(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float speed, float radius, const char *format, KnobFlags flags)
-        : radius(radius), t(float(*p_value - v_min) / (v_max - v_min)) {
+        : radius(radius), t(float(*p_value - v_min) / (v_max - v_min)), angle_min(PI * 0.75f), angle_max(PI * 2.25f), angle(angle_min + (angle_max - angle_min) * t) {
+        const ImVec2 &radius_2d = {radius, radius};
+        center = GetCursorScreenPos() + radius_2d;;
 
         // Handle dragging
-        InvisibleButton(label, ImVec2{radius, radius} * 2);
-        const auto gid = GetID(label);
         ImGuiSliderFlags drag_flags = ImGuiSliderFlags_None;
         if (!(flags & KnobFlags_DragHorizontal)) drag_flags |= ImGuiSliderFlags_Vertical;
-
-        value_changed = DragBehavior(gid, data_type, p_value, speed, &v_min, &v_max, format, drag_flags);
-
-        angle_min = PI * 0.75f;
-        angle_max = PI * 2.25f;
-        center = GetCursorScreenPos() + ImVec2{radius, -radius}; // todo don't understand why y radius needs to be negative here
+        value_changed = DragBehavior(GetID(label), data_type, p_value, speed, &v_min, &v_max, format, drag_flags);
+        InvisibleButton(label, radius_2d * 2);
         is_active = IsItemActive();
         is_hovered = IsItemHovered();
-        angle = angle_min + (angle_max - angle_min) * t;
     }
 
     void draw_dot(float size, float radius_ratio) const {

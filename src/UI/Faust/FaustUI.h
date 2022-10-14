@@ -42,6 +42,7 @@ public:
         // Types specified with metadata
         ItemType_Knob,
     };
+
     struct Item {
         const ItemType type{ItemType_None};
         const std::string label;

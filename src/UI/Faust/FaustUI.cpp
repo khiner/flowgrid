@@ -1302,6 +1302,7 @@ enum ValueBarFlags_ {
     ValueBarFlags_None = 0,
     ValueBarFlags_Vertical = 1 << 0,
     ValueBarFlags_ReadOnly = 1 << 1,
+    ValueBarFlags_NoTitle = 1 << 2,
 };
 using ValueBarFlags = int;
 
@@ -1313,84 +1314,109 @@ using ValueBarFlags = int;
 // `size` is the rectangle size.
 // **Assumes the current cursor position is the desired top-left of the rectangle.**
 // **Assumes the current item width has been set to the desired rectangle width.**
-void ValueBar(const char *id, const char *label, float *value, const float height, const float min_value = 0, const float max_value = 1,
+void ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1,
               const ValueBarFlags flags = ValueBarFlags_None, const Align align = {HAlign_Center, VAlign_Center}) {
-    const float width = CalcItemWidth();
-    const ImVec2 &size = {width, height};
-    const bool is_h = !(flags & ValueBarFlags_Vertical);
+    const float rect_width = CalcItemWidth();
+    const ImVec2 &rect_size = {rect_width, rect_height};
     const auto &style = GetStyle();
+    const bool is_h = !(flags & ValueBarFlags_Vertical);
+    const bool has_title = !(flags & ValueBarFlags_NoTitle);
     const auto &draw_list = GetWindowDrawList();
-    const auto &pos = GetCursorScreenPos();
+
+    PushID(label);
+    BeginGroup();
+
+    const auto cursor = GetCursorPos();
+    if (!is_h && has_title) {
+        const float label_w = CalcTextSize(label).x;
+        const float rect_x = align.x == HAlign_Left ? 0 : align.x == HAlign_Center ? (label_w - rect_size.x) / 2 : label_w - rect_size.x;
+        SetCursorPos(GetCursorPos() + ImVec2{rect_x, GetTextLineHeightWithSpacing()});
+    }
+    const auto &rect_pos = GetCursorScreenPos();
 
     if (flags & ValueBarFlags_ReadOnly) {
         const float fraction = (*value - min_value) / max_value;
-        draw_list->AddRectFilled(pos, pos + size, GetColorU32(ImGuiCol_FrameBg), style.FrameRounding);
+        RenderFrame(rect_pos, rect_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
         draw_list->AddRectFilled(
-            pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
-            pos + size * ImVec2{is_h ? fraction : 1, 1},
+            rect_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * rect_size.y},
+            rect_pos + rect_size * ImVec2{is_h ? fraction : 1, 1},
             GetColorU32(ImGuiCol_PlotHistogram),
             style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
         );
+        Dummy(rect_size);
+        SetCursorPosY(GetCursorPosY() + style.FramePadding.y);
     } else {
         // Draw ImGui widget without value or label text.
-        if (is_h) SliderFloat(id, value, min_value, max_value, "");
-        else VSliderFloat(id, size, value, min_value, max_value, "");
+        const string &id = format("##{}", label);
+        if (is_h) SliderFloat(id.c_str(), value, min_value, max_value, "");
+        else VSliderFloat(id.c_str(), rect_size, value, min_value, max_value, "");
     }
 
     const string value_text = format("{:.2f}", *value);
     const float value_text_w = CalcTextSize(value_text.c_str()).x;
-    const float value_text_x = is_h || align.x == HAlign_Center ? (size.x - value_text_w) / 2 : align.x == HAlign_Left ? 0 : -value_text_w + size.x;
-    draw_list->AddText(pos + ImVec2{value_text_x, (size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());
-    if (label) {
-        const float label_w = strlen(label) > 0 ? CalcTextSize(label).x : 0;
-        const float label_x = is_h ? size.x + style.ItemInnerSpacing.x : align.x == HAlign_Left ? 0 : align.x == HAlign_Center ? (size.x - label_w) / 2 : -label_w + size.x;
-        draw_list->AddText(pos + ImVec2{label_x, style.FramePadding.y + (is_h ? 0 : size.y)}, GetColorU32(ImGuiCol_Text), label);
+    const float value_text_x = is_h || align.x == HAlign_Center ? (rect_size.x - value_text_w) / 2 : align.x == HAlign_Left ? 0 : -value_text_w + rect_size.x;
+    draw_list->AddText(rect_pos + ImVec2{value_text_x, (rect_size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());
+
+    if (has_title) {
+        if (is_h) SameLine();
+        else SetCursorPos(cursor);
+
+        Text("%s", label);
     }
+
+    EndGroup();
+    PopID();
 }
 
-float CalcItemWidth(const ItemType type, const string &label, const float available_width, const bool include_label = false) {
-    const float label_width = !label.empty() ? CalcTextSize(label.c_str()).x + GetStyle().FramePadding.x * 2 : 0;
+float CalcLabelWidth(const string &text) {
+    if (text.empty()) return 0;
+    return CalcTextSize(text.c_str()).x + GetStyle().FramePadding.x * 2;
+}
+
+float CalcItemWidth(const ItemType type, const string &label, bool include_label) {
+    const float label_width = CalcLabelWidth(label);
     const float frame_height = GetFrameHeight();
     switch (type) {
         // todo impose min-width for horizontal items (more for `NumEntry`)
         // todo config to place labels above horizontal items
         case ItemType_NumEntry:
         case ItemType_HSlider:
-        case ItemType_HBargraph:return available_width - (include_label ? 0 : label_width);
-//        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height + (include_label ? label_width : 0);
+        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + (include_label ? label_width : 0);
         case ItemType_VBargraph:
-        case ItemType_VSlider:
-        case ItemType_CheckButton:return frame_height;
+        case ItemType_VSlider:return max(frame_height, include_label ? label_width : 0);
+        case ItemType_CheckButton:return frame_height + (include_label ? label_width : 0);
         case ItemType_Button:return label_width;
-        case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height;
+        case ItemType_Knob:return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, include_label ? label_width : 0);
         case ItemType_HGroup:
         case ItemType_VGroup:
         case ItemType_TGroup:
-        case ItemType_None:return available_width;
+        case ItemType_None:return GetContentRegionAvail().x;
     }
 }
-
-// Includes label space (regardless of config!)
-float CalcItemHeight(const ItemType type, const float suggested_height) {
+float CalcItemHeight(const ItemType type, bool include_label) {
     const float frame_height = GetFrameHeight();
     switch (type) {
         case ItemType_VBargraph:
-        case ItemType_VSlider:return max(s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height, suggested_height);
+        case ItemType_VSlider:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height + (include_label ? frame_height : 0);
         case ItemType_HSlider:
         case ItemType_NumEntry:
         case ItemType_HBargraph:
         case ItemType_CheckButton:
         case ItemType_Button:return frame_height;
-        // Extra `2 * frame_height` for label above knob and value entry below knob.
-        case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + 2 * frame_height;
+        case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + frame_height + (include_label ? frame_height : 0);
         case ItemType_HGroup:
         case ItemType_VGroup:
         case ItemType_TGroup:
-        case ItemType_None:return suggested_height;
+        case ItemType_None:return 0;
     }
 }
 
 #include <range/v3/algorithm/max.hpp>
+
+static bool is_height_expandable(const ItemType type) {
+    return type == ItemType_VBargraph || type == ItemType_VSlider || type == ItemType_CheckButton || type == ItemType_Button;
+}
+static bool is_width_expandable(const ItemType type) { return !is_height_expandable(type); }
 
 // `suggested_height` may be positive if the item is within a constrained layout setting.
 // `suggested_height == 0` means no height suggestion.
@@ -1427,15 +1453,9 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             const float cell_padding = type == ItemType_None ? 0 : 2 * style.CellPadding.y;
             const bool is_h = type == ItemType_HGroup;
             float suggested_item_height = 0; // Including any label height, not including cell padding
-            if (fg_style.ParamsStretchRowHeight || is_h) {
-                if (is_h) {
-                    const float suggested_hor_item_height = (is_height_constrained ? group_height - (fg_style.ParamsHeaderTitles ? GetFontSize() + cell_padding : 0) : 0) - cell_padding;
-                    suggested_item_height = max(suggested_hor_item_height, ranges::max(item.items | transform([suggested_hor_item_height](const auto &child) {
-                        return CalcItemHeight(child.type, suggested_hor_item_height);
-                    })));
-                } else {
-                    suggested_item_height = group_height / float(children.size()) - cell_padding;
-                }
+            if (is_h) {
+                bool include_labels = !fg_style.ParamsHeaderTitles;
+                suggested_item_height = ranges::max(item.items | transform([include_labels](const auto &child) { return CalcItemHeight(child.type, include_labels); }));
             }
             if (type == ItemType_None) { // Root group (treated as a vertical group but not as a table)
                 for (const auto &child: children) DrawUiItem(child, child.label, suggested_item_height);
@@ -1443,7 +1463,12 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                 if (BeginTable(item.label.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags, fg_style.ParamsTableSizingPolicy))) {
                     const float row_min_height = suggested_item_height + cell_padding;
                     if (is_h) {
-                        for (const auto &inner_item: children) TableSetupColumn(inner_item.label.c_str());
+                        for (const auto &inner_item: children) {
+                            ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
+                            const auto inner_type = inner_item.type;
+                            if (!is_width_expandable(inner_type)) flags |= ImGuiTableColumnFlags_WidthFixed;
+                            TableSetupColumn(inner_item.label.c_str(), flags);
+                        }
                         if (fg_style.ParamsHeaderTitles) TableHeadersRow();
                         TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                     }
@@ -1459,17 +1484,18 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             }
         }
     } else {
-        const float width = GetContentRegionAvail().x;
-        SetNextItemWidth(CalcItemWidth(type, label, width, false)); // For item contents, not including label space
-        const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
-        ImVec2 item_size = {CalcItemWidth(type, label, width, true), CalcItemHeight(type, suggested_height)}; // Includes label space
-        if (type == ItemType_Knob && !has_label) item_size.y -= frame_height; // Account for optional label above knob. Not great that this is special-cased.
+        ImVec2 item_size_no_label = {CalcItemWidth(type, item.label, false), CalcItemHeight(type, false)};
+        if (is_height_expandable(type) && suggested_height > item_size_no_label.y) item_size_no_label.y = suggested_height;
+        const ImVec2 &item_size_with_label = has_label ? ImVec2{CalcItemWidth(type, item.label, true), CalcItemHeight(type, true)} : item_size_no_label;
+        SetNextItemWidth(item_size_no_label.x);
 
-        const float constrained_height = max(item_size.y, suggested_height);
+        const float available_x = GetContentRegionAvail().x;
+        const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
+        const float constrained_height = max(item_size_no_label.y, suggested_height);
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{
-            alignment.x == HAlign_Left ? 0 : alignment.x == HAlign_Center ? (width - item_size.x) / 2 : width - item_size.x,
-            alignment.y == VAlign_Top ? 0 : alignment.y == VAlign_Center ? (constrained_height - item_size.y) / 2 : constrained_height - item_size.y
+            max(0.0f, alignment.x == HAlign_Left ? 0 : alignment.x == HAlign_Center ? (available_x - item_size_with_label.x) / 2 : available_x - item_size_with_label.x),
+            alignment.y == VAlign_Top ? 0 : alignment.y == VAlign_Center ? (constrained_height - item_size_with_label.y) / 2 : constrained_height - item_size_with_label.y
         });
 
         if (type == ItemType_Button) {
@@ -1487,11 +1513,10 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             ValueBarFlags flags = ValueBarFlags_None;
             if (type == ItemType_HBargraph || type == ItemType_VBargraph) flags |= ValueBarFlags_ReadOnly;
             if (type == ItemType_VBargraph || type == ItemType_VSlider) flags |= ValueBarFlags_Vertical;
+            if (!has_label) flags |= ValueBarFlags_NoTitle;
 
-            const float rect_height = item_size.y - (flags & ValueBarFlags_Vertical && !label.empty() ? frame_height : 0);
-            ValueBar(format("##{}", item.label).c_str(), label.c_str(), &value, rect_height, float(item.min), float(item.max), flags, alignment);
+            ValueBar(item.label.c_str(), &value, item_size_no_label.y, float(item.min), float(item.max), flags, alignment);
             if (!(flags & ValueBarFlags_ReadOnly)) *item.zone = Real(value);
-            SetCursorPos(old_cursor + ImVec2{0, constrained_height});
         } else if (type == ItemType_Knob) {
             auto value = float(*item.zone);
             KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
@@ -1515,9 +1540,7 @@ void Audio::FaustState::FaustParams::draw() const {
 //        const string label = get_ui_label(hovered_node->tree);
 //        if (!label.empty()) {
 //            const auto *widget = interface->get_widget(label);
-//            if (widget) {
-//                cout << "Found widget: " << label << '\n';
-//            }
+//            if (widget) cout << "Found widget: " << label << '\n';
 //        }
 //    }
 }

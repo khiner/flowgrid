@@ -713,7 +713,7 @@ struct FlowGridStyle : StateMember, Drawable {
     Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
 
     Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
-    Bool ParamsStretchRowHeight{Path, "ParamsStretchRowHeight", true};
+    Float ParamsMinHorizontalItemWidth{Path, "ParamsMinHorizontalItemWidth", 4, 2, 8}; // In frame-height units
     Float ParamsMinVerticalItemHeight{Path, "ParamsMinVerticalItemHeight", 4, 2, 8}; // In frame-height units
     Float ParamsMinKnobItemSize{Path, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
     Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};

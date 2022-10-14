@@ -170,7 +170,7 @@ JsonType(FlowGridStyle, Colors, FlashDurationSec,
     DiagramFoldComplexity, DiagramDirection, DiagramSequentialConnectionZigzag, DiagramOrientationMark, DiagramOrientationMarkRadius, DiagramRouteFrame, DiagramScaleLinked,
     DiagramScaleFill, DiagramScale, DiagramTopLevelMargin, DiagramDecorateMargin, DiagramDecorateLineWidth, DiagramDecorateCornerRadius, DiagramBoxCornerRadius, DiagramBinaryHorizontalGapRatio, DiagramWireGap,
     DiagramGap, DiagramWireWidth, DiagramArrowSize, DiagramInverterRadius,
-    ParamsHeaderTitles, ParamsStretchRowHeight, ParamsMinVerticalItemHeight, ParamsMinKnobItemSize, ParamsAlignmentHorizontal, ParamsAlignmentVertical, ParamsTableFlags, ParamsTableSizingPolicy)
+    ParamsHeaderTitles, ParamsMinHorizontalItemWidth, ParamsMinVerticalItemHeight, ParamsMinKnobItemSize, ParamsAlignmentHorizontal, ParamsAlignmentVertical, ParamsTableFlags, ParamsTableSizingPolicy)
 JsonType(Style, Visible, ImGui, ImPlot, FlowGrid)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.

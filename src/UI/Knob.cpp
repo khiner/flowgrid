@@ -124,17 +124,12 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
     PushID(label);
     const auto width = CalcItemWidth();
     PushItemWidth(width);
-
     BeginGroup();
-
-    // There's an issue with `SameLine` and Groups, see https://github.com/ocornut/imgui/issues/4190.
-    // This is probably not the best solution, but seems to work for now
-    GetCurrentWindow()->DC.CurrLineTextBaseOffset = 0;
 
     // Draw title
     if (!(flags & KnobFlags_NoTitle)) {
         const auto &title_size = CalcTextSize(label, nullptr, false, width);
-        SetCursorPosX(GetCursorPosX() + (width - title_size.x) * 0.5f); // Center title
+        SetCursorPosX(GetCursorPosX() + (width - title_size.x) / 2); // Center title
         Text("%s", label);
     }
 

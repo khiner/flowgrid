@@ -35,10 +35,10 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizingPolic
     if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
     if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
 
-    if (sizing == TableSizingPolicy_SizingFixedFit) imgui_flags |= ImGuiTableFlags_SizingFixedFit;
-    else if (sizing == TableSizingPolicy_SizingFixedSame) imgui_flags |= ImGuiTableFlags_SizingFixedSame;
-    else if (sizing == TableSizingPolicy_SizingStretchProp) imgui_flags |= ImGuiTableFlags_SizingStretchProp;
-    else if (sizing == TableSizingPolicy_SizingStretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
+    if (sizing == TableSizingPolicy_FixedFit) imgui_flags |= ImGuiTableFlags_SizingFixedFit;
+    else if (sizing == TableSizingPolicy_FixedSame) imgui_flags |= ImGuiTableFlags_SizingFixedSame;
+    else if (sizing == TableSizingPolicy_StretchProp) imgui_flags |= ImGuiTableFlags_SizingStretchProp;
+    else if (sizing == TableSizingPolicy_StretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
 
     return imgui_flags;
 }

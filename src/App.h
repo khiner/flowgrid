@@ -246,10 +246,10 @@ using TableFlags = int;
 
 enum TableSizingPolicy_ {
     TableSizingPolicy_None = 0,
-    TableSizingPolicy_SizingFixedFit,
-    TableSizingPolicy_SizingFixedSame,
-    TableSizingPolicy_SizingStretchProp,
-    TableSizingPolicy_SizingStretchSame,
+    TableSizingPolicy_FixedFit,
+    TableSizingPolicy_FixedSame,
+    TableSizingPolicy_StretchProp,
+    TableSizingPolicy_StretchSame,
 };
 using TableSizingPolicy = int;
 
@@ -718,9 +718,9 @@ struct FlowGridStyle : StateMember, Drawable {
     Float ParamsMinKnobItemSize{Path, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
     Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
     Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
-    Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Resizable | TableFlags_Reorderable | TableFlags_Hideable};
+    Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
     Enum ParamsTableSizingPolicy{
-        Path, "ParamsTableSizingPolicy", {"None", "FixedFit", "FaxedSame", "StretchProp", "StretchSame"}, TableSizingPolicy_None,
+        Path, "ParamsTableSizingPolicy", {"None", "FixedFit", "FixedSame", "StretchProp", "StretchSame"}, TableSizingPolicy_StretchProp,
         "?None: No sizing policy.\n"
         "FixedFit: Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width\n"
         "FixedSame: Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching the maximum contents width of all columns. Implicitly enable ImGuiTableFlags_NoKeepColumnsVisible\n"

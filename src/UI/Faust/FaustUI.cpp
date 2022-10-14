@@ -1352,11 +1352,12 @@ float CalcItemWidth(const ItemType type, const string &label, const float availa
     const float label_width = !label.empty() ? CalcTextSize(label.c_str()).x + GetStyle().FramePadding.x * 2 : 0;
     const float frame_height = GetFrameHeight();
     switch (type) {
-        // todo impose min-width for horizontal items (more for `NumEntry`) & default table props to `StretchProp`
+        // todo impose min-width for horizontal items (more for `NumEntry`)
         // todo config to place labels above horizontal items
         case ItemType_NumEntry:
         case ItemType_HSlider:
         case ItemType_HBargraph:return available_width - (include_label ? 0 : label_width);
+//        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height + (include_label ? label_width : 0);
         case ItemType_VBargraph:
         case ItemType_VSlider:
         case ItemType_CheckButton:return frame_height;
@@ -1401,7 +1402,6 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
     const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
 
     const bool is_height_constrained = suggested_height != 0;
-    const float width = GetContentRegionAvail().x;
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
     const auto type = item.type;
@@ -1459,6 +1459,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             }
         }
     } else {
+        const float width = GetContentRegionAvail().x;
         SetNextItemWidth(CalcItemWidth(type, label, width, false)); // For item contents, not including label space
         const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
         ImVec2 item_size = {CalcItemWidth(type, label, width, true), CalcItemHeight(type, suggested_height)}; // Includes label space

@@ -154,9 +154,10 @@ static float CalcItemLabelHeight(const ItemType type) {
 void DrawUiItem(const FaustUI::Item &item, const string &label, const float suggested_height) {
     const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
 
-    const bool is_height_constrained = suggested_height != 0;
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
+    const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
+    const bool is_height_constrained = suggested_height != 0;
     const auto type = item.type;
     const auto &children = item.items;
     const float frame_height = GetFrameHeight();
@@ -199,7 +200,21 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                             if (!is_width_expandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
                             TableSetupColumn(child.label.c_str(), flags, CalcItemWidth(child.type, child.label, true));
                         }
-                        if (fg_style.ParamsHeaderTitles) TableHeadersRow();
+                        if (fg_style.ParamsHeaderTitles) {
+                            // Custom headers (instead of `TableHeadersRow()`) to align column names.
+                            ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+                            for (int column = 0; column < int(children.size()); column++) {
+                                ImGui::TableSetColumnIndex(column);
+                                const char *column_name = ImGui::TableGetColumnName(column);
+                                ImGui::PushID(column);
+                                const float header_x = alignment.x == HAlign_Left ? 0 :
+                                                       alignment.x == HAlign_Center ? (GetContentRegionAvail().x - CalcTextSize(column_name).x) / 2 :
+                                                       GetContentRegionAvail().x - CalcTextSize(column_name).x;
+                                SetCursorPosX(GetCursorPosX() + max(0.0f, header_x));
+                                ImGui::TableHeader(column_name);
+                                ImGui::PopID();
+                            }
+                        }
                         TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                     }
                     for (const auto &child: children) {
@@ -226,7 +241,6 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         if (is_height_expandable(type) && suggested_height > item_size.y) item_size.y = suggested_height;
         SetNextItemWidth(item_size_no_label.x);
 
-        const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
         const float constrained_height = max(item_size.y, suggested_height);
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{

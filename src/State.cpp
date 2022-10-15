@@ -1242,8 +1242,8 @@ void FlowGridStyle::draw() const {
             ParamsAlignmentHorizontal.Draw();
             ParamsAlignmentVertical.Draw();
             Spacing();
+            ParamsWidthSizingPolicy.Draw();
             ParamsTableFlags.Draw();
-            ParamsTableSizingPolicy.Draw();
             EndTabItem();
         }
 

@@ -242,14 +242,12 @@ enum TableFlags_ {
 // todo 'Condensed' preset, with NoHostExtendX, NoBordersInBody, NoPadOuterX
 using TableFlags = int;
 
-enum TableSizingPolicy_ {
-    TableSizingPolicy_None = 0,
-    TableSizingPolicy_FixedFit,
-    TableSizingPolicy_FixedSame,
-    TableSizingPolicy_StretchProp,
-    TableSizingPolicy_StretchSame,
+enum ParamsWidthSizingPolicy_ {
+    ParamsWidthSizingPolicy_StretchToFill, // If a table contains only fixed-width items, allow columns to stretch to fill available width.
+    ParamsWidthSizingPolicy_StretchFlexibleOnly, // If a table contains only fixed-width items, it won't stretch to fill available width.
+    ParamsWidthSizingPolicy_Balanced, // All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).
 };
-using TableSizingPolicy = int;
+using ParamsWidthSizingPolicy = int;
 
 static const std::vector<Flags::Item> TableFlagItems{
     "Resizable?Enable resizing columns",
@@ -267,7 +265,7 @@ static const std::vector<Flags::Item> TableFlagItems{
     "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
 };
 
-ImGuiTableFlags TableFlagsToImgui(TableFlags flags, TableSizingPolicy sizing);
+ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : StateMember, Drawable {
     using StateMember::StateMember;
@@ -719,13 +717,11 @@ struct FlowGridStyle : StateMember, Drawable {
     Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
     Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
     Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
-    Enum ParamsTableSizingPolicy{
-        Path, "ParamsTableSizingPolicy", {"None", "FixedFit", "FixedSame", "StretchProp", "StretchSame"}, TableSizingPolicy_StretchProp,
-        "?None: No sizing policy.\n"
-        "FixedFit: Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width\n"
-        "FixedSame: Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching the maximum contents width of all columns. Implicitly enable ImGuiTableFlags_NoKeepColumnsVisible\n"
-        "StretchProp: Columns default to _WidthStretch with default weights proportional to each columns contents widths\n"
-        "StretchSame: Columns default to _WidthStretch with default weights all equal, unless overridden by TableSetupColumn()"};
+    Enum ParamsWidthSizingPolicy{
+        Path, "ParamsWidthSizingPolicy", {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly,
+        "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
+        "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
+        "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).\n"};
 
     void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};

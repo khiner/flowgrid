@@ -18,8 +18,8 @@ const char *get_menu_label(ID action_id) {
 }
 }
 
-ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizingPolicy sizing) {
-    ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX;
+ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
+    ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingStretchProp;
     if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
     if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
     if (flags & TableFlags_Hideable) imgui_flags |= ImGuiTableFlags_Hideable;
@@ -33,11 +33,6 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizingPolic
     if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
     if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
     if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
-
-    if (sizing == TableSizingPolicy_FixedFit) imgui_flags |= ImGuiTableFlags_SizingFixedFit;
-    else if (sizing == TableSizingPolicy_FixedSame) imgui_flags |= ImGuiTableFlags_SizingFixedSame;
-    else if (sizing == TableSizingPolicy_StretchProp) imgui_flags |= ImGuiTableFlags_SizingStretchProp;
-    else if (sizing == TableSizingPolicy_StretchSame) imgui_flags |= ImGuiTableFlags_SizingStretchSame;
 
     return imgui_flags;
 }

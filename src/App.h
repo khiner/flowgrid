@@ -227,19 +227,17 @@ enum TableFlags_ {
     TableFlags_Hideable = 1 << 2,
     TableFlags_Sortable = 1 << 3,
     TableFlags_ContextMenuInBody = 1 << 4,
-    // Decorations
+    // Borders
     TableFlags_BordersInnerH = 1 << 5,
     TableFlags_BordersOuterH = 1 << 6,
     TableFlags_BordersInnerV = 1 << 7,
     TableFlags_BordersOuterV = 1 << 8,
     TableFlags_Borders = TableFlags_BordersInnerH | TableFlags_BordersOuterH | TableFlags_BordersInnerV | TableFlags_BordersOuterV,
     TableFlags_NoBordersInBody = 1 << 9,
-    // Sizing Extra Option
-    TableFlags_NoHostExtendX = 1 << 10,
     // Padding
-    TableFlags_PadOuterX = 1 << 11,
-    TableFlags_NoPadOuterX = 1 << 12,
-    TableFlags_NoPadInnerX = 1 << 13,
+    TableFlags_PadOuterX = 1 << 10,
+    TableFlags_NoPadOuterX = 1 << 11,
+    TableFlags_NoPadInnerX = 1 << 12,
 };
 // todo 'Condensed' preset, with NoHostExtendX, NoBordersInBody, NoPadOuterX
 using TableFlags = int;
@@ -264,7 +262,6 @@ static const std::vector<Flags::Item> TableFlagItems{
     "BordersInnerV?Draw vertical borders between columns",
     "BordersOuterV?Draw vertical borders on the left and right sides",
     "NoBordersInBody?Disable vertical borders in columns Body (borders will always appear in Headers)",
-    "NoHostExtendX?Make outer width auto-fit to columns, overriding outer_size.x value. Only available when stretch columns are not used",
     "PadOuterX?Default if 'BordersOuterV' is on. Enable outermost padding. Generally desirable if you have headers.",
     "NoPadOuterX?Default if 'BordersOuterV' is off. Disable outermost padding.",
     "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",

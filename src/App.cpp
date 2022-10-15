@@ -19,7 +19,7 @@ const char *get_menu_label(ID action_id) {
 }
 
 ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizingPolicy sizing) {
-    ImGuiTableFlags imgui_flags = ImGuiTableFlags_None;
+    ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX;
     if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
     if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
     if (flags & TableFlags_Hideable) imgui_flags |= ImGuiTableFlags_Hideable;
@@ -30,7 +30,6 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags, const TableSizingPolic
     if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
     if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
     if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
-    if (flags & TableFlags_NoHostExtendX) imgui_flags |= ImGuiTableFlags_NoHostExtendX;
     if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
     if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
     if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;

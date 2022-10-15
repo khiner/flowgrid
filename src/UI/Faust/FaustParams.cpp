@@ -82,19 +82,26 @@ void ValueBar(const char *label, float *value, const float rect_height, const fl
     PopID();
 }
 
-float CalcItemWidth(const ItemType type, const string &label, bool include_label) {
+static bool is_width_expandable(const ItemType type) {
+    return type == ItemType_HGroup || type == ItemType_VGroup || type == ItemType_TGroup || type == ItemType_NumEntry || type == ItemType_HSlider || type == ItemType_HBargraph;
+}
+static bool is_height_expandable(const ItemType type) {
+    return type == ItemType_VBargraph || type == ItemType_VSlider || type == ItemType_CheckButton;
+}
+
+// todo config to place labels above horizontal items
+static float CalcItemWidth(const ItemType type, const string &label, const bool include_label) {
     const float frame_height = GetFrameHeight();
-    const float label_width = include_label && !label.empty() ? CalcTextSize(label.c_str()).x + GetStyle().FramePadding.x * 2 : 0;
+    const bool has_label = include_label && !label.empty();
+    const float label_width = has_label ? CalcTextSize(label.c_str()).x : 0;
     switch (type) {
-        // todo impose min-width for horizontal items (more for `NumEntry`)
-        // todo config to place labels above horizontal items
         case ItemType_NumEntry:
         case ItemType_HSlider:
-        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + label_width;
+        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
         case ItemType_VBargraph:
         case ItemType_VSlider:return max(frame_height, label_width);
-        case ItemType_CheckButton:return frame_height + label_width;
-        case ItemType_Button:return label_width;
+        case ItemType_CheckButton:return frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
+        case ItemType_Button:return label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case ItemType_Knob:return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, label_width);
         case ItemType_HGroup:
         case ItemType_VGroup:
@@ -102,7 +109,7 @@ float CalcItemWidth(const ItemType type, const string &label, bool include_label
         case ItemType_None:return GetContentRegionAvail().x;
     }
 }
-float CalcItemHeight(const ItemType type) {
+static float CalcItemHeight(const ItemType type) {
     const float frame_height = GetFrameHeight();
     switch (type) {
         case ItemType_VBargraph:
@@ -120,7 +127,7 @@ float CalcItemHeight(const ItemType type) {
     }
 }
 // Returns _additional_ height needed to accommodate a label for the item
-float CalcItemLabelHeight(const ItemType type) {
+static float CalcItemLabelHeight(const ItemType type) {
     const float label_height = GetTextLineHeightWithSpacing();
     switch (type) {
         case ItemType_VBargraph:
@@ -134,15 +141,8 @@ float CalcItemLabelHeight(const ItemType type) {
         case ItemType_HBargraph:
         case ItemType_CheckButton:
         case ItemType_Button:
-        case ItemType_None:return 0 ;
+        case ItemType_None:return 0;
     }
-}
-
-static bool is_width_expandable(const ItemType type) {
-    return type == ItemType_HGroup || type == ItemType_VGroup || type == ItemType_TGroup || type == ItemType_NumEntry || type == ItemType_HSlider || type == ItemType_HBargraph;
-}
-static bool is_height_expandable(const ItemType type) {
-    return type == ItemType_VBargraph || type == ItemType_VSlider || type == ItemType_CheckButton;
 }
 
 // `suggested_height` may be positive if the item is within a constrained layout setting.
@@ -194,11 +194,10 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                 if (BeginTable(item.label.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags, fg_style.ParamsTableSizingPolicy))) {
                     const float row_min_height = suggested_item_height + cell_padding;
                     if (is_h) {
-                        for (const auto &inner_item: children) {
+                        for (const auto &child: children) {
                             ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
-                            const auto inner_type = inner_item.type;
-                            if (!is_width_expandable(inner_type)) flags |= ImGuiTableColumnFlags_WidthFixed;
-                            TableSetupColumn(inner_item.label.c_str(), flags);
+                            if (!is_width_expandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
+                            TableSetupColumn(child.label.c_str(), flags, CalcItemWidth(child.type, child.label, true));
                         }
                         if (fg_style.ParamsHeaderTitles) TableHeadersRow();
                         TableNextRow(ImGuiTableRowFlags_None, row_min_height);
@@ -215,13 +214,18 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             }
         }
     } else {
-        const ImVec2 item_size_no_label = {CalcItemWidth(type, item.label, false), CalcItemHeight(type)};
-        ImVec2 item_size = {CalcItemWidth(type, item.label, has_label), item_size_no_label.y + label_height};
+        const float available_x = GetContentRegionAvail().x;
+        ImVec2 item_size_no_label = {CalcItemWidth(type, item.label, false), CalcItemHeight(type)};
+        ImVec2 item_size = {has_label ? CalcItemWidth(type, item.label, true) : item_size_no_label.x, item_size_no_label.y + label_height};
+        if (is_width_expandable(type) && available_x > item_size.x) {
+            const float expand_delta = available_x - item_size.x;
+            item_size.x += expand_delta;
+            item_size_no_label.x += expand_delta;
+        }
         if (is_height_expandable(type) && suggested_height > item_size.y) item_size.y = suggested_height;
         SetNextItemWidth(item_size_no_label.x);
 
         const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
-        const float available_x = GetContentRegionAvail().x;
         const float constrained_height = max(item_size.y, suggested_height);
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{

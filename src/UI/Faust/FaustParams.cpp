@@ -218,9 +218,10 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         ImVec2 item_size_no_label = {CalcItemWidth(type, item.label, false), CalcItemHeight(type)};
         ImVec2 item_size = {has_label ? CalcItemWidth(type, item.label, true) : item_size_no_label.x, item_size_no_label.y + label_height};
         if (is_width_expandable(type) && available_x > item_size.x) {
-            const float expand_delta = available_x - item_size.x;
-            item_size.x += expand_delta;
-            item_size_no_label.x += expand_delta;
+            const float expand_delta_max = available_x - item_size.x;
+            const float item_width_no_label_before = item_size_no_label.x;
+            item_size_no_label.x = min(fg_style.ParamsMaxHorizontalItemWidth.value * frame_height, item_size_no_label.x + expand_delta_max);
+            item_size.x += item_size_no_label.x - item_width_no_label_before;
         }
         if (is_height_expandable(type) && suggested_height > item_size.y) item_size.y = suggested_height;
         SetNextItemWidth(item_size_no_label.x);

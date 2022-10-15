@@ -134,7 +134,7 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
     }
 
     // Draw knob
-    detail::knob<DataType> knob(label, data_type, p_value, v_min, v_max, speed, width * 0.5f, format, flags);
+    const detail::knob<DataType> knob(label, data_type, p_value, v_min, v_max, speed, width * 0.5f, format, flags);
     switch (variant) {
         case KnobVariant_Tick: {
             knob.draw_circle(0.85);
@@ -193,18 +193,20 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
         EndTooltip();
     }
 
+    bool changed = knob.value_changed; // Both the knob and the (optional) input can change the value.
+
     // Draw input
     if (!(flags & KnobFlags_NoInput)) {
         ImGuiSliderFlags drag_flags = ImGuiSliderFlags_None;
         if (!(flags & KnobFlags_DragHorizontal)) drag_flags |= ImGuiSliderFlags_Vertical;
-        if (DragScalar("###knob_drag", data_type, p_value, speed, &v_min, &v_max, format, drag_flags)) knob.value_changed = true;
+        if (DragScalar("###knob_drag", data_type, p_value, speed, &v_min, &v_max, format, drag_flags)) changed = true;
     }
 
     EndGroup();
     PopItemWidth();
     PopID();
 
-    return knob.value_changed;
+    return changed;
 }
 
 bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed, const char *format, KnobVariant variant, KnobFlags flags, int steps) {

@@ -152,8 +152,6 @@ static float CalcItemLabelHeight(const ItemType type) {
 // Items/groups are allowed to extend beyond this height if needed to fit its contents.
 // It is expected that the cursor position will be set appropriately below the drawn contents.
 void DrawUiItem(const FaustUI::Item &item, const string &label, const float suggested_height) {
-    const static auto group_bg_color = GetColorU32(ImGuiCol_FrameBg, 0.2); // todo new FG style color
-
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
     const ImVec2i alignment = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
@@ -220,7 +218,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                     for (const auto &child: children) {
                         if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                         TableNextColumn();
-                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, group_bg_color);
+                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, ColorConvertFloat4ToU32(fg_style.Colors[FlowGridCol_ParamsBg]));
                         const string &child_label = child.type == ItemType_Button || !is_h || !fg_style.ParamsHeaderTitles ? child.label : "";
                         DrawUiItem(child, child_label, suggested_item_height);
                     }

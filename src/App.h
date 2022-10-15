@@ -642,11 +642,13 @@ enum FlowGridCol_ {
     FlowGridCol_DiagramLink, // ImGuiCol_Button
     FlowGridCol_DiagramInverter, // ImGuiCol_Text
     FlowGridCol_DiagramOrientationMark, // ImGuiCol_Text
-    // The rest are box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
+    // Box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
     FlowGridCol_DiagramNormal,
     FlowGridCol_DiagramUi,
     FlowGridCol_DiagramSlot,
     FlowGridCol_DiagramNumber,
+    // Params colors.
+    FlowGridCol_ParamsBg, // ImGuiCol_FrameBg with less alpha
 
     FlowGridCol_COUNT
 };
@@ -728,14 +730,17 @@ struct FlowGridStyle : StateMember, Drawable {
     void ColorsDark() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
         Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
+        Colors[FlowGridCol_ParamsBg] = {0.16, 0.29, 0.48, 0.1};
     }
     void ColorsClassic() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
         Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
+        Colors[FlowGridCol_ParamsBg] = {0.43, 0.43, 0.43, 0.1};
     }
     void ColorsLight() {
         Colors[FlowGridCol_HighlightText] = {1.00f, 0.45f, 0.00f, 1.00f};
         Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
+        Colors[FlowGridCol_ParamsBg] = {1, 1, 1, 1};
     }
 
     void DiagramColorsDark() {
@@ -847,6 +852,7 @@ struct FlowGridStyle : StateMember, Drawable {
             case FlowGridCol_DiagramNumber: return "DiagramNumber";
             case FlowGridCol_DiagramInverter: return "DiagramInverter";
             case FlowGridCol_DiagramOrientationMark: return "DiagramOrientationMark";
+            case FlowGridCol_ParamsBg: return "ParamsBg";
             default: return "Unknown";
         }
     }

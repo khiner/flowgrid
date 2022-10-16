@@ -100,7 +100,9 @@ static float CalcItemWidth(const ItemType type, const string &label, const bool 
         case ItemType_HSlider:
         case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
         case ItemType_VBargraph:
-        case ItemType_VSlider:return max(frame_height, label_width);
+        case ItemType_VSlider:
+        case ItemType_VRadioButton:return max(frame_height, label_width);
+        case ItemType_HRadioButton:
         case ItemType_CheckButton:return frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
         case ItemType_Button:return label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case ItemType_Knob:return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, label_width);
@@ -114,12 +116,14 @@ static float CalcItemHeight(const ItemType type) {
     const float frame_height = GetFrameHeight();
     switch (type) {
         case ItemType_VBargraph:
-        case ItemType_VSlider:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height;
+        case ItemType_VSlider:
+        case ItemType_VRadioButton:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height;
         case ItemType_HSlider:
         case ItemType_NumEntry:
         case ItemType_HBargraph:
+        case ItemType_Button:
         case ItemType_CheckButton:
-        case ItemType_Button:return frame_height;
+        case ItemType_HRadioButton:return frame_height;
         case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + frame_height + GetStyle().ItemSpacing.y;
         case ItemType_HGroup:
         case ItemType_VGroup:
@@ -133,6 +137,7 @@ static float CalcItemLabelHeight(const ItemType type) {
     switch (type) {
         case ItemType_VBargraph:
         case ItemType_VSlider:
+        case ItemType_VRadioButton:
         case ItemType_Knob:
         case ItemType_HGroup:
         case ItemType_VGroup:
@@ -141,6 +146,7 @@ static float CalcItemLabelHeight(const ItemType type) {
         case ItemType_NumEntry:
         case ItemType_HBargraph:
         case ItemType_CheckButton:
+        case ItemType_HRadioButton:
         case ItemType_Button:
         case ItemType_None:return 0;
     }
@@ -253,9 +259,9 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         if (type == ItemType_Button) {
             *item.zone = Real(Button(label.c_str()));
         } else if (type == ItemType_CheckButton) {
-            auto checked = bool(*item.zone);
-            Checkbox(label.c_str(), &checked);
-            *item.zone = Real(checked);
+            auto value = bool(*item.zone);
+            Checkbox(label.c_str(), &value);
+            *item.zone = Real(value);
         } else if (type == ItemType_NumEntry) {
             auto value = float(*item.zone);
             InputFloat(label.c_str(), &value, float(item.step));
@@ -275,6 +281,9 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
             Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps);
             *item.zone = Real(value);
+        } else if (type == ItemType_HRadioButton || type == ItemType_VRadioButton) {
+            auto value = int(*item.zone);
+            if (RadioButton(label.c_str(), value)) *item.zone = Real(!value);
         }
     }
 }

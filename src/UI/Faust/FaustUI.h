@@ -11,7 +11,7 @@
 #include "faust/gui/MetaDataUI.h"
 #include "faust/gui/PathBuilder.h"
 
-using std::string;
+using std::string, std::vector;
 using Real = Sample;
 
 // Label, shortname, or complete path (to discriminate between possibly identical labels
@@ -41,30 +41,43 @@ public:
 
         // Types specified with metadata
         ItemType_Knob,
+        ItemType_VRadioButton,
+        ItemType_HRadioButton,
     };
 
     struct Item {
+        Item(const ItemType type, string label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, vector<Item> items = {})
+            : type(type), label(std::move(label)), zone(zone), min(min), max(max), init(init), step(step), items(std::move(items)) {}
+
         const ItemType type{ItemType_None};
-        const std::string label;
-        Real *zone{nullptr}; // Only meaningful for widget items (not container items)
-        const Real min{0}, max{0}; // Only meaningful for sliders, num-entries, and bar graphs.
-        const Real init{0}, step{0}; // Only meaningful for sliders and num-entries.
-        std::vector<Item> items{}; // Only populated for container items (groups)
+        const string label;
+        Real *zone; // Only meaningful for widget items (not container items)
+        const Real min, max; // Only meaningful for sliders, num-entries, and bar graphs.
+        const Real init, step; // Only meaningful for sliders and num-entries.
+        vector<Item> items; // Only populated for container items (groups)
+    };
+    struct RadioButtonItem : Item {
+        RadioButtonItem(const ItemType type, string label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0,
+                        vector<Item> items = {}, vector<string> names = {}, vector<double> values = {})
+            : Item(type, std::move(label), zone, min, max, init, step, std::move(items)), names(std::move(names)), values(std::move(values)) {}
+
+        vector<string> names;
+        vector<double> values;
     };
 
     void openHorizontalBox(const char *label) override {
         pushLabel(label);
-        active_group().items.push_back({ItemType_HGroup, label});
+        active_group().items.emplace_back(ItemType_HGroup, label);
         groups.push(&active_group().items.back());
     }
     void openVerticalBox(const char *label) override {
         pushLabel(label);
-        active_group().items.push_back({ItemType_VGroup, label});
+        active_group().items.emplace_back(ItemType_VGroup, label);
         groups.push(&active_group().items.back());
     }
     void openTabBox(const char *label) override {
         pushLabel(label);
-        active_group().items.push_back({ItemType_TGroup, label});
+        active_group().items.emplace_back(ItemType_TGroup, label);
         groups.push(&active_group().items.back());
     }
     void closeBox() override {
@@ -83,15 +96,31 @@ public:
         add_ui_item(ItemType_CheckButton, label, zone);
     }
     void addHorizontalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
+        if (isRadio(zone)) {
+            addRadioButtons(label, zone, *zone, min, max, step, fRadioDescription[zone].c_str(), false);
+            return;
+        }
         const auto type = isKnob(zone) ? ItemType_Knob : ItemType_HSlider;
         add_ui_item(type, label, zone, min, max, init, step);
     }
     void addVerticalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
+        if (isRadio(zone)) {
+            addRadioButtons(label, zone, *zone, min, max, step, fRadioDescription[zone].c_str(), true);
+            return;
+        }
         const auto type = isKnob(zone) ? ItemType_Knob : ItemType_VSlider;
         add_ui_item(type, label, zone, min, max, init, step);
     }
     void addNumEntry(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
         add_ui_item(ItemType_NumEntry, label, zone, min, max, init, step);
+    }
+
+    void addRadioButtons(const char *label, FAUSTFLOAT *zone, FAUSTFLOAT init, FAUSTFLOAT min, FAUSTFLOAT max, FAUSTFLOAT step, const char *mdescr, bool vert) {
+        const auto type = vert ? ItemType_VRadioButton : ItemType_HRadioButton;
+        RadioButtonItem item{type, label, zone, min, max, init, step};
+        parseMenuList(mdescr, item.names, item.values);
+        active_group().items.emplace_back(type, label, zone, min, max, init, step);
+        append(label);
     }
 
     // Passive widgets
@@ -111,7 +140,7 @@ public:
     }
 
     // `id` can be any of label/shortname/path.
-    Real get(const std::string &id) {
+    Real get(const string &id) {
         const auto *widget = get_widget(id);
         if (!widget) {
             std::cerr << "ERROR : FaustUI::set : id " << id << " not found\n";
@@ -121,7 +150,7 @@ public:
     }
 
     // `id` can be any of label/shortname/path.
-    void set(const std::string &id, Real value) {
+    void set(const string &id, Real value) {
         const auto *widget = get_widget(id);
         if (!widget) {
             std::cerr << "ERROR : FaustUI::set : id " << id << " not found\n";
@@ -130,7 +159,7 @@ public:
         *widget->zone = value;
     }
 
-    Item *get_widget(const std::string &id) {
+    Item *get_widget(const string &id) {
         if (index_for_path.contains(id)) return &ui.items[index_for_path[id]];
         if (index_for_shortname.contains(id)) return &ui.items[index_for_shortname[id]];
         if (index_for_label.contains(id)) return &ui.items[index_for_label[id]];
@@ -141,22 +170,24 @@ public:
     Item ui{ItemType_None, ""};
 
 private:
-    void add_ui_item(const ItemType type, const std::string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        active_group().items.push_back({type, label, zone, min, max, init, step});
-
+    void append(const string &label) {
         const int index = int(ui.items.size() - 1);
-        std::string path = buildPath(label);
+        string path = buildPath(label);
         fFullPaths.push_back(path);
         index_for_path[path] = index;
         index_for_label[label] = index;
+    }
+    void add_ui_item(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
+        active_group().items.emplace_back(type, label, zone, min, max, init, step);
+        append(label);
     }
 
     Item &active_group() { return groups.empty() ? ui : *groups.top(); }
 
     std::stack<Item *> groups{};
-    std::map<std::string, int> index_for_label{};
-    std::map<std::string, int> index_for_shortname{};
-    std::map<std::string, int> index_for_path{};
+    std::map<string, int> index_for_label{};
+    std::map<string, int> index_for_shortname{};
+    std::map<string, int> index_for_path{};
 };
 
 class CTree;

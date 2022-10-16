@@ -1229,7 +1229,7 @@ void save_box_svg(const string &path) {
 void Audio::FaustState::FaustDiagram::draw() const {
     if (!root_node) {
         // todo don't show empty menu bar in this case
-        Text("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
+        TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
         return;
     }
 

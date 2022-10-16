@@ -270,7 +270,7 @@ bool Field::Flags::DrawMenu() const {
 }
 
 bool Field::String::Draw() const {
-    Text("%s", value.c_str());
+    TextUnformatted(value.c_str());
     return false;
 }
 bool Field::String::Draw(const std::vector<string> &options) const {
@@ -353,7 +353,7 @@ bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *
 
 void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
     if (value.is_null()) {
-        ImGui::Text("%s", label.empty() ? "(null)" : label.c_str());
+        ImGui::TextUnformatted(label.empty() ? "(null)" : label.c_str());
     } else if (value.is_object()) {
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
@@ -371,7 +371,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
             if (!label.empty()) ImGui::TreePop();
         }
     } else {
-        if (label.empty()) ImGui::Text("%s", value.dump().c_str());
+        if (label.empty()) ImGui::TextUnformatted(value.dump().c_str());
         else ImGui::Text("%s: %s", label.c_str(), value.dump().c_str());
     }
 }
@@ -823,7 +823,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     // The rest below is structurally identical to `fg::Widgets::JsonTree`.
     // Couldn't find an easy/clean way to inject the above into each recursive call.
     if (value.is_null()) {
-        Text("%s", label.c_str());
+        TextUnformatted(label.c_str());
     } else if (value.is_object()) {
         if (JsonTreeNode(label, flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
@@ -905,7 +905,7 @@ void ProjectPreview::draw() const {
     Separator();
 
     const json project_json = c.get_project_json(ProjectFormat(Format.value));
-    if (Raw) Text("%s", project_json.dump(4).c_str());
+    if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
 

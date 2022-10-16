@@ -162,6 +162,8 @@ public:
         return nullptr;
     }
 
+    const char *tooltip(Real *zone) { return fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr; }
+
     Item ui{ItemType_None, ""};
     std::map<const Real *, NamesAndValues> names_and_values;
 

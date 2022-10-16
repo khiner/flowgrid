@@ -77,7 +77,7 @@ void ValueBar(const char *label, float *value, const float rect_height, const fl
         if (is_h) SameLine();
         else SetCursorPos(cursor);
 
-        Text("%s", label);
+        TextUnformatted(label);
     }
 
     EndGroup();
@@ -181,7 +181,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
     const float label_height = has_label ? CalcItemLabelHeight(type) : 0;
 
     if (type == ItemType_None || type == ItemType_TGroup || type == ItemType_HGroup || type == ItemType_VGroup) {
-        if (has_label) Text("%s", label.c_str());
+        if (has_label) TextUnformatted(label.c_str());
 
         if (type == ItemType_TGroup) {
             // In addition to the group contents, account for the tab height and the space between the tabs and the content.
@@ -338,12 +338,23 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             }
         }
     }
+    if (const char *tooltip = interface->tooltip(item.zone)) {
+        if (IsItemHovered()) {
+            // todo a few issues here:
+            //  - only items, so group tooltips don't work.
+            //  - should be either title hover or ? help marker, but if the latter, would need to account for it in width calcs
+            BeginTooltip();
+            PushTextWrapPos(GetFontSize() * 35);
+            TextUnformatted(tooltip);
+            EndTooltip();
+        }
+    }
 }
 
 void Audio::FaustState::FaustParams::draw() const {
     if (!interface) {
         // todo don't show empty menu bar in this case
-        Text("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?
+        TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?
         return;
     }
 

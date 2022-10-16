@@ -130,7 +130,7 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
     if (!(flags & KnobFlags_NoTitle)) {
         const auto &title_size = CalcTextSize(label, nullptr, false, width);
         SetCursorPosX(GetCursorPosX() + (width - title_size.x) / 2); // Center title
-        Text("%s", label);
+        TextUnformatted(label);
     }
 
     // Draw knob

@@ -301,7 +301,7 @@ void IGFD::ShowDemoWindow() {
                             if (ImGui::Selectable(sel.first.c_str(), i == selected, selectableFlags)) selected = i;
                         }
                         if (ImGui::TableSetColumnIndex(1)) {
-                            ImGui::Text("%s", sel.second.c_str());
+                            ImGui::TextUnformatted(sel.second.c_str());
                         }
                     }
                 }

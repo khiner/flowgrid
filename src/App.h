@@ -477,6 +477,9 @@ struct Audio : Process {
 //  )
 //);
 //process = _ : pitchshifter;)#"};
+//        String Code{Path, "Code", "Code", R"#(import("stdfaust.lib");
+//s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
+//process = select2(s,no.noise,os.sawtooth(440));)#"};
 //        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");
 //process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)"};
 //        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");

@@ -1,4 +1,5 @@
 #include <range/v3/algorithm/max.hpp>
+#include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/algorithm/any_of.hpp>
 
 #include "FaustUI.h"
@@ -90,8 +91,12 @@ static bool is_height_expandable(const ItemType type) {
     return type == ItemType_VBargraph || type == ItemType_VSlider || type == ItemType_CheckButton;
 }
 
+static float CalcRadioChoiceWidth(const string &choice_name) {
+    return CalcTextSize(choice_name.c_str()).x + GetStyle().ItemInnerSpacing.x + GetFrameHeight();
+}
+
 // todo config to place labels above horizontal items
-static float CalcItemWidth(const ItemType type, const string &label, const bool include_label) {
+static float CalcItemWidth(const ItemType type, const string &label, const bool include_label, const Real *zone) {
     const float frame_height = GetFrameHeight();
     const bool has_label = include_label && !label.empty();
     const float label_width = has_label ? CalcTextSize(label.c_str()).x : 0;
@@ -100,9 +105,11 @@ static float CalcItemWidth(const ItemType type, const string &label, const bool 
         case ItemType_HSlider:
         case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
         case ItemType_VBargraph:
-        case ItemType_VSlider:
-        case ItemType_VRadioButton:return max(frame_height, label_width);
-        case ItemType_HRadioButton:
+        case ItemType_VSlider:return max(frame_height, label_width);
+        case ItemType_VRadioButton:return max(ranges::max(interface->radio_names_and_values[zone].names | transform(CalcRadioChoiceWidth)), label_width);
+        case ItemType_HRadioButton:return label_width + ranges::accumulate(interface->radio_names_and_values[zone].names | transform([](const string &choice_name) {
+            return CalcRadioChoiceWidth(choice_name) + GetStyle().ItemSpacing.x;
+        }), 0.0f);
         case ItemType_CheckButton:return frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
         case ItemType_Button:return label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case ItemType_Knob:return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, label_width);
@@ -206,7 +213,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                         for (const auto &child: children) {
                             ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
                             if (allow_fixed_width_items && !is_width_expandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
-                            TableSetupColumn(child.label.c_str(), flags, CalcItemWidth(child.type, child.label, true));
+                            TableSetupColumn(child.label.c_str(), flags, CalcItemWidth(child.type, child.label, true, child.zone));
                         }
                         if (fg_style.ParamsHeaderTitles) {
                             // Custom headers (instead of `TableHeadersRow()`) to align column names.
@@ -238,8 +245,8 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         }
     } else {
         const float available_x = GetContentRegionAvail().x;
-        ImVec2 item_size_no_label = {CalcItemWidth(type, item.label, false), CalcItemHeight(type)};
-        ImVec2 item_size = {has_label ? CalcItemWidth(type, item.label, true) : item_size_no_label.x, item_size_no_label.y + label_height};
+        ImVec2 item_size_no_label = {CalcItemWidth(type, item.label, false, item.zone), CalcItemHeight(type)};
+        ImVec2 item_size = {has_label ? CalcItemWidth(type, item.label, true, item.zone) : item_size_no_label.x, item_size_no_label.y + label_height};
         if (is_width_expandable(type) && available_x > item_size.x) {
             const float expand_delta_max = available_x - item_size.x;
             const float item_width_no_label_before = item_size_no_label.x;
@@ -282,8 +289,36 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps);
             *item.zone = Real(value);
         } else if (type == ItemType_HRadioButton || type == ItemType_VRadioButton) {
-            auto value = int(*item.zone);
-            if (RadioButton(label.c_str(), value)) *item.zone = Real(!value);
+            auto value = Real(*item.zone);
+            const bool is_h = type == ItemType_HRadioButton;
+            const auto &names_and_values = interface->radio_names_and_values[item.zone];
+
+            PushID(item.label.c_str());
+            BeginGroup();
+            if (has_label) {
+                const float label_width = CalcTextSize(label.c_str()).x;
+                ImVec2 label_pos = GetCursorScreenPos() + ImVec2{is_h ? 0 : alignment.x == HAlign_Left ? 0 :
+                         alignment.x == HAlign_Center ? (item_size.x - label_width) / 2 :
+                         item_size.x - label_width, is_h ? style.FramePadding.y : 0};
+                RenderText(label_pos, label.c_str());
+                Dummy({label_width, frame_height});
+            }
+            for (int i = 0; i < int(names_and_values.names.size()); i++) {
+                const string &choice_name = names_and_values.names[i];
+                const Real choice_value = names_and_values.values[i];
+                const float choice_width = CalcRadioChoiceWidth(choice_name);
+                if (!is_h) {
+                    SetCursorPosX(GetCursorPosX() +
+                        (alignment.x == HAlign_Left ? 0 :
+                         alignment.x == HAlign_Center ? (item_size.x - choice_width) / 2 :
+                         item_size.x - choice_width));
+                } else {
+                    SameLine();
+                }
+                if (RadioButton(choice_name.c_str(), value == choice_value)) *item.zone = Real(choice_value);
+            }
+            EndGroup();
+            PopID();
         }
     }
 }

@@ -56,13 +56,9 @@ public:
         const Real init, step; // Only meaningful for sliders and num-entries.
         vector<Item> items; // Only populated for container items (groups)
     };
-    struct RadioButtonItem : Item {
-        RadioButtonItem(const ItemType type, string label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0,
-                        vector<Item> items = {}, vector<string> names = {}, vector<double> values = {})
-            : Item(type, std::move(label), zone, min, max, init, step, std::move(items)), names(std::move(names)), values(std::move(values)) {}
-
-        vector<string> names;
-        vector<double> values;
+    struct NamesAndValues {
+        vector<string> names{};
+        vector<Real> values{};
     };
 
     void openHorizontalBox(const char *label) override {
@@ -114,13 +110,12 @@ public:
     void addNumEntry(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
         add_ui_item(ItemType_NumEntry, label, zone, min, max, init, step);
     }
+    void addRadioButtons(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *description, bool is_vertical) {
+        NamesAndValues names_and_values{};
+        parseMenuList(description, names_and_values.names, names_and_values.values);
+        radio_names_and_values[zone] = std::move(names_and_values);
 
-    void addRadioButtons(const char *label, FAUSTFLOAT *zone, FAUSTFLOAT init, FAUSTFLOAT min, FAUSTFLOAT max, FAUSTFLOAT step, const char *mdescr, bool vert) {
-        const auto type = vert ? ItemType_VRadioButton : ItemType_HRadioButton;
-        RadioButtonItem item{type, label, zone, min, max, init, step};
-        parseMenuList(mdescr, item.names, item.values);
-        active_group().items.emplace_back(type, label, zone, min, max, init, step);
-        append(label);
+        add_ui_item(is_vertical ? ItemType_VRadioButton : ItemType_HRadioButton, label, zone, min, max, init, step);
     }
 
     // Passive widgets
@@ -168,18 +163,16 @@ public:
     }
 
     Item ui{ItemType_None, ""};
+    std::map<const Real *, NamesAndValues> radio_names_and_values;
 
 private:
-    void append(const string &label) {
+    void add_ui_item(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
+        active_group().items.emplace_back(type, label, zone, min, max, init, step);
         const int index = int(ui.items.size() - 1);
         string path = buildPath(label);
         fFullPaths.push_back(path);
         index_for_path[path] = index;
         index_for_label[label] = index;
-    }
-    void add_ui_item(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        active_group().items.emplace_back(type, label, zone, min, max, init, step);
-        append(label);
     }
 
     Item &active_group() { return groups.empty() ? ui : *groups.top(); }

@@ -100,23 +100,28 @@ static float CalcItemWidth(const ItemType type, const string &label, const bool 
     const float frame_height = GetFrameHeight();
     const bool has_label = include_label && !label.empty();
     const float label_width = has_label ? CalcTextSize(label.c_str()).x : 0;
+    const float inner_spacing = GetStyle().ItemInnerSpacing.x;
+    const float label_width_with_spacing = has_label ? label_width + inner_spacing : 0;
+
     switch (type) {
         case ItemType_NumEntry:
         case ItemType_HSlider:
-        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
+        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + label_width_with_spacing;
         case ItemType_VBargraph:
         case ItemType_VSlider:return max(frame_height, label_width);
-        case ItemType_VRadioButton:return max(ranges::max(interface->radio_names_and_values[zone].names | transform(CalcRadioChoiceWidth)), label_width);
-        case ItemType_HRadioButton:return label_width + ranges::accumulate(interface->radio_names_and_values[zone].names | transform([](const string &choice_name) {
-            return CalcRadioChoiceWidth(choice_name) + GetStyle().ItemSpacing.x;
-        }), 0.0f);
-        case ItemType_CheckButton:return frame_height + (has_label ? label_width + GetStyle().ItemSpacing.x : 0);
+        case ItemType_VRadioButtons:return max(ranges::max(interface->names_and_values[zone].names | transform(CalcRadioChoiceWidth)), label_width);
+        case ItemType_HRadioButtons:
+            return label_width_with_spacing +
+                ranges::accumulate(interface->names_and_values[zone].names | transform(CalcRadioChoiceWidth), 0.0f) +
+                inner_spacing * float(interface->names_and_values.size());
+        case ItemType_Menu:
+            return label_width_with_spacing + ranges::max(interface->names_and_values[zone].names | transform([](const string &choice_name) {
+                return CalcTextSize(choice_name.c_str()).x;
+            })) + GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
+        case ItemType_CheckButton:return frame_height + label_width_with_spacing;
         case ItemType_Button:return label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case ItemType_Knob:return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, label_width);
-        case ItemType_HGroup:
-        case ItemType_VGroup:
-        case ItemType_TGroup:
-        case ItemType_None:return GetContentRegionAvail().x;
+        default:return GetContentRegionAvail().x;
     }
 }
 static float CalcItemHeight(const ItemType type) {
@@ -124,18 +129,16 @@ static float CalcItemHeight(const ItemType type) {
     switch (type) {
         case ItemType_VBargraph:
         case ItemType_VSlider:
-        case ItemType_VRadioButton:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height;
+        case ItemType_VRadioButtons:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height;
         case ItemType_HSlider:
         case ItemType_NumEntry:
         case ItemType_HBargraph:
         case ItemType_Button:
         case ItemType_CheckButton:
-        case ItemType_HRadioButton:return frame_height;
+        case ItemType_HRadioButtons:
+        case ItemType_Menu:return frame_height;
         case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + frame_height + GetStyle().ItemSpacing.y;
-        case ItemType_HGroup:
-        case ItemType_VGroup:
-        case ItemType_TGroup:
-        case ItemType_None:return 0;
+        default:return 0;
     }
 }
 // Returns _additional_ height needed to accommodate a label for the item
@@ -144,17 +147,18 @@ static float CalcItemLabelHeight(const ItemType type) {
     switch (type) {
         case ItemType_VBargraph:
         case ItemType_VSlider:
-        case ItemType_VRadioButton:
+        case ItemType_VRadioButtons:
         case ItemType_Knob:
         case ItemType_HGroup:
         case ItemType_VGroup:
         case ItemType_TGroup:return label_height;
+        case ItemType_Button:
         case ItemType_HSlider:
         case ItemType_NumEntry:
         case ItemType_HBargraph:
         case ItemType_CheckButton:
-        case ItemType_HRadioButton:
-        case ItemType_Button:
+        case ItemType_HRadioButtons:
+        case ItemType_Menu:
         case ItemType_None:return 0;
     }
 }
@@ -288,18 +292,18 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
             Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps);
             *item.zone = Real(value);
-        } else if (type == ItemType_HRadioButton || type == ItemType_VRadioButton) {
+        } else if (type == ItemType_HRadioButtons || type == ItemType_VRadioButtons) {
             auto value = Real(*item.zone);
-            const bool is_h = type == ItemType_HRadioButton;
-            const auto &names_and_values = interface->radio_names_and_values[item.zone];
+            const bool is_h = type == ItemType_HRadioButtons;
+            const auto &names_and_values = interface->names_and_values[item.zone];
 
             PushID(item.label.c_str());
             BeginGroup();
             if (has_label) {
                 const float label_width = CalcTextSize(label.c_str()).x;
                 ImVec2 label_pos = GetCursorScreenPos() + ImVec2{is_h ? 0 : alignment.x == HAlign_Left ? 0 :
-                         alignment.x == HAlign_Center ? (item_size.x - label_width) / 2 :
-                         item_size.x - label_width, is_h ? style.FramePadding.y : 0};
+                                                                            alignment.x == HAlign_Center ? (item_size.x - label_width) / 2 :
+                                                                            item_size.x - label_width, is_h ? style.FramePadding.y : 0};
                 RenderText(label_pos, label.c_str());
                 Dummy({label_width, frame_height});
             }
@@ -313,12 +317,25 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                          alignment.x == HAlign_Center ? (item_size.x - choice_width) / 2 :
                          item_size.x - choice_width));
                 } else {
-                    SameLine();
+                    SameLine(0, style.ItemInnerSpacing.x);
                 }
                 if (RadioButton(choice_name.c_str(), value == choice_value)) *item.zone = Real(choice_value);
             }
             EndGroup();
             PopID();
+        } else if (type == ItemType_Menu) {
+            auto value = Real(*item.zone);
+            const auto &names_and_values = interface->names_and_values[item.zone];
+            // todo handle not present
+            const auto selected_index = find(names_and_values.values.begin(), names_and_values.values.end(), value) - names_and_values.values.begin();
+            if (BeginCombo(item.label.c_str(), names_and_values.names[selected_index].c_str())) {
+                for (int i = 0; i < int(names_and_values.names.size()); i++) {
+                    const Real choice_value = names_and_values.values[i];
+                    const bool is_selected = value == choice_value;
+                    if (Selectable(names_and_values.names[i].c_str(), is_selected)) *item.zone = Real(choice_value);
+                }
+                EndCombo();
+            }
         }
     }
 }

@@ -41,8 +41,9 @@ public:
 
         // Types specified with metadata
         ItemType_Knob,
-        ItemType_VRadioButton,
-        ItemType_HRadioButton,
+        ItemType_Menu,
+        ItemType_VRadioButtons,
+        ItemType_HRadioButtons,
     };
 
     struct Item {
@@ -92,30 +93,29 @@ public:
         add_ui_item(ItemType_CheckButton, label, zone);
     }
     void addHorizontalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        if (isRadio(zone)) {
-            addRadioButtons(label, zone, *zone, min, max, step, fRadioDescription[zone].c_str(), false);
-            return;
-        }
-        const auto type = isKnob(zone) ? ItemType_Knob : ItemType_HSlider;
-        add_ui_item(type, label, zone, min, max, init, step);
+        addSlider(label, zone, init, min, max, step, false);
     }
     void addVerticalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        if (isRadio(zone)) {
-            addRadioButtons(label, zone, *zone, min, max, step, fRadioDescription[zone].c_str(), true);
-            return;
-        }
-        const auto type = isKnob(zone) ? ItemType_Knob : ItemType_VSlider;
-        add_ui_item(type, label, zone, min, max, init, step);
+        addSlider(label, zone, init, min, max, step, true);
     }
     void addNumEntry(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
         add_ui_item(ItemType_NumEntry, label, zone, min, max, init, step);
     }
-    void addRadioButtons(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *description, bool is_vertical) {
-        NamesAndValues names_and_values{};
-        parseMenuList(description, names_and_values.names, names_and_values.values);
-        radio_names_and_values[zone] = std::move(names_and_values);
-
-        add_ui_item(is_vertical ? ItemType_VRadioButton : ItemType_HRadioButton, label, zone, min, max, init, step);
+    void addSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step, bool is_vertical) {
+        if (isKnob(zone)) add_ui_item(ItemType_Knob, label, zone, min, max, init, step);
+        else if (isRadio(zone)) addRadioButtons(label, zone, init, min, max, step, fRadioDescription[zone].c_str(), is_vertical);
+        else if (isMenu(zone)) addMenu(label, zone, init, min, max, step, fMenuDescription[zone].c_str());
+        else add_ui_item(is_vertical ? ItemType_VSlider : ItemType_HSlider, label, zone, min, max, init, step);
+    }
+    void addRadioButtons(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *text, bool is_vertical) {
+        names_and_values[zone] = {};
+        parseMenuList(text, names_and_values[zone].names, names_and_values[zone].values);
+        add_ui_item(is_vertical ? ItemType_VRadioButtons : ItemType_HRadioButtons, label, zone, min, max, init, step);
+    }
+    void addMenu(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *text) {
+        names_and_values[zone] = {};
+        parseMenuList(text, names_and_values[zone].names, names_and_values[zone].values);
+        add_ui_item(ItemType_Menu, label, zone, min, max, init, step);
     }
 
     // Passive widgets
@@ -163,7 +163,7 @@ public:
     }
 
     Item ui{ItemType_None, ""};
-    std::map<const Real *, NamesAndValues> radio_names_and_values;
+    std::map<const Real *, NamesAndValues> names_and_values;
 
 private:
     void add_ui_item(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {

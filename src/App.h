@@ -69,16 +69,22 @@ struct StateMember {
         Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
         Help = help;
 
-        WithID[ID] = this;
+        // This is real ugly - JSON assignment creates a temporary instance to copy from.
+        // We don't want the destructor of that temporary instance to erase this ID.
+        // Without this check, `WithID` will always end up empty!
+        // See https://github.com/nlohmann/json/issues/1050
+        if (WithID.contains(ID)) is_temp_instance = true;
+        else WithID[ID] = this;
     }
     ~StateMember() {
-        WithID.erase(ID);
+        if (!is_temp_instance) WithID.erase(ID);
     }
 
     const StateMember *Parent;
     JsonPath Path;
     string PathSegment, Name, Help;
     ImGuiID ID;
+    bool is_temp_instance{false};
     // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:

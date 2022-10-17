@@ -406,7 +406,13 @@ void Process::Draw() const {
 }
 
 void Info::Draw() const {
-    TextUnformatted("Info text for hovered item (todo)");
+    const auto hovered_id = GetHoveredID();
+    if (hovered_id && StateMember::WithID.contains(hovered_id)) {
+        const auto *member = StateMember::WithID.at(hovered_id);
+        const string &help = member->Help;
+        PushTextWrapPos(GetContentRegionAvail().x);
+        TextUnformatted((help.empty() ? format("No info available for {}.", member->Name) : help).c_str());
+    }
 }
 
 void State::Draw() const {

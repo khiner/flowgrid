@@ -191,14 +191,14 @@ static void create_stream(const IO io) {
     }
     if (supported_formats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", capitalize(to_string(io))));
 
-    const auto saved_format = io == IO_In ? s.Audio.InFormat : s.Audio.OutFormat;
+    const Enum &saved_format = io == IO_In ? s.Audio.InFormat : s.Audio.OutFormat;
     // If the project has a saved format, choose it. Otherwise, default to the highest-priority supported format.
     auto *soundio_format_ptr = &(io == IO_In ? instream->format : outstream->format);
     *soundio_format_ptr = to_soundio_format(saved_format != Audio::IoFormat_Invalid ? saved_format : supported_formats[io].front());
 
     auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
     // If the project has a saved sample rate, give it the highest priority.
-    Int saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
+    const Int &saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
     if (saved_sample_rate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), saved_sample_rate);
 
     // Could just check `supported_sample_rates`, but this `supports_sample_rate` function handles devices supporting ranges.

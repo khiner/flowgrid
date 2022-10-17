@@ -2,6 +2,14 @@
 
 std::map<ImGuiID, StateMember *> StateMember::WithID{};
 
+string to_string(const IO io, const bool shorten) {
+    switch (io) {
+        case IO_In: return shorten ? "in" : "input";
+        case IO_Out: return shorten ? "out" : "output";
+        case IO_None: return "none";
+    }
+}
+
 namespace action {
 // An action's menu label is its name, except for a few exceptions.
 const std::map<ID, string> menu_label_for_id{

@@ -187,8 +187,6 @@ struct String : Base {
 struct Enum : Base {
     Enum(const StateMember *parent, const string &path_segment, std::vector<string> names, int value = 0, const string &name = "")
         : Base(parent, path_segment, name), value(value), names(std::move(names)) {}
-    Enum(const StateMember *parent, const string &path_segment, std::vector<string> names)
-        : Enum(parent, path_segment, std::move(names), 0, "") {}
 
     operator int() const { return value; }
 
@@ -395,18 +393,7 @@ using IO = IO_;
 constexpr IO IO_All[] = {IO_In, IO_Out};
 constexpr int IO_Count = 2;
 
-inline static string to_string(const IO io, const bool shorten = false) {
-    switch (io) {
-        case IO_In: return shorten ? "in" : "input";
-        case IO_Out: return shorten ? "out" : "output";
-        case IO_None: return "none";
-    }
-}
-
-inline static std::ostream &operator<<(std::ostream &os, const IO &io) {
-    os << to_string(io);
-    return os;
-}
+string to_string(IO io, bool shorten = false);
 
 enum FaustDiagramHoverFlags_ {
     FaustDiagramHoverFlags_None = 0,
@@ -586,7 +573,7 @@ process = tgroup("grp 1",
     };
 
     void update_process() const override;
-    String get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
+    const String &get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
     Bool FaustRunning{this, "FaustRunning", true, "?Disabling completely skips Faust computation when computing audio output."};
     Bool Muted{this, "Muted", true, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load."};

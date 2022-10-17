@@ -1,17 +1,11 @@
 #pragma once
 
 /**
- * `StateData` is a data-only struct which fully describes the application at any point in time.
+ * The main `State` instance fully describes the application at any point in time.
  *
- * The entire codebase has read-only access to the immutable, single source-of-truth application `State` instance `s`,
+ * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
  * which also provides `draw()` and `update(const Action &)` methods.
- *
-  * `{Stateful}` structs extend their data-only `{Stateful}Data` parents, adding derived (and always present) fields for commonly accessed,
- *   but expensive-to-compute derivations of their core (minimal but complete) data members.
- *  Many `{Stateful}` structs also implement convenience methods for complex state updates across multiple fields,
- *    or for generating less-frequently needed derived data.
- *
- * The global `const State &s` instance is declared here, instantiated in the `Context` constructor, and assigned in `main.cpp`.
+ * This `s` instance is declared here, instantiated in the `Context` constructor, and assigned in `main.cpp`.
  */
 
 #include <iostream>
@@ -1040,28 +1034,9 @@ struct ImGuiSettings : StateMember, ImGuiSettingsData {
 
 const JsonPath RootPath{""};
 
-struct Help : Window {
+struct Info : Window {
     using Window::Window;
     void draw() const override;
-};
-
-struct StateData {
-    ImGuiSettings ImGuiSettings{RootPath, "ImGuiSettings", "ImGui settings"};
-    Style Style{RootPath, "Style"};
-    ApplicationSettings ApplicationSettings{RootPath, "ApplicationSettings", "Application settings"};
-    Audio Audio{RootPath, "Audio"};
-    Processes Processes{RootPath, "Processes"};
-    File File{RootPath, "File"};
-    Help Help{RootPath, "Help"};
-
-    Demo Demo{RootPath, "Demo"};
-    Metrics Metrics{RootPath, "Metrics"};
-    Tools Tools{RootPath, "Tools"};
-
-    StateViewer StateViewer{RootPath, "StateViewer", "State viewer"};
-    StateMemoryEditor StateMemoryEditor{RootPath, "StateMemoryEditor", "State memory editor"};
-    StatePathUpdateFrequency PathUpdateFrequency{RootPath, "PathUpdateFrequency", "State path update frequency"};
-    ProjectPreview ProjectPreview{RootPath, "ProjectPreview", "Project preview"};
 };
 
 // Types for [json-patch](https://jsonpatch.com)
@@ -1272,20 +1247,29 @@ using action::Gestures;
 // [SECTION] Main `State` class
 //-----------------------------------------------------------------------------
 
-struct State : StateData, Drawable {
+struct State : Drawable {
     State() = default;
     State(const State &) = default;
 
-    // Don't copy/assign reference members!
-    explicit State(const StateData &other) : StateData(other) {}
-
-    State &operator=(const State &other) {
-        StateData::operator=(other);
-        return *this;
-    }
-
     void draw() const override;
     void update(const Action &); // State is only updated via `context.on_action(action)`
+
+    ImGuiSettings ImGuiSettings{RootPath, "ImGuiSettings", "ImGui settings"};
+    Style Style{RootPath, "Style"};
+    ApplicationSettings ApplicationSettings{RootPath, "ApplicationSettings", "Application settings"};
+    Audio Audio{RootPath, "Audio"};
+    Processes Processes{RootPath, "Processes"};
+    File File{RootPath, "File"};
+    Info Info{RootPath, "Info"};
+
+    Demo Demo{RootPath, "Demo"};
+    Metrics Metrics{RootPath, "Metrics"};
+    Tools Tools{RootPath, "Tools"};
+
+    StateViewer StateViewer{RootPath, "StateViewer", "State viewer"};
+    StateMemoryEditor StateMemoryEditor{RootPath, "StateMemoryEditor", "State memory editor"};
+    StatePathUpdateFrequency PathUpdateFrequency{RootPath, "PathUpdateFrequency", "State path update frequency"};
+    ProjectPreview ProjectPreview{RootPath, "ProjectPreview", "Project preview"};
 };
 
 //-----------------------------------------------------------------------------

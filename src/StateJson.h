@@ -182,7 +182,7 @@ JsonType(TableColumnSettings, WidthOrWeight, UserID, Index, DisplayOrder, SortOr
 JsonType(TableSettings, Table, Columns)
 JsonType(ImGuiSettingsData, Nodes, Windows, Tables)
 JsonType(Processes, UI)
-JsonType(StateData, ApplicationSettings, Audio, File, Style, ImGuiSettings, Processes, StateViewer, StateMemoryEditor, PathUpdateFrequency, ProjectPreview, Demo, Metrics, Tools);
+JsonType(State, ApplicationSettings, Audio, File, Style, ImGuiSettings, Processes, StateViewer, StateMemoryEditor, PathUpdateFrequency, ProjectPreview, Demo, Info, Metrics, Tools);
 
 namespace Actions {
 EmptyJsonType(undo)

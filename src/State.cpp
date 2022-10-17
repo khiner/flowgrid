@@ -405,8 +405,8 @@ void Process::draw() const {
     Running.Draw();
 }
 
-void Help::draw() const {
-    TextUnformatted("Help text for hovered item (todo)");
+void Info::draw() const {
+    TextUnformatted("Info text for hovered item (todo)");
 }
 
 void State::draw() const {
@@ -490,7 +490,7 @@ void State::draw() const {
         Tools.Dock(utilities_node_id);
         Demo.Dock(utilities_node_id);
 
-        Help.Dock(sidebar_node_id);
+        Info.Dock(sidebar_node_id);
     } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
         StateViewer.SelectTab(); // not visible by default anymore
@@ -516,7 +516,7 @@ void State::draw() const {
     Demo.DrawWindow(ImGuiWindowFlags_MenuBar);
     File.Dialog.draw();
 
-    Help.DrawWindow();
+    Info.DrawWindow();
 }
 
 // Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.

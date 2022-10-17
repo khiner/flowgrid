@@ -98,17 +98,6 @@ Gesture action::merge_gesture(const Gesture &gesture) {
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
-void HelpMarker(const char *help) {
-    TextDisabled("(?)");
-    if (IsItemHovered()) {
-        BeginTooltip();
-        PushTextWrapPos(GetFontSize() * 35.0f);
-        TextUnformatted(help);
-        PopTextWrapPos();
-        EndTooltip();
-    }
-}
-
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void StateMember::HelpMarker(const bool after) const {
     if (Help.empty()) return;
@@ -316,6 +305,17 @@ void FillRowItemBg(const ImVec4 &col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActi
 void fg::gestured() {
     if (ImGui::IsItemActivated()) c.is_widget_gesturing = true;
     if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
+}
+
+void fg::HelpMarker(const char *help) {
+    TextDisabled("(?)");
+    if (IsItemHovered()) {
+        BeginTooltip();
+        PushTextWrapPos(GetFontSize() * 35.0f);
+        TextUnformatted(help);
+        PopTextWrapPos();
+        EndTooltip();
+    }
 }
 
 bool fg::ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags, const char *label) {

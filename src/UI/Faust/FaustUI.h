@@ -47,14 +47,15 @@ public:
     };
 
     struct Item {
-        Item(const ItemType type, string label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, vector<Item> items = {})
-            : type(type), label(std::move(label)), zone(zone), min(min), max(max), init(init), step(step), items(std::move(items)) {}
+        Item(const ItemType type, string label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, vector<Item> items = {})
+            : type(type), label(std::move(label)), zone(zone), min(min), max(max), init(init), step(step), tooltip(tooltip), items(std::move(items)) {}
 
         const ItemType type{ItemType_None};
         const string label;
         Real *zone; // Only meaningful for widget items (not container items)
         const Real min, max; // Only meaningful for sliders, num-entries, and bar graphs.
         const Real init, step; // Only meaningful for sliders and num-entries.
+        const char *tooltip;
         vector<Item> items; // Only populated for container items (groups)
     };
     struct NamesAndValues {
@@ -162,14 +163,12 @@ public:
         return nullptr;
     }
 
-    const char *tooltip(Real *zone) { return fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr; }
-
     Item ui{ItemType_None, ""};
     std::map<const Real *, NamesAndValues> names_and_values;
 
 private:
     void add_ui_item(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        active_group().items.emplace_back(type, label, zone, min, max, init, step);
+        active_group().items.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
         const int index = int(ui.items.size() - 1);
         string path = buildPath(label);
         fFullPaths.push_back(path);

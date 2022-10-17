@@ -1420,6 +1420,8 @@ namespace FlowGrid {
 
 void gestured();
 
+void HelpMarker(const char *help);
+
 bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
 
 void MenuItem(ActionID); // For actions with no data members.

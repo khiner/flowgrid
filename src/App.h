@@ -1040,6 +1040,11 @@ struct ImGuiSettings : StateMember, ImGuiSettingsData {
 
 const JsonPath RootPath{""};
 
+struct Help : Window {
+    using Window::Window;
+    void draw() const override;
+};
+
 struct StateData {
     ImGuiSettings ImGuiSettings{RootPath, "ImGuiSettings", "ImGui settings"};
     Style Style{RootPath, "Style"};
@@ -1047,6 +1052,7 @@ struct StateData {
     Audio Audio{RootPath, "Audio"};
     Processes Processes{RootPath, "Processes"};
     File File{RootPath, "File"};
+    Help Help{RootPath, "Help"};
 
     Demo Demo{RootPath, "Demo"};
     Metrics Metrics{RootPath, "Metrics"};

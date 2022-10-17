@@ -405,6 +405,10 @@ void Process::draw() const {
     Running.Draw();
 }
 
+void Help::draw() const {
+    TextUnformatted("Help text for hovered item (todo)");
+}
+
 void State::draw() const {
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
@@ -462,31 +466,34 @@ void State::draw() const {
     int frame_count = GetCurrentContext()->FrameCount;
     if (frame_count == 1) {
         auto faust_editor_node_id = dockspace_id;
-        auto settings_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.38f, nullptr, &faust_editor_node_id);
-        auto state_node_id = DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.6f, nullptr, &settings_node_id);
-        auto utilities_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
-        auto faust_log_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.2f, nullptr, &faust_editor_node_id);
+        auto sidebar_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Right, 0.15f, nullptr, &faust_editor_node_id);
+        auto settings_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Left, 0.3f, nullptr, &faust_editor_node_id);
+        auto utilities_node_id = DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.5f, nullptr, &settings_node_id);
+        auto debug_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.3f, nullptr, &faust_editor_node_id);
+        auto faust_tools_node_id = DockBuilderSplitNode(faust_editor_node_id, ImGuiDir_Down, 0.5f, nullptr, &faust_editor_node_id);
 
         ApplicationSettings.Dock(settings_node_id);
         Audio.Dock(settings_node_id);
 
         Audio.Faust.Editor.Dock(faust_editor_node_id);
-        Audio.Faust.Diagram.Dock(faust_editor_node_id);
-        Audio.Faust.Params.Dock(faust_editor_node_id);
-        Audio.Faust.Log.Dock(faust_log_node_id);
+        Audio.Faust.Diagram.Dock(faust_tools_node_id);
+        Audio.Faust.Params.Dock(faust_tools_node_id);
 
-        StateViewer.Dock(state_node_id);
-        StateMemoryEditor.Dock(state_node_id);
-        PathUpdateFrequency.Dock(state_node_id);
-        ProjectPreview.Dock(state_node_id);
+        Audio.Faust.Log.Dock(debug_node_id);
+        StateViewer.Dock(debug_node_id);
+        StateMemoryEditor.Dock(debug_node_id);
+        PathUpdateFrequency.Dock(debug_node_id);
+        ProjectPreview.Dock(debug_node_id);
 
         Metrics.Dock(utilities_node_id);
         Style.Dock(utilities_node_id);
         Tools.Dock(utilities_node_id);
         Demo.Dock(utilities_node_id);
+
+        Help.Dock(sidebar_node_id);
     } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
-        StateViewer.SelectTab();
+        StateViewer.SelectTab(); // not visible by default anymore
         Metrics.SelectTab();
     }
 
@@ -508,6 +515,8 @@ void State::draw() const {
     Tools.DrawWindow();
     Demo.DrawWindow(ImGuiWindowFlags_MenuBar);
     File.Dialog.draw();
+
+    Help.DrawWindow();
 }
 
 // Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.

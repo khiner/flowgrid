@@ -58,7 +58,7 @@ struct Preferences {
 
 struct StateMember {
     StateMember(const JsonPath &parent_path, const string &id, const string &name_and_help = "")
-        : Path(parent_path / id), ID(id) {
+        : Path(!id.empty() ? parent_path / id : parent_path), ID(id) {
         const auto &[name, help] = parse_help_text(name_and_help);
         Name = name.empty() ? snake_case_to_sentence_case(id) : name;
         Help = help;
@@ -1245,31 +1245,31 @@ using action::Gesture;
 using action::Gestures;
 
 //-----------------------------------------------------------------------------
-// [SECTION] Main `State` class
+// [SECTION] Main application `State` struct
 //-----------------------------------------------------------------------------
 
-struct State {
-    State() = default;
+struct State : UIStateMember {
+    State() : UIStateMember(RootPath, "") {}
 
-    void Draw() const;
+    void Draw() const override;
     void Update(const Action &); // State is only updated via `context.on_action(action)`
 
-    ImGuiSettings ImGuiSettings{RootPath, "ImGuiSettings", "ImGui settings"};
-    Style Style{RootPath, "Style"};
-    ApplicationSettings ApplicationSettings{RootPath, "ApplicationSettings", "Application settings"};
-    Audio Audio{RootPath, "Audio"};
-    Processes Processes{RootPath, "Processes"};
-    File File{RootPath, "File"};
-    Info Info{RootPath, "Info"};
+    ImGuiSettings ImGuiSettings{Path, "ImGuiSettings", "ImGui settings"};
+    Style Style{Path, "Style"};
+    ApplicationSettings ApplicationSettings{Path, "ApplicationSettings", "Application settings"};
+    Audio Audio{Path, "Audio"};
+    Processes Processes{Path, "Processes"};
+    File File{Path, "File"};
+    Info Info{Path, "Info"};
 
-    Demo Demo{RootPath, "Demo"};
-    Metrics Metrics{RootPath, "Metrics"};
-    Tools Tools{RootPath, "Tools"};
+    Demo Demo{Path, "Demo"};
+    Metrics Metrics{Path, "Metrics"};
+    Tools Tools{Path, "Tools"};
 
-    StateViewer StateViewer{RootPath, "StateViewer", "State viewer"};
-    StateMemoryEditor StateMemoryEditor{RootPath, "StateMemoryEditor", "State memory editor"};
-    StatePathUpdateFrequency PathUpdateFrequency{RootPath, "PathUpdateFrequency", "State path update frequency"};
-    ProjectPreview ProjectPreview{RootPath, "ProjectPreview", "Project preview"};
+    StateViewer StateViewer{Path, "StateViewer", "State viewer"};
+    StateMemoryEditor StateMemoryEditor{Path, "StateMemoryEditor", "State memory editor"};
+    StatePathUpdateFrequency PathUpdateFrequency{Path, "PathUpdateFrequency", "State path update frequency"};
+    ProjectPreview ProjectPreview{Path, "ProjectPreview", "Project preview"};
 };
 
 //-----------------------------------------------------------------------------
@@ -1407,7 +1407,6 @@ private:
 //-----------------------------------------------------------------------------
 
 namespace FlowGrid {
-
 void gestured();
 
 void HelpMarker(const char *help);
@@ -1431,8 +1430,7 @@ bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags = JsonTreeNodeFla
 //   * If the provided `value` is an array or object, it will show as a nested `JsonTreeNode` with `label` as its parent.
 //   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
 void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
-
-}
+} // End `FlowGrid` namespace
 
 //-----------------------------------------------------------------------------
 // [SECTION] Globals

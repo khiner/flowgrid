@@ -56,19 +56,29 @@ struct Preferences {
     std::list<fs::path> recently_opened_paths;
 };
 
-const JsonPath RootPath{""};
+static const JsonPath RootPath{""};
 
 struct StateMember {
+    static std::map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID
+
     StateMember(const StateMember *parent = nullptr, const string &path_segment = "", const string &name_and_help = "")
-        : Parent(parent), Path(parent && !path_segment.empty() ? parent->Path / path_segment : parent ? parent->Path : !path_segment.empty() ? JsonPath(path_segment) : RootPath), PathSegment(path_segment) {
+        : Parent(parent),
+          Path(Parent && !path_segment.empty() ? Parent->Path / path_segment : Parent ? Parent->Path : !path_segment.empty() ? JsonPath(path_segment) : RootPath),
+          PathSegment(path_segment), ID(ImHashStr(PathSegment.c_str(), 0, Parent ? Parent->ID : 0)) {
         const auto &[name, help] = parse_help_text(name_and_help);
         Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
         Help = help;
+
+        WithID[ID] = this;
+    }
+    ~StateMember() {
+        WithID.erase(ID);
     }
 
     const StateMember *Parent;
     JsonPath Path;
     string PathSegment, Name, Help;
+    ImGuiID ID;
     // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:

@@ -1,5 +1,7 @@
 #include "App.h"
 
+std::map<ImGuiID, StateMember *> StateMember::WithID{};
+
 namespace action {
 // An action's menu label is its name, except for a few exceptions.
 const std::map<ID, string> menu_label_for_id{

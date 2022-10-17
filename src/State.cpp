@@ -380,7 +380,7 @@ void Window::DrawWindow(ImGuiWindowFlags flags) const {
 
     bool open = Visible;
     if (Begin(Name.c_str(), &open, flags)) {
-        if (open) draw();
+        if (open) Draw();
     }
     End();
 
@@ -401,15 +401,15 @@ void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
 
-void Process::draw() const {
+void Process::Draw() const {
     Running.Draw();
 }
 
-void Info::draw() const {
+void Info::Draw() const {
     TextUnformatted("Info text for hovered item (todo)");
 }
 
-void State::draw() const {
+void State::Draw() const {
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
             MenuItem(action::id<open_empty_project>);
@@ -514,13 +514,13 @@ void State::draw() const {
     Style.DrawWindow();
     Tools.DrawWindow();
     Demo.DrawWindow(ImGuiWindowFlags_MenuBar);
-    File.Dialog.draw();
+    File.Dialog.Draw();
 
     Info.DrawWindow();
 }
 
 // Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
-void State::update(const Action &action) {
+void State::Update(const Action &action) {
     std::visit(visitor{
         [&](const show_open_project_dialog &) { File.Dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
         [&](const show_save_project_dialog &) { File.Dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
@@ -849,7 +849,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     }
 }
 
-void StateViewer::draw() const {
+void StateViewer::Draw() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
             AutoSelect.DrawMenu();
@@ -862,7 +862,7 @@ void StateViewer::draw() const {
     StateJsonTree("State", sj);
 }
 
-void StateMemoryEditor::draw() const {
+void StateMemoryEditor::Draw() const {
     static MemoryEditor memory_editor;
     static bool first_render{true};
     if (first_render) {
@@ -875,7 +875,7 @@ void StateMemoryEditor::draw() const {
     memory_editor.DrawContents(mem_data, sizeof(s));
 }
 
-void StatePathUpdateFrequency::draw() const {
+void StatePathUpdateFrequency::Draw() const {
     if (c.state_stats.committed_update_times_for_path.empty() && c.state_stats.gesture_update_times_for_path.empty()) {
         Text("No state updates yet.");
         return;
@@ -902,7 +902,7 @@ void StatePathUpdateFrequency::draw() const {
     }
 }
 
-void ProjectPreview::draw() const {
+void ProjectPreview::Draw() const {
     Format.Draw();
     Raw.Draw();
 
@@ -954,7 +954,7 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
 }
 
 // Returns `true` if style changes.
-void Style::ImGuiStyleMember::draw() const {
+void Style::ImGuiStyleMember::Draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
 //    ShowFontSelector("Fonts##Selector"); // TODO
@@ -1097,7 +1097,7 @@ void Style::ImGuiStyleMember::draw() const {
     }
 }
 
-void Style::ImPlotStyleMember::draw() const {
+void Style::ImPlotStyleMember::Draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Auto\0Classic\0Dark\0Light\0")) q(set_implot_color_style{style_idx});
 
@@ -1183,7 +1183,7 @@ void Style::ImPlotStyleMember::draw() const {
     }
 }
 
-void FlowGridStyle::draw() const {
+void FlowGridStyle::Draw() const {
     static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
     if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{diagram_colors_idx});
@@ -1255,18 +1255,18 @@ void FlowGridStyle::draw() const {
     }
 }
 
-void Style::draw() const {
+void Style::Draw() const {
     if (BeginTabBar("##style")) {
         if (BeginTabItem(FlowGrid.Name.c_str())) {
-            FlowGrid.draw();
+            FlowGrid.Draw();
             EndTabItem();
         }
         if (BeginTabItem(ImGui.Name.c_str())) {
-            ImGui.draw();
+            ImGui.Draw();
             EndTabItem();
         }
         if (BeginTabItem(ImPlot.Name.c_str())) {
-            ImPlot.draw();
+            ImPlot.Draw();
             EndTabItem();
         }
         EndTabBar();
@@ -1277,7 +1277,7 @@ void Style::draw() const {
 // [SECTION] Other windows
 //-----------------------------------------------------------------------------
 
-void ApplicationSettings::draw() const {
+void ApplicationSettings::Draw() const {
     int v = c.diff_index;
     if (SliderInt("Diff index", &v, -1, int(c.diffs.size()) - 1)) q(set_diff_index{v});
     GestureDurationSec.Draw("%.3f s");
@@ -1292,7 +1292,7 @@ const std::vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
     IoFormat_Invalid,
 };
 
-void Demo::draw() const {
+void Demo::Draw() const {
     if (BeginTabBar("##Demos")) {
         if (BeginTabItem("ImGui")) {
             ShowDemoWindow();
@@ -1364,7 +1364,7 @@ void ShowGesture(const Gesture &gesture) {
     }
 }
 
-void Metrics::FlowGridMetrics::draw() const {
+void Metrics::FlowGridMetrics::Draw() const {
     {
         // Gestures (semantically grouped lists of actions)
 
@@ -1455,28 +1455,28 @@ void Metrics::FlowGridMetrics::draw() const {
                    "Thus, it's important to keep action data small.");
     }
 }
-void Metrics::ImGuiMetrics::draw() const { ShowMetricsWindow(); }
-void Metrics::ImPlotMetrics::draw() const { ImPlot::ShowMetricsWindow(); }
+void Metrics::ImGuiMetrics::Draw() const { ShowMetricsWindow(); }
+void Metrics::ImPlotMetrics::Draw() const { ImPlot::ShowMetricsWindow(); }
 
-void Metrics::draw() const {
+void Metrics::Draw() const {
     if (BeginTabBar("##Metrics")) {
         if (BeginTabItem(FlowGrid.Name.c_str())) {
-            FlowGrid.draw();
+            FlowGrid.Draw();
             EndTabItem();
         }
         if (BeginTabItem(ImGui.Name.c_str())) {
-            ImGui.draw();
+            ImGui.Draw();
             EndTabItem();
         }
         if (BeginTabItem(ImPlot.Name.c_str())) {
-            ImPlot.draw();
+            ImPlot.Draw();
             EndTabItem();
         }
         EndTabBar();
     }
 }
 
-void Tools::draw() const {
+void Tools::Draw() const {
     if (BeginTabBar("##Tools")) {
         if (BeginTabItem("ImGui")) {
             if (BeginTabBar("##ImGui_Tools")) {
@@ -1499,7 +1499,7 @@ void Tools::draw() const {
 static auto *file_dialog = ImGuiFileDialog::Instance();
 static const string file_dialog_key = "FileDialog";
 
-void File::FileDialog::draw() const {
+void File::FileDialog::Draw() const {
     if (!Visible) return file_dialog->Close();
 
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.

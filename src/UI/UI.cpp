@@ -226,7 +226,7 @@ void tick_ui() {
     }
 
     prepare_frame();
-    s.draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `draw()` method.
+    s.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
     render_frame(render_context);
 
     auto &io = ImGui::GetIO();

@@ -221,7 +221,7 @@ void Context::on_action(const Action &action) {
         },
         [&](const auto &a) {
             const auto before_json = state_json;
-            state.update(a);
+            state.Update(a);
             state_json = state;
             on_patch(a, json::diff(before_json, state_json));
         },

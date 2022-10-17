@@ -348,7 +348,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
     }
 }
 
-void Audio::FaustState::FaustParams::draw() const {
+void Audio::FaustState::FaustParams::Draw() const {
     if (!interface) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?

@@ -4,7 +4,7 @@
  * The main `State` instance fully describes the application at any point in time.
  *
  * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
- * which also provides `draw()` and `update(const Action &)` methods.
+ * which also provides `Draw()` and `Update(const Action &)` methods.
  * This `s` instance is declared here, instantiated in the `Context` constructor, and assigned in `main.cpp`.
  */
 
@@ -75,7 +75,7 @@ protected:
 
 struct UIStateMember : StateMember {
     using StateMember::StateMember;
-    virtual void draw() const = 0;
+    virtual void Draw() const = 0;
 };
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
@@ -280,7 +280,7 @@ struct Window : UIStateMember {
 struct Process : Window {
     using Window::Window;
 
-    void draw() const override;
+    void Draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
     Bool Running{Path, "Running", true, format("?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name))};
@@ -288,14 +288,14 @@ struct Process : Window {
 
 struct ApplicationSettings : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 
     Float GestureDurationSec{Path, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
 };
 
 struct StateViewer : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 
     enum LabelMode { Annotated, Raw };
     Enum LabelMode{
@@ -315,19 +315,19 @@ struct StateViewer : Window {
 
 struct StateMemoryEditor : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 };
 
 struct StatePathUpdateFrequency : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 };
 
 enum ProjectFormat { None = 0, StateFormat, DiffFormat, ActionFormat };
 
 struct ProjectPreview : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 
     Enum Format{Path, "Format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
     Bool Raw{Path, "Raw"};
@@ -335,25 +335,25 @@ struct ProjectPreview : Window {
 
 struct Demo : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 };
 
 struct Metrics : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 
     struct FlowGridMetrics : UIStateMember {
         using UIStateMember::UIStateMember;
-        void draw() const override;
+        void Draw() const override;
         Bool ShowRelativePaths{Path, "ShowRelativePaths", true};
     };
     struct ImGuiMetrics : UIStateMember {
         using UIStateMember::UIStateMember;
-        void draw() const override;
+        void Draw() const override;
     };
     struct ImPlotMetrics : UIStateMember {
         using UIStateMember::UIStateMember;
-        void draw() const override;
+        void Draw() const override;
     };
 
     FlowGridMetrics FlowGrid{Path, "FlowGrid"};
@@ -363,7 +363,7 @@ struct Metrics : Window {
 
 struct Tools : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 };
 
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
@@ -416,21 +416,21 @@ struct Audio : Process {
     static const std::vector<IoFormat> PrioritizedDefaultFormats;
     static const std::vector<int> PrioritizedDefaultSampleRates;
 
-    void draw() const override;
+    void Draw() const override;
 
     struct FaustState : StateMember {
         using StateMember::StateMember;
 
         struct FaustEditor : Window {
             using Window::Window;
-            void draw() const override;
+            void Draw() const override;
 
             string FileName{"default.dsp"}; // todo state member & respond to changes, or remove from state
         };
 
         struct FaustDiagram : Window {
             using Window::Window;
-            void draw() const override;
+            void Draw() const override;
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
@@ -450,13 +450,13 @@ struct Audio : Process {
 
         struct FaustParams : Window {
             using Window::Window;
-            void draw() const override;
+            void Draw() const override;
         };
 
         // todo move to top-level Log
         struct FaustLog : Window {
             using Window::Window;
-            void draw() const override;
+            void Draw() const override;
         };
 
         FaustEditor Editor{Path, "Editor", "Faust editor"};
@@ -611,8 +611,8 @@ struct File : StateMember {
     };
 
     // TODO window?
-    struct FileDialog : DialogData, StateMember {
-        FileDialog(const JsonPath &path, const string &id) : DialogData(), StateMember(path, id, Title) {}
+    struct FileDialog : DialogData, UIStateMember {
+        FileDialog(const JsonPath &path, const string &id) : DialogData(), UIStateMember(path, id, Title) {}
 
         FileDialog &operator=(const DialogData &other) {
             DialogData::operator=(other);
@@ -620,7 +620,7 @@ struct File : StateMember {
             return *this;
         }
 
-        void draw() const;
+        void Draw() const override;
     };
 
     FileDialog Dialog{Path, "Dialog"};
@@ -675,7 +675,7 @@ struct FlowGridStyle : UIStateMember {
         DiagramLayoutFlowGrid();
     }
 
-    void draw() const override;
+    void Draw() const override;
 
     ImVec4 Colors[FlowGridCol_COUNT];
     Float FlashDurationSec{Path, "FlashDurationSec", 0.6, 0, 5};
@@ -855,7 +855,7 @@ struct FlowGridStyle : UIStateMember {
 struct Style : Window {
     using Window::Window;
 
-    void draw() const override;
+    void Draw() const override;
 
     struct ImGuiStyleMember : UIStateMember {
         ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : UIStateMember(parent_path, id, name) {
@@ -863,7 +863,7 @@ struct Style : Window {
         }
 
         void apply(ImGuiContext *ctx) const;
-        void draw() const override;
+        void Draw() const override;
 
         // See `ImGuiStyle` for field descriptions.
         // Initial values copied from `ImGuiStyle()` default constructor.
@@ -919,7 +919,7 @@ struct Style : Window {
         }
 
         void apply(ImPlotContext *ctx) const;
-        void draw() const override;
+        void Draw() const override;
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.
@@ -1037,7 +1037,7 @@ const JsonPath RootPath{""};
 
 struct Info : Window {
     using Window::Window;
-    void draw() const override;
+    void Draw() const override;
 };
 
 // Types for [json-patch](https://jsonpatch.com)
@@ -1251,8 +1251,8 @@ using action::Gestures;
 struct State {
     State() = default;
 
-    void draw() const;
-    void update(const Action &); // State is only updated via `context.on_action(action)`
+    void Draw() const;
+    void Update(const Action &); // State is only updated via `context.on_action(action)`
 
     ImGuiSettings ImGuiSettings{RootPath, "ImGuiSettings", "ImGui settings"};
     Style Style{RootPath, "Style"};

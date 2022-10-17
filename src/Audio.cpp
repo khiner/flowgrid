@@ -724,7 +724,7 @@ void ShowBufferPlots() {
     }
 }
 
-void Audio::draw() const {
+void Audio::Draw() const {
     Running.Draw();
     if (!soundio_ready) {
         Text("No audio context created yet");

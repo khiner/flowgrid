@@ -59,16 +59,16 @@ struct Preferences {
 const JsonPath RootPath{""};
 
 struct StateMember {
-    StateMember(const StateMember *parent = nullptr, const string &id = "", const string &name_and_help = "")
-        : Parent(parent), Path(parent && !id.empty() ? parent->Path / id : parent ? parent->Path : !id.empty() ? JsonPath(id) : RootPath), ID(id) {
+    StateMember(const StateMember *parent = nullptr, const string &path_segment = "", const string &name_and_help = "")
+        : Parent(parent), Path(parent && !path_segment.empty() ? parent->Path / path_segment : parent ? parent->Path : !path_segment.empty() ? JsonPath(path_segment) : RootPath), PathSegment(path_segment) {
         const auto &[name, help] = parse_help_text(name_and_help);
-        Name = name.empty() ? id.empty() ? "" : snake_case_to_sentence_case(id) : name;
+        Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
         Help = help;
     }
 
     const StateMember *Parent;
     JsonPath Path;
-    string ID, Name, Help;
+    string PathSegment, Name, Help;
     // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:
@@ -90,7 +90,8 @@ struct Base : StateMember {
 };
 
 struct Bool : Base {
-    Bool(const StateMember *parent, const string &id, bool value = false, const string &name = "") : Base(parent, id, name), value(value) {}
+    Bool(const StateMember *parent, const string &path_segment, bool value = false, const string &name = "")
+        : Base(parent, path_segment, name), value(value) {}
 
     operator bool() const { return value; }
     Bool &operator=(bool v) {
@@ -105,8 +106,8 @@ struct Bool : Base {
 };
 
 struct Int : Base {
-    Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100, const string &name = "")
-        : Base(parent, id, name), value(value), min(min), max(max) {}
+    Int(const StateMember *parent, const string &path_segment, int value = 0, int min = 0, int max = 100, const string &name = "")
+        : Base(parent, path_segment, name), value(value), min(min), max(max) {}
 
     operator int() const { return value; }
     Int &operator=(int v) {
@@ -121,8 +122,8 @@ struct Int : Base {
 };
 
 struct Float : Base {
-    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const string &name = "")
-        : Base(parent, id, name), value(value), min(min), max(max) {}
+    Float(const StateMember *parent, const string &path_segment, float value = 0, float min = 0, float max = 1, const string &name = "")
+        : Base(parent, path_segment, name), value(value), min(min), max(max) {}
 
     operator float() const { return value; }
     Float &operator=(float v) {
@@ -138,8 +139,8 @@ struct Float : Base {
 };
 
 struct Vec2 : Base {
-    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &name = "")
-        : Base(parent, id, name), value(value), min(min), max(max) {}
+    Vec2(const StateMember *parent, const string &path_segment, ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &name = "")
+        : Base(parent, path_segment, name), value(value), min(min), max(max) {}
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v) {
@@ -155,8 +156,8 @@ struct Vec2 : Base {
 };
 
 struct String : Base {
-    String(const StateMember *parent, const string &id, const string &name = "", string value = "")
-        : Base(parent, id, name), value(std::move(value)) {}
+    String(const StateMember *parent, const string &path_segment, const string &name = "", string value = "")
+        : Base(parent, path_segment, name), value(std::move(value)) {}
 
     operator string() const { return value; }
     operator bool() const { return !value.empty(); }
@@ -174,10 +175,10 @@ struct String : Base {
 };
 
 struct Enum : Base {
-    Enum(const StateMember *parent, const string &id, std::vector<string> names, int value = 0, const string &name = "")
-        : Base(parent, id, name), value(value), names(std::move(names)) {}
-    Enum(const StateMember *parent, const string &id, std::vector<string> names)
-        : Enum(parent, id, std::move(names), 0, "") {}
+    Enum(const StateMember *parent, const string &path_segment, std::vector<string> names, int value = 0, const string &name = "")
+        : Base(parent, path_segment, name), value(value), names(std::move(names)) {}
+    Enum(const StateMember *parent, const string &path_segment, std::vector<string> names)
+        : Enum(parent, path_segment, std::move(names), 0, "") {}
 
     operator int() const { return value; }
 
@@ -203,8 +204,8 @@ struct Flags : Base {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(const StateMember *parent, const string &id, std::vector<Item> items, int value = 0, const string &name = "")
-        : Base(parent, id, name), value(value), items(std::move(items)) {}
+    Flags(const StateMember *parent, const string &path_segment, std::vector<Item> items, int value = 0, const string &name = "")
+        : Base(parent, path_segment, name), value(value), items(std::move(items)) {}
 
     operator int() const { return value; }
 
@@ -268,7 +269,8 @@ ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : UIStateMember {
     using UIStateMember::UIStateMember;
-    Window(const StateMember *parent, const string &id, const string &name = "", bool visible = true) : UIStateMember(parent, id, name) {
+    Window(const StateMember *parent, const string &path_segment, const string &name = "", bool visible = true)
+        : UIStateMember(parent, path_segment, name) {
         this->Visible = visible;
     }
 
@@ -616,7 +618,8 @@ struct File : StateMember {
 
     // TODO window?
     struct FileDialog : DialogData, UIStateMember {
-        FileDialog(const StateMember *parent, const string &id) : DialogData(), UIStateMember(parent, id, Title) {}
+        FileDialog(const StateMember *parent, const string &path_segment)
+            : DialogData(), UIStateMember(parent, path_segment, Title) {}
 
         FileDialog &operator=(const DialogData &other) {
             DialogData::operator=(other);
@@ -673,7 +676,7 @@ struct ImVec2i {
 using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
 
 struct FlowGridStyle : UIStateMember {
-    FlowGridStyle(const StateMember *parent, const string &id, const string &name = "") : UIStateMember(parent, id, name) {
+    FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name = "") : UIStateMember(parent, path_segment, name) {
         ColorsDark();
         DiagramColorsDark();
         DiagramLayoutFlowGrid();
@@ -862,7 +865,8 @@ struct Style : Window {
     void Draw() const override;
 
     struct ImGuiStyleMember : UIStateMember {
-        ImGuiStyleMember(const StateMember *parent, const string &id, const string &name = "") : UIStateMember(parent, id, name) {
+        ImGuiStyleMember(const StateMember *parent, const string &path_segment, const string &name = "")
+            : UIStateMember(parent, path_segment, name) {
             ImGui::StyleColorsDark(Colors);
         }
 
@@ -917,7 +921,8 @@ struct Style : Window {
         ImVec4 Colors[ImGuiCol_COUNT];
     };
     struct ImPlotStyleMember : UIStateMember {
-        ImPlotStyleMember(const StateMember *parent, const string &id, const string &name = "") : UIStateMember(parent, id, name) {
+        ImPlotStyleMember(const StateMember *parent, const string &path_segment, const string &name = "")
+            : UIStateMember(parent, path_segment, name) {
             Colormap = ImPlotColormap_Deep;
             ImPlot::StyleColorsAuto(Colors);
         }
@@ -1024,7 +1029,8 @@ struct ImGuiSettingsData {
 };
 
 struct ImGuiSettings : StateMember, ImGuiSettingsData {
-    ImGuiSettings(const StateMember *parent, const string &id, const string &name = "") : StateMember(parent, id, name), ImGuiSettingsData() {}
+    ImGuiSettings(const StateMember *parent, const string &path_segment, const string &name = "")
+        : StateMember(parent, path_segment, name), ImGuiSettingsData() {}
 
     ImGuiSettings &operator=(const ImGuiSettingsData &other) {
         ImGuiSettingsData::operator=(other);

@@ -73,7 +73,8 @@ protected:
     void HelpMarker(bool after = true) const;
 };
 
-struct Drawable {
+struct UIStateMember : StateMember {
+    using StateMember::StateMember;
     virtual void draw() const = 0;
 };
 
@@ -261,9 +262,9 @@ static const std::vector<Flags::Item> TableFlagItems{
 
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
-struct Window : StateMember, Drawable {
-    using StateMember::StateMember;
-    Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : StateMember(parent_path, id, name) {
+struct Window : UIStateMember {
+    using UIStateMember::UIStateMember;
+    Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : UIStateMember(parent_path, id, name) {
         this->Visible = visible;
     }
 
@@ -341,17 +342,17 @@ struct Metrics : Window {
     using Window::Window;
     void draw() const override;
 
-    struct FlowGridMetrics : StateMember, Drawable {
-        using StateMember::StateMember;
+    struct FlowGridMetrics : UIStateMember {
+        using UIStateMember::UIStateMember;
         void draw() const override;
         Bool ShowRelativePaths{Path, "ShowRelativePaths", true};
     };
-    struct ImGuiMetrics : StateMember, Drawable {
-        using StateMember::StateMember;
+    struct ImGuiMetrics : UIStateMember {
+        using UIStateMember::UIStateMember;
         void draw() const override;
     };
-    struct ImPlotMetrics : StateMember, Drawable {
-        using StateMember::StateMember;
+    struct ImPlotMetrics : UIStateMember {
+        using UIStateMember::UIStateMember;
         void draw() const override;
     };
 
@@ -667,8 +668,8 @@ struct ImVec2i {
 };
 using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
 
-struct FlowGridStyle : StateMember, Drawable {
-    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
+struct FlowGridStyle : UIStateMember {
+    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : UIStateMember(parent_path, id, name) {
         ColorsDark();
         DiagramColorsDark();
         DiagramLayoutFlowGrid();
@@ -856,8 +857,8 @@ struct Style : Window {
 
     void draw() const override;
 
-    struct ImGuiStyleMember : StateMember, Drawable {
-        ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
+    struct ImGuiStyleMember : UIStateMember {
+        ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : UIStateMember(parent_path, id, name) {
             ImGui::StyleColorsDark(Colors);
         }
 
@@ -911,8 +912,8 @@ struct Style : Window {
         Float CircleTessellationMaxError{Path, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
     };
-    struct ImPlotStyleMember : StateMember, Drawable {
-        ImPlotStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name) {
+    struct ImPlotStyleMember : UIStateMember {
+        ImPlotStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : UIStateMember(parent_path, id, name) {
             Colormap = ImPlotColormap_Deep;
             ImPlot::StyleColorsAuto(Colors);
         }
@@ -1247,11 +1248,10 @@ using action::Gestures;
 // [SECTION] Main `State` class
 //-----------------------------------------------------------------------------
 
-struct State : Drawable {
+struct State {
     State() = default;
-    State(const State &) = default;
 
-    void draw() const override;
+    void draw() const;
     void update(const Action &); // State is only updated via `context.on_action(action)`
 
     ImGuiSettings ImGuiSettings{RootPath, "ImGuiSettings", "ImGui settings"};

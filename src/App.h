@@ -56,16 +56,20 @@ struct Preferences {
     std::list<fs::path> recently_opened_paths;
 };
 
+const JsonPath RootPath{""};
+
 struct StateMember {
-    StateMember(const JsonPath &parent_path, const string &id, const string &name_and_help = "")
-        : Path(!id.empty() ? parent_path / id : parent_path), ID(id) {
+    StateMember(const StateMember *parent = nullptr, const string &id = "", const string &name_and_help = "")
+        : Parent(parent), Path(parent && !id.empty() ? parent->Path / id : parent ? parent->Path : !id.empty() ? JsonPath(id) : RootPath), ID(id) {
         const auto &[name, help] = parse_help_text(name_and_help);
-        Name = name.empty() ? snake_case_to_sentence_case(id) : name;
+        Name = name.empty() ? id.empty() ? "" : snake_case_to_sentence_case(id) : name;
         Help = help;
     }
 
-    JsonPath Path; // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
+    const StateMember *Parent;
+    JsonPath Path;
     string ID, Name, Help;
+    // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered.
@@ -86,7 +90,7 @@ struct Base : StateMember {
 };
 
 struct Bool : Base {
-    Bool(const JsonPath &parent_path, const string &id, bool value = false, const string &name = "") : Base(parent_path, id, name), value(value) {}
+    Bool(const StateMember *parent, const string &id, bool value = false, const string &name = "") : Base(parent, id, name), value(value) {}
 
     operator bool() const { return value; }
     Bool &operator=(bool v) {
@@ -101,8 +105,8 @@ struct Bool : Base {
 };
 
 struct Int : Base {
-    Int(const JsonPath &parent_path, const string &id, int value = 0, int min = 0, int max = 100, const string &name = "")
-        : Base(parent_path, id, name), value(value), min(min), max(max) {}
+    Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100, const string &name = "")
+        : Base(parent, id, name), value(value), min(min), max(max) {}
 
     operator int() const { return value; }
     Int &operator=(int v) {
@@ -117,8 +121,8 @@ struct Int : Base {
 };
 
 struct Float : Base {
-    Float(const JsonPath &parent_path, const string &id, float value = 0, float min = 0, float max = 1, const string &name = "")
-        : Base(parent_path, id, name), value(value), min(min), max(max) {}
+    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const string &name = "")
+        : Base(parent, id, name), value(value), min(min), max(max) {}
 
     operator float() const { return value; }
     Float &operator=(float v) {
@@ -134,8 +138,8 @@ struct Float : Base {
 };
 
 struct Vec2 : Base {
-    Vec2(const JsonPath &parent_path, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &name = "")
-        : Base(parent_path, id, name), value(value), min(min), max(max) {}
+    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &name = "")
+        : Base(parent, id, name), value(value), min(min), max(max) {}
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v) {
@@ -151,8 +155,8 @@ struct Vec2 : Base {
 };
 
 struct String : Base {
-    String(const JsonPath &parent_path, const string &id, const string &name = "", string value = "")
-        : Base(parent_path, id, name), value(std::move(value)) {}
+    String(const StateMember *parent, const string &id, const string &name = "", string value = "")
+        : Base(parent, id, name), value(std::move(value)) {}
 
     operator string() const { return value; }
     operator bool() const { return !value.empty(); }
@@ -170,10 +174,10 @@ struct String : Base {
 };
 
 struct Enum : Base {
-    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names, int value = 0, const string &name = "")
-        : Base(parent_path, id, name), value(value), names(std::move(names)) {}
-    Enum(const JsonPath &parent_path, const string &id, std::vector<string> names)
-        : Enum(parent_path, id, std::move(names), 0, "") {}
+    Enum(const StateMember *parent, const string &id, std::vector<string> names, int value = 0, const string &name = "")
+        : Base(parent, id, name), value(value), names(std::move(names)) {}
+    Enum(const StateMember *parent, const string &id, std::vector<string> names)
+        : Enum(parent, id, std::move(names), 0, "") {}
 
     operator int() const { return value; }
 
@@ -199,8 +203,8 @@ struct Flags : Base {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(const JsonPath &parent_path, const string &id, std::vector<Item> items, int value = 0, const string &name = "")
-        : Base(parent_path, id, name), value(value), items(std::move(items)) {}
+    Flags(const StateMember *parent, const string &id, std::vector<Item> items, int value = 0, const string &name = "")
+        : Base(parent, id, name), value(value), items(std::move(items)) {}
 
     operator int() const { return value; }
 
@@ -264,11 +268,11 @@ ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : UIStateMember {
     using UIStateMember::UIStateMember;
-    Window(const JsonPath &parent_path, const string &id, const string &name = "", bool visible = true) : UIStateMember(parent_path, id, name) {
+    Window(const StateMember *parent, const string &id, const string &name = "", bool visible = true) : UIStateMember(parent, id, name) {
         this->Visible = visible;
     }
 
-    Bool Visible{Path, "Visible", true};
+    Bool Visible{this, "Visible", true};
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(Name.c_str()); }
     void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -283,14 +287,14 @@ struct Process : Window {
     void Draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool Running{Path, "Running", true, format("?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name))};
+    Bool Running{this, "Running", true, format("?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name))};
 };
 
 struct ApplicationSettings : Window {
     using Window::Window;
     void Draw() const override;
 
-    Float GestureDurationSec{Path, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
+    Float GestureDurationSec{this, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
 };
 
 struct StateViewer : Window {
@@ -299,14 +303,14 @@ struct StateViewer : Window {
 
     enum LabelMode { Annotated, Raw };
     Enum LabelMode{
-        Path, "LabelMode", {"Annotated", "Raw"}, Annotated,
+        this, "LabelMode", {"Annotated", "Raw"}, Annotated,
         "?The raw JSON state doesn't store keys for all items.\n"
         "For example, the main `ui.style.colors` state is a list.\n\n"
         "'Annotated' mode shows (highlighted) labels for such state items.\n"
         "'Raw' mode shows the state exactly as it is in the raw JSON state."
     };
     Bool AutoSelect{
-        Path, "AutoSelect", true,
+        this, "AutoSelect", true,
         "Auto-select?When auto-select is enabled, state changes automatically open.\n"
         "The state viewer to the changed state node(s), closing all other state nodes.\n"
         "State menu items can only be opened or closed manually if auto-select is disabled."
@@ -329,8 +333,8 @@ struct ProjectPreview : Window {
     using Window::Window;
     void Draw() const override;
 
-    Enum Format{Path, "Format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
-    Bool Raw{Path, "Raw"};
+    Enum Format{this, "Format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
+    Bool Raw{this, "Raw"};
 };
 
 struct Demo : Window {
@@ -345,7 +349,7 @@ struct Metrics : Window {
     struct FlowGridMetrics : UIStateMember {
         using UIStateMember::UIStateMember;
         void Draw() const override;
-        Bool ShowRelativePaths{Path, "ShowRelativePaths", true};
+        Bool ShowRelativePaths{this, "ShowRelativePaths", true};
     };
     struct ImGuiMetrics : UIStateMember {
         using UIStateMember::UIStateMember;
@@ -356,9 +360,9 @@ struct Metrics : Window {
         void Draw() const override;
     };
 
-    FlowGridMetrics FlowGrid{Path, "FlowGrid"};
-    ImGuiMetrics ImGui{Path, "ImGui"};
-    ImPlotMetrics ImPlot{Path, "ImPlot"};
+    FlowGridMetrics FlowGrid{this, "FlowGrid"};
+    ImGuiMetrics ImGui{this, "ImGui"};
+    ImPlotMetrics ImPlot{this, "ImPlot"};
 };
 
 struct Tools : Window {
@@ -435,7 +439,7 @@ struct Audio : Process {
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
                 Flags HoverFlags{
-                    Path, "HoverFlags",
+                    this, "HoverFlags",
                     {"ShowRect?Display the hovered node's bounding rectangle",
                      "ShowType?Display the hovered node's box type",
                      "ShowChannels?Display the hovered node's channel points and indices",
@@ -445,7 +449,7 @@ struct Audio : Process {
                 };
             };
 
-            DiagramSettings Settings{Path, "Settings"};
+            DiagramSettings Settings{this, "Settings"};
         };
 
         struct FaustParams : Window {
@@ -459,12 +463,12 @@ struct Audio : Process {
             void Draw() const override;
         };
 
-        FaustEditor Editor{Path, "Editor", "Faust editor"};
-        FaustDiagram Diagram{Path, "Diagram", "Faust diagram"};
-        FaustParams Params{Path, "Params", "Faust params"};
-        FaustLog Log{Path, "Log", "Faust log"};
+        FaustEditor Editor{this, "Editor", "Faust editor"};
+        FaustDiagram Diagram{this, "Diagram", "Faust diagram"};
+        FaustParams Params{this, "Params", "Faust params"};
+        FaustLog Log{this, "Log", "Faust log"};
 
-//        String Code{Path, "Code", "Code", R"#(import("stdfaust.lib");
+//        String Code{this, "Code", "Code", R"#(import("stdfaust.lib");
 //pitchshifter = vgroup("Pitch Shifter", ef.transpose(
 //    vslider("window (samples)", 1000, 50, 10000, 1),
 //    vslider("xfade (samples)", 10, 1, 10000, 1),
@@ -472,21 +476,21 @@ struct Audio : Process {
 //  )
 //);
 //process = _ : pitchshifter;)#"};
-//        String Code{Path, "Code", "Code", R"#(import("stdfaust.lib");
+//        String Code{this, "Code", "Code", R"#(import("stdfaust.lib");
 //s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
 //process = select2(s,no.noise,os.sawtooth(440));)#"};
-//        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");
+//        String Code{this, "Code", "Code", R"(import("stdfaust.lib");
 //process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)"};
-//        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");
+//        String Code{this, "Code", "Code", R"(import("stdfaust.lib");
 //process = _:fi.highpass(2,1000):_;)"};
-//        String Code{Path, "Code", "Code", R"(import("stdfaust.lib");
+//        String Code{this, "Code", "Code", R"(import("stdfaust.lib");
 //ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
 //q = hslider("q",5,1,30,0.1);
 //gain = hslider("gain",1,0,1,0.01);
 //process = no:noise : fi.resonlp(ctFreq,q,gain);)"};
 
 // Based on Faust::UITester.dsp
-        String Code{Path, "Code", "Code", R"#(import("stdfaust.lib");
+        String Code{this, "Code", "Code", R"#(import("stdfaust.lib");
 declare name "UI Tester";
 declare version "1.0";
 declare author "O. Guillerminet";
@@ -572,19 +576,19 @@ process = tgroup("grp 1",
     void update_process() const override;
     String get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Bool FaustRunning{Path, "FaustRunning", true, "?Disabling completely skips Faust computation when computing audio output."};
-    Bool Muted{Path, "Muted", true, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load."};
+    Bool FaustRunning{this, "FaustRunning", true, "?Disabling completely skips Faust computation when computing audio output."};
+    Bool Muted{this, "Muted", true, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load."};
     AudioBackend Backend = none;
-    String InDeviceId{Path, "InDeviceId", "In device ID"};
-    String OutDeviceId{Path, "OutDeviceId", "Out device ID"};
-    Int InSampleRate{Path, "InSampleRate"};
-    Int OutSampleRate{Path, "OutSampleRate"};
-    Enum InFormat{Path, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
-    Enum OutFormat{Path, "OutFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
-    Float OutDeviceVolume{Path, "OutDeviceVolume", 1.0};
-    Bool MonitorInput{Path, "MonitorInput", false, "?Enabling adds the audio input stream directly to the audio output."};
+    String InDeviceId{this, "InDeviceId", "In device ID"};
+    String OutDeviceId{this, "OutDeviceId", "Out device ID"};
+    Int InSampleRate{this, "InSampleRate"};
+    Int OutSampleRate{this, "OutSampleRate"};
+    Enum InFormat{this, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
+    Enum OutFormat{this, "OutFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
+    Float OutDeviceVolume{this, "OutDeviceVolume", 1.0};
+    Bool MonitorInput{this, "MonitorInput", false, "?Enabling adds the audio input stream directly to the audio output."};
 
-    FaustState Faust{Path, "Faust"};
+    FaustState Faust{this, "Faust"};
 };
 
 using ImGuiFileDialogFlags = int;
@@ -612,7 +616,7 @@ struct File : StateMember {
 
     // TODO window?
     struct FileDialog : DialogData, UIStateMember {
-        FileDialog(const JsonPath &path, const string &id) : DialogData(), UIStateMember(path, id, Title) {}
+        FileDialog(const StateMember *parent, const string &id) : DialogData(), UIStateMember(parent, id, Title) {}
 
         FileDialog &operator=(const DialogData &other) {
             DialogData::operator=(other);
@@ -623,7 +627,7 @@ struct File : StateMember {
         void Draw() const override;
     };
 
-    FileDialog Dialog{Path, "Dialog"};
+    FileDialog Dialog{this, "Dialog"};
 };
 
 enum FlowGridCol_ {
@@ -669,7 +673,7 @@ struct ImVec2i {
 using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
 
 struct FlowGridStyle : UIStateMember {
-    FlowGridStyle(const JsonPath &parent_path, const string &id, const string &name = "") : UIStateMember(parent_path, id, name) {
+    FlowGridStyle(const StateMember *parent, const string &id, const string &name = "") : UIStateMember(parent, id, name) {
         ColorsDark();
         DiagramColorsDark();
         DiagramLayoutFlowGrid();
@@ -678,45 +682,45 @@ struct FlowGridStyle : UIStateMember {
     void Draw() const override;
 
     ImVec4 Colors[FlowGridCol_COUNT];
-    Float FlashDurationSec{Path, "FlashDurationSec", 0.6, 0, 5};
+    Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
 
     Int DiagramFoldComplexity{
-        Path, "DiagramFoldComplexity", 3, 0, 20,
+        this, "DiagramFoldComplexity", 3, 0, 20,
         "?Number of boxes within a diagram before folding into a sub-diagram.\n"
         "Setting to zero disables folding altogether, for a fully-expanded diagram."};
-    Bool DiagramScaleLinked{Path, "DiagramScaleLinked", true, "?Link X/Y"}; // Link X/Y scale sliders, forcing them to the same value.
+    Bool DiagramScaleLinked{this, "DiagramScaleLinked", true, "?Link X/Y"}; // Link X/Y scale sliders, forcing them to the same value.
     Bool DiagramScaleFill{
-        Path, "DiagramScaleFill", false,
+        this, "DiagramScaleFill", false,
         "?Scale to fill the window.\n"
         "Enabling this setting deactivates other diagram scale settings."};
-    Vec2 DiagramScale{Path, "DiagramScale", {1, 1}, 0.1, 10};
-    Enum DiagramDirection{Path, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
-    Bool DiagramRouteFrame{Path, "DiagramRouteFrame", false};
-    Bool DiagramSequentialConnectionZigzag{Path, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
-    Bool DiagramOrientationMark{Path, "DiagramOrientationMark", true};
-    Float DiagramOrientationMarkRadius{Path, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
-    Float DiagramTopLevelMargin{Path, "DiagramTopLevelMargin", 20, 0, 40};
-    Float DiagramDecorateMargin{Path, "DiagramDecorateMargin", 20, 0, 40};
-    Float DiagramDecorateLineWidth{Path, "DiagramDecorateLineWidth", 1, 0, 4};
-    Float DiagramDecorateCornerRadius{Path, "DiagramDecorateCornerRadius", 0, 0, 10};
-    Float DiagramBoxCornerRadius{Path, "DiagramBoxCornerRadius", 0, 0, 10};
-    Float DiagramBinaryHorizontalGapRatio{Path, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
-    Float DiagramWireWidth{Path, "DiagramWireWidth", 1, 0.5, 4};
-    Float DiagramWireGap{Path, "DiagramWireGap", 16, 10, 20};
-    Vec2 DiagramGap{Path, "DiagramGap", {8, 8}, 0, 20};
-    Vec2 DiagramArrowSize{Path, "DiagramArrowSize", {3, 2}, 1, 10};
-    Float DiagramInverterRadius{Path, "DiagramInverterRadius", 3, 1, 5};
+    Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10};
+    Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
+    Bool DiagramRouteFrame{this, "DiagramRouteFrame", false};
+    Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
+    Bool DiagramOrientationMark{this, "DiagramOrientationMark", true};
+    Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
+    Float DiagramTopLevelMargin{this, "DiagramTopLevelMargin", 20, 0, 40};
+    Float DiagramDecorateMargin{this, "DiagramDecorateMargin", 20, 0, 40};
+    Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
+    Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
+    Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};
+    Float DiagramBinaryHorizontalGapRatio{this, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
+    Float DiagramWireWidth{this, "DiagramWireWidth", 1, 0.5, 4};
+    Float DiagramWireGap{this, "DiagramWireGap", 16, 10, 20};
+    Vec2 DiagramGap{this, "DiagramGap", {8, 8}, 0, 20};
+    Vec2 DiagramArrowSize{this, "DiagramArrowSize", {3, 2}, 1, 10};
+    Float DiagramInverterRadius{this, "DiagramInverterRadius", 3, 1, 5};
 
-    Bool ParamsHeaderTitles{Path, "ParamsHeaderTitles", true};
-    Float ParamsMinHorizontalItemWidth{Path, "ParamsMinHorizontalItemWidth", 4, 2, 8}; // In frame-height units
-    Float ParamsMaxHorizontalItemWidth{Path, "ParamsMaxHorizontalItemWidth", 16, 10, 24}; // In frame-height units
-    Float ParamsMinVerticalItemHeight{Path, "ParamsMinVerticalItemHeight", 4, 2, 8}; // In frame-height units
-    Float ParamsMinKnobItemSize{Path, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
-    Enum ParamsAlignmentHorizontal{Path, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
-    Enum ParamsAlignmentVertical{Path, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
-    Flags ParamsTableFlags{Path, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
+    Bool ParamsHeaderTitles{this, "ParamsHeaderTitles", true};
+    Float ParamsMinHorizontalItemWidth{this, "ParamsMinHorizontalItemWidth", 4, 2, 8}; // In frame-height units
+    Float ParamsMaxHorizontalItemWidth{this, "ParamsMaxHorizontalItemWidth", 16, 10, 24}; // In frame-height units
+    Float ParamsMinVerticalItemHeight{this, "ParamsMinVerticalItemHeight", 4, 2, 8}; // In frame-height units
+    Float ParamsMinKnobItemSize{this, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
+    Enum ParamsAlignmentHorizontal{this, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
+    Enum ParamsAlignmentVertical{this, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
+    Flags ParamsTableFlags{this, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
     Enum ParamsWidthSizingPolicy{
-        Path, "ParamsWidthSizingPolicy", {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly,
+        this, "ParamsWidthSizingPolicy", {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly,
         "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
         "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
         "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).\n"};
@@ -858,7 +862,7 @@ struct Style : Window {
     void Draw() const override;
 
     struct ImGuiStyleMember : UIStateMember {
-        ImGuiStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : UIStateMember(parent_path, id, name) {
+        ImGuiStyleMember(const StateMember *parent, const string &id, const string &name = "") : UIStateMember(parent, id, name) {
             ImGui::StyleColorsDark(Colors);
         }
 
@@ -869,51 +873,51 @@ struct Style : Window {
         // Initial values copied from `ImGuiStyle()` default constructor.
         // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
-        Float Alpha{Path, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Float DisabledAlpha{Path, "DisabledAlpha", 0.6, 0, 1, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
-        Vec2 WindowPadding{Path, "WindowPadding", ImVec2(8, 8), 0, 20};
-        Float WindowRounding{Path, "WindowRounding", 0, 0, 12};
-        Float WindowBorderSize{Path, "WindowBorderSize", 1};
-        Vec2 WindowMinSize{Path, "WindowMinSize", ImVec2(32, 32)};
-        Vec2 WindowTitleAlign{Path, "WindowTitleAlign", ImVec2(0, 0.5)};
-        Enum WindowMenuButtonPosition{Path, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
-        Float ChildRounding{Path, "ChildRounding", 0, 0, 12};
-        Float ChildBorderSize{Path, "ChildBorderSize", 1};
-        Float PopupRounding{Path, "PopupRounding", 0, 0, 12};
-        Float PopupBorderSize{Path, "PopupBorderSize", 1};
-        Vec2 FramePadding{Path, "FramePadding", ImVec2(4, 3), 0, 20};
-        Float FrameRounding{Path, "FrameRounding", 0, 0, 12};
-        Float FrameBorderSize{Path, "FrameBorderSize", 0};
-        Vec2 ItemSpacing{Path, "ItemSpacing", ImVec2(8, 4), 0, 20};
-        Vec2 ItemInnerSpacing{Path, "ItemInnerSpacing", ImVec2(4, 4), 0, 20};
-        Vec2 CellPadding{Path, "CellPadding", ImVec2(4, 2), 0, 20};
-        Vec2 TouchExtraPadding{Path, "TouchExtraPadding", ImVec2(0, 0), 0, 10};
-        Float IndentSpacing{Path, "IndentSpacing", 21, 0, 30};
-        Float ColumnsMinSpacing{Path, "ColumnsMinSpacing", 6};
-        Float ScrollbarSize{Path, "ScrollbarSize", 14, 1, 20};
-        Float ScrollbarRounding{Path, "ScrollbarRounding", 9, 0, 12};
-        Float GrabMinSize{Path, "GrabMinSize", 12, 1, 20};
-        Float GrabRounding{Path, "GrabRounding", 0, 0, 12};
-        Float LogSliderDeadzone{Path, "LogSliderDeadzone", 4, 0, 12};
-        Float TabRounding{Path, "TabRounding", 4, 0, 12};
-        Float TabBorderSize{Path, "TabBorderSize", 0};
-        Float TabMinWidthForCloseButton{Path, "TabMinWidthForCloseButton", 0};
-        Enum ColorButtonPosition{Path, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
-        Vec2 ButtonTextAlign{Path, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "?Alignment applies when a button is larger than its text content."};
-        Vec2 SelectableTextAlign{Path, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "?Alignment applies when a selectable is larger than its text content."};
-        Vec2 DisplayWindowPadding{Path, "DisplayWindowPadding", ImVec2(19, 19)};
-        Vec2 DisplaySafeAreaPadding{Path, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
-        Float MouseCursorScale{Path, "MouseCursorScale", 1};
-        Bool AntiAliasedLines{Path, "AntiAliasedLines", true, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
-        Bool AntiAliasedLinesUseTex{Path, "AntiAliasedLinesUseTex", true,
+        Float Alpha{this, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
+        Float DisabledAlpha{this, "DisabledAlpha", 0.6, 0, 1, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
+        Vec2 WindowPadding{this, "WindowPadding", ImVec2(8, 8), 0, 20};
+        Float WindowRounding{this, "WindowRounding", 0, 0, 12};
+        Float WindowBorderSize{this, "WindowBorderSize", 1};
+        Vec2 WindowMinSize{this, "WindowMinSize", ImVec2(32, 32)};
+        Vec2 WindowTitleAlign{this, "WindowTitleAlign", ImVec2(0, 0.5)};
+        Enum WindowMenuButtonPosition{this, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
+        Float ChildRounding{this, "ChildRounding", 0, 0, 12};
+        Float ChildBorderSize{this, "ChildBorderSize", 1};
+        Float PopupRounding{this, "PopupRounding", 0, 0, 12};
+        Float PopupBorderSize{this, "PopupBorderSize", 1};
+        Vec2 FramePadding{this, "FramePadding", ImVec2(4, 3), 0, 20};
+        Float FrameRounding{this, "FrameRounding", 0, 0, 12};
+        Float FrameBorderSize{this, "FrameBorderSize", 0};
+        Vec2 ItemSpacing{this, "ItemSpacing", ImVec2(8, 4), 0, 20};
+        Vec2 ItemInnerSpacing{this, "ItemInnerSpacing", ImVec2(4, 4), 0, 20};
+        Vec2 CellPadding{this, "CellPadding", ImVec2(4, 2), 0, 20};
+        Vec2 TouchExtraPadding{this, "TouchExtraPadding", ImVec2(0, 0), 0, 10};
+        Float IndentSpacing{this, "IndentSpacing", 21, 0, 30};
+        Float ColumnsMinSpacing{this, "ColumnsMinSpacing", 6};
+        Float ScrollbarSize{this, "ScrollbarSize", 14, 1, 20};
+        Float ScrollbarRounding{this, "ScrollbarRounding", 9, 0, 12};
+        Float GrabMinSize{this, "GrabMinSize", 12, 1, 20};
+        Float GrabRounding{this, "GrabRounding", 0, 0, 12};
+        Float LogSliderDeadzone{this, "LogSliderDeadzone", 4, 0, 12};
+        Float TabRounding{this, "TabRounding", 4, 0, 12};
+        Float TabBorderSize{this, "TabBorderSize", 0};
+        Float TabMinWidthForCloseButton{this, "TabMinWidthForCloseButton", 0};
+        Enum ColorButtonPosition{this, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
+        Vec2 ButtonTextAlign{this, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "?Alignment applies when a button is larger than its text content."};
+        Vec2 SelectableTextAlign{this, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "?Alignment applies when a selectable is larger than its text content."};
+        Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", ImVec2(19, 19)};
+        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
+        Float MouseCursorScale{this, "MouseCursorScale", 1};
+        Bool AntiAliasedLines{this, "AntiAliasedLines", true, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
+        Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex", true,
                                     "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering)."};
-        Bool AntiAliasedFill{Path, "AntiAliasedFill", true, "Anti-aliased fill"};
-        Float CurveTessellationTol{Path, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
-        Float CircleTessellationMaxError{Path, "CircleTessellationMaxError", 0.3, 0.1, 5};
+        Bool AntiAliasedFill{this, "AntiAliasedFill", true, "Anti-aliased fill"};
+        Float CurveTessellationTol{this, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
+        Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
     };
     struct ImPlotStyleMember : UIStateMember {
-        ImPlotStyleMember(const JsonPath &parent_path, const string &id, const string &name = "") : UIStateMember(parent_path, id, name) {
+        ImPlotStyleMember(const StateMember *parent, const string &id, const string &name = "") : UIStateMember(parent, id, name) {
             Colormap = ImPlotColormap_Deep;
             ImPlot::StyleColorsAuto(Colors);
         }
@@ -925,49 +929,49 @@ struct Style : Window {
         // Initial values copied from `ImPlotStyle()` default constructor.
         // Ranges copied from `ImPlot::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
-        Float LineWeight{Path, "LineWeight", 1, 0, 5};
-        Int Marker{Path, "Marker", ImPlotMarker_None};
-        Float MarkerSize{Path, "MarkerSize", 4, 2, 10};
-        Float MarkerWeight{Path, "MarkerWeight", 1, 0, 5};
-        Float FillAlpha{Path, "FillAlpha", 1};
-        Float ErrorBarSize{Path, "ErrorBarSize", 5, 0, 10};
-        Float ErrorBarWeight{Path, "ErrorBarWeight", 1.5, 0, 5};
-        Float DigitalBitHeight{Path, "DigitalBitHeight", 8, 0, 20};
-        Float DigitalBitGap{Path, "DigitalBitGap", 4, 0, 20};
-        Float PlotBorderSize{Path, "PlotBorderSize", 1, 0, 2};
-        Float MinorAlpha{Path, "MinorAlpha", 0.25};
-        Vec2 MajorTickLen{Path, "MajorTickLen", ImVec2(10, 10), 0, 20};
-        Vec2 MinorTickLen{Path, "MinorTickLen", ImVec2(5, 5), 0, 20};
-        Vec2 MajorTickSize{Path, "MajorTickSize", ImVec2(1, 1), 0, 2};
-        Vec2 MinorTickSize{Path, "MinorTickSize", ImVec2(1, 1), 0, 2};
-        Vec2 MajorGridSize{Path, "MajorGridSize", ImVec2(1, 1), 0, 2};
-        Vec2 MinorGridSize{Path, "MinorGridSize", ImVec2(1, 1), 0, 2};
-        Vec2 PlotPadding{Path, "PlotPadding", ImVec2(10, 10), 0, 20};
-        Vec2 LabelPadding{Path, "LabelPadding", ImVec2(5, 5), 0, 20};
-        Vec2 LegendPadding{Path, "LegendPadding", ImVec2(10, 10), 0, 20};
-        Vec2 LegendInnerPadding{Path, "LegendInnerPadding", ImVec2(5, 5), 0, 10};
-        Vec2 LegendSpacing{Path, "LegendSpacing", ImVec2(5, 0), 0, 5};
-        Vec2 MousePosPadding{Path, "MousePosPadding", ImVec2(10, 10), 0, 20};
-        Vec2 AnnotationPadding{Path, "AnnotationPadding", ImVec2(2, 2), 0, 5};
-        Vec2 FitPadding{Path, "FitPadding", ImVec2(0, 0), 0, 0.2};
-        Vec2 PlotDefaultSize{Path, "PlotDefaultSize", ImVec2(400, 300), 0, 1000};
-        Vec2 PlotMinSize{Path, "PlotMinSize", ImVec2(200, 150), 0, 300};
+        Float LineWeight{this, "LineWeight", 1, 0, 5};
+        Int Marker{this, "Marker", ImPlotMarker_None};
+        Float MarkerSize{this, "MarkerSize", 4, 2, 10};
+        Float MarkerWeight{this, "MarkerWeight", 1, 0, 5};
+        Float FillAlpha{this, "FillAlpha", 1};
+        Float ErrorBarSize{this, "ErrorBarSize", 5, 0, 10};
+        Float ErrorBarWeight{this, "ErrorBarWeight", 1.5, 0, 5};
+        Float DigitalBitHeight{this, "DigitalBitHeight", 8, 0, 20};
+        Float DigitalBitGap{this, "DigitalBitGap", 4, 0, 20};
+        Float PlotBorderSize{this, "PlotBorderSize", 1, 0, 2};
+        Float MinorAlpha{this, "MinorAlpha", 0.25};
+        Vec2 MajorTickLen{this, "MajorTickLen", ImVec2(10, 10), 0, 20};
+        Vec2 MinorTickLen{this, "MinorTickLen", ImVec2(5, 5), 0, 20};
+        Vec2 MajorTickSize{this, "MajorTickSize", ImVec2(1, 1), 0, 2};
+        Vec2 MinorTickSize{this, "MinorTickSize", ImVec2(1, 1), 0, 2};
+        Vec2 MajorGridSize{this, "MajorGridSize", ImVec2(1, 1), 0, 2};
+        Vec2 MinorGridSize{this, "MinorGridSize", ImVec2(1, 1), 0, 2};
+        Vec2 PlotPadding{this, "PlotPadding", ImVec2(10, 10), 0, 20};
+        Vec2 LabelPadding{this, "LabelPadding", ImVec2(5, 5), 0, 20};
+        Vec2 LegendPadding{this, "LegendPadding", ImVec2(10, 10), 0, 20};
+        Vec2 LegendInnerPadding{this, "LegendInnerPadding", ImVec2(5, 5), 0, 10};
+        Vec2 LegendSpacing{this, "LegendSpacing", ImVec2(5, 0), 0, 5};
+        Vec2 MousePosPadding{this, "MousePosPadding", ImVec2(10, 10), 0, 20};
+        Vec2 AnnotationPadding{this, "AnnotationPadding", ImVec2(2, 2), 0, 5};
+        Vec2 FitPadding{this, "FitPadding", ImVec2(0, 0), 0, 0.2};
+        Vec2 PlotDefaultSize{this, "PlotDefaultSize", ImVec2(400, 300), 0, 1000};
+        Vec2 PlotMinSize{this, "PlotMinSize", ImVec2(200, 150), 0, 300};
         ImVec4 Colors[ImPlotCol_COUNT];
         ImPlotColormap Colormap;
-        Bool UseLocalTime{Path, "UseLocalTime"};
-        Bool UseISO8601{Path, "UseISO8601"};
-        Bool Use24HourClock{Path, "Use24HourClock"};
+        Bool UseLocalTime{this, "UseLocalTime"};
+        Bool UseISO8601{this, "UseISO8601"};
+        Bool Use24HourClock{this, "Use24HourClock"};
     };
 
-    ImGuiStyleMember ImGui{Path, "ImGui"};
-    ImPlotStyleMember ImPlot{Path, "ImPlot"};
-    FlowGridStyle FlowGrid{Path, "FlowGrid"};
+    ImGuiStyleMember ImGui{this, "ImGui"};
+    ImPlotStyleMember ImPlot{this, "ImPlot"};
+    FlowGridStyle FlowGrid{this, "FlowGrid"};
 };
 
 struct Processes : StateMember {
     using StateMember::StateMember;
 
-    Process UI{Path, "UI"};
+    Process UI{this, "UI"};
 };
 
 // The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).
@@ -1020,7 +1024,7 @@ struct ImGuiSettingsData {
 };
 
 struct ImGuiSettings : StateMember, ImGuiSettingsData {
-    ImGuiSettings(const JsonPath &parent_path, const string &id, const string &name = "") : StateMember(parent_path, id, name), ImGuiSettingsData() {}
+    ImGuiSettings(const StateMember *parent, const string &id, const string &name = "") : StateMember(parent, id, name), ImGuiSettingsData() {}
 
     ImGuiSettings &operator=(const ImGuiSettingsData &other) {
         ImGuiSettingsData::operator=(other);
@@ -1032,8 +1036,6 @@ struct ImGuiSettings : StateMember, ImGuiSettingsData {
     // in this struct instead of the serialized .ini text format.
     void apply(ImGuiContext *ctx) const;
 };
-
-const JsonPath RootPath{""};
 
 struct Info : Window {
     using Window::Window;
@@ -1249,27 +1251,27 @@ using action::Gestures;
 //-----------------------------------------------------------------------------
 
 struct State : UIStateMember {
-    State() : UIStateMember(RootPath, "") {}
+    State() : UIStateMember() {}
 
     void Draw() const override;
     void Update(const Action &); // State is only updated via `context.on_action(action)`
 
-    ImGuiSettings ImGuiSettings{Path, "ImGuiSettings", "ImGui settings"};
-    Style Style{Path, "Style"};
-    ApplicationSettings ApplicationSettings{Path, "ApplicationSettings", "Application settings"};
-    Audio Audio{Path, "Audio"};
-    Processes Processes{Path, "Processes"};
-    File File{Path, "File"};
-    Info Info{Path, "Info"};
+    ImGuiSettings ImGuiSettings{this, "ImGuiSettings", "ImGui settings"};
+    Style Style{this, "Style"};
+    ApplicationSettings ApplicationSettings{this, "ApplicationSettings", "Application settings"};
+    Audio Audio{this, "Audio"};
+    Processes Processes{this, "Processes"};
+    File File{this, "File"};
+    Info Info{this, "Info"};
 
-    Demo Demo{Path, "Demo"};
-    Metrics Metrics{Path, "Metrics"};
-    Tools Tools{Path, "Tools"};
+    Demo Demo{this, "Demo"};
+    Metrics Metrics{this, "Metrics"};
+    Tools Tools{this, "Tools"};
 
-    StateViewer StateViewer{Path, "StateViewer", "State viewer"};
-    StateMemoryEditor StateMemoryEditor{Path, "StateMemoryEditor", "State memory editor"};
-    StatePathUpdateFrequency PathUpdateFrequency{Path, "PathUpdateFrequency", "State path update frequency"};
-    ProjectPreview ProjectPreview{Path, "ProjectPreview", "Project preview"};
+    StateViewer StateViewer{this, "StateViewer", "State viewer"};
+    StateMemoryEditor StateMemoryEditor{this, "StateMemoryEditor", "State memory editor"};
+    StatePathUpdateFrequency PathUpdateFrequency{this, "PathUpdateFrequency", "State path update frequency"};
+    ProjectPreview ProjectPreview{this, "ProjectPreview", "Project preview"};
 };
 
 //-----------------------------------------------------------------------------

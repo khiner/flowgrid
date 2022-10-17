@@ -1423,7 +1423,6 @@ void gestured();
 bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
 
 void MenuItem(ActionID); // For actions with no data members.
-void ToggleMenuItem(const StateMember &);
 
 enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None = 0,

@@ -691,7 +691,7 @@ static void ApplyTableSettings(ImGuiTable *table, const TableSettings &settings)
         table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx) column_n;
 }
 
-void Style::ImGuiStyleMember::apply(ImGuiContext *ctx) const {
+void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
     auto &style = ctx->Style;
     style.Alpha = Alpha;
     style.DisabledAlpha = DisabledAlpha;
@@ -736,7 +736,7 @@ void Style::ImGuiStyleMember::apply(ImGuiContext *ctx) const {
     for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = Colors[i];
 }
 
-void Style::ImPlotStyleMember::apply(ImPlotContext *ctx) const {
+void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
     auto &style = ctx->Style;
     style.LineWeight = LineWeight;
     style.Marker = Marker;
@@ -773,7 +773,7 @@ void Style::ImPlotStyleMember::apply(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
-void ImGuiSettings::apply(ImGuiContext *ctx) const {
+void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     // Clear
     DockSettingsHandler_ClearAll(ctx, nullptr);
 
@@ -810,7 +810,7 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     const auto &label = annotate_enabled ?
                         (is_imgui_color ?
                          GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
-                                                          is_flowgrid_color ? FlowGridStyle::GetColorName(array_index) :
+                                                          is_flowgrid_color ? Style::FlowGridStyle::GetColorName(array_index) :
                                                           is_array_item ? leaf_name : key) : key;
 
     if (auto_select) {
@@ -964,7 +964,7 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
 }
 
 // Returns `true` if style changes.
-void Style::ImGuiStyleMember::Draw() const {
+void Style::ImGuiStyle::Draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
 //    ShowFontSelector("Fonts##Selector"); // TODO
@@ -1107,7 +1107,7 @@ void Style::ImGuiStyleMember::Draw() const {
     }
 }
 
-void Style::ImPlotStyleMember::Draw() const {
+void Style::ImPlotStyle::Draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Auto\0Classic\0Dark\0Light\0")) q(set_implot_color_style{style_idx});
 
@@ -1193,7 +1193,7 @@ void Style::ImPlotStyleMember::Draw() const {
     }
 }
 
-void FlowGridStyle::Draw() const {
+void Style::FlowGridStyle::Draw() const {
     static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
     if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{diagram_colors_idx});

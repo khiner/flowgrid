@@ -81,9 +81,9 @@ bool Context::action_allowed(const Action &action) const { return action_allowed
 void Context::update_ui_context(UIContextFlags flags) {
     if (flags == UIContextFlags_None) return;
 
-    if (flags & UIContextFlags_ImGuiSettings) s.ImGuiSettings.apply(ui->imgui_context);
-    if (flags & UIContextFlags_ImGuiStyle) s.Style.ImGui.apply(ui->imgui_context);
-    if (flags & UIContextFlags_ImPlotStyle) s.Style.ImPlot.apply(ui->implot_context);
+    if (flags & UIContextFlags_ImGuiSettings) s.ImGuiSettings.Apply(ui->imgui_context);
+    if (flags & UIContextFlags_ImGuiStyle) s.Style.ImGui.Apply(ui->imgui_context);
+    if (flags & UIContextFlags_ImPlotStyle) s.Style.ImPlot.Apply(ui->implot_context);
 }
 
 void Context::update_faust_context() {

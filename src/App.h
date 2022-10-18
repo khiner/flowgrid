@@ -673,206 +673,205 @@ struct ImVec2i {
 };
 using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
 
-struct FlowGridStyle : UIStateMember {
-    FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name = "") : UIStateMember(parent, path_segment, name) {
-        ColorsDark();
-        DiagramColorsDark();
-        DiagramLayoutFlowGrid();
-    }
-
-    void Draw() const override;
-
-    ImVec4 Colors[FlowGridCol_COUNT];
-    Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
-
-    Int DiagramFoldComplexity{
-        this, "DiagramFoldComplexity", 3, 0, 20,
-        "?Number of boxes within a diagram before folding into a sub-diagram.\n"
-        "Setting to zero disables folding altogether, for a fully-expanded diagram."};
-    Bool DiagramScaleLinked{this, "DiagramScaleLinked", true, "?Link X/Y"}; // Link X/Y scale sliders, forcing them to the same value.
-    Bool DiagramScaleFill{
-        this, "DiagramScaleFill", false,
-        "?Scale to fill the window.\n"
-        "Enabling this setting deactivates other diagram scale settings."};
-    Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10};
-    Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
-    Bool DiagramRouteFrame{this, "DiagramRouteFrame", false};
-    Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
-    Bool DiagramOrientationMark{this, "DiagramOrientationMark", true};
-    Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
-    Float DiagramTopLevelMargin{this, "DiagramTopLevelMargin", 20, 0, 40};
-    Float DiagramDecorateMargin{this, "DiagramDecorateMargin", 20, 0, 40};
-    Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
-    Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
-    Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};
-    Float DiagramBinaryHorizontalGapRatio{this, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
-    Float DiagramWireWidth{this, "DiagramWireWidth", 1, 0.5, 4};
-    Float DiagramWireGap{this, "DiagramWireGap", 16, 10, 20};
-    Vec2 DiagramGap{this, "DiagramGap", {8, 8}, 0, 20};
-    Vec2 DiagramArrowSize{this, "DiagramArrowSize", {3, 2}, 1, 10};
-    Float DiagramInverterRadius{this, "DiagramInverterRadius", 3, 1, 5};
-
-    Bool ParamsHeaderTitles{this, "ParamsHeaderTitles", true};
-    Float ParamsMinHorizontalItemWidth{this, "ParamsMinHorizontalItemWidth", 4, 2, 8}; // In frame-height units
-    Float ParamsMaxHorizontalItemWidth{this, "ParamsMaxHorizontalItemWidth", 16, 10, 24}; // In frame-height units
-    Float ParamsMinVerticalItemHeight{this, "ParamsMinVerticalItemHeight", 4, 2, 8}; // In frame-height units
-    Float ParamsMinKnobItemSize{this, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
-    Enum ParamsAlignmentHorizontal{this, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
-    Enum ParamsAlignmentVertical{this, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
-    Flags ParamsTableFlags{this, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
-    Enum ParamsWidthSizingPolicy{
-        this, "ParamsWidthSizingPolicy", {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly,
-        "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
-        "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
-        "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).\n"};
-
-    void ColorsDark() {
-        Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
-        Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
-        Colors[FlowGridCol_ParamsBg] = {0.16, 0.29, 0.48, 0.1};
-    }
-    void ColorsClassic() {
-        Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
-        Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
-        Colors[FlowGridCol_ParamsBg] = {0.43, 0.43, 0.43, 0.1};
-    }
-    void ColorsLight() {
-        Colors[FlowGridCol_HighlightText] = {1.00f, 0.45f, 0.00f, 1.00f};
-        Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
-        Colors[FlowGridCol_ParamsBg] = {1, 1, 1, 1};
-    }
-
-    void DiagramColorsDark() {
-        Colors[FlowGridCol_DiagramBg] = {0.06, 0.06, 0.06, 0.94};
-        Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramGroupTitle] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramGroupStroke] = {0.43, 0.43, 0.5, 0.5};
-        Colors[FlowGridCol_DiagramLine] = {0.61, 0.61, 0.61, 1};
-        Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
-        Colors[FlowGridCol_DiagramInverter] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramOrientationMark] = {1, 1, 1, 1};
-        // Box fills
-        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-    }
-    void DiagramColorsClassic() {
-        Colors[FlowGridCol_DiagramBg] = {0, 0, 0, 0.85};
-        Colors[FlowGridCol_DiagramText] = {0.9, 0.9, 0.9, 1};
-        Colors[FlowGridCol_DiagramGroupTitle] = {0.9, 0.9, 0.9, 1};
-        Colors[FlowGridCol_DiagramGroupStroke] = {0.5, 0.5, 0.5, 0.5};
-        Colors[FlowGridCol_DiagramLine] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramLink] = {0.35, 0.4, 0.61, 0.62};
-        Colors[FlowGridCol_DiagramInverter] = {0.9, 0.9, 0.9, 1};
-        Colors[FlowGridCol_DiagramOrientationMark] = {0.9, 0.9, 0.9, 1};
-        // Box fills
-        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-    }
-    void DiagramColorsLight() {
-        Colors[FlowGridCol_DiagramBg] = {0.94, 0.94, 0.94, 1};
-        Colors[FlowGridCol_DiagramText] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramGroupStroke] = {0, 0, 0, 0.3};
-        Colors[FlowGridCol_DiagramLine] = {0.39, 0.39, 0.39, 1};
-        Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
-        Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
-        // Box fills
-        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-    }
-    // Color Faust diagrams the same way Faust does when it renders to SVG.
-    void DiagramColorsFaust() {
-        Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
-        Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramGroupStroke] = {0.2, 0.2, 0.2, 1};
-        Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramLink] = {0, 0.2, 0.4, 1};
-        Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
-        Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
-        // Box fills
-        Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-        Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-        Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-        Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-    }
-
-    void DiagramLayoutFlowGrid() {
-        DiagramSequentialConnectionZigzag = false;
-        DiagramOrientationMark = false;
-        DiagramTopLevelMargin = 10;
-        DiagramDecorateMargin = 15;
-        DiagramDecorateLineWidth = 2;
-        DiagramDecorateCornerRadius = 5;
-        DiagramBoxCornerRadius = 4;
-        DiagramBinaryHorizontalGapRatio = 0.25;
-        DiagramWireWidth = 1;
-        DiagramWireGap = 16;
-        DiagramGap = {8, 8};
-        DiagramArrowSize = {3, 2};
-        DiagramInverterRadius = 3;
-    }
-    // Lay out Faust diagrams the same way Faust does when it renders to SVG.
-    void DiagramLayoutFaust() {
-        DiagramSequentialConnectionZigzag = true;
-        DiagramOrientationMark = true;
-        DiagramTopLevelMargin = 20;
-        DiagramDecorateMargin = 20;
-        DiagramDecorateLineWidth = 1;
-        DiagramBoxCornerRadius = 0;
-        DiagramDecorateCornerRadius = 0;
-        DiagramBinaryHorizontalGapRatio = 0.25;
-        DiagramWireWidth = 1;
-        DiagramWireGap = 16;
-        DiagramGap = {8, 8};
-        DiagramArrowSize = {3, 2};
-        DiagramInverterRadius = 3;
-    }
-
-    static const char *GetColorName(FlowGridCol idx) {
-        switch (idx) {
-            case FlowGridCol_GestureIndicator: return "GestureIndicator";
-            case FlowGridCol_HighlightText: return "HighlightText";
-            case FlowGridCol_DiagramBg: return "DiagramBg";
-            case FlowGridCol_DiagramGroupTitle: return "DiagramGroupTitle";
-            case FlowGridCol_DiagramGroupStroke: return "DiagramGroupStroke";
-            case FlowGridCol_DiagramLine: return "DiagramLine";
-            case FlowGridCol_DiagramLink: return "DiagramLink";
-            case FlowGridCol_DiagramNormal: return "DiagramNormal";
-            case FlowGridCol_DiagramUi: return "DiagramUi";
-            case FlowGridCol_DiagramSlot: return "DiagramSlot";
-            case FlowGridCol_DiagramNumber: return "DiagramNumber";
-            case FlowGridCol_DiagramInverter: return "DiagramInverter";
-            case FlowGridCol_DiagramOrientationMark: return "DiagramOrientationMark";
-            case FlowGridCol_ParamsBg: return "ParamsBg";
-            default: return "Unknown";
-        }
-    }
-};
-
 struct Style : Window {
     using Window::Window;
 
     void Draw() const override;
 
-    struct ImGuiStyleMember : UIStateMember {
-        ImGuiStyleMember(const StateMember *parent, const string &path_segment, const string &name = "")
+    struct FlowGridStyle : UIStateMember {
+        FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name = "") : UIStateMember(parent, path_segment, name) {
+            ColorsDark();
+            DiagramColorsDark();
+            DiagramLayoutFlowGrid();
+        }
+
+        void Draw() const override;
+
+        ImVec4 Colors[FlowGridCol_COUNT];
+        Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
+
+        Int DiagramFoldComplexity{
+            this, "DiagramFoldComplexity", 3, 0, 20,
+            "?Number of boxes within a diagram before folding into a sub-diagram.\n"
+            "Setting to zero disables folding altogether, for a fully-expanded diagram."};
+        Bool DiagramScaleLinked{this, "DiagramScaleLinked", true, "?Link X/Y"}; // Link X/Y scale sliders, forcing them to the same value.
+        Bool DiagramScaleFill{
+            this, "DiagramScaleFill", false,
+            "?Scale to fill the window.\n"
+            "Enabling this setting deactivates other diagram scale settings."};
+        Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10};
+        Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
+        Bool DiagramRouteFrame{this, "DiagramRouteFrame", false};
+        Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
+        Bool DiagramOrientationMark{this, "DiagramOrientationMark", true};
+        Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
+        Float DiagramTopLevelMargin{this, "DiagramTopLevelMargin", 20, 0, 40};
+        Float DiagramDecorateMargin{this, "DiagramDecorateMargin", 20, 0, 40};
+        Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
+        Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
+        Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};
+        Float DiagramBinaryHorizontalGapRatio{this, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
+        Float DiagramWireWidth{this, "DiagramWireWidth", 1, 0.5, 4};
+        Float DiagramWireGap{this, "DiagramWireGap", 16, 10, 20};
+        Vec2 DiagramGap{this, "DiagramGap", {8, 8}, 0, 20};
+        Vec2 DiagramArrowSize{this, "DiagramArrowSize", {3, 2}, 1, 10};
+        Float DiagramInverterRadius{this, "DiagramInverterRadius", 3, 1, 5};
+
+        Bool ParamsHeaderTitles{this, "ParamsHeaderTitles", true};
+        Float ParamsMinHorizontalItemWidth{this, "ParamsMinHorizontalItemWidth", 4, 2, 8}; // In frame-height units
+        Float ParamsMaxHorizontalItemWidth{this, "ParamsMaxHorizontalItemWidth", 16, 10, 24}; // In frame-height units
+        Float ParamsMinVerticalItemHeight{this, "ParamsMinVerticalItemHeight", 4, 2, 8}; // In frame-height units
+        Float ParamsMinKnobItemSize{this, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
+        Enum ParamsAlignmentHorizontal{this, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
+        Enum ParamsAlignmentVertical{this, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
+        Flags ParamsTableFlags{this, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
+        Enum ParamsWidthSizingPolicy{
+            this, "ParamsWidthSizingPolicy", {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly,
+            "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
+            "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
+            "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).\n"};
+
+        void ColorsDark() {
+            Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
+            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
+            Colors[FlowGridCol_ParamsBg] = {0.16, 0.29, 0.48, 0.1};
+        }
+        void ColorsClassic() {
+            Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
+            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
+            Colors[FlowGridCol_ParamsBg] = {0.43, 0.43, 0.43, 0.1};
+        }
+        void ColorsLight() {
+            Colors[FlowGridCol_HighlightText] = {1.00f, 0.45f, 0.00f, 1.00f};
+            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
+            Colors[FlowGridCol_ParamsBg] = {1, 1, 1, 1};
+        }
+
+        void DiagramColorsDark() {
+            Colors[FlowGridCol_DiagramBg] = {0.06, 0.06, 0.06, 0.94};
+            Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
+            Colors[FlowGridCol_DiagramGroupTitle] = {1, 1, 1, 1};
+            Colors[FlowGridCol_DiagramGroupStroke] = {0.43, 0.43, 0.5, 0.5};
+            Colors[FlowGridCol_DiagramLine] = {0.61, 0.61, 0.61, 1};
+            Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
+            Colors[FlowGridCol_DiagramInverter] = {1, 1, 1, 1};
+            Colors[FlowGridCol_DiagramOrientationMark] = {1, 1, 1, 1};
+            // Box fills
+            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+        }
+        void DiagramColorsClassic() {
+            Colors[FlowGridCol_DiagramBg] = {0, 0, 0, 0.85};
+            Colors[FlowGridCol_DiagramText] = {0.9, 0.9, 0.9, 1};
+            Colors[FlowGridCol_DiagramGroupTitle] = {0.9, 0.9, 0.9, 1};
+            Colors[FlowGridCol_DiagramGroupStroke] = {0.5, 0.5, 0.5, 0.5};
+            Colors[FlowGridCol_DiagramLine] = {1, 1, 1, 1};
+            Colors[FlowGridCol_DiagramLink] = {0.35, 0.4, 0.61, 0.62};
+            Colors[FlowGridCol_DiagramInverter] = {0.9, 0.9, 0.9, 1};
+            Colors[FlowGridCol_DiagramOrientationMark] = {0.9, 0.9, 0.9, 1};
+            // Box fills
+            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+        }
+        void DiagramColorsLight() {
+            Colors[FlowGridCol_DiagramBg] = {0.94, 0.94, 0.94, 1};
+            Colors[FlowGridCol_DiagramText] = {0, 0, 0, 1};
+            Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
+            Colors[FlowGridCol_DiagramGroupStroke] = {0, 0, 0, 0.3};
+            Colors[FlowGridCol_DiagramLine] = {0.39, 0.39, 0.39, 1};
+            Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
+            Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
+            Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
+            // Box fills
+            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+        }
+        // Color Faust diagrams the same way Faust does when it renders to SVG.
+        void DiagramColorsFaust() {
+            Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
+            Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
+            Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
+            Colors[FlowGridCol_DiagramGroupStroke] = {0.2, 0.2, 0.2, 1};
+            Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 1};
+            Colors[FlowGridCol_DiagramLink] = {0, 0.2, 0.4, 1};
+            Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
+            Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
+            // Box fills
+            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
+            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
+            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
+            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
+        }
+
+        void DiagramLayoutFlowGrid() {
+            DiagramSequentialConnectionZigzag = false;
+            DiagramOrientationMark = false;
+            DiagramTopLevelMargin = 10;
+            DiagramDecorateMargin = 15;
+            DiagramDecorateLineWidth = 2;
+            DiagramDecorateCornerRadius = 5;
+            DiagramBoxCornerRadius = 4;
+            DiagramBinaryHorizontalGapRatio = 0.25;
+            DiagramWireWidth = 1;
+            DiagramWireGap = 16;
+            DiagramGap = {8, 8};
+            DiagramArrowSize = {3, 2};
+            DiagramInverterRadius = 3;
+        }
+        // Lay out Faust diagrams the same way Faust does when it renders to SVG.
+        void DiagramLayoutFaust() {
+            DiagramSequentialConnectionZigzag = true;
+            DiagramOrientationMark = true;
+            DiagramTopLevelMargin = 20;
+            DiagramDecorateMargin = 20;
+            DiagramDecorateLineWidth = 1;
+            DiagramBoxCornerRadius = 0;
+            DiagramDecorateCornerRadius = 0;
+            DiagramBinaryHorizontalGapRatio = 0.25;
+            DiagramWireWidth = 1;
+            DiagramWireGap = 16;
+            DiagramGap = {8, 8};
+            DiagramArrowSize = {3, 2};
+            DiagramInverterRadius = 3;
+        }
+
+        static const char *GetColorName(FlowGridCol idx) {
+            switch (idx) {
+                case FlowGridCol_GestureIndicator: return "GestureIndicator";
+                case FlowGridCol_HighlightText: return "HighlightText";
+                case FlowGridCol_DiagramBg: return "DiagramBg";
+                case FlowGridCol_DiagramGroupTitle: return "DiagramGroupTitle";
+                case FlowGridCol_DiagramGroupStroke: return "DiagramGroupStroke";
+                case FlowGridCol_DiagramLine: return "DiagramLine";
+                case FlowGridCol_DiagramLink: return "DiagramLink";
+                case FlowGridCol_DiagramNormal: return "DiagramNormal";
+                case FlowGridCol_DiagramUi: return "DiagramUi";
+                case FlowGridCol_DiagramSlot: return "DiagramSlot";
+                case FlowGridCol_DiagramNumber: return "DiagramNumber";
+                case FlowGridCol_DiagramInverter: return "DiagramInverter";
+                case FlowGridCol_DiagramOrientationMark: return "DiagramOrientationMark";
+                case FlowGridCol_ParamsBg: return "ParamsBg";
+                default: return "Unknown";
+            }
+        }
+    };
+    struct ImGuiStyle : UIStateMember {
+        ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name = "")
             : UIStateMember(parent, path_segment, name) {
             ImGui::StyleColorsDark(Colors);
         }
 
-        void apply(ImGuiContext *ctx) const;
+        void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
 
-        // See `ImGuiStyle` for field descriptions.
-        // Initial values copied from `ImGuiStyle()` default constructor.
+        // See `ImGui::ImGuiStyle` for field descriptions.
+        // Initial values copied from `ImGui::ImGuiStyle()` default constructor.
         // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
         Float Alpha{this, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
@@ -918,14 +917,14 @@ struct Style : Window {
         Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
         ImVec4 Colors[ImGuiCol_COUNT];
     };
-    struct ImPlotStyleMember : UIStateMember {
-        ImPlotStyleMember(const StateMember *parent, const string &path_segment, const string &name = "")
+    struct ImPlotStyle : UIStateMember {
+        ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name = "")
             : UIStateMember(parent, path_segment, name) {
             Colormap = ImPlotColormap_Deep;
             ImPlot::StyleColorsAuto(Colors);
         }
 
-        void apply(ImPlotContext *ctx) const;
+        void Apply(ImPlotContext *ctx) const;
         void Draw() const override;
 
         // See `ImPlotStyle` for field descriptions.
@@ -966,8 +965,8 @@ struct Style : Window {
         Bool Use24HourClock{this, "Use24HourClock"};
     };
 
-    ImGuiStyleMember ImGui{this, "ImGui"};
-    ImPlotStyleMember ImPlot{this, "ImPlot"};
+    ImGuiStyle ImGui{this, "ImGui"};
+    ImPlotStyle ImPlot{this, "ImPlot"};
     FlowGridStyle FlowGrid{this, "FlowGrid"};
 };
 
@@ -1038,7 +1037,7 @@ struct ImGuiSettings : StateMember, ImGuiSettingsData {
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized .ini text format.
-    void apply(ImGuiContext *ctx) const;
+    void Apply(ImGuiContext *ctx) const;
 };
 
 struct Info : Window {

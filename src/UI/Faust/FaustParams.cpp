@@ -31,7 +31,7 @@ using ValueBarFlags = int;
 // `size` is the rectangle size.
 // Assumes the current cursor position is either the desired top-left of the rectangle (or the beginning of the label for a vertical bar with a title).
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
-void ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1,
+bool ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1,
               const ValueBarFlags flags = ValueBarFlags_None, const Align align = {HAlign_Center, VAlign_Center}) {
     const float rect_width = CalcItemWidth();
     const ImVec2 &rect_size = {rect_width, rect_height};
@@ -51,6 +51,7 @@ void ValueBar(const char *label, float *value, const float rect_height, const fl
     }
     const auto &rect_pos = GetCursorScreenPos();
 
+    bool changed = false;
     if (flags & ValueBarFlags_ReadOnly) {
         const float fraction = (*value - min_value) / max_value;
         RenderFrame(rect_pos, rect_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
@@ -64,8 +65,7 @@ void ValueBar(const char *label, float *value, const float rect_height, const fl
     } else {
         // Draw ImGui widget without value or label text.
         const string &id = format("##{}", label);
-        if (is_h) SliderFloat(id.c_str(), value, min_value, max_value, "");
-        else VSliderFloat(id.c_str(), rect_size, value, min_value, max_value, "");
+        changed = is_h ? SliderFloat(id.c_str(), value, min_value, max_value, "") : VSliderFloat(id.c_str(), rect_size, value, min_value, max_value, "");
     }
 
     const string value_text = format("{:.2f}", *value);
@@ -82,6 +82,62 @@ void ValueBar(const char *label, float *value, const float rect_height, const fl
 
     EndGroup();
     PopID();
+
+    return !(flags & ValueBarFlags_ReadOnly) && changed; // Read-only value bars never change.
+}
+
+enum RadioButtonsFlags_ {
+    RadioButtonsFlags_None = 0,
+    RadioButtonsFlags_Vertical = 1 << 0,
+    RadioButtonsFlags_NoTitle = 1 << 1,
+};
+using RadioButtonsFlags = int;
+
+static float CalcRadioChoiceWidth(const string &choice_name) {
+    return CalcTextSize(choice_name.c_str()).x + GetStyle().ItemInnerSpacing.x + GetFrameHeight();
+}
+
+// When `ReadOnly` is set, this is similar to `ImGui::ProgressBar`, but it has a horizontal/vertical switch,
+// and the value text doesn't follow the value position (it stays in the middle).
+// If `ReadOnly` is not set, this delegates to `SliderFloat`/`VSliderFloat`, but renders the value & label independently.
+// Horizontal labels are placed to the right of the rect.
+// Vertical labels are placed below the rect, respecting the passed in alignment.
+// `size` is the rectangle size.
+// Assumes the current cursor position is either the desired top-left of the rectangle (or the beginning of the label for a vertical bar with a title).
+// Assumes the current item width has been set to the desired rectangle width (not including label width).
+bool RadioButtons(const char *label, float *value, const FaustUI::NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Align align = {HAlign_Center, VAlign_Center}) {
+    PushID(label);
+    BeginGroup();
+
+    const auto &style = GetStyle();
+    const bool is_h = !(flags & RadioButtonsFlags_Vertical);
+    const float item_width = CalcItemWidth();
+    if (!(flags & RadioButtonsFlags_NoTitle)) {
+        const float label_width = CalcTextSize(label).x;
+        ImVec2 label_pos = GetCursorScreenPos() + ImVec2{is_h ? 0 : align.x == HAlign_Left ? 0 :
+                                                                    align.x == HAlign_Center ? (item_width - label_width) / 2 :
+                                                                    item_width - label_width, is_h ? style.FramePadding.y : 0};
+        RenderText(label_pos, label);
+        Dummy({label_width, GetFrameHeight()});
+    }
+
+    bool changed = false;
+    for (int i = 0; i < int(names_and_values.names.size()); i++) {
+        const string &choice_name = names_and_values.names[i];
+        const Real choice_value = names_and_values.values[i];
+        const float choice_width = CalcRadioChoiceWidth(choice_name);
+        if (!is_h) SetCursorPosX(GetCursorPosX() + (align.x == HAlign_Left ? 0 : align.x == HAlign_Center ? (item_width - choice_width) / 2 : item_width - choice_width));
+        else SameLine(0, style.ItemInnerSpacing.x);
+
+        if (RadioButton(choice_name.c_str(), *value == choice_value)) {
+            *value = float(choice_value);
+            changed = true;
+        }
+    }
+    EndGroup();
+    PopID();
+
+    return changed;
 }
 
 static bool is_width_expandable(const ItemType type) {
@@ -89,10 +145,6 @@ static bool is_width_expandable(const ItemType type) {
 }
 static bool is_height_expandable(const ItemType type) {
     return type == ItemType_VBargraph || type == ItemType_VSlider || type == ItemType_CheckButton;
-}
-
-static float CalcRadioChoiceWidth(const string &choice_name) {
-    return CalcTextSize(choice_name.c_str()).x + GetStyle().ItemInnerSpacing.x + GetFrameHeight();
 }
 
 // todo config to place labels above horizontal items
@@ -270,60 +322,34 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             *item.zone = Real(Button(label.c_str()));
         } else if (type == ItemType_CheckButton) {
             auto value = bool(*item.zone);
-            Checkbox(label.c_str(), &value);
-            *item.zone = Real(value);
+            if (Checkbox(label.c_str(), &value)) *item.zone = Real(value);
         } else if (type == ItemType_NumEntry) {
             auto value = float(*item.zone);
-            InputFloat(label.c_str(), &value, float(item.step));
-            *item.zone = Real(value);
+            if (InputFloat(label.c_str(), &value, float(item.step))) *item.zone = Real(value);
         } else if (type == ItemType_HSlider || type == ItemType_VSlider || type == ItemType_HBargraph || type == ItemType_VBargraph) {
             auto value = float(*item.zone);
             ValueBarFlags flags = ValueBarFlags_None;
             if (type == ItemType_HBargraph || type == ItemType_VBargraph) flags |= ValueBarFlags_ReadOnly;
             if (type == ItemType_VBargraph || type == ItemType_VSlider) flags |= ValueBarFlags_Vertical;
             if (!has_label) flags |= ValueBarFlags_NoTitle;
-
-            ValueBar(item.label.c_str(), &value, item_size.y - label_height, float(item.min), float(item.max), flags, alignment);
-            if (!(flags & ValueBarFlags_ReadOnly)) *item.zone = Real(value);
+            if (ValueBar(item.label.c_str(), &value, item_size.y - label_height, float(item.min), float(item.max), flags, alignment)) *item.zone = Real(value);
         } else if (type == ItemType_Knob) {
             auto value = float(*item.zone);
             KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
-            Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps);
-            *item.zone = Real(value);
+            if (Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr,
+                steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
+                *item.zone = Real(value);
+            }
         } else if (type == ItemType_HRadioButtons || type == ItemType_VRadioButtons) {
-            auto value = Real(*item.zone);
-            const bool is_h = type == ItemType_HRadioButtons;
+            auto value = float(*item.zone);
             const auto &names_and_values = interface->names_and_values[item.zone];
-
-            PushID(item.label.c_str());
-            BeginGroup();
-            if (has_label) {
-                const float label_width = CalcTextSize(label.c_str()).x;
-                ImVec2 label_pos = GetCursorScreenPos() + ImVec2{is_h ? 0 : alignment.x == HAlign_Left ? 0 :
-                                                                            alignment.x == HAlign_Center ? (item_size.x - label_width) / 2 :
-                                                                            item_size.x - label_width, is_h ? style.FramePadding.y : 0};
-                RenderText(label_pos, label.c_str());
-                Dummy({label_width, frame_height});
-            }
-            for (int i = 0; i < int(names_and_values.names.size()); i++) {
-                const string &choice_name = names_and_values.names[i];
-                const Real choice_value = names_and_values.values[i];
-                const float choice_width = CalcRadioChoiceWidth(choice_name);
-                if (!is_h) {
-                    SetCursorPosX(GetCursorPosX() +
-                        (alignment.x == HAlign_Left ? 0 :
-                         alignment.x == HAlign_Center ? (item_size.x - choice_width) / 2 :
-                         item_size.x - choice_width));
-                } else {
-                    SameLine(0, style.ItemInnerSpacing.x);
-                }
-                if (RadioButton(choice_name.c_str(), value == choice_value)) *item.zone = Real(choice_value);
-            }
-            EndGroup();
-            PopID();
+            RadioButtonsFlags flags = has_label ? RadioButtonsFlags_None : RadioButtonsFlags_NoTitle;
+            if (type == ItemType_VRadioButtons) flags |= ValueBarFlags_Vertical;
+            SetNextItemWidth(item_size.x); // Include label in item width for radio buttons (inconsistent but just makes things easier).
+            if (RadioButtons(item.label.c_str(), &value, names_and_values, flags, alignment)) *item.zone = Real(value);
         } else if (type == ItemType_Menu) {
-            auto value = Real(*item.zone);
+            auto value = float(*item.zone);
             const auto &names_and_values = interface->names_and_values[item.zone];
             // todo handle not present
             const auto selected_index = find(names_and_values.values.begin(), names_and_values.values.end(), value) - names_and_values.values.begin();

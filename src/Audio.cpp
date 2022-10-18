@@ -544,20 +544,20 @@ void Audio::update_process() const {
         previous_faust_sample_rate = s.Audio.OutSampleRate.value;
 
         string error_msg;
-        if (s.Audio.Faust.Code && s.Audio.OutSampleRate) {
-            int argc = 0;
-            const char **argv = new const char *[8];
-            argv[argc++] = "-I";
-            argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-            argv[argc++] = "-double";
 
+        int argc = 0;
+        const char **argv = new const char *[8];
+        argv[argc++] = "-I";
+        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
+        argv[argc++] = "-double";
+        if (s.Audio.Faust.Code && s.Audio.OutSampleRate) {
             createLibContext();
             int num_inputs, num_outputs;
             box = DSPToBoxes("FlowGrid", s.Audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
         }
         if (box && error_msg.empty()) {
             static const int optimize_level = -1;
-            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, 0, nullptr, "", error_msg, optimize_level);
+            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv, "", error_msg, optimize_level);
             if (dsp_factory && error_msg.empty()) {
                 dsp = dsp_factory->createDSPInstance();
                 dsp->init(s.Audio.OutSampleRate);

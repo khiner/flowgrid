@@ -47,11 +47,11 @@ public:
     };
 
     struct Item {
-        Item(const ItemType type, string label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, vector<Item> items = {})
-            : type(type), label(std::move(label)), zone(zone), min(min), max(max), init(init), step(step), tooltip(tooltip), items(std::move(items)) {}
+        Item(const ItemType type, const string &label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, vector<Item> items = {})
+            : type(type), id(label), label(label == "0x00" ? "" : label), zone(zone), min(min), max(max), init(init), step(step), tooltip(tooltip), items(std::move(items)) {}
 
         const ItemType type{ItemType_None};
-        const string label;
+        const string id, label; // `id` will be the same as `label` unless it's the special empty group label of '0x00', in which case `label` will be empty.
         Real *zone; // Only meaningful for widget items (not container items)
         const Real min, max; // Only meaningful for sliders, num-entries, and bar graphs.
         const Real init, step; // Only meaningful for sliders and num-entries.
@@ -133,26 +133,6 @@ public:
     // Metadata declaration
     void declare(Real *zone, const char *key, const char *value) override {
         MetaDataUI::declare(zone, key, value);
-    }
-
-    // `id` can be any of label/shortname/path.
-    Real get(const string &id) {
-        const auto *widget = get_widget(id);
-        if (!widget) {
-            std::cerr << "ERROR : FaustUI::set : id " << id << " not found\n";
-            return 0;
-        }
-        return *widget->zone;
-    }
-
-    // `id` can be any of label/shortname/path.
-    void set(const string &id, Real value) {
-        const auto *widget = get_widget(id);
-        if (!widget) {
-            std::cerr << "ERROR : FaustUI::set : id " << id << " not found\n";
-            return;
-        }
-        *widget->zone = value;
     }
 
     Item *get_widget(const string &id) {

@@ -64,11 +64,11 @@ struct StateMember {
     StateMember(const StateMember *parent = nullptr, const string &path_segment = "", const string &name_and_help = "")
         : Parent(parent),
           Path(Parent && !path_segment.empty() ? Parent->Path / path_segment : Parent ? Parent->Path : !path_segment.empty() ? JsonPath(path_segment) : RootPath),
-          PathSegment(path_segment), ID(ImHashStr(PathSegment.c_str(), 0, Parent ? Parent->ID : 0)) {
+          PathSegment(path_segment) {
         const auto &[name, help] = parse_help_text(name_and_help);
         Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
         Help = help;
-
+        ID = ImHashStr(Name.c_str(), 0, Parent ? Parent->ID : 0);
         // This is real ugly - JSON assignment creates a temporary instance to copy from.
         // We don't want the destructor of that temporary instance to erase this ID.
         // Without this check, `WithID` will always end up empty!
@@ -295,12 +295,6 @@ struct Window : UIStateMember {
     bool ToggleMenuItem() const;
     void SelectTab() const;
 };
-struct TabsWindow : Window {
-    TabsWindow(const StateMember *parent, const string &path_segment, const string &name = "", const bool visible = true)
-        : Window(parent, path_segment, name, visible) {
-        ID = ImHashStr("Tabs", 0, ID);
-    }
-};
 
 struct Process : Window {
     using Window::Window;
@@ -358,8 +352,8 @@ struct ProjectPreview : Window {
     Bool Raw{this, "Raw"};
 };
 
-struct Demo : TabsWindow {
-    using TabsWindow::TabsWindow;
+struct Demo : Window {
+    using Window::Window;
     void Draw() const override;
 
     struct ImGuiDemo : UIStateMember {
@@ -380,8 +374,8 @@ struct Demo : TabsWindow {
     FileDialogDemo FileDialog{this, "FileDialog"};
 };
 
-struct Metrics : TabsWindow {
-    using TabsWindow::TabsWindow;
+struct Metrics : Window {
+    using Window::Window;
     void Draw() const override;
 
     struct FlowGridMetrics : UIStateMember {
@@ -695,8 +689,8 @@ struct ImVec2i {
 };
 using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
 
-struct Style : TabsWindow {
-    using TabsWindow::TabsWindow;
+struct Style : Window {
+    using Window::Window;
 
     void Draw() const override;
 
@@ -898,23 +892,23 @@ struct Style : TabsWindow {
         // Double-check everything's up-to-date from time to time!
         Float Alpha{this, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
         Float DisabledAlpha{this, "DisabledAlpha", 0.6, 0, 1, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
-        Vec2 WindowPadding{this, "WindowPadding", ImVec2(8, 8), 0, 20};
+        Vec2 WindowPadding{this, "WindowPadding", {8, 8}, 0, 20};
         Float WindowRounding{this, "WindowRounding", 0, 0, 12};
         Float WindowBorderSize{this, "WindowBorderSize", 1};
-        Vec2 WindowMinSize{this, "WindowMinSize", ImVec2(32, 32)};
-        Vec2 WindowTitleAlign{this, "WindowTitleAlign", ImVec2(0, 0.5)};
+        Vec2 WindowMinSize{this, "WindowMinSize", {32, 32}};
+        Vec2 WindowTitleAlign{this, "WindowTitleAlign", {0, 0.5}};
         Enum WindowMenuButtonPosition{this, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
         Float ChildRounding{this, "ChildRounding", 0, 0, 12};
         Float ChildBorderSize{this, "ChildBorderSize", 1};
         Float PopupRounding{this, "PopupRounding", 0, 0, 12};
         Float PopupBorderSize{this, "PopupBorderSize", 1};
-        Vec2 FramePadding{this, "FramePadding", ImVec2(4, 3), 0, 20};
+        Vec2 FramePadding{this, "FramePadding", {4, 3}, 0, 20};
         Float FrameRounding{this, "FrameRounding", 0, 0, 12};
         Float FrameBorderSize{this, "FrameBorderSize", 0};
-        Vec2 ItemSpacing{this, "ItemSpacing", ImVec2(8, 4), 0, 20};
-        Vec2 ItemInnerSpacing{this, "ItemInnerSpacing", ImVec2(4, 4), 0, 20};
-        Vec2 CellPadding{this, "CellPadding", ImVec2(4, 2), 0, 20};
-        Vec2 TouchExtraPadding{this, "TouchExtraPadding", ImVec2(0, 0), 0, 10};
+        Vec2 ItemSpacing{this, "ItemSpacing", {8, 4}, 0, 20};
+        Vec2 ItemInnerSpacing{this, "ItemInnerSpacing", {4, 4}, 0, 20};
+        Vec2 CellPadding{this, "CellPadding", {4, 2}, 0, 20};
+        Vec2 TouchExtraPadding{this, "TouchExtraPadding", {0, 0}, 0, 10};
         Float IndentSpacing{this, "IndentSpacing", 21, 0, 30};
         Float ColumnsMinSpacing{this, "ColumnsMinSpacing", 6};
         Float ScrollbarSize{this, "ScrollbarSize", 14, 1, 20};
@@ -926,10 +920,10 @@ struct Style : TabsWindow {
         Float TabBorderSize{this, "TabBorderSize", 0};
         Float TabMinWidthForCloseButton{this, "TabMinWidthForCloseButton", 0};
         Enum ColorButtonPosition{this, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
-        Vec2 ButtonTextAlign{this, "ButtonTextAlign", ImVec2(0.5, 0.5), 0, 1, "?Alignment applies when a button is larger than its text content."};
-        Vec2 SelectableTextAlign{this, "SelectableTextAlign", ImVec2(0, 0), 0, 1, "?Alignment applies when a selectable is larger than its text content."};
-        Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", ImVec2(19, 19)};
-        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding", ImVec2(3, 3), 0, 30, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
+        Vec2 ButtonTextAlign{this, "ButtonTextAlign", {0.5, 0.5}, 0, 1, "?Alignment applies when a button is larger than its text content."};
+        Vec2 SelectableTextAlign{this, "SelectableTextAlign", {0, 0}, 0, 1, "?Alignment applies when a selectable is larger than its text content."};
+        Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", {19, 19}};
+        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding", {3, 3}, 0, 30, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
         Float MouseCursorScale{this, "MouseCursorScale", 1};
         Bool AntiAliasedLines{this, "AntiAliasedLines", true, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
         Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex", true,
@@ -964,22 +958,22 @@ struct Style : TabsWindow {
         Float DigitalBitGap{this, "DigitalBitGap", 4, 0, 20};
         Float PlotBorderSize{this, "PlotBorderSize", 1, 0, 2};
         Float MinorAlpha{this, "MinorAlpha", 0.25};
-        Vec2 MajorTickLen{this, "MajorTickLen", ImVec2(10, 10), 0, 20};
-        Vec2 MinorTickLen{this, "MinorTickLen", ImVec2(5, 5), 0, 20};
-        Vec2 MajorTickSize{this, "MajorTickSize", ImVec2(1, 1), 0, 2};
-        Vec2 MinorTickSize{this, "MinorTickSize", ImVec2(1, 1), 0, 2};
-        Vec2 MajorGridSize{this, "MajorGridSize", ImVec2(1, 1), 0, 2};
-        Vec2 MinorGridSize{this, "MinorGridSize", ImVec2(1, 1), 0, 2};
-        Vec2 PlotPadding{this, "PlotPadding", ImVec2(10, 10), 0, 20};
-        Vec2 LabelPadding{this, "LabelPadding", ImVec2(5, 5), 0, 20};
-        Vec2 LegendPadding{this, "LegendPadding", ImVec2(10, 10), 0, 20};
-        Vec2 LegendInnerPadding{this, "LegendInnerPadding", ImVec2(5, 5), 0, 10};
-        Vec2 LegendSpacing{this, "LegendSpacing", ImVec2(5, 0), 0, 5};
-        Vec2 MousePosPadding{this, "MousePosPadding", ImVec2(10, 10), 0, 20};
-        Vec2 AnnotationPadding{this, "AnnotationPadding", ImVec2(2, 2), 0, 5};
-        Vec2 FitPadding{this, "FitPadding", ImVec2(0, 0), 0, 0.2};
-        Vec2 PlotDefaultSize{this, "PlotDefaultSize", ImVec2(400, 300), 0, 1000};
-        Vec2 PlotMinSize{this, "PlotMinSize", ImVec2(200, 150), 0, 300};
+        Vec2 MajorTickLen{this, "MajorTickLen", {10, 10}, 0, 20};
+        Vec2 MinorTickLen{this, "MinorTickLen", {5, 5}, 0, 20};
+        Vec2 MajorTickSize{this, "MajorTickSize", {1, 1}, 0, 2};
+        Vec2 MinorTickSize{this, "MinorTickSize", {1, 1}, 0, 2};
+        Vec2 MajorGridSize{this, "MajorGridSize", {1, 1}, 0, 2};
+        Vec2 MinorGridSize{this, "MinorGridSize", {1, 1}, 0, 2};
+        Vec2 PlotPadding{this, "PlotPadding", {10, 10}, 0, 20};
+        Vec2 LabelPadding{this, "LabelPadding", {5, 5}, 0, 20};
+        Vec2 LegendPadding{this, "LegendPadding", {10, 10}, 0, 20};
+        Vec2 LegendInnerPadding{this, "LegendInnerPadding", {5, 5}, 0, 10};
+        Vec2 LegendSpacing{this, "LegendSpacing", {5, 0}, 0, 5};
+        Vec2 MousePosPadding{this, "MousePosPadding", {10, 10}, 0, 20};
+        Vec2 AnnotationPadding{this, "AnnotationPadding", {2, 2}, 0, 5};
+        Vec2 FitPadding{this, "FitPadding", {0, 0}, 0, 0.2};
+        Vec2 PlotDefaultSize{this, "PlotDefaultSize", {400, 300}, 0, 1000};
+        Vec2 PlotMinSize{this, "PlotMinSize", {200, 150}, 0, 300};
         ImVec4 Colors[ImPlotCol_COUNT];
         ImPlotColormap Colormap;
         Bool UseLocalTime{this, "UseLocalTime"};

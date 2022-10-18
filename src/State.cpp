@@ -928,21 +928,20 @@ void ProjectPreview::Draw() const {
 //-----------------------------------------------------------------------------
 
 void ShowColorEditor(const JsonPath &path, int color_count, const std::function<const char *(int)> &GetColorName) {
-    if (BeginTabItem("Colors")) {
+    if (BeginTabItem("Colors", nullptr, ImGuiTabItemFlags_NoPushId)) {
         static ImGuiTextFilter filter;
         filter.Draw("Filter colors", GetFontSize() * 16);
 
         static ImGuiColorEditFlags alpha_flags = 0;
-        if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
+        if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) alpha_flags = ImGuiColorEditFlags_None;
         SameLine();
-        if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
+        if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) alpha_flags = ImGuiColorEditFlags_AlphaPreview;
         SameLine();
-        if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
+        if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
         SameLine();
-        HelpMarker(
-            "In the color list:\n"
-            "Left-click on color square to open color picker,\n"
-            "Right-click to open edit options menu.");
+        HelpMarker("In the color list:\n"
+                   "Left-click on color square to open color picker,\n"
+                   "Right-click to open edit options menu.");
 
         BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
         PushItemWidth(-160);
@@ -987,8 +986,8 @@ void Style::ImGuiStyle::Draw() const {
 
     Separator();
 
-    if (BeginTabBar("##ImGuiStyleEditor", ImGuiTabBarFlags_None)) {
-        if (BeginTabItem("Sizes")) {
+    if (BeginTabBar("", ImGuiTabBarFlags_None)) {
+        if (BeginTabItem("Sizes", nullptr, ImGuiTabItemFlags_NoPushId)) {
             Text("Main");
             WindowPadding.Draw("%.0f");
             FramePadding.Draw("%.0f");
@@ -1057,7 +1056,7 @@ void Style::ImGuiStyle::Draw() const {
 //            EndTabItem();
 //        }
 
-        if (BeginTabItem("Rendering")) {
+        if (BeginTabItem("Rendering", nullptr, ImGuiTabItemFlags_NoPushId)) {
             AntiAliasedLines.Draw();
             AntiAliasedLinesUseTex.Draw();
             AntiAliasedFill.Draw();
@@ -1111,8 +1110,8 @@ void Style::ImPlotStyle::Draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Auto\0Classic\0Dark\0Light\0")) q(set_implot_color_style{style_idx});
 
-    if (BeginTabBar("##ImPlotStyleEditor")) {
-        if (BeginTabItem("Variables")) {
+    if (BeginTabBar("")) {
+        if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
             Text("Item Styling");
             LineWeight.Draw("%.1f");
             MarkerSize.Draw("%.1f");
@@ -1147,7 +1146,7 @@ void Style::ImPlotStyle::Draw() const {
 
             EndTabItem();
         }
-        if (BeginTabItem("Colors")) {
+        if (BeginTabItem("Colors", nullptr, ImGuiTabItemFlags_NoPushId)) {
             static ImGuiTextFilter filter;
             filter.Draw("Filter colors", GetFontSize() * 16);
 
@@ -1200,8 +1199,8 @@ void Style::FlowGridStyle::Draw() const {
     if (Combo("Diagram layout", &diagram_layout_idx, "FlowGrid\0Faust\0")) q(set_flowgrid_diagram_layout_style{diagram_layout_idx});
     FlashDurationSec.Draw("%.3f s");
 
-    if (BeginTabBar("##FlowGridStyleEditor")) {
-        if (BeginTabItem("Faust diagram")) {
+    if (BeginTabBar("")) {
+        if (BeginTabItem("Faust diagram", nullptr, ImGuiTabItemFlags_NoPushId)) {
             DiagramFoldComplexity.Draw();
             const bool ScaleFill = DiagramScaleFill;
             DiagramScaleFill.Draw();
@@ -1246,7 +1245,7 @@ void Style::FlowGridStyle::Draw() const {
             DiagramInverterRadius.Draw();
             EndTabItem();
         }
-        if (BeginTabItem("Faust params")) {
+        if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
             ParamsHeaderTitles.Draw();
             ParamsMinHorizontalItemWidth.Draw();
             ParamsMaxHorizontalItemWidth.Draw();
@@ -1266,7 +1265,7 @@ void Style::FlowGridStyle::Draw() const {
 }
 
 void Style::Draw() const {
-    if (BeginTabBar("Tabs")) {
+    if (BeginTabBar("")) {
         if (BeginTabItem(FlowGrid.Name.c_str())) {
             FlowGrid.Draw();
             EndTabItem();
@@ -1312,7 +1311,7 @@ void Demo::FileDialogDemo::Draw() const {
     IGFD::ShowDemoWindow();
 }
 void Demo::Draw() const {
-    if (BeginTabBar("Tabs")) {
+    if (BeginTabBar("")) {
         if (BeginTabItem(ImGui.Name.c_str())) {
             ImGui.Draw();
             EndTabItem();
@@ -1478,7 +1477,7 @@ void Metrics::ImGuiMetrics::Draw() const { ShowMetricsWindow(); }
 void Metrics::ImPlotMetrics::Draw() const { ImPlot::ShowMetricsWindow(); }
 
 void Metrics::Draw() const {
-    if (BeginTabBar("Tabs")) {
+    if (BeginTabBar("")) {
         if (BeginTabItem(FlowGrid.Name.c_str())) {
             FlowGrid.Draw();
             EndTabItem();

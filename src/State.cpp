@@ -441,10 +441,13 @@ void State::Draw() const {
             EndMenu();
         }
         if (BeginMenu("Windows")) {
-            if (BeginMenu("State")) {
+            if (BeginMenu("Debug")) {
+                DebugLog.ToggleMenuItem();
+                StackTool.ToggleMenuItem();
                 StateViewer.ToggleMenuItem();
-                StateMemoryEditor.ToggleMenuItem();
                 PathUpdateFrequency.ToggleMenuItem();
+                StateMemoryEditor.ToggleMenuItem();
+                ProjectPreview.ToggleMenuItem();
                 EndMenu();
             }
             if (BeginMenu("Audio")) {
@@ -460,7 +463,6 @@ void State::Draw() const {
             }
             Metrics.ToggleMenuItem();
             Style.ToggleMenuItem();
-            Tools.ToggleMenuItem();
             Demo.ToggleMenuItem();
             EndMenu();
         }
@@ -485,6 +487,8 @@ void State::Draw() const {
         Audio.Faust.Diagram.Dock(faust_tools_node_id);
         Audio.Faust.Params.Dock(faust_tools_node_id);
 
+        DebugLog.Dock(debug_node_id);
+        StackTool.Dock(debug_node_id);
         Audio.Faust.Log.Dock(debug_node_id);
         StateViewer.Dock(debug_node_id);
         StateMemoryEditor.Dock(debug_node_id);
@@ -493,13 +497,12 @@ void State::Draw() const {
 
         Metrics.Dock(utilities_node_id);
         Style.Dock(utilities_node_id);
-        Tools.Dock(utilities_node_id);
         Demo.Dock(utilities_node_id);
 
         Info.Dock(sidebar_node_id);
     } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
-        StateViewer.SelectTab(); // not visible by default anymore
+        DebugLog.SelectTab(); // not visible by default anymore
         Metrics.SelectTab();
     }
 
@@ -511,6 +514,8 @@ void State::Draw() const {
     Audio.Faust.Params.DrawWindow();
     Audio.Faust.Log.DrawWindow();
 
+    DebugLog.DrawWindow(ImGuiWindowFlags_MenuBar);
+    StackTool.DrawWindow(ImGuiWindowFlags_MenuBar);
     StateViewer.DrawWindow(ImGuiWindowFlags_MenuBar);
     PathUpdateFrequency.DrawWindow();
     StateMemoryEditor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
@@ -518,7 +523,6 @@ void State::Draw() const {
 
     Metrics.DrawWindow();
     Style.DrawWindow();
-    Tools.DrawWindow();
     Demo.DrawWindow(ImGuiWindowFlags_MenuBar);
     File.Dialog.Draw();
 
@@ -1482,20 +1486,11 @@ void Metrics::Draw() const {
     }
 }
 
-void Tools::Draw() const {
-    if (BeginTabBar("##Tools")) {
-        if (BeginTabItem("ImGui")) {
-            if (BeginTabBar("##ImGui_Tools")) {
-                if (BeginTabItem("Debug log")) {
-                    ShowDebugLogWindow();
-                    EndTabItem();
-                }
-                EndTabBar();
-            }
-            EndTabItem();
-        }
-        EndTabBar();
-    }
+void DebugLog::Draw() const {
+    ShowDebugLogWindow();
+}
+void StackTool::Draw() const {
+    ShowStackToolWindow();
 }
 
 //-----------------------------------------------------------------------------

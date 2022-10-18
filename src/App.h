@@ -381,11 +381,6 @@ struct Metrics : Window {
     ImPlotMetrics ImPlot{this, "ImPlot"};
 };
 
-struct Tools : Window {
-    using Window::Window;
-    void Draw() const override;
-};
-
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
 
 // Starting at `-1` allows for using `IO` types as array indices.
@@ -1051,6 +1046,16 @@ struct Info : Window {
     void Draw() const override;
 };
 
+struct StackTool : Window {
+    using Window::Window;
+    void Draw() const override;
+};
+
+struct DebugLog : Window {
+    using Window::Window;
+    void Draw() const override;
+};
+
 // Types for [json-patch](https://jsonpatch.com)
 // For a much more well-defined schema, see https://json.schemastore.org/json-patch.
 
@@ -1275,7 +1280,8 @@ struct State : UIStateMember {
 
     Demo Demo{this, "Demo"};
     Metrics Metrics{this, "Metrics"};
-    Tools Tools{this, "Tools"};
+    StackTool StackTool{this, "StackTool"};
+    DebugLog DebugLog{this, "DebugLog"};
 
     StateViewer StateViewer{this, "StateViewer", "State viewer"};
     StateMemoryEditor StateMemoryEditor{this, "StateMemoryEditor", "State memory editor"};

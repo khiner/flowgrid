@@ -282,8 +282,7 @@ static const std::vector<Flags::Item> TableFlagItems{
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : UIStateMember {
-    using UIStateMember::UIStateMember;
-    Window(const StateMember *parent, const string &path_segment, const string &name = "", bool visible = true)
+    Window(const StateMember *parent, const string &path_segment, const string &name = "", const bool visible = true)
         : UIStateMember(parent, path_segment, name) {
         this->Visible = visible;
     }
@@ -295,6 +294,12 @@ struct Window : UIStateMember {
     void Dock(ImGuiID node_id) const;
     bool ToggleMenuItem() const;
     void SelectTab() const;
+};
+struct TabsWindow : Window {
+    TabsWindow(const StateMember *parent, const string &path_segment, const string &name = "", const bool visible = true)
+        : Window(parent, path_segment, name, visible) {
+        ID = ImHashStr("Tabs", 0, ID);
+    }
 };
 
 struct Process : Window {
@@ -353,13 +358,30 @@ struct ProjectPreview : Window {
     Bool Raw{this, "Raw"};
 };
 
-struct Demo : Window {
-    using Window::Window;
+struct Demo : TabsWindow {
+    using TabsWindow::TabsWindow;
     void Draw() const override;
+
+    struct ImGuiDemo : UIStateMember {
+        using UIStateMember::UIStateMember;
+        void Draw() const override;
+    };
+    struct ImPlotDemo : UIStateMember {
+        using UIStateMember::UIStateMember;
+        void Draw() const override;
+    };
+    struct FileDialogDemo : UIStateMember {
+        using UIStateMember::UIStateMember;
+        void Draw() const override;
+    };
+
+    ImGuiDemo ImGui{this, "ImGui"};
+    ImPlotDemo ImPlot{this, "ImPlot"};
+    FileDialogDemo FileDialog{this, "FileDialog"};
 };
 
-struct Metrics : Window {
-    using Window::Window;
+struct Metrics : TabsWindow {
+    using TabsWindow::TabsWindow;
     void Draw() const override;
 
     struct FlowGridMetrics : UIStateMember {
@@ -673,8 +695,8 @@ struct ImVec2i {
 };
 using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
 
-struct Style : Window {
-    using Window::Window;
+struct Style : TabsWindow {
+    using TabsWindow::TabsWindow;
 
     void Draw() const override;
 
@@ -965,9 +987,9 @@ struct Style : Window {
         Bool Use24HourClock{this, "Use24HourClock"};
     };
 
-    ImGuiStyle ImGui{this, "ImGui"};
-    ImPlotStyle ImPlot{this, "ImPlot"};
-    FlowGridStyle FlowGrid{this, "FlowGrid"};
+    ImGuiStyle ImGui{this, "ImGui", "?Configure style for base UI"};
+    ImPlotStyle ImPlot{this, "ImPlot", "?Configure style for plots"};
+    FlowGridStyle FlowGrid{this, "FlowGrid", "?Configure application-specific style"};
 };
 
 struct Processes : StateMember {

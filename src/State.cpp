@@ -1266,7 +1266,7 @@ void Style::FlowGridStyle::Draw() const {
 }
 
 void Style::Draw() const {
-    if (BeginTabBar("##style")) {
+    if (BeginTabBar("Tabs")) {
         if (BeginTabItem(FlowGrid.Name.c_str())) {
             FlowGrid.Draw();
             EndTabItem();
@@ -1302,18 +1302,27 @@ const std::vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
     IoFormat_Invalid,
 };
 
+void Demo::ImGuiDemo::Draw() const {
+    ShowDemoWindow();
+}
+void Demo::ImPlotDemo::Draw() const {
+    ImPlot::ShowDemoWindow();
+}
+void Demo::FileDialogDemo::Draw() const {
+    IGFD::ShowDemoWindow();
+}
 void Demo::Draw() const {
-    if (BeginTabBar("##Demos")) {
-        if (BeginTabItem("ImGui")) {
-            ShowDemoWindow();
+    if (BeginTabBar("Tabs")) {
+        if (BeginTabItem(ImGui.Name.c_str())) {
+            ImGui.Draw();
             EndTabItem();
         }
-        if (BeginTabItem("ImPlot")) {
-            ImPlot::ShowDemoWindow();
+        if (BeginTabItem(ImPlot.Name.c_str())) {
+            ImPlot.Draw();
             EndTabItem();
         }
-        if (BeginTabItem("ImGuiFileDialog")) {
-            IGFD::ShowDemoWindow();
+        if (BeginTabItem(FileDialog.Name.c_str())) {
+            FileDialog.Draw();
             EndTabItem();
         }
         EndTabBar();
@@ -1469,7 +1478,7 @@ void Metrics::ImGuiMetrics::Draw() const { ShowMetricsWindow(); }
 void Metrics::ImPlotMetrics::Draw() const { ImPlot::ShowMetricsWindow(); }
 
 void Metrics::Draw() const {
-    if (BeginTabBar("##Metrics")) {
+    if (BeginTabBar("Tabs")) {
         if (BeginTabItem(FlowGrid.Name.c_str())) {
             FlowGrid.Draw();
             EndTabItem();

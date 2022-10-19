@@ -20,6 +20,7 @@
 #include "Helper/String.h"
 #include "Helper/Sample.h"
 #include "Helper/File.h"
+#include "Helper/UI.h"
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
@@ -670,24 +671,6 @@ enum FlowGridCol_ {
     FlowGridCol_COUNT
 };
 using FlowGridCol = int;
-
-enum HAlign_ {
-    HAlign_Left,
-    HAlign_Center,
-    HAlign_Right,
-};
-enum VAlign_ {
-    VAlign_Top,
-    VAlign_Center,
-    VAlign_Bottom,
-};
-using HAlign = int;
-using VAlign = int;
-
-struct ImVec2i {
-    int x, y;
-};
-using Align = ImVec2i; // E.g. `{HAlign_Center, VAlign_Bottom}`
 
 struct Style : Window {
     using Window::Window;

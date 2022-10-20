@@ -257,7 +257,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
 
         // Flash the evaluated expression
         auto flashType = FlashType::Flash;
-        float time = 1.0f;
+        float time = 1;
         buffer.BeginFlash(time, flashType, range);
 
 //        const auto &text = buffer.workingBuffer;

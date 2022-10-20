@@ -14,7 +14,7 @@ inline bool RadioButtonLabeled(const char *label, const char *help, bool active,
     ImGuiContext &g = *GImGui;
     const ImGuiStyle &style = g.Style;
     float w = CalcItemWidth();
-    if (w == window->ItemWidthDefault) w = 0.0f; // no push item width
+    if (w == window->ItemWidthDefault) w = 0; // no push item width
     const ImGuiID id = window->GetID(label);
     const ImVec2 label_size = CalcTextSize(label, nullptr, true);
     ImVec2 bb_size = ImVec2(style.FramePadding.x * 2 - 1, style.FramePadding.y * 2 - 1) + label_size;
@@ -39,12 +39,12 @@ inline bool RadioButtonLabeled(const char *label, const char *help, bool active,
     }
 
     // circle shadow + bg
-    if (style.FrameBorderSize > 0.0f) {
+    if (style.FrameBorderSize > 0) {
         window->DrawList->AddRect(check_bb.Min + ImVec2(1, 1), check_bb.Max, GetColorU32(ImGuiCol_BorderShadow), style.FrameRounding);
         window->DrawList->AddRect(check_bb.Min, check_bb.Max, GetColorU32(ImGuiCol_Border), style.FrameRounding);
     }
 
-    if (label_size.x > 0.0f) RenderText(check_bb.GetCenter() - label_size * 0.5f, label);
+    if (label_size.x > 0) RenderText(check_bb.GetCenter() - label_size * 0, label);
     if (help && ImGui::IsItemHovered())ImGui::SetTooltip("%s", help);
 
     return pressed;
@@ -131,22 +131,22 @@ void IGFD::InitializeDemo() {
     icons_config.DstFont = ImGui::GetDefaultFont();
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
-    ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15.0f, &icons_config, icons_ranges);
+    ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15, &icons_config, icons_ranges);
 
     // Singleton access
-    dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", ImVec4(1.0f, 1.0f, 0.0f, 0.9f)); // use a regex
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1.0f, 1.0f, 0.0f, 0.9f));
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0.0f, 0.0f, 1.0f, 0.9f));
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1.0f, 0.0f, 1.0f, 0.9f));
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, ImVec4(0.5f, 1.0f, 0.9f, 0.9f), ICON_IGFD_FOLDER); // for all dirs
+    dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", ImVec4(1, 1, 0, 0.9f)); // use a regex
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1, 1, 0, 0.9f));
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0, 0, 1, 0.9f));
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1, 0, 1, 0.9f));
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0, 1, 1, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0, 1, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, ImVec4(0.5f, 1, 0.9f, 0.9f), ICON_IGFD_FOLDER); // for all dirs
     dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", ImVec4(0.1f, 0.5f, 0.5f, 0.9f), ICON_IGFD_ADD);
-    dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
+    dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0, 0.9f), ICON_IGFD_FILE_PIC);
     dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, ImVec4(0.2f, 0.9f, 0.2f, 0.9f), ICON_IGFD_FILE); // for all link files
     dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FOLDER); // for all link dirs
     dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FILE); // for all link files
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0, 0.9f), ICON_IGFD_BOOKMARK);
     dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.5f, 0.8f, 0.5f, 0.9f), ICON_IGFD_SAVE);
 
 #ifdef USE_BOOKMARK

@@ -673,7 +673,7 @@ struct ParallelNode : Node {
     }
 
     ImVec2 point(IO io, Count i) const override {
-        const float dx = (io == IO_In ? -1.0f : 1.0f) * dir_unit();
+        const float dx = (io == IO_In ? -1 : 1) * dir_unit();
         return i < io_count(io, 0) ?
                child(0)->point(io, i) + ImVec2{dx * (w() - s1()->w()) / 2, 0} :
                child(1)->point(io, i - io_count(io, 0)) + ImVec2{dx * (w() - s2()->w()) / 2, 0};
@@ -880,7 +880,7 @@ struct DecorateNode : IONode {
     }
 
     void _draw(Device &device) const override {
-        const float m = 2.0f * (is_top_level ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.0f) + s.Style.FlowGrid.DiagramDecorateMargin;
+        const float m = 2 * (is_top_level ? s.Style.FlowGrid.DiagramTopLevelMargin : 0) + s.Style.FlowGrid.DiagramDecorateMargin;
         device.grouprect({position + ImVec2{m, m} / 2, position + size - ImVec2{m, m} / 2}, text);
         for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && is_top_level;
@@ -892,11 +892,11 @@ struct DecorateNode : IONode {
     }
 
     ImVec2 point(IO io, Count i) const override {
-        return child(0)->point(io, i) + ImVec2{dir_unit() * (io == IO_In ? -1.0f : 1.0f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
+        return child(0)->point(io, i) + ImVec2{dir_unit() * (io == IO_In ? -1 : 1) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
     inline float margin(const Node *node = nullptr) const {
-        return s.Style.FlowGrid.DiagramDecorateMargin + ((node ? node->is_top_level : is_top_level) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.0f);
+        return s.Style.FlowGrid.DiagramDecorateMargin + ((node ? node->is_top_level : is_top_level) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0);
     }
 
 private:

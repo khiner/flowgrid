@@ -311,7 +311,7 @@ void fg::HelpMarker(const char *help) {
     TextDisabled("(?)");
     if (IsItemHovered()) {
         BeginTooltip();
-        PushTextWrapPos(GetFontSize() * 35.0f);
+        PushTextWrapPos(GetFontSize() * 35);
         TextUnformatted(help);
         PopTextWrapPos();
         EndTooltip();
@@ -568,7 +568,7 @@ void State::Update(const Action &action) {
                     Style.ImPlot.MinorAlpha = 0.25f;
                     break;
                 case 3: ImPlot::StyleColorsLight(dst);
-                    Style.ImPlot.MinorAlpha = 1.0f;
+                    Style.ImPlot.MinorAlpha = 1;
                     break;
             }
         },
@@ -892,7 +892,7 @@ void StatePathUpdateFrequency::Draw() const {
     }
 
     auto &[labels, values] = c.state_stats.PathUpdateFrequency;
-    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30.0f + 60.0f}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
         // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
@@ -951,7 +951,7 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
 
             PushID(i);
             ColorEdit4(path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
-            SameLine(0.0f, s.Style.ImGui.ItemInnerSpacing.value.x);
+            SameLine(0, s.Style.ImGui.ItemInnerSpacing.value.x);
             TextUnformatted(name);
             PopID();
         }
@@ -970,18 +970,18 @@ void Style::ImGuiStyle::Draw() const {
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     {
-        bool border = s.Style.ImGui.WindowBorderSize > 0.0f;
-        if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.Path, border ? 1.0f : 0.0f});
+        bool border = s.Style.ImGui.WindowBorderSize > 0;
+        if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.Path, border ? 1 : 0});
     }
     SameLine();
     {
-        bool border = s.Style.ImGui.FrameBorderSize > 0.0f;
-        if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.Path, border ? 1.0f : 0.0f});
+        bool border = s.Style.ImGui.FrameBorderSize > 0;
+        if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.Path, border ? 1 : 0});
     }
     SameLine();
     {
-        bool border = s.Style.ImGui.PopupBorderSize > 0.0f;
-        if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.Path, border ? 1.0f : 0.0f});
+        bool border = s.Style.ImGui.PopupBorderSize > 0;
+        if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.Path, border ? 1 : 0});
     }
 
     Separator();
@@ -1073,15 +1073,15 @@ void Style::ImGuiStyle::Draw() const {
                 ImDrawList *draw_list = GetWindowDrawList();
                 const float min_widget_width = CalcTextSize("N: MMM\nR: MMM").x;
                 for (int n = 0; n < 8; n++) {
-                    const float RAD_MIN = 5.0f;
-                    const float RAD_MAX = 70.0f;
-                    const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * (float) n / (8.0f - 1.0f);
+                    const float RAD_MIN = 5;
+                    const float RAD_MAX = 70;
+                    const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * float(n) / 7.0f;
 
                     BeginGroup();
 
                     Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
 
-                    const float canvas_width = ImMax(min_widget_width, rad * 2.0f);
+                    const float canvas_width = ImMax(min_widget_width, rad * 2);
                     const ImVec2 offset = {floorf(canvas_width * 0.5f), floorf(RAD_MAX)};
                     const ImVec2 p1 = GetCursorScreenPos();
                     draw_list->AddCircle(p1 + offset, rad, GetColorU32(ImGuiCol_Text));
@@ -1095,8 +1095,8 @@ void Style::ImGuiStyle::Draw() const {
             SameLine();
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
-            Alpha.Draw(0.005f, "%.2f");
-            DisabledAlpha.Draw(0.005f, "%.2f");
+            Alpha.Draw(0.005, "%.2f");
+            DisabledAlpha.Draw(0.005, "%.2f");
             PopItemWidth();
 
             EndTabItem();
@@ -1172,7 +1172,7 @@ void Style::ImPlotStyle::Draw() const {
                 PushID(i);
                 ImVec4 temp = ImPlot::GetStyleColorVec4(i);
                 const bool is_auto = ImPlot::IsColorAuto(i);
-                if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25f);
+                if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
                 if (Button("Auto")) q(set_value{colors_path / i, is_auto ? temp : IMPLOT_AUTO_COL});
                 if (!is_auto) PopStyleVar();
                 SameLine();

@@ -124,8 +124,8 @@ UIContext create_ui_context(const RenderContext &render_context) {
     // - Read 'docs/FONTS.md' for more instructions and details.
     float font_scale = 2; // Rasterize to a scaled-up texture and scale the font size globally, for sharper text.
     io.FontGlobalScale = 1.0f / font_scale;
-    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", font_scale * 16.0f);
-    c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Cousine-Regular.ttf", font_scale * 15.0f);
+    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", font_scale * 16);
+    c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Cousine-Regular.ttf", font_scale * 15);
 //    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/Roboto-Medium.ttf", font_scale * 16.0f);
     return {imgui_context, implot_context};
 }

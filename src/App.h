@@ -731,17 +731,17 @@ struct Style : Window {
             "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).\n"};
 
         void ColorsDark() {
-            Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
+            Colors[FlowGridCol_HighlightText] = {1, 0.6, 0, 1};
             Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
             Colors[FlowGridCol_ParamsBg] = {0.16, 0.29, 0.48, 0.1};
         }
         void ColorsClassic() {
-            Colors[FlowGridCol_HighlightText] = {1.00f, 0.60f, 0.00f, 1.00f};
+            Colors[FlowGridCol_HighlightText] = {1, 0.6, 0, 1};
             Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
             Colors[FlowGridCol_ParamsBg] = {0.43, 0.43, 0.43, 0.1};
         }
         void ColorsLight() {
-            Colors[FlowGridCol_HighlightText] = {1.00f, 0.45f, 0.00f, 1.00f};
+            Colors[FlowGridCol_HighlightText] = {1, 0.45, 0, 1};
             Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
             Colors[FlowGridCol_ParamsBg] = {1, 1, 1, 1};
         }

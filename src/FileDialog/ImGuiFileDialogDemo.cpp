@@ -125,7 +125,6 @@ void IGFD::InitializeDemo() {
     });
 #endif // USE_THUMBNAILS
 
-    ImGui::GetIO().Fonts->AddFontDefault();
     static const ImWchar icons_ranges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
     ImFontConfig icons_config;
     icons_config.DstFont = ImGui::GetDefaultFont();

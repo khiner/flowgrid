@@ -415,7 +415,13 @@ void Info::Draw() const {
     }
 }
 
+static int PrevFontIndex = 0;
+
 void State::Draw() const {
+    if (PrevFontIndex != Style.ImGui.FontIndex) {
+        PrevFontIndex = Style.ImGui.FontIndex;
+        GetIO().FontDefault = GetIO().Fonts->Fonts[Style.ImGui.FontIndex];
+    }
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
             MenuItem(action::id<open_empty_project>);
@@ -961,7 +967,18 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
 void Style::ImGuiStyle::Draw() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
-//    ShowFontSelector("Fonts##Selector"); // TODO
+
+    const auto &io = GetIO();
+    const auto *font_current = GetFont();
+    if (BeginCombo("Fonts", font_current->GetDebugName())) {
+        for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
+            const auto *font = io.Fonts->Fonts[n];
+            PushID(font);
+            if (Selectable(font->GetDebugName(), font == font_current)) q(set_value{FontIndex.Path, n});
+            PopID();
+        }
+        ImGui::EndCombo();
+    }
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     {

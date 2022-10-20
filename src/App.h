@@ -916,6 +916,7 @@ struct Style : Window {
         Bool AntiAliasedFill{this, "AntiAliasedFill", true, "Anti-aliased fill"};
         Float CurveTessellationTol{this, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
         Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
+        Int FontIndex{this, "FontIndex"};
         ImVec4 Colors[ImGuiCol_COUNT];
     };
     struct ImPlotStyle : UIStateMember {

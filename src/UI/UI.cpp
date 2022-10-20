@@ -122,11 +122,11 @@ UIContext create_ui_context(const RenderContext &render_context) {
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
     // - Read 'docs/FONTS.md' for more instructions and details.
-    const float font_scale = 2; // Rasterize to a scaled-up texture and scale the font size globally, for sharper text.
-    io.FontGlobalScale = 1.0f / font_scale;
-    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", font_scale * 16);
-    c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", font_scale * 15);
-    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", font_scale * 14);
+    const static float atlas_scale = Style::ImGuiStyle::FontAtlasScale;
+    io.FontGlobalScale = s.Style.ImGui.FontScale / atlas_scale;
+    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * atlas_scale);
+    c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * atlas_scale);
+    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * atlas_scale);
 //    c.defaultFont = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Roboto-Medium.ttf", font_scale * 16.0f);
     return {imgui_context, implot_context};
 }

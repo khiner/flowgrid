@@ -871,6 +871,8 @@ struct Style : Window {
         void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
 
+        static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
+
         // See `ImGui::ImGuiStyle` for field descriptions.
         // Initial values copied from `ImGui::ImGuiStyle()` default constructor.
         // Ranges copied from `ImGui::StyleEditor`.
@@ -917,6 +919,7 @@ struct Style : Window {
         Float CurveTessellationTol{this, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
         Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
         Int FontIndex{this, "FontIndex"};
+        Float FontScale{this, "FontScale", 1, 0.3, 2, "?Global font scale (low-quality!)"}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
         ImVec4 Colors[ImGuiCol_COUNT];
     };
     struct ImPlotStyle : UIStateMember {

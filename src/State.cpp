@@ -416,12 +416,18 @@ void Info::Draw() const {
 }
 
 static int PrevFontIndex = 0;
+static float PrevFontScale = 1.0;
 
 void State::Draw() const {
     if (PrevFontIndex != Style.ImGui.FontIndex) {
-        PrevFontIndex = Style.ImGui.FontIndex;
         GetIO().FontDefault = GetIO().Fonts->Fonts[Style.ImGui.FontIndex];
+        PrevFontIndex = Style.ImGui.FontIndex;
     }
+    if (PrevFontScale != Style.ImGui.FontScale) {
+        GetIO().FontGlobalScale = Style.ImGui.FontScale / Style::ImGuiStyle::FontAtlasScale;
+        PrevFontScale = Style.ImGui.FontScale;
+    }
+
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
             MenuItem(action::id<open_empty_project>);
@@ -980,7 +986,7 @@ void Style::ImGuiStyle::Draw() const {
         ImGui::EndCombo();
     }
 
-    // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
+    // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
         if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.Path, border ? 1 : 0});
@@ -1043,30 +1049,15 @@ void Style::ImGuiStyle::Draw() const {
 
         ShowColorEditor(Path / "Colors", ImGuiCol_COUNT, GetStyleColorName);
 
-//        if (BeginTabItem("Fonts")) {
-//            ImGuiIO &io = GetIO();
-//            ImFontAtlas *atlas = io.Fonts;
-//            HelpMarker("Read FAQ and docs/FONTS.md for details on font loading.");
-//            ShowFontAtlas(atlas);
-//
-//            // Post-baking font scaling. Note that this is NOT the nice way of scaling fonts, read below.
-//            // (we enforce hard clamping manually as by default DragFloat/SliderFloat allows CTRL+Click text to get out of bounds).
-//            const float MIN_SCALE = 0.3f;
-//            const float MAX_SCALE = 2.0f;
-//            HelpMarker(
-//                "Those are old settings provided for convenience.\n"
-//                "However, the _correct_ way of scaling your UI is currently to reload your font at the designed size, "
-//                "rebuild the font atlas, and call style.ScaleAllSizes() on a reference ImGuiStyle structure.\n"
-//                "Using those settings here will give you poor quality results.");
-//            static float window_scale = 1.0f;
-//            PushItemWidth(GetFontSize() * 8);
-//            if (DragFloat("window scale", &window_scale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp)) // Scale only this window
-//                SetWindowFontScale(window_scale);
-//            DragFloat("global scale", &io.FontGlobalScale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp); // Scale everything
-//            PopItemWidth();
-//
-//            EndTabItem();
-//        }
+        if (BeginTabItem("Fonts")) {
+            ShowFontAtlas(io.Fonts);
+
+            PushItemWidth(GetFontSize() * 8);
+            FontScale.Draw(0.005f, "%.2f");
+            PopItemWidth();
+
+            EndTabItem();
+        }
 
         if (BeginTabItem("Rendering", nullptr, ImGuiTabItemFlags_NoPushId)) {
             AntiAliasedLines.Draw();

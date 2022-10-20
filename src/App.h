@@ -589,7 +589,7 @@ process = tgroup("grp 1",
     knobs,
     vmisc,
     hmisc);)#"};
-        string Error{};
+        String Error{this, "Error"};
     };
 
     void update_process() const override;

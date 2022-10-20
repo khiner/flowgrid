@@ -593,6 +593,10 @@ void Audio::update_process() const {
                 dsp_factory = nullptr;
             }
         }
+
+        if (!error_msg.empty()) q(set_value{Faust.Error.Path, error_msg});
+        else if (Faust.Error) q(set_value{Faust.Error.Path, ""});
+
         on_box_change(box);
         on_ui_change(faust_ui.get());
     }

@@ -408,7 +408,7 @@ void Audio::FaustState::FaustEditor::Draw() const {
 
 void Audio::FaustState::FaustLog::Draw() const {
     ImGui::PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    if (!s.Audio.Faust.Error.empty()) ImGui::Text("Faust error:\n%s", s.Audio.Faust.Error.c_str());
+    s.Audio.Faust.Error.Draw();
     ImGui::PopStyleColor();
 }
 

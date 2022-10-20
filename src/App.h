@@ -331,6 +331,8 @@ struct StateViewer : Window {
         "The state viewer to the changed state node(s), closing all other state nodes.\n"
         "State menu items can only be opened or closed manually if auto-select is disabled."
     };
+
+    void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) const;
 };
 
 struct StateMemoryEditor : Window {

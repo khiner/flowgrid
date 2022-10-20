@@ -794,26 +794,21 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
 //-----------------------------------------------------------------------------
 
 // TODO option to indicate relative update-recency
-static void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) {
-    const bool auto_select = s.StateViewer.AutoSelect;
-    const bool annotate_enabled = s.StateViewer.LabelMode == StateViewer::LabelMode::Annotated;
-
+void StateViewer::StateJsonTree(const string &key, const json &value, const JsonPath &path) const {
     const auto path_string = path.to_string();
     const string &leaf_name = path == RootPath ? path_string : path.back();
     const auto &parent_path = path == RootPath ? path : path.parent_pointer();
     const bool is_array_item = is_integer(leaf_name);
-    const bool is_color = path_string.find("Colors") != string::npos && is_array_item;
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_imgui_color = parent_path == s.Style.ImGui.Path / "Colors";
     const bool is_implot_color = parent_path == s.Style.ImPlot.Path / "Colors";
     const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Path / "Colors";
-    const auto &label = annotate_enabled ?
+    const auto &label = LabelMode == Annotated ?
                         (is_imgui_color ?
                          GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
                                                           is_flowgrid_color ? Style::FlowGridStyle::GetColorName(array_index) :
                                                           is_array_item ? leaf_name : key) : key;
-
-    if (auto_select) {
+    if (AutoSelect) {
         const auto &update_paths = c.state_stats.latest_updated_paths;
         const auto is_ancestor_path = [path_string](const string &candidate_path) { return candidate_path.rfind(path_string, 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
@@ -831,8 +826,8 @@ static void StateJsonTree(const string &key, const json &value, const JsonPath &
     }
 
     JsonTreeNodeFlags flags = JsonTreeNodeFlags_None;
-    if (annotate_enabled && is_color) flags |= JsonTreeNodeFlags_Highlighted;
-    if (auto_select) flags |= JsonTreeNodeFlags_Disabled;
+    if (LabelMode == Annotated && (is_imgui_color || is_implot_color || is_flowgrid_color)) flags |= JsonTreeNodeFlags_Highlighted;
+    if (AutoSelect) flags |= JsonTreeNodeFlags_Disabled;
 
     // The rest below is structurally identical to `fg::Widgets::JsonTree`.
     // Couldn't find an easy/clean way to inject the above into each recursive call.
@@ -970,17 +965,17 @@ void Style::ImGuiStyle::Draw() const {
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0.0f or 1.0f)
     {
-        bool border = s.Style.ImGui.WindowBorderSize > 0;
+        bool border = WindowBorderSize > 0;
         if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.Path, border ? 1 : 0});
     }
     SameLine();
     {
-        bool border = s.Style.ImGui.FrameBorderSize > 0;
+        bool border = FrameBorderSize > 0;
         if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.Path, border ? 1 : 0});
     }
     SameLine();
     {
-        bool border = s.Style.ImGui.PopupBorderSize > 0;
+        bool border = PopupBorderSize > 0;
         if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.Path, border ? 1 : 0});
     }
 

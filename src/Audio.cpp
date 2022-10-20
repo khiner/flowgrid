@@ -517,9 +517,9 @@ void Audio::update_process() const {
     } else if (!Running && soundio) {
         teardown_audio();
     } else if (soundio_ready &&
-        (instream->device->id != s.Audio.InDeviceId || outstream->device->id != s.Audio.OutDeviceId ||
-            instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != s.Audio.OutSampleRate ||
-            instream->format != to_soundio_format(s.Audio.InFormat) || outstream->format != to_soundio_format(s.Audio.OutFormat))) {
+        (instream->device->id != InDeviceId || outstream->device->id != OutDeviceId ||
+            instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != OutSampleRate ||
+            instream->format != to_soundio_format(InFormat) || outstream->format != to_soundio_format(OutFormat))) {
         // Reset to make any audio config changes take effect.
         teardown_audio();
         retrying_setup_audio();
@@ -530,18 +530,18 @@ void Audio::update_process() const {
         first_run = false;
 
         static std::map<JsonPath, json> values;
-        if (instream->device->id != s.Audio.InDeviceId) values[s.Audio.InDeviceId.Path] = instream->device->id;
-        if (outstream->device->id != s.Audio.OutDeviceId) values[s.Audio.OutDeviceId.Path] = outstream->device->id;
-        if (instream->sample_rate != s.Audio.InSampleRate) values[s.Audio.InSampleRate.Path] = instream->sample_rate;
-        if (outstream->sample_rate != s.Audio.OutSampleRate) values[s.Audio.OutSampleRate.Path] = outstream->sample_rate;
-        if (instream->format != s.Audio.InFormat) values[s.Audio.InFormat.Path] = to_audio_format(instream->format);
-        if (outstream->format != s.Audio.OutFormat) values[s.Audio.OutFormat.Path] = to_audio_format(outstream->format);
+        if (instream->device->id != InDeviceId) values[InDeviceId.Path] = instream->device->id;
+        if (outstream->device->id != OutDeviceId) values[OutDeviceId.Path] = outstream->device->id;
+        if (instream->sample_rate != InSampleRate) values[InSampleRate.Path] = instream->sample_rate;
+        if (outstream->sample_rate != OutSampleRate) values[OutSampleRate.Path] = outstream->sample_rate;
+        if (instream->format != InFormat) values[InFormat.Path] = to_audio_format(instream->format);
+        if (outstream->format != OutFormat) values[OutFormat.Path] = to_audio_format(outstream->format);
         if (!values.empty()) q(set_values{values}, true);
     }
 
-    if (s.Audio.Faust.Code.value != previous_faust_code || s.Audio.OutSampleRate != previous_faust_sample_rate) {
-        previous_faust_code = s.Audio.Faust.Code.value;
-        previous_faust_sample_rate = s.Audio.OutSampleRate.value;
+    if (Faust.Code.value != previous_faust_code || OutSampleRate != previous_faust_sample_rate) {
+        previous_faust_code = Faust.Code.value;
+        previous_faust_sample_rate = OutSampleRate.value;
 
         string error_msg;
 
@@ -550,17 +550,17 @@ void Audio::update_process() const {
         argv[argc++] = "-I";
         argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
         argv[argc++] = "-double";
-        if (s.Audio.Faust.Code && s.Audio.OutSampleRate) {
+        if (Faust.Code && OutSampleRate) {
             createLibContext();
             int num_inputs, num_outputs;
-            box = DSPToBoxes("FlowGrid", s.Audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+            box = DSPToBoxes("FlowGrid", Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
         }
         if (box && error_msg.empty()) {
             static const int optimize_level = -1;
             dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv, "", error_msg, optimize_level);
             if (dsp_factory && error_msg.empty()) {
                 dsp = dsp_factory->createDSPInstance();
-                dsp->init(s.Audio.OutSampleRate);
+                dsp->init(OutSampleRate);
 
                 // Init `faust_buffers`
                 for (const IO io: IO_All) {

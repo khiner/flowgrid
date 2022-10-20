@@ -514,8 +514,8 @@ void State::Draw() const {
     Audio.Faust.Params.DrawWindow();
     Audio.Faust.Log.DrawWindow();
 
-    DebugLog.DrawWindow(ImGuiWindowFlags_MenuBar);
-    StackTool.DrawWindow(ImGuiWindowFlags_MenuBar);
+    DebugLog.DrawWindow();
+    StackTool.DrawWindow();
     StateViewer.DrawWindow(ImGuiWindowFlags_MenuBar);
     PathUpdateFrequency.DrawWindow();
     StateMemoryEditor.DrawWindow(ImGuiWindowFlags_NoScrollbar);

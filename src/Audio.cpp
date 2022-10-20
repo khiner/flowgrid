@@ -545,34 +545,37 @@ void Audio::update_process() const {
 
         string error_msg;
 
-        int argc = 0;
-        const char **argv = new const char *[8];
-        argv[argc++] = "-I";
-        argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-        argv[argc++] = "-double";
+        destroyLibContext();
         if (Faust.Code && OutSampleRate) {
             createLibContext();
+
+            int argc = 0;
+            const char **argv = new const char *[8];
+            argv[argc++] = "-I";
+            argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
+            argv[argc++] = "-double";
+
             int num_inputs, num_outputs;
             box = DSPToBoxes("FlowGrid", Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
-        }
-        if (box && error_msg.empty()) {
-            static const int optimize_level = -1;
-            dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv, "", error_msg, optimize_level);
-            if (dsp_factory && error_msg.empty()) {
-                dsp = dsp_factory->createDSPInstance();
-                dsp->init(OutSampleRate);
-
-                // Init `faust_buffers`
-                for (const IO io: IO_All) {
-                    const int channels = io == IO_In ? dsp->getNumInputs() : dsp->getNumOutputs();
-                    if (channels > 0) faust_buffers[io] = new Sample *[channels];
-                }
-                for (int i = 0; i < dsp->getNumOutputs(); i++) { faust_buffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
-                faust_ready = true;
-
-                faust_ui = make_unique<FaustUI>();
-                dsp->buildUserInterface(faust_ui.get());
+            if (box && error_msg.empty()) {
+                static const int optimize_level = -1;
+                dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv, "", error_msg, optimize_level);
             }
+        }
+        if (dsp_factory && error_msg.empty()) {
+            dsp = dsp_factory->createDSPInstance();
+            dsp->init(OutSampleRate);
+
+            // Init `faust_buffers`
+            for (const IO io: IO_All) {
+                const int channels = io == IO_In ? dsp->getNumInputs() : dsp->getNumOutputs();
+                if (channels > 0) faust_buffers[io] = new Sample *[channels];
+            }
+            for (int i = 0; i < dsp->getNumOutputs(); i++) { faust_buffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
+
+            faust_ready = true;
+            faust_ui = make_unique<FaustUI>();
+            dsp->buildUserInterface(faust_ui.get());
         } else {
             faust_ui = nullptr;
             faust_ready = false;
@@ -587,7 +590,7 @@ void Audio::update_process() const {
                 delete dsp;
                 dsp = nullptr;
                 deleteDSPFactory(dsp_factory);
-                destroyLibContext();
+                dsp_factory = nullptr;
             }
         }
         on_box_change(box);

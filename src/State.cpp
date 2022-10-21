@@ -317,11 +317,21 @@ void fg::HelpMarker(const char *help) {
     }
 }
 
-bool fg::ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags, const char *label) {
-    ImVec4 v = sj[path];
-    const bool edited = ImGui::ColorEdit4(label ? label : path_label(path).c_str(), (float *) &v, flags);
+bool fg::ColorEdit4(const JsonPath &path, int i, ImGuiColorEditFlags flags, const bool allow_auto) {
+    const auto &full_path = path / i;
+    if (allow_auto) {
+        // todo generalize auto colors (linked to ImGui colors) and use in FG colors
+        auto temp = ImPlot::GetStyleColorVec4(i);
+        const bool is_auto = ImPlot::IsColorAuto(i);
+        if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
+        if (Button("Auto")) q(set_value{full_path, is_auto ? temp : IMPLOT_AUTO_COL});
+        if (!is_auto) PopStyleVar();
+        SameLine();
+    }
+    ImVec4 v = sj[full_path];
+    const bool edited = ImGui::ColorEdit4(path_label(full_path).c_str(), (float *) &v, flags | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
     gestured();
-    if (edited) q(set_value{path, v});
+    if (edited) q(set_value{full_path, v});
     return edited;
 }
 
@@ -409,7 +419,7 @@ void Info::Draw() const {
     if (hovered_id && StateMember::WithID.contains(hovered_id)) {
         const auto *member = StateMember::WithID.at(hovered_id);
         const string &help = member->Help;
-        PushTextWrapPos(GetContentRegionAvail().x);
+        PushTextWrapPos(0);
         TextUnformatted((help.empty() ? format("No info available for {}.", member->Name) : help).c_str());
     }
 }
@@ -567,7 +577,7 @@ void State::Update(const Action &action) {
             }
         },
         [&](const set_implot_color_style &a) {
-            auto *dst = Style.ImPlot.Colors;
+            ImVec4 *dst = Style.ImPlot.Colors;
             switch (a.id) {
                 case 0: ImPlot::StyleColorsAuto(dst);
                     Style.ImPlot.MinorAlpha = 0.25f;
@@ -947,7 +957,7 @@ bool Colors::Draw() const {
         if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
         SameLine();
         ::HelpMarker("In the color list:\n"
-                     "Left-click on color square to open color picker,\n"
+                     "Left-click on color square to open color picker.\n"
                      "Right-click to open edit options menu.");
 
         BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
@@ -958,11 +968,19 @@ bool Colors::Draw() const {
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
-            changed |= ColorEdit4(Path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            changed |= ColorEdit4(Path, i, ImGuiColorEditFlags_AlphaBar | alpha_flags, allow_auto);
             SameLine(0, s.Style.ImGui.ItemInnerSpacing.value.x);
             TextUnformatted(name);
             PopID();
         }
+        if (allow_auto) {
+            Separator();
+            PushTextWrapPos(0);
+            Text("Colors that are set to Auto will be automatically deduced from your ImGui style or the current ImPlot colormap.\n"
+                 "If you want to style individual plot items, use Push/PopStyleColor around its function.");
+            PopTextWrapPos();
+        }
+
         PopItemWidth();
         EndChild();
         EndTabItem();
@@ -1150,48 +1168,7 @@ void Style::ImPlotStyle::Draw() const {
 
             EndTabItem();
         }
-        if (BeginTabItem("Colors", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            static ImGuiTextFilter filter;
-            filter.Draw("Filter colors", GetFontSize() * 16);
-
-            static ImGuiColorEditFlags alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
-            if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; }
-            SameLine();
-            if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; }
-            SameLine();
-            if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; }
-            SameLine();
-            HelpMarker(
-                "In the color list:\n"
-                "Left-click on colored square to open color picker,\n"
-                "Right-click to open edit options menu.");
-
-            Separator();
-            PushItemWidth(-160);
-            const auto colors_path = JsonPath(Path / "Colors");
-            for (int i = 0; i < ImPlotCol_COUNT; i++) {
-                const char *name = ImPlot::GetStyleColorName(i);
-                if (!filter.PassFilter(name)) continue;
-
-                PushID(i);
-                ImVec4 temp = ImPlot::GetStyleColorVec4(i);
-                const bool is_auto = ImPlot::IsColorAuto(i);
-                if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) q(set_value{colors_path / i, is_auto ? temp : IMPLOT_AUTO_COL});
-                if (!is_auto) PopStyleVar();
-                SameLine();
-                ColorEdit4(colors_path / i, ImGuiColorEditFlags_NoInputs | alpha_flags, name);
-                PopID();
-            }
-            PopItemWidth();
-            Separator();
-            Text("Colors that are set to Auto (i.e. IMPLOT_AUTO_COL) will\n"
-                 "be automatically deduced from your ImGui style or the\n"
-                 "current ImPlot Colormap. If you want to style individual\n"
-                 "plot items, use Push/PopStyleColor around its function.");
-            EndTabItem();
-        }
-        // TODO re-implement colormaps statefully
+        Colors.Draw();
         EndTabBar();
     }
 }

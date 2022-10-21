@@ -233,8 +233,8 @@ struct Flags : Base {
 };
 
 struct Colors : Base {
-    Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const string &name = "")
-        : Base(parent, path_segment, name), value(size), names(views::iota(0, int(size)) | transform(GetColorName) | to<std::vector<string>>) {}
+    Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
+        : Base(parent, path_segment), value(size), names(views::iota(0, int(size)) | transform(GetColorName) | to<std::vector<string>>), allow_auto(allow_auto) {}
 
     operator ImVec4 *() { return &value[0]; }
 
@@ -252,6 +252,7 @@ struct Colors : Base {
 
     std::vector<ImVec4> value;
     std::vector<string> names;
+    bool allow_auto;
 };
 
 } // End `Field` namespace
@@ -988,7 +989,7 @@ struct Style : Window {
         Vec2 FitPadding{this, "FitPadding", {0, 0}, 0, 0.2};
         Vec2 PlotDefaultSize{this, "PlotDefaultSize", {400, 300}, 0, 1000};
         Vec2 PlotMinSize{this, "PlotMinSize", {200, 150}, 0, 300};
-        ImVec4 Colors[ImPlotCol_COUNT];
+        Colors Colors{this, "Colors", ImPlotCol_COUNT, ImPlot::GetStyleColorName, true};
         ImPlotColormap Colormap;
         Bool UseLocalTime{this, "UseLocalTime"};
         Bool UseISO8601{this, "UseISO8601"};
@@ -1457,7 +1458,7 @@ void gestured();
 
 void HelpMarker(const char *help);
 
-bool ColorEdit4(const JsonPath &path, ImGuiColorEditFlags flags = 0, const char *label = nullptr);
+bool ColorEdit4(const JsonPath &path, int i, ImGuiColorEditFlags flags = 0, const bool allow_auto = false);
 
 void MenuItem(ActionID); // For actions with no data members.
 

@@ -12,6 +12,7 @@
 #include <list>
 #include <queue>
 #include <set>
+#include <range/v3/view/iota.hpp>
 
 #include "nlohmann/json.hpp"
 #include "fmt/chrono.h"
@@ -230,6 +231,29 @@ struct Flags : Base {
     int value;
     std::vector<Item> items;
 };
+
+struct Colors : Base {
+    Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const string &name = "")
+        : Base(parent, path_segment, name), value(size), names(views::iota(0, int(size)) | transform(GetColorName) | to<std::vector<string>>) {}
+
+    operator ImVec4 *() { return &value[0]; }
+
+    ImVec4 &operator[](const size_t index) { return value[index]; }
+    const ImVec4 &operator[](const size_t index) const { return value[index]; }
+
+    Colors &operator=(std::vector<ImVec4> v) {
+        value = std::move(v);
+        return *this;
+    }
+
+    size_t size() const { return value.size(); }
+
+    bool Draw() const override;
+
+    std::vector<ImVec4> value;
+    std::vector<string> names;
+};
+
 } // End `Field` namespace
 
 using namespace Field;
@@ -688,7 +712,6 @@ struct Style : Window {
 
         void Draw() const override;
 
-        ImVec4 Colors[FlowGridCol_COUNT];
         Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
 
         Int DiagramFoldComplexity{
@@ -731,6 +754,8 @@ struct Style : Window {
             "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
             "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
             "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).\n"};
+
+        Colors Colors{this, "Colors", FlowGridCol_COUNT, GetColorName};
 
         void ColorsDark() {
             Colors[FlowGridCol_HighlightText] = {1, 0.6, 0, 1};
@@ -920,7 +945,7 @@ struct Style : Window {
         Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
         Int FontIndex{this, "FontIndex"};
         Float FontScale{this, "FontScale", 1, 0.3, 2, "?Global font scale (low-quality!)"}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
-        ImVec4 Colors[ImGuiCol_COUNT];
+        Colors Colors{this, "Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName};
     };
     struct ImPlotStyle : UIStateMember {
         ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name = "")

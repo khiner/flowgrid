@@ -127,6 +127,9 @@ inline void from_json(const json &j, Enum &field) { field.value = j; }
 
 inline void to_json(json &j, const Flags &field) { j = field.value; }
 inline void from_json(const json &j, Flags &field) { field.value = j; }
+
+inline void to_json(json &j, const Colors &field) { j = field.value; }
+inline void from_json(const json &j, Colors &field) { field.value = j; }
 }
 
 NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {

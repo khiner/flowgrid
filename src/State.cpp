@@ -2,7 +2,6 @@
 #include "StateJson.h"
 
 #include <fstream>
-#include <range/v3/view/iota.hpp>
 #include <range/v3/view/concat.hpp>
 
 #include "ImGuiFileDialog.h"
@@ -557,7 +556,7 @@ void State::Update(const Action &action) {
         [&](const close_file_dialog &) { File.Dialog.Visible = false; },
 
         [&](const set_imgui_color_style &a) {
-            auto *dst = Style.ImGui.Colors;
+            ImVec4 *dst = Style.ImGui.Colors;
             switch (a.id) {
                 case 0: StyleColorsDark(dst);
                     break;
@@ -816,10 +815,10 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Json
     const bool is_implot_color = parent_path == s.Style.ImPlot.Path / "Colors";
     const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Path / "Colors";
     const auto &label = LabelMode == Annotated ?
-                        (is_imgui_color ?
-                         GetStyleColorName(array_index) : is_implot_color ? ImPlot::GetStyleColorName(array_index) :
-                                                          is_flowgrid_color ? Style::FlowGridStyle::GetColorName(array_index) :
-                                                          is_array_item ? leaf_name : key) : key;
+                        (is_imgui_color ? s.Style.ImGui.Colors.names[array_index] :
+                         is_implot_color ? ImPlot::GetStyleColorName(array_index) :
+                         is_flowgrid_color ? s.Style.FlowGrid.Colors.names[array_index] :
+                         is_array_item ? leaf_name : key) : key;
     if (AutoSelect) {
         const auto &update_paths = c.state_stats.latest_updated_paths;
         const auto is_ancestor_path = [path_string](const string &candidate_path) { return candidate_path.rfind(path_string, 0) == 0; };
@@ -934,8 +933,9 @@ void ProjectPreview::Draw() const {
 // [SECTION] Style editors
 //-----------------------------------------------------------------------------
 
-void ShowColorEditor(const JsonPath &path, int color_count, const std::function<const char *(int)> &GetColorName) {
-    if (BeginTabItem("Colors", nullptr, ImGuiTabItemFlags_NoPushId)) {
+bool Colors::Draw() const {
+    bool changed = false;
+    if (BeginTabItem(Name.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
         static ImGuiTextFilter filter;
         filter.Draw("Filter colors", GetFontSize() * 16);
 
@@ -946,27 +946,28 @@ void ShowColorEditor(const JsonPath &path, int color_count, const std::function<
         SameLine();
         if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
         SameLine();
-        HelpMarker("In the color list:\n"
-                   "Left-click on color square to open color picker,\n"
-                   "Right-click to open edit options menu.");
+        ::HelpMarker("In the color list:\n"
+                     "Left-click on color square to open color picker,\n"
+                     "Right-click to open edit options menu.");
 
         BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
         PushItemWidth(-160);
-        for (int i = 0; i < color_count; i++) {
-            const char *name = GetColorName(i);
+
+        for (int i = 0; i < int(size()); i++) {
+            const char *name = names[i].c_str();
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
-            ColorEdit4(path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+            changed |= ColorEdit4(Path / i, ImGuiColorEditFlags_AlphaBar | alpha_flags);
             SameLine(0, s.Style.ImGui.ItemInnerSpacing.value.x);
             TextUnformatted(name);
             PopID();
         }
         PopItemWidth();
         EndChild();
-
         EndTabItem();
     }
+    return changed;
 }
 
 // Returns `true` if style changes.
@@ -1047,7 +1048,7 @@ void Style::ImGuiStyle::Draw() const {
             EndTabItem();
         }
 
-        ShowColorEditor(Path / "Colors", ImGuiCol_COUNT, GetStyleColorName);
+        Colors.Draw();
 
         if (BeginTabItem("Fonts")) {
             ShowFontAtlas(io.Fonts);
@@ -1262,7 +1263,7 @@ void Style::FlowGridStyle::Draw() const {
             EndTabItem();
         }
 
-        ShowColorEditor(Path / "Colors", FlowGridCol_COUNT, FlowGridStyle::GetColorName);
+        Colors.Draw();
         EndTabBar();
     }
 }

@@ -63,11 +63,10 @@ static const JsonPath RootPath{""};
 struct StateMember {
     static std::map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID
 
-    StateMember(const StateMember *parent = nullptr, const string &path_segment = "", const string &name_and_help = "")
-        : Parent(parent),
-          Path(Parent && !path_segment.empty() ? Parent->Path / path_segment : Parent ? Parent->Path : !path_segment.empty() ? JsonPath(path_segment) : RootPath),
-          PathSegment(path_segment) {
-        const auto &[name, help] = parse_help_text(name_and_help);
+    StateMember(const StateMember *parent = nullptr, const string &path_segment_and_help = "", const string &name = "") : Parent(parent) {
+        const auto &[path_segment, help] = parse_help_text(path_segment_and_help);
+        PathSegment = path_segment;
+        Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? JsonPath(PathSegment) : RootPath;
         Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
         Help = help;
         ID = ImHashStr(Name.c_str(), 0, Parent ? Parent->ID : 0);
@@ -328,7 +327,7 @@ struct Process : Window {
     void Draw() const override;
     virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
 
-    Bool Running{this, "Running", true, format("?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name))};
+    Bool Running{this, format("Running?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
 };
 
 struct ApplicationSettings : Window {
@@ -344,17 +343,17 @@ struct StateViewer : Window {
 
     enum LabelMode { Annotated, Raw };
     Enum LabelMode{
-        this, "LabelMode", {"Annotated", "Raw"}, Annotated,
-        "?The raw JSON state doesn't store keys for all items.\n"
-        "For example, the main `ui.style.colors` state is a list.\n\n"
-        "'Annotated' mode shows (highlighted) labels for such state items.\n"
-        "'Raw' mode shows the state exactly as it is in the raw JSON state."
+        this, "LabelMode?The raw JSON state doesn't store keys for all items.\n"
+              "For example, the main `ui.style.colors` state is a list.\n\n"
+              "'Annotated' mode shows (highlighted) labels for such state items.\n"
+              "'Raw' mode shows the state exactly as it is in the raw JSON state.",
+        {"Annotated", "Raw"}, Annotated
     };
     Bool AutoSelect{
-        this, "AutoSelect", true,
-        "Auto-select?When auto-select is enabled, state changes automatically open.\n"
-        "The state viewer to the changed state node(s), closing all other state nodes.\n"
-        "State menu items can only be opened or closed manually if auto-select is disabled."
+        this, "AutoSelect?When auto-select is enabled, state changes automatically open.\n"
+              "The state viewer to the changed state node(s), closing all other state nodes.\n"
+              "State menu items can only be opened or closed manually if auto-select is disabled.",
+        true, "Auto-select"
     };
 
     void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) const;
@@ -483,13 +482,12 @@ struct Audio : Process {
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
                 Flags HoverFlags{
-                    this, "HoverFlags",
+                    this, "HoverFlags?Hovering over a node in the graph will display the selected information",
                     {"ShowRect?Display the hovered node's bounding rectangle",
                      "ShowType?Display the hovered node's box type",
                      "ShowChannels?Display the hovered node's channel points and indices",
                      "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
-                    FaustDiagramHoverFlags_None,
-                    "?Hovering over a node in the graph will display the selected information",
+                    FaustDiagramHoverFlags_None
                 };
             };
 
@@ -620,8 +618,8 @@ process = tgroup("grp 1",
     void update_process() const override;
     const String &get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Bool FaustRunning{this, "FaustRunning", true, "?Disabling completely skips Faust computation when computing audio output."};
-    Bool Muted{this, "Muted", true, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load."};
+    Bool FaustRunning{this, "FaustRunning?Disabling completely skips Faust computation when computing audio output.", true};
+    Bool Muted{this, "Muted?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true};
     AudioBackend Backend = none;
     String InDeviceId{this, "InDeviceId", "In device ID"};
     String OutDeviceId{this, "OutDeviceId", "Out device ID"};
@@ -630,7 +628,7 @@ process = tgroup("grp 1",
     Enum InFormat{this, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
     Enum OutFormat{this, "OutFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
     Float OutDeviceVolume{this, "OutDeviceVolume", 1.0};
-    Bool MonitorInput{this, "MonitorInput", false, "?Enabling adds the audio input stream directly to the audio output."};
+    Bool MonitorInput{this, "MonitorInput?Enabling adds the audio input stream directly to the audio output."};
 
     FaustState Faust{this, "Faust"};
 };
@@ -716,14 +714,10 @@ struct Style : Window {
         Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
 
         Int DiagramFoldComplexity{
-            this, "DiagramFoldComplexity", 3, 0, 20,
-            "?Number of boxes within a diagram before folding into a sub-diagram.\n"
-            "Setting to zero disables folding altogether, for a fully-expanded diagram."};
-        Bool DiagramScaleLinked{this, "DiagramScaleLinked", true, "?Link X/Y"}; // Link X/Y scale sliders, forcing them to the same value.
-        Bool DiagramScaleFill{
-            this, "DiagramScaleFill", false,
-            "?Scale to fill the window.\n"
-            "Enabling this setting deactivates other diagram scale settings."};
+            this, "DiagramFoldComplexity?Number of boxes within a diagram before folding into a sub-diagram.\n"
+                  "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20};
+        Bool DiagramScaleLinked{this, "DiagramScaleLinked?Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
+        Bool DiagramScaleFill{this, "DiagramScaleFill?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings."};
         Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10};
         Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
         Bool DiagramRouteFrame{this, "DiagramRouteFrame", false};
@@ -751,10 +745,10 @@ struct Style : Window {
         Enum ParamsAlignmentVertical{this, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
         Flags ParamsTableFlags{this, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
         Enum ParamsWidthSizingPolicy{
-            this, "ParamsWidthSizingPolicy", {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly,
-            "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
-            "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
-            "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).\n"};
+            this, "ParamsWidthSizingPolicy?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
+                  "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
+                  "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
+            {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly};
 
         Colors Colors{this, "Colors", FlowGridCol_COUNT, GetColorName};
 
@@ -904,7 +898,7 @@ struct Style : Window {
         // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
         Float Alpha{this, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Float DisabledAlpha{this, "DisabledAlpha", 0.6, 0, 1, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha)."};
+        Float DisabledAlpha{this, "DisabledAlpha?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1};
         Vec2 WindowPadding{this, "WindowPadding", {8, 8}, 0, 20};
         Float WindowRounding{this, "WindowRounding", 0, 0, 12};
         Float WindowBorderSize{this, "WindowBorderSize", 1};
@@ -933,19 +927,19 @@ struct Style : Window {
         Float TabBorderSize{this, "TabBorderSize", 0};
         Float TabMinWidthForCloseButton{this, "TabMinWidthForCloseButton", 0};
         Enum ColorButtonPosition{this, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
-        Vec2 ButtonTextAlign{this, "ButtonTextAlign", {0.5, 0.5}, 0, 1, "?Alignment applies when a button is larger than its text content."};
-        Vec2 SelectableTextAlign{this, "SelectableTextAlign", {0, 0}, 0, 1, "?Alignment applies when a selectable is larger than its text content."};
+        Vec2 ButtonTextAlign{this, "ButtonTextAlign?Alignment applies when a button is larger than its text content.", {0.5, 0.5}, 0, 1};
+        Vec2 SelectableTextAlign{this, "SelectableTextAlign?Alignment applies when a selectable is larger than its text content.", {0, 0}, 0, 1};
         Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", {19, 19}};
-        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding", {3, 3}, 0, 30, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured)."};
+        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", {3, 3}, 0, 30};
         Float MouseCursorScale{this, "MouseCursorScale", 1};
-        Bool AntiAliasedLines{this, "AntiAliasedLines", true, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well."};
-        Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex", true,
-                                    "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering)."};
+        Bool AntiAliasedLines{this, "AntiAliasedLines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true, "Anti-aliased lines"};
+        Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true,
+                                    "Anti-aliased lines use texture"};
         Bool AntiAliasedFill{this, "AntiAliasedFill", true, "Anti-aliased fill"};
         Float CurveTessellationTol{this, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
         Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
         Int FontIndex{this, "FontIndex"};
-        Float FontScale{this, "FontScale", 1, 0.3, 2, "?Global font scale (low-quality!)"}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
+        Float FontScale{this, "FontScale?Global font scale (low-quality!)", 1, 0.3, 2}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
         Colors Colors{this, "Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName};
     };
     struct ImPlotStyle : UIStateMember {
@@ -996,9 +990,9 @@ struct Style : Window {
         Bool Use24HourClock{this, "Use24HourClock"};
     };
 
-    ImGuiStyle ImGui{this, "ImGui", "?Configure style for base UI"};
-    ImPlotStyle ImPlot{this, "ImPlot", "?Configure style for plots"};
-    FlowGridStyle FlowGrid{this, "FlowGrid", "?Configure application-specific style"};
+    ImGuiStyle ImGui{this, "ImGui?Configure style for base UI"};
+    ImPlotStyle ImPlot{this, "ImPlot?Configure style for plots"};
+    FlowGridStyle FlowGrid{this, "FlowGrid?Configure application-specific style"};
 };
 
 struct Processes : StateMember {

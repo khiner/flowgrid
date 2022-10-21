@@ -45,6 +45,14 @@ using std::min, std::max;
 inline string path_variable_name(const JsonPath &path) { return path.back(); }
 inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
 
+// Split the string on '#'.
+// If there is no '#' in the provided string, the first element will have the full input string and the second element will be an empty string.
+// todo don't split on escaped '\#'
+static std::pair<string, string> parse_name(const string &str) {
+    const auto help_split = str.find_first_of('#');
+    const bool found = help_split != string::npos;
+    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
+}
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
 // todo don't split on escaped '\?'
@@ -63,28 +71,34 @@ static const JsonPath RootPath{""};
 struct StateMember {
     static std::map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID
 
-    StateMember(const StateMember *parent = nullptr, const string &path_segment_and_help = "", const string &name = "") : Parent(parent) {
-        const auto &[path_segment, help] = parse_help_text(path_segment_and_help);
+    // The `id` parameter is used as the path segment for this state member,
+    // and optionally can contain a name and/or an info string.
+    // Prefix a name segment with a '#', and an info segment with a '?'.
+    // E.g. "TestMember#Test-member?A state member for testing things."
+    // If no name segment is found, the name defaults to the path segment.
+    StateMember(const StateMember *parent = nullptr, const string &id = "") : Parent(parent) {
+        const auto &[path_segment_and_name, help] = parse_help_text(id);
+        const auto &[path_segment, name] = parse_name(path_segment_and_name);
         PathSegment = path_segment;
         Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? JsonPath(PathSegment) : RootPath;
         Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
         Help = help;
-        ID = ImHashStr(Name.c_str(), 0, Parent ? Parent->ID : 0);
+        ImGuiId = ImHashStr(Name.c_str(), 0, Parent ? Parent->ImGuiId : 0);
         // This is real ugly - JSON assignment creates a temporary instance to copy from.
         // We don't want the destructor of that temporary instance to erase this ID.
         // Without this check, `WithID` will always end up empty!
         // See https://github.com/nlohmann/json/issues/1050
-        if (WithID.contains(ID)) is_temp_instance = true;
-        else WithID[ID] = this;
+        if (WithID.contains(ImGuiId)) is_temp_instance = true;
+        else WithID[ImGuiId] = this;
     }
     ~StateMember() {
-        if (!is_temp_instance) WithID.erase(ID);
+        if (!is_temp_instance) WithID.erase(ImGuiId);
     }
 
     const StateMember *Parent;
     JsonPath Path;
     string PathSegment, Name, Help;
-    ImGuiID ID;
+    ImGuiID ImGuiId;
     bool is_temp_instance{false};
     // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
@@ -107,8 +121,7 @@ struct Base : StateMember {
 };
 
 struct Bool : Base {
-    Bool(const StateMember *parent, const string &path_segment, bool value = false, const string &name = "")
-        : Base(parent, path_segment, name), value(value) {}
+    Bool(const StateMember *parent, const string &identifier, bool value = false) : Base(parent, identifier), value(value) {}
 
     operator bool() const { return value; }
     Bool &operator=(bool v) {
@@ -123,8 +136,8 @@ struct Bool : Base {
 };
 
 struct Int : Base {
-    Int(const StateMember *parent, const string &path_segment, int value = 0, int min = 0, int max = 100, const string &name = "")
-        : Base(parent, path_segment, name), value(value), min(min), max(max) {}
+    Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100)
+        : Base(parent, id), value(value), min(min), max(max) {}
 
     operator int() const { return value; }
     Int &operator=(int v) {
@@ -139,8 +152,8 @@ struct Int : Base {
 };
 
 struct Float : Base {
-    Float(const StateMember *parent, const string &path_segment, float value = 0, float min = 0, float max = 1, const string &name = "")
-        : Base(parent, path_segment, name), value(value), min(min), max(max) {}
+    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1)
+        : Base(parent, id), value(value), min(min), max(max) {}
 
     operator float() const { return value; }
     Float &operator=(float v) {
@@ -156,8 +169,8 @@ struct Float : Base {
 };
 
 struct Vec2 : Base {
-    Vec2(const StateMember *parent, const string &path_segment, ImVec2 value = {0, 0}, float min = 0, float max = 1, const string &name = "")
-        : Base(parent, path_segment, name), value(value), min(min), max(max) {}
+    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1)
+        : Base(parent, id), value(value), min(min), max(max) {}
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v) {
@@ -173,8 +186,8 @@ struct Vec2 : Base {
 };
 
 struct String : Base {
-    String(const StateMember *parent, const string &path_segment, const string &name = "", string value = "")
-        : Base(parent, path_segment, name), value(std::move(value)) {}
+    String(const StateMember *parent, const string &id, string value = "")
+        : Base(parent, id), value(std::move(value)) {}
 
     operator string() const { return value; }
     operator bool() const { return !value.empty(); }
@@ -192,8 +205,8 @@ struct String : Base {
 };
 
 struct Enum : Base {
-    Enum(const StateMember *parent, const string &path_segment, std::vector<string> names, int value = 0, const string &name = "")
-        : Base(parent, path_segment, name), value(value), names(std::move(names)) {}
+    Enum(const StateMember *parent, const string &id, std::vector<string> names, int value = 0)
+        : Base(parent, id), value(value), names(std::move(names)) {}
 
     operator int() const { return value; }
 
@@ -219,8 +232,8 @@ struct Flags : Base {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(const StateMember *parent, const string &path_segment, std::vector<Item> items, int value = 0, const string &name = "")
-        : Base(parent, path_segment, name), value(value), items(std::move(items)) {}
+    Flags(const StateMember *parent, const string &id, std::vector<Item> items, int value = 0)
+        : Base(parent, id), value(value), items(std::move(items)) {}
 
     operator int() const { return value; }
 
@@ -307,8 +320,7 @@ static const std::vector<Flags::Item> TableFlagItems{
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : UIStateMember {
-    Window(const StateMember *parent, const string &path_segment, const string &name = "", const bool visible = true)
-        : UIStateMember(parent, path_segment, name) {
+    Window(const StateMember *parent, const string &id, const bool visible = true) : UIStateMember(parent, id) {
         this->Visible = visible;
     }
 
@@ -349,12 +361,9 @@ struct StateViewer : Window {
               "'Raw' mode shows the state exactly as it is in the raw JSON state.",
         {"Annotated", "Raw"}, Annotated
     };
-    Bool AutoSelect{
-        this, "AutoSelect?When auto-select is enabled, state changes automatically open.\n"
-              "The state viewer to the changed state node(s), closing all other state nodes.\n"
-              "State menu items can only be opened or closed manually if auto-select is disabled.",
-        true, "Auto-select"
-    };
+    Bool AutoSelect{this, "AutoSelect#Auto-Select?When auto-select is enabled, state changes automatically open.\n"
+                          "The state viewer to the changed state node(s), closing all other state nodes.\n"
+                          "State menu items can only be opened or closed manually if auto-select is disabled.", true};
 
     void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) const;
 };
@@ -505,12 +514,12 @@ struct Audio : Process {
             void Draw() const override;
         };
 
-        FaustEditor Editor{this, "Editor", "Faust editor"};
-        FaustDiagram Diagram{this, "Diagram", "Faust diagram"};
-        FaustParams Params{this, "Params", "Faust params"};
-        FaustLog Log{this, "Log", "Faust log"};
+        FaustEditor Editor{this, "Editor#Faust editor"};
+        FaustDiagram Diagram{this, "Diagram#Faust diagram"};
+        FaustParams Params{this, "Params#Faust params"};
+        FaustLog Log{this, "Log#Faust log"};
 
-//        String Code{this, "Code", "Code", R"#(import("stdfaust.lib");
+//        String Code{this, "Code", R"#(import("stdfaust.lib");
 //pitchshifter = vgroup("Pitch Shifter", ef.transpose(
 //    vslider("window (samples)", 1000, 50, 10000, 1),
 //    vslider("xfade (samples)", 10, 1, 10000, 1),
@@ -518,21 +527,21 @@ struct Audio : Process {
 //  )
 //);
 //process = _ : pitchshifter;)#"};
-//        String Code{this, "Code", "Code", R"#(import("stdfaust.lib");
+//        String Code{this, "Code", R"#(import("stdfaust.lib");
 //s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
 //process = select2(s,no.noise,os.sawtooth(440));)#"};
-//        String Code{this, "Code", "Code", R"(import("stdfaust.lib");
+//        String Code{this, "Code", R"(import("stdfaust.lib");
 //process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)"};
-//        String Code{this, "Code", "Code", R"(import("stdfaust.lib");
+//        String Code{this, "Code", R"(import("stdfaust.lib");
 //process = _:fi.highpass(2,1000):_;)"};
-//        String Code{this, "Code", "Code", R"(import("stdfaust.lib");
+//        String Code{this, "Code", R"(import("stdfaust.lib");
 //ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
 //q = hslider("q",5,1,30,0.1);
 //gain = hslider("gain",1,0,1,0.01);
 //process = no:noise : fi.resonlp(ctFreq,q,gain);)"};
 
 // Based on Faust::UITester.dsp
-        String Code{this, "Code", "Code", R"#(import("stdfaust.lib");
+        String Code{this, "Code", R"#(import("stdfaust.lib");
 declare name "UI Tester";
 declare version "1.0";
 declare author "O. Guillerminet";
@@ -621,8 +630,8 @@ process = tgroup("grp 1",
     Bool FaustRunning{this, "FaustRunning?Disabling completely skips Faust computation when computing audio output.", true};
     Bool Muted{this, "Muted?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true};
     AudioBackend Backend = none;
-    String InDeviceId{this, "InDeviceId", "In device ID"};
-    String OutDeviceId{this, "OutDeviceId", "Out device ID"};
+    String InDeviceId{this, "InDeviceId#In device ID"};
+    String OutDeviceId{this, "OutDeviceId#Out device ID"};
     Int InSampleRate{this, "InSampleRate"};
     Int OutSampleRate{this, "OutSampleRate"};
     Enum InFormat{this, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
@@ -658,8 +667,7 @@ struct File : StateMember {
 
     // TODO window?
     struct FileDialog : DialogData, UIStateMember {
-        FileDialog(const StateMember *parent, const string &path_segment)
-            : DialogData(), UIStateMember(parent, path_segment, Title) {}
+        FileDialog(const StateMember *parent, const string &id) : DialogData(), UIStateMember(parent, format("{}#{}", id, Title)) {}
 
         FileDialog &operator=(const DialogData &other) {
             DialogData::operator=(other);
@@ -703,7 +711,7 @@ struct Style : Window {
     void Draw() const override;
 
     struct FlowGridStyle : UIStateMember {
-        FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name = "") : UIStateMember(parent, path_segment, name) {
+        FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
             ColorsDark();
             DiagramColorsDark();
             DiagramLayoutFlowGrid();
@@ -883,8 +891,7 @@ struct Style : Window {
         }
     };
     struct ImGuiStyle : UIStateMember {
-        ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name = "")
-            : UIStateMember(parent, path_segment, name) {
+        ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
             ImGui::StyleColorsDark(Colors);
         }
 
@@ -932,19 +939,17 @@ struct Style : Window {
         Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", {19, 19}};
         Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", {3, 3}, 0, 30};
         Float MouseCursorScale{this, "MouseCursorScale", 1};
-        Bool AntiAliasedLines{this, "AntiAliasedLines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true, "Anti-aliased lines"};
-        Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true,
-                                    "Anti-aliased lines use texture"};
-        Bool AntiAliasedFill{this, "AntiAliasedFill", true, "Anti-aliased fill"};
-        Float CurveTessellationTol{this, "CurveTessellationTol", 1.25, 0.1, 10, "Curve tesselation tolerance"};
+        Bool AntiAliasedLines{this, "AntiAliasedLines#Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true};
+        Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex#Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true};
+        Bool AntiAliasedFill{this, "AntiAliasedFill#Anti-aliased fill", true};
+        Float CurveTessellationTol{this, "CurveTessellationTol#Curve tesselation tolerance", 1.25, 0.1, 10};
         Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
         Int FontIndex{this, "FontIndex"};
         Float FontScale{this, "FontScale?Global font scale (low-quality!)", 1, 0.3, 2}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
         Colors Colors{this, "Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName};
     };
     struct ImPlotStyle : UIStateMember {
-        ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name = "")
-            : UIStateMember(parent, path_segment, name) {
+        ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
             Colormap = ImPlotColormap_Deep;
             ImPlot::StyleColorsAuto(Colors);
         }
@@ -1051,8 +1056,7 @@ struct ImGuiSettingsData {
 };
 
 struct ImGuiSettings : StateMember, ImGuiSettingsData {
-    ImGuiSettings(const StateMember *parent, const string &path_segment, const string &name = "")
-        : StateMember(parent, path_segment, name), ImGuiSettingsData() {}
+    ImGuiSettings(const StateMember *parent, const string &id) : StateMember(parent, id), ImGuiSettingsData() {}
 
     ImGuiSettings &operator=(const ImGuiSettingsData &other) {
         ImGuiSettingsData::operator=(other);
@@ -1294,9 +1298,9 @@ struct State : UIStateMember {
     void Draw() const override;
     void Update(const Action &); // State is only updated via `context.on_action(action)`
 
-    ImGuiSettings ImGuiSettings{this, "ImGuiSettings", "ImGui settings"};
+    ImGuiSettings ImGuiSettings{this, "ImGuiSettings#ImGui settings"};
     Style Style{this, "Style"};
-    ApplicationSettings ApplicationSettings{this, "ApplicationSettings", "Application settings"};
+    ApplicationSettings ApplicationSettings{this, "ApplicationSettings"};
     Audio Audio{this, "Audio"};
     Processes Processes{this, "Processes"};
     File File{this, "File"};
@@ -1307,10 +1311,10 @@ struct State : UIStateMember {
     StackTool StackTool{this, "StackTool"};
     DebugLog DebugLog{this, "DebugLog"};
 
-    StateViewer StateViewer{this, "StateViewer", "State viewer"};
-    StateMemoryEditor StateMemoryEditor{this, "StateMemoryEditor", "State memory editor"};
-    StatePathUpdateFrequency PathUpdateFrequency{this, "PathUpdateFrequency", "State path update frequency"};
-    ProjectPreview ProjectPreview{this, "ProjectPreview", "Project preview"};
+    StateViewer StateViewer{this, "StateViewer"};
+    StateMemoryEditor StateMemoryEditor{this, "StateMemoryEditor"};
+    StatePathUpdateFrequency PathUpdateFrequency{this, "PathUpdateFrequency#State path update frequency"};
+    ProjectPreview ProjectPreview{this, "ProjectPreview"};
 };
 
 //-----------------------------------------------------------------------------
@@ -1452,7 +1456,7 @@ void gestured();
 
 void HelpMarker(const char *help);
 
-bool ColorEdit4(const JsonPath &path, int i, ImGuiColorEditFlags flags = 0, const bool allow_auto = false);
+bool ColorEdit4(const JsonPath &path, int i, ImGuiColorEditFlags flags = 0, bool allow_auto = false);
 
 void MenuItem(ActionID); // For actions with no data members.
 

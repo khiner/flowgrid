@@ -821,12 +821,12 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Json
     const auto &parent_path = path == RootPath ? path : path.parent_pointer();
     const bool is_array_item = is_integer(leaf_name);
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
-    const bool is_imgui_color = parent_path == s.Style.ImGui.Path / "Colors";
-    const bool is_implot_color = parent_path == s.Style.ImPlot.Path / "Colors";
-    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Path / "Colors";
+    const bool is_imgui_color = parent_path == s.Style.ImGui.Colors.Path;
+    const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
+    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
     const auto &label = LabelMode == Annotated ?
                         (is_imgui_color ? s.Style.ImGui.Colors.names[array_index] :
-                         is_implot_color ? ImPlot::GetStyleColorName(array_index) :
+                         is_implot_color ? s.Style.ImPlot.Colors.names[array_index] :
                          is_flowgrid_color ? s.Style.FlowGrid.Colors.names[array_index] :
                          is_array_item ? leaf_name : key) : key;
     if (AutoSelect) {

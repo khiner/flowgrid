@@ -145,7 +145,7 @@ bool Field::Int::Draw(const std::vector<int> &options) const {
     return edited;
 }
 
-bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
+bool Field::Float::Draw(ImGuiSliderFlags flags) const {
     float v = value;
     const bool edited = SliderFloat(Name.c_str(), &v, min, max, fmt, flags);
     gestured();
@@ -154,7 +154,7 @@ bool Field::Float::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     return edited;
 }
 
-bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) const {
+bool Field::Float::Draw(float v_speed, ImGuiSliderFlags flags) const {
     float v = value;
     const bool edited = DragFloat(Name.c_str(), &v, v_speed, min, max, fmt, flags);
     gestured();
@@ -162,9 +162,9 @@ bool Field::Float::Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags) 
     HelpMarker();
     return edited;
 }
-bool Field::Float::Draw() const { return Draw("%.3f"); }
+bool Field::Float::Draw() const { return Draw(ImGuiSliderFlags_None); }
 
-bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
+bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
     ImVec2 v = value;
     const bool edited = SliderFloat2(Name.c_str(), (float *) &v, min, max, fmt, flags);
     gestured();
@@ -173,7 +173,7 @@ bool Field::Vec2::Draw(const char *fmt, ImGuiSliderFlags flags) const {
     return edited;
 }
 
-bool Field::Vec2::Draw() const { return Draw("%.3f"); }
+bool Field::Vec2::Draw() const { return Draw(ImGuiSliderFlags_None); }
 
 bool Field::Enum::Draw() const {
     return Draw(views::ints(0, int(names.size())) | to<std::vector<int>>); // todo if I stick with this pattern, cache.
@@ -1026,42 +1026,42 @@ void Style::ImGuiStyle::Draw() const {
     if (BeginTabBar("", ImGuiTabBarFlags_None)) {
         if (BeginTabItem("Sizes", nullptr, ImGuiTabItemFlags_NoPushId)) {
             Text("Main");
-            WindowPadding.Draw("%.0f");
-            FramePadding.Draw("%.0f");
-            CellPadding.Draw("%.0f");
-            ItemSpacing.Draw("%.0f");
-            ItemInnerSpacing.Draw("%.0f");
-            TouchExtraPadding.Draw("%.0f");
-            IndentSpacing.Draw("%.0f");
-            ScrollbarSize.Draw("%.0f");
-            GrabMinSize.Draw("%.0f");
+            WindowPadding.Draw();
+            FramePadding.Draw();
+            CellPadding.Draw();
+            ItemSpacing.Draw();
+            ItemInnerSpacing.Draw();
+            TouchExtraPadding.Draw();
+            IndentSpacing.Draw();
+            ScrollbarSize.Draw();
+            GrabMinSize.Draw();
 
             Text("Borders");
-            WindowBorderSize.Draw("%.0f");
-            ChildBorderSize.Draw("%.0f");
-            PopupBorderSize.Draw("%.0f");
-            FrameBorderSize.Draw("%.0f");
-            TabBorderSize.Draw("%.0f");
+            WindowBorderSize.Draw();
+            ChildBorderSize.Draw();
+            PopupBorderSize.Draw();
+            FrameBorderSize.Draw();
+            TabBorderSize.Draw();
 
             Text("Rounding");
-            WindowRounding.Draw("%.0f");
-            ChildRounding.Draw("%.0f");
-            FrameRounding.Draw("%.0f");
-            PopupRounding.Draw("%.0f");
-            ScrollbarRounding.Draw("%.0f");
-            GrabRounding.Draw("%.0f");
-            LogSliderDeadzone.Draw("%.0f");
-            TabRounding.Draw("%.0f");
+            WindowRounding.Draw();
+            ChildRounding.Draw();
+            FrameRounding.Draw();
+            PopupRounding.Draw();
+            ScrollbarRounding.Draw();
+            GrabRounding.Draw();
+            LogSliderDeadzone.Draw();
+            TabRounding.Draw();
 
             Text("Alignment");
-            WindowTitleAlign.Draw("%.2f");
+            WindowTitleAlign.Draw();
             WindowMenuButtonPosition.Draw();
             ColorButtonPosition.Draw();
-            ButtonTextAlign.Draw("%.2f");
-            SelectableTextAlign.Draw("%.2f");
+            ButtonTextAlign.Draw();
+            SelectableTextAlign.Draw();
 
             Text("Safe Area Padding");
-            DisplaySafeAreaPadding.Draw("%.0f");
+            DisplaySafeAreaPadding.Draw();
 
             EndTabItem();
         }
@@ -1072,7 +1072,7 @@ void Style::ImGuiStyle::Draw() const {
             ShowFontAtlas(io.Fonts);
 
             PushItemWidth(GetFontSize() * 8);
-            FontScale.Draw(0.005f, "%.2f");
+            FontScale.Draw(0.005f, ImGuiSliderFlags_None);
             PopItemWidth();
 
             EndTabItem();
@@ -1083,10 +1083,10 @@ void Style::ImGuiStyle::Draw() const {
             AntiAliasedLinesUseTex.Draw();
             AntiAliasedFill.Draw();
             PushItemWidth(GetFontSize() * 8);
-            CurveTessellationTol.Draw(0.02f, "%.2f");
+            CurveTessellationTol.Draw(0.02f, ImGuiSliderFlags_None);
 
             // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            CircleTessellationMaxError.Draw(0.005f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+            CircleTessellationMaxError.Draw(0.005f, ImGuiSliderFlags_AlwaysClamp);
             if (IsItemActive()) {
                 SetNextWindowPos(GetCursorScreenPos());
                 BeginTooltip();
@@ -1117,8 +1117,8 @@ void Style::ImGuiStyle::Draw() const {
             SameLine();
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
-            Alpha.Draw(0.005, "%.2f");
-            DisabledAlpha.Draw(0.005, "%.2f");
+            Alpha.Draw(0.005, ImGuiSliderFlags_None);
+            DisabledAlpha.Draw(0.005, ImGuiSliderFlags_None);
             PopItemWidth();
 
             EndTabItem();
@@ -1135,36 +1135,36 @@ void Style::ImPlotStyle::Draw() const {
     if (BeginTabBar("")) {
         if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
             Text("Item Styling");
-            LineWeight.Draw("%.1f");
-            MarkerSize.Draw("%.1f");
-            MarkerWeight.Draw("%.1f");
-            FillAlpha.Draw("%.2f");
-            ErrorBarSize.Draw("%.1f");
-            ErrorBarWeight.Draw("%.1f");
-            DigitalBitHeight.Draw("%.1f");
-            DigitalBitGap.Draw("%.1f");
+            LineWeight.Draw();
+            MarkerSize.Draw();
+            MarkerWeight.Draw();
+            FillAlpha.Draw();
+            ErrorBarSize.Draw();
+            ErrorBarWeight.Draw();
+            DigitalBitHeight.Draw();
+            DigitalBitGap.Draw();
 
             Text("Plot Styling");
-            PlotBorderSize.Draw("%.0f");
-            MinorAlpha.Draw("%.2f");
-            MajorTickLen.Draw("%.0f");
-            MinorTickLen.Draw("%.0f");
-            MajorTickSize.Draw("%.1f");
-            MinorTickSize.Draw("%.1f");
-            MajorGridSize.Draw("%.1f");
-            MinorGridSize.Draw("%.1f");
-            PlotDefaultSize.Draw("%.0f");
-            PlotMinSize.Draw("%.0f");
+            PlotBorderSize.Draw();
+            MinorAlpha.Draw();
+            MajorTickLen.Draw();
+            MinorTickLen.Draw();
+            MajorTickSize.Draw();
+            MinorTickSize.Draw();
+            MajorGridSize.Draw();
+            MinorGridSize.Draw();
+            PlotDefaultSize.Draw();
+            PlotMinSize.Draw();
 
             Text("Plot Padding");
-            PlotPadding.Draw("%.0f");
-            LabelPadding.Draw("%.0f");
-            LegendPadding.Draw("%.0f");
-            LegendInnerPadding.Draw("%.0f");
-            LegendSpacing.Draw("%.0f");
-            MousePosPadding.Draw("%.0f");
-            AnnotationPadding.Draw("%.0f");
-            FitPadding.Draw("%.2f");
+            PlotPadding.Draw();
+            LabelPadding.Draw();
+            LegendPadding.Draw();
+            LegendInnerPadding.Draw();
+            LegendSpacing.Draw();
+            MousePosPadding.Draw();
+            AnnotationPadding.Draw();
+            FitPadding.Draw();
 
             EndTabItem();
         }
@@ -1178,7 +1178,7 @@ void Style::FlowGridStyle::Draw() const {
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
     if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{diagram_colors_idx});
     if (Combo("Diagram layout", &diagram_layout_idx, "FlowGrid\0Faust\0")) q(set_flowgrid_diagram_layout_style{diagram_layout_idx});
-    FlashDurationSec.Draw("%.3f s");
+    FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Faust diagram", nullptr, ImGuiTabItemFlags_NoPushId)) {
@@ -1270,7 +1270,7 @@ void Style::Draw() const {
 void ApplicationSettings::Draw() const {
     int v = c.diff_index;
     if (SliderInt("Diff index", &v, -1, int(c.diffs.size()) - 1)) q(set_diff_index{v});
-    GestureDurationSec.Draw("%.3f s");
+    GestureDurationSec.Draw();
 }
 
 const std::vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};

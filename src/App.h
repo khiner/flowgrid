@@ -152,8 +152,8 @@ struct Int : Base {
 };
 
 struct Float : Base {
-    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1)
-        : Base(parent, id), value(value), min(min), max(max) {}
+    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const char *fmt = "%.3f")
+        : Base(parent, id), value(value), min(min), max(max), fmt(fmt) {}
 
     operator float() const { return value; }
     Float &operator=(float v) {
@@ -162,15 +162,16 @@ struct Float : Base {
     }
 
     bool Draw() const override;
-    bool Draw(const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
-    bool Draw(float v_speed, const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
+    bool Draw(ImGuiSliderFlags flags) const;
+    bool Draw(float v_speed, ImGuiSliderFlags flags) const;
 
     float value, min, max;
+    const char *fmt;
 };
 
 struct Vec2 : Base {
-    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1)
-        : Base(parent, id), value(value), min(min), max(max) {}
+    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const char *fmt = "%.3f")
+        : Base(parent, id), value(value), min(min), max(max), fmt(fmt) {}
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v) {
@@ -179,10 +180,11 @@ struct Vec2 : Base {
     }
 
     bool Draw() const override;
-    bool Draw(const char *fmt, ImGuiSliderFlags flags = ImGuiSliderFlags_None) const;
+    bool Draw(ImGuiSliderFlags flags) const;
 
     ImVec2 value;
     float min, max;
+    const char *fmt;
 };
 
 struct String : Base {
@@ -904,48 +906,66 @@ struct Style : Window {
         // Initial values copied from `ImGui::ImGuiStyle()` default constructor.
         // Ranges copied from `ImGui::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
-        Float Alpha{this, "Alpha", 1, 0.2, 1}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Float DisabledAlpha{this, "DisabledAlpha?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1};
-        Vec2 WindowPadding{this, "WindowPadding", {8, 8}, 0, 20};
-        Float WindowRounding{this, "WindowRounding", 0, 0, 12};
-        Float WindowBorderSize{this, "WindowBorderSize", 1};
-        Vec2 WindowMinSize{this, "WindowMinSize", {32, 32}};
-        Vec2 WindowTitleAlign{this, "WindowTitleAlign", {0, 0.5}};
+
+        // Main
+        Vec2 WindowPadding{this, "WindowPadding", {8, 8}, 0, 20, "%.0f"};
+        Vec2 FramePadding{this, "FramePadding", {4, 3}, 0, 20, "%.0f"};
+        Vec2 CellPadding{this, "CellPadding", {4, 2}, 0, 20, "%.0f"};
+        Vec2 ItemSpacing{this, "ItemSpacing", {8, 4}, 0, 20, "%.0f"};
+        Vec2 ItemInnerSpacing{this, "ItemInnerSpacing", {4, 4}, 0, 20, "%.0f"};
+        Vec2 TouchExtraPadding{this, "TouchExtraPadding", {0, 0}, 0, 10, "%.0f"};
+        Float IndentSpacing{this, "IndentSpacing", 21, 0, 30, "%.0f"};
+        Float ScrollbarSize{this, "ScrollbarSize", 14, 1, 20, "%.0f"};
+        Float GrabMinSize{this, "GrabMinSize", 12, 1, 20, "%.0f"};
+
+        // Borders
+        Float WindowBorderSize{this, "WindowBorderSize", 1, 0, 1, "%.0f"};
+        Float ChildBorderSize{this, "ChildBorderSize", 1, 0, 1, "%.0f"};
+        Float FrameBorderSize{this, "FrameBorderSize", 0, 0, 1, "%.0f"};
+        Float PopupBorderSize{this, "PopupBorderSize", 1, 0, 1, "%.0f"};
+        Float TabBorderSize{this, "TabBorderSize", 0, 0, 1, "%.0f"};
+
+        // Rounding
+        Float WindowRounding{this, "WindowRounding", 0, 0, 12, "%.0f"};
+        Float ChildRounding{this, "ChildRounding", 0, 0, 12, "%.0f"};
+        Float FrameRounding{this, "FrameRounding", 0, 0, 12, "%.0f"};
+        Float PopupRounding{this, "PopupRounding", 0, 0, 12, "%.0f"};
+        Float ScrollbarRounding{this, "ScrollbarRounding", 9, 0, 12, "%.0f"};
+        Float GrabRounding{this, "GrabRounding", 0, 0, 12, "%.0f"};
+        Float LogSliderDeadzone{this, "LogSliderDeadzone", 4, 0, 12, "%.0f"};
+        Float TabRounding{this, "TabRounding", 4, 0, 12, "%.0f"};
+
+        // Alignment
+        Vec2 WindowTitleAlign{this, "WindowTitleAlign", {0, 0.5}, 0, 1, "%.2f"};
         Enum WindowMenuButtonPosition{this, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
-        Float ChildRounding{this, "ChildRounding", 0, 0, 12};
-        Float ChildBorderSize{this, "ChildBorderSize", 1};
-        Float PopupRounding{this, "PopupRounding", 0, 0, 12};
-        Float PopupBorderSize{this, "PopupBorderSize", 1};
-        Vec2 FramePadding{this, "FramePadding", {4, 3}, 0, 20};
-        Float FrameRounding{this, "FrameRounding", 0, 0, 12};
-        Float FrameBorderSize{this, "FrameBorderSize", 0};
-        Vec2 ItemSpacing{this, "ItemSpacing", {8, 4}, 0, 20};
-        Vec2 ItemInnerSpacing{this, "ItemInnerSpacing", {4, 4}, 0, 20};
-        Vec2 CellPadding{this, "CellPadding", {4, 2}, 0, 20};
-        Vec2 TouchExtraPadding{this, "TouchExtraPadding", {0, 0}, 0, 10};
-        Float IndentSpacing{this, "IndentSpacing", 21, 0, 30};
-        Float ColumnsMinSpacing{this, "ColumnsMinSpacing", 6};
-        Float ScrollbarSize{this, "ScrollbarSize", 14, 1, 20};
-        Float ScrollbarRounding{this, "ScrollbarRounding", 9, 0, 12};
-        Float GrabMinSize{this, "GrabMinSize", 12, 1, 20};
-        Float GrabRounding{this, "GrabRounding", 0, 0, 12};
-        Float LogSliderDeadzone{this, "LogSliderDeadzone", 4, 0, 12};
-        Float TabRounding{this, "TabRounding", 4, 0, 12};
-        Float TabBorderSize{this, "TabBorderSize", 0};
-        Float TabMinWidthForCloseButton{this, "TabMinWidthForCloseButton", 0};
         Enum ColorButtonPosition{this, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
-        Vec2 ButtonTextAlign{this, "ButtonTextAlign?Alignment applies when a button is larger than its text content.", {0.5, 0.5}, 0, 1};
-        Vec2 SelectableTextAlign{this, "SelectableTextAlign?Alignment applies when a selectable is larger than its text content.", {0, 0}, 0, 1};
-        Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", {19, 19}};
-        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", {3, 3}, 0, 30};
-        Float MouseCursorScale{this, "MouseCursorScale", 1};
+        Vec2 ButtonTextAlign{this, "ButtonTextAlign?Alignment applies when a button is larger than its text content.", {0.5, 0.5}, 0, 1, "%.2f"};
+        Vec2 SelectableTextAlign{this, "SelectableTextAlign?Alignment applies when a selectable is larger than its text content.", {0, 0}, 0, 1, "%.2f"};
+
+        // Safe area padding
+        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", {3, 3}, 0, 30, "%.0f"};
+
+        // Rendering
         Bool AntiAliasedLines{this, "AntiAliasedLines#Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true};
         Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex#Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true};
         Bool AntiAliasedFill{this, "AntiAliasedFill#Anti-aliased fill", true};
-        Float CurveTessellationTol{this, "CurveTessellationTol#Curve tesselation tolerance", 1.25, 0.1, 10};
-        Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5};
+        Float CurveTessellationTol{this, "CurveTessellationTol#Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f"};
+        Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5, "%.2f"};
+        Float Alpha{this, "Alpha", 1, 0.2, 1, "%.2f"}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
+        Float DisabledAlpha{this, "DisabledAlpha?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f"};
+
+        // Fonts
         Int FontIndex{this, "FontIndex"};
-        Float FontScale{this, "FontScale?Global font scale (low-quality!)", 1, 0.3, 2}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
+        Float FontScale{this, "FontScale?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f"}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
+
+        // Not editable todo delete?
+        Float TabMinWidthForCloseButton{this, "TabMinWidthForCloseButton", 0};
+        Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", {19, 19}};
+        Vec2 WindowMinSize{this, "WindowMinSize", {32, 32}};
+        Float MouseCursorScale{this, "MouseCursorScale", 1};
+        Float ColumnsMinSpacing{this, "ColumnsMinSpacing", 6};
+
+        // Colors
         Colors Colors{this, "Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName};
     };
     struct ImPlotStyle : UIStateMember {
@@ -961,38 +981,47 @@ struct Style : Window {
         // Initial values copied from `ImPlotStyle()` default constructor.
         // Ranges copied from `ImPlot::StyleEditor`.
         // Double-check everything's up-to-date from time to time!
-        Float LineWeight{this, "LineWeight", 1, 0, 5};
-        Int Marker{this, "Marker", ImPlotMarker_None};
-        Float MarkerSize{this, "MarkerSize", 4, 2, 10};
-        Float MarkerWeight{this, "MarkerWeight", 1, 0, 5};
-        Float FillAlpha{this, "FillAlpha", 1};
-        Float ErrorBarSize{this, "ErrorBarSize", 5, 0, 10};
-        Float ErrorBarWeight{this, "ErrorBarWeight", 1.5, 0, 5};
-        Float DigitalBitHeight{this, "DigitalBitHeight", 8, 0, 20};
-        Float DigitalBitGap{this, "DigitalBitGap", 4, 0, 20};
-        Float PlotBorderSize{this, "PlotBorderSize", 1, 0, 2};
-        Float MinorAlpha{this, "MinorAlpha", 0.25};
-        Vec2 MajorTickLen{this, "MajorTickLen", {10, 10}, 0, 20};
-        Vec2 MinorTickLen{this, "MinorTickLen", {5, 5}, 0, 20};
-        Vec2 MajorTickSize{this, "MajorTickSize", {1, 1}, 0, 2};
-        Vec2 MinorTickSize{this, "MinorTickSize", {1, 1}, 0, 2};
-        Vec2 MajorGridSize{this, "MajorGridSize", {1, 1}, 0, 2};
-        Vec2 MinorGridSize{this, "MinorGridSize", {1, 1}, 0, 2};
-        Vec2 PlotPadding{this, "PlotPadding", {10, 10}, 0, 20};
-        Vec2 LabelPadding{this, "LabelPadding", {5, 5}, 0, 20};
-        Vec2 LegendPadding{this, "LegendPadding", {10, 10}, 0, 20};
-        Vec2 LegendInnerPadding{this, "LegendInnerPadding", {5, 5}, 0, 10};
-        Vec2 LegendSpacing{this, "LegendSpacing", {5, 0}, 0, 5};
-        Vec2 MousePosPadding{this, "MousePosPadding", {10, 10}, 0, 20};
-        Vec2 AnnotationPadding{this, "AnnotationPadding", {2, 2}, 0, 5};
-        Vec2 FitPadding{this, "FitPadding", {0, 0}, 0, 0.2};
-        Vec2 PlotDefaultSize{this, "PlotDefaultSize", {400, 300}, 0, 1000};
-        Vec2 PlotMinSize{this, "PlotMinSize", {200, 150}, 0, 300};
+
+        // Item styling
+        Float LineWeight{this, "LineWeight", 1, 0, 5, "%.1f"};
+        Float MarkerSize{this, "MarkerSize", 4, 2, 10, "%.1f"};
+        Float MarkerWeight{this, "MarkerWeight", 1, 0, 5, "%.1f"};
+        Float FillAlpha{this, "FillAlpha", 1, 0, 1, "%.2f"};
+        Float ErrorBarSize{this, "ErrorBarSize", 5, 0, 10, "%.1f"};
+        Float ErrorBarWeight{this, "ErrorBarWeight", 1.5, 0, 5, "%.1f"};
+        Float DigitalBitHeight{this, "DigitalBitHeight", 8, 0, 20, "%.1f"};
+        Float DigitalBitGap{this, "DigitalBitGap", 4, 0, 20, "%.1f"};
+
+        // Plot styling
+        Float PlotBorderSize{this, "PlotBorderSize", 1, 0, 2, "%.0f"};
+        Float MinorAlpha{this, "MinorAlpha", 0.25, 1, 0, "%.2f"};
+        Vec2 MajorTickLen{this, "MajorTickLen", {10, 10}, 0, 20, "%.0f"};
+        Vec2 MinorTickLen{this, "MinorTickLen", {5, 5}, 0, 20, "%.0f"};
+        Vec2 MajorTickSize{this, "MajorTickSize", {1, 1}, 0, 2, "%.1f"};
+        Vec2 MinorTickSize{this, "MinorTickSize", {1, 1}, 0, 2, "%.1f"};
+        Vec2 MajorGridSize{this, "MajorGridSize", {1, 1}, 0, 2, "%.1f"};
+        Vec2 MinorGridSize{this, "MinorGridSize", {1, 1}, 0, 2, "%.1f"};
+        Vec2 PlotDefaultSize{this, "PlotDefaultSize", {400, 300}, 0, 1000, "%.0f"};
+        Vec2 PlotMinSize{this, "PlotMinSize", {200, 150}, 0, 300, "%.0f"};
+
+        // Plot padding
+        Vec2 PlotPadding{this, "PlotPadding", {10, 10}, 0, 20, "%.0f"};
+        Vec2 LabelPadding{this, "LabelPadding", {5, 5}, 0, 20, "%.0f"};
+        Vec2 LegendPadding{this, "LegendPadding", {10, 10}, 0, 20, "%.0f"};
+        Vec2 LegendInnerPadding{this, "LegendInnerPadding", {5, 5}, 0, 10, "%.0f"};
+        Vec2 LegendSpacing{this, "LegendSpacing", {5, 0}, 0, 5, "%.0f"};
+        Vec2 MousePosPadding{this, "MousePosPadding", {10, 10}, 0, 20, "%.0f"};
+        Vec2 AnnotationPadding{this, "AnnotationPadding", {2, 2}, 0, 5, "%.0f"};
+        Vec2 FitPadding{this, "FitPadding", {0, 0}, 0, 0.2, "%.2f"};
+
         Colors Colors{this, "Colors", ImPlotCol_COUNT, ImPlot::GetStyleColorName, true};
         ImPlotColormap Colormap;
         Bool UseLocalTime{this, "UseLocalTime"};
         Bool UseISO8601{this, "UseISO8601"};
         Bool Use24HourClock{this, "Use24HourClock"};
+
+        // Not editable todo delete?
+        Int Marker{this, "Marker", ImPlotMarker_None};
     };
 
     ImGuiStyle ImGui{this, "ImGui?Configure style for base UI"};

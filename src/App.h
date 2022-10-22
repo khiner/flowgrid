@@ -152,7 +152,8 @@ struct Int : Base {
 };
 
 struct Float : Base {
-    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const char *fmt = "%.3f")
+    // `fmt` defaults to ImGui slider default, which is "%.3f"
+    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr)
         : Base(parent, id), value(value), min(min), max(max), fmt(fmt) {}
 
     operator float() const { return value; }
@@ -170,7 +171,8 @@ struct Float : Base {
 };
 
 struct Vec2 : Base {
-    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const char *fmt = "%.3f")
+    // `fmt` defaults to ImGui slider default, which is "%.3f"
+    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
         : Base(parent, id), value(value), min(min), max(max), fmt(fmt) {}
 
     operator ImVec2() const { return value; }

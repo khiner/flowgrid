@@ -28,6 +28,7 @@ include_directories(
     lib/fmt/include
     lib/range-v3/include
     lib/r8brain
+    lib/immer
 )
 
 # See readme for plans with these libraries

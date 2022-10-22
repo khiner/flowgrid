@@ -48,3 +48,6 @@
 [submodule "lib/r8brain"]
 	path = lib/r8brain
 	url = git@github.com:avaneev/r8brain-free-src.git
+[submodule "lib/immer"]
+	path = lib/immer
+	url = git@github.com:arximboldi/immer.git

@@ -125,8 +125,9 @@ struct Bool : Base {
         *this = value;
     }
 
-    operator bool() const { return value; }
+    operator bool() const;
     Bool &operator=(bool);
+
     bool Draw() const override;
     bool DrawMenu() const;
 
@@ -140,8 +141,9 @@ struct Int : Base {
         *this = value;
     }
 
-    operator int() const { return value; }
+    operator int() const;
     Int &operator=(int);
+
     bool Draw() const override;
     bool Draw(const vector<int> &options) const;
 
@@ -158,8 +160,9 @@ struct Float : Base {
         *this = value;
     }
 
-    operator float() const { return value; }
+    operator float() const;
     Float &operator=(float);
+
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
     bool Draw(float v_speed, ImGuiSliderFlags flags) const;
@@ -178,8 +181,9 @@ struct Vec2 : Base {
         *this = value;
     }
 
-    operator ImVec2() const { return value; }
+    operator ImVec2() const;
     Vec2 &operator=(const ImVec2 &v);
+
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
 
@@ -191,13 +195,12 @@ private:
 };
 
 struct String : Base {
-    String(const StateMember *parent, const string &id, string value = "")
-        : Base(parent, id) {
+    String(const StateMember *parent, const string &id, string value = "") : Base(parent, id) {
         *this = std::move(value);
     }
 
-    operator string() const { return value; }
-    operator bool() const { return !value.empty(); }
+    operator string() const;
+    operator bool() const;
 
     String &operator=(string);
     bool operator==(const string &v) const { return value == v; }
@@ -215,7 +218,7 @@ struct Enum : Base {
         *this = value;
     }
 
-    operator int() const { return value; }
+    operator int() const;
     Enum &operator=(int);
 
     bool Draw() const override;
@@ -247,7 +250,7 @@ struct Flags : Base {
         *this = value;
     }
 
-    operator int() const { return value; }
+    operator int() const;
     Flags &operator=(int);
 
     bool Draw() const override;
@@ -265,15 +268,14 @@ struct Colors : Base {
         *this = vector<ImVec4>(size);
     }
 
-    operator ImVec4 *() { return &value[0]; }
-    operator const ImVec4 *() const { return &value[0]; }
-    operator vector<ImVec4>() const { return value; }
-
-    ImVec4 &operator[](const size_t index) { return value[index]; }
-    const ImVec4 &operator[](const size_t index) const { return value[index]; }
-
+    operator ImVec4 *();
+    operator const ImVec4 *() const;
+    operator vector<ImVec4>() const;
     Colors &operator=(vector<ImVec4>);
-    size_t size() const { return value.size(); }
+
+    ImVec4 &operator[](const size_t);
+    const ImVec4 &operator[](const size_t) const;
+    size_t size() const;
 
     bool Draw() const override;
 

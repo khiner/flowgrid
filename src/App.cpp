@@ -3,38 +3,59 @@
 std::map<ImGuiID, StateMember *> StateMember::WithID{};
 
 namespace Field {
+Bool::operator bool() const { return value; }
 Bool &Bool::operator=(bool v) {
     value = v;
     return *this;
 }
+
+Int::operator int() const { return value; }
 Int &Int::operator=(int v) {
     value = v;
     return *this;
 }
+
+Float::operator float() const { return value; }
 Float &Float::operator=(float v) {
     value = v;
     return *this;
 }
+
+Vec2::operator ImVec2() const { return value; }
 Vec2 &Vec2::operator=(const ImVec2 &v) {
     value = v;
     return *this;
 }
+
+String::operator string() const { return value; }
+String::operator bool() const { return !value.empty(); }
 String &String::operator=(string v) {
     value = std::move(v);
     return *this;
 }
+
+Enum::operator int() const { return value; }
 Enum &Enum::operator=(int v) {
     value = v;
     return *this;
 }
+
+Flags::operator int() const { return value; }
 Flags &Flags::operator=(int v) {
     value = v;
     return *this;
 }
+
+Colors::operator ImVec4 *() { return &value[0]; }
+Colors::operator const ImVec4 *() const { return &value[0]; }
+Colors::operator vector<ImVec4>() const { return value; }
 Colors &Colors::operator=(vector<ImVec4> v) {
     value = std::move(v);
     return *this;
 }
+ImVec4 &Colors::operator[](const size_t index) { return value[index]; }
+const ImVec4 &Colors::operator[](const size_t index) const { return value[index]; }
+size_t Colors::size() const { return value.size(); }
 }
 
 string to_string(const IO io, const bool shorten) {

@@ -121,7 +121,9 @@ struct Base : StateMember {
 };
 
 struct Bool : Base {
-    Bool(const StateMember *parent, const string &identifier, bool value = false) : Base(parent, identifier), value(value) {}
+    Bool(const StateMember *parent, const string &identifier, bool value = false) : Base(parent, identifier) {
+        *this = value;
+    }
 
     operator bool() const { return value; }
     Bool &operator=(bool);
@@ -134,7 +136,9 @@ private:
 
 struct Int : Base {
     Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100)
-        : Base(parent, id), min(min), max(max), value(value) {}
+        : Base(parent, id), min(min), max(max) {
+        *this = value;
+    }
 
     operator int() const { return value; }
     Int &operator=(int);
@@ -150,7 +154,9 @@ private:
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id), min(min), max(max), fmt(fmt), value(value) {}
+        : Base(parent, id), min(min), max(max), fmt(fmt) {
+        *this = value;
+    }
 
     operator float() const { return value; }
     Float &operator=(float);
@@ -167,8 +173,10 @@ private:
 
 struct Vec2 : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id), min(min), max(max), fmt(fmt), value(value) {}
+    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
+        : Base(parent, id), min(min), max(max), fmt(fmt) {
+        *this = value;
+    }
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v);
@@ -184,7 +192,9 @@ private:
 
 struct String : Base {
     String(const StateMember *parent, const string &id, string value = "")
-        : Base(parent, id), value(std::move(value)) {}
+        : Base(parent, id) {
+        *this = std::move(value);
+    }
 
     operator string() const { return value; }
     operator bool() const { return !value.empty(); }
@@ -201,7 +211,9 @@ private:
 
 struct Enum : Base {
     Enum(const StateMember *parent, const string &id, vector<string> names, int value = 0)
-        : Base(parent, id), names(std::move(names)), value(value) {}
+        : Base(parent, id), names(std::move(names)) {
+        *this = value;
+    }
 
     operator int() const { return value; }
     Enum &operator=(int);
@@ -231,7 +243,9 @@ struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
     Flags(const StateMember *parent, const string &id, vector<Item> items, int value = 0)
-        : Base(parent, id), items(std::move(items)), value(value) {}
+        : Base(parent, id), items(std::move(items)) {
+        *this = value;
+    }
 
     operator int() const { return value; }
     Flags &operator=(int);
@@ -247,7 +261,9 @@ private:
 
 struct Colors : Base {
     Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
-        : Base(parent, path_segment), names(views::iota(0, int(size)) | transform(GetColorName) | to<vector<string>>), allow_auto(allow_auto), value(size) {}
+        : Base(parent, path_segment), names(views::iota(0, int(size)) | transform(GetColorName) | to<vector<string>>), allow_auto(allow_auto) {
+        *this = vector<ImVec4>(size);
+    }
 
     operator ImVec4 *() { return &value[0]; }
     operator const ImVec4 *() const { return &value[0]; }

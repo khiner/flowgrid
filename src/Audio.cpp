@@ -539,9 +539,9 @@ void Audio::update_process() const {
         if (!values.empty()) q(set_values{values}, true);
     }
 
-    if (Faust.Code.value != previous_faust_code || OutSampleRate != previous_faust_sample_rate) {
-        previous_faust_code = Faust.Code.value;
-        previous_faust_sample_rate = OutSampleRate.value;
+    if (Faust.Code != previous_faust_code || OutSampleRate != previous_faust_sample_rate) {
+        previous_faust_code = string(Faust.Code);
+        previous_faust_sample_rate = OutSampleRate;
 
         string error_msg;
 

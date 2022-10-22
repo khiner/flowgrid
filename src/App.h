@@ -128,25 +128,29 @@ struct Bool : Base {
     bool Draw() const override;
     bool DrawMenu() const;
 
+private:
     bool value;
 };
 
 struct Int : Base {
     Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100)
-        : Base(parent, id), value(value), min(min), max(max) {}
+        : Base(parent, id), min(min), max(max), value(value) {}
 
     operator int() const { return value; }
     Int &operator=(int);
     bool Draw() const override;
     bool Draw(const std::vector<int> &options) const;
 
-    int value, min, max;
+    int min, max;
+
+private:
+    int value;
 };
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id), value(value), min(min), max(max), fmt(fmt) {}
+        : Base(parent, id), min(min), max(max), fmt(fmt), value(value) {}
 
     operator float() const { return value; }
     Float &operator=(float);
@@ -154,23 +158,28 @@ struct Float : Base {
     bool Draw(ImGuiSliderFlags flags) const;
     bool Draw(float v_speed, ImGuiSliderFlags flags) const;
 
-    float value, min, max;
+    float min, max;
     const char *fmt;
+
+private:
+    float value;
 };
 
 struct Vec2 : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(const StateMember *parent, const string &id, ImVec2 value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id), value(value), min(min), max(max), fmt(fmt) {}
+        : Base(parent, id), min(min), max(max), fmt(fmt), value(value) {}
 
     operator ImVec2() const { return value; }
     Vec2 &operator=(const ImVec2 &v);
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
 
-    ImVec2 value;
     float min, max;
     const char *fmt;
+
+private:
+    ImVec2 value;
 };
 
 struct String : Base {
@@ -186,12 +195,13 @@ struct String : Base {
     bool Draw() const override;
     bool Draw(const std::vector<string> &options) const;
 
+private:
     string value;
 };
 
 struct Enum : Base {
     Enum(const StateMember *parent, const string &id, std::vector<string> names, int value = 0)
-        : Base(parent, id), value(value), names(std::move(names)) {}
+        : Base(parent, id), names(std::move(names)), value(value) {}
 
     operator int() const { return value; }
     Enum &operator=(int);
@@ -200,8 +210,10 @@ struct Enum : Base {
     bool Draw(const std::vector<int> &options) const;
     bool DrawMenu() const;
 
-    int value;
     std::vector<string> names;
+
+private:
+    int value;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -219,7 +231,7 @@ struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
     Flags(const StateMember *parent, const string &id, std::vector<Item> items, int value = 0)
-        : Base(parent, id), value(value), items(std::move(items)) {}
+        : Base(parent, id), items(std::move(items)), value(value) {}
 
     operator int() const { return value; }
     Flags &operator=(int);
@@ -227,15 +239,19 @@ struct Flags : Base {
     bool Draw() const override;
     bool DrawMenu() const;
 
-    int value;
     std::vector<Item> items;
+
+private:
+    int value;
 };
 
 struct Colors : Base {
     Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
-        : Base(parent, path_segment), value(size), names(views::iota(0, int(size)) | transform(GetColorName) | to<std::vector<string>>), allow_auto(allow_auto) {}
+        : Base(parent, path_segment), names(views::iota(0, int(size)) | transform(GetColorName) | to<std::vector<string>>), allow_auto(allow_auto), value(size) {}
 
     operator ImVec4 *() { return &value[0]; }
+    operator const ImVec4 *() const { return &value[0]; }
+    operator const std::vector<ImVec4>() const { return value; }
 
     ImVec4 &operator[](const size_t index) { return value[index]; }
     const ImVec4 &operator[](const size_t index) const { return value[index]; }
@@ -245,9 +261,11 @@ struct Colors : Base {
 
     bool Draw() const override;
 
-    std::vector<ImVec4> value;
     std::vector<string> names;
     bool allow_auto;
+
+private:
+    std::vector<ImVec4> value;
 };
 
 } // End `Field` namespace

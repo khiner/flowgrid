@@ -230,7 +230,7 @@ struct SVGDevice : Device {
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
     static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Diagram orientation, const ImVec4 &color) {
         const float d = is_lr(orientation) ? -1 : 1;
-        return get_triangle(ImVec2(pos.x + d * half_sz.x, pos.y - d * half_sz.y), ImVec2(pos.x + d * half_sz.x, pos.y + d * half_sz.y), pos, color, color);
+        return get_triangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
     }
 
     static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &fill_color, const ImVec4 &stroke_color) {
@@ -357,7 +357,7 @@ struct Node {
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
           descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Node *child) { return child->descendents; }), 0)),
         // `DiagramFoldComplexity == 0` means no folding
-          is_top_level(s.Style.FlowGrid.DiagramFoldComplexity > 0 && descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity.value)) {}
+          is_top_level(s.Style.FlowGrid.DiagramFoldComplexity > 0 && descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {}
 
     virtual ~Node() = default;
 
@@ -575,12 +575,14 @@ struct BlockNode : IONode {
     }
 
     void draw_connections(Device &device) const {
+        const ImVec2 &arrow_size = s.Style.FlowGrid.DiagramArrowSize;
         const ImVec2 d = {dir_unit() * XGap(), 0};
+        const ImVec2 arrow_d = {dir_unit() * arrow_size.x, 0};
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
             for (Count i = 0; i < io_count(io); i++) {
                 const auto &p = point(io, i);
-                device.line(in ? p : p - d, in ? p + d - ImVec2{dir_unit() * s.Style.FlowGrid.DiagramArrowSize.value.x, 0} : p);
+                device.line(in ? p : p - d, in ? p + d - arrow_d : p);
                 if (in) device.arrow(p + d, orientation); // Input arrows
             }
         }
@@ -880,12 +882,13 @@ struct DecorateNode : IONode {
     }
 
     void _draw(Device &device) const override {
+        const ImVec2 &arrow_size = s.Style.FlowGrid.DiagramArrowSize;
         const float m = 2 * (is_top_level ? s.Style.FlowGrid.DiagramTopLevelMargin : 0) + s.Style.FlowGrid.DiagramDecorateMargin;
         device.grouprect({position + ImVec2{m, m} / 2, position + size - ImVec2{m, m} / 2}, text);
         for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && is_top_level;
             for (Count i = 0; i < io_count(io); i++) {
-                device.line(child(0)->point(io, i), point(io, i) - ImVec2{has_arrow ? dir_unit() * s.Style.FlowGrid.DiagramArrowSize.value.x : 0, 0});
+                device.line(child(0)->point(io, i), point(io, i) - ImVec2{has_arrow ? dir_unit() * arrow_size.x : 0, 0});
                 if (has_arrow) device.arrow(point(io, i), orientation);
             }
         }

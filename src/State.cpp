@@ -934,7 +934,7 @@ void ProjectPreview::Draw() const {
 
     Separator();
 
-    const json project_json = c.get_project_json(ProjectFormat(Format.value));
+    const json project_json = c.get_project_json(ProjectFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
@@ -963,13 +963,14 @@ bool Colors::Draw() const {
         BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
         PushItemWidth(-160);
 
+        const auto &style = GetStyle();
         for (int i = 0; i < int(size()); i++) {
             const char *name = names[i].c_str();
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
             changed |= ColorEdit4(Path, i, ImGuiColorEditFlags_AlphaBar | alpha_flags, allow_auto);
-            SameLine(0, s.Style.ImGui.ItemInnerSpacing.value.x);
+            SameLine(0, style.ItemInnerSpacing.x);
             TextUnformatted(name);
             PopID();
         }
@@ -1186,17 +1187,18 @@ void Style::FlowGridStyle::Draw() const {
             const bool ScaleFill = DiagramScaleFill;
             DiagramScaleFill.Draw();
             if (ScaleFill) ImGui::BeginDisabled();
-            const auto scale_before = DiagramScale.value;
+            const ImVec2 scale_before = DiagramScale;
             if (DiagramScale.Draw() && DiagramScaleLinked) {
                 c.run_queued_actions();
-                const auto scale_after = DiagramScale.value;
+                const ImVec2 scale_after = DiagramScale;
                 q(set_value{DiagramScale.Path, scale_after.x != scale_before.x ?
                                                ImVec2{scale_after.x, scale_after.x} :
                                                ImVec2{scale_after.y, scale_after.y}});
                 c.run_queued_actions();
             }
             if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
-                const float min_scale = min(DiagramScale.value.x, DiagramScale.value.y);
+                const ImVec2 scale = DiagramScale;
+                const float min_scale = min(scale.x, scale.y);
                 q(set_value{DiagramScale.Path, ImVec2{min_scale, min_scale}});
             }
             if (ScaleFill) {

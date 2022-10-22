@@ -303,7 +303,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         if (IsWidthExpandable(type) && available_x > item_size.x) {
             const float expand_delta_max = available_x - item_size.x;
             const float item_width_no_label_before = item_size_no_label.x;
-            item_size_no_label.x = min(fg_style.ParamsMaxHorizontalItemWidth.value * frame_height, item_size_no_label.x + expand_delta_max);
+            item_size_no_label.x = min(fg_style.ParamsMaxHorizontalItemWidth * frame_height, item_size_no_label.x + expand_delta_max);
             item_size.x += item_size_no_label.x - item_width_no_label_before;
         }
         if (IsHeightExpandable(type) && suggested_height > item_size.y) item_size.y = suggested_height;

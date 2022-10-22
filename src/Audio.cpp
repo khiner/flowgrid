@@ -529,7 +529,7 @@ void Audio::update_process() const {
     if (first_run) {
         first_run = false;
 
-        static std::map<JsonPath, json> values;
+        static std::map<JsonPath, Primitive> values;
         if (instream->device->id != InDeviceId) values[InDeviceId.Path] = instream->device->id;
         if (outstream->device->id != OutDeviceId) values[OutDeviceId.Path] = outstream->device->id;
         if (instream->sample_rate != InSampleRate) values[InSampleRate.Path] = instream->sample_rate;

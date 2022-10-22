@@ -47,6 +47,7 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<close_file_dialog>:
         case id<show_save_project_dialog>:
         case id<close_application>:
+        case id<set_imgui_settings>:
         case id<set_imgui_color_style>:
         case id<set_implot_color_style>:
         case id<set_flowgrid_color_style>:
@@ -107,13 +108,14 @@ void StateMember::HelpMarker(const bool after) const {
 }
 
 bool Field::Bool::Draw() const {
-    bool v = value;
-    const bool edited = Checkbox(Name.c_str(), &v);
+    bool value = *this;
+    const bool edited = Checkbox(Name.c_str(), &value);
     if (edited) q(toggle_value{Path});
     HelpMarker();
     return edited;
 }
 bool Field::Bool::DrawMenu() const {
+    const bool value = *this;
     HelpMarker(false);
     const bool edited = MenuItem(Name.c_str(), nullptr, value);
     if (edited) q(toggle_value{Path});
@@ -121,15 +123,16 @@ bool Field::Bool::DrawMenu() const {
 }
 
 bool Field::Int::Draw() const {
-    int v = value;
-    const bool edited = SliderInt(Name.c_str(), &v, min, max, "%d", ImGuiSliderFlags_None);
+    int value = *this;
+    const bool edited = SliderInt(Name.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
     gestured();
-    if (edited) q(set_value{Path, v});
+    if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
 }
 bool Field::Int::Draw(const vector<int> &options) const {
     bool edited = false;
+    const int value = *this;
     if (BeginCombo(Name.c_str(), std::to_string(value).c_str())) {
         for (const auto option: options) {
             const bool is_selected = option == value;
@@ -146,29 +149,29 @@ bool Field::Int::Draw(const vector<int> &options) const {
 }
 
 bool Field::Float::Draw(ImGuiSliderFlags flags) const {
-    float v = value;
-    const bool edited = SliderFloat(Name.c_str(), &v, min, max, fmt, flags);
+    float value = *this;
+    const bool edited = SliderFloat(Name.c_str(), &value, min, max, fmt, flags);
     gestured();
-    if (edited) q(set_value{Path, v});
+    if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
 }
 
 bool Field::Float::Draw(float v_speed, ImGuiSliderFlags flags) const {
-    float v = value;
-    const bool edited = DragFloat(Name.c_str(), &v, v_speed, min, max, fmt, flags);
+    float value = *this;
+    const bool edited = DragFloat(Name.c_str(), &value, v_speed, min, max, fmt, flags);
     gestured();
-    if (edited) q(set_value{Path, v});
+    if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
 }
 bool Field::Float::Draw() const { return Draw(ImGuiSliderFlags_None); }
 
 bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
-    ImVec2 v = value;
-    const bool edited = SliderFloat2(Name.c_str(), (float *) &v, min, max, fmt, flags);
+    ImVec2 value = *this;
+    const bool edited = SliderFloat2(Name.c_str(), (float *) &value, min, max, fmt, flags);
     gestured();
-    if (edited) q(set_value{Path, v});
+    if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
 }
@@ -179,6 +182,7 @@ bool Field::Enum::Draw() const {
     return Draw(views::ints(0, int(names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
 bool Field::Enum::Draw(const vector<int> &choices) const {
+    const int value = *this;
     bool edited = false;
     if (BeginCombo(Name.c_str(), names[value].c_str())) {
         for (int choice: choices) {
@@ -197,6 +201,7 @@ bool Field::Enum::Draw(const vector<int> &choices) const {
 
 }
 bool Field::Enum::DrawMenu() const {
+    const int value = *this;
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
@@ -214,6 +219,7 @@ bool Field::Enum::DrawMenu() const {
 }
 
 bool Field::Flags::Draw() const {
+    const int value = *this;
     bool edited = false;
     if (TreeNodeEx(Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
         for (int i = 0; i < int(items.size()); i++) {
@@ -235,6 +241,7 @@ bool Field::Flags::Draw() const {
     return edited;
 }
 bool Field::Flags::DrawMenu() const {
+    const int value = *this;
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
@@ -258,10 +265,12 @@ bool Field::Flags::DrawMenu() const {
 }
 
 bool Field::String::Draw() const {
+    const string &value = *this;
     TextUnformatted(value.c_str());
     return false;
 }
 bool Field::String::Draw(const vector<string> &options) const {
+    const string &value = *this;
     bool edited = false;
     if (BeginCombo(Name.c_str(), value.c_str())) {
         for (const auto &option: options) {
@@ -276,6 +285,10 @@ bool Field::String::Draw(const vector<string> &options) const {
     }
     HelpMarker();
     return edited;
+}
+
+bool Color::Draw() const {
+    return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -549,91 +562,6 @@ void State::Draw() const {
     Info.DrawWindow();
 }
 
-// Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
-void State::Update(const Action &action) {
-    std::visit(visitor{
-        [&](const show_open_project_dialog &) { FileDialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
-        [&](const show_save_project_dialog &) { FileDialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_open_faust_file_dialog &) { FileDialog = {"Choose file", FaustDspFileExtension, "."}; },
-        [&](const show_save_faust_file_dialog &) { FileDialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_save_faust_svg_file_dialog &) { FileDialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-
-        [&](const open_file_dialog &a) { FileDialog = a.dialog; },
-        [&](const close_file_dialog &) { FileDialog.Visible = false; },
-
-        [&](const set_imgui_color_style &a) {
-            ImVec4 *dst = Style.ImGui.Colors;
-            switch (a.id) {
-                case 0: StyleColorsDark(dst);
-                    break;
-                case 1: StyleColorsLight(dst);
-                    break;
-                case 2: StyleColorsClassic(dst);
-                    break;
-            }
-        },
-        [&](const set_implot_color_style &a) {
-            ImVec4 *dst = Style.ImPlot.Colors;
-            switch (a.id) {
-                case 0: ImPlot::StyleColorsAuto(dst);
-                    Style.ImPlot.MinorAlpha = 0.25f;
-                    break;
-                case 1: ImPlot::StyleColorsClassic(dst);
-                    Style.ImPlot.MinorAlpha = 0.5f;
-                    break;
-                case 2: ImPlot::StyleColorsDark(dst);
-                    Style.ImPlot.MinorAlpha = 0.25f;
-                    break;
-                case 3: ImPlot::StyleColorsLight(dst);
-                    Style.ImPlot.MinorAlpha = 1;
-                    break;
-            }
-        },
-        [&](const set_flowgrid_color_style &a) {
-            switch (a.id) {
-                case 0: Style.FlowGrid.ColorsDark();
-                    break;
-                case 1: Style.FlowGrid.ColorsLight();
-                    break;
-                case 2: Style.FlowGrid.ColorsClassic();
-                    break;
-                default:break;
-            }
-        },
-        [&](const set_flowgrid_diagram_color_style &a) {
-            switch (a.id) {
-                case 0: Style.FlowGrid.DiagramColorsDark();
-                    break;
-                case 1: Style.FlowGrid.DiagramColorsLight();
-                    break;
-                case 2: Style.FlowGrid.DiagramColorsClassic();
-                    break;
-                case 3: Style.FlowGrid.DiagramColorsFaust();
-                    break;
-                default:break;
-            }
-        },
-        [&](const set_flowgrid_diagram_layout_style &a) {
-            switch (a.id) {
-                case 0: Style.FlowGrid.DiagramLayoutFlowGrid();
-                    break;
-                case 1: Style.FlowGrid.DiagramLayoutFaust();
-                    break;
-                default:break;
-            }
-        },
-
-        [&](const open_faust_file &a) { Audio.Faust.Code = FileIO::read(a.path); },
-
-        [&](const close_application &) {
-            Processes.UI.Running = false;
-            Audio.Running = false;
-        },
-
-        [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
-    }, action);
-}
-
 ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
     SaveIniSettingsToMemory(); // Populates the `Settings` context members
     Nodes = ctx->DockContext.NodesSettings; // already an ImVector
@@ -821,9 +749,9 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Json
     const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
     const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
     const auto &label = LabelMode == Annotated ?
-                        (is_imgui_color ? s.Style.ImGui.Colors.names[array_index] :
-                         is_implot_color ? s.Style.ImPlot.Colors.names[array_index] :
-                         is_flowgrid_color ? s.Style.FlowGrid.Colors.names[array_index] :
+                        (is_imgui_color ? s.Style.ImGui.Colors[array_index].Name :
+                         is_implot_color ? s.Style.ImPlot.Colors[array_index].Name :
+                         is_flowgrid_color ? s.Style.FlowGrid.Colors[array_index].Name :
                          is_array_item ? leaf_name : key) : key;
     if (AutoSelect) {
         const auto &update_paths = c.state_stats.latest_updated_paths;
@@ -837,7 +765,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Json
     if (c.state_stats.latest_update_time_for_path.contains(path)) {
         const auto latest_update_time = c.state_stats.latest_update_time_for_path.contains(path) ? c.state_stats.latest_update_time_for_path.at(path) : TimePoint{};
         const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
-        auto flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
+        ImVec4 flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.w = max(0.0f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
@@ -961,7 +889,7 @@ bool Colors::Draw() const {
 
         const auto &style = GetStyle();
         for (int i = 0; i < int(size()); i++) {
-            const char *name = names[i].c_str();
+            const char *name = colors[i].Name.c_str();
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
@@ -1127,7 +1055,7 @@ void Style::ImGuiStyle::Draw() const {
 
 void Style::ImPlotStyle::Draw() const {
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Auto\0Classic\0Dark\0Light\0")) q(set_implot_color_style{style_idx});
+    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) q(set_implot_color_style{style_idx});
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {

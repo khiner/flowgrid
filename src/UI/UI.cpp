@@ -158,7 +158,7 @@ const std::map<string, ImGuiModFlags> mod_keys{
 // Example: 'shift+cmd+s'
 // **Case-sensitive. `shortcut` must be lowercase.**
 std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
-    vector <string> tokens;
+    vector<string> tokens;
     Zep::string_split(shortcut, "+", tokens);
     if (tokens.empty()) return {};
 
@@ -235,7 +235,7 @@ void tick_ui() {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         const json new_settings = ImGuiSettingsData(c.ui->imgui_context);
-        if (sj[s.ImGuiSettings.Path] != new_settings) q(set_value{s.ImGuiSettings.Path, new_settings});
+        if (sj[s.ImGuiSettings.Path] != new_settings) q(set_imgui_settings{new_settings});
         io.WantSaveIniSettings = false;
     }
 

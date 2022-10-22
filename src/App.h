@@ -23,6 +23,8 @@
 #include "Helper/File.h"
 #include "Helper/UI.h"
 
+using Primitive = std::variant<bool, float, int, ImVec2, ImVec4, string>;
+
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
@@ -130,9 +132,6 @@ struct Bool : Base {
 
     bool Draw() const override;
     bool DrawMenu() const;
-
-private:
-    bool value;
 };
 
 struct Int : Base {
@@ -148,9 +147,6 @@ struct Int : Base {
     bool Draw(const vector<int> &options) const;
 
     int min, max;
-
-private:
-    int value;
 };
 
 struct Float : Base {
@@ -169,9 +165,6 @@ struct Float : Base {
 
     float min, max;
     const char *fmt;
-
-private:
-    float value;
 };
 
 struct Vec2 : Base {
@@ -189,9 +182,6 @@ struct Vec2 : Base {
 
     float min, max;
     const char *fmt;
-
-private:
-    ImVec2 value;
 };
 
 struct String : Base {
@@ -203,13 +193,10 @@ struct String : Base {
     operator bool() const;
 
     String &operator=(string);
-    bool operator==(const string &v) const { return value == v; }
+    bool operator==(const string &) const;
 
     bool Draw() const override;
     bool Draw(const vector<string> &options) const;
-
-private:
-    string value;
 };
 
 struct Enum : Base {
@@ -226,9 +213,6 @@ struct Enum : Base {
     bool DrawMenu() const;
 
     vector<string> names;
-
-private:
-    int value;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -257,33 +241,35 @@ struct Flags : Base {
     bool DrawMenu() const;
 
     vector<Item> items;
+};
 
-private:
-    int value;
+struct Color : Base {
+    Color(const StateMember *parent, const int i, const ImVec4 &value, const char *name) : Base(parent, format("{}#{}", i, name)) {
+        *this = value;
+    }
+
+    bool Draw() const override;
+
+    operator ImVec4() const;
+    Color &operator=(const ImVec4 &);
 };
 
 struct Colors : Base {
     Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
-        : Base(parent, path_segment), names(views::iota(0, int(size)) | transform(GetColorName) | to<vector<string>>), allow_auto(allow_auto) {
-        *this = vector<ImVec4>(size);
+        : Base(parent, path_segment), allow_auto(allow_auto) {
+        for (int i = 0; i < int(size); i++) colors.push_back({this, i, {}, GetColorName(i)});
     }
 
-    operator ImVec4 *();
-    operator const ImVec4 *() const;
-    operator vector<ImVec4>() const;
-    Colors &operator=(vector<ImVec4>);
+    Colors &operator=(const vector<ImVec4> &);
 
-    ImVec4 &operator[](size_t);
-    const ImVec4 &operator[](size_t) const;
+    Color &operator[](size_t);
+    const Color &operator[](size_t) const;
     size_t size() const;
 
     bool Draw() const override;
 
-    vector<string> names;
     bool allow_auto;
-
-private:
-    vector<ImVec4> value;
+    vector<Color> colors;
 };
 
 } // End `Field` namespace
@@ -750,15 +736,15 @@ struct Style : Window {
             Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
             Colors[FlowGridCol_ParamsBg] = {0.16, 0.29, 0.48, 0.1};
         }
-        void ColorsClassic() {
-            Colors[FlowGridCol_HighlightText] = {1, 0.6, 0, 1};
-            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
-            Colors[FlowGridCol_ParamsBg] = {0.43, 0.43, 0.43, 0.1};
-        }
         void ColorsLight() {
             Colors[FlowGridCol_HighlightText] = {1, 0.45, 0, 1};
             Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
             Colors[FlowGridCol_ParamsBg] = {1, 1, 1, 1};
+        }
+        void ColorsClassic() {
+            Colors[FlowGridCol_HighlightText] = {1, 0.6, 0, 1};
+            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
+            Colors[FlowGridCol_ParamsBg] = {0.43, 0.43, 0.43, 0.1};
         }
 
         void DiagramColorsDark() {
@@ -877,11 +863,27 @@ struct Style : Window {
     };
     struct ImGuiStyle : UIStateMember {
         ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-            ImGui::StyleColorsDark(Colors);
+            ColorsDark();
         }
 
         void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
+
+        void ColorsDark() {
+            vector<ImVec4> dst(Colors.size());
+            ImGui::StyleColorsDark(&dst[0]);
+            Colors = dst;
+        }
+        void ColorsLight() {
+            vector<ImVec4> dst(Colors.size());
+            ImGui::StyleColorsLight(&dst[0]);
+            Colors = dst;
+        }
+        void ColorsClassic() {
+            vector<ImVec4> dst(Colors.size());
+            ImGui::StyleColorsClassic(&dst[0]);
+            Colors = dst;
+        }
 
         static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 
@@ -948,17 +950,41 @@ struct Style : Window {
         Float MouseCursorScale{this, "MouseCursorScale", 1};
         Float ColumnsMinSpacing{this, "ColumnsMinSpacing", 6};
 
-        // Colors
         Colors Colors{this, "Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName};
     };
     struct ImPlotStyle : UIStateMember {
         ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
             Colormap = ImPlotColormap_Deep;
-            ImPlot::StyleColorsAuto(Colors);
+            ColorsAuto();
         }
 
         void Apply(ImPlotContext *ctx) const;
         void Draw() const override;
+
+        void ColorsAuto() {
+            vector<ImVec4> dst(Colors.size());
+            ImPlot::StyleColorsAuto(&dst[0]);
+            Colors = dst;
+            MinorAlpha = 0.25f;
+        }
+        void ColorsDark() {
+            vector<ImVec4> dst(Colors.size());
+            ImPlot::StyleColorsDark(&dst[0]);
+            Colors = dst;
+            MinorAlpha = 0.25f;
+        }
+        void ColorsLight() {
+            vector<ImVec4> dst(Colors.size());
+            ImPlot::StyleColorsLight(&dst[0]);
+            Colors = dst;
+            MinorAlpha = 1;
+        }
+        void ColorsClassic() {
+            vector<ImVec4> dst(Colors.size());
+            ImPlot::StyleColorsClassic(&dst[0]);
+            Colors = dst;
+            MinorAlpha = 0.5f;
+        }
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.
@@ -1201,11 +1227,12 @@ struct show_save_project_dialog {};
 
 struct close_application {};
 
-struct set_value { JsonPath path; json value; };
-struct set_values { std::map<JsonPath, json> values; };
+struct set_value { JsonPath path; Primitive value; };
+struct set_values { std::map<JsonPath, Primitive> values; };
 //struct patch_value { JsonPatch patch; };
 struct toggle_value { JsonPath path; };
 
+struct set_imgui_settings { json settings; };
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
 struct set_flowgrid_color_style { int id; };
@@ -1231,7 +1258,7 @@ using Action = std::variant<
 
     set_value, set_values, toggle_value,
 
-    set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
+    set_imgui_settings, set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
     set_flowgrid_diagram_layout_style,
 
     show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
@@ -1294,6 +1321,7 @@ const std::map<ID, string> name_for_id{
     {id<toggle_value>, ActionName(toggle_value)},
 //    {id<patch_value>,              ActionName(patch_value)},
 
+    {id<set_imgui_settings>, "Set ImGui settings"},
     {id<set_imgui_color_style>, "Set ImGui color style"},
     {id<set_implot_color_style>, "Set ImPlot color style"},
     {id<set_flowgrid_color_style>, "Set FlowGrid color style"},

@@ -4,8 +4,6 @@
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/map.hpp>
 
-void save_box_svg(const string &path); // defined in FaustUI
-
 Context::Context() : state_json(state), gesture_begin_state_json(state) {
     if (fs::exists(PreferencesPath)) {
         preferences = json::from_msgpack(FileIO::read(PreferencesPath));
@@ -169,64 +167,6 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
 }
 
 // Private methods
-
-void Context::on_action(const Action &action) {
-    if (!action_allowed(action)) return; // Safeguard against actions running in an invalid state.
-
-    std::visit(visitor{
-        // Handle actions that don't directly update state.
-        // These options don't get added to the action/gesture history, since they only have non-application side effects,
-        // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Actions::open_project &a) { open_project(a.path); },
-        [&](const open_empty_project &) { open_project(EmptyProjectPath); },
-        [&](const open_default_project &) { open_project(DefaultProjectPath); },
-
-        [&](const Actions::save_project &a) { save_project(a.path); },
-        [&](const save_default_project &) { save_project(DefaultProjectPath); },
-        [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
-        [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
-        [&](const save_faust_svg_file &a) { save_box_svg(a.path); },
-
-        // `diff_index`-changing actions:
-        [&](const undo &) { increment_diff_index(-1); },
-        [&](const redo &) { increment_diff_index(1); },
-        [&](const Actions::set_diff_index &a) {
-            if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
-            set_diff_index(a.diff_index);
-        },
-
-        // Remaining actions have a direct effect on the application state.
-        // Keep JSON & struct versions of state in sync.
-        [&](const set_value &a) {
-            const auto before_json = state_json;
-            state_json[a.path] = a.value;
-            state = state_json;
-            on_patch(a, json::diff(before_json, state_json));
-        },
-        [&](const set_values &a) {
-            const auto before_json = state_json;
-            for (const auto &[path, value]: a.values) {
-                state_json[path] = value;
-            }
-            state = state_json;
-            on_patch(a, json::diff(before_json, state_json));
-        },
-        [&](const toggle_value &a) {
-            const auto before_json = state_json;
-            state_json[a.path] = !state_json[a.path];
-            state = state_json;
-            on_patch(a, json::diff(before_json, state_json));
-            // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row and undoing does nothing, since they're compressed into nothing.
-            finalize_gesture();
-        },
-        [&](const auto &a) {
-            const auto before_json = state_json;
-            state.Update(a);
-            state_json = state;
-            on_patch(a, json::diff(before_json, state_json));
-        },
-    }, action);
-}
 
 void Context::finalize_gesture() {
     if (active_gesture.empty()) return;

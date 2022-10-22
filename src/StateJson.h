@@ -51,6 +51,16 @@ constexpr void extended_from_json(const char *key, const json &j, T &value) {
     else j.at(key).get_to(value);
 }
 
+namespace nlohmann {
+inline void to_json(json &j, const ImVec4 &value) {
+    j = json{{"x", value.x}, {"y", value.y}, {"z", value.z}, {"w", value.w}};
+}
+inline void from_json(const json &j, ImVec4 &field) {
+    const json &inner_j = j.is_array() ? j[1] : j;
+    field = {inner_j["x"], inner_j["y"], inner_j["z"], inner_j["w"]};
+}
+}
+
 // Serialize variants.
 // Based on https://github.com/nlohmann/json/issues/1261#issuecomment-426209912
 // todo should be able to simplify the switch part.
@@ -75,6 +85,7 @@ struct variant_switch<0> {
 }
 
 namespace nlohmann {
+
 template<typename ...Args>
 // Serialize variants as two-element arrays, [index, value]. Value element can possibly be null.
 struct adl_serializer<std::variant<Args...>> {
@@ -103,32 +114,45 @@ struct adl_serializer<std::variant<Args...>> {
 JsonType(Preferences, recently_opened_paths)
 
 JsonType(ImVec2, x, y)
-JsonType(ImVec4, w, x, y, z)
 JsonType(ImVec2ih, x, y)
 
 namespace nlohmann {
+// todo This specialization to `Primitive` is not working yet - it's always using the generic variant converters above using the [index, value] encoding.
+//  That's the reason behind all the `j.is_array()` checks below.
+inline void to_json(json &j, const Primitive &field) {
+    std::visit([&](auto &&value) {
+        j = std::forward<decltype(value)>(value);
+    }, field);
+}
+inline void from_json(const json &j, Primitive &field) {
+    field = j;
+}
 inline void to_json(json &j, const Bool &field) { j = bool(field); }
-inline void from_json(const json &j, Bool &field) { field = bool(j); }
+inline void from_json(const json &j, Bool &field) { field = bool(j.is_array() ? j[1] : j); }
 
 inline void to_json(json &j, const Float &field) { j = float(field); }
-inline void from_json(const json &j, Float &field) { field = float(j); }
+inline void from_json(const json &j, Float &field) { field = float(j.is_array() ? j[1] : j); }
 
 inline void to_json(json &j, const Vec2 &field) { j = ImVec2(field); }
-inline void from_json(const json &j, Vec2 &field) { field = ImVec2(j); }
+inline void from_json(const json &j, Vec2 &field) { field = ImVec2(j.is_array() ? j[1] : j); }
 
 inline void to_json(json &j, const Int &field) { j = int(field); }
-inline void from_json(const json &j, Int &field) { field = int(j); }
+inline void from_json(const json &j, Int &field) { field = int(j.is_array() ? j[1] : j); }
 
 inline void to_json(json &j, const String &field) { j = string(field); }
-inline void from_json(const json &j, String &field) { field = string(j); }
+inline void from_json(const json &j, String &field) { field = string(j.is_array() ? j[1] : j); }
 
 inline void to_json(json &j, const Enum &field) { j = int(field); }
-inline void from_json(const json &j, Enum &field) { field = int(j); }
+inline void from_json(const json &j, Enum &field) { field = int(j.is_array() ? j[1] : j); }
 
 inline void to_json(json &j, const Flags &field) { j = int(field); }
-inline void from_json(const json &j, Flags &field) { field = int(j); }
+inline void from_json(const json &j, Flags &field) { field = int(j.is_array() ? j[1] : j); }
 
-inline void to_json(json &j, const Colors &field) { j = vector<ImVec4>(field); }
+inline void to_json(json &j, const Colors &field) {
+    vector<ImVec4> vec(field.size());
+    for (int i = 0; i < int(field.size()); i++) { vec[i] = field[i]; }
+    j = vec;
+}
 inline void from_json(const json &j, Colors &field) { field = vector<ImVec4>(j); }
 }
 
@@ -210,6 +234,7 @@ JsonType(set_value, path, value)
 JsonType(set_values, values)
 //JsonType(patch_value, patch)
 JsonType(toggle_value, path)
+JsonType(set_imgui_settings, settings)
 JsonType(set_imgui_color_style, id)
 JsonType(set_implot_color_style, id)
 JsonType(set_flowgrid_color_style, id)

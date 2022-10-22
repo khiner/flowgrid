@@ -663,10 +663,7 @@ struct File : StateMember {
         bool SaveMode; // The same file dialog instance is used for both saving & opening files.
         int MaxNumSelections;
         ImGuiFileDialogFlags Flags;
-        string Title;
-        string Filters;
-        string FilePath;
-        string DefaultFileName;
+        string Title, Filters, FilePath, DefaultFileName;
     };
 
     // TODO window?
@@ -1040,16 +1037,11 @@ struct Processes : StateMember {
 // The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).
 // This is a copy, and should be kept up-to-date with that definition.
 struct ImGuiDockNodeSettings {
-    ImGuiID ID{};
-    ImGuiID ParentNodeId{};
-    ImGuiID ParentWindowId{};
-    ImGuiID SelectedTabId{};
+    ImGuiID ID{}, ParentNodeId{}, ParentWindowId{}, SelectedTabId{};
     signed char SplitAxis{};
     char Depth{};
     ImGuiDockNodeFlags Flags{};
-    ImVec2ih Pos{};
-    ImVec2ih Size{};
-    ImVec2ih SizeRef{};
+    ImVec2ih Pos{}, Size{}, SizeRef{};
 };
 
 // ImGui exposes the `ImGuiTableColumnSettings` definition in `imgui_internal.h`.
@@ -1059,9 +1051,7 @@ struct ImGuiDockNodeSettings {
 struct TableColumnSettings {
     float WidthOrWeight;
     ImGuiID UserID;
-    ImGuiTableColumnIdx Index;
-    ImGuiTableColumnIdx DisplayOrder;
-    ImGuiTableColumnIdx SortOrder;
+    ImGuiTableColumnIdx Index, DisplayOrder, SortOrder;
     ImU8 SortDirection;
     bool IsEnabled; // "Visible" in ini file
     bool IsStretch;
@@ -1136,8 +1126,7 @@ using JsonPatch = std::vector<JsonPatchOp>;
 
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
-    JsonPatch Forward;
-    JsonPatch Reverse;
+    JsonPatch Forward, Reverse;
     TimePoint Time;
 };
 using Diffs = std::vector<BidirectionalStateDiff>;

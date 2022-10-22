@@ -2,6 +2,41 @@
 
 std::map<ImGuiID, StateMember *> StateMember::WithID{};
 
+namespace Field {
+Bool &Bool::operator=(bool v) {
+    value = v;
+    return *this;
+}
+Int &Int::operator=(int v) {
+    value = v;
+    return *this;
+}
+Float &Float::operator=(float v) {
+    value = v;
+    return *this;
+}
+Vec2 &Vec2::operator=(const ImVec2 &v) {
+    value = v;
+    return *this;
+}
+String &String::operator=(string v) {
+    value = std::move(v);
+    return *this;
+}
+Enum &Enum::operator=(int v) {
+    value = v;
+    return *this;
+}
+Flags &Flags::operator=(int v) {
+    value = v;
+    return *this;
+}
+Colors &Colors::operator=(std::vector<ImVec4> v) {
+    value = std::move(v);
+    return *this;
+}
+}
+
 string to_string(const IO io, const bool shorten) {
     switch (io) {
         case IO_In: return shorten ? "in" : "input";

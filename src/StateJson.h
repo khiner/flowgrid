@@ -108,28 +108,28 @@ JsonType(ImVec2ih, x, y)
 
 namespace nlohmann {
 inline void to_json(json &j, const Bool &field) { j = field.value; }
-inline void from_json(const json &j, Bool &field) { field.value = j; }
+inline void from_json(const json &j, Bool &field) { field = bool(j); }
 
 inline void to_json(json &j, const Float &field) { j = field.value; }
-inline void from_json(const json &j, Float &field) { field.value = j; }
+inline void from_json(const json &j, Float &field) { field = float(j); }
 
 inline void to_json(json &j, const Vec2 &field) { j = field.value; }
-inline void from_json(const json &j, Vec2 &field) { field.value = j; }
+inline void from_json(const json &j, Vec2 &field) { field = ImVec2(j); }
 
 inline void to_json(json &j, const Int &field) { j = field.value; }
-inline void from_json(const json &j, Int &field) { field.value = j; }
+inline void from_json(const json &j, Int &field) { field = int(j); }
 
 inline void to_json(json &j, const String &field) { j = field.value; }
-inline void from_json(const json &j, String &field) { field.value = j; }
+inline void from_json(const json &j, String &field) { field = string(j); }
 
 inline void to_json(json &j, const Enum &field) { j = field.value; }
-inline void from_json(const json &j, Enum &field) { field.value = j; }
+inline void from_json(const json &j, Enum &field) { field = int(j); }
 
 inline void to_json(json &j, const Flags &field) { j = field.value; }
-inline void from_json(const json &j, Flags &field) { field.value = j; }
+inline void from_json(const json &j, Flags &field) { field = int(j); }
 
 inline void to_json(json &j, const Colors &field) { j = field.value; }
-inline void from_json(const json &j, Colors &field) { field.value = j; }
+inline void from_json(const json &j, Colors &field) { field = std::vector<ImVec4>(j); }
 }
 
 NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {

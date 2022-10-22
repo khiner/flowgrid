@@ -23,7 +23,7 @@ bool FileIO::write(const fs::path &path, const string &contents) {
     return false;
 }
 
-bool FileIO::write(const fs::path &path, const MessagePackBytes &contents) {
+bool FileIO::write(const fs::path &path, const vector<std::uint8_t> &contents) {
     std::fstream out_file(path, std::ios::out | std::ios::binary);
     if (out_file) {
         out_file.write(reinterpret_cast<const char *>(contents.data()), std::streamsize(contents.size()));

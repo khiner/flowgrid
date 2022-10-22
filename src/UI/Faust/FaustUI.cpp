@@ -345,7 +345,7 @@ static string get_box_type(Box t);
 struct Node {
     Tree tree;
     const Count in_count, out_count;
-    const std::vector<Node *> children{};
+    const vector<Node *> children{};
     const Count descendents = 0; // The number of boxes within this node (recursively).
     const bool is_top_level;
     ImVec2 position; // Populated in `place`
@@ -353,7 +353,7 @@ struct Node {
 
     Diagram orientation = DiagramForward;
 
-    Node(Tree t, Count in_count, Count out_count, std::vector<Node *> children = {}, Count directDescendents = 0)
+    Node(Tree t, Count in_count, Count out_count, vector<Node *> children = {}, Count directDescendents = 0)
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
           descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Node *child) { return child->descendents; }), 0)),
         // `DiagramFoldComplexity == 0` means no folding
@@ -494,7 +494,7 @@ void write_svg(Node *node, const fs::path &path) {
 }
 
 struct IONode : Node {
-    IONode(Tree t, Count in_count, Count out_count, std::vector<Node *> children = {}, Count directDescendents = 0)
+    IONode(Tree t, Count in_count, Count out_count, vector<Node *> children = {}, Count directDescendents = 0)
         : Node(t, in_count, out_count, std::move(children), directDescendents) {}
 
     ImVec2 point(IO io, Count i) const override {
@@ -611,7 +611,7 @@ struct CableNode : Node {
     ImVec2 point(IO, Count i) const override { return points[i]; }
 
 private:
-    std::vector<ImVec2> points{in_count};
+    vector <ImVec2> points{in_count};
 };
 
 // An inverter is a circle followed by a triangle.
@@ -833,7 +833,7 @@ struct SequentialNode : BinaryNode {
     }
 
 private:
-    std::map<ImGuiDir, std::vector<Count>> channels_for_direction;
+    std::map<ImGuiDir, vector < Count>> channels_for_direction;
 };
 
 // Place and connect two diagrams in merge composition.
@@ -907,7 +907,7 @@ private:
 };
 
 struct RouteNode : IONode {
-    RouteNode(Tree t, Count in_count, Count out_count, std::vector<int> routes)
+    RouteNode(Tree t, Count in_count, Count out_count, vector<int> routes)
         : IONode(t, in_count, out_count), routes(std::move(routes)) {}
 
     void _place_size(const DeviceType) override {
@@ -943,7 +943,7 @@ struct RouteNode : IONode {
     }
 
 protected:
-    const std::vector<int> routes; // Route description: s1,d2,s2,d2,...
+    const vector<int> routes; // Route description: s1,d2,s2,d2,...
 };
 
 static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
@@ -974,7 +974,7 @@ static inline string print_tree(Tree tree) {
 
 // Collect the leaf numbers of tree `t` into vector `v`.
 // Return true if `t` is a number or a parallel tree of numbers.
-static bool isIntTree(Tree t, std::vector<int> &v) {
+static bool isIntTree(Tree t, vector<int> &v) {
     int i;
     if (isBoxInt(t, &i)) {
         v.push_back(i);
@@ -1101,7 +1101,7 @@ static Node *Tree2NodeNode(Tree t) {
     Tree route;
     if (isBoxRoute(t, a, b, route)) {
         int ins, outs;
-        std::vector<int> routes;
+        vector<int> routes;
         // Build n x m cable routing
         if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isIntTree(route, routes)) return new RouteNode(t, ins, outs, routes);
         throw std::runtime_error("Invalid route expression : " + print_tree(t));

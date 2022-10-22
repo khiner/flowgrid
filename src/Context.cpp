@@ -139,14 +139,14 @@ void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction d
 }
 
 StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
-    std::vector<JsonPath> paths;
+    vector<JsonPath> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
     for (const auto &path: views::keys(gesture_update_times_for_path)) {
         if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
     }
 
     const bool has_gesture = !gesture_update_times_for_path.empty();
-    std::vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
+    vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
     int i = 0;
     for (const auto &path: paths) {
         values[i++] = committed_update_times_for_path.contains(path) ? committed_update_times_for_path.at(path).size() : 0;
@@ -163,7 +163,7 @@ StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
         char *label = new char[path.size()];
         std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
         return label;
-    }) | to<std::vector<const char *>>;
+    }) | to<vector<const char *>>;
 
     return {labels, values};
 }

@@ -118,9 +118,9 @@ SoundIoInStream *instream = nullptr;
 SoundIoOutStream *outstream = nullptr;
 
 // Each of these arrays can be indexed by an `IO`, e.g. `device_ids[IO_In]`.
-std::vector<string> device_ids[IO_Count];
-std::vector<Audio::IoFormat> supported_formats[IO_Count];
-std::vector<int> supported_sample_rates[IO_Count];
+vector<string> device_ids[IO_Count];
+vector<Audio::IoFormat> supported_formats[IO_Count];
+vector<int> supported_sample_rates[IO_Count];
 SoundIoDevice *devices[IO_Count];
 SoundIoChannelArea *areas[IO_Count];
 Sample **faust_buffers[IO_Count];

@@ -265,7 +265,7 @@ void IGFD::ShowDemoWindow() {
 
     // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
     const auto &selections = dialog->GetSelection();
-    static std::vector<std::pair<string, string>> selection = {};
+    static vector <std::pair<string, string>> selection = {};
     selection.clear();
     for (const auto &sel: selections) selection.emplace_back(sel.first, sel.second);
 

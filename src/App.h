@@ -139,7 +139,7 @@ struct Int : Base {
     operator int() const { return value; }
     Int &operator=(int);
     bool Draw() const override;
-    bool Draw(const std::vector<int> &options) const;
+    bool Draw(const vector<int> &options) const;
 
     int min, max;
 
@@ -193,24 +193,24 @@ struct String : Base {
     bool operator==(const string &v) const { return value == v; }
 
     bool Draw() const override;
-    bool Draw(const std::vector<string> &options) const;
+    bool Draw(const vector<string> &options) const;
 
 private:
     string value;
 };
 
 struct Enum : Base {
-    Enum(const StateMember *parent, const string &id, std::vector<string> names, int value = 0)
+    Enum(const StateMember *parent, const string &id, vector<string> names, int value = 0)
         : Base(parent, id), names(std::move(names)), value(value) {}
 
     operator int() const { return value; }
     Enum &operator=(int);
 
     bool Draw() const override;
-    bool Draw(const std::vector<int> &options) const;
+    bool Draw(const vector<int> &options) const;
     bool DrawMenu() const;
 
-    std::vector<string> names;
+    vector<string> names;
 
 private:
     int value;
@@ -230,7 +230,7 @@ struct Flags : Base {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(const StateMember *parent, const string &id, std::vector<Item> items, int value = 0)
+    Flags(const StateMember *parent, const string &id, vector<Item> items, int value = 0)
         : Base(parent, id), items(std::move(items)), value(value) {}
 
     operator int() const { return value; }
@@ -239,7 +239,7 @@ struct Flags : Base {
     bool Draw() const override;
     bool DrawMenu() const;
 
-    std::vector<Item> items;
+    vector<Item> items;
 
 private:
     int value;
@@ -247,25 +247,25 @@ private:
 
 struct Colors : Base {
     Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
-        : Base(parent, path_segment), names(views::iota(0, int(size)) | transform(GetColorName) | to<std::vector<string>>), allow_auto(allow_auto), value(size) {}
+        : Base(parent, path_segment), names(views::iota(0, int(size)) | transform(GetColorName) | to<vector<string>>), allow_auto(allow_auto), value(size) {}
 
     operator ImVec4 *() { return &value[0]; }
     operator const ImVec4 *() const { return &value[0]; }
-    operator const std::vector<ImVec4>() const { return value; }
+    operator vector<ImVec4>() const { return value; }
 
     ImVec4 &operator[](const size_t index) { return value[index]; }
     const ImVec4 &operator[](const size_t index) const { return value[index]; }
 
-    Colors &operator=(std::vector<ImVec4>);
+    Colors &operator=(vector<ImVec4>);
     size_t size() const { return value.size(); }
 
     bool Draw() const override;
 
-    std::vector<string> names;
+    vector<string> names;
     bool allow_auto;
 
 private:
-    std::vector<ImVec4> value;
+    vector<ImVec4> value;
 };
 
 } // End `Field` namespace
@@ -302,7 +302,7 @@ enum ParamsWidthSizingPolicy_ {
 };
 using ParamsWidthSizingPolicy = int;
 
-static const std::vector<Flags::Item> TableFlagItems{
+static const vector<Flags::Item> TableFlagItems{
     "Resizable?Enable resizing columns",
     "Reorderable?Enable reordering columns in header row",
     "Hideable?Enable hiding/disabling columns in context menu",
@@ -470,8 +470,8 @@ struct Audio : Process {
         IoFormat_S16NE,
     };
     using IoFormat = int;
-    static const std::vector<IoFormat> PrioritizedDefaultFormats;
-    static const std::vector<int> PrioritizedDefaultSampleRates;
+    static const vector<IoFormat> PrioritizedDefaultFormats;
+    static const vector<int> PrioritizedDefaultSampleRates;
 
     void Draw() const override;
 
@@ -1061,7 +1061,7 @@ struct TableColumnSettings {
 
 struct TableSettings {
     ImGuiTableSettings Table;
-    std::vector<TableColumnSettings> Columns;
+    vector<TableColumnSettings> Columns;
 };
 
 struct ImGuiSettingsData {
@@ -1070,7 +1070,7 @@ struct ImGuiSettingsData {
 
     ImVector<ImGuiDockNodeSettings> Nodes;
     ImVector<ImGuiWindowSettings> Windows;
-    std::vector<TableSettings> Tables;
+    vector<TableSettings> Tables;
 };
 
 struct ImGuiSettings : StateMember, ImGuiSettingsData {
@@ -1119,14 +1119,14 @@ struct JsonPatchOp {
     std::optional<json> value; // Present for add/replace/test
     std::optional<string> from; // Present for copy/move
 };
-using JsonPatch = std::vector<JsonPatchOp>;
+using JsonPatch = vector<JsonPatchOp>;
 
 // One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
     JsonPatch Forward, Reverse;
     TimePoint Time;
 };
-using Diffs = std::vector<BidirectionalStateDiff>;
+using Diffs = vector<BidirectionalStateDiff>;
 
 //-----------------------------------------------------------------------------
 // [SECTION] Actions
@@ -1217,8 +1217,8 @@ using Action = std::variant<
 namespace action {
 using ID = size_t;
 
-using Gesture = std::vector<Action>;
-using Gestures = std::vector<Gesture>;
+using Gesture = vector<Action>;
+using Gestures = vector<Gesture>;
 
 // Default-construct an action by its variant index (which is also its `ID`).
 // From https://stackoverflow.com/a/60567091/780425
@@ -1376,13 +1376,13 @@ enum Direction { Forward, Reverse };
 
 struct StateStats {
     struct Plottable {
-        std::vector<const char *> labels;
-        std::vector<ImU64> values;
+        vector<const char *> labels;
+        vector<ImU64> values;
     };
 
-    std::vector<JsonPath> latest_updated_paths{};
-    std::map<JsonPath, std::vector<TimePoint>> gesture_update_times_for_path{};
-    std::map<JsonPath, std::vector<TimePoint>> committed_update_times_for_path{};
+    vector<JsonPath> latest_updated_paths{};
+    std::map<JsonPath, vector<TimePoint>> gesture_update_times_for_path{};
+    std::map<JsonPath, vector<TimePoint>> committed_update_times_for_path{};
     std::map<JsonPath, TimePoint> latest_update_time_for_path{};
     Plottable PathUpdateFrequency;
 

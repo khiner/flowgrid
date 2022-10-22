@@ -128,8 +128,8 @@ inline void from_json(const json &j, Enum &field) { field = int(j); }
 inline void to_json(json &j, const Flags &field) { j = int(field); }
 inline void from_json(const json &j, Flags &field) { field = int(j); }
 
-inline void to_json(json &j, const Colors &field) { j = std::vector<ImVec4>(field); }
-inline void from_json(const json &j, Colors &field) { field = std::vector<ImVec4>(j); }
+inline void to_json(json &j, const Colors &field) { j = vector<ImVec4>(field); }
+inline void from_json(const json &j, Colors &field) { field = vector<ImVec4>(j); }
 }
 
 NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {

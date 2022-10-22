@@ -121,7 +121,7 @@ struct ZepEditor_ImGui : ZepEditor {
         bool handled = false;
         ImGuiModFlags mod = 0;
 
-        static std::vector<ImGuiKey> F_KEYS = {
+        static vector<ImGuiKey> F_KEYS = {
             ImGuiKey_F1,
             ImGuiKey_F2,
             ImGuiKey_F3,

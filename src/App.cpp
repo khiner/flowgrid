@@ -31,7 +31,7 @@ Flags &Flags::operator=(int v) {
     value = v;
     return *this;
 }
-Colors &Colors::operator=(std::vector<ImVec4> v) {
+Colors &Colors::operator=(vector<ImVec4> v) {
     value = std::move(v);
     return *this;
 }

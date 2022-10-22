@@ -128,7 +128,7 @@ bool Field::Int::Draw() const {
     HelpMarker();
     return edited;
 }
-bool Field::Int::Draw(const std::vector<int> &options) const {
+bool Field::Int::Draw(const vector<int> &options) const {
     bool edited = false;
     if (BeginCombo(Name.c_str(), std::to_string(value).c_str())) {
         for (const auto option: options) {
@@ -176,9 +176,9 @@ bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
 bool Field::Vec2::Draw() const { return Draw(ImGuiSliderFlags_None); }
 
 bool Field::Enum::Draw() const {
-    return Draw(views::ints(0, int(names.size())) | to<std::vector<int>>); // todo if I stick with this pattern, cache.
+    return Draw(views::ints(0, int(names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
-bool Field::Enum::Draw(const std::vector<int> &choices) const {
+bool Field::Enum::Draw(const vector<int> &choices) const {
     bool edited = false;
     if (BeginCombo(Name.c_str(), names[value].c_str())) {
         for (int choice: choices) {
@@ -261,7 +261,7 @@ bool Field::String::Draw() const {
     TextUnformatted(value.c_str());
     return false;
 }
-bool Field::String::Draw(const std::vector<string> &options) const {
+bool Field::String::Draw(const vector<string> &options) const {
     bool edited = false;
     if (BeginCombo(Name.c_str(), value.c_str())) {
         for (const auto &option: options) {
@@ -649,7 +649,7 @@ ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
         ImGuiTableColumnSettings *column_settings = ts->GetColumnSettings();
         const auto *table = TableFindByID(ts->ID);
         ImGuiTableColumn *column = table->Columns.Data;
-        std::vector<TableColumnSettings> cs;
+        vector<TableColumnSettings> cs;
         for (int n = 0; n < ts->ColumnsCount; n++, column++, column_settings++) cs.emplace_back(*column_settings);
         Tables.push_back({*ts, cs});
     }
@@ -1275,8 +1275,8 @@ void ApplicationSettings::Draw() const {
     GestureDurationSec.Draw();
 }
 
-const std::vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
-const std::vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
+const vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
+const vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
     IoFormat_Float64NE,
     IoFormat_Float32NE,
     IoFormat_S32NE,

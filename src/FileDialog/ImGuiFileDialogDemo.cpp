@@ -5,6 +5,8 @@
 
 #include "../App.h"
 
+using namespace ImGui;
+
 inline bool RadioButtonLabeled(const char *label, const char *help, bool active, bool disabled) {
     using namespace ImGui;
 
@@ -45,7 +47,7 @@ inline bool RadioButtonLabeled(const char *label, const char *help, bool active,
     }
 
     if (label_size.x > 0) RenderText(check_bb.GetCenter() - label_size * 0, label);
-    if (help && ImGui::IsItemHovered())ImGui::SetTooltip("%s", help);
+    if (help && IsItemHovered())SetTooltip("%s", help);
 
     return pressed;
 }
@@ -127,10 +129,10 @@ void IGFD::InitializeDemo() {
 
     static const ImWchar icons_ranges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
     ImFontConfig icons_config;
-    icons_config.DstFont = ImGui::GetDefaultFont();
+    icons_config.DstFont = GetDefaultFont();
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
-    ImGui::GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15, &icons_config, icons_ranges);
+    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15, &icons_config, icons_ranges);
 
     // Singleton access
     dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", ImVec4(1, 1, 0, 0.9f)); // use a regex
@@ -166,26 +168,26 @@ void IGFD::InitializeDemo() {
 void IGFD::ShowDemoWindow() {
 #ifdef USE_EXPLORATION_BY_KEYS
     static float flashingAttenuationInSeconds = 1.0f;
-    if (ImGui::Button("R##resetflashlifetime")) {
+    if (Button("R##resetflashlifetime")) {
         flashingAttenuationInSeconds = 1.0f;
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
     }
-    ImGui::SameLine();
-    ImGui::PushItemWidth(200);
-    if (ImGui::SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.0f)) {
+    SameLine();
+    PushItemWidth(200);
+    if (SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.0f)) {
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
     }
-    ImGui::PopItemWidth();
+    PopItemWidth();
 #endif
 
-    ImGui::Separator();
+    Separator();
 
     static ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_Default;
-    ImGui::Text("ImGuiFileDialog flags: ");
-    ImGui::Indent();
+    Text("ImGuiFileDialog flags: ");
+    Indent();
     {
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Overwrite", "Overwrite verification before dialog closing", &flags, ImGuiFileDialogFlags_ConfirmOverwrite);
-        ImGui::SameLine();
+        SameLine();
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide hidden files", "Hide hidden files", &flags, ImGuiFileDialogFlags_DontShowHiddenFiles);
 
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Disable directory creation", "Disable directory creation button in dialog", &flags, ImGuiFileDialogFlags_DisableCreateDirectoryButton);
@@ -193,66 +195,66 @@ void IGFD::ShowDemoWindow() {
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Disable thumbnails mode", "Disable thumbnails display in dialog", &flags, ImGuiFileDialogFlags_DisableThumbnailMode);
 #endif
 #ifdef USE_BOOKMARK
-        ImGui::SameLine();
+        SameLine();
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Disable bookmark mode", "Disable bookmark display in dialog", &flags, ImGuiFileDialogFlags_DisableBookmarkMode);
 #endif
 
-        ImGui::Text("Hide Column by default: (saved in imgui.ini, \n\tso defined when the imgui.ini does not exist)");
+        Text("Hide Column by default: (saved in imgui.ini, \n\tso defined when the imgui.ini does not exist)");
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide 'Type' column", "Hide file type by default", &flags, ImGuiFileDialogFlags_HideColumnType);
-        ImGui::SameLine();
+        SameLine();
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide 'Size' column", "Hide file size by default", &flags, ImGuiFileDialogFlags_HideColumnSize);
-        ImGui::SameLine();
+        SameLine();
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide 'Date' column", "Hide file date by default", &flags, ImGuiFileDialogFlags_HideColumnDate);
         RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Case-insensitive extensions", "will not take into account the case of file extensions", &flags, ImGuiFileDialogFlags_CaseInsensitiveExtention);
     }
-    ImGui::Unindent();
+    Unindent();
 
     static string filePathName; // Keep track of the last chosen file. There's an option below to open this path.
     static string chooseFile = ICON_IGFD_FOLDER_OPEN " Choose a file";
     static const char *chooseFileSave = ICON_IGFD_SAVE " Choose a file";
 
-    ImGui::Text("Singleton access:");
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
-        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags}});
+    Text("Singleton access:");
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
+        q(open_file_dialog{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
     }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with collections of filters")) {
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with collections of filters")) {
         const string filters = "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md";
-        q(open_file_dialog{{chooseFile, filters, ".", "", false, 1, flags}});
+        q(open_file_dialog{chooseFile, filters, ".", "", false, 1, flags});
     }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open all file types with \".*\" filter")) {
-        q(open_file_dialog{{chooseFile, ".*", ".", filePathName, false, 1, flags}});
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open all file types with \".*\" filter")) {
+        q(open_file_dialog{chooseFile, ".*", ".", filePathName, false, 1, flags});
     }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
-        q(open_file_dialog{{chooseFile, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags}});
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
+        q(open_file_dialog{chooseFile, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags});
     }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
-        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags}});
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
+        q(open_file_dialog{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags});
     }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
-        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags}});
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
+        q(open_file_dialog{chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags});
     }
-    if (ImGui::Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with last file path name")) {
-        q(open_file_dialog{{chooseFile, ".*,.cpp,.h,.hpp", ".", filePathName, false, 1, flags}});
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with last file path name")) {
+        q(open_file_dialog{chooseFile, ".*,.cpp,.h,.hpp", ".", filePathName, false, 1, flags});
     }
 
-    if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
+    if (Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
         const string filters = "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}";
-        q(open_file_dialog{{chooseFileSave, filters, ".", filePathName, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}});
+        q(open_file_dialog{chooseFileSave, filters, ".", filePathName, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite});
     }
 
     // Keeping this around to remind myself that custom panes & UserDatas are a thing.
     // If `cantContinue` is false, the user can't validate the dialog.
     // static bool canValidateDialog = false;
     // inline void InfosPane(const char *filter, IGFDUserDatas userData, bool *cantContinue) {
-    //     ImGui::TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
-    //     ImGui::Text("Selected Filter: %s", filter);
-    //     if (userData) ImGui::Text("User Data: %s", (const char *) userData);
-    //     ImGui::Checkbox("If not checked, you can't validate the dialog", &canValidateDialog);
+    //     TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
+    //     Text("Selected Filter: %s", filter);
+    //     if (userData) Text("User Data: %s", (const char *) userData);
+    //     Checkbox("If not checked, you can't validate the dialog", &canValidateDialog);
     //     if (cantContinue) *cantContinue = canValidateDialog;
     // }
     //
     // auto saveFileUserData = IGFDUserDatas("SaveFile");
-    // if (ImGui::Button(ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
+    // if (Button(ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
     //     const char *filters = "C++ File (*.cpp){.cpp}";
     //     dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters,
     //         ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
@@ -265,53 +267,53 @@ void IGFD::ShowDemoWindow() {
 
     // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
     const auto &selections = dialog->GetSelection();
-    static vector <std::pair<string, string>> selection = {};
+    static vector<std::pair<string, string>> selection = {};
     selection.clear();
     for (const auto &sel: selections) selection.emplace_back(sel.first, sel.second);
 
-    ImGui::Separator();
+    Separator();
 
-    ImGui::Text("FileDialog state:\n");
-    ImGui::Indent();
+    TextUnformatted("FileDialog state:\n");
+    Indent();
     {
-        ImGui::Text("FilePathName: %s", filePathName.c_str());
-        ImGui::Text("FilePath: %s", filePath.c_str());
-        ImGui::Text("Filters: %s", s.File.Dialog.Filters.c_str());
-        ImGui::Text("UserDatas: %s", userData.c_str());
-        ImGui::Text("Selection: ");
-        ImGui::Indent();
+        TextUnformatted(format("FilePathName: {}", filePathName).c_str());
+        TextUnformatted(format("FilePath: {}", filePath).c_str());
+        TextUnformatted(format("Filters: {}", string(s.FileDialog.Filters)).c_str());
+        TextUnformatted(format("UserDatas: {}", userData).c_str());
+        TextUnformatted("Selection: ");
+        Indent();
         {
             static int selected = false;
-            if (ImGui::BeginTable("##GetSelection", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
-                ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
-                ImGui::TableSetupColumn("File name", ImGuiTableColumnFlags_WidthStretch, -1, 0);
-                ImGui::TableSetupColumn("File path name", ImGuiTableColumnFlags_WidthFixed, -1, 1);
-                ImGui::TableHeadersRow();
+            if (BeginTable("##GetSelection", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
+                TableSetupScrollFreeze(0, 1); // Make top row always visible
+                TableSetupColumn("File name", ImGuiTableColumnFlags_WidthStretch, -1, 0);
+                TableSetupColumn("File path name", ImGuiTableColumnFlags_WidthFixed, -1, 1);
+                TableHeadersRow();
 
                 ImGuiListClipper clipper;
-                clipper.Begin((int) selection.size(), ImGui::GetTextLineHeightWithSpacing());
+                clipper.Begin((int) selection.size(), GetTextLineHeightWithSpacing());
                 while (clipper.Step()) {
                     for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
                         const auto &sel = selection[i];
-                        ImGui::TableNextRow();
-                        if (ImGui::TableSetColumnIndex(0)) {
+                        TableNextRow();
+                        if (TableSetColumnIndex(0)) {
                             ImGuiSelectableFlags selectableFlags = ImGuiSelectableFlags_AllowDoubleClick;
                             selectableFlags |= ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
-                            if (ImGui::Selectable(sel.first.c_str(), i == selected, selectableFlags)) selected = i;
+                            if (Selectable(sel.first.c_str(), i == selected, selectableFlags)) selected = i;
                         }
-                        if (ImGui::TableSetColumnIndex(1)) {
-                            ImGui::TextUnformatted(sel.second.c_str());
+                        if (TableSetColumnIndex(1)) {
+                            TextUnformatted(sel.second.c_str());
                         }
                     }
                 }
                 clipper.End();
 
-                ImGui::EndTable();
+                EndTable();
             }
         }
-        ImGui::Unindent();
+        Unindent();
     }
-    ImGui::Unindent();
+    Unindent();
 }
 
 void IGFD::CleanupDemo() {

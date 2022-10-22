@@ -273,8 +273,8 @@ struct Colors : Base {
     operator vector<ImVec4>() const;
     Colors &operator=(vector<ImVec4>);
 
-    ImVec4 &operator[](const size_t);
-    const ImVec4 &operator[](const size_t) const;
+    ImVec4 &operator[](size_t);
+    const ImVec4 &operator[](size_t) const;
     size_t size() const;
 
     bool Draw() const override;
@@ -661,40 +661,9 @@ process = tgroup("grp 1",
     FaustState Faust{this, "Faust"};
 };
 
-using ImGuiFileDialogFlags = int;
-constexpr int FileDialogFlags_Modal = 1 << 27; // Copied from ImGuiFileDialog source with a different name to avoid redefinition. Brittle but we can avoid an include this way.
-
 struct File : StateMember {
     using StateMember::StateMember;
 
-    struct DialogData {
-        // Always open as a modal to avoid user activity outside the dialog.
-        DialogData(string title = "Choose file", string filters = "", string file_path = ".", string default_file_name = "",
-                   const bool save_mode = false, const int &max_num_selections = 1, ImGuiFileDialogFlags flags = 0)
-            : Visible{false}, SaveMode(save_mode), MaxNumSelections(max_num_selections), Flags(flags | FileDialogFlags_Modal),
-              Title(std::move(title)), Filters(std::move(filters)), FilePath(std::move(file_path)), DefaultFileName(std::move(default_file_name)) {};
-
-        bool Visible;
-        bool SaveMode; // The same file dialog instance is used for both saving & opening files.
-        int MaxNumSelections;
-        ImGuiFileDialogFlags Flags;
-        string Title, Filters, FilePath, DefaultFileName;
-    };
-
-    // TODO window?
-    struct FileDialog : DialogData, UIStateMember {
-        FileDialog(const StateMember *parent, const string &id) : DialogData(), UIStateMember(parent, format("{}#{}", id, Title)) {}
-
-        FileDialog &operator=(const DialogData &other) {
-            DialogData::operator=(other);
-            Visible = true;
-            return *this;
-        }
-
-        void Draw() const override;
-    };
-
-    FileDialog Dialog{this, "Dialog"};
 };
 
 enum FlowGridCol_ {
@@ -744,7 +713,7 @@ struct Style : Window {
         Bool DiagramScaleFill{this, "DiagramScaleFill?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings."};
         Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10};
         Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
-        Bool DiagramRouteFrame{this, "DiagramRouteFrame", false};
+        Bool DiagramRouteFrame{this, "DiagramRouteFrame"};
         Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
         Bool DiagramOrientationMark{this, "DiagramOrientationMark", true};
         Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
@@ -1120,6 +1089,42 @@ struct DebugLog : Window {
     void Draw() const override;
 };
 
+using ImGuiFileDialogFlags = int;
+constexpr int FileDialogFlags_Modal = 1 << 27; // Copied from ImGuiFileDialog source with a different name to avoid redefinition. Brittle but we can avoid an include this way.
+
+struct FileDialogData {
+    string title = "Choose file", filters, file_path = ".", default_file_name;
+    bool save_mode = false;
+    int max_num_selections = 1;
+    ImGuiFileDialogFlags flags = 0;
+};
+
+struct FileDialog : Window {
+    FileDialog(const StateMember *parent, const string &id, const bool visible = false) : Window(parent, id, visible) {}
+    FileDialog &operator=(const FileDialogData &data) {
+        Title = data.title;
+        Filters = data.filters;
+        FilePath = data.file_path;
+        DefaultFileName = data.default_file_name;
+        SaveMode = data.save_mode;
+        MaxNumSelections = data.max_num_selections;
+        Flags = data.flags;
+        Visible = true;
+        return *this;
+    }
+
+    void Draw() const override;
+
+    Bool SaveMode{this, "SaveMode"}; // The same file dialog instance is used for both saving & opening files.
+    Int MaxNumSelections{this, "MaxNumSelections", 1};
+//        ImGuiFileDialogFlags Flags;
+    Int Flags{this, "Flags", FileDialogFlags_Modal};
+    String Title{this, "Title", "Choose file"};
+    String Filters{this, "Filters"};
+    String FilePath{this, "FilePath", "."};
+    String DefaultFileName{this, "DefaultFileName"};
+};
+
 // Types for [json-patch](https://jsonpatch.com)
 // For a much more well-defined schema, see https://json.schemastore.org/json-patch.
 
@@ -1185,7 +1190,8 @@ struct open_empty_project {};
 struct open_default_project {};
 struct show_open_project_dialog {};
 
-struct open_file_dialog { File::DialogData dialog; }; // todo store as json and check effect on action size
+struct open_file_dialog { FileDialogData dialog; }; // todo store as json and check effect on action size
+
 struct close_file_dialog {};
 
 struct save_project { string path; };
@@ -1338,7 +1344,7 @@ struct State : UIStateMember {
     ApplicationSettings ApplicationSettings{this, "ApplicationSettings"};
     Audio Audio{this, "Audio"};
     Processes Processes{this, "Processes"};
-    File File{this, "File"};
+    FileDialog FileDialog{this, "FileDialog"};
     Info Info{this, "Info"};
 
     Demo Demo{this, "Demo"};

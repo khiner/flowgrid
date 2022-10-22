@@ -65,8 +65,8 @@ bool Context::action_allowed(const ActionID action_id) const {
         case action::id<Actions::show_save_project_dialog>:
         case action::id<Actions::save_default_project>: return project_has_changes();
         case action::id<Actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
-        case action::id<Actions::open_file_dialog>: return !s.File.Dialog.Visible;
-        case action::id<Actions::close_file_dialog>: return s.File.Dialog.Visible;
+        case action::id<Actions::open_file_dialog>: return !s.FileDialog.Visible;
+        case action::id<Actions::close_file_dialog>: return s.FileDialog.Visible;
         default: return true;
     }
 }

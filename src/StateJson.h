@@ -154,9 +154,7 @@ JsonType(Audio::FaustState::FaustDiagram, Visible, Settings)
 JsonType(Audio::FaustState::FaustParams, Visible)
 JsonType(Audio::FaustState, Code, Diagram, Params, Error, Editor, Log)
 JsonType(Audio, Visible, Running, FaustRunning, InDeviceId, OutDeviceId, InSampleRate, OutSampleRate, InFormat, OutFormat, OutDeviceVolume, Muted, Backend, MonitorInput, Faust)
-JsonType(File::FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags) // todo without this, error "type must be string, but is object" on project load
-JsonType(File::DialogData, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
-JsonType(File, Dialog)
+JsonType(FileDialog, Visible, Title, SaveMode, Filters, FilePath, DefaultFileName, MaxNumSelections, Flags)
 JsonType(StateViewer, Visible, LabelMode, AutoSelect)
 JsonType(ProjectPreview, Visible, Format, Raw)
 JsonType(Metrics::FlowGridMetrics, ShowRelativePaths)
@@ -185,7 +183,9 @@ JsonType(TableColumnSettings, WidthOrWeight, UserID, Index, DisplayOrder, SortOr
 JsonType(TableSettings, Table, Columns)
 JsonType(ImGuiSettingsData, Nodes, Windows, Tables)
 JsonType(Processes, UI)
-JsonType(State, ApplicationSettings, Audio, File, Style, ImGuiSettings, Processes, StateViewer, StateMemoryEditor, PathUpdateFrequency, ProjectPreview, Demo, Info, Metrics, StackTool, DebugLog);
+JsonType(State, ApplicationSettings, Audio, FileDialog, Style, ImGuiSettings, Processes, StateViewer, StateMemoryEditor, PathUpdateFrequency, ProjectPreview, Demo, Info, Metrics, StackTool, DebugLog);
+
+JsonType(FileDialogData, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags)
 
 namespace Actions {
 EmptyJsonType(undo)

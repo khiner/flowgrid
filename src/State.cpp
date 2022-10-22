@@ -545,25 +545,21 @@ void State::Draw() const {
     Metrics.DrawWindow();
     Style.DrawWindow();
     Demo.DrawWindow(ImGuiWindowFlags_MenuBar);
-    File.Dialog.Draw();
-
+    FileDialog.Draw();
     Info.DrawWindow();
 }
 
 // Inspired by [`lager`](https://sinusoid.es/lager/architecture.html#reducer), but only the action-visitor pattern remains.
 void State::Update(const Action &action) {
     std::visit(visitor{
-        [&](const show_open_project_dialog &) { File.Dialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
-        [&](const show_save_project_dialog &) { File.Dialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_open_faust_file_dialog &) { File.Dialog = {"Choose file", FaustDspFileExtension, "."}; },
-        [&](const show_save_faust_file_dialog &) { File.Dialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_save_faust_svg_file_dialog &) { File.Dialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_open_project_dialog &) { FileDialog = {"Choose file", AllProjectExtensionsDelimited, "."}; },
+        [&](const show_save_project_dialog &) { FileDialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_open_faust_file_dialog &) { FileDialog = {"Choose file", FaustDspFileExtension, "."}; },
+        [&](const show_save_faust_file_dialog &) { FileDialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+        [&](const show_save_faust_svg_file_dialog &) { FileDialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
 
-        [&](const open_file_dialog &a) {
-            File.Dialog = a.dialog;
-            File.Dialog.Visible = true;
-        },
-        [&](const close_file_dialog &) { File.Dialog.Visible = false; },
+        [&](const open_file_dialog &a) { FileDialog = a.dialog; },
+        [&](const close_file_dialog &) { FileDialog.Visible = false; },
 
         [&](const set_imgui_color_style &a) {
             ImVec4 *dst = Style.ImGui.Colors;
@@ -1491,11 +1487,11 @@ void StackTool::Draw() const {
 static auto *file_dialog = ImGuiFileDialog::Instance();
 static const string file_dialog_key = "FileDialog";
 
-void File::FileDialog::Draw() const {
+void FileDialog::Draw() const {
     if (!Visible) return file_dialog->Close();
 
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
-    file_dialog->OpenDialog(file_dialog_key, Title, Filters.c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
+    file_dialog->OpenDialog(file_dialog_key, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
 
     const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
     if (file_dialog->Display(file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {

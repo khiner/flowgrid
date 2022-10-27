@@ -1176,7 +1176,7 @@ struct JsonPatchOp {
 };
 using JsonPatch = vector<JsonPatchOp>;
 
-struct StateDiff {
+struct StatePatch {
     JsonPatch Patch;
     TimePoint Time;
 };
@@ -1453,7 +1453,7 @@ struct Context {
     ~Context();
 
     static int history_size();
-    static StateDiff create_diff(int history_index);
+    static StatePatch create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;
     void save_empty_project();

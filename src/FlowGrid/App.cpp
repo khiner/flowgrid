@@ -13,6 +13,11 @@ StateMap gesture_begin_state_map; // Only updated on gesture-end (for diff calcu
 
 vector<std::pair<TimePoint, StateMap>> state_history;
 
+namespace nlohmann {
+inline void to_json(json &j, const StateMap &v) { j = v; }
+inline void from_json(const json &j, StateMap &v) { v = j.flatten(); }
+}
+
 void set(const JsonPath &path, Primitive value) {
     state_map = state_map.set(path.to_string(), std::move(value));
 }
@@ -299,7 +304,7 @@ Context::~Context() = default;
 
 int Context::history_size() { return int(state_history.size()); }
 
-StateDiff Context::create_diff(int history_index) {
+StatePatch Context::create_diff(int history_index) {
     return {
         create_patch(state_history[history_index].second, state_history[history_index + 1].second),
         state_history[history_index + 1].first,
@@ -328,7 +333,7 @@ json Context::get_project_json(const ProjectFormat format) const {
         case None: return nullptr;
         case StateFormat: return state;
         case DiffFormat:
-            return {{"diffs", views::ints(0, int(state_history.size() - 1)) | transform(create_diff) | to<vector<StateDiff>>},
+            return {{"diffs", views::ints(0, int(state_history.size() - 1)) | transform(create_diff) | to<vector<StatePatch>>},
                     {"history_index", state_history_index}};
         case ActionFormat: return gestures;
     }

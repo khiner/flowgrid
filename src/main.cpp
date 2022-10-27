@@ -1,5 +1,5 @@
-#include "UI/UI.h"
-#include "App.h"
+#include "FlowGrid/UI/UI.h"
+#include "FlowGrid/App.h"
 
 // Initialize global variables, and convenient shorthand variables.
 Context context{};

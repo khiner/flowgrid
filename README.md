@@ -216,12 +216,12 @@ Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https:
 * `.fgd`: _FlowGrid**Diffs**_
   - Instead of saving the full application state, `.fgd` project files store a JSON object with two properties:
     *`diffs`: A list of _bidirectional project state diffs_ (each with forward- and reverse-patches), in [JSON Patch](https://jsonpatch.com/) format, corresponding to the application-state effects of every action that has effected the application's state since its launch
-    *`diff_index`: The project's position in the list of diffs. (Or, equivalently, action position or position in the undo-stack)
+    *`history_index`: The project's position in the list of diffs. (Or, equivalently, action position or position in the undo-stack)
     When you save your project as an `.fgd` file, your current undo-position is stored here.
   - FlowGrid loads `.fgd` project files by:
     * Running the `open_empty_project` action (explained above) to clear the current application and load a fresh empty one
     * Setting the application context's `diffs` list to the one stored in the file
-    * Executing each (forward-)diff up to the stored `diff_index`
+    * Executing each (forward-)diff up to the stored `history_index`
 * `.fga`: _FlowGrid**Actions**_
   - Finally, FlowGrid can save and load projects as a list of _action gestures_.
     This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.

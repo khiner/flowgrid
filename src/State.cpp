@@ -35,11 +35,11 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     const ID b_id = get_id(b);
 
     switch (a_id) {
-        case id<undo>:if (b_id == id<set_diff_index>) return b;
+        case id<undo>:if (b_id == id<set_history_index>) return b;
             return b_id == id<redo>;
-        case id<redo>:if (b_id == id<set_diff_index>) return b;
+        case id<redo>:if (b_id == id<set_history_index>) return b;
             return b_id == id<undo>;
-        case id<set_diff_index>:
+        case id<set_history_index>:
         case id<open_empty_project>:
         case id<open_default_project>:
         case id<show_open_project_dialog>:
@@ -287,9 +287,24 @@ bool Field::String::Draw(const vector<string> &options) const {
     return edited;
 }
 
-bool Color::Draw() const {
-    return false;
+bool Color::Draw(ImGuiColorEditFlags flags, bool allow_auto) const {
+    if (allow_auto) {
+        // todo generalize auto colors (linked to ImGui colors) and use in FG colors
+        auto temp = ImPlot::GetStyleColorVec4(index);
+        const bool is_auto = ImPlot::IsColorAuto(index);
+        if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
+        if (Button("Auto")) q(set_value{Path, is_auto ? temp : IMPLOT_AUTO_COL});
+        if (!is_auto) PopStyleVar();
+        SameLine();
+    }
+    ImVec4 value = *this;
+    const bool edited = ImGui::ColorEdit4(path_label(Path).c_str(), (float *) &value, flags | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
+    gestured();
+    if (edited) q(set_value{Path, value});
+    return edited;
 }
+
+bool Color::Draw() const { return Draw(ImGuiColorEditFlags_None); }
 
 //-----------------------------------------------------------------------------
 // [SECTION] Helpers
@@ -328,24 +343,6 @@ void fg::HelpMarker(const char *help) {
         PopTextWrapPos();
         EndTooltip();
     }
-}
-
-bool fg::ColorEdit4(const JsonPath &path, int i, ImGuiColorEditFlags flags, const bool allow_auto) {
-    const auto &full_path = path / i;
-    if (allow_auto) {
-        // todo generalize auto colors (linked to ImGui colors) and use in FG colors
-        auto temp = ImPlot::GetStyleColorVec4(i);
-        const bool is_auto = ImPlot::IsColorAuto(i);
-        if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-        if (Button("Auto")) q(set_value{full_path, is_auto ? temp : IMPLOT_AUTO_COL});
-        if (!is_auto) PopStyleVar();
-        SameLine();
-    }
-    ImVec4 v = sj[full_path];
-    const bool edited = ImGui::ColorEdit4(path_label(full_path).c_str(), (float *) &v, flags | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-    gestured();
-    if (edited) q(set_value{full_path, v});
-    return edited;
 }
 
 void fg::MenuItem(ActionID action_id) {
@@ -809,7 +806,7 @@ void StateViewer::Draw() const {
         EndMenuBar();
     }
 
-    StateJsonTree("State", sj);
+    StateJsonTree("State", json(s)); // todo refactor to use tree of keys, and pull directly from `state_map`
 }
 
 void StateMemoryEditor::Draw() const {
@@ -893,7 +890,7 @@ bool Colors::Draw() const {
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
-            changed |= ColorEdit4(Path, i, ImGuiColorEditFlags_AlphaBar | alpha_flags, allow_auto);
+            changed |= colors[i].Draw(ImGuiColorEditFlags_AlphaBar | alpha_flags, allow_auto);
             SameLine(0, style.ItemInnerSpacing.x);
             TextUnformatted(name);
             PopID();
@@ -1194,8 +1191,8 @@ void Style::Draw() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::Draw() const {
-    int v = c.diff_index;
-    if (SliderInt("Diff index", &v, -1, int(c.diffs.size()) - 1)) q(set_diff_index{v});
+    int value = c.state_history_index;
+    if (SliderInt("History index", &value, 0, Context::history_size() - 1)) q(set_history_index{value});
     GestureDurationSec.Draw();
 }
 
@@ -1337,12 +1334,12 @@ void Metrics::FlowGridMetrics::Draw() const {
     Separator();
     {
         // Diffs
-        const bool has_diffs = !c.diffs.empty();
+        const bool has_diffs = Context::history_size() > 1;
         if (!has_diffs) BeginDisabled();
-        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %lu, Current index: %d)", c.diffs.size(), c.diff_index)) {
-            for (size_t i = 0; i < c.diffs.size(); i++) {
-                if (TreeNodeEx(std::to_string(i).c_str(), int(i) == c.diff_index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    ShowDiffMetrics(c.diffs[i]);
+        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", Context::history_size() - 1, c.state_history_index)) {
+            for (int i = 0; i < Context::history_size(); i++) {
+                if (TreeNodeEx(std::to_string(i).c_str(), i == c.state_history_index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    ShowDiffMetrics(Context::create_diff(i));
                     TreePop();
                 }
             }

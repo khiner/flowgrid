@@ -61,46 +61,6 @@ inline void from_json(const json &j, ImVec4 &field) {
 }
 }
 
-// Serialize variants.
-// Based on https://github.com/nlohmann/json/issues/1261#issuecomment-426209912
-// todo should be able to simplify the switch part.
-namespace detail {
-template<std::size_t N>
-struct variant_switch {
-    template<typename Variant>
-    constexpr void operator()(int index, const json &value, Variant &v) const {
-        if (index == N) v = value.get<std::variant_alternative_t<N, Variant>>();
-        else variant_switch<N - 1>{}(index, value, v);
-    }
-};
-
-template<>
-struct variant_switch<0> {
-    template<typename Variant>
-    constexpr void operator()(int index, const json &value, Variant &v) const {
-        if (index == 0) v = value.get<std::variant_alternative_t<0, Variant>>();
-        else throw std::runtime_error("while converting json to variant: invalid index");
-    }
-};
-}
-
-namespace nlohmann {
-
-template<typename ...Args>
-// Serialize variants as two-element arrays, [index, value]. Value element can possibly be null.
-struct adl_serializer<std::variant<Args...>> {
-    static constexpr inline void to_json(json &j, const std::variant<Args...> &v) {
-        std::visit([&](auto &&value) {
-            j = {v.index(), std::forward<decltype(value)>(value)};
-        }, v);
-    }
-
-    static constexpr inline void from_json(const json &j, std::variant<Args...> &v) {
-        ::detail::variant_switch<sizeof...(Args) - 1>{}(j[0].get<int>(), j[1], v);
-    }
-};
-}
-
 #define ExtendedToJson(v1) extended_to_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
 #define ExtendedFromJson(v1) extended_from_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
 
@@ -117,8 +77,17 @@ JsonType(ImVec2, x, y)
 JsonType(ImVec2ih, x, y)
 
 namespace nlohmann {
-// todo This specialization to `Primitive` is not working yet - it's always using the generic variant converters above using the [index, value] encoding.
-//  That's the reason behind all the `j.is_array()` checks below.
+// Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
+inline void to_json(json &j, const Action &v) {
+    std::visit([&](auto &&value) {
+        j = {v.index(), std::forward<decltype(value)>(value)};
+    }, v);
+}
+
+inline void from_json(const json &j, Action &v) {
+    v = action::create(j[0].get<int>()); // todo fill values
+}
+
 inline void to_json(json &j, const Primitive &field) {
     std::visit([&](auto &&value) {
         j = std::forward<decltype(value)>(value);
@@ -128,25 +97,25 @@ inline void from_json(const json &j, Primitive &field) {
     field = j;
 }
 inline void to_json(json &j, const Bool &field) { j = bool(field); }
-inline void from_json(const json &j, Bool &field) { field = bool(j.is_array() ? j[1] : j); }
+inline void from_json(const json &j, Bool &field) { field = bool(j); }
 
 inline void to_json(json &j, const Float &field) { j = float(field); }
-inline void from_json(const json &j, Float &field) { field = float(j.is_array() ? j[1] : j); }
+inline void from_json(const json &j, Float &field) { field = float(j); }
 
 inline void to_json(json &j, const Vec2 &field) { j = ImVec2(field); }
-inline void from_json(const json &j, Vec2 &field) { field = ImVec2(j.is_array() ? j[1] : j); }
+inline void from_json(const json &j, Vec2 &field) { field = ImVec2(j); }
 
 inline void to_json(json &j, const Int &field) { j = int(field); }
-inline void from_json(const json &j, Int &field) { field = int(j.is_array() ? j[1] : j); }
+inline void from_json(const json &j, Int &field) { field = int(j); }
 
 inline void to_json(json &j, const String &field) { j = string(field); }
-inline void from_json(const json &j, String &field) { field = string(j.is_array() ? j[1] : j); }
+inline void from_json(const json &j, String &field) { field = string(j); }
 
 inline void to_json(json &j, const Enum &field) { j = int(field); }
-inline void from_json(const json &j, Enum &field) { field = int(j.is_array() ? j[1] : j); }
+inline void from_json(const json &j, Enum &field) { field = int(j); }
 
 inline void to_json(json &j, const Flags &field) { j = int(field); }
-inline void from_json(const json &j, Flags &field) { field = int(j.is_array() ? j[1] : j); }
+inline void from_json(const json &j, Flags &field) { field = int(j); }
 
 inline void to_json(json &j, const Colors &field) {
     vector<ImVec4> vec(field.size());
@@ -226,7 +195,7 @@ EmptyJsonType(show_open_faust_file_dialog)
 EmptyJsonType(show_save_faust_file_dialog)
 EmptyJsonType(show_save_faust_svg_file_dialog)
 
-JsonType(set_diff_index, diff_index)
+JsonType(set_history_index, history_index)
 JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)

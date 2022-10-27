@@ -24,6 +24,9 @@
 #include "Helper/UI.h"
 
 using Primitive = std::variant<bool, float, int, ImVec2, ImVec4, string>;
+// These are needed to fully define equality comparison for `Primitive`.
+constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
@@ -244,14 +247,18 @@ struct Flags : Base {
 };
 
 struct Color : Base {
-    Color(const StateMember *parent, const int i, const ImVec4 &value, const char *name) : Base(parent, format("{}#{}", i, name)) {
+    Color(const StateMember *parent, const int index, const ImVec4 &value, const char *name)
+        : Base(parent, format("{}#{}", index, name)), index(index) {
         *this = value;
     }
 
     bool Draw() const override;
+    bool Draw(ImGuiColorEditFlags, bool allow_auto = false) const;
 
     operator ImVec4() const;
     Color &operator=(const ImVec4 &);
+
+    int index;
 };
 
 struct Colors : Base {
@@ -1165,17 +1172,16 @@ enum JsonPatchOpType {
 struct JsonPatchOp {
     JsonPath path;
     JsonPatchOpType op{};
-    std::optional<json> value; // Present for add/replace/test
-    std::optional<string> from; // Present for copy/move
+    std::optional<json> value{}; // Present for add/replace/test
+    std::optional<string> from{}; // Present for copy/move
 };
 using JsonPatch = vector<JsonPatchOp>;
 
-// One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
+// todo One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
 struct BidirectionalStateDiff {
     JsonPatch Forward, Reverse;
     TimePoint Time;
 };
-using Diffs = vector<BidirectionalStateDiff>;
 
 //-----------------------------------------------------------------------------
 // [SECTION] Actions
@@ -1209,7 +1215,7 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 namespace Actions {
 struct undo {};
 struct redo {};
-struct set_diff_index { int diff_index; };
+struct set_history_index { int history_index; };
 
 struct open_project { string path; };
 struct open_empty_project {};
@@ -1250,7 +1256,7 @@ struct save_faust_svg_file { string path; };
 using namespace Actions;
 
 using Action = std::variant<
-    undo, redo, set_diff_index,
+    undo, redo, set_history_index,
     open_project, open_empty_project, open_default_project, show_open_project_dialog,
     save_project, save_default_project, save_current_project, show_save_project_dialog,
     open_file_dialog, close_file_dialog,
@@ -1299,7 +1305,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 const std::map<ID, string> name_for_id{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
-    {id<set_diff_index>, ActionName(set_diff_index)},
+    {id<set_history_index>, ActionName(set_history_index)},
 
     {id<open_project>, ActionName(open_project)},
     {id<open_empty_project>, ActionName(open_empty_project)},
@@ -1448,13 +1454,15 @@ struct Context {
     Context();
     ~Context();
 
+    static int history_size();
+    static BidirectionalStateDiff create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;
     void save_empty_project();
 
     bool clear_preferences();
 
-    json get_project_json(ProjectFormat format = StateFormat);
+    json get_project_json(ProjectFormat format = StateFormat) const;
 
     void enqueue_action(const Action &);
     void run_queued_actions(bool force_finalize_gesture = false);
@@ -1471,8 +1479,7 @@ struct Context {
     UIContext *ui{};
     StateStats state_stats;
 
-    Diffs diffs;
-    int diff_index = -1;
+    int state_history_index = 0;
 
     Gesture active_gesture; // uncompressed, uncommitted
     Gestures gestures; // compressed, committed gesture history
@@ -1491,15 +1498,14 @@ struct Context {
 
     // Read-only public shorthand state references:
     const State &s = state;
-    const json &sj = state_json;
 
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
     void finalize_gesture();
-    void on_patch(const Action &action, const JsonPatch &patch); // Called after every state-changing action
-    void set_diff_index(int diff_index);
-    void increment_diff_index(int diff_index_delta);
-    void on_set_value(const JsonPath &path);
+    void on_patch(const Action &, const JsonPatch &); // Called after every state-changing action
+    void set_history_index(int);
+    void increment_history_index(int delta);
+    void on_set_value(const JsonPath &);
 
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.
@@ -1507,13 +1513,12 @@ private:
     // This is especially the case when assigning to `state_json`, which is not an atomic operation like assigning to `_state` is.
     void open_project(const fs::path &);
     bool save_project(const fs::path &);
-    void set_current_project_path(const fs::path &path);
+    void set_current_project_path(const fs::path &);
     bool write_preferences() const;
 
     State state{};
     std::queue<const Action> queued_actions;
-    json state_json, gesture_begin_state_json; // `state_json` always reflects `state`. `gesture_begin_state_json` is only updated on gesture-end (for diff calculation).
-    int gesture_begin_diff_index = -1;
+    int gesture_begin_history_index = 0;
 };
 
 //-----------------------------------------------------------------------------
@@ -1524,8 +1529,6 @@ namespace FlowGrid {
 void gestured();
 
 void HelpMarker(const char *help);
-
-bool ColorEdit4(const JsonPath &path, int i, ImGuiColorEditFlags flags = 0, bool allow_auto = false);
 
 void MenuItem(ActionID); // For actions with no data members.
 
@@ -1570,7 +1573,6 @@ const Audio &audio = s.Audio; // Or just access the (read-only) `state` members 
 */
 
 extern const State &s;
-extern const json &sj;
 extern Context context, &c;
 
 /**

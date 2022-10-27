@@ -1256,28 +1256,6 @@ void ShowJsonPatchMetrics(const JsonPatch &patch) {
     }
 }
 
-void ShowDiffMetrics(const BidirectionalStateDiff &diff) {
-    // todo link to gesture corresponding to diff
-//    if (diff.action_names.size() == 1) {
-//        BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
-//    } else {
-//        if (TreeNodeEx("Action names", ImGuiTreeNodeFlags_DefaultOpen, "%lu actions", diff.action_names.size())) {
-//            for (const auto &action_name: diff.action_names) BulletText("%s", action_name.c_str());
-//            TreePop();
-//        }
-//    }
-    if (TreeNode("Forward diff")) {
-        ShowJsonPatchMetrics(diff.Forward);
-        TreePop();
-    }
-    if (TreeNode("Reverse diff")) {
-        ShowJsonPatchMetrics(diff.Reverse);
-        TreePop();
-    }
-
-    BulletText("Time: %s", format("{}\n", diff.Time).c_str());
-}
-
 void ShowGesture(const Gesture &gesture) {
     for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
         const auto &action = gesture[action_i];
@@ -1337,9 +1315,21 @@ void Metrics::FlowGridMetrics::Draw() const {
         const bool has_diffs = Context::history_size() > 1;
         if (!has_diffs) BeginDisabled();
         if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", Context::history_size() - 1, c.state_history_index)) {
-            for (int i = 0; i < Context::history_size(); i++) {
+            for (int i = 0; i < Context::history_size() - 1; i++) {
                 if (TreeNodeEx(std::to_string(i).c_str(), i == c.state_history_index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    ShowDiffMetrics(Context::create_diff(i));
+                    const auto &diff = Context::create_diff(i);
+                    // todo link to gesture corresponding to diff
+//                    if (diff.action_names.size() == 1) {
+//                        BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
+//                    } else {
+//                        if (TreeNodeEx("Action names", ImGuiTreeNodeFlags_DefaultOpen, "%lu actions", diff.action_names.size())) {
+//                            for (const auto &action_name: diff.action_names) BulletText("%s", action_name.c_str());
+//                            TreePop();
+//                        }
+//                    }
+                    ShowJsonPatchMetrics(diff.Patch);
+
+                    BulletText("Time: %s", format("{}\n", diff.Time).c_str());
                     TreePop();
                 }
             }

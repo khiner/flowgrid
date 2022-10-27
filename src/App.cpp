@@ -299,12 +299,9 @@ Context::~Context() = default;
 
 int Context::history_size() { return int(state_history.size()); }
 
-BidirectionalStateDiff Context::create_diff(int history_index) {
-    const auto before_state = state_history[history_index].second;
-    const auto after_state = state_history[history_index + 1].second;
+StateDiff Context::create_diff(int history_index) {
     return {
-        create_patch(before_state, after_state),
-        create_patch(after_state, before_state),
+        create_patch(state_history[history_index].second, state_history[history_index + 1].second),
         state_history[history_index + 1].first,
     };
 }
@@ -331,7 +328,7 @@ json Context::get_project_json(const ProjectFormat format) const {
         case None: return nullptr;
         case StateFormat: return state;
         case DiffFormat:
-            return {{"diffs", views::ints(0, int(state_history.size() - 1)) | transform(create_diff) | to<vector<BidirectionalStateDiff>>},
+            return {{"diffs", views::ints(0, int(state_history.size() - 1)) | transform(create_diff) | to<vector<StateDiff>>},
                     {"history_index", state_history_index}};
         case ActionFormat: return gestures;
     }
@@ -352,7 +349,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
         case action::id<undo>: return !active_gesture_patch.empty() || state_history_index > 0;
-        case action::id<redo>: return state_history_index < state_history.size();
+        case action::id<redo>: return state_history_index < int(state_history.size());
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
         case action::id<Actions::show_save_project_dialog>:

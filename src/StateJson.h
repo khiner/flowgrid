@@ -135,7 +135,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
 })
 
 JsonType(JsonPatchOp, path, op, value, from) // lower-case since these are deserialized and passed directly to json-lib.
-JsonType(BidirectionalStateDiff, Forward, Reverse, Time)
+JsonType(StateDiff, Patch, Time)
 
 JsonType(Window, Visible)
 JsonType(Process, Running)

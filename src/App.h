@@ -520,7 +520,6 @@ struct Audio : Process {
             void Draw() const override;
         };
 
-        // todo move to top-level Log
         struct FaustLog : Window {
             using Window::Window;
             void Draw() const override;
@@ -1177,9 +1176,8 @@ struct JsonPatchOp {
 };
 using JsonPatch = vector<JsonPatchOp>;
 
-// todo One issue with this data structure is that forward & reverse diffs both redundantly store the same json path(s).
-struct BidirectionalStateDiff {
-    JsonPatch Forward, Reverse;
+struct StateDiff {
+    JsonPatch Patch;
     TimePoint Time;
 };
 
@@ -1455,7 +1453,7 @@ struct Context {
     ~Context();
 
     static int history_size();
-    static BidirectionalStateDiff create_diff(int history_index);
+    static StateDiff create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
     bool project_has_changes() const;
     void save_empty_project();

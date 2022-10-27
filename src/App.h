@@ -178,7 +178,7 @@ struct Vec2 : Base {
     }
 
     operator ImVec2() const;
-    Vec2 &operator=(const ImVec2 &v);
+    Vec2 &operator=(ImVec2 v);
 
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
@@ -256,7 +256,7 @@ struct Color : Base {
     bool Draw(ImGuiColorEditFlags, bool allow_auto = false) const;
 
     operator ImVec4() const;
-    Color &operator=(const ImVec4 &);
+    Color &operator=(ImVec4);
 
     int index;
 };

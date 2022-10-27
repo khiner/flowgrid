@@ -13,28 +13,32 @@ StateMap gesture_begin_state_map; // Only updated on gesture-end (for diff calcu
 
 vector<std::pair<TimePoint, StateMap>> state_history;
 
+void set(const JsonPath &path, Primitive value) {
+    state_map = state_map.set(path.to_string(), std::move(value));
+}
+
 namespace Field {
 Bool::operator bool() const { return std::get<bool>(state_map.at(Path.to_string())); }
 Bool &Bool::operator=(bool value) {
-    state_map = state_map.set(Path.to_string(), value);
+    set(Path, value);
     return *this;
 }
 
 Int::operator int() const { return std::get<int>(state_map.at(Path.to_string())); }
 Int &Int::operator=(int value) {
-    state_map = state_map.set(Path.to_string(), value);
+    set(Path, value);
     return *this;
 }
 
 Float::operator float() const { return std::get<float>(state_map.at(Path.to_string())); }
 Float &Float::operator=(float value) {
-    state_map = state_map.set(Path.to_string(), value);
+    set(Path, value);
     return *this;
 }
 
 Vec2::operator ImVec2() const { return std::get<ImVec2>(state_map.at(Path.to_string())); }
-Vec2 &Vec2::operator=(const ImVec2 &value) {
-    state_map = state_map.set(Path.to_string(), value);
+Vec2 &Vec2::operator=(ImVec2 value) {
+    set(Path, value);
     return *this;
 }
 
@@ -42,7 +46,7 @@ String::operator string() const { return std::get<string>(state_map.at(Path.to_s
 bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
 String &String::operator=(string value) {
-    state_map = state_map.set(Path.to_string(), std::move(value));
+    set(Path, std::move(value));
     return *this;
 }
 
@@ -54,18 +58,18 @@ Enum &Enum::operator=(int value) {
 
 Flags::operator int() const { return std::get<int>(state_map.at(Path.to_string())); }
 Flags &Flags::operator=(int value) {
-    state_map = state_map.set(Path.to_string(), value);
+    set(Path, value);
     return *this;
 }
 
 Color::operator ImVec4() const { return std::get<ImVec4>(state_map.at(Path.to_string())); }
-Color &Color::operator=(const ImVec4 &value) {
-    state_map = state_map.set(Path.to_string(), value);
+Color &Color::operator=(ImVec4 value) {
+    set(Path, value);
     return *this;
 }
 
 Colors &Colors::operator=(const vector<ImVec4> &value) {
-    for (int i = 0; i < int(value.size()); i++) colors[i] = value[i];
+    for (int i = 0; i < int(value.size()); i++) { set(Path / i, value[i]); }
     return *this;
 }
 
@@ -279,6 +283,7 @@ void Context::on_action(const Action &action) {
 
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/map.hpp>
+#include <utility>
 
 Context::Context() {
     state_history.emplace_back(Clock::now(), state_map);

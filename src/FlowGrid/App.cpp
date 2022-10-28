@@ -2,16 +2,18 @@
 #include "StateJson.h"
 
 #include "immer/map.hpp"
+#include "immer/map_transient.hpp"
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
 
 std::map<ImGuiID, StateMember *> StateMember::WithID{};
 
 using StateMap = immer::map<string, Primitive>;
-StateMap state_map;
-StateMap gesture_begin_state_map; // Only updated on gesture-end (for diff calculation).
+using StateMapTransient = immer::map_transient<string, Primitive>;
 
-vector<std::pair<TimePoint, StateMap>> state_history;
+StateMap state_map; // All application state is stored in this canonical map.
+StateMap gesture_begin_state; // Only updated on gesture-end (for diff calculation).
+vector<std::pair<TimePoint, StateMap>> state_history; // One state checkpoint for every gesture.
 
 inline Primitive get(const JsonPath &path) {
     return state_map.at(path.to_string());
@@ -24,8 +26,11 @@ namespace nlohmann {
 inline void to_json(json &j, const StateMap &v) {
     for (const auto &[key, value]: v) j[JsonPath(key)] = value;
 }
-// todo transient
-inline void from_json(const json &j, StateMap &v) {
+}
+// `from_json` defined out of `nlohmann`, to be called manually.
+// This avoids getting a reference arg to a default-constructed, non-transient `StateMap` instance.
+StateMap state_from_json(const json &j) {
+    StateMapTransient _state;
     const auto &flattened = j.flatten();
     vector<std::pair<JsonPath, Primitive>> items(flattened.size());
     int item_index = 0;
@@ -38,18 +43,18 @@ inline void from_json(const json &j, StateMap &v) {
             const float x = std::get<float>(items[i + 1].second);
             const float y = std::get<float>(items[i + 2].second);
             const float z = std::get<float>(items[i + 3].second);
-            v = v.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
+            _state.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
             i += 3;
         } else if (path.back() == "x" && i < items.size() - 1 && items[i + 1].first.back() == "y") {
             const float x = std::get<float>(value);
             const float y = std::get<float>(items[i + 1].second);
-            v = v.set(path.parent_pointer().to_string(), ImVec2{x, y});
+            _state.set(path.parent_pointer().to_string(), ImVec2{x, y});
             i += 1;
         } else {
-            v = v.set(path.to_string(), value);
+            _state.set(path.to_string(), value);
         }
     }
-}
+    return _state.persistent();
 }
 
 namespace Field {
@@ -285,27 +290,27 @@ void Context::on_action(const Action &action) {
         // Remaining actions have a direct effect on the application state.
         // Keep JSON & struct versions of state in sync.
         [&](const set_value &a) {
-            const auto before_state_map = state_map;
+            const auto before_state = state_map;
             set(a.path, a.value);
-            on_patch(a, create_patch(before_state_map, state_map));
+            on_patch(a, create_patch(before_state, state_map));
         },
         [&](const set_values &a) {
-            const auto before_state_map = state_map;
+            const auto before_state = state_map;
             // See https://sinusoid.es/immer/design.html#leveraging-move-semantics
             for (const auto &[path, value]: a.values) state_map = std::move(state_map).set(path.to_string(), value);
-            on_patch(a, create_patch(before_state_map, state_map));
+            on_patch(a, create_patch(before_state, state_map));
         },
         [&](const toggle_value &a) {
-            const auto before_state_map = state_map;
+            const auto before_state = state_map;
             set(a.path, !std::get<bool>(get(a.path)));
-            on_patch(a, create_patch(before_state_map, state_map));
+            on_patch(a, create_patch(before_state, state_map));
             // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row and undoing does nothing, since they're compressed into nothing.
             finalize_gesture();
         },
         [&](const auto &a) {
-            const auto before_state_map = state_map;
+            const auto before_state = state_map;
             state.Update(a);
-            on_patch(a, create_patch(before_state_map, state_map));
+            on_patch(a, create_patch(before_state, state_map));
         },
     }, action);
 }
@@ -320,7 +325,7 @@ void Context::on_action(const Action &action) {
 
 Context::Context() {
     state_history.emplace_back(Clock::now(), state_map);
-    gesture_begin_state_map = state_map;
+    gesture_begin_state = state_map;
     if (fs::exists(PreferencesPath)) {
         preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
@@ -414,7 +419,7 @@ void Context::clear() {
     state_history.clear();
     state_history.emplace_back(Clock::now(), state_map);
     state_history_index = 0;
-    gesture_begin_state_map = state_map;
+    gesture_begin_state = state_map;
     gestures.clear();
     project_start_gesture_count = gestures.size();
     is_widget_gesturing = false;
@@ -522,13 +527,13 @@ void Context::finalize_gesture() {
     state_history.emplace_back(Clock::now(), state_map);
     state_history_index = int(state_history.size()) - 1;
     gesture_begin_history_index = state_history_index;
-    gesture_begin_state_map = state_map;
+    gesture_begin_state = state_map;
     active_gesture_patch.clear();
 }
 
 void Context::on_patch(const Action &action, const JsonPatch &patch) {
     active_gesture.emplace_back(action);
-    active_gesture_patch = create_patch(gesture_begin_state_map, state_map);
+    active_gesture_patch = create_patch(gesture_begin_state, state_map);
 
     state_stats.apply_patch(patch, Clock::now(), Forward, false);
     for (const auto &patch_op: patch) on_set_value(patch_op.path);
@@ -547,7 +552,7 @@ void Context::set_history_index(int new_history_index) {
         const auto before_state = state_map;
         state_map = state_history[index].second;
         const auto &patch = direction == Reverse ? create_patch(state_map, before_state) : create_patch(before_state, state_map);
-        gesture_begin_state_map = state_map;
+        gesture_begin_state = state_map;
         state_stats.apply_patch(patch, state_history[index].first, direction, true);
         for (const auto &patch_op: patch) on_set_value(patch_op.path);
     }
@@ -583,8 +588,8 @@ void Context::open_project(const fs::path &path) {
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        state_map = project;
-        gesture_begin_state_map = state_map;
+        state_map = state_from_json(project);
+        gesture_begin_state = state_map;
 
         update_ui_context(UIContextFlags_ImGuiSettings | UIContextFlags_ImGuiStyle | UIContextFlags_ImPlotStyle);
         update_faust_context();

@@ -96,7 +96,7 @@ struct StateMember {
         if (WithID.contains(ImGuiId)) is_temp_instance = true;
         else WithID[ImGuiId] = this;
     }
-    ~StateMember() {
+    virtual ~StateMember() {
         if (!is_temp_instance) WithID.erase(ImGuiId);
     }
 
@@ -261,22 +261,32 @@ struct Color : Base {
     int index;
 };
 
-struct Colors : Base {
-    Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
-        : Base(parent, path_segment), allow_auto(allow_auto) {
-        for (int i = 0; i < int(size); i++) colors.push_back({this, i, {}, GetColorName(i)});
+template<typename MemberT, typename PrimitiveT>
+struct Vector : Base {
+    Vector(const StateMember *parent, const string &path_segment) : Base(parent, path_segment) {}
+
+    // Can't use `operator=` here, since it would need to be overloaded for every concrete descendent type.
+    // todo transient
+    Vector &set(const vector<PrimitiveT> &value) {
+        for (int i = 0; i < int(value.size()); i++) { items[i] = value[i]; }
+        return *this;
     }
+    MemberT &operator[](size_t index) { return items[index]; }
+    const MemberT &operator[](size_t index) const { return items[index]; };
+    size_t size() const { return items.size(); }
 
-    Colors &operator=(const vector<ImVec4> &);
+    vector<MemberT> items;
+};
 
-    Color &operator[](size_t);
-    const Color &operator[](size_t) const;
-    size_t size() const;
+struct Colors : Vector<Color, ImVec4> {
+    Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
+        : Vector(parent, path_segment), allow_auto(allow_auto) {
+        for (int i = 0; i < int(size); i++) items.push_back({this, i, {}, GetColorName(i)});
+    }
 
     bool Draw() const override;
 
     bool allow_auto;
-    vector<Color> colors;
 };
 
 } // End `Field` namespace
@@ -878,17 +888,17 @@ struct Style : Window {
         void ColorsDark() {
             vector<ImVec4> dst(Colors.size());
             ImGui::StyleColorsDark(&dst[0]);
-            Colors = dst;
+            Colors.set(dst);
         }
         void ColorsLight() {
             vector<ImVec4> dst(Colors.size());
             ImGui::StyleColorsLight(&dst[0]);
-            Colors = dst;
+            Colors.set(dst);
         }
         void ColorsClassic() {
             vector<ImVec4> dst(Colors.size());
             ImGui::StyleColorsClassic(&dst[0]);
-            Colors = dst;
+            Colors.set(dst);
         }
 
         static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
@@ -970,25 +980,25 @@ struct Style : Window {
         void ColorsAuto() {
             vector<ImVec4> dst(Colors.size());
             ImPlot::StyleColorsAuto(&dst[0]);
-            Colors = dst;
+            Colors.set(dst);
             MinorAlpha = 0.25f;
         }
         void ColorsDark() {
             vector<ImVec4> dst(Colors.size());
             ImPlot::StyleColorsDark(&dst[0]);
-            Colors = dst;
+            Colors.set(dst);
             MinorAlpha = 0.25f;
         }
         void ColorsLight() {
             vector<ImVec4> dst(Colors.size());
             ImPlot::StyleColorsLight(&dst[0]);
-            Colors = dst;
+            Colors.set(dst);
             MinorAlpha = 1;
         }
         void ColorsClassic() {
             vector<ImVec4> dst(Colors.size());
             ImPlot::StyleColorsClassic(&dst[0]);
-            Colors = dst;
+            Colors.set(dst);
             MinorAlpha = 0.5f;
         }
 

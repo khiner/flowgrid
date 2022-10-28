@@ -107,15 +107,6 @@ Color &Color::operator=(ImVec4 value) {
     set(Path, value);
     return *this;
 }
-
-Colors &Colors::operator=(const vector<ImVec4> &value) {
-    for (int i = 0; i < int(value.size()); i++) { set(Path / i, value[i]); }
-    return *this;
-}
-
-Color &Colors::operator[](const size_t index) { return colors[index]; }
-const Color &Colors::operator[](const size_t index) const { return colors[index]; }
-size_t Colors::size() const { return colors.size(); }
 }
 
 string to_string(const IO io, const bool shorten) {

@@ -886,11 +886,11 @@ bool Colors::Draw() const {
 
         const auto &style = GetStyle();
         for (int i = 0; i < int(size()); i++) {
-            const char *name = colors[i].Name.c_str();
+            const char *name = items[i].Name.c_str();
             if (!filter.PassFilter(name)) continue;
 
             PushID(i);
-            changed |= colors[i].Draw(ImGuiColorEditFlags_AlphaBar | alpha_flags, allow_auto);
+            changed |= items[i].Draw(ImGuiColorEditFlags_AlphaBar | alpha_flags, allow_auto);
             SameLine(0, style.ItemInnerSpacing.x);
             TextUnformatted(name);
             PopID();

@@ -561,10 +561,12 @@ void State::Draw() const {
 
 ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
     SaveIniSettingsToMemory(); // Populates the `Settings` context members
-    Nodes = ctx->DockContext.NodesSettings; // already an ImVector
-    // Convert `ImChunkStream` to `ImVector`.
-    for (auto *ws = ctx->SettingsWindows.begin(); ws != nullptr; ws = ctx->SettingsWindows.next_chunk(ws)) {
-        Windows.push_back(*ws);
+    // Convert `ImChunkStream`/`ImVector`s to `vector`s.
+    for (int settings_n = 0; settings_n < ctx->DockContext.NodesSettings.Size; settings_n++) {
+        Nodes.push_back(ctx->DockContext.NodesSettings[settings_n]);
+    }
+    for (auto *settings = ctx->SettingsWindows.begin(); settings != nullptr; settings = ctx->SettingsWindows.next_chunk(settings)) {
+        Windows.push_back(*settings);
     }
     for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
         ImGuiTableColumnSettings *column_settings = ts->GetColumnSettings();
@@ -577,7 +579,7 @@ ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
 }
 
 // Copied from `imgui.cpp::ApplyWindowSettings`
-static void ApplyWindowSettings(ImGuiWindow *window, ImGuiWindowSettings *settings) {
+static void ApplyWindowSettings(ImGuiWindow *window, WindowSettings *settings) {
     if (!window) return; // TODO log
 
     const ImGuiViewport *main_viewport = GetMainViewport();
@@ -722,8 +724,7 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     // Apply
     for (auto ws: Windows) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
     for (auto &ts: Tables) ApplyTableSettings(TableFindByID(ts.Table.ID), ts);
-
-    ctx->DockContext.NodesSettings = Nodes; // already an ImVector
+    for (auto &ns: Nodes) ctx->DockContext.NodesSettings.push_back(ns);
     DockSettingsHandler_ApplyAll(ctx, nullptr);
 
     // Other housekeeping to emulate `LoadIniSettingsFromMemory`

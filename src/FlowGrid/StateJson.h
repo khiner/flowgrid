@@ -106,7 +106,7 @@ JsonType(StatePatch, Patch, Time)
 
 // Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.
 JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
-JsonType(ImGuiWindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
+JsonType(WindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
 JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
 JsonType(TableColumnSettings, WidthOrWeight, UserID, Index, DisplayOrder, SortOrder, SortDirection, IsEnabled, IsStretch)
 JsonType(TableSettings, Table, Columns)

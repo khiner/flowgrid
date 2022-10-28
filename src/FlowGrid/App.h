@@ -1056,12 +1056,10 @@ struct Style : Window {
 
 struct Processes : StateMember {
     using StateMember::StateMember;
-
     Process UI{this, "UI"};
 };
 
-// The definition of `ImGuiDockNodeSettings` is not exposed (it's defined in `imgui.cpp`).
-// This is a copy, and should be kept up-to-date with that definition.
+// These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
 struct ImGuiDockNodeSettings {
     ImGuiID ID{}, ParentNodeId{}, ParentWindowId{}, SelectedTabId{};
     signed char SplitAxis{};
@@ -1070,10 +1068,19 @@ struct ImGuiDockNodeSettings {
     ImVec2ih Pos{}, Size{}, SizeRef{};
 };
 
-// ImGui exposes the `ImGuiTableColumnSettings` definition in `imgui_internal.h`.
-// However, its `SortDirection`, `IsEnabled` & `IsStretch` members are defined as bitfields (e.g. `ImU8 SortDirection : 2`),
-// and I can't figure out how to JSON-encode/decode those.
-// This definition is the same, but using
+struct WindowSettings {
+    ImGuiID ID{};
+    ImVec2ih Pos{}, Size, ViewportPos{};
+    ImGuiID ViewportId{}, DockId{}, ClassId{};
+    short DockOrder{};
+    bool Collapsed{};
+
+    WindowSettings() : DockOrder(-1) {}
+    WindowSettings(const ImGuiWindowSettings &ws)
+        : ID(ws.ID), Pos(ws.Pos), Size(ws.Size), ViewportPos(ws.ViewportPos),
+          ViewportId(ws.ViewportId), DockId(ws.DockId), ClassId(ws.ClassId), DockOrder(ws.DockOrder), Collapsed(ws.Collapsed) {}
+};
+
 struct TableColumnSettings {
     float WidthOrWeight;
     ImGuiID UserID;
@@ -1097,8 +1104,8 @@ struct ImGuiSettingsData {
     ImGuiSettingsData() = default;
     explicit ImGuiSettingsData(ImGuiContext *ctx);
 
-    ImVector<ImGuiDockNodeSettings> Nodes;
-    ImVector<ImGuiWindowSettings> Windows;
+    vector<ImGuiDockNodeSettings> Nodes;
+    vector<WindowSettings> Windows;
     vector<TableSettings> Tables;
 };
 

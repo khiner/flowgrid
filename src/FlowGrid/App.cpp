@@ -13,41 +13,71 @@ StateMap gesture_begin_state_map; // Only updated on gesture-end (for diff calcu
 
 vector<std::pair<TimePoint, StateMap>> state_history;
 
-namespace nlohmann {
-inline void to_json(json &j, const StateMap &v) { j = v; }
-inline void from_json(const json &j, StateMap &v) { v = j.flatten(); }
+inline Primitive get(const JsonPath &path) {
+    return state_map.at(path.to_string());
 }
-
-void set(const JsonPath &path, Primitive value) {
+inline void set(const JsonPath &path, Primitive value) {
     state_map = state_map.set(path.to_string(), std::move(value));
 }
 
+namespace nlohmann {
+inline void to_json(json &j, const StateMap &v) {
+    for (const auto &[key, value]: v) j[JsonPath(key)] = value;
+}
+// todo transient
+inline void from_json(const json &j, StateMap &v) {
+    const auto &flattened = j.flatten();
+    vector<std::pair<JsonPath, Primitive>> items(flattened.size());
+    int item_index = 0;
+    for (const auto &it: flattened.items()) items[item_index++] = {JsonPath(it.key()), Primitive(it.value())};
+
+    for (size_t i = 0; i < items.size(); i++) {
+        const auto &[path, value] = items[i];
+        if (path.back() == "w" && i < items.size() - 3 && items[i + 3].first.back() == "z") {
+            const float w = std::get<float>(value);
+            const float x = std::get<float>(items[i + 1].second);
+            const float y = std::get<float>(items[i + 2].second);
+            const float z = std::get<float>(items[i + 3].second);
+            v = v.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
+            i += 3;
+        } else if (path.back() == "x" && i < items.size() - 1 && items[i + 1].first.back() == "y") {
+            const float x = std::get<float>(value);
+            const float y = std::get<float>(items[i + 1].second);
+            v = v.set(path.parent_pointer().to_string(), ImVec2{x, y});
+            i += 1;
+        } else {
+            v = v.set(path.to_string(), value);
+        }
+    }
+}
+}
+
 namespace Field {
-Bool::operator bool() const { return std::get<bool>(state_map.at(Path.to_string())); }
+Bool::operator bool() const { return std::get<bool>(get(Path)); }
 Bool &Bool::operator=(bool value) {
     set(Path, value);
     return *this;
 }
 
-Int::operator int() const { return std::get<int>(state_map.at(Path.to_string())); }
+Int::operator int() const { return std::get<int>(get(Path)); }
 Int &Int::operator=(int value) {
     set(Path, value);
     return *this;
 }
 
-Float::operator float() const { return std::get<float>(state_map.at(Path.to_string())); }
+Float::operator float() const { return std::get<float>(get(Path)); }
 Float &Float::operator=(float value) {
     set(Path, value);
     return *this;
 }
 
-Vec2::operator ImVec2() const { return std::get<ImVec2>(state_map.at(Path.to_string())); }
+Vec2::operator ImVec2() const { return std::get<ImVec2>(get(Path)); }
 Vec2 &Vec2::operator=(ImVec2 value) {
     set(Path, value);
     return *this;
 }
 
-String::operator string() const { return std::get<string>(state_map.at(Path.to_string())); }
+String::operator string() const { return std::get<string>(get(Path)); }
 bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
 String &String::operator=(string value) {
@@ -55,19 +85,19 @@ String &String::operator=(string value) {
     return *this;
 }
 
-Enum::operator int() const { return std::get<int>(state_map.at(Path.to_string())); }
+Enum::operator int() const { return std::get<int>(get(Path)); }
 Enum &Enum::operator=(int value) {
-    state_map = state_map.set(Path.to_string(), value);
+    set(Path, value);
     return *this;
 }
 
-Flags::operator int() const { return std::get<int>(state_map.at(Path.to_string())); }
+Flags::operator int() const { return std::get<int>(get(Path)); }
 Flags &Flags::operator=(int value) {
     set(Path, value);
     return *this;
 }
 
-Color::operator ImVec4() const { return std::get<ImVec4>(state_map.at(Path.to_string())); }
+Color::operator ImVec4() const { return std::get<ImVec4>(get(Path)); }
 Color &Color::operator=(ImVec4 value) {
     set(Path, value);
     return *this;
@@ -140,9 +170,7 @@ void State::Update(const Action &action) {
         [&](const open_file_dialog &a) { FileDialog = a.dialog; },
         [&](const close_file_dialog &) { FileDialog.Visible = false; },
 
-        [&](const set_imgui_settings &a) {
-            ImGuiSettings = a.settings;
-        },
+        [&](const set_imgui_settings &a) { ImGuiSettings = a.settings; },
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
                 case 0: Style.ImGui.ColorsDark();
@@ -258,7 +286,7 @@ void Context::on_action(const Action &action) {
         // Keep JSON & struct versions of state in sync.
         [&](const set_value &a) {
             const auto before_state_map = state_map;
-            state_map = state_map.set(a.path.to_string(), a.value);
+            set(a.path, a.value);
             on_patch(a, create_patch(before_state_map, state_map));
         },
         [&](const set_values &a) {
@@ -269,7 +297,7 @@ void Context::on_action(const Action &action) {
         },
         [&](const toggle_value &a) {
             const auto before_state_map = state_map;
-            state_map = state_map.set(a.path.to_string(), !std::get<bool>(state_map.at(a.path.to_string())));
+            set(a.path, !std::get<bool>(get(a.path)));
             on_patch(a, create_patch(before_state_map, state_map));
             // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row and undoing does nothing, since they're compressed into nothing.
             finalize_gesture();
@@ -294,7 +322,7 @@ Context::Context() {
     state_history.emplace_back(Clock::now(), state_map);
     gesture_begin_state_map = state_map;
     if (fs::exists(PreferencesPath)) {
-        preferences = json::from_msgpack(FileIO::read(PreferencesPath));
+        preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
         write_preferences();
     }
@@ -331,7 +359,7 @@ bool Context::clear_preferences() {
 json Context::get_project_json(const ProjectFormat format) const {
     switch (format) {
         case None: return nullptr;
-        case StateFormat: return state;
+        case StateFormat: return state_map;
         case DiffFormat:
             return {{"diffs", views::ints(0, int(state_history.size() - 1)) | transform(create_diff) | to<vector<StatePatch>>},
                     {"history_index", state_history_index}};
@@ -553,9 +581,9 @@ void Context::open_project(const fs::path &path) {
 
     clear();
 
-    const auto &project = json::from_msgpack(FileIO::read(path));
+    const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        state = project;
+        state_map = project;
         gesture_begin_state_map = state_map;
 
         update_ui_context(UIContextFlags_ImGuiSettings | UIContextFlags_ImGuiStyle | UIContextFlags_ImPlotStyle);
@@ -580,8 +608,7 @@ void Context::open_project(const fs::path &path) {
 }
 
 bool Context::save_project(const fs::path &path) {
-    if (current_project_path.has_value() &&
-        fs::equivalent(path, current_project_path.value()) &&
+    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) &&
         !action_allowed(action::id<save_current_project>))
         return false;
 
@@ -589,7 +616,7 @@ bool Context::save_project(const fs::path &path) {
     if (format == None) return false; // TODO log
 
     finalize_gesture(); // Make sure any pending actions/diffs are committed.
-    if (FileIO::write(path, json::to_msgpack(get_project_json(format)))) {
+    if (FileIO::write(path, get_project_json(format).dump())) {
         if (is_user_project_path(path)) set_current_project_path(path);
         return true;
     }
@@ -605,5 +632,5 @@ void Context::set_current_project_path(const fs::path &path) {
 }
 
 bool Context::write_preferences() const {
-    return FileIO::write(PreferencesPath, json::to_msgpack(preferences));
+    return FileIO::write(PreferencesPath, json(preferences).dump());
 }

@@ -203,7 +203,7 @@ $ git push --force
 
 FlowGrid supports three project formats.
 When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file dialog.
-Each type of FlowGrid project file is saved as [MessagePack-encoded JSON](https://github.com/nlohmann/json#binary-formats-bson-cbor-messagepack-ubjson-and-bjdata) _(TODO: provide preferences toggle for MessagePack-encoding)_:
+Each type of FlowGrid project file is saved as plain JSON.
 
 * `.fgs`: _FlowGrid**State**_
   - The full application state.

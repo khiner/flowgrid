@@ -806,7 +806,7 @@ void StateViewer::Draw() const {
         EndMenuBar();
     }
 
-    StateJsonTree("State", json(s)); // todo refactor to use tree of keys, and pull directly from `state_map`
+    StateJsonTree("State", c.get_project_json());
 }
 
 void StateMemoryEditor::Draw() const {

@@ -23,7 +23,7 @@
 #include "Helper/File.h"
 #include "Helper/UI.h"
 
-using Primitive = std::variant<bool, float, int, ImVec2, ImVec4, string>;
+using Primitive = std::variant<bool, int, float, string, ImVec2, ImVec4>;
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }

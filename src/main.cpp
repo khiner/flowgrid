@@ -5,6 +5,7 @@
 Context context{};
 Context &c = context;
 const State &s = c.s;
+const StateMap &sm = c.sm;
 
 bool q(Action &&a, bool flush) {
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.

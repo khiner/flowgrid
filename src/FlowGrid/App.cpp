@@ -1,32 +1,35 @@
 #include "App.h"
 #include "StateJson.h"
 
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
 
 std::map<ImGuiID, StateMember *> StateMember::WithID{};
 
-using StateMap = immer::map<string, Primitive>;
-using StateMapTransient = immer::map_transient<string, Primitive>;
-
-StateMap state_map; // All application state is stored in this canonical map.
 StateMap gesture_begin_state; // Only updated on gesture-end (for diff calculation).
 vector<std::pair<TimePoint, StateMap>> state_history; // One state checkpoint for every gesture.
 
-inline Primitive get(const JsonPath &path) {
-    return state_map.at(path.to_string());
+
+Primitive Context::get(const JsonPath &path) { return sm.at(path.to_string()); }
+// todo probably just move this and `state_map` member to be directly on `State`?
+void Context::set(const JsonPath &path, Primitive value) {
+    state_map = sm.set(path.to_string(), std::move(value));
 }
-inline void set(const JsonPath &path, Primitive value) {
-    state_map = state_map.set(path.to_string(), std::move(value));
+void Context::remove(const JsonPath &path) {
+    state_map = sm.erase(path.to_string());
 }
+
+// Convenience methods for now. Will be moving to `State`.
+Primitive get(const JsonPath &path) { return c.get(path); }
+void set(const JsonPath &path, Primitive value) { c.set(path, value); }
+void remove(const JsonPath &path) { c.remove(path); }
 
 namespace nlohmann {
 inline void to_json(json &j, const StateMap &v) {
     for (const auto &[key, value]: v) j[JsonPath(key)] = value;
 }
 }
+
 // `from_json` defined out of `nlohmann`, to be called manually.
 // This avoids getting a reference arg to a default-constructed, non-transient `StateMap` instance.
 StateMap state_from_json(const json &j) {

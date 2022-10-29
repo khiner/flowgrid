@@ -22,11 +22,16 @@
 #include "Helper/Sample.h"
 #include "Helper/File.h"
 #include "Helper/UI.h"
+#include "immer/map.hpp"
+#include "immer/map_transient.hpp"
 
 using Primitive = std::variant<bool, int, float, string, ImVec2, ImVec4>;
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
+
+using StateMap = immer::map<string, Primitive>;
+using StateMapTransient = immer::map_transient<string, Primitive>;
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
@@ -1469,6 +1474,9 @@ struct Context {
     Context();
     ~Context();
 
+    Primitive get(const JsonPath &path);
+    void set(const JsonPath &path, Primitive value);
+    void remove(const JsonPath &path);
     static int history_size();
     static StatePatch create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
@@ -1511,8 +1519,20 @@ struct Context {
     TimePoint gesture_start_time{};
     float gesture_time_remaining_sec{};
 
-    // Read-only public shorthand state references:
+    // ## Read-only public shorthand state references
+    //
+    // `s` is a structured representation of the underlying `StateMap`.
+    // It provides a full nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
+    // Basically, it has everything about the state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
+    // - Immutable assignment operators, which return a modified copy of the value resulting from applying the assignment.
+    //   Note that this is only _conceptually_ a copy, since it's a persistent data structure.
+    //   Typical modifications require very little data to be copied to store its value before the modification.
+    //   See [CppCon 2017: Phil Nash “The Holy Grail! A Hash Array Mapped Trie for C++”](https://youtu.be/imrSQ82dYns) for details on how this is done.
+    //   HAMTs are heavily used in the implementation of Closure.
+    //   Big thanks to my friend Justin Smith for suggesting using HAMTs for an efficient application state tree - they're fantastic for it!
+    // - Values act like the member of `Primitive` they hold.
     const State &s = state;
+    const StateMap &sm = state_map; // Full, canonical application state is made available with this immutable map.
 
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
@@ -1532,6 +1552,7 @@ private:
     bool write_preferences() const;
 
     State state{};
+    StateMap state_map{};
     std::queue<const Action> queued_actions;
     int gesture_begin_history_index = 0;
 };
@@ -1588,6 +1609,7 @@ const Audio &audio = s.Audio; // Or just access the (read-only) `state` members 
 */
 
 extern const State &s;
+extern const StateMap &sm;
 extern Context context, &c;
 
 /**

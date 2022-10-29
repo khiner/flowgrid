@@ -42,16 +42,22 @@ StateMap state_from_json(const json &j) {
     for (size_t i = 0; i < items.size(); i++) {
         const auto &[path, value] = items[i];
         if (path.back() == "w" && i < items.size() - 3 && items[i + 3].first.back() == "z") {
-            const float w = std::get<float>(value);
-            const float x = std::get<float>(items[i + 1].second);
-            const float y = std::get<float>(items[i + 2].second);
-            const float z = std::get<float>(items[i + 3].second);
+            const auto w = std::get<float>(value);
+            const auto x = std::get<float>(items[i + 1].second);
+            const auto y = std::get<float>(items[i + 2].second);
+            const auto z = std::get<float>(items[i + 3].second);
             _state.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
             i += 3;
         } else if (path.back() == "x" && i < items.size() - 1 && items[i + 1].first.back() == "y") {
-            const float x = std::get<float>(value);
-            const float y = std::get<float>(items[i + 1].second);
-            _state.set(path.parent_pointer().to_string(), ImVec2{x, y});
+            if (std::holds_alternative<ImVec2ih>(value)) {
+                const auto x = std::get<int>(value);
+                const auto y = std::get<int>(items[i + 1].second);
+                _state.set(path.parent_pointer().to_string(), ImVec2ih{short(x), short(y)});
+            } else {
+                const auto x = std::get<float>(value);
+                const auto y = std::get<float>(items[i + 1].second);
+                _state.set(path.parent_pointer().to_string(), ImVec2{x, y});
+            }
             i += 1;
         } else {
             _state.set(path.to_string(), value);
@@ -81,6 +87,11 @@ Float &Float::operator=(float value) {
 
 Vec2::operator ImVec2() const { return std::get<ImVec2>(get(Path)); }
 Vec2 &Vec2::operator=(ImVec2 value) {
+    set(Path, value);
+    return *this;
+}
+Vec2Int::operator ImVec2ih() const { return std::get<ImVec2ih>(get(Path)); }
+Vec2Int &Vec2Int::operator=(ImVec2ih value) {
     set(Path, value);
     return *this;
 }

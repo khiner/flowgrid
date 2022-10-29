@@ -176,6 +176,15 @@ bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
     return edited;
 }
 
+bool Field::Vec2Int::Draw() const {
+    ImVec2ih value = *this;
+    const bool edited = SliderInt2(Name.c_str(), (int *) &value, min, max, nullptr, ImGuiSliderFlags_None);
+    gestured();
+    if (edited) q(set_value{Path, value});
+    HelpMarker();
+    return edited;
+}
+
 bool Field::Vec2::Draw() const { return Draw(ImGuiSliderFlags_None); }
 
 bool Field::Enum::Draw() const {

@@ -25,9 +25,10 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
-using Primitive = std::variant<bool, int, float, string, ImVec2, ImVec4>;
+using Primitive = std::variant<bool, int, float, string, ImVec2ih, ImVec2, ImVec4>;
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+constexpr bool operator==(const ImVec2ih &lhs, const ImVec2ih &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
 using StateMap = immer::map<string, Primitive>;
@@ -190,6 +191,20 @@ struct Vec2 : Base {
 
     float min, max;
     const char *fmt;
+};
+
+struct Vec2Int : Base {
+    Vec2Int(const StateMember *parent, const string &id, const ImVec2ih &value = {0, 0}, int min = 0, int max = 1)
+        : Base(parent, id), min(min), max(max) {
+        *this = value;
+    }
+
+    operator ImVec2ih() const;
+    Vec2Int &operator=(ImVec2ih v);
+
+    bool Draw() const override;
+
+    int min, max;
 };
 
 struct String : Base {

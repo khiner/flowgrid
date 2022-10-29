@@ -447,7 +447,7 @@ static int PrevFontIndex = 0;
 static float PrevFontScale = 1.0;
 
 void State::Draw() const {
-    if (PrevFontIndex != Style.ImGui.FontIndex) {
+    if (Style.ImGui.FontIndex != PrevFontIndex) {
         GetIO().FontDefault = GetIO().Fonts->Fonts[Style.ImGui.FontIndex];
         PrevFontIndex = Style.ImGui.FontIndex;
     }
@@ -568,25 +568,6 @@ void State::Draw() const {
     Info.DrawWindow();
 }
 
-ImGuiSettingsData::ImGuiSettingsData(ImGuiContext *ctx) {
-    SaveIniSettingsToMemory(); // Populates the `Settings` context members
-    // Convert `ImChunkStream`/`ImVector`s to `vector`s.
-    for (int settings_n = 0; settings_n < ctx->DockContext.NodesSettings.Size; settings_n++) {
-        Nodes.push_back(ctx->DockContext.NodesSettings[settings_n]);
-    }
-    for (auto *settings = ctx->SettingsWindows.begin(); settings != nullptr; settings = ctx->SettingsWindows.next_chunk(settings)) {
-        Windows.push_back(*settings);
-    }
-    for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
-        ImGuiTableColumnSettings *column_settings = ts->GetColumnSettings();
-        const auto *table = TableFindByID(ts->ID);
-        ImGuiTableColumn *column = table->Columns.Data;
-        vector<TableColumnSettings> cs;
-        for (int n = 0; n < ts->ColumnsCount; n++, column++, column_settings++) cs.emplace_back(*column_settings);
-        Tables.push_back({*ts, cs});
-    }
-}
-
 // Copied from `imgui.cpp::ApplyWindowSettings`
 static void ApplyWindowSettings(ImGuiWindow *window, WindowSettings *settings) {
     if (!window) return; // TODO log
@@ -595,14 +576,14 @@ static void ApplyWindowSettings(ImGuiWindow *window, WindowSettings *settings) {
     window->ViewportPos = main_viewport->Pos;
     if (settings->ViewportId) {
         window->ViewportId = settings->ViewportId;
-        window->ViewportPos = ImVec2(settings->ViewportPos.x, settings->ViewportPos.y);
+        window->ViewportPos = settings->ViewportPos;
     }
-    window->Pos = ImFloor(ImVec2(settings->Pos.x + window->ViewportPos.x, settings->Pos.y + window->ViewportPos.y));
-    if (settings->Size.x > 0 && settings->Size.y > 0)
-        window->Size = window->SizeFull = ImFloor(ImVec2(settings->Size.x, settings->Size.y));
+    window->Pos = ImFloor(settings->Pos + window->ViewportPos);
+    const ImVec2 size = settings->Size;
+    if (size.x > 0 && size.y > 0) window->Size = window->SizeFull = settings->Size;
     window->Collapsed = settings->Collapsed;
     window->DockId = settings->DockId;
-    window->DockOrder = settings->DockOrder;
+    window->DockOrder = short(settings->DockOrder);
 }
 
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
@@ -731,9 +712,9 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     DockSettingsHandler_ClearAll(ctx, nullptr);
 
     // Apply
-    for (auto ws: Windows) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
-    for (auto &ts: Tables) ApplyTableSettings(TableFindByID(ts.Table.ID), ts);
-    for (auto &ns: Nodes) ctx->DockContext.NodesSettings.push_back(ns);
+    for (auto ws: Windows.items) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
+    for (auto &ts: Tables.items) ApplyTableSettings(TableFindByID(ts.Table.ID), ts);
+    for (auto &ns: Nodes.items) ctx->DockContext.NodesSettings.push_back(ns);
     DockSettingsHandler_ApplyAll(ctx, nullptr);
 
     // Other housekeeping to emulate `LoadIniSettingsFromMemory`

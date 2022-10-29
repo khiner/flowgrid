@@ -104,14 +104,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
 JsonType(JsonPatchOp, path, op, value, from) // lower-case since these are deserialized and passed directly to json-lib.
 JsonType(StatePatch, Patch, Time)
 
-// Double-check occasionally that the fields in these ImGui settings definitions still match their ImGui counterparts.
-JsonType(ImGuiDockNodeSettings, ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef)
-JsonType(WindowSettings, ID, Pos, Size, ViewportPos, ViewportId, DockId, ClassId, DockOrder, Collapsed)
-JsonType(ImGuiTableSettings, ID, SaveFlags, RefScale, ColumnsCount, ColumnsCountMax)
-JsonType(TableColumnSettings, WidthOrWeight, UserID, Index, DisplayOrder, SortOrder, SortDirection, IsEnabled, IsStretch)
-JsonType(TableSettings, Table, Columns)
-JsonType(ImGuiSettingsData, Nodes, Windows, Tables)
-
 JsonType(FileDialogData, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags)
 
 namespace Actions {

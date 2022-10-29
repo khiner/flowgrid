@@ -357,7 +357,7 @@ struct Node {
         : tree(t), in_count(in_count), out_count(out_count), children(std::move(children)),
           descendents(directDescendents + ::ranges::accumulate(this->children | views::transform([](Node *child) { return child->descendents; }), 0)),
         // `DiagramFoldComplexity == 0` means no folding
-          is_top_level(s.Style.FlowGrid.DiagramFoldComplexity > 0 && descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {}
+          is_top_level(int(s.Style.FlowGrid.DiagramFoldComplexity) > 0 && descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {}
 
     virtual ~Node() = default;
 

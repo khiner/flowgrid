@@ -150,7 +150,14 @@ struct Int : Base {
     }
 
     operator int() const;
+    operator ImGuiID() const { return (ImGuiID) int(*this); }
+    operator signed char() const { return (signed char) int(*this); }
+    operator char() const { return (char) int(*this); }
+    operator short() const { return (short) int(*this); }
+    operator bool() const { return (bool) int(*this); }
+
     Int &operator=(int);
+    bool operator==(int value) const { return int(*this) == value; }
 
     bool Draw() const override;
     bool Draw(const vector<int> &options) const;
@@ -200,6 +207,11 @@ struct Vec2Int : Base {
     }
 
     operator ImVec2ih() const;
+    operator ImVec2() const {
+        ImVec2ih vec_ih = *this;
+        return {float(vec_ih.x), float(vec_ih.y)};
+    }
+
     Vec2Int &operator=(ImVec2ih v);
 
     bool Draw() const override;
@@ -282,12 +294,12 @@ struct Color : Base {
 };
 
 template<typename MemberT, typename PrimitiveT>
-struct Vector : Base {
-    Vector(const StateMember *parent, const string &path_segment) : Base(parent, path_segment) {}
+struct PrimitiveVector : Base {
+    using Base::Base;
 
     // Can't use `operator=` here, since it would need to be overloaded for every concrete descendent type.
     // todo transient
-    Vector &set(const vector<PrimitiveT> &value) {
+    PrimitiveVector &set(const vector<PrimitiveT> &value) {
         for (int i = 0; i < int(value.size()); i++) { items[i] = value[i]; }
         return *this;
     }
@@ -297,10 +309,38 @@ struct Vector : Base {
 
     vector<MemberT> items;
 };
+template<typename MemberT>
+struct Vector : Base {
+    using Base::Base;
 
-struct Colors : Vector<Color, ImVec4> {
+    void push_back(MemberT &&value) {
+        items.push_back(std::move(value));
+    }
+
+    template<class... Args>
+    Vector &emplace_back(Args &&... args) {
+        items.emplace_back(args...);
+        return *this;
+    }
+
+    // Can't use `operator=` here, since it would need to be overloaded for every concrete descendent type.
+    // todo transient
+    Vector &set(const vector<MemberT> &value) {
+        for (int i = 0; i < int(value.size()); i++) { items[i] = value[i]; }
+        return *this;
+    }
+    MemberT &operator[](size_t index) { return items[index]; }
+    const MemberT &operator[](size_t index) const { return items[index]; };
+    size_t size() const { return items.size(); }
+
+    bool Draw() const override { return false; };
+
+    vector<MemberT> items;
+};
+
+struct Colors : PrimitiveVector<Color, ImVec4> {
     Colors(const StateMember *parent, const string &path_segment, const size_t size, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
-        : Vector(parent, path_segment), allow_auto(allow_auto) {
+        : PrimitiveVector(parent, path_segment), allow_auto(allow_auto) {
         for (int i = 0; i < int(size); i++) items.push_back({this, i, {}, GetColorName(i)});
     }
 
@@ -1079,61 +1119,142 @@ struct Processes : StateMember {
     Process UI{this, "UI"};
 };
 
+// Copy of ImGui version, which is not defined publicly
+struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
+    ImGuiID ID;
+    ImGuiID ParentNodeId;
+    ImGuiID ParentWindowId;
+    ImGuiID SelectedTabId;
+    signed char SplitAxis;
+    char Depth;
+    ImGuiDockNodeFlags Flags;
+    ImVec2ih Pos;
+    ImVec2ih Size;
+    ImVec2ih SizeRef;
+};
+
 // These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
-struct ImGuiDockNodeSettings {
-    ImGuiID ID{}, ParentNodeId{}, ParentWindowId{}, SelectedTabId{};
-    signed char SplitAxis{};
-    char Depth{};
-    ImGuiDockNodeFlags Flags{};
-    ImVec2ih Pos{}, Size{}, SizeRef{};
+struct DockNodeSettings : StateMember {
+    DockNodeSettings(const StateMember *parent, const string &id, const ImGuiDockNodeSettings &ds) : StateMember(parent, id) {
+        *this = ds;
+    }
+
+    DockNodeSettings &operator=(const ImGuiDockNodeSettings &ds) {
+        // todo make `ID : Field::Base` type and use appropriately for these
+        ID = int(ds.ID);
+        ParentNodeId = int(ds.ParentNodeId);
+        ParentWindowId = int(ds.ParentWindowId);
+        SelectedTabId = int(ds.SelectedTabId);
+        SplitAxis = ds.SplitAxis;
+        Depth = ds.Depth;
+        Flags = ds.Flags;
+        Pos = ds.Pos;
+        Size = ds.Size;
+        SizeRef = ds.SizeRef;
+
+        return *this;
+    }
+    operator ImGuiDockNodeSettings() const {
+        return {ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef,};
+    }
+
+    Int ID{this, "ID"};
+    Int ParentNodeId{this, "ParentNodeId"};
+    Int ParentWindowId{this, "ParentWindowId"};
+    Int SelectedTabId{this, "SelectedTabId"};
+    Int SplitAxis{this, "SplitAxis"};
+    Int Depth{this, "Depth"};
+    Int Flags{this, "Flags"};
+    Vec2Int Pos{this, "Pos"};
+    Vec2Int Size{this, "Size"};
+    Vec2Int SizeRef{this, "SizeRef"};
 };
 
-struct WindowSettings {
-    ImGuiID ID{};
-    ImVec2ih Pos{}, Size, ViewportPos{};
-    ImGuiID ViewportId{}, DockId{}, ClassId{};
-    short DockOrder{};
-    bool Collapsed{};
+struct WindowSettings : StateMember {
+    WindowSettings(const StateMember *parent, const string &id, const ImGuiWindowSettings &ws) : StateMember(parent, id) {
+        *this = ws;
+    }
 
-    WindowSettings() : DockOrder(-1) {}
-    WindowSettings(const ImGuiWindowSettings &ws)
-        : ID(ws.ID), Pos(ws.Pos), Size(ws.Size), ViewportPos(ws.ViewportPos),
-          ViewportId(ws.ViewportId), DockId(ws.DockId), ClassId(ws.ClassId), DockOrder(ws.DockOrder), Collapsed(ws.Collapsed) {}
+    Int ID{this, "ID"};
+    Int ViewportId{this, "ViewportId"};
+    Int DockId{this, "DockId"};
+    Int ClassId{this, "ClassId"};
+    Vec2Int Pos{this, "Pos"};
+    Vec2Int Size{this, "Size"};
+    Vec2Int ViewportPos{this, "ViewportPos"};
+    Int DockOrder{this, "DockOrder", -1};
+    Bool Collapsed{this, "Collapsed"};
+
+    WindowSettings &operator=(const ImGuiWindowSettings &ws) {
+        // todo make `ID : Field::Base` type and use appropriately for these
+        ID = int(ws.ID);
+        Pos = ws.Pos;
+        Size = ws.Size;
+        ViewportPos = ws.ViewportPos;
+        ViewportId = int(ws.ViewportId);
+        DockId = int(ws.DockId);
+        ClassId = int(ws.ClassId);
+        DockOrder = int(ws.DockOrder);
+        Collapsed = ws.Collapsed;
+        return *this;
+    }
 };
 
-struct TableColumnSettings {
-    float WidthOrWeight;
+struct TableColumnSettings : StateMember {
+    TableColumnSettings(const StateMember *parent, const string &id, ImGuiTableColumnSettings *tcs = nullptr) : StateMember(parent, id) {
+        *this = *tcs;
+    }
+
+    TableColumnSettings &operator=(const ImGuiTableColumnSettings &tcs) {
+        WidthOrWeight = tcs.WidthOrWeight;
+        UserID = tcs.UserID;
+        Index = tcs.Index;
+        DisplayOrder = tcs.DisplayOrder;
+        SortOrder = tcs.SortOrder;
+        SortDirection = tcs.SortDirection;
+        IsEnabled = tcs.IsEnabled;
+        IsStretch = tcs.IsStretch;
+        return *this;
+    }
+
+    Float WidthOrWeight{this, "WidthOrWeight"};
     ImGuiID UserID;
     ImGuiTableColumnIdx Index, DisplayOrder, SortOrder;
     ImU8 SortDirection;
     bool IsEnabled; // "Visible" in ini file
     bool IsStretch;
-
-    TableColumnSettings() = default;
-    TableColumnSettings(const ImGuiTableColumnSettings &tcs)
-        : WidthOrWeight(tcs.WidthOrWeight), UserID(tcs.UserID), Index(tcs.Index), DisplayOrder(tcs.DisplayOrder),
-          SortOrder(tcs.SortOrder), SortDirection(tcs.SortDirection), IsEnabled(tcs.IsEnabled), IsStretch(tcs.IsStretch) {}
 };
 
-struct TableSettings {
+struct TableSettings : StateMember {
+    TableSettings(const StateMember *parent, const string &id, ImGuiTableSettings &ts) : StateMember(parent, id) {
+        auto *column_settings = ts.GetColumnSettings();
+        auto *column = ImGui::TableFindByID(ts.ID)->Columns.Data;
+        for (int n = 0; n < ts.ColumnsCount; n++, column++, column_settings++) {
+            Columns.emplace_back(this, JsonPath("Columns") / n, column_settings);
+        }
+    }
     ImGuiTableSettings Table;
     vector<TableColumnSettings> Columns;
 };
 
-struct ImGuiSettingsData {
-    ImGuiSettingsData() = default;
-    explicit ImGuiSettingsData(ImGuiContext *ctx);
+struct ImGuiSettings : StateMember {
+    ImGuiSettings(const StateMember *parent, const string &id) : StateMember(parent, id) {}
 
-    vector<ImGuiDockNodeSettings> Nodes;
-    vector<WindowSettings> Windows;
-    vector<TableSettings> Tables;
-};
+    ImGuiSettings &operator=(ImGuiContext *ctx) {
+        ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
+        // Convert `ImChunkStream`/`ImVector`s to `vector`s.
+        for (int settings_n = 0; settings_n < ctx->DockContext.NodesSettings.Size; settings_n++) {
+            Nodes.emplace_back(this, Nodes.Path / settings_n, ctx->DockContext.NodesSettings[settings_n]);
+        }
+        int window_index = 0;
+        for (auto *settings = ctx->SettingsWindows.begin(); settings != nullptr; settings = ctx->SettingsWindows.next_chunk(settings)) {
+            Windows.emplace_back(this, Windows.Path / window_index++, *settings);
+        }
+        int table_index = 0;
+        for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
+            Tables.emplace_back(this, Tables.Path / table_index++, *ts);
+        }
 
-struct ImGuiSettings : StateMember, ImGuiSettingsData {
-    ImGuiSettings(const StateMember *parent, const string &id) : StateMember(parent, id), ImGuiSettingsData() {}
-
-    ImGuiSettings &operator=(const ImGuiSettingsData &other) {
-        ImGuiSettingsData::operator=(other);
         return *this;
     }
 
@@ -1141,6 +1262,10 @@ struct ImGuiSettings : StateMember, ImGuiSettingsData {
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized .ini text format.
     void Apply(ImGuiContext *ctx) const;
+
+    Vector<DockNodeSettings> Nodes{this, "Nodes"};
+    Vector<WindowSettings> Windows{this, "Windows"};
+    Vector<TableSettings> Tables{this, "Tables"};
 };
 
 struct Info : Window {
@@ -1489,9 +1614,11 @@ struct Context {
     Context();
     ~Context();
 
-    Primitive get(const JsonPath &path);
-    void set(const JsonPath &path, Primitive value);
-    void remove(const JsonPath &path);
+    Primitive get(const JsonPath &path) const;
+    StateMap set(const JsonPath &path, const Primitive &value) const;
+    StateMap set(const JsonPath &path, const Primitive &value);
+    StateMap remove(const JsonPath &path) const;
+    StateMap remove(const JsonPath &path);
     static int history_size();
     static StatePatch create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
@@ -1546,8 +1673,8 @@ struct Context {
     //   HAMTs are heavily used in the implementation of Closure.
     //   Big thanks to my friend Justin Smith for suggesting using HAMTs for an efficient application state tree - they're fantastic for it!
     // - Values act like the member of `Primitive` they hold.
-    const State &s = state;
     const StateMap &sm = state_map; // Full, canonical application state is made available with this immutable map.
+    const State &s = state;
 
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
@@ -1566,8 +1693,8 @@ private:
     void set_current_project_path(const fs::path &);
     bool write_preferences() const;
 
-    State state{};
     StateMap state_map{};
+    State state{};
     std::queue<const Action> queued_actions;
     int gesture_begin_history_index = 0;
 };
@@ -1634,3 +1761,8 @@ extern Context context, &c;
 */
 
 bool q(Action &&a, bool flush = false);
+
+// Convenience methods.
+Primitive get(const JsonPath &path);
+StateMap set(const JsonPath &path, const Primitive &value);
+StateMap remove(const JsonPath &path);

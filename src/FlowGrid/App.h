@@ -137,7 +137,7 @@ struct Bool : Base {
     }
 
     operator bool() const;
-    Bool &operator=(bool);
+    StateMap operator=(bool) const;
 
     bool Draw() const override;
     bool DrawMenu() const;
@@ -156,7 +156,7 @@ struct Int : Base {
     operator short() const { return (short) int(*this); }
     operator bool() const { return (bool) int(*this); }
 
-    Int &operator=(int);
+    StateMap operator=(int) const;
     bool operator==(int value) const { return int(*this) == value; }
 
     bool Draw() const override;
@@ -173,7 +173,7 @@ struct Float : Base {
     }
 
     operator float() const;
-    Float &operator=(float);
+    StateMap operator=(float) const;
 
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
@@ -191,7 +191,7 @@ struct Vec2 : Base {
     }
 
     operator ImVec2() const;
-    Vec2 &operator=(ImVec2 v);
+    StateMap operator=(ImVec2 v) const;
 
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
@@ -212,7 +212,7 @@ struct Vec2Int : Base {
         return {float(vec_ih.x), float(vec_ih.y)};
     }
 
-    Vec2Int &operator=(ImVec2ih v);
+    StateMap operator=(ImVec2ih v) const;
 
     bool Draw() const override;
 
@@ -227,7 +227,7 @@ struct String : Base {
     operator string() const;
     operator bool() const;
 
-    String &operator=(string);
+    StateMap operator=(string) const;
     bool operator==(const string &) const;
 
     bool Draw() const override;
@@ -241,7 +241,7 @@ struct Enum : Base {
     }
 
     operator int() const;
-    Enum &operator=(int);
+    StateMap operator=(int) const;
 
     bool Draw() const override;
     bool Draw(const vector<int> &options) const;
@@ -270,7 +270,7 @@ struct Flags : Base {
     }
 
     operator int() const;
-    Flags &operator=(int);
+    StateMap operator=(int) const;
 
     bool Draw() const override;
     bool DrawMenu() const;
@@ -288,7 +288,7 @@ struct Color : Base {
     bool Draw(ImGuiColorEditFlags, bool allow_auto = false) const;
 
     operator ImVec4() const;
-    Color &operator=(ImVec4);
+    StateMap operator=(ImVec4) const;
 
     int index;
 };
@@ -299,10 +299,7 @@ struct PrimitiveVector : Base {
 
     // Can't use `operator=` here, since it would need to be overloaded for every concrete descendent type.
     // todo transient
-    PrimitiveVector &set(const vector<PrimitiveT> &value) {
-        for (int i = 0; i < int(value.size()); i++) { items[i] = value[i]; }
-        return *this;
-    }
+    StateMap set(const vector<PrimitiveT> &) const;
     MemberT &operator[](size_t index) { return items[index]; }
     const MemberT &operator[](size_t index) const { return items[index]; };
     size_t size() const { return items.size(); }

@@ -73,58 +73,39 @@ StateMap state_from_json(const json &j) {
 
 namespace Field {
 Bool::operator bool() const { return std::get<bool>(get(Path)); }
-Bool &Bool::operator=(bool value) {
-    set(Path, value);
-    return *this;
-}
+StateMap Bool::operator=(bool value) const { return set(Path, value); }
 
 Int::operator int() const { return std::get<int>(get(Path)); }
-Int &Int::operator=(int value) {
-    set(Path, value);
-    return *this;
-}
+StateMap Int::operator=(int value) const { return set(Path, value); }
 
 Float::operator float() const { return std::get<float>(get(Path)); }
-Float &Float::operator=(float value) {
-    set(Path, value);
-    return *this;
-}
+StateMap Float::operator=(float value) const { return set(Path, value); }
 
 Vec2::operator ImVec2() const { return std::get<ImVec2>(get(Path)); }
-Vec2 &Vec2::operator=(ImVec2 value) {
-    set(Path, value);
-    return *this;
-}
+StateMap Vec2::operator=(ImVec2 value) const { return set(Path, value); }
+
 Vec2Int::operator ImVec2ih() const { return std::get<ImVec2ih>(get(Path)); }
-Vec2Int &Vec2Int::operator=(ImVec2ih value) {
-    set(Path, value);
-    return *this;
-}
+StateMap Vec2Int::operator=(ImVec2ih value) const { return set(Path, value); }
 
 String::operator string() const { return std::get<string>(get(Path)); }
 bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
-String &String::operator=(string value) {
-    set(Path, std::move(value));
-    return *this;
-}
+StateMap String::operator=(string value) const { return set(Path, std::move(value)); }
 
 Enum::operator int() const { return std::get<int>(get(Path)); }
-Enum &Enum::operator=(int value) {
-    set(Path, value);
-    return *this;
-}
+StateMap Enum::operator=(int value) const { return set(Path, value); }
 
 Flags::operator int() const { return std::get<int>(get(Path)); }
-Flags &Flags::operator=(int value) {
-    set(Path, value);
-    return *this;
-}
+StateMap Flags::operator=(int value) const { return set(Path, value); }
 
 Color::operator ImVec4() const { return std::get<ImVec4>(get(Path)); }
-Color &Color::operator=(ImVec4 value) {
-    set(Path, value);
-    return *this;
+StateMap Color::operator=(ImVec4 value) const { return set(Path, value); }
+
+template<typename MemberT, typename PrimitiveT>
+StateMap PrimitiveVector<MemberT, PrimitiveT>::set(const vector<PrimitiveT> &value) const {
+    // todo transient
+    for (int i = 0; i < int(value.size()); i++) { items[i] = value[i]; }
+    return c.sm;
 }
 }
 

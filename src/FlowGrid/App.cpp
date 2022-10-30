@@ -24,10 +24,29 @@ StateMap Context::remove(const JsonPath &path) {
     const auto &const_ref = *this;
     return (state_map = const_ref.remove(path));
 }
+StateMap Context::set(StateMapTransient transient) {
+    return (state_map = transient.persistent());
+}
 
 Primitive get(const JsonPath &path) { return c.get(path); }
 StateMap set(const JsonPath &path, const Primitive &value) { return c.set(path, value); }
+StateMap set(const JsonPath &path, const ImVec4 &value) { return c.set(path, value); }
 StateMap remove(const JsonPath &path) { return c.remove(path); }
+
+StateMap set(const std::vector<std::pair<const JsonPath, const Primitive>> &values) {
+    StateMapTransient transient = c.sm.transient();
+    for (const auto &[path, value]: values) transient.set(path.to_string(), value);
+    return c.set(transient);
+}
+StateMap set(const std::vector<std::pair<const JsonPath, const ImVec4>> &values) {
+    StateMapTransient transient = c.sm.transient();
+    for (const auto &[path, value]: values) transient.set(path.to_string(), value);
+    return c.set(transient);
+}
+
+StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
+    c.set(Path, value);
+}
 
 namespace nlohmann {
 inline void to_json(json &j, const StateMap &v) {
@@ -69,44 +88,6 @@ StateMap state_from_json(const json &j) {
         }
     }
     return _state.persistent();
-}
-
-namespace Field {
-Bool::operator bool() const { return std::get<bool>(get(Path)); }
-StateMap Bool::operator=(bool value) const { return set(Path, value); }
-
-Int::operator int() const { return std::get<int>(get(Path)); }
-StateMap Int::operator=(int value) const { return set(Path, value); }
-
-Float::operator float() const { return std::get<float>(get(Path)); }
-StateMap Float::operator=(float value) const { return set(Path, value); }
-
-Vec2::operator ImVec2() const { return std::get<ImVec2>(get(Path)); }
-StateMap Vec2::operator=(ImVec2 value) const { return set(Path, value); }
-
-Vec2Int::operator ImVec2ih() const { return std::get<ImVec2ih>(get(Path)); }
-StateMap Vec2Int::operator=(ImVec2ih value) const { return set(Path, value); }
-
-String::operator string() const { return std::get<string>(get(Path)); }
-bool String::operator==(const string &v) const { return string(*this) == v; }
-String::operator bool() const { return !string(*this).empty(); }
-StateMap String::operator=(string value) const { return set(Path, std::move(value)); }
-
-Enum::operator int() const { return std::get<int>(get(Path)); }
-StateMap Enum::operator=(int value) const { return set(Path, value); }
-
-Flags::operator int() const { return std::get<int>(get(Path)); }
-StateMap Flags::operator=(int value) const { return set(Path, value); }
-
-Color::operator ImVec4() const { return std::get<ImVec4>(get(Path)); }
-StateMap Color::operator=(ImVec4 value) const { return set(Path, value); }
-
-template<typename MemberT, typename PrimitiveT>
-StateMap PrimitiveVector<MemberT, PrimitiveT>::set(const vector<PrimitiveT> &value) const {
-    // todo transient
-    for (int i = 0; i < int(value.size()); i++) { items[i] = value[i]; }
-    return c.sm;
-}
 }
 
 string to_string(const IO io, const bool shorten) {
@@ -163,7 +144,7 @@ void State::Update(const Action &action) {
         [&](const show_save_faust_svg_file_dialog &) { FileDialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
 
         [&](const open_file_dialog &a) { FileDialog = a.dialog; },
-        [&](const close_file_dialog &) { FileDialog.Visible = false; },
+        [&](const close_file_dialog &) { set(FileDialog.Visible.Path, false); },
 
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
@@ -218,11 +199,11 @@ void State::Update(const Action &action) {
             }
         },
 
-        [&](const open_faust_file &a) { Audio.Faust.Code = FileIO::read(a.path); },
+        [&](const open_faust_file &a) { set(Audio.Faust.Code.Path, FileIO::read(a.path)); },
 
         [&](const close_application &) {
-            Processes.UI.Running = false;
-            Audio.Running = false;
+            set(Processes.UI.Running.Path, false);
+            set(Audio.Running.Path, false);
         },
 
         [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)

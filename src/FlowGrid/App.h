@@ -102,6 +102,8 @@ struct StateMember {
         if (WithID.contains(ImGuiId)) is_temp_instance = true;
         else WithID[ImGuiId] = this;
     }
+    StateMember(const StateMember *parent, const string &id, const Primitive &value);
+
     virtual ~StateMember() {
         if (!is_temp_instance) WithID.erase(ImGuiId);
     }
@@ -132,12 +134,9 @@ struct Base : StateMember {
 };
 
 struct Bool : Base {
-    Bool(const StateMember *parent, const string &identifier, bool value = false) : Base(parent, identifier) {
-        *this = value;
-    }
+    Bool(const StateMember *parent, const string &identifier, bool value = false) : Base(parent, identifier, value) {}
 
     operator bool() const;
-    StateMap operator=(bool) const;
 
     bool Draw() const override;
     bool DrawMenu() const;
@@ -145,18 +144,16 @@ struct Bool : Base {
 
 struct Int : Base {
     Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100)
-        : Base(parent, id), min(min), max(max) {
-        *this = value;
-    }
+        : Base(parent, id, value), min(min), max(max) {}
 
     operator int() const;
-    operator ImGuiID() const { return (ImGuiID) int(*this); }
-    operator signed char() const { return (signed char) int(*this); }
-    operator char() const { return (char) int(*this); }
-    operator short() const { return (short) int(*this); }
     operator bool() const { return (bool) int(*this); }
+    operator short() const { return (short) int(*this); }
+    operator char() const { return (char) int(*this); }
+    operator signed char() const { return (signed char) int(*this); }
+    operator ImGuiID() const { return (ImGuiID) int(*this); }
+    operator ImU8() const { return (ImU8) int(*this); }
 
-    StateMap operator=(int) const;
     bool operator==(int value) const { return int(*this) == value; }
 
     bool Draw() const override;
@@ -168,12 +165,9 @@ struct Int : Base {
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id), min(min), max(max), fmt(fmt) {
-        *this = value;
-    }
+        : Base(parent, id, value), min(min), max(max), fmt(fmt) {}
 
     operator float() const;
-    StateMap operator=(float) const;
 
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
@@ -186,12 +180,9 @@ struct Float : Base {
 struct Vec2 : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id), min(min), max(max), fmt(fmt) {
-        *this = value;
-    }
+        : Base(parent, id, value), min(min), max(max), fmt(fmt) {}
 
     operator ImVec2() const;
-    StateMap operator=(ImVec2 v) const;
 
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
@@ -202,9 +193,7 @@ struct Vec2 : Base {
 
 struct Vec2Int : Base {
     Vec2Int(const StateMember *parent, const string &id, const ImVec2ih &value = {0, 0}, int min = 0, int max = 1)
-        : Base(parent, id), min(min), max(max) {
-        *this = value;
-    }
+        : Base(parent, id, value), min(min), max(max) {}
 
     operator ImVec2ih() const;
     operator ImVec2() const {
@@ -212,22 +201,17 @@ struct Vec2Int : Base {
         return {float(vec_ih.x), float(vec_ih.y)};
     }
 
-    StateMap operator=(ImVec2ih v) const;
-
     bool Draw() const override;
 
     int min, max;
 };
 
 struct String : Base {
-    String(const StateMember *parent, const string &id, string value = "") : Base(parent, id) {
-        *this = std::move(value);
-    }
+    String(const StateMember *parent, const string &id, const string &value = "") : Base(parent, id, value) {}
 
     operator string() const;
     operator bool() const;
 
-    StateMap operator=(string) const;
     bool operator==(const string &) const;
 
     bool Draw() const override;
@@ -236,12 +220,9 @@ struct String : Base {
 
 struct Enum : Base {
     Enum(const StateMember *parent, const string &id, vector<string> names, int value = 0)
-        : Base(parent, id), names(std::move(names)) {
-        *this = value;
-    }
+        : Base(parent, id, value), names(std::move(names)) {}
 
     operator int() const;
-    StateMap operator=(int) const;
 
     bool Draw() const override;
     bool Draw(const vector<int> &options) const;
@@ -265,12 +246,9 @@ struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
     Flags(const StateMember *parent, const string &id, vector<Item> items, int value = 0)
-        : Base(parent, id), items(std::move(items)) {
-        *this = value;
-    }
+        : Base(parent, id, value), items(std::move(items)) {}
 
     operator int() const;
-    StateMap operator=(int) const;
 
     bool Draw() const override;
     bool DrawMenu() const;
@@ -280,15 +258,12 @@ struct Flags : Base {
 
 struct Color : Base {
     Color(const StateMember *parent, const int index, const ImVec4 &value, const char *name)
-        : Base(parent, format("{}#{}", index, name)), index(index) {
-        *this = value;
-    }
+        : Base(parent, format("{}#{}", index, name), value), index(index) {}
 
     bool Draw() const override;
     bool Draw(ImGuiColorEditFlags, bool allow_auto = false) const;
 
     operator ImVec4() const;
-    StateMap operator=(ImVec4) const;
 
     int index;
 };
@@ -399,9 +374,7 @@ static const vector<Flags::Item> TableFlagItems{
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : UIStateMember {
-    Window(const StateMember *parent, const string &id, const bool visible = true) : UIStateMember(parent, id) {
-        this->Visible = visible;
-    }
+    Window(const StateMember *parent, const string &id, const bool visible = true);
 
     Bool Visible{this, "Visible", true};
 
@@ -755,12 +728,7 @@ struct Style : Window {
     void Draw() const override;
 
     struct FlowGridStyle : UIStateMember {
-        FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-            ColorsDark();
-            DiagramColorsDark();
-            DiagramLayoutFlowGrid();
-        }
-
+        FlowGridStyle(const StateMember *parent, const string &id);
         void Draw() const override;
 
         Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
@@ -804,115 +772,16 @@ struct Style : Window {
 
         Colors Colors{this, "Colors", FlowGridCol_COUNT, GetColorName};
 
-        void ColorsDark() {
-            Colors[FlowGridCol_HighlightText] = {1, 0.6, 0, 1};
-            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
-            Colors[FlowGridCol_ParamsBg] = {0.16, 0.29, 0.48, 0.1};
-        }
-        void ColorsLight() {
-            Colors[FlowGridCol_HighlightText] = {1, 0.45, 0, 1};
-            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
-            Colors[FlowGridCol_ParamsBg] = {1, 1, 1, 1};
-        }
-        void ColorsClassic() {
-            Colors[FlowGridCol_HighlightText] = {1, 0.6, 0, 1};
-            Colors[FlowGridCol_GestureIndicator] = {0.87, 0.52, 0.32, 1};
-            Colors[FlowGridCol_ParamsBg] = {0.43, 0.43, 0.43, 0.1};
-        }
+        void ColorsDark();
+        void ColorsLight();
+        void ColorsClassic();
 
-        void DiagramColorsDark() {
-            Colors[FlowGridCol_DiagramBg] = {0.06, 0.06, 0.06, 0.94};
-            Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
-            Colors[FlowGridCol_DiagramGroupTitle] = {1, 1, 1, 1};
-            Colors[FlowGridCol_DiagramGroupStroke] = {0.43, 0.43, 0.5, 0.5};
-            Colors[FlowGridCol_DiagramLine] = {0.61, 0.61, 0.61, 1};
-            Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
-            Colors[FlowGridCol_DiagramInverter] = {1, 1, 1, 1};
-            Colors[FlowGridCol_DiagramOrientationMark] = {1, 1, 1, 1};
-            // Box fills
-            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-        }
-        void DiagramColorsClassic() {
-            Colors[FlowGridCol_DiagramBg] = {0, 0, 0, 0.85};
-            Colors[FlowGridCol_DiagramText] = {0.9, 0.9, 0.9, 1};
-            Colors[FlowGridCol_DiagramGroupTitle] = {0.9, 0.9, 0.9, 1};
-            Colors[FlowGridCol_DiagramGroupStroke] = {0.5, 0.5, 0.5, 0.5};
-            Colors[FlowGridCol_DiagramLine] = {1, 1, 1, 1};
-            Colors[FlowGridCol_DiagramLink] = {0.35, 0.4, 0.61, 0.62};
-            Colors[FlowGridCol_DiagramInverter] = {0.9, 0.9, 0.9, 1};
-            Colors[FlowGridCol_DiagramOrientationMark] = {0.9, 0.9, 0.9, 1};
-            // Box fills
-            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-        }
-        void DiagramColorsLight() {
-            Colors[FlowGridCol_DiagramBg] = {0.94, 0.94, 0.94, 1};
-            Colors[FlowGridCol_DiagramText] = {0, 0, 0, 1};
-            Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
-            Colors[FlowGridCol_DiagramGroupStroke] = {0, 0, 0, 0.3};
-            Colors[FlowGridCol_DiagramLine] = {0.39, 0.39, 0.39, 1};
-            Colors[FlowGridCol_DiagramLink] = {0.26, 0.59, 0.98, 0.4};
-            Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
-            Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
-            // Box fills
-            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-        }
-        // Color Faust diagrams the same way Faust does when it renders to SVG.
-        void DiagramColorsFaust() {
-            Colors[FlowGridCol_DiagramBg] = {1, 1, 1, 1};
-            Colors[FlowGridCol_DiagramText] = {1, 1, 1, 1};
-            Colors[FlowGridCol_DiagramGroupTitle] = {0, 0, 0, 1};
-            Colors[FlowGridCol_DiagramGroupStroke] = {0.2, 0.2, 0.2, 1};
-            Colors[FlowGridCol_DiagramLine] = {0, 0, 0, 1};
-            Colors[FlowGridCol_DiagramLink] = {0, 0.2, 0.4, 1};
-            Colors[FlowGridCol_DiagramInverter] = {0, 0, 0, 1};
-            Colors[FlowGridCol_DiagramOrientationMark] = {0, 0, 0, 1};
-            // Box fills
-            Colors[FlowGridCol_DiagramNormal] = {0.29, 0.44, 0.63, 1};
-            Colors[FlowGridCol_DiagramUi] = {0.28, 0.47, 0.51, 1};
-            Colors[FlowGridCol_DiagramSlot] = {0.28, 0.58, 0.37, 1};
-            Colors[FlowGridCol_DiagramNumber] = {0.96, 0.28, 0, 1};
-        }
-
-        void DiagramLayoutFlowGrid() {
-            DiagramSequentialConnectionZigzag = false;
-            DiagramOrientationMark = false;
-            DiagramTopLevelMargin = 10;
-            DiagramDecorateMargin = 15;
-            DiagramDecorateLineWidth = 2;
-            DiagramDecorateCornerRadius = 5;
-            DiagramBoxCornerRadius = 4;
-            DiagramBinaryHorizontalGapRatio = 0.25;
-            DiagramWireWidth = 1;
-            DiagramWireGap = 16;
-            DiagramGap = {8, 8};
-            DiagramArrowSize = {3, 2};
-            DiagramInverterRadius = 3;
-        }
-        // Lay out Faust diagrams the same way Faust does when it renders to SVG.
-        void DiagramLayoutFaust() {
-            DiagramSequentialConnectionZigzag = true;
-            DiagramOrientationMark = true;
-            DiagramTopLevelMargin = 20;
-            DiagramDecorateMargin = 20;
-            DiagramDecorateLineWidth = 1;
-            DiagramBoxCornerRadius = 0;
-            DiagramDecorateCornerRadius = 0;
-            DiagramBinaryHorizontalGapRatio = 0.25;
-            DiagramWireWidth = 1;
-            DiagramWireGap = 16;
-            DiagramGap = {8, 8};
-            DiagramArrowSize = {3, 2};
-            DiagramInverterRadius = 3;
-        }
+        void DiagramColorsDark();
+        void DiagramColorsClassic();
+        void DiagramColorsLight();
+        void DiagramColorsFaust(); // Color Faust diagrams the same way Faust does when it renders to SVG.
+        void DiagramLayoutFlowGrid();
+        void DiagramLayoutFaust(); // Lay out Faust diagrams the same way Faust does when it renders to SVG.
 
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
@@ -935,29 +804,14 @@ struct Style : Window {
         }
     };
     struct ImGuiStyle : UIStateMember {
-        ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-            ColorsDark();
-        }
+        ImGuiStyle(const StateMember *parent, const string &id);
 
         void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
 
-        void ColorsDark() {
-            vector<ImVec4> dst(Colors.size());
-            ImGui::StyleColorsDark(&dst[0]);
-            Colors.set(dst);
-        }
-        void ColorsLight() {
-            vector<ImVec4> dst(Colors.size());
-            ImGui::StyleColorsLight(&dst[0]);
-            Colors.set(dst);
-        }
-        void ColorsClassic() {
-            vector<ImVec4> dst(Colors.size());
-            ImGui::StyleColorsClassic(&dst[0]);
-            Colors.set(dst);
-        }
-
+        void ColorsDark();
+        void ColorsLight();
+        void ColorsClassic();
         static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 
         // See `ImGui::ImGuiStyle` for field descriptions.
@@ -1034,30 +888,10 @@ struct Style : Window {
         void Apply(ImPlotContext *ctx) const;
         void Draw() const override;
 
-        void ColorsAuto() {
-            vector<ImVec4> dst(Colors.size());
-            ImPlot::StyleColorsAuto(&dst[0]);
-            Colors.set(dst);
-            MinorAlpha = 0.25f;
-        }
-        void ColorsDark() {
-            vector<ImVec4> dst(Colors.size());
-            ImPlot::StyleColorsDark(&dst[0]);
-            Colors.set(dst);
-            MinorAlpha = 0.25f;
-        }
-        void ColorsLight() {
-            vector<ImVec4> dst(Colors.size());
-            ImPlot::StyleColorsLight(&dst[0]);
-            Colors.set(dst);
-            MinorAlpha = 1;
-        }
-        void ColorsClassic() {
-            vector<ImVec4> dst(Colors.size());
-            ImPlot::StyleColorsClassic(&dst[0]);
-            Colors.set(dst);
-            MinorAlpha = 0.5f;
-        }
+        void ColorsAuto();
+        void ColorsDark();
+        void ColorsLight();
+        void ColorsClassic();
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.
@@ -1116,44 +950,15 @@ struct Processes : StateMember {
     Process UI{this, "UI"};
 };
 
-// Copy of ImGui version, which is not defined publicly
-struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
-    ImGuiID ID;
-    ImGuiID ParentNodeId;
-    ImGuiID ParentWindowId;
-    ImGuiID SelectedTabId;
-    signed char SplitAxis;
-    char Depth;
-    ImGuiDockNodeFlags Flags;
-    ImVec2ih Pos;
-    ImVec2ih Size;
-    ImVec2ih SizeRef;
-};
-
+struct ImGuiDockNodeSettings;
 // These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
 struct DockNodeSettings : StateMember {
     DockNodeSettings(const StateMember *parent, const string &id, const ImGuiDockNodeSettings &ds) : StateMember(parent, id) {
         *this = ds;
     }
 
-    DockNodeSettings &operator=(const ImGuiDockNodeSettings &ds) {
-        // todo make `ID : Field::Base` type and use appropriately for these
-        ID = int(ds.ID);
-        ParentNodeId = int(ds.ParentNodeId);
-        ParentWindowId = int(ds.ParentWindowId);
-        SelectedTabId = int(ds.SelectedTabId);
-        SplitAxis = ds.SplitAxis;
-        Depth = ds.Depth;
-        Flags = ds.Flags;
-        Pos = ds.Pos;
-        Size = ds.Size;
-        SizeRef = ds.SizeRef;
-
-        return *this;
-    }
-    operator ImGuiDockNodeSettings() const {
-        return {ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef,};
-    }
+    DockNodeSettings &operator=(const ImGuiDockNodeSettings &);
+    operator ImGuiDockNodeSettings() const;
 
     Int ID{this, "ID"};
     Int ParentNodeId{this, "ParentNodeId"};
@@ -1182,19 +987,7 @@ struct WindowSettings : StateMember {
     Int DockOrder{this, "DockOrder", -1};
     Bool Collapsed{this, "Collapsed"};
 
-    WindowSettings &operator=(const ImGuiWindowSettings &ws) {
-        // todo make `ID : Field::Base` type and use appropriately for these
-        ID = int(ws.ID);
-        Pos = ws.Pos;
-        Size = ws.Size;
-        ViewportPos = ws.ViewportPos;
-        ViewportId = int(ws.ViewportId);
-        DockId = int(ws.DockId);
-        ClassId = int(ws.ClassId);
-        DockOrder = int(ws.DockOrder);
-        Collapsed = ws.Collapsed;
-        return *this;
-    }
+    WindowSettings &operator=(const ImGuiWindowSettings &);
 };
 
 struct TableColumnSettings : StateMember {
@@ -1202,24 +995,15 @@ struct TableColumnSettings : StateMember {
         *this = *tcs;
     }
 
-    TableColumnSettings &operator=(const ImGuiTableColumnSettings &tcs) {
-        WidthOrWeight = tcs.WidthOrWeight;
-        UserID = tcs.UserID;
-        Index = tcs.Index;
-        DisplayOrder = tcs.DisplayOrder;
-        SortOrder = tcs.SortOrder;
-        SortDirection = tcs.SortDirection;
-        IsEnabled = tcs.IsEnabled;
-        IsStretch = tcs.IsStretch;
-        return *this;
-    }
-
+    TableColumnSettings &operator=(const ImGuiTableColumnSettings &);
     Float WidthOrWeight{this, "WidthOrWeight"};
-    ImGuiID UserID;
-    ImGuiTableColumnIdx Index, DisplayOrder, SortOrder;
-    ImU8 SortDirection;
-    bool IsEnabled; // "Visible" in ini file
-    bool IsStretch;
+    Int UserID{this, "UserID"};
+    Int Index{this, "Index"};
+    Int DisplayOrder{this, "DisplayOrder"};
+    Int SortOrder{this, "SortOrder"};
+    Int SortDirection{this, "SortDirection"};
+    Bool IsEnabled{this, "IsEnabled"}; // "Visible" in ini file
+    Bool IsStretch{this, "IsStretch"};
 };
 
 struct TableSettings : StateMember {
@@ -1237,23 +1021,7 @@ struct TableSettings : StateMember {
 struct ImGuiSettings : StateMember {
     ImGuiSettings(const StateMember *parent, const string &id) : StateMember(parent, id) {}
 
-    ImGuiSettings &operator=(ImGuiContext *ctx) {
-        ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
-        // Convert `ImChunkStream`/`ImVector`s to `vector`s.
-        for (int settings_n = 0; settings_n < ctx->DockContext.NodesSettings.Size; settings_n++) {
-            Nodes.emplace_back(this, Nodes.Path / settings_n, ctx->DockContext.NodesSettings[settings_n]);
-        }
-        int window_index = 0;
-        for (auto *settings = ctx->SettingsWindows.begin(); settings != nullptr; settings = ctx->SettingsWindows.next_chunk(settings)) {
-            Windows.emplace_back(this, Windows.Path / window_index++, *settings);
-        }
-        int table_index = 0;
-        for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
-            Tables.emplace_back(this, Tables.Path / table_index++, *ts);
-        }
-
-        return *this;
-    }
+    ImGuiSettings &operator=(ImGuiContext *ctx);
 
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
@@ -1292,18 +1060,7 @@ struct FileDialogData {
 
 struct FileDialog : Window {
     FileDialog(const StateMember *parent, const string &id, const bool visible = false) : Window(parent, id, visible) {}
-    FileDialog &operator=(const FileDialogData &data) {
-        Title = data.title;
-        Filters = data.filters;
-        FilePath = data.file_path;
-        DefaultFileName = data.default_file_name;
-        SaveMode = data.save_mode;
-        MaxNumSelections = data.max_num_selections;
-        Flags = data.flags;
-        Visible = true;
-        return *this;
-    }
-
+    FileDialog &operator=(const FileDialogData &data);
     void Draw() const override;
 
     Bool SaveMode{this, "SaveMode"}; // The same file dialog instance is used for both saving & opening files.
@@ -1613,6 +1370,7 @@ struct Context {
     Primitive get(const JsonPath &path) const;
     StateMap set(const JsonPath &path, const Primitive &value) const;
     StateMap set(const JsonPath &path, const Primitive &value);
+    StateMap set(StateMapTransient transient);
     StateMap remove(const JsonPath &path) const;
     StateMap remove(const JsonPath &path);
     static int history_size();
@@ -1761,4 +1519,8 @@ bool q(Action &&a, bool flush = false);
 // Convenience methods.
 Primitive get(const JsonPath &path);
 StateMap set(const JsonPath &path, const Primitive &value);
+StateMap set(const JsonPath &path, const ImVec4 &value);
 StateMap remove(const JsonPath &path);
+
+StateMap set(const std::vector<std::pair<const JsonPath, const Primitive>> &);
+StateMap set(const std::vector<std::pair<const JsonPath, const ImVec4>> &);

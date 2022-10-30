@@ -36,9 +36,12 @@ Color::operator ImVec4() const { return std::get<ImVec4>(get(Path)); }
 
 template<typename MemberT, typename PrimitiveT>
 StateMap PrimitiveVector<MemberT, PrimitiveT>::set(const vector<PrimitiveT> &value) const {
-    StateMapTransient transient = c.sm.transient();
-    for (int i = 0; i < int(value.size()); i++) { transient.set(items[i].Path.to_string(), value[i]); }
-    return c.set(transient);
+    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return std::pair<JsonPath, Primitive>(items[i].Path, value[i]); }) | to<vector>);
+}
+
+template<typename MemberT>
+StateMap Vector<MemberT>::set(const vector<MemberT> &value) const {
+    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return std::pair<JsonPath, Primitive>(items[i].Path, value[i]); }) | to<vector>);
 }
 }
 
@@ -89,7 +92,7 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
             return false;
         case id<set_value>:if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
             return false;
-        case id<set_values>:if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::map>};
+        case id<set_values>:if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
             return false;
         case id<toggle_value>:return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
         case id<apply_patch>:
@@ -432,7 +435,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
 //-----------------------------------------------------------------------------
 
 Window::Window(const StateMember *parent, const string &id, const bool visible) : UIStateMember(parent, id) {
-    set(Visible.Path, visible);
+    c.set(set(Visible.Path, visible));
 }
 
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
@@ -613,13 +616,17 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih SizeRef;
 };
 
+DockNodeSettings::DockNodeSettings(const StateMember *parent, const string &id, const ImGuiDockNodeSettings &ds) : StateMember(parent, id) {
+    c.set(set(ds));
+}
+
 DockNodeSettings::operator ImGuiDockNodeSettings() const {
     return {ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef};
 }
 
-DockNodeSettings &DockNodeSettings::operator=(const ImGuiDockNodeSettings &ds) {
-    // todo make `ID : Field::Base` type and use appropriately for these
-    set({
+// todo make `ID : Field::Base` type and use appropriately for these
+StateMap DockNodeSettings::set(const ImGuiDockNodeSettings &ds) {
+    return ::set({
         {ID.Path, int(ds.ID)},
         {ParentNodeId.Path, int(ds.ParentNodeId)},
         {ParentWindowId.Path, int(ds.ParentWindowId)},
@@ -631,12 +638,14 @@ DockNodeSettings &DockNodeSettings::operator=(const ImGuiDockNodeSettings &ds) {
         {Size.Path, ds.Size},
         {SizeRef.Path, ds.SizeRef},
     });
-
-    return *this;
 }
 
-WindowSettings &WindowSettings::operator=(const ImGuiWindowSettings &ws) {
-    set({
+WindowSettings::WindowSettings(const StateMember *parent, const string &id, const ImGuiWindowSettings &ws) : StateMember(parent, id) {
+    c.set(set(ws));
+}
+
+StateMap WindowSettings::set(const ImGuiWindowSettings &ws) {
+    return ::set({
         {ID.Path, int(ws.ID)},
         {Pos.Path, ws.Pos},
         {Size.Path, ws.Size},
@@ -647,11 +656,15 @@ WindowSettings &WindowSettings::operator=(const ImGuiWindowSettings &ws) {
         {DockOrder.Path, int(ws.DockOrder)},
         {Collapsed.Path, ws.Collapsed},
     });
-    return *this;
 }
 
-TableColumnSettings &TableColumnSettings::operator=(const ImGuiTableColumnSettings &tcs) {
-    set({
+TableColumnSettings::TableColumnSettings(const StateMember *parent, const int index, const ImGuiTableColumnSettings &tcs)
+    : StateMember(parent, to_string(index)) {
+    c.set(set(tcs));
+}
+
+StateMap TableColumnSettings::set(const ImGuiTableColumnSettings &tcs) {
+    return ::set({
         {WidthOrWeight.Path, tcs.WidthOrWeight},
         {UserID.Path, int(tcs.UserID)},
         {Index.Path, tcs.Index},
@@ -661,22 +674,40 @@ TableColumnSettings &TableColumnSettings::operator=(const ImGuiTableColumnSettin
         {IsEnabled.Path, tcs.IsEnabled},
         {IsStretch.Path, tcs.IsStretch},
     });
-    return *this;
+}
+
+TableSettings::TableSettings(const StateMember *parent, const string &id, ImGuiTableSettings &ts) : StateMember(parent, id) {
+    c.set(set(ts));
+    auto *column_settings = ts.GetColumnSettings();
+    for (int n = 0; n < ts.ColumnsCount; n++, column_settings++) {
+        Columns.push_back({this, n, *column_settings});
+    }
+}
+
+StateMap TableSettings::set(const ImGuiTableSettings &ts) {
+    return ::set({
+        {ID.Path, int(ts.ID)},
+        {SaveFlags.Path, int(ts.SaveFlags)},
+        {RefScale.Path, ts.RefScale},
+        {ColumnsCount.Path, ts.ColumnsCount},
+        {ColumnsCountMax.Path, ts.ColumnsCountMax},
+        {WantApply.Path, ts.WantApply},
+    });
 }
 
 ImGuiSettings &ImGuiSettings::operator=(ImGuiContext *ctx) {
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
     // Convert `ImChunkStream`/`ImVector`s to `vector`s.
     for (int settings_n = 0; settings_n < ctx->DockContext.NodesSettings.Size; settings_n++) {
-        Nodes.emplace_back(this, Nodes.Path / settings_n, ctx->DockContext.NodesSettings[settings_n]);
+        Nodes.emplace_back(&Nodes, to_string(settings_n), ctx->DockContext.NodesSettings[settings_n]);
     }
     int window_index = 0;
     for (auto *settings = ctx->SettingsWindows.begin(); settings != nullptr; settings = ctx->SettingsWindows.next_chunk(settings)) {
-        Windows.emplace_back(this, Windows.Path / window_index++, *settings);
+        Windows.emplace_back(&Windows, to_string(window_index++), *settings);
     }
     int table_index = 0;
     for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
-        Tables.emplace_back(this, Tables.Path / table_index++, *ts);
+        Tables.emplace_back(&Tables, to_string(table_index++), *ts);
     }
 
     return *this;
@@ -705,23 +736,23 @@ static void ApplyTableSettings(ImGuiTable *table, const TableSettings &settings)
     if (!table) return; // todo log
 
     table->IsSettingsRequestLoad = false; // todo remove this var/behavior?
-    table->SettingsLoadedFlags = settings.Table.SaveFlags; // todo remove this var/behavior?
-    table->RefScale = settings.Table.RefScale;
+    table->SettingsLoadedFlags = settings.SaveFlags; // todo remove this var/behavior?
+    table->RefScale = settings.RefScale;
 
     // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
     ImU64 display_order_mask = 0;
-    for (const auto &column_settings: settings.Columns) {
+    for (int i = 0; i < int(settings.Columns.size()); i++) {
+        const auto &column_settings = settings.Columns[i];
         int column_n = column_settings.Index;
-        if (column_n < 0 || column_n >= table->ColumnsCount)
-            continue;
+        if (column_n < 0 || column_n >= table->ColumnsCount) continue;
 
         ImGuiTableColumn *column = &table->Columns[column_n];
-        if (settings.Table.SaveFlags & ImGuiTableFlags_Resizable) {
+        if (ImGuiTableFlags(settings.SaveFlags) & ImGuiTableFlags_Resizable) {
             if (column_settings.IsStretch) column->StretchWeight = column_settings.WidthOrWeight;
             else column->WidthRequest = column_settings.WidthOrWeight;
             column->AutoFitQueue = 0x00;
         }
-        column->DisplayOrder = settings.Table.SaveFlags & ImGuiTableFlags_Reorderable ? column_settings.DisplayOrder : (ImGuiTableColumnIdx) column_n;
+        column->DisplayOrder = ImGuiTableFlags(settings.SaveFlags) & ImGuiTableFlags_Reorderable ? column_settings.DisplayOrder : (ImGuiTableColumnIdx) column_n;
         display_order_mask |= (ImU64) 1 << column->DisplayOrder;
         column->IsUserEnabled = column->IsUserEnabledNextFrame = column_settings.IsEnabled;
         column->SortOrder = column_settings.SortOrder;
@@ -729,14 +760,17 @@ static void ApplyTableSettings(ImGuiTable *table, const TableSettings &settings)
     }
 
     // Validate and fix invalid display order data
-    const ImU64 expected_display_order_mask = settings.Table.ColumnsCount == 64 ? ~0 : ((ImU64) 1 << settings.Table.ColumnsCount) - 1;
-    if (display_order_mask != expected_display_order_mask)
-        for (int column_n = 0; column_n < table->ColumnsCount; column_n++)
+    const ImU64 expected_display_order_mask = settings.ColumnsCount == 64 ? ~0 : ((ImU64) 1 << ImU8(settings.ColumnsCount)) - 1;
+    if (display_order_mask != expected_display_order_mask) {
+        for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
             table->Columns[column_n].DisplayOrder = (ImGuiTableColumnIdx) column_n;
+        }
+    }
 
     // Rebuild index
-    for (int column_n = 0; column_n < table->ColumnsCount; column_n++)
+    for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
         table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx) column_n;
+    }
 }
 
 void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
@@ -813,7 +847,7 @@ void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
     style.FitPadding = FitPadding;
     style.PlotDefaultSize = PlotDefaultSize;
     style.PlotMinSize = PlotMinSize;
-    style.Colormap = Colormap;
+    style.Colormap = ImPlotColormap_Deep; // todo configurable
     style.UseLocalTime = UseLocalTime;
     style.UseISO8601 = UseISO8601;
     style.Use24HourClock = Use24HourClock;
@@ -827,7 +861,7 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
 
     // Apply
     for (auto ws: Windows.items) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
-    for (auto &ts: Tables.items) ApplyTableSettings(TableFindByID(ts.Table.ID), ts);
+    for (auto &ts: Tables.items) ApplyTableSettings(TableFindByID(ts.ID), ts);
     for (auto &ns: Nodes.items) ctx->DockContext.NodesSettings.push_back(ns);
     DockSettingsHandler_ApplyAll(ctx, nullptr);
 
@@ -970,54 +1004,182 @@ void ProjectPreview::Draw() const {
 //-----------------------------------------------------------------------------
 
 Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    ColorsDark();
+    c.set(ColorsDark());
 }
-
+Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
+    c.set(ColorsAuto());
+}
 Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    ColorsDark();
-    DiagramColorsDark();
-    DiagramLayoutFlowGrid();
+    c.set(ColorsDark());
+    c.set(DiagramColorsDark());
+    c.set(DiagramLayoutFlowGrid());
 }
 
-void Style::ImGuiStyle::ColorsDark() {
+StateMap Style::ImGuiStyle::ColorsDark() const {
     vector<ImVec4> dst(Colors.size());
     ImGui::StyleColorsDark(&dst[0]);
-    Colors.set(dst);
+    return Colors.set(dst);
 }
-void Style::ImGuiStyle::ColorsLight() {
+StateMap Style::ImGuiStyle::ColorsLight() const {
     vector<ImVec4> dst(Colors.size());
     ImGui::StyleColorsLight(&dst[0]);
-    Colors.set(dst);
+    return Colors.set(dst);
 }
-void Style::ImGuiStyle::ColorsClassic() {
+StateMap Style::ImGuiStyle::ColorsClassic() const {
     vector<ImVec4> dst(Colors.size());
     ImGui::StyleColorsClassic(&dst[0]);
-    Colors.set(dst);
+    return Colors.set(dst);
 }
 
-void Style::ImPlotStyle::ColorsAuto() {
+StateMap Style::ImPlotStyle::ColorsAuto() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsAuto(&dst[0]);
-    Colors.set(dst);
-    set(MinorAlpha.Path, 0.25f);
+    StateMap new_state = Colors.set(dst);
+    return set(MinorAlpha.Path, 0.25f, new_state);
 }
-void Style::ImPlotStyle::ColorsDark() {
+StateMap Style::ImPlotStyle::ColorsDark() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsDark(&dst[0]);
-    Colors.set(dst);
-    set(MinorAlpha.Path, 0.25f);
+    StateMap new_state = Colors.set(dst);
+    return set(MinorAlpha.Path, 0.25f, new_state);
 }
-void Style::ImPlotStyle::ColorsLight() {
+StateMap Style::ImPlotStyle::ColorsLight() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsLight(&dst[0]);
-    Colors.set(dst);
-    set(MinorAlpha.Path, 1);
+    StateMap new_state = Colors.set(dst);
+    return set(MinorAlpha.Path, 1, new_state);
 }
-void Style::ImPlotStyle::ColorsClassic() {
+StateMap Style::ImPlotStyle::ColorsClassic() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsClassic(&dst[0]);
-    Colors.set(dst);
-    set(MinorAlpha.Path, 0.5f);
+    StateMap new_state = Colors.set(dst);
+    return set(MinorAlpha.Path, 0.5f, new_state);
+}
+
+StateMap Style::FlowGridStyle::ColorsDark() const {
+    return set({
+        {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+        {Colors.Path / FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
+    });
+}
+StateMap Style::FlowGridStyle::ColorsLight() const {
+    return set({
+        {Colors.Path / FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
+        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+        {Colors.Path / FlowGridCol_ParamsBg, {1, 1, 1, 1}},
+    });
+}
+StateMap Style::FlowGridStyle::ColorsClassic() const {
+    return set({
+        {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+        {Colors.Path / FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
+    });
+}
+
+StateMap Style::FlowGridStyle::DiagramColorsDark() const {
+    return set({
+        {Colors.Path / FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
+        {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupTitle, {1, 1, 1, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.43, 0.43, 0.5, 0.5}},
+        {Colors.Path / FlowGridCol_DiagramLine, {0.61, 0.61, 0.61, 1}},
+        {Colors.Path / FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
+        {Colors.Path / FlowGridCol_DiagramInverter, {1, 1, 1, 1}},
+        {Colors.Path / FlowGridCol_DiagramOrientationMark, {1, 1, 1, 1}},
+        // Box fills
+        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+    });
+}
+StateMap Style::FlowGridStyle::DiagramColorsClassic() const {
+    return set({
+        {Colors.Path / FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
+        {Colors.Path / FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0.9, 0.9, 0.9, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.5, 0.5, 0.5, 0.5}},
+        {Colors.Path / FlowGridCol_DiagramLine, {1, 1, 1, 1}},
+        {Colors.Path / FlowGridCol_DiagramLink, {0.35, 0.4, 0.61, 0.62}},
+        {Colors.Path / FlowGridCol_DiagramInverter, {0.9, 0.9, 0.9, 1}},
+        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0.9, 0.9, 0.9, 1}},
+        // Box fills
+        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+    });
+}
+StateMap Style::FlowGridStyle::DiagramColorsLight() const {
+    return set({
+        {Colors.Path / FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
+        {Colors.Path / FlowGridCol_DiagramText, {0, 0, 0, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0, 0, 0, 0.3}},
+        {Colors.Path / FlowGridCol_DiagramLine, {0.39, 0.39, 0.39, 1}},
+        {Colors.Path / FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
+        {Colors.Path / FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
+        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
+        // Box fills
+        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+    });
+}
+StateMap Style::FlowGridStyle::DiagramColorsFaust() const {
+    return set({
+        {Colors.Path / FlowGridCol_DiagramBg, {1, 1, 1, 1}},
+        {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
+        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.2, 0.2, 0.2, 1}},
+        {Colors.Path / FlowGridCol_DiagramLine, {0, 0, 0, 1}},
+        {Colors.Path / FlowGridCol_DiagramLink, {0, 0.2, 0.4, 1}},
+        {Colors.Path / FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
+        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
+        // Box fills
+        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+    });
+}
+
+StateMap Style::FlowGridStyle::DiagramLayoutFlowGrid() const {
+    return set({
+        {DiagramSequentialConnectionZigzag.Path, false},
+        {DiagramOrientationMark.Path, false},
+        {DiagramTopLevelMargin.Path, 10},
+        {DiagramDecorateMargin.Path, 15},
+        {DiagramDecorateLineWidth.Path, 2},
+        {DiagramDecorateCornerRadius.Path, 5},
+        {DiagramBoxCornerRadius.Path, 4},
+        {DiagramBinaryHorizontalGapRatio.Path, 0.25f},
+        {DiagramWireWidth.Path, 1},
+        {DiagramWireGap.Path, 16},
+        {DiagramGap.Path, ImVec2{8, 8}},
+        {DiagramArrowSize.Path, ImVec2{3, 2}},
+        {DiagramInverterRadius.Path, 3},
+    });
+}
+StateMap Style::FlowGridStyle::DiagramLayoutFaust() const {
+    return set({
+        {DiagramSequentialConnectionZigzag.Path, true},
+        {DiagramOrientationMark.Path, true},
+        {DiagramTopLevelMargin.Path, 20},
+        {DiagramDecorateMargin.Path, 20},
+        {DiagramDecorateLineWidth.Path, 1},
+        {DiagramBoxCornerRadius.Path, 0},
+        {DiagramDecorateCornerRadius.Path, 0},
+        {DiagramBinaryHorizontalGapRatio.Path, 0.25f},
+        {DiagramWireWidth.Path, 1},
+        {DiagramWireGap.Path, 16},
+        {DiagramGap.Path, ImVec2{8, 8}},
+        {DiagramArrowSize.Path, ImVec2{3, 2}},
+        {DiagramInverterRadius.Path, 3},
+    });
 }
 
 bool Colors::Draw() const {
@@ -1250,133 +1412,6 @@ void Style::ImPlotStyle::Draw() const {
         EndTabBar();
     }
 }
-
-void Style::FlowGridStyle::ColorsDark() {
-    set({
-        {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {Colors.Path / FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
-    });
-}
-void Style::FlowGridStyle::ColorsLight() {
-    set({
-        {Colors.Path / FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
-        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {Colors.Path / FlowGridCol_ParamsBg, {1, 1, 1, 1}},
-    });
-}
-void Style::FlowGridStyle::ColorsClassic() {
-    set({
-        {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {Colors.Path / FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
-    });
-}
-
-void Style::FlowGridStyle::DiagramColorsDark() {
-    set({
-        {Colors.Path / FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
-        {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.43, 0.43, 0.5, 0.5}},
-        {Colors.Path / FlowGridCol_DiagramLine, {0.61, 0.61, 0.61, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {1, 1, 1, 1}},
-        // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
-}
-void Style::FlowGridStyle::DiagramColorsClassic() {
-    set({
-        {Colors.Path / FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
-        {Colors.Path / FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0.9, 0.9, 0.9, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.5, 0.5, 0.5, 0.5}},
-        {Colors.Path / FlowGridCol_DiagramLine, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0.35, 0.4, 0.61, 0.62}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {0.9, 0.9, 0.9, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0.9, 0.9, 0.9, 1}},
-        // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
-}
-void Style::FlowGridStyle::DiagramColorsLight() {
-    set({
-        {Colors.Path / FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
-        {Colors.Path / FlowGridCol_DiagramText, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0, 0, 0, 0.3}},
-        {Colors.Path / FlowGridCol_DiagramLine, {0.39, 0.39, 0.39, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
-        // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
-}
-void Style::FlowGridStyle::DiagramColorsFaust() {
-    set({
-        {Colors.Path / FlowGridCol_DiagramBg, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.2, 0.2, 0.2, 1}},
-        {Colors.Path / FlowGridCol_DiagramLine, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0, 0.2, 0.4, 1}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
-        // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
-}
-
-void Style::FlowGridStyle::DiagramLayoutFlowGrid() {
-    set({
-        {DiagramSequentialConnectionZigzag.Path, false},
-        {DiagramOrientationMark.Path, false},
-        {DiagramTopLevelMargin.Path, 10},
-        {DiagramDecorateMargin.Path, 15},
-        {DiagramDecorateLineWidth.Path, 2},
-        {DiagramDecorateCornerRadius.Path, 5},
-        {DiagramBoxCornerRadius.Path, 4},
-        {DiagramBinaryHorizontalGapRatio.Path, 0.25f},
-        {DiagramWireWidth.Path, 1},
-        {DiagramWireGap.Path, 16},
-        {DiagramGap.Path, ImVec2{8, 8}},
-        {DiagramArrowSize.Path, ImVec2{3, 2}},
-        {DiagramInverterRadius.Path, 3},
-    });
-}
-void Style::FlowGridStyle::DiagramLayoutFaust() {
-    set({
-        {DiagramSequentialConnectionZigzag.Path, true},
-        {DiagramOrientationMark.Path, true},
-        {DiagramTopLevelMargin.Path, 20},
-        {DiagramDecorateMargin.Path, 20},
-        {DiagramDecorateLineWidth.Path, 1},
-        {DiagramBoxCornerRadius.Path, 0},
-        {DiagramDecorateCornerRadius.Path, 0},
-        {DiagramBinaryHorizontalGapRatio.Path, 0.25f},
-        {DiagramWireWidth.Path, 1},
-        {DiagramWireGap.Path, 16},
-        {DiagramGap.Path, ImVec2{8, 8}},
-        {DiagramArrowSize.Path, ImVec2{3, 2}},
-        {DiagramInverterRadius.Path, 3},
-    });
-}
-
 void Style::FlowGridStyle::Draw() const {
     static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
@@ -1493,8 +1528,8 @@ void Demo::ImGuiDemo::Draw() const {
 void Demo::ImPlotDemo::Draw() const {
     ImPlot::ShowDemoWindow();
 }
-FileDialog &FileDialog::operator=(const FileDialogData &data) {
-    set({
+StateMap FileDialog::set(const FileDialogData &data) const {
+    return ::set({
         {Title.Path, data.title},
         {Filters.Path, data.filters},
         {FilePath.Path, data.file_path},
@@ -1504,8 +1539,8 @@ FileDialog &FileDialog::operator=(const FileDialogData &data) {
         {Flags.Path, data.flags},
         {Visible.Path, true},
     });
-    return *this;
 }
+
 void Demo::FileDialogDemo::Draw() const {
     IGFD::ShowDemoWindow();
 }

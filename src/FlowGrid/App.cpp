@@ -9,43 +9,27 @@ std::map<ImGuiID, StateMember *> StateMember::WithID{};
 StateMap gesture_begin_state; // Only updated on gesture-end (for diff calculation).
 vector<std::pair<TimePoint, StateMap>> state_history; // One state checkpoint for every gesture.
 
-Primitive Context::get(const JsonPath &path) const { return sm.at(path.to_string()); }
-StateMap Context::set(const JsonPath &path, const Primitive &value) const {
-    return sm.set(path.to_string(), value);
-}
-StateMap Context::set(const JsonPath &path, const Primitive &value) {
-    const auto &const_ref = *this;
-    return (state_map = const_ref.set(path, value));
-}
-StateMap Context::remove(const JsonPath &path) const {
-    return sm.erase(path.to_string());
-}
-StateMap Context::remove(const JsonPath &path) {
-    const auto &const_ref = *this;
-    return (state_map = const_ref.remove(path));
-}
-StateMap Context::set(StateMapTransient transient) {
-    return (state_map = transient.persistent());
-}
+StateMap Context::set(StateMap persistent) { return state_map = std::move(persistent); }
+StateMap Context::set(StateMapTransient transient) { return state_map = transient.persistent(); }
 
-Primitive get(const JsonPath &path) { return c.get(path); }
-StateMap set(const JsonPath &path, const Primitive &value) { return c.set(path, value); }
-StateMap set(const JsonPath &path, const ImVec4 &value) { return c.set(path, value); }
-StateMap remove(const JsonPath &path) { return c.remove(path); }
+Primitive get(const JsonPath &path) { return c.sm.at(path.to_string()); }
+StateMap set(const JsonPath &path, const Primitive &value, const StateMap &state_map) { return state_map.set(path.to_string(), value); }
+StateMap set(const JsonPath &path, const ImVec4 &value, const StateMap &state_map) { return state_map.set(path.to_string(), value); }
+StateMap remove(const JsonPath &path) { return c.sm.erase(path.to_string()); }
 
-StateMap set(const std::vector<std::pair<const JsonPath, const Primitive>> &values) {
-    StateMapTransient transient = c.sm.transient();
+StateMap set(const StateValues &values, const StateMap &state_map) {
+    StateMapTransient transient = state_map.transient();
     for (const auto &[path, value]: values) transient.set(path.to_string(), value);
-    return c.set(transient);
+    return transient.persistent();
 }
-StateMap set(const std::vector<std::pair<const JsonPath, const ImVec4>> &values) {
-    StateMapTransient transient = c.sm.transient();
+StateMap set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const StateMap &state_map) {
+    StateMapTransient transient = state_map.transient();
     for (const auto &[path, value]: values) transient.set(path.to_string(), value);
-    return c.set(transient);
+    return transient.persistent();
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
-    c.set(Path, value);
+    c.set(set(Path, value));
 }
 
 namespace nlohmann {
@@ -57,12 +41,12 @@ inline void to_json(json &j, const StateMap &v) {
 // `from_json` defined out of `nlohmann`, to be called manually.
 // This avoids getting a reference arg to a default-constructed, non-transient `StateMap` instance.
 StateMap state_from_json(const json &j) {
-    StateMapTransient _state;
     const auto &flattened = j.flatten();
-    vector<std::pair<JsonPath, Primitive>> items(flattened.size());
+    StateValues items(flattened.size());
     int item_index = 0;
     for (const auto &it: flattened.items()) items[item_index++] = {JsonPath(it.key()), Primitive(it.value())};
 
+    StateMapTransient _state;
     for (size_t i = 0; i < items.size(); i++) {
         const auto &[path, value] = items[i];
         if (path.back() == "w" && i < items.size() - 3 && items[i + 3].first.back() == "z") {
@@ -135,78 +119,68 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
-void State::Update(const Action &action) {
-    std::visit(visitor{
-        [&](const show_open_project_dialog &) { FileDialog = {"Choose file", AllProjectExtensionsDelimited, ".", ""}; },
-        [&](const show_save_project_dialog &) { FileDialog = {"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_open_faust_file_dialog &) { FileDialog = {"Choose file", FaustDspFileExtension, ".", ""}; },
-        [&](const show_save_faust_file_dialog &) { FileDialog = {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
-        [&](const show_save_faust_svg_file_dialog &) { FileDialog = {"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}; },
+StateMap State::Update(const Action &action) const {
+    return std::visit(visitor{
+        [&](const show_open_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
+        [&](const show_save_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
+        [&](const show_open_faust_file_dialog &) { return FileDialog.set({"Choose file", FaustDspFileExtension, ".", ""}); },
+        [&](const show_save_faust_file_dialog &) { return FileDialog.set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
+        [&](const show_save_faust_svg_file_dialog &) { return FileDialog.set({"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
 
-        [&](const open_file_dialog &a) { FileDialog = a.dialog; },
-        [&](const close_file_dialog &) { set(FileDialog.Visible.Path, false); },
+        [&](const open_file_dialog &a) { return FileDialog.set(a.dialog); },
+        [&](const close_file_dialog &) { return set(FileDialog.Visible.Path, false); },
 
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
-                case 0: Style.ImGui.ColorsDark();
-                    break;
-                case 1: Style.ImGui.ColorsLight();
-                    break;
-                case 2: Style.ImGui.ColorsClassic();
-                    break;
+                case 0: return Style.ImGui.ColorsDark();
+                case 1: return Style.ImGui.ColorsLight();
+                case 2: return Style.ImGui.ColorsClassic();
+                default: return c.sm;
             }
         },
         [&](const set_implot_color_style &a) {
             switch (a.id) {
-                case 0: Style.ImPlot.ColorsAuto();
-                    break;
-                case 1: Style.ImPlot.ColorsDark();
-                    break;
-                case 2: Style.ImPlot.ColorsLight();
-                    break;
-                case 3: Style.ImPlot.ColorsClassic();
-                    break;
+                case 0: return Style.ImPlot.ColorsAuto();
+                case 1: return Style.ImPlot.ColorsDark();
+                case 2: return Style.ImPlot.ColorsLight();
+                case 3: return Style.ImPlot.ColorsClassic();
+                default: return c.sm;
             }
         },
         [&](const set_flowgrid_color_style &a) {
             switch (a.id) {
-                case 0: Style.FlowGrid.ColorsDark();
-                    break;
-                case 1: Style.FlowGrid.ColorsLight();
-                    break;
-                case 2: Style.FlowGrid.ColorsClassic();
-                    break;
+                case 0: return Style.FlowGrid.ColorsDark();
+                case 1: return Style.FlowGrid.ColorsLight();
+                case 2: return Style.FlowGrid.ColorsClassic();
+                default: return c.sm;
             }
         },
         [&](const set_flowgrid_diagram_color_style &a) {
             switch (a.id) {
-                case 0: Style.FlowGrid.DiagramColorsDark();
-                    break;
-                case 1: Style.FlowGrid.DiagramColorsLight();
-                    break;
-                case 2: Style.FlowGrid.DiagramColorsClassic();
-                    break;
-                case 3: Style.FlowGrid.DiagramColorsFaust();
-                    break;
+                case 0: return Style.FlowGrid.DiagramColorsDark();
+                case 1: return Style.FlowGrid.DiagramColorsLight();
+                case 2: return Style.FlowGrid.DiagramColorsClassic();
+                case 3: return Style.FlowGrid.DiagramColorsFaust();
+                default: return c.sm;
             }
         },
         [&](const set_flowgrid_diagram_layout_style &a) {
             switch (a.id) {
-                case 0: Style.FlowGrid.DiagramLayoutFlowGrid();
-                    break;
-                case 1: Style.FlowGrid.DiagramLayoutFaust();
-                    break;
+                case 0: return Style.FlowGrid.DiagramLayoutFlowGrid();
+                case 1: return Style.FlowGrid.DiagramLayoutFaust();
+                default: return c.sm;
             }
         },
-
-        [&](const open_faust_file &a) { set(Audio.Faust.Code.Path, FileIO::read(a.path)); },
-
+        [&](const open_faust_file &a) { return set(Audio.Faust.Code.Path, FileIO::read(a.path)); },
         [&](const close_application &) {
-            set(Processes.UI.Running.Path, false);
-            set(Audio.Running.Path, false);
+            return set({
+                {Processes.UI.Running.Path, false},
+                {Audio.Running.Path, false},
+            });
         },
-
-        [&](const auto &) {}, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
+        [&](const auto &) {
+            return sm;
+        }, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
     }, action);
 }
 
@@ -261,34 +235,39 @@ void Context::on_action(const Action &action) {
         // Keep JSON & struct versions of state in sync.
         [&](const set_value &a) {
             const auto before_state = state_map;
-            set(a.path, a.value);
+            set(::set(a.path, a.value));
             on_patch(a, create_patch(before_state, state_map));
         },
         [&](const set_values &a) {
             const auto before_state = state_map;
-            // See https://sinusoid.es/immer/design.html#leveraging-move-semantics
-            for (const auto &[path, value]: a.values) state_map = std::move(state_map).set(path.to_string(), value);
+            set(::set(a.values));
             on_patch(a, create_patch(before_state, state_map));
         },
         [&](const toggle_value &a) {
             const auto before_state = state_map;
-            set(a.path, !std::get<bool>(get(a.path)));
+            set(::set(a.path, !std::get<bool>(get(a.path))));
             on_patch(a, create_patch(before_state, state_map));
             // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row and undoing does nothing, since they're compressed into nothing.
             finalize_gesture();
         },
         [&](const apply_patch &a) {
-            const auto before_state = state_map;
+            // todo correct implementation
+            StateValues values;
+            vector<JsonPath> removed_paths;
             for (const auto &op: a.patch) {
-                if (op.op == Add) set(op.path, op.value.value());
-                else if (op.op == Remove) remove(op.path);
-                else if (op.op == Replace) set(op.path, op.value.value());
+                if (op.op == Add) values.emplace_back(op.path, op.value.value());
+                else if (op.op == Remove) removed_paths.push_back(op.path);
+                else if (op.op == Replace) values.emplace_back(op.path, op.value.value());
             }
+            const auto before_state = state_map;
+
+            set(::set(values));
+//            remove(::remove(removed_paths));
             on_patch(a, create_patch(before_state, state_map));
         },
         [&](const auto &a) {
             const auto before_state = state_map;
-            state.Update(a);
+            set(state.Update(a));
             on_patch(a, create_patch(before_state, state_map));
         },
     }, action);
@@ -488,7 +467,7 @@ void Context::finalize_gesture() {
         if (id == action::id<Actions::set_history_index> && merged_gesture_size == 1) {
             const auto new_history_index = std::get<Actions::set_history_index>(action).history_index;
             if (new_history_index == gesture_begin_history_index - 1) return undo{};
-            else if (new_history_index == gesture_begin_history_index + 1) return redo{};
+            if (new_history_index == gesture_begin_history_index + 1) return redo{};
         }
         return action;
     }) | views::filter([this](const auto &action) {

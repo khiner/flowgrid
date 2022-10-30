@@ -25,29 +25,30 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
-using Primitive = std::variant<bool, int, float, string, ImVec2ih, ImVec2, ImVec4>;
-// These are needed to fully define equality comparison for `Primitive`.
-constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
-constexpr bool operator==(const ImVec2ih &lhs, const ImVec2ih &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
-constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
-
-using StateMap = immer::map<string, Primitive>;
-using StateMapTransient = immer::map_transient<string, Primitive>;
-
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
 using namespace fmt;
 using namespace nlohmann;
+using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
+
+using JsonPath = json::json_pointer;
+using Primitive = std::variant<bool, int, float, string, ImVec2ih, ImVec2, ImVec4>;
+using StateMap = immer::map<string, Primitive>;
+using StateMapTransient = immer::map_transient<string, Primitive>;
+using StateValues = vector<std::pair<JsonPath, Primitive>>;
+
+// These are needed to fully define equality comparison for `Primitive`.
+constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+constexpr bool operator==(const ImVec2ih &lhs, const ImVec2ih &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
 // Time declarations inspired by https://stackoverflow.com/a/14391562/780425
-using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 using Clock = std::chrono::system_clock; // Main system clock
 using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
 
 using std::nullopt;
-using JsonPath = json::json_pointer;
 using std::cout, std::cerr;
 using std::unique_ptr, std::make_unique;
 using std::min, std::max;
@@ -295,12 +296,8 @@ struct Vector : Base {
         return *this;
     }
 
-    // Can't use `operator=` here, since it would need to be overloaded for every concrete descendent type.
-    // todo transient
-    Vector &set(const vector<MemberT> &value) {
-        for (int i = 0; i < int(value.size()); i++) { items[i] = value[i]; }
-        return *this;
-    }
+    StateMap set(const vector<MemberT> &value) const;
+
     MemberT &operator[](size_t index) { return items[index]; }
     const MemberT &operator[](size_t index) const { return items[index]; };
     size_t size() const { return items.size(); }
@@ -374,7 +371,7 @@ static const vector<Flags::Item> TableFlagItems{
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : UIStateMember {
-    Window(const StateMember *parent, const string &id, const bool visible = true);
+    Window(const StateMember *parent, const string &id, bool visible = true);
 
     Bool Visible{this, "Visible", true};
 
@@ -772,16 +769,16 @@ struct Style : Window {
 
         Colors Colors{this, "Colors", FlowGridCol_COUNT, GetColorName};
 
-        void ColorsDark();
-        void ColorsLight();
-        void ColorsClassic();
+        StateMap ColorsDark() const;
+        StateMap ColorsLight() const;
+        StateMap ColorsClassic() const;
 
-        void DiagramColorsDark();
-        void DiagramColorsClassic();
-        void DiagramColorsLight();
-        void DiagramColorsFaust(); // Color Faust diagrams the same way Faust does when it renders to SVG.
-        void DiagramLayoutFlowGrid();
-        void DiagramLayoutFaust(); // Lay out Faust diagrams the same way Faust does when it renders to SVG.
+        StateMap DiagramColorsDark() const;
+        StateMap DiagramColorsClassic() const;
+        StateMap DiagramColorsLight() const;
+        StateMap DiagramColorsFaust() const; // Color Faust diagrams the same way Faust does when it renders to SVG.
+        StateMap DiagramLayoutFlowGrid() const;
+        StateMap DiagramLayoutFaust() const; // Lay out Faust diagrams the same way Faust does when it renders to SVG.
 
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
@@ -809,9 +806,9 @@ struct Style : Window {
         void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
 
-        void ColorsDark();
-        void ColorsLight();
-        void ColorsClassic();
+        StateMap ColorsDark() const;
+        StateMap ColorsLight() const;
+        StateMap ColorsClassic() const;
         static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 
         // See `ImGui::ImGuiStyle` for field descriptions.
@@ -880,18 +877,14 @@ struct Style : Window {
         Colors Colors{this, "Colors", ImGuiCol_COUNT, ImGui::GetStyleColorName};
     };
     struct ImPlotStyle : UIStateMember {
-        ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-            Colormap = ImPlotColormap_Deep;
-            ColorsAuto();
-        }
-
+        ImPlotStyle(const StateMember *parent, const string &id);
         void Apply(ImPlotContext *ctx) const;
         void Draw() const override;
 
-        void ColorsAuto();
-        void ColorsDark();
-        void ColorsLight();
-        void ColorsClassic();
+        StateMap ColorsAuto() const;
+        StateMap ColorsDark() const;
+        StateMap ColorsLight() const;
+        StateMap ColorsClassic() const;
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.
@@ -931,7 +924,6 @@ struct Style : Window {
         Vec2 FitPadding{this, "FitPadding", {0, 0}, 0, 0.2, "%.2f"};
 
         Colors Colors{this, "Colors", ImPlotCol_COUNT, ImPlot::GetStyleColorName, true};
-        ImPlotColormap Colormap;
         Bool UseLocalTime{this, "UseLocalTime"};
         Bool UseISO8601{this, "UseISO8601"};
         Bool Use24HourClock{this, "Use24HourClock"};
@@ -953,11 +945,8 @@ struct Processes : StateMember {
 struct ImGuiDockNodeSettings;
 // These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
 struct DockNodeSettings : StateMember {
-    DockNodeSettings(const StateMember *parent, const string &id, const ImGuiDockNodeSettings &ds) : StateMember(parent, id) {
-        *this = ds;
-    }
-
-    DockNodeSettings &operator=(const ImGuiDockNodeSettings &);
+    DockNodeSettings(const StateMember *parent, const string &id, const ImGuiDockNodeSettings &);
+    StateMap set(const ImGuiDockNodeSettings &);
     operator ImGuiDockNodeSettings() const;
 
     Int ID{this, "ID"};
@@ -973,9 +962,8 @@ struct DockNodeSettings : StateMember {
 };
 
 struct WindowSettings : StateMember {
-    WindowSettings(const StateMember *parent, const string &id, const ImGuiWindowSettings &ws) : StateMember(parent, id) {
-        *this = ws;
-    }
+    WindowSettings(const StateMember *parent, const string &id, const ImGuiWindowSettings &);
+    StateMap set(const ImGuiWindowSettings &);
 
     Int ID{this, "ID"};
     Int ViewportId{this, "ViewportId"};
@@ -986,16 +974,12 @@ struct WindowSettings : StateMember {
     Vec2Int ViewportPos{this, "ViewportPos"};
     Int DockOrder{this, "DockOrder", -1};
     Bool Collapsed{this, "Collapsed"};
-
-    WindowSettings &operator=(const ImGuiWindowSettings &);
 };
 
 struct TableColumnSettings : StateMember {
-    TableColumnSettings(const StateMember *parent, const string &id, ImGuiTableColumnSettings *tcs = nullptr) : StateMember(parent, id) {
-        *this = *tcs;
-    }
+    TableColumnSettings(const StateMember *parent, int index, const ImGuiTableColumnSettings &);
+    StateMap set(const ImGuiTableColumnSettings &);
 
-    TableColumnSettings &operator=(const ImGuiTableColumnSettings &);
     Float WidthOrWeight{this, "WidthOrWeight"};
     Int UserID{this, "UserID"};
     Int Index{this, "Index"};
@@ -1007,15 +991,16 @@ struct TableColumnSettings : StateMember {
 };
 
 struct TableSettings : StateMember {
-    TableSettings(const StateMember *parent, const string &id, ImGuiTableSettings &ts) : StateMember(parent, id) {
-        auto *column_settings = ts.GetColumnSettings();
-        auto *column = ImGui::TableFindByID(ts.ID)->Columns.Data;
-        for (int n = 0; n < ts.ColumnsCount; n++, column++, column_settings++) {
-            Columns.emplace_back(this, JsonPath("Columns") / n, column_settings);
-        }
-    }
-    ImGuiTableSettings Table;
-    vector<TableColumnSettings> Columns;
+    TableSettings(const StateMember *parent, const string &id, ImGuiTableSettings &);
+    StateMap set(const ImGuiTableSettings &);
+
+    Int ID{this, "ID"};
+    Int SaveFlags{this, "SaveFlags"};
+    Float RefScale{this, "RefScale"};
+    Int ColumnsCount{this, "ColumnsCount"};
+    Int ColumnsCountMax{this, "ColumnsCountMax"};
+    Bool WantApply{this, "WantApply"};
+    Vector<TableColumnSettings> Columns{this, "Columns"};
 };
 
 struct ImGuiSettings : StateMember {
@@ -1060,7 +1045,7 @@ struct FileDialogData {
 
 struct FileDialog : Window {
     FileDialog(const StateMember *parent, const string &id, const bool visible = false) : Window(parent, id, visible) {}
-    FileDialog &operator=(const FileDialogData &data);
+    StateMap set(const FileDialogData &data) const;
     void Draw() const override;
 
     Bool SaveMode{this, "SaveMode"}; // The same file dialog instance is used for both saving & opening files.
@@ -1148,7 +1133,7 @@ struct show_save_project_dialog {};
 struct close_application {};
 
 struct set_value { JsonPath path; Primitive value; };
-struct set_values { std::map<JsonPath, Primitive> values; };
+struct set_values { StateValues values; };
 struct toggle_value { JsonPath path; };
 
 struct apply_patch { JsonPatch patch; };
@@ -1284,7 +1269,7 @@ struct State : UIStateMember {
     State() : UIStateMember() {}
 
     void Draw() const override;
-    void Update(const Action &); // State is only updated via `context.on_action(action)`
+    StateMap Update(const Action &) const; // State is only updated via `context.on_action(action)`
 
     ImGuiSettings ImGuiSettings{this, "ImGuiSettings#ImGui settings"};
     Style Style{this, "Style"};
@@ -1367,12 +1352,8 @@ struct Context {
     Context();
     ~Context();
 
-    Primitive get(const JsonPath &path) const;
-    StateMap set(const JsonPath &path, const Primitive &value) const;
-    StateMap set(const JsonPath &path, const Primitive &value);
+    StateMap set(StateMap state_map);
     StateMap set(StateMapTransient transient);
-    StateMap remove(const JsonPath &path) const;
-    StateMap remove(const JsonPath &path);
     static int history_size();
     static StatePatch create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
@@ -1516,11 +1497,11 @@ extern Context context, &c;
 
 bool q(Action &&a, bool flush = false);
 
-// Convenience methods.
+// Immutable state set/get methods
 Primitive get(const JsonPath &path);
-StateMap set(const JsonPath &path, const Primitive &value);
-StateMap set(const JsonPath &path, const ImVec4 &value);
+StateMap set(const JsonPath &path, const Primitive &value, const StateMap &state_map = c.sm);
+StateMap set(const JsonPath &path, const ImVec4 &value, const StateMap &state_map = c.sm);
 StateMap remove(const JsonPath &path);
 
-StateMap set(const std::vector<std::pair<const JsonPath, const Primitive>> &);
-StateMap set(const std::vector<std::pair<const JsonPath, const ImVec4>> &);
+StateMap set(const StateValues &, const StateMap &state_map = c.sm);
+StateMap set(const std::vector<std::pair<JsonPath, ImVec4>> &, const StateMap &state_map = c.sm);

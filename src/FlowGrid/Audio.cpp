@@ -529,13 +529,13 @@ void Audio::update_process() const {
     if (first_run) {
         first_run = false;
 
-        static std::map<JsonPath, Primitive> values;
-        if (instream->device->id != InDeviceId) values[InDeviceId.Path] = instream->device->id;
-        if (outstream->device->id != OutDeviceId) values[OutDeviceId.Path] = outstream->device->id;
-        if (instream->sample_rate != InSampleRate) values[InSampleRate.Path] = instream->sample_rate;
-        if (outstream->sample_rate != OutSampleRate) values[OutSampleRate.Path] = outstream->sample_rate;
-        if (instream->format != InFormat) values[InFormat.Path] = to_audio_format(instream->format);
-        if (outstream->format != OutFormat) values[OutFormat.Path] = to_audio_format(outstream->format);
+        static StateValues values;
+        if (instream->device->id != InDeviceId) values.emplace_back(InDeviceId.Path, instream->device->id);
+        if (outstream->device->id != OutDeviceId) values.emplace_back(OutDeviceId.Path, outstream->device->id);
+        if (instream->sample_rate != InSampleRate) values.emplace_back(InSampleRate.Path, instream->sample_rate);
+        if (outstream->sample_rate != OutSampleRate) values.emplace_back(OutSampleRate.Path, outstream->sample_rate);
+        if (instream->format != InFormat) values.emplace_back(InFormat.Path, to_audio_format(instream->format));
+        if (outstream->format != OutFormat) values.emplace_back(OutFormat.Path, to_audio_format(outstream->format));
         if (!values.empty()) q(set_values{values}, true);
     }
 

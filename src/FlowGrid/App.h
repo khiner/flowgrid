@@ -1497,11 +1497,14 @@ extern Context context, &c;
 
 bool q(Action &&a, bool flush = false);
 
+using MemberValues = vector<std::pair<const StateMember &, Primitive>>;
 // Immutable state set/get methods
 Primitive get(const JsonPath &path);
 StateMap set(const JsonPath &path, const Primitive &value, const StateMap &state_map = c.sm);
+StateMap set(const StateMember &member, const Primitive &value, const StateMap &state_map = c.sm);
 StateMap set(const JsonPath &path, const ImVec4 &value, const StateMap &state_map = c.sm);
 StateMap remove(const JsonPath &path);
 
 StateMap set(const StateValues &, const StateMap &state_map = c.sm);
+StateMap set(const MemberValues &, const StateMap &state_map = c.sm);
 StateMap set(const std::vector<std::pair<JsonPath, ImVec4>> &, const StateMap &state_map = c.sm);

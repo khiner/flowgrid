@@ -435,7 +435,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
 //-----------------------------------------------------------------------------
 
 Window::Window(const StateMember *parent, const string &id, const bool visible) : UIStateMember(parent, id) {
-    c.set(set(Visible.Path, visible));
+    c.set(set(Visible, visible));
 }
 
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
@@ -627,16 +627,16 @@ DockNodeSettings::operator ImGuiDockNodeSettings() const {
 // todo make `ID : Field::Base` type and use appropriately for these
 StateMap DockNodeSettings::set(const ImGuiDockNodeSettings &ds) {
     return ::set({
-        {ID.Path, int(ds.ID)},
-        {ParentNodeId.Path, int(ds.ParentNodeId)},
-        {ParentWindowId.Path, int(ds.ParentWindowId)},
-        {SelectedTabId.Path, int(ds.SelectedTabId)},
-        {SplitAxis.Path, ds.SplitAxis},
-        {Depth.Path, ds.Depth},
-        {Flags.Path, ds.Flags},
-        {Pos.Path, ds.Pos},
-        {Size.Path, ds.Size},
-        {SizeRef.Path, ds.SizeRef},
+        {ID, int(ds.ID)},
+        {ParentNodeId, int(ds.ParentNodeId)},
+        {ParentWindowId, int(ds.ParentWindowId)},
+        {SelectedTabId, int(ds.SelectedTabId)},
+        {SplitAxis, ds.SplitAxis},
+        {Depth, ds.Depth},
+        {Flags, ds.Flags},
+        {Pos, ds.Pos},
+        {Size, ds.Size},
+        {SizeRef, ds.SizeRef},
     });
 }
 
@@ -646,15 +646,15 @@ WindowSettings::WindowSettings(const StateMember *parent, const string &id, cons
 
 StateMap WindowSettings::set(const ImGuiWindowSettings &ws) {
     return ::set({
-        {ID.Path, int(ws.ID)},
-        {Pos.Path, ws.Pos},
-        {Size.Path, ws.Size},
-        {ViewportPos.Path, ws.ViewportPos},
-        {ViewportId.Path, int(ws.ViewportId)},
-        {DockId.Path, int(ws.DockId)},
-        {ClassId.Path, int(ws.ClassId)},
-        {DockOrder.Path, int(ws.DockOrder)},
-        {Collapsed.Path, ws.Collapsed},
+        {ID, int(ws.ID)},
+        {Pos, ws.Pos},
+        {Size, ws.Size},
+        {ViewportPos, ws.ViewportPos},
+        {ViewportId, int(ws.ViewportId)},
+        {DockId, int(ws.DockId)},
+        {ClassId, int(ws.ClassId)},
+        {DockOrder, int(ws.DockOrder)},
+        {Collapsed, ws.Collapsed},
     });
 }
 
@@ -665,14 +665,14 @@ TableColumnSettings::TableColumnSettings(const StateMember *parent, const int in
 
 StateMap TableColumnSettings::set(const ImGuiTableColumnSettings &tcs) {
     return ::set({
-        {WidthOrWeight.Path, tcs.WidthOrWeight},
-        {UserID.Path, int(tcs.UserID)},
-        {Index.Path, tcs.Index},
-        {DisplayOrder.Path, int(tcs.DisplayOrder)},
-        {SortOrder.Path, int(tcs.SortOrder)},
-        {SortDirection.Path, int(tcs.SortDirection)},
-        {IsEnabled.Path, tcs.IsEnabled},
-        {IsStretch.Path, tcs.IsStretch},
+        {WidthOrWeight, tcs.WidthOrWeight},
+        {UserID, int(tcs.UserID)},
+        {Index, tcs.Index},
+        {DisplayOrder, int(tcs.DisplayOrder)},
+        {SortOrder, int(tcs.SortOrder)},
+        {SortDirection, int(tcs.SortDirection)},
+        {IsEnabled, tcs.IsEnabled},
+        {IsStretch, tcs.IsStretch},
     });
 }
 
@@ -686,12 +686,12 @@ TableSettings::TableSettings(const StateMember *parent, const string &id, ImGuiT
 
 StateMap TableSettings::set(const ImGuiTableSettings &ts) {
     return ::set({
-        {ID.Path, int(ts.ID)},
-        {SaveFlags.Path, int(ts.SaveFlags)},
-        {RefScale.Path, ts.RefScale},
-        {ColumnsCount.Path, ts.ColumnsCount},
-        {ColumnsCountMax.Path, ts.ColumnsCountMax},
-        {WantApply.Path, ts.WantApply},
+        {ID, int(ts.ID)},
+        {SaveFlags, int(ts.SaveFlags)},
+        {RefScale, ts.RefScale},
+        {ColumnsCount, ts.ColumnsCount},
+        {ColumnsCountMax, ts.ColumnsCountMax},
+        {WantApply, ts.WantApply},
     });
 }
 
@@ -1035,25 +1035,25 @@ StateMap Style::ImPlotStyle::ColorsAuto() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsAuto(&dst[0]);
     StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha.Path, 0.25f, new_state);
+    return set(MinorAlpha, 0.25f, new_state);
 }
 StateMap Style::ImPlotStyle::ColorsDark() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsDark(&dst[0]);
     StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha.Path, 0.25f, new_state);
+    return set(MinorAlpha, 0.25f, new_state);
 }
 StateMap Style::ImPlotStyle::ColorsLight() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsLight(&dst[0]);
     StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha.Path, 1, new_state);
+    return set(MinorAlpha, 1, new_state);
 }
 StateMap Style::ImPlotStyle::ColorsClassic() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsClassic(&dst[0]);
     StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha.Path, 0.5f, new_state);
+    return set(MinorAlpha, 0.5f, new_state);
 }
 
 StateMap Style::FlowGridStyle::ColorsDark() const {
@@ -1149,36 +1149,36 @@ StateMap Style::FlowGridStyle::DiagramColorsFaust() const {
 
 StateMap Style::FlowGridStyle::DiagramLayoutFlowGrid() const {
     return set({
-        {DiagramSequentialConnectionZigzag.Path, false},
-        {DiagramOrientationMark.Path, false},
-        {DiagramTopLevelMargin.Path, 10},
-        {DiagramDecorateMargin.Path, 15},
-        {DiagramDecorateLineWidth.Path, 2},
-        {DiagramDecorateCornerRadius.Path, 5},
-        {DiagramBoxCornerRadius.Path, 4},
-        {DiagramBinaryHorizontalGapRatio.Path, 0.25f},
-        {DiagramWireWidth.Path, 1},
-        {DiagramWireGap.Path, 16},
-        {DiagramGap.Path, ImVec2{8, 8}},
-        {DiagramArrowSize.Path, ImVec2{3, 2}},
-        {DiagramInverterRadius.Path, 3},
+        {DiagramSequentialConnectionZigzag, false},
+        {DiagramOrientationMark, false},
+        {DiagramTopLevelMargin, 10},
+        {DiagramDecorateMargin, 15},
+        {DiagramDecorateLineWidth, 2},
+        {DiagramDecorateCornerRadius, 5},
+        {DiagramBoxCornerRadius, 4},
+        {DiagramBinaryHorizontalGapRatio, 0.25f},
+        {DiagramWireWidth, 1},
+        {DiagramWireGap, 16},
+        {DiagramGap, ImVec2{8, 8}},
+        {DiagramArrowSize, ImVec2{3, 2}},
+        {DiagramInverterRadius, 3},
     });
 }
 StateMap Style::FlowGridStyle::DiagramLayoutFaust() const {
     return set({
-        {DiagramSequentialConnectionZigzag.Path, true},
-        {DiagramOrientationMark.Path, true},
-        {DiagramTopLevelMargin.Path, 20},
-        {DiagramDecorateMargin.Path, 20},
-        {DiagramDecorateLineWidth.Path, 1},
-        {DiagramBoxCornerRadius.Path, 0},
-        {DiagramDecorateCornerRadius.Path, 0},
-        {DiagramBinaryHorizontalGapRatio.Path, 0.25f},
-        {DiagramWireWidth.Path, 1},
-        {DiagramWireGap.Path, 16},
-        {DiagramGap.Path, ImVec2{8, 8}},
-        {DiagramArrowSize.Path, ImVec2{3, 2}},
-        {DiagramInverterRadius.Path, 3},
+        {DiagramSequentialConnectionZigzag, true},
+        {DiagramOrientationMark, true},
+        {DiagramTopLevelMargin, 20},
+        {DiagramDecorateMargin, 20},
+        {DiagramDecorateLineWidth, 1},
+        {DiagramBoxCornerRadius, 0},
+        {DiagramDecorateCornerRadius, 0},
+        {DiagramBinaryHorizontalGapRatio, 0.25f},
+        {DiagramWireWidth, 1},
+        {DiagramWireGap, 16},
+        {DiagramGap, ImVec2{8, 8}},
+        {DiagramArrowSize, ImVec2{3, 2}},
+        {DiagramInverterRadius, 3},
     });
 }
 
@@ -1530,14 +1530,14 @@ void Demo::ImPlotDemo::Draw() const {
 }
 StateMap FileDialog::set(const FileDialogData &data) const {
     return ::set({
-        {Title.Path, data.title},
-        {Filters.Path, data.filters},
-        {FilePath.Path, data.file_path},
-        {DefaultFileName.Path, data.default_file_name},
-        {SaveMode.Path, data.save_mode},
-        {MaxNumSelections.Path, data.max_num_selections},
-        {Flags.Path, data.flags},
-        {Visible.Path, true},
+        {Title, data.title},
+        {Filters, data.filters},
+        {FilePath, data.file_path},
+        {DefaultFileName, data.default_file_name},
+        {SaveMode, data.save_mode},
+        {MaxNumSelections, data.max_num_selections},
+        {Flags, data.flags},
+        {Visible, true},
     });
 }
 

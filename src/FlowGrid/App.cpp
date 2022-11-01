@@ -14,12 +14,18 @@ StateMap Context::set(StateMapTransient transient) { return state_map = transien
 
 Primitive get(const JsonPath &path) { return c.sm.at(path.to_string()); }
 StateMap set(const JsonPath &path, const Primitive &value, const StateMap &state_map) { return state_map.set(path.to_string(), value); }
+StateMap set(const StateMember &member, const Primitive &value, const StateMap &state_map) { return state_map.set(member.Path.to_string(), value); }
 StateMap set(const JsonPath &path, const ImVec4 &value, const StateMap &state_map) { return state_map.set(path.to_string(), value); }
 StateMap remove(const JsonPath &path) { return c.sm.erase(path.to_string()); }
 
 StateMap set(const StateValues &values, const StateMap &state_map) {
     StateMapTransient transient = state_map.transient();
     for (const auto &[path, value]: values) transient.set(path.to_string(), value);
+    return transient.persistent();
+}
+StateMap set(const MemberValues &values, const StateMap &state_map) {
+    StateMapTransient transient = state_map.transient();
+    for (const auto &[member, value]: values) transient.set(member.Path.to_string(), value);
     return transient.persistent();
 }
 StateMap set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const StateMap &state_map) {
@@ -128,7 +134,7 @@ StateMap State::Update(const Action &action) const {
         [&](const show_save_faust_svg_file_dialog &) { return FileDialog.set({"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
 
         [&](const open_file_dialog &a) { return FileDialog.set(a.dialog); },
-        [&](const close_file_dialog &) { return set(FileDialog.Visible.Path, false); },
+        [&](const close_file_dialog &) { return set(FileDialog.Visible, false); },
 
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
@@ -171,11 +177,11 @@ StateMap State::Update(const Action &action) const {
                 default: return c.sm;
             }
         },
-        [&](const open_faust_file &a) { return set(Audio.Faust.Code.Path, FileIO::read(a.path)); },
+        [&](const open_faust_file &a) { return set(Audio.Faust.Code, FileIO::read(a.path)); },
         [&](const close_application &) {
             return set({
-                {Processes.UI.Running.Path, false},
-                {Audio.Running.Path, false},
+                {Processes.UI.Running, false},
+                {Audio.Running, false},
             });
         },
         [&](const auto &) {

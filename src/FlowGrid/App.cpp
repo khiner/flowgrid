@@ -16,22 +16,35 @@ Primitive get(const JsonPath &path) { return c.sm.at(path.to_string()); }
 Store set(const JsonPath &path, const Primitive &value, const Store &store) { return store.set(path.to_string(), value); }
 Store set(const StateMember &member, const Primitive &value, const Store &store) { return store.set(member.Path.to_string(), value); }
 Store set(const JsonPath &path, const ImVec4 &value, const Store &store) { return store.set(path.to_string(), value); }
-Store remove(const JsonPath &path) { return c.sm.erase(path.to_string()); }
-
+Store remove(const JsonPath &path, const Store &store) { return store.erase(path.to_string()); }
 Store set(const StoreEntries &values, const Store &store) {
     auto transient = store.transient();
-    for (const auto &[path, value]: values) transient.set(path.to_string(), value);
+    set(values, transient);
     return transient.persistent();
 }
 Store set(const MemberEntries &values, const Store &store) {
     auto transient = store.transient();
-    for (const auto &[member, value]: values) transient.set(member.Path.to_string(), value);
+    set(values, transient);
     return transient.persistent();
 }
 Store set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const Store &store) {
     auto transient = store.transient();
-    for (const auto &[path, value]: values) transient.set(path.to_string(), value);
+    set(values, transient);
     return transient.persistent();
+}
+// Transient equivalents
+void set(const JsonPath &path, const Primitive &value, TransientStore &store) { return store.set(path.to_string(), value); }
+void set(const StateMember &member, const Primitive &value, TransientStore &store) { store.set(member.Path.to_string(), value); }
+void set(const JsonPath &path, const ImVec4 &value, TransientStore &store) { store.set(path.to_string(), value); }
+void remove(const JsonPath &path, TransientStore &store) { store.erase(path.to_string()); }
+void set(const StoreEntries &values, TransientStore &store) {
+    for (const auto &[path, value]: values) store.set(path.to_string(), value);
+}
+void set(const MemberEntries &values, TransientStore &store) {
+    for (const auto &[member, value]: values) store.set(member.Path.to_string(), value);
+}
+void set(const std::vector<std::pair<JsonPath, ImVec4>> &values, TransientStore &store) {
+    for (const auto &[path, value]: values) store.set(path.to_string(), value);
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {

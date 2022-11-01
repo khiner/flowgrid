@@ -32,16 +32,43 @@ String::operator bool() const { return !string(*this).empty(); }
 Enum::operator int() const { return std::get<int>(get(Path)); }
 Flags::operator int() const { return std::get<int>(get(Path)); }
 
-Color::operator ImVec4() const { return std::get<ImVec4>(get(Path)); }
-
-template<typename MemberT, typename PrimitiveT>
-Store PrimitiveVector<MemberT, PrimitiveT>::set(const vector<PrimitiveT> &value) const {
-    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(items[i].Path, value[i]); }) | to<vector>);
+template<typename T>
+Store Vector<T>::set(size_t index, const T &value) const { return ::set(Path / index, value); }
+template<typename T>
+Store Vector<T>::set(const vector<T> &value) const {
+    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / i, value[i]); }) | to<vector>);
+}
+template<typename T>
+void Vector<T>::set(size_t index, const T &value, TransientStore &store) const { ::set(Path / index, value, store); }
+template<typename T>
+void Vector<T>::set(const vector<T> &value, TransientStore &store) const {
+    ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / i, value[i]); }) | to<vector>, store);
 }
 
-template<typename MemberT>
-Store Vector<MemberT>::set(const vector<MemberT> &value) const {
-    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(items[i].Path, value[i]); }) | to<vector>);
+template<typename T>
+T Vector<T>::operator[](size_t index) const { return std::get<T>(get(Path / index)); };
+
+template<typename T>
+size_t Vector<T>::size() const {
+    int size = -1;
+    while (c.sm.count((Path / ++size).to_string())) {}
+    return size_t(size);
+}
+
+template<typename T>
+T Vector2D<T>::at(size_t i, size_t j) const { return std::get<T>(get(Path / i / j)); };
+
+template<typename T>
+Store Vector2D<T>::set(size_t i, size_t j, const T &value) const { ::set(Path / i / j, value); }
+template<typename T>
+void Vector2D<T>::set(size_t i, size_t j, const T &value, TransientStore &store) const { ::set(Path / i / j, value, store); }
+
+template<typename T>
+std::pair<size_t, size_t> Vector2D<T>::size() const {
+    int i = -1, j = -1;
+    while (c.sm.count((Path / 0 / ++j).to_string())) {}
+    while (c.sm.count((Path / ++i / j).to_string())) {}
+    return {i, j};
 }
 }
 
@@ -327,25 +354,6 @@ bool Field::String::Draw(const vector<string> &options) const {
     return edited;
 }
 
-bool Color::Draw(ImGuiColorEditFlags flags, bool allow_auto) const {
-    if (allow_auto) {
-        // todo generalize auto colors (linked to ImGui colors) and use in FG colors
-        auto temp = ImPlot::GetStyleColorVec4(index);
-        const bool is_auto = ImPlot::IsColorAuto(index);
-        if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-        if (Button("Auto")) q(set_value{Path, is_auto ? temp : IMPLOT_AUTO_COL});
-        if (!is_auto) PopStyleVar();
-        SameLine();
-    }
-    ImVec4 value = *this;
-    const bool edited = ImGui::ColorEdit4(path_label(Path).c_str(), (float *) &value, flags | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-    gestured();
-    if (edited) q(set_value{Path, value});
-    return edited;
-}
-
-bool Color::Draw() const { return Draw(ImGuiColorEditFlags_None); }
-
 //-----------------------------------------------------------------------------
 // [SECTION] Helpers
 //-----------------------------------------------------------------------------
@@ -616,160 +624,150 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih SizeRef;
 };
 
-DockNodeSettings::DockNodeSettings(const StateMember *parent, const string &id, const ImGuiDockNodeSettings &ds) : StateMember(parent, id) {
-    c.set(set(ds));
-}
-
-DockNodeSettings::operator ImGuiDockNodeSettings() const {
-    return {ID, ParentNodeId, ParentWindowId, SelectedTabId, SplitAxis, Depth, Flags, Pos, Size, SizeRef};
-}
-
 // todo make `ID : Field::Base` type and use appropriately for these
-Store DockNodeSettings::set(const ImGuiDockNodeSettings &ds) {
-    return ::set({
-        {ID, int(ds.ID)},
-        {ParentNodeId, int(ds.ParentNodeId)},
-        {ParentWindowId, int(ds.ParentWindowId)},
-        {SelectedTabId, int(ds.SelectedTabId)},
-        {SplitAxis, ds.SplitAxis},
-        {Depth, ds.Depth},
-        {Flags, ds.Flags},
-        {Pos, ds.Pos},
-        {Size, ds.Size},
-        {SizeRef, ds.SizeRef},
-    });
-}
-
-WindowSettings::WindowSettings(const StateMember *parent, const string &id, const ImGuiWindowSettings &ws) : StateMember(parent, id) {
-    c.set(set(ws));
-}
-
-Store WindowSettings::set(const ImGuiWindowSettings &ws) {
-    return ::set({
-        {ID, int(ws.ID)},
-        {Pos, ws.Pos},
-        {Size, ws.Size},
-        {ViewportPos, ws.ViewportPos},
-        {ViewportId, int(ws.ViewportId)},
-        {DockId, int(ws.DockId)},
-        {ClassId, int(ws.ClassId)},
-        {DockOrder, int(ws.DockOrder)},
-        {Collapsed, ws.Collapsed},
-    });
-}
-
-TableColumnSettings::TableColumnSettings(const StateMember *parent, const int index, const ImGuiTableColumnSettings &tcs)
-    : StateMember(parent, to_string(index)) {
-    c.set(set(tcs));
-}
-
-Store TableColumnSettings::set(const ImGuiTableColumnSettings &tcs) {
-    return ::set({
-        {WidthOrWeight, tcs.WidthOrWeight},
-        {UserID, int(tcs.UserID)},
-        {Index, tcs.Index},
-        {DisplayOrder, int(tcs.DisplayOrder)},
-        {SortOrder, int(tcs.SortOrder)},
-        {SortDirection, int(tcs.SortDirection)},
-        {IsEnabled, tcs.IsEnabled},
-        {IsStretch, tcs.IsStretch},
-    });
-}
-
-TableSettings::TableSettings(const StateMember *parent, const string &id, ImGuiTableSettings &ts) : StateMember(parent, id) {
-    c.set(set(ts));
-    auto *column_settings = ts.GetColumnSettings();
-    for (int n = 0; n < ts.ColumnsCount; n++, column_settings++) {
-        Columns.push_back({this, n, *column_settings});
+void DockNodeSettings::set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
+    for (int i = 0; i < dss.Size; i++) {
+        const auto &ds = dss[i];
+        ID.set(i, int(ds.ID), _store);
+        ParentNodeId.set(i, int(ds.ParentNodeId), _store);
+        ParentWindowId.set(i, int(ds.ParentWindowId), _store);
+        SelectedTabId.set(i, int(ds.SelectedTabId), _store);
+        SplitAxis.set(i, ds.SplitAxis, _store);
+        Depth.set(i, ds.Depth, _store);
+        Flags.set(i, int(ds.Flags), _store);
+        Pos.set(i, ds.Pos, _store);
+        Size.set(i, ds.Size, _store);
+        SizeRef.set(i, ds.SizeRef, _store);
     }
 }
 
-Store TableSettings::set(const ImGuiTableSettings &ts) {
-    return ::set({
-        {ID, int(ts.ID)},
-        {SaveFlags, int(ts.SaveFlags)},
-        {RefScale, ts.RefScale},
-        {ColumnsCount, ts.ColumnsCount},
-        {ColumnsCountMax, ts.ColumnsCountMax},
-        {WantApply, ts.WantApply},
-    });
+void DockNodeSettings::Apply(ImGuiContext *ctx) const {
+    // Assumes `DockSettingsHandler_ClearAll` has already been called.
+    for (int i = 0; i < int(ID.size()); i++) {
+        ctx->DockContext.NodesSettings.push_back({
+            ImGuiID(ID[i]),
+            ImGuiID(ParentNodeId[i]),
+            ImGuiID(ParentWindowId[i]),
+            ImGuiID(SelectedTabId[i]),
+            (signed char) SplitAxis[i],
+            char(Depth[i]),
+            Flags[i],
+            Pos[i],
+            Size[i],
+            SizeRef[i],
+        });
+    }
 }
 
-ImGuiSettings &ImGuiSettings::operator=(ImGuiContext *ctx) {
+void WindowSettings::set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &_store) const {
+    int i = 0;
+    for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
+        ID.set(i, int(ws->ID), _store);
+        ClassId.set(i, int(ws->DockId), _store);
+        ViewportId.set(i, int(ws->ViewportId), _store);
+        DockId.set(i, int(ws->DockId), _store);
+        DockOrder.set(i, ws->DockOrder, _store);
+        Pos.set(i, ws->Pos, _store);
+        Size.set(i, ws->Size, _store);
+        ViewportPos.set(i, ws->ViewportPos, _store);
+        Collapsed.set(i, ws->Collapsed, _store);
+        i++;
+    }
+}
+
+void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &_store) const {
+    int i = 0;
+    for (auto *ts = tss.begin(); ts != nullptr; ts = tss.next_chunk(ts)) {
+        ID.set(i, int(ts->ID), _store);
+        SaveFlags.set(i, ts->SaveFlags, _store);
+        RefScale.set(i, ts->RefScale, _store);
+        ColumnsCount.set(i, ts->ColumnsCount, _store);
+        ColumnsCountMax.set(i, ts->ColumnsCountMax, _store);
+        WantApply.set(i, ts->WantApply, _store);
+        for (int column_index = 0; column_index < ts->ColumnsCount; column_index++) {
+            auto &cs = ts->GetColumnSettings()[column_index];
+            Columns.WidthOrWeight.set(i, column_index, cs.WidthOrWeight, _store);
+            Columns.UserID.set(i, column_index, int(cs.UserID), _store);
+            Columns.Index.set(i, column_index, cs.Index, _store);
+            Columns.DisplayOrder.set(i, column_index, cs.DisplayOrder, _store);
+            Columns.SortOrder.set(i, column_index, cs.SortOrder, _store);
+            Columns.SortDirection.set(i, column_index, cs.SortDirection, _store);
+            Columns.IsEnabled.set(i, column_index, cs.IsEnabled, _store);
+            Columns.IsStretch.set(i, column_index, cs.IsStretch, _store);
+        }
+        i++;
+    }
+}
+
+Store ImGuiSettings::set(ImGuiContext *ctx) const {
+    auto _store = c.sm.transient();
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
     // Convert `ImChunkStream`/`ImVector`s to `vector`s.
-    for (int settings_n = 0; settings_n < ctx->DockContext.NodesSettings.Size; settings_n++) {
-        Nodes.emplace_back(&Nodes, to_string(settings_n), ctx->DockContext.NodesSettings[settings_n]);
-    }
-    int window_index = 0;
-    for (auto *settings = ctx->SettingsWindows.begin(); settings != nullptr; settings = ctx->SettingsWindows.next_chunk(settings)) {
-        Windows.emplace_back(&Windows, to_string(window_index++), *settings);
-    }
-    int table_index = 0;
-    for (auto *ts = ctx->SettingsTables.begin(); ts != nullptr; ts = ctx->SettingsTables.next_chunk(ts)) {
-        Tables.emplace_back(&Tables, to_string(table_index++), *ts);
-    }
+    Nodes.set(ctx->DockContext.NodesSettings, _store);
+    Windows.set(ctx->SettingsWindows, _store);
+    Tables.set(ctx->SettingsTables, _store);
 
-    return *this;
+    return _store.persistent();
 }
 
-// Copied from `imgui.cpp::ApplyWindowSettings`
-static void ApplyWindowSettings(ImGuiWindow *window, WindowSettings *settings) {
-    if (!window) return; // TODO log
-
-    const ImGuiViewport *main_viewport = GetMainViewport();
-    window->ViewportPos = main_viewport->Pos;
-    if (settings->ViewportId) {
-        window->ViewportId = settings->ViewportId;
-        window->ViewportPos = settings->ViewportPos;
+// See `imgui.cpp::ApplyWindowSettings`
+void WindowSettings::Apply(ImGuiContext *) const {
+    const auto *main_viewport = GetMainViewport();
+    for (int i = 0; i < int(ID.size()); i++) {
+        auto *window = FindWindowByID(ID[i]);
+        window->ViewportPos = main_viewport->Pos;
+        if (ViewportId[i]) {
+            window->ViewportId = ViewportId[i];
+            window->ViewportPos = ImVec2(ViewportPos[i].x, ViewportPos[i].y);
+        }
+        window->Pos = ImVec2(Pos[i].x, Pos[i].y) + ImFloor(window->ViewportPos);
+        const auto size = ImVec2(Size[i].x, Size[i].y);
+        if (size.x > 0 && size.y > 0) window->Size = window->SizeFull = size;
+        window->Collapsed = Collapsed[i];
+        window->DockId = DockId[i];
+        window->DockOrder = short(DockOrder[i]);
     }
-    window->Pos = ImFloor(settings->Pos + window->ViewportPos);
-    const ImVec2 size = settings->Size;
-    if (size.x > 0 && size.y > 0) window->Size = window->SizeFull = settings->Size;
-    window->Collapsed = settings->Collapsed;
-    window->DockId = settings->DockId;
-    window->DockOrder = short(settings->DockOrder);
 }
 
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
-static void ApplyTableSettings(ImGuiTable *table, const TableSettings &settings) {
-    if (!table) return; // todo log
+void TableSettings::Apply(ImGuiContext *) const {
+    for (int i = 0; i < int(ID.size()); i++) {
+        const auto table = TableFindByID(ID[i]);
+        table->IsSettingsRequestLoad = false; // todo remove this var/behavior?
+        table->SettingsLoadedFlags = SaveFlags[i]; // todo remove this var/behavior?
+        table->RefScale = RefScale[i];
 
-    table->IsSettingsRequestLoad = false; // todo remove this var/behavior?
-    table->SettingsLoadedFlags = settings.SaveFlags; // todo remove this var/behavior?
-    table->RefScale = settings.RefScale;
+        // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
+        ImU64 display_order_mask = 0;
+        for (int j = 0; j < ColumnsCount[i]; j++) {
+            int column_n = Columns.Index.at(i, j);
+            if (column_n < 0 || column_n >= table->ColumnsCount) continue;
 
-    // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
-    ImU64 display_order_mask = 0;
-    for (int i = 0; i < int(settings.Columns.size()); i++) {
-        const auto &column_settings = settings.Columns[i];
-        int column_n = column_settings.Index;
-        if (column_n < 0 || column_n >= table->ColumnsCount) continue;
-
-        ImGuiTableColumn *column = &table->Columns[column_n];
-        if (ImGuiTableFlags(settings.SaveFlags) & ImGuiTableFlags_Resizable) {
-            if (column_settings.IsStretch) column->StretchWeight = column_settings.WidthOrWeight;
-            else column->WidthRequest = column_settings.WidthOrWeight;
-            column->AutoFitQueue = 0x00;
+            ImGuiTableColumn *column = &table->Columns[column_n];
+            if (ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Resizable) {
+                float width_or_weight = Columns.WidthOrWeight.at(i, j);
+                if (Columns.IsStretch.at(i, j)) column->StretchWeight = width_or_weight;
+                else column->WidthRequest = width_or_weight;
+                column->AutoFitQueue = 0x00;
+            }
+            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder.at(i, j)) : (ImGuiTableColumnIdx) column_n;
+            display_order_mask |= (ImU64) 1 << column->DisplayOrder;
+            column->IsUserEnabled = column->IsUserEnabledNextFrame = Columns.IsEnabled.at(i, j);
+            column->SortOrder = ImGuiTableColumnIdx(Columns.SortOrder.at(i, j));
+            column->SortDirection = Columns.SortDirection.at(i, j);
         }
-        column->DisplayOrder = ImGuiTableFlags(settings.SaveFlags) & ImGuiTableFlags_Reorderable ? column_settings.DisplayOrder : (ImGuiTableColumnIdx) column_n;
-        display_order_mask |= (ImU64) 1 << column->DisplayOrder;
-        column->IsUserEnabled = column->IsUserEnabledNextFrame = column_settings.IsEnabled;
-        column->SortOrder = column_settings.SortOrder;
-        column->SortDirection = column_settings.SortDirection;
-    }
 
-    // Validate and fix invalid display order data
-    const ImU64 expected_display_order_mask = settings.ColumnsCount == 64 ? ~0 : ((ImU64) 1 << ImU8(settings.ColumnsCount)) - 1;
-    if (display_order_mask != expected_display_order_mask) {
+        // Validate and fix invalid display order data
+        const ImU64 expected_display_order_mask = ColumnsCount[i] == 64 ? ~0 : ((ImU64) 1 << ImU8(ColumnsCount[i])) - 1;
+        if (display_order_mask != expected_display_order_mask) {
+            for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
+                table->Columns[column_n].DisplayOrder = (ImGuiTableColumnIdx) column_n;
+            }
+        }
+        // Rebuild index
         for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
-            table->Columns[column_n].DisplayOrder = (ImGuiTableColumnIdx) column_n;
+            table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx) column_n;
         }
-    }
-
-    // Rebuild index
-    for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
-        table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx) column_n;
     }
 }
 
@@ -818,6 +816,19 @@ void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
     for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = Colors[i];
 }
 
+void ImGuiSettings::Apply(ImGuiContext *ctx) const {
+    DockSettingsHandler_ClearAll(ctx, nullptr);
+
+    Windows.Apply(ctx);
+    Tables.Apply(ctx);
+    Nodes.Apply(ctx);
+    DockSettingsHandler_ApplyAll(ctx, nullptr);
+
+    // Other housekeeping to emulate `LoadIniSettingsFromMemory`
+    ctx->SettingsLoaded = true;
+    ctx->SettingsDirty = false;
+}
+
 void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
     auto &style = ctx->Style;
     style.LineWeight = LineWeight;
@@ -855,21 +866,6 @@ void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
-void ImGuiSettings::Apply(ImGuiContext *ctx) const {
-    // Clear
-    DockSettingsHandler_ClearAll(ctx, nullptr);
-
-    // Apply
-    for (auto ws: Windows.items) ApplyWindowSettings(FindWindowByID(ws.ID), &ws);
-    for (auto &ts: Tables.items) ApplyTableSettings(TableFindByID(ts.ID), ts);
-    for (auto &ns: Nodes.items) ctx->DockContext.NodesSettings.push_back(ns);
-    DockSettingsHandler_ApplyAll(ctx, nullptr);
-
-    // Other housekeeping to emulate `LoadIniSettingsFromMemory`
-    ctx->SettingsLoaded = true;
-    ctx->SettingsDirty = false;
-}
-
 //-----------------------------------------------------------------------------
 // [SECTION] State windows
 //-----------------------------------------------------------------------------
@@ -885,9 +881,9 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Json
     const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
     const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
     const auto &label = LabelMode == Annotated ?
-                        (is_imgui_color ? s.Style.ImGui.Colors[array_index].Name :
-                         is_implot_color ? s.Style.ImPlot.Colors[array_index].Name :
-                         is_flowgrid_color ? s.Style.FlowGrid.Colors[array_index].Name :
+                        (is_imgui_color ? s.Style.ImGui.Colors.GetName(array_index) :
+                         is_implot_color ? s.Style.ImPlot.Colors.GetName(array_index) :
+                         is_flowgrid_color ? s.Style.FlowGrid.Colors.GetName(array_index) :
                          is_array_item ? leaf_name : key) : key;
     if (AutoSelect) {
         const auto &update_paths = c.state_stats.latest_updated_paths;
@@ -1016,38 +1012,38 @@ Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id)
 }
 
 Store Style::ImGuiStyle::ColorsDark() const {
-    vector<ImVec4> dst(Colors.size());
+    vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsDark(&dst[0]);
     return Colors.set(dst);
 }
 Store Style::ImGuiStyle::ColorsLight() const {
-    vector<ImVec4> dst(Colors.size());
+    vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsLight(&dst[0]);
     return Colors.set(dst);
 }
 Store Style::ImGuiStyle::ColorsClassic() const {
-    vector<ImVec4> dst(Colors.size());
+    vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsClassic(&dst[0]);
     return Colors.set(dst);
 }
 
 Store Style::ImPlotStyle::ColorsAuto() const {
-    vector<ImVec4> dst(Colors.size());
+    vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsAuto(&dst[0]);
     return set(MinorAlpha, 0.25f, Colors.set(dst));
 }
 Store Style::ImPlotStyle::ColorsDark() const {
-    vector<ImVec4> dst(Colors.size());
+    vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsDark(&dst[0]);
     return set(MinorAlpha, 0.25f, Colors.set(dst));
 }
 Store Style::ImPlotStyle::ColorsLight() const {
-    vector<ImVec4> dst(Colors.size());
+    vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsLight(&dst[0]);
     return set(MinorAlpha, 1, Colors.set(dst));
 }
 Store Style::ImPlotStyle::ColorsClassic() const {
-    vector<ImVec4> dst(Colors.size());
+    vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsClassic(&dst[0]);
     return set(MinorAlpha, 0.5f, Colors.set(dst));
 }
@@ -1200,14 +1196,29 @@ bool Colors::Draw() const {
 
         const auto &style = GetStyle();
         for (int i = 0; i < int(size()); i++) {
-            const char *name = items[i].Name.c_str();
-            if (!filter.PassFilter(name)) continue;
+            const string &name = GetName(i);
+            if (!filter.PassFilter(name.c_str())) continue;
 
             PushID(i);
-            changed |= items[i].Draw(ImGuiColorEditFlags_AlphaBar | alpha_flags, allow_auto);
+            if (allow_auto) {
+                // todo generalize auto colors (linked to ImGui colors) and use in FG colors
+                auto temp = ImPlot::GetStyleColorVec4(i);
+                const bool is_auto = ImPlot::IsColorAuto(i);
+                if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
+                if (Button("Auto")) q(set_value{Path, is_auto ? temp : IMPLOT_AUTO_COL});
+                if (!is_auto) PopStyleVar();
+                SameLine();
+            }
+            auto value = (*this)[i];
+            changed |= ImGui::ColorEdit4(path_label(Path / i).c_str(), (float *) &value,
+                (ImGuiColorEditFlags_AlphaBar | alpha_flags) | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
+            gestured();
+
             SameLine(0, style.ItemInnerSpacing.x);
-            TextUnformatted(name);
+            TextUnformatted(name.c_str());
             PopID();
+
+            if (changed) q(set_value{Path / i, value});
         }
         if (allow_auto) {
             Separator();

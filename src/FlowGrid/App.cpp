@@ -6,30 +6,30 @@
 
 std::map<ImGuiID, StateMember *> StateMember::WithID{};
 
-StateMap gesture_begin_state; // Only updated on gesture-end (for diff calculation).
-vector<std::pair<TimePoint, StateMap>> state_history; // One state checkpoint for every gesture.
+Store gesture_begin_store; // Only updated on gesture-end (for diff calculation).
+vector<std::pair<TimePoint, Store>> store_history; // One store checkpoint for every gesture.
 
-StateMap Context::set(StateMap persistent) { return state_map = std::move(persistent); }
-StateMap Context::set(StateMapTransient transient) { return state_map = transient.persistent(); }
+Store Context::set(Store persistent) { return store = std::move(persistent); }
+Store Context::set(TransientStore transient) { return store = transient.persistent(); }
 
 Primitive get(const JsonPath &path) { return c.sm.at(path.to_string()); }
-StateMap set(const JsonPath &path, const Primitive &value, const StateMap &state_map) { return state_map.set(path.to_string(), value); }
-StateMap set(const StateMember &member, const Primitive &value, const StateMap &state_map) { return state_map.set(member.Path.to_string(), value); }
-StateMap set(const JsonPath &path, const ImVec4 &value, const StateMap &state_map) { return state_map.set(path.to_string(), value); }
-StateMap remove(const JsonPath &path) { return c.sm.erase(path.to_string()); }
+Store set(const JsonPath &path, const Primitive &value, const Store &store) { return store.set(path.to_string(), value); }
+Store set(const StateMember &member, const Primitive &value, const Store &store) { return store.set(member.Path.to_string(), value); }
+Store set(const JsonPath &path, const ImVec4 &value, const Store &store) { return store.set(path.to_string(), value); }
+Store remove(const JsonPath &path) { return c.sm.erase(path.to_string()); }
 
-StateMap set(const StateValues &values, const StateMap &state_map) {
-    StateMapTransient transient = state_map.transient();
+Store set(const StoreEntries &values, const Store &store) {
+    auto transient = store.transient();
     for (const auto &[path, value]: values) transient.set(path.to_string(), value);
     return transient.persistent();
 }
-StateMap set(const MemberValues &values, const StateMap &state_map) {
-    StateMapTransient transient = state_map.transient();
+Store set(const MemberEntries &values, const Store &store) {
+    auto transient = store.transient();
     for (const auto &[member, value]: values) transient.set(member.Path.to_string(), value);
     return transient.persistent();
 }
-StateMap set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const StateMap &state_map) {
-    StateMapTransient transient = state_map.transient();
+Store set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const Store &store) {
+    auto transient = store.transient();
     for (const auto &[path, value]: values) transient.set(path.to_string(), value);
     return transient.persistent();
 }
@@ -39,45 +39,45 @@ StateMember::StateMember(const StateMember *parent, const string &id, const Prim
 }
 
 namespace nlohmann {
-inline void to_json(json &j, const StateMap &v) {
+inline void to_json(json &j, const Store &v) {
     for (const auto &[key, value]: v) j[JsonPath(key)] = value;
 }
 }
 
 // `from_json` defined out of `nlohmann`, to be called manually.
-// This avoids getting a reference arg to a default-constructed, non-transient `StateMap` instance.
-StateMap state_from_json(const json &j) {
+// This avoids getting a reference arg to a default-constructed, non-transient `Store` instance.
+Store store_from_json(const json &j) {
     const auto &flattened = j.flatten();
-    StateValues items(flattened.size());
+    StoreEntries entries(flattened.size());
     int item_index = 0;
-    for (const auto &it: flattened.items()) items[item_index++] = {JsonPath(it.key()), Primitive(it.value())};
+    for (const auto &it: flattened.items()) entries[item_index++] = {JsonPath(it.key()), Primitive(it.value())};
 
-    StateMapTransient _state;
-    for (size_t i = 0; i < items.size(); i++) {
-        const auto &[path, value] = items[i];
-        if (path.back() == "w" && i < items.size() - 3 && items[i + 3].first.back() == "z") {
+    TransientStore _store;
+    for (size_t i = 0; i < entries.size(); i++) {
+        const auto &[path, value] = entries[i];
+        if (path.back() == "w" && i < entries.size() - 3 && entries[i + 3].first.back() == "z") {
             const auto w = std::get<float>(value);
-            const auto x = std::get<float>(items[i + 1].second);
-            const auto y = std::get<float>(items[i + 2].second);
-            const auto z = std::get<float>(items[i + 3].second);
-            _state.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
+            const auto x = std::get<float>(entries[i + 1].second);
+            const auto y = std::get<float>(entries[i + 2].second);
+            const auto z = std::get<float>(entries[i + 3].second);
+            _store.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
             i += 3;
-        } else if (path.back() == "x" && i < items.size() - 1 && items[i + 1].first.back() == "y") {
+        } else if (path.back() == "x" && i < entries.size() - 1 && entries[i + 1].first.back() == "y") {
             if (std::holds_alternative<ImVec2ih>(value)) {
                 const auto x = std::get<int>(value);
-                const auto y = std::get<int>(items[i + 1].second);
-                _state.set(path.parent_pointer().to_string(), ImVec2ih{short(x), short(y)});
+                const auto y = std::get<int>(entries[i + 1].second);
+                _store.set(path.parent_pointer().to_string(), ImVec2ih{short(x), short(y)});
             } else {
                 const auto x = std::get<float>(value);
-                const auto y = std::get<float>(items[i + 1].second);
-                _state.set(path.parent_pointer().to_string(), ImVec2{x, y});
+                const auto y = std::get<float>(entries[i + 1].second);
+                _store.set(path.parent_pointer().to_string(), ImVec2{x, y});
             }
             i += 1;
         } else {
-            _state.set(path.to_string(), value);
+            _store.set(path.to_string(), value);
         }
     }
-    return _state.persistent();
+    return _store.persistent();
 }
 
 string to_string(const IO io, const bool shorten) {
@@ -125,7 +125,7 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
-StateMap State::Update(const Action &action) const {
+Store State::Update(const Action &action) const {
     return std::visit(visitor{
         [&](const show_open_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [&](const show_save_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
@@ -194,11 +194,11 @@ void save_box_svg(const string &path); // defined in FaustUI
 
 // todo Move away from JsonPatches entirely. This is only an intermediate step.
 //   In the future, we won't even need to precompute diffs! Just calculate them on the fly from the snapshots as needed (when viewing etc)
-JsonPatch create_patch(const StateMap &before_state, const StateMap &after_state) {
+JsonPatch create_patch(const Store &before, const Store &after) {
     JsonPatch patch;
     diff(
-        before_state,
-        after_state,
+        before,
+        after,
         [&](auto const &added_element) {
             patch.push_back({JsonPath(added_element.first), Add, added_element.second});
         },
@@ -229,7 +229,7 @@ void Context::on_action(const Action &action) {
         [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
         [&](const save_faust_svg_file &a) { save_box_svg(a.path); },
 
-        // `state_history_index`-changing actions:
+        // `store_history_index`-changing actions:
         [&](const undo &) { increment_history_index(-1); },
         [&](const redo &) { increment_history_index(1); },
         [&](const Actions::set_history_index &a) {
@@ -238,43 +238,39 @@ void Context::on_action(const Action &action) {
         },
 
         // Remaining actions have a direct effect on the application state.
-        // Keep JSON & struct versions of state in sync.
         [&](const set_value &a) {
-            const auto before_state = state_map;
+            const auto prev_store = store;
             set(::set(a.path, a.value));
-            on_patch(a, create_patch(before_state, state_map));
+            on_patch(a, create_patch(prev_store, store));
         },
         [&](const set_values &a) {
-            const auto before_state = state_map;
+            const auto prev_store = store;
             set(::set(a.values));
-            on_patch(a, create_patch(before_state, state_map));
+            on_patch(a, create_patch(prev_store, store));
         },
         [&](const toggle_value &a) {
-            const auto before_state = state_map;
+            const auto prev_store = store;
             set(::set(a.path, !std::get<bool>(get(a.path))));
-            on_patch(a, create_patch(before_state, state_map));
+            on_patch(a, create_patch(prev_store, store));
             // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row and undoing does nothing, since they're compressed into nothing.
             finalize_gesture();
         },
         [&](const apply_patch &a) {
             // todo correct implementation
-            StateValues values;
+            StoreEntries values;
             vector<JsonPath> removed_paths;
             for (const auto &op: a.patch) {
                 if (op.op == Add) values.emplace_back(op.path, op.value.value());
                 else if (op.op == Remove) removed_paths.push_back(op.path);
                 else if (op.op == Replace) values.emplace_back(op.path, op.value.value());
             }
-            const auto before_state = state_map;
-
+            const auto prev_store = store;
             set(::set(values));
 //            remove(::remove(removed_paths));
-            on_patch(a, create_patch(before_state, state_map));
+            on_patch(a, create_patch(prev_store, store));
         },
         [&](const auto &a) {
-            const auto before_state = state_map;
-            set(state.Update(a));
-            on_patch(a, create_patch(before_state, state_map));
+            on_patch(a, create_patch(store, set(state.Update(a))));
         },
     }, action);
 }
@@ -288,8 +284,8 @@ void Context::on_action(const Action &action) {
 #include <utility>
 
 Context::Context() {
-    state_history.emplace_back(Clock::now(), state_map);
-    gesture_begin_state = state_map;
+    store_history.emplace_back(Clock::now(), store);
+    gesture_begin_store = store;
     if (fs::exists(PreferencesPath)) {
         preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
@@ -299,12 +295,12 @@ Context::Context() {
 
 Context::~Context() = default;
 
-int Context::history_size() { return int(state_history.size()); }
+int Context::history_size() { return int(store_history.size()); }
 
 StatePatch Context::create_diff(int history_index) {
     return {
-        create_patch(state_history[history_index].second, state_history[history_index + 1].second),
-        state_history[history_index + 1].first,
+        create_patch(store_history[history_index].second, store_history[history_index + 1].second),
+        store_history[history_index + 1].first,
     };
 }
 
@@ -328,10 +324,10 @@ bool Context::clear_preferences() {
 json Context::get_project_json(const ProjectFormat format) const {
     switch (format) {
         case None: return nullptr;
-        case StateFormat: return state_map;
+        case StateFormat: return store;
         case DiffFormat:
-            return {{"diffs", views::ints(0, int(state_history.size() - 1)) | transform(create_diff) | to<vector<StatePatch>>},
-                    {"history_index", state_history_index}};
+            return {{"diffs", views::ints(0, int(store_history.size() - 1)) | transform(create_diff) | to<vector<StatePatch>>},
+                    {"history_index", store_history_index}};
         case ActionFormat: return gestures;
     }
 }
@@ -350,8 +346,8 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<undo>: return !active_gesture_patch.empty() || state_history_index > 0;
-        case action::id<redo>: return state_history_index < int(state_history.size());
+        case action::id<undo>: return !active_gesture_patch.empty() || store_history_index > 0;
+        case action::id<redo>: return store_history_index < int(store_history.size());
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
         case action::id<Actions::show_save_project_dialog>:
@@ -380,10 +376,10 @@ void Context::update_faust_context() {
 
 void Context::clear() {
     current_project_path.reset();
-    state_history.clear();
-    state_history.emplace_back(Clock::now(), state_map);
-    state_history_index = 0;
-    gesture_begin_state = state_map;
+    store_history.clear();
+    store_history.emplace_back(Clock::now(), store);
+    store_history_index = 0;
+    gesture_begin_store = store;
     gestures.clear();
     project_start_gesture_count = gestures.size();
     is_widget_gesturing = false;
@@ -477,27 +473,27 @@ void Context::finalize_gesture() {
         }
         return action;
     }) | views::filter([this](const auto &action) {
-        // Filter out any resulting actions that don't actually result in a `state_history_index` change.
+        // Filter out any resulting actions that don't actually result in a `store_history_index` change.
         return action::get_id(action) != action::id<Actions::set_history_index> || std::get<Actions::set_history_index>(action).history_index != gesture_begin_history_index;
     }) | to<const Gesture>;
     if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
 
-    gesture_begin_history_index = state_history_index;
+    gesture_begin_history_index = store_history_index;
     if (active_gesture_patch.empty()) return;
     if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
     // TODO use an undo _tree_ and keep this history
-    while (int(state_history.size()) > state_history_index + 1) state_history.pop_back();
-    state_history.emplace_back(Clock::now(), state_map);
-    state_history_index = int(state_history.size()) - 1;
-    gesture_begin_history_index = state_history_index;
-    gesture_begin_state = state_map;
+    while (int(store_history.size()) > store_history_index + 1) store_history.pop_back();
+    store_history.emplace_back(Clock::now(), store);
+    store_history_index = int(store_history.size()) - 1;
+    gesture_begin_history_index = store_history_index;
+    gesture_begin_store = store;
     active_gesture_patch.clear();
 }
 
 void Context::on_patch(const Action &action, const JsonPatch &patch) {
     active_gesture.emplace_back(action);
-    active_gesture_patch = create_patch(gesture_begin_state, state_map);
+    active_gesture_patch = create_patch(gesture_begin_store, store);
 
     state_stats.apply_patch(patch, Clock::now(), Forward, false);
     for (const auto &patch_op: patch) on_set_value(patch_op.path);
@@ -505,27 +501,27 @@ void Context::on_patch(const Action &action, const JsonPatch &patch) {
 }
 
 void Context::set_history_index(int new_history_index) {
-    if (new_history_index == state_history_index || new_history_index < 0 || new_history_index >= int(state_history.size())) return;
+    if (new_history_index == store_history_index || new_history_index < 0 || new_history_index >= int(store_history.size())) return;
 
     active_gesture.emplace_back(Actions::set_history_index{new_history_index});
 
-    const auto direction = new_history_index > state_history_index ? Forward : Reverse;
+    const auto direction = new_history_index > store_history_index ? Forward : Reverse;
     // todo set index directly instead of incrementing - just need to update `state_stats` to reflect recent immer changes
-    while (state_history_index != new_history_index) {
-        const auto index = direction == Reverse ? --state_history_index : ++state_history_index;
-        const auto before_state = state_map;
-        state_map = state_history[index].second;
-        const auto &patch = direction == Reverse ? create_patch(state_map, before_state) : create_patch(before_state, state_map);
-        gesture_begin_state = state_map;
-        state_stats.apply_patch(patch, state_history[index].first, direction, true);
+    while (store_history_index != new_history_index) {
+        const auto index = direction == Reverse ? --store_history_index : ++store_history_index;
+        const auto prev_store = store;
+        store = store_history[index].second;
+        const auto &patch = direction == Reverse ? create_patch(store, prev_store) : create_patch(prev_store, store);
+        gesture_begin_store = store;
+        state_stats.apply_patch(patch, store_history[index].first, direction, true);
         for (const auto &patch_op: patch) on_set_value(patch_op.path);
     }
     s.Audio.update_process();
 }
 
 void Context::increment_history_index(int delta) {
-    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. _This can change `state_history_index`!_
-    set_history_index(state_history_index + delta);
+    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. _This can change `store_history_index`!_
+    set_history_index(store_history_index + delta);
 }
 
 void Context::on_set_value(const JsonPath &path) {
@@ -552,8 +548,8 @@ void Context::open_project(const fs::path &path) {
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        state_map = state_from_json(project);
-        gesture_begin_state = state_map;
+        store = store_from_json(project);
+        gesture_begin_store = store;
 
         update_ui_context(UIContextFlags_ImGuiSettings | UIContextFlags_ImGuiStyle | UIContextFlags_ImPlotStyle);
         update_faust_context();

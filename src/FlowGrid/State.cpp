@@ -35,13 +35,13 @@ Flags::operator int() const { return std::get<int>(get(Path)); }
 Color::operator ImVec4() const { return std::get<ImVec4>(get(Path)); }
 
 template<typename MemberT, typename PrimitiveT>
-StateMap PrimitiveVector<MemberT, PrimitiveT>::set(const vector<PrimitiveT> &value) const {
-    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return std::pair<JsonPath, Primitive>(items[i].Path, value[i]); }) | to<vector>);
+Store PrimitiveVector<MemberT, PrimitiveT>::set(const vector<PrimitiveT> &value) const {
+    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(items[i].Path, value[i]); }) | to<vector>);
 }
 
 template<typename MemberT>
-StateMap Vector<MemberT>::set(const vector<MemberT> &value) const {
-    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return std::pair<JsonPath, Primitive>(items[i].Path, value[i]); }) | to<vector>);
+Store Vector<MemberT>::set(const vector<MemberT> &value) const {
+    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(items[i].Path, value[i]); }) | to<vector>);
 }
 }
 
@@ -625,7 +625,7 @@ DockNodeSettings::operator ImGuiDockNodeSettings() const {
 }
 
 // todo make `ID : Field::Base` type and use appropriately for these
-StateMap DockNodeSettings::set(const ImGuiDockNodeSettings &ds) {
+Store DockNodeSettings::set(const ImGuiDockNodeSettings &ds) {
     return ::set({
         {ID, int(ds.ID)},
         {ParentNodeId, int(ds.ParentNodeId)},
@@ -644,7 +644,7 @@ WindowSettings::WindowSettings(const StateMember *parent, const string &id, cons
     c.set(set(ws));
 }
 
-StateMap WindowSettings::set(const ImGuiWindowSettings &ws) {
+Store WindowSettings::set(const ImGuiWindowSettings &ws) {
     return ::set({
         {ID, int(ws.ID)},
         {Pos, ws.Pos},
@@ -663,7 +663,7 @@ TableColumnSettings::TableColumnSettings(const StateMember *parent, const int in
     c.set(set(tcs));
 }
 
-StateMap TableColumnSettings::set(const ImGuiTableColumnSettings &tcs) {
+Store TableColumnSettings::set(const ImGuiTableColumnSettings &tcs) {
     return ::set({
         {WidthOrWeight, tcs.WidthOrWeight},
         {UserID, int(tcs.UserID)},
@@ -684,7 +684,7 @@ TableSettings::TableSettings(const StateMember *parent, const string &id, ImGuiT
     }
 }
 
-StateMap TableSettings::set(const ImGuiTableSettings &ts) {
+Store TableSettings::set(const ImGuiTableSettings &ts) {
     return ::set({
         {ID, int(ts.ID)},
         {SaveFlags, int(ts.SaveFlags)},
@@ -1015,62 +1015,58 @@ Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id)
     c.set(DiagramLayoutFlowGrid());
 }
 
-StateMap Style::ImGuiStyle::ColorsDark() const {
+Store Style::ImGuiStyle::ColorsDark() const {
     vector<ImVec4> dst(Colors.size());
     ImGui::StyleColorsDark(&dst[0]);
     return Colors.set(dst);
 }
-StateMap Style::ImGuiStyle::ColorsLight() const {
+Store Style::ImGuiStyle::ColorsLight() const {
     vector<ImVec4> dst(Colors.size());
     ImGui::StyleColorsLight(&dst[0]);
     return Colors.set(dst);
 }
-StateMap Style::ImGuiStyle::ColorsClassic() const {
+Store Style::ImGuiStyle::ColorsClassic() const {
     vector<ImVec4> dst(Colors.size());
     ImGui::StyleColorsClassic(&dst[0]);
     return Colors.set(dst);
 }
 
-StateMap Style::ImPlotStyle::ColorsAuto() const {
+Store Style::ImPlotStyle::ColorsAuto() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsAuto(&dst[0]);
-    StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha, 0.25f, new_state);
+    return set(MinorAlpha, 0.25f, Colors.set(dst));
 }
-StateMap Style::ImPlotStyle::ColorsDark() const {
+Store Style::ImPlotStyle::ColorsDark() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsDark(&dst[0]);
-    StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha, 0.25f, new_state);
+    return set(MinorAlpha, 0.25f, Colors.set(dst));
 }
-StateMap Style::ImPlotStyle::ColorsLight() const {
+Store Style::ImPlotStyle::ColorsLight() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsLight(&dst[0]);
-    StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha, 1, new_state);
+    return set(MinorAlpha, 1, Colors.set(dst));
 }
-StateMap Style::ImPlotStyle::ColorsClassic() const {
+Store Style::ImPlotStyle::ColorsClassic() const {
     vector<ImVec4> dst(Colors.size());
     ImPlot::StyleColorsClassic(&dst[0]);
-    StateMap new_state = Colors.set(dst);
-    return set(MinorAlpha, 0.5f, new_state);
+    return set(MinorAlpha, 0.5f, Colors.set(dst));
 }
 
-StateMap Style::FlowGridStyle::ColorsDark() const {
+Store Style::FlowGridStyle::ColorsDark() const {
     return set({
         {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
         {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
         {Colors.Path / FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
     });
 }
-StateMap Style::FlowGridStyle::ColorsLight() const {
+Store Style::FlowGridStyle::ColorsLight() const {
     return set({
         {Colors.Path / FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
         {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
         {Colors.Path / FlowGridCol_ParamsBg, {1, 1, 1, 1}},
     });
 }
-StateMap Style::FlowGridStyle::ColorsClassic() const {
+Store Style::FlowGridStyle::ColorsClassic() const {
     return set({
         {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
         {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
@@ -1078,7 +1074,7 @@ StateMap Style::FlowGridStyle::ColorsClassic() const {
     });
 }
 
-StateMap Style::FlowGridStyle::DiagramColorsDark() const {
+Store Style::FlowGridStyle::DiagramColorsDark() const {
     return set({
         {Colors.Path / FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
         {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
@@ -1095,7 +1091,7 @@ StateMap Style::FlowGridStyle::DiagramColorsDark() const {
         {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
     });
 }
-StateMap Style::FlowGridStyle::DiagramColorsClassic() const {
+Store Style::FlowGridStyle::DiagramColorsClassic() const {
     return set({
         {Colors.Path / FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
         {Colors.Path / FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
@@ -1112,7 +1108,7 @@ StateMap Style::FlowGridStyle::DiagramColorsClassic() const {
         {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
     });
 }
-StateMap Style::FlowGridStyle::DiagramColorsLight() const {
+Store Style::FlowGridStyle::DiagramColorsLight() const {
     return set({
         {Colors.Path / FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
         {Colors.Path / FlowGridCol_DiagramText, {0, 0, 0, 1}},
@@ -1129,7 +1125,7 @@ StateMap Style::FlowGridStyle::DiagramColorsLight() const {
         {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
     });
 }
-StateMap Style::FlowGridStyle::DiagramColorsFaust() const {
+Store Style::FlowGridStyle::DiagramColorsFaust() const {
     return set({
         {Colors.Path / FlowGridCol_DiagramBg, {1, 1, 1, 1}},
         {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
@@ -1147,7 +1143,7 @@ StateMap Style::FlowGridStyle::DiagramColorsFaust() const {
     });
 }
 
-StateMap Style::FlowGridStyle::DiagramLayoutFlowGrid() const {
+Store Style::FlowGridStyle::DiagramLayoutFlowGrid() const {
     return set({
         {DiagramSequentialConnectionZigzag, false},
         {DiagramOrientationMark, false},
@@ -1164,7 +1160,7 @@ StateMap Style::FlowGridStyle::DiagramLayoutFlowGrid() const {
         {DiagramInverterRadius, 3},
     });
 }
-StateMap Style::FlowGridStyle::DiagramLayoutFaust() const {
+Store Style::FlowGridStyle::DiagramLayoutFaust() const {
     return set({
         {DiagramSequentialConnectionZigzag, true},
         {DiagramOrientationMark, true},
@@ -1508,7 +1504,7 @@ void Style::Draw() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::Draw() const {
-    int value = c.state_history_index;
+    int value = c.store_history_index;
     if (SliderInt("History index", &value, 0, Context::history_size() - 1)) q(set_history_index{value});
     GestureDurationSec.Draw();
 }
@@ -1528,7 +1524,7 @@ void Demo::ImGuiDemo::Draw() const {
 void Demo::ImPlotDemo::Draw() const {
     ImPlot::ShowDemoWindow();
 }
-StateMap FileDialog::set(const FileDialogData &data) const {
+Store FileDialog::set(const FileDialogData &data) const {
     return ::set({
         {Title, data.title},
         {Filters, data.filters},
@@ -1644,9 +1640,9 @@ void Metrics::FlowGridMetrics::Draw() const {
         // Diffs
         const bool has_diffs = Context::history_size() > 1;
         if (!has_diffs) BeginDisabled();
-        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", Context::history_size() - 1, c.state_history_index)) {
+        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", Context::history_size() - 1, c.store_history_index)) {
             for (int i = 0; i < Context::history_size() - 1; i++) {
-                if (TreeNodeEx(std::to_string(i).c_str(), i == c.state_history_index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                if (TreeNodeEx(std::to_string(i).c_str(), i == c.store_history_index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &diff = Context::create_diff(i);
                     // todo link to gesture corresponding to diff
 //                    if (diff.action_names.size() == 1) {

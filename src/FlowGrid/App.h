@@ -34,9 +34,10 @@ using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 
 using JsonPath = json::json_pointer;
 using Primitive = std::variant<bool, int, float, string, ImVec2ih, ImVec2, ImVec4>;
-using StateMap = immer::map<string, Primitive>;
-using StateMapTransient = immer::map_transient<string, Primitive>;
-using StateValues = vector<std::pair<JsonPath, Primitive>>;
+using Store = immer::map<string, Primitive>;
+using TransientStore = immer::map_transient<string, Primitive>;
+using StoreEntry = std::pair<JsonPath, Primitive>;
+using StoreEntries = vector<StoreEntry>;
 
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
@@ -275,7 +276,7 @@ struct PrimitiveVector : Base {
 
     // Can't use `operator=` here, since it would need to be overloaded for every concrete descendent type.
     // todo transient
-    StateMap set(const vector<PrimitiveT> &) const;
+    Store set(const vector<PrimitiveT> &) const;
     MemberT &operator[](size_t index) { return items[index]; }
     const MemberT &operator[](size_t index) const { return items[index]; };
     size_t size() const { return items.size(); }
@@ -296,7 +297,7 @@ struct Vector : Base {
         return *this;
     }
 
-    StateMap set(const vector<MemberT> &value) const;
+    Store set(const vector<MemberT> &value) const;
 
     MemberT &operator[](size_t index) { return items[index]; }
     const MemberT &operator[](size_t index) const { return items[index]; };
@@ -769,16 +770,16 @@ struct Style : Window {
 
         Colors Colors{this, "Colors", FlowGridCol_COUNT, GetColorName};
 
-        StateMap ColorsDark() const;
-        StateMap ColorsLight() const;
-        StateMap ColorsClassic() const;
+        Store ColorsDark() const;
+        Store ColorsLight() const;
+        Store ColorsClassic() const;
 
-        StateMap DiagramColorsDark() const;
-        StateMap DiagramColorsClassic() const;
-        StateMap DiagramColorsLight() const;
-        StateMap DiagramColorsFaust() const; // Color Faust diagrams the same way Faust does when it renders to SVG.
-        StateMap DiagramLayoutFlowGrid() const;
-        StateMap DiagramLayoutFaust() const; // Lay out Faust diagrams the same way Faust does when it renders to SVG.
+        Store DiagramColorsDark() const;
+        Store DiagramColorsClassic() const;
+        Store DiagramColorsLight() const;
+        Store DiagramColorsFaust() const; // Color Faust diagrams the same way Faust does when it renders to SVG.
+        Store DiagramLayoutFlowGrid() const;
+        Store DiagramLayoutFaust() const; // Lay out Faust diagrams the same way Faust does when it renders to SVG.
 
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
@@ -806,9 +807,9 @@ struct Style : Window {
         void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
 
-        StateMap ColorsDark() const;
-        StateMap ColorsLight() const;
-        StateMap ColorsClassic() const;
+        Store ColorsDark() const;
+        Store ColorsLight() const;
+        Store ColorsClassic() const;
         static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 
         // See `ImGui::ImGuiStyle` for field descriptions.
@@ -881,10 +882,10 @@ struct Style : Window {
         void Apply(ImPlotContext *ctx) const;
         void Draw() const override;
 
-        StateMap ColorsAuto() const;
-        StateMap ColorsDark() const;
-        StateMap ColorsLight() const;
-        StateMap ColorsClassic() const;
+        Store ColorsAuto() const;
+        Store ColorsDark() const;
+        Store ColorsLight() const;
+        Store ColorsClassic() const;
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.
@@ -946,7 +947,7 @@ struct ImGuiDockNodeSettings;
 // These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
 struct DockNodeSettings : StateMember {
     DockNodeSettings(const StateMember *parent, const string &id, const ImGuiDockNodeSettings &);
-    StateMap set(const ImGuiDockNodeSettings &);
+    Store set(const ImGuiDockNodeSettings &);
     operator ImGuiDockNodeSettings() const;
 
     Int ID{this, "ID"};
@@ -963,7 +964,7 @@ struct DockNodeSettings : StateMember {
 
 struct WindowSettings : StateMember {
     WindowSettings(const StateMember *parent, const string &id, const ImGuiWindowSettings &);
-    StateMap set(const ImGuiWindowSettings &);
+    Store set(const ImGuiWindowSettings &);
 
     Int ID{this, "ID"};
     Int ViewportId{this, "ViewportId"};
@@ -978,7 +979,7 @@ struct WindowSettings : StateMember {
 
 struct TableColumnSettings : StateMember {
     TableColumnSettings(const StateMember *parent, int index, const ImGuiTableColumnSettings &);
-    StateMap set(const ImGuiTableColumnSettings &);
+    Store set(const ImGuiTableColumnSettings &);
 
     Float WidthOrWeight{this, "WidthOrWeight"};
     Int UserID{this, "UserID"};
@@ -992,7 +993,7 @@ struct TableColumnSettings : StateMember {
 
 struct TableSettings : StateMember {
     TableSettings(const StateMember *parent, const string &id, ImGuiTableSettings &);
-    StateMap set(const ImGuiTableSettings &);
+    Store set(const ImGuiTableSettings &);
 
     Int ID{this, "ID"};
     Int SaveFlags{this, "SaveFlags"};
@@ -1045,7 +1046,7 @@ struct FileDialogData {
 
 struct FileDialog : Window {
     FileDialog(const StateMember *parent, const string &id, const bool visible = false) : Window(parent, id, visible) {}
-    StateMap set(const FileDialogData &data) const;
+    Store set(const FileDialogData &data) const;
     void Draw() const override;
 
     Bool SaveMode{this, "SaveMode"}; // The same file dialog instance is used for both saving & opening files.
@@ -1133,7 +1134,7 @@ struct show_save_project_dialog {};
 struct close_application {};
 
 struct set_value { JsonPath path; Primitive value; };
-struct set_values { StateValues values; };
+struct set_values { StoreEntries values; };
 struct toggle_value { JsonPath path; };
 
 struct apply_patch { JsonPatch patch; };
@@ -1269,7 +1270,7 @@ struct State : UIStateMember {
     State() : UIStateMember() {}
 
     void Draw() const override;
-    StateMap Update(const Action &) const; // State is only updated via `context.on_action(action)`
+    Store Update(const Action &) const; // State is only updated via `context.on_action(action)`
 
     ImGuiSettings ImGuiSettings{this, "ImGuiSettings#ImGui settings"};
     Style Style{this, "Style"};
@@ -1352,8 +1353,8 @@ struct Context {
     Context();
     ~Context();
 
-    StateMap set(StateMap state_map);
-    StateMap set(StateMapTransient transient);
+    Store set(Store store);
+    Store set(TransientStore transient);
     static int history_size();
     static StatePatch create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
@@ -1379,7 +1380,7 @@ struct Context {
     UIContext *ui{};
     StateStats state_stats;
 
-    int state_history_index = 0;
+    int store_history_index = 0;
 
     Gesture active_gesture; // uncompressed, uncommitted
     Gestures gestures; // compressed, committed gesture history
@@ -1398,7 +1399,7 @@ struct Context {
 
     // ## Read-only public shorthand state references
     //
-    // `s` is a structured representation of the underlying `StateMap`.
+    // `s` is a structured representation of the underlying `Store`.
     // It provides a full nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
     // Basically, it has everything about the state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
     // - Immutable assignment operators, which return a modified copy of the value resulting from applying the assignment.
@@ -1408,7 +1409,7 @@ struct Context {
     //   HAMTs are heavily used in the implementation of Closure.
     //   Big thanks to my friend Justin Smith for suggesting using HAMTs for an efficient application state tree - they're fantastic for it!
     // - Values act like the member of `Primitive` they hold.
-    const StateMap &sm = state_map; // Full, canonical application state is made available with this immutable map.
+    const Store &sm = store; // Full, canonical application state is made available with this immutable map.
     const State &s = state;
 
 private:
@@ -1428,7 +1429,7 @@ private:
     void set_current_project_path(const fs::path &);
     bool write_preferences() const;
 
-    StateMap state_map{};
+    Store store{};
     State state{};
     std::queue<const Action> queued_actions;
     int gesture_begin_history_index = 0;
@@ -1469,7 +1470,7 @@ void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_fla
 /**
  Declare a full name & convenient shorthand for:
  - The global state instance `s`
- - The global state JSON instance `sj`
+ - The global persistent store instance `sm`
  - The global context instances `c = context`
 
 The state instances are initialized in `Context` and assigned in `main.cpp`.
@@ -1486,7 +1487,7 @@ const Audio &audio = s.Audio; // Or just access the (read-only) `state` members 
 */
 
 extern const State &s;
-extern const StateMap &sm;
+extern const Store &sm;
 extern Context context, &c;
 
 /**
@@ -1497,14 +1498,15 @@ extern Context context, &c;
 
 bool q(Action &&a, bool flush = false);
 
-using MemberValues = vector<std::pair<const StateMember &, Primitive>>;
+using MemberEntry = std::pair<const StateMember &, Primitive>;
+using MemberEntries = vector<MemberEntry>;
 // Immutable state set/get methods
 Primitive get(const JsonPath &path);
-StateMap set(const JsonPath &path, const Primitive &value, const StateMap &state_map = c.sm);
-StateMap set(const StateMember &member, const Primitive &value, const StateMap &state_map = c.sm);
-StateMap set(const JsonPath &path, const ImVec4 &value, const StateMap &state_map = c.sm);
-StateMap remove(const JsonPath &path);
+Store set(const JsonPath &path, const Primitive &value, const Store &store = c.sm);
+Store set(const StateMember &member, const Primitive &value, const Store &store = c.sm);
+Store set(const JsonPath &path, const ImVec4 &value, const Store &store = c.sm);
+Store remove(const JsonPath &path);
 
-StateMap set(const StateValues &, const StateMap &state_map = c.sm);
-StateMap set(const MemberValues &, const StateMap &state_map = c.sm);
-StateMap set(const std::vector<std::pair<JsonPath, ImVec4>> &, const StateMap &state_map = c.sm);
+Store set(const StoreEntries &, const Store &store = c.sm);
+Store set(const MemberEntries &, const Store &store = c.sm);
+Store set(const std::vector<std::pair<JsonPath, ImVec4>> &, const Store &store = c.sm);

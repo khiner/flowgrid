@@ -529,7 +529,7 @@ void Audio::update_process() const {
     if (first_run) {
         first_run = false;
 
-        static StateValues values;
+        static StoreEntries values;
         if (instream->device->id != InDeviceId) values.emplace_back(InDeviceId.Path, instream->device->id);
         if (outstream->device->id != OutDeviceId) values.emplace_back(OutDeviceId.Path, outstream->device->id);
         if (instream->sample_rate != InSampleRate) values.emplace_back(InSampleRate.Path, instream->sample_rate);

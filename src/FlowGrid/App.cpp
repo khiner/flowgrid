@@ -77,7 +77,7 @@ Store store_from_json(const json &j) {
             _store.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
             i += 3;
         } else if (path.back() == "x" && i < entries.size() - 1 && entries[i + 1].first.back() == "y") {
-            if (std::holds_alternative<ImVec2ih>(value)) {
+            if (std::holds_alternative<int>(value)) {
                 const auto x = std::get<int>(value);
                 const auto y = std::get<int>(entries[i + 1].second);
                 _store.set(path.parent_pointer().to_string(), ImVec2ih{short(x), short(y)});

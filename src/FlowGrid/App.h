@@ -969,7 +969,7 @@ struct WindowSettings : StateMember {
     Vector<int> ClassId{this, "ClassId"};
     Vector<int> ViewportId{this, "ViewportId"};
     Vector<int> DockId{this, "DockId"};
-    Vector<int> DockOrder{this, "DockOrder", -1};
+    Vector<int> DockOrder{this, "DockOrder"};
     Vector<ImVec2ih> Pos{this, "Pos"};
     Vector<ImVec2ih> Size{this, "Size"};
     Vector<ImVec2ih> ViewportPos{this, "ViewportPos"};

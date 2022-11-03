@@ -692,7 +692,6 @@ void DockNodeSettings::set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
     Size.truncate(size, _store);
     SizeRef.truncate(size, _store);
 }
-
 void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
     for (int i = 0; i < int(ID.size()); i++) {
@@ -734,6 +733,24 @@ void WindowSettings::set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore
     Size.truncate(i, _store);
     ViewportPos.truncate(i, _store);
     Collapsed.truncate(i, _store);
+}
+// See `imgui.cpp::ApplyWindowSettings`
+void WindowSettings::Apply(ImGuiContext *) const {
+    const auto *main_viewport = GetMainViewport();
+    for (int i = 0; i < int(ID.size()); i++) {
+        auto *window = FindWindowByID(ID[i]);
+        window->ViewportPos = main_viewport->Pos;
+        if (ViewportId[i]) {
+            window->ViewportId = ViewportId[i];
+            window->ViewportPos = ImVec2(ViewportPos[i].x, ViewportPos[i].y);
+        }
+        window->Pos = ImVec2(Pos[i].x, Pos[i].y) + ImFloor(window->ViewportPos);
+        const auto size = ImVec2(Size[i].x, Size[i].y);
+        if (size.x > 0 && size.y > 0) window->Size = window->SizeFull = size;
+        window->Collapsed = Collapsed[i];
+        window->DockId = DockId[i];
+        window->DockOrder = short(DockOrder[i]);
+    }
 }
 
 void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &_store) const {
@@ -783,37 +800,6 @@ void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &
     Columns.IsEnabled.truncate(i, _store);
     Columns.IsStretch.truncate(i, _store);
 }
-
-Store ImGuiSettings::set(ImGuiContext *ctx) const {
-    auto _store = store.transient();
-    ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
-    // Convert `ImChunkStream`/`ImVector`s to `vector`s.
-    Nodes.set(ctx->DockContext.NodesSettings, _store);
-    Windows.set(ctx->SettingsWindows, _store);
-    Tables.set(ctx->SettingsTables, _store);
-
-    return _store.persistent();
-}
-
-// See `imgui.cpp::ApplyWindowSettings`
-void WindowSettings::Apply(ImGuiContext *) const {
-    const auto *main_viewport = GetMainViewport();
-    for (int i = 0; i < int(ID.size()); i++) {
-        auto *window = FindWindowByID(ID[i]);
-        window->ViewportPos = main_viewport->Pos;
-        if (ViewportId[i]) {
-            window->ViewportId = ViewportId[i];
-            window->ViewportPos = ImVec2(ViewportPos[i].x, ViewportPos[i].y);
-        }
-        window->Pos = ImVec2(Pos[i].x, Pos[i].y) + ImFloor(window->ViewportPos);
-        const auto size = ImVec2(Size[i].x, Size[i].y);
-        if (size.x > 0 && size.y > 0) window->Size = window->SizeFull = size;
-        window->Collapsed = Collapsed[i];
-        window->DockId = DockId[i];
-        window->DockOrder = short(DockOrder[i]);
-    }
-}
-
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
 void TableSettings::Apply(ImGuiContext *) const {
     for (int i = 0; i < int(ID.size()); i++) {
@@ -854,6 +840,29 @@ void TableSettings::Apply(ImGuiContext *) const {
             table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx) column_n;
         }
     }
+}
+
+Store ImGuiSettings::set(ImGuiContext *ctx) const {
+    auto _store = store.transient();
+    ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
+    // Convert `ImChunkStream`/`ImVector`s to `vector`s.
+    Nodes.set(ctx->DockContext.NodesSettings, _store);
+    Windows.set(ctx->SettingsWindows, _store);
+    Tables.set(ctx->SettingsTables, _store);
+
+    return _store.persistent();
+}
+void ImGuiSettings::Apply(ImGuiContext *ctx) const {
+    DockSettingsHandler_ClearAll(ctx, nullptr);
+
+    Windows.Apply(ctx);
+    Tables.Apply(ctx);
+    Nodes.Apply(ctx);
+    DockSettingsHandler_ApplyAll(ctx, nullptr);
+
+    // Other housekeeping to emulate `LoadIniSettingsFromMemory`
+    ctx->SettingsLoaded = true;
+    ctx->SettingsDirty = false;
 }
 
 void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
@@ -899,19 +908,6 @@ void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
     style.CurveTessellationTol = CurveTessellationTol;
     style.CircleTessellationMaxError = CircleTessellationMaxError;
     for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = Colors[i];
-}
-
-void ImGuiSettings::Apply(ImGuiContext *ctx) const {
-    DockSettingsHandler_ClearAll(ctx, nullptr);
-
-    Windows.Apply(ctx);
-    Tables.Apply(ctx);
-    Nodes.Apply(ctx);
-    DockSettingsHandler_ApplyAll(ctx, nullptr);
-
-    // Other housekeeping to emulate `LoadIniSettingsFromMemory`
-    ctx->SettingsLoaded = true;
-    ctx->SettingsDirty = false;
 }
 
 void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {

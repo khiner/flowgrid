@@ -236,7 +236,7 @@ void tick_ui() {
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         Store new_store = s.ImGuiSettings.set(c.ui->imgui_context);
         JsonPatch patch = create_patch(store, new_store);
-//        if (!patch.empty()) q(apply_patch{patch});
+        if (!patch.empty()) q(apply_patch{patch});
         io.WantSaveIniSettings = false;
     }
 

@@ -77,8 +77,11 @@ inline void from_json(const json &j, Primitive &field) {
     else if (j.is_number_integer()) field = j.get<int>();
     else if (j.is_number_float()) field = j.get<float>();
     else if (j.is_string()) field = j.get<string>();
-    else if (j.is_object()) field = j;
-    else throw std::runtime_error(format("Could not parse Primitive JSON value: {}", j.dump()));
+    else if (j.is_object() && j.contains("w")) field = j.get<ImVec4>();
+    else if (j.is_object() && j.contains("x")) {
+        if (j.at("x").is_number_float()) field = j.get<ImVec2>();
+        else field = j.get<ImVec2ih>();
+    } else throw std::runtime_error(format("Could not parse Primitive JSON value: {}", j.dump()));
 }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
@@ -137,4 +140,4 @@ JsonType(set_flowgrid_diagram_layout_style, id)
 JsonType(save_faust_file, path)
 JsonType(open_faust_file, path)
 JsonType(save_faust_svg_file, path)
-} // End `Action` namespace
+} // End `Actions` namespace

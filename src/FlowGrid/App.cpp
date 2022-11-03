@@ -9,46 +9,47 @@ std::map<ImGuiID, StateMember *> StateMember::WithID{};
 Store gesture_begin_store; // Only updated on gesture-end (for diff calculation).
 vector<std::pair<TimePoint, Store>> store_history; // One store checkpoint for every gesture.
 
-Store Context::set(Store persistent) { return store = std::move(persistent); }
-Store Context::set(TransientStore transient) { return store = transient.persistent(); }
+// Main store getter
+Primitive get(const JsonPath &path, const Store &_store) { return _store.at(path.to_string()); }
 
-Primitive get(const JsonPath &path) { return c.sm.at(path.to_string()); }
-Store set(const JsonPath &path, const Primitive &value, const Store &store) { return store.set(path.to_string(), value); }
-Store set(const StateMember &member, const Primitive &value, const Store &store) { return store.set(member.Path.to_string(), value); }
-Store set(const JsonPath &path, const ImVec4 &value, const Store &store) { return store.set(path.to_string(), value); }
-Store remove(const JsonPath &path, const Store &store) { return store.erase(path.to_string()); }
-Store set(const StoreEntries &values, const Store &store) {
-    auto transient = store.transient();
+// Persistent modifiers
+Store set(const JsonPath &path, const Primitive &value, const Store &_store) { return _store.set(path.to_string(), value); }
+Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path.to_string(), value); }
+Store set(const JsonPath &path, const ImVec4 &value, const Store &_store) { return _store.set(path.to_string(), value); }
+Store remove(const JsonPath &path, const Store &_store) { return _store.erase(path.to_string()); }
+Store set(const StoreEntries &values, const Store &_store) {
+    auto transient = _store.transient();
     set(values, transient);
     return transient.persistent();
 }
-Store set(const MemberEntries &values, const Store &store) {
-    auto transient = store.transient();
+Store set(const MemberEntries &values, const Store &_store) {
+    auto transient = _store.transient();
     set(values, transient);
     return transient.persistent();
 }
-Store set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const Store &store) {
-    auto transient = store.transient();
+Store set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const Store &_store) {
+    auto transient = _store.transient();
     set(values, transient);
     return transient.persistent();
 }
-// Transient equivalents
-void set(const JsonPath &path, const Primitive &value, TransientStore &store) { return store.set(path.to_string(), value); }
-void set(const StateMember &member, const Primitive &value, TransientStore &store) { store.set(member.Path.to_string(), value); }
-void set(const JsonPath &path, const ImVec4 &value, TransientStore &store) { store.set(path.to_string(), value); }
-void remove(const JsonPath &path, TransientStore &store) { store.erase(path.to_string()); }
-void set(const StoreEntries &values, TransientStore &store) {
-    for (const auto &[path, value]: values) store.set(path.to_string(), value);
+
+// Transient modifiers
+void set(const JsonPath &path, const Primitive &value, TransientStore &_store) { return _store.set(path.to_string(), value); }
+void set(const StateMember &member, const Primitive &value, TransientStore &_store) { _store.set(member.Path.to_string(), value); }
+void set(const JsonPath &path, const ImVec4 &value, TransientStore &_store) { _store.set(path.to_string(), value); }
+void remove(const JsonPath &path, TransientStore &_store) { _store.erase(path.to_string()); }
+void set(const StoreEntries &values, TransientStore &_store) {
+    for (const auto &[path, value]: values) _store.set(path.to_string(), value);
 }
-void set(const MemberEntries &values, TransientStore &store) {
-    for (const auto &[member, value]: values) store.set(member.Path.to_string(), value);
+void set(const MemberEntries &values, TransientStore &_store) {
+    for (const auto &[member, value]: values) _store.set(member.Path.to_string(), value);
 }
-void set(const std::vector<std::pair<JsonPath, ImVec4>> &values, TransientStore &store) {
-    for (const auto &[path, value]: values) store.set(path.to_string(), value);
+void set(const std::vector<std::pair<JsonPath, ImVec4>> &values, TransientStore &_store) {
+    for (const auto &[path, value]: values) _store.set(path.to_string(), value);
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
-    c.set(set(Path, value));
+    set(set(Path, value));
 }
 
 namespace nlohmann {
@@ -154,7 +155,7 @@ Store State::Update(const Action &action) const {
                 case 0: return Style.ImGui.ColorsDark();
                 case 1: return Style.ImGui.ColorsLight();
                 case 2: return Style.ImGui.ColorsClassic();
-                default: return c.sm;
+                default: return store;
             }
         },
         [&](const set_implot_color_style &a) {
@@ -163,7 +164,7 @@ Store State::Update(const Action &action) const {
                 case 1: return Style.ImPlot.ColorsDark();
                 case 2: return Style.ImPlot.ColorsLight();
                 case 3: return Style.ImPlot.ColorsClassic();
-                default: return c.sm;
+                default: return store;
             }
         },
         [&](const set_flowgrid_color_style &a) {
@@ -171,7 +172,7 @@ Store State::Update(const Action &action) const {
                 case 0: return Style.FlowGrid.ColorsDark();
                 case 1: return Style.FlowGrid.ColorsLight();
                 case 2: return Style.FlowGrid.ColorsClassic();
-                default: return c.sm;
+                default: return store;
             }
         },
         [&](const set_flowgrid_diagram_color_style &a) {
@@ -180,14 +181,14 @@ Store State::Update(const Action &action) const {
                 case 1: return Style.FlowGrid.DiagramColorsLight();
                 case 2: return Style.FlowGrid.DiagramColorsClassic();
                 case 3: return Style.FlowGrid.DiagramColorsFaust();
-                default: return c.sm;
+                default: return store;
             }
         },
         [&](const set_flowgrid_diagram_layout_style &a) {
             switch (a.id) {
                 case 0: return Style.FlowGrid.DiagramLayoutFlowGrid();
                 case 1: return Style.FlowGrid.DiagramLayoutFaust();
-                default: return c.sm;
+                default: return store;
             }
         },
         [&](const open_faust_file &a) { return set(Audio.Faust.Code, FileIO::read(a.path)); },
@@ -198,15 +199,13 @@ Store State::Update(const Action &action) const {
             });
         },
         [&](const auto &) {
-            return sm;
+            return store;
         }, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
     }, action);
 }
 
 void save_box_svg(const string &path); // defined in FaustUI
 
-// todo Move away from JsonPatches entirely. This is only an intermediate step.
-//   In the future, we won't even need to precompute diffs! Just calculate them on the fly from the snapshots as needed (when viewing etc)
 JsonPatch create_patch(const Store &before, const Store &after) {
     JsonPatch patch;
     diff(
@@ -265,21 +264,18 @@ void Context::on_action(const Action &action) {
             const auto prev_store = store;
             set(::set(a.path, !std::get<bool>(get(a.path))));
             on_patch(a, create_patch(prev_store, store));
-            // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row and undoing does nothing, since they're compressed into nothing.
+            // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
             finalize_gesture();
         },
         [&](const apply_patch &a) {
             // todo correct implementation
-            StoreEntries values;
-            vector<JsonPath> removed_paths;
+            auto transient = store.transient();
             for (const auto &op: a.patch) {
-                if (op.op == Add) values.emplace_back(op.path, op.value.value());
-                else if (op.op == Remove) removed_paths.push_back(op.path);
-                else if (op.op == Replace) values.emplace_back(op.path, op.value.value());
+                if (op.op == Add || op.op == Replace) ::set(op.path, Primitive(op.value.value()), transient);
+                else if (op.op == Remove) ::remove(op.path, transient);
             }
             const auto prev_store = store;
-            set(::set(values));
-//            remove(::remove(removed_paths));
+            set(transient);
             on_patch(a, create_patch(prev_store, store));
         },
         [&](const auto &a) {
@@ -523,7 +519,7 @@ void Context::set_history_index(int new_history_index) {
     while (store_history_index != new_history_index) {
         const auto index = direction == Reverse ? --store_history_index : ++store_history_index;
         const auto prev_store = store;
-        store = store_history[index].second;
+        set(store_history[index].second);
         const auto &patch = direction == Reverse ? create_patch(store, prev_store) : create_patch(prev_store, store);
         gesture_begin_store = store;
         state_stats.apply_patch(patch, store_history[index].first, direction, true);
@@ -561,7 +557,7 @@ void Context::open_project(const fs::path &path) {
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        store = store_from_json(project);
+        set(store_from_json(project));
         gesture_begin_store = store;
 
         update_ui_context(UIContextFlags_ImGuiSettings | UIContextFlags_ImGuiStyle | UIContextFlags_ImPlotStyle);

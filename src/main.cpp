@@ -2,10 +2,15 @@
 #include "FlowGrid/App.h"
 
 // Initialize global variables, and convenient shorthand variables.
+Store application_store{};
+const Store &store = application_store;
+
 Context context{};
 Context &c = context;
 const State &s = c.s;
-const Store &sm = c.sm;
+
+Store set(Store persistent) { return application_store = std::move(persistent); }
+Store set(TransientStore transient) { return application_store = transient.persistent(); }
 
 bool q(Action &&a, bool flush) {
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.

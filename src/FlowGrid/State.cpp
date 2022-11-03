@@ -14,6 +14,10 @@ using namespace ImGui;
 using namespace fg;
 using namespace action;
 
+//-----------------------------------------------------------------------------
+// [SECTION] Fields
+//-----------------------------------------------------------------------------
+
 namespace Field {
 Bool::operator bool() const { return std::get<bool>(get(Path)); }
 Int::operator int() const { return std::get<int>(get(Path)); }
@@ -33,42 +37,83 @@ Enum::operator int() const { return std::get<int>(get(Path)); }
 Flags::operator int() const { return std::get<int>(get(Path)); }
 
 template<typename T>
-Store Vector<T>::set(size_t index, const T &value) const { return ::set(Path / index, value); }
-template<typename T>
-Store Vector<T>::set(const vector<T> &value) const {
-    return ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / i, value[i]); }) | to<vector>);
-}
-template<typename T>
-void Vector<T>::set(size_t index, const T &value, TransientStore &store) const { ::set(Path / index, value, store); }
-template<typename T>
-void Vector<T>::set(const vector<T> &value, TransientStore &store) const {
-    ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / i, value[i]); }) | to<vector>, store);
-}
-
-template<typename T>
 T Vector<T>::operator[](size_t index) const { return std::get<T>(get(Path / index)); };
-
 template<typename T>
-size_t Vector<T>::size() const {
+size_t Vector<T>::size(const Store &_store) const {
+    return size(_store.transient());
+}
+template<typename T>
+size_t Vector<T>::size(const TransientStore &_store) const {
     int size = -1;
-    while (c.sm.count((Path / ++size).to_string())) {}
+    while (_store.count((Path / ++size).to_string())) {}
     return size_t(size);
 }
 
+// Transient
 template<typename T>
-T Vector2D<T>::at(size_t i, size_t j) const { return std::get<T>(get(Path / i / j)); };
+void Vector<T>::set(size_t index, const T &value, TransientStore &_store) const { ::set(Path / index, value, _store); }
+template<typename T>
+void Vector<T>::set(const vector<T> &value, TransientStore &_store) const {
+    ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / i, value[i]); }) | to<vector>, _store);
+    truncate(value.size(), _store);
+}
+
+// Persistent
+template<typename T>
+Store Vector<T>::set(size_t index, const T &value, const Store &_store) const { return ::set(Path / index, value, _store); }
+template<typename T>
+Store Vector<T>::set(const vector<T> &value, const Store &_store) const {
+    if (value.empty()) return _store;
+
+    auto transient = _store.transient();
+    set(value, transient);
+    // Delete every item after the new end
+    size_t new_size = size(transient);
+    for (size_t i = new_size - 1; i >= value.size(); i--) remove(Path / i, transient);
+    return transient.persistent();
+}
 
 template<typename T>
-Store Vector2D<T>::set(size_t i, size_t j, const T &value) const { ::set(Path / i / j, value); }
-template<typename T>
-void Vector2D<T>::set(size_t i, size_t j, const T &value, TransientStore &store) const { ::set(Path / i / j, value, store); }
+void Vector<T>::truncate(size_t length, TransientStore &_store) const {
+    const size_t current_size = size(_store);
+    for (int i = int(current_size - 1); i >= int(length); i--) remove(Path / i, _store);
+}
 
 template<typename T>
-std::pair<size_t, size_t> Vector2D<T>::size() const {
-    int i = -1, j = -1;
-    while (c.sm.count((Path / 0 / ++j).to_string())) {}
-    while (c.sm.count((Path / ++i / j).to_string())) {}
-    return {i, j};
+T Vector2D<T>::at(size_t i, size_t j, const Store &_store) const { return std::get<T>(::get(Path / i / j, _store)); };
+template<typename T>
+size_t Vector2D<T>::size(const Store &_store) const {
+    int size = -1;
+    while (_store.count((Path / ++size / 0).to_string())) {}
+    return size;
+}
+template<typename T>
+size_t Vector2D<T>::size(size_t i, const Store &_store) const {
+    return size(i, _store.transient());
+}
+template<typename T>
+size_t Vector2D<T>::size(size_t i, const TransientStore &_store) const {
+    int size = -1;
+    while (_store.count((Path / i / ++size).to_string())) {}
+    return size;
+}
+
+template<typename T>
+Store Vector2D<T>::set(size_t i, size_t j, const T &value, const Store &_store) const { ::set(Path / i / j, value, _store); }
+template<typename T>
+void Vector2D<T>::set(size_t i, size_t j, const T &value, TransientStore &_store) const { ::set(Path / i / j, value, _store); }
+template<typename T>
+void Vector2D<T>::truncate(size_t length, TransientStore &_store) const {
+    for (int i = int(length - 1); i >= int(length); i--) {
+        const size_t j_size = size(i, _store);
+        for (size_t j = 0; j < j_size; j++) {
+            remove(Path / i / j, _store);
+        }
+    }
+}
+template<typename T>
+void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) const {
+    for (int j = int(size(i) - 1); j >= int(length); j--) remove(Path / i / j, _store);
 }
 }
 
@@ -151,10 +196,6 @@ Gesture action::merge_gesture(const Gesture &gesture) {
 
     return compressed_gesture;
 }
-
-//-----------------------------------------------------------------------------
-// [SECTION] Fields
-//-----------------------------------------------------------------------------
 
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void StateMember::HelpMarker(const bool after) const {
@@ -443,7 +484,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
 //-----------------------------------------------------------------------------
 
 Window::Window(const StateMember *parent, const string &id, const bool visible) : UIStateMember(parent, id) {
-    c.set(set(Visible, visible));
+    set(set(Visible, visible));
 }
 
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
@@ -626,7 +667,8 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
 
 // todo make `ID : Field::Base` type and use appropriately for these
 void DockNodeSettings::set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
-    for (int i = 0; i < dss.Size; i++) {
+    const int size = dss.Size;
+    for (int i = 0; i < size; i++) {
         const auto &ds = dss[i];
         ID.set(i, int(ds.ID), _store);
         ParentNodeId.set(i, int(ds.ParentNodeId), _store);
@@ -639,6 +681,16 @@ void DockNodeSettings::set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
         Size.set(i, ds.Size, _store);
         SizeRef.set(i, ds.SizeRef, _store);
     }
+    ID.truncate(size, _store);
+    ParentNodeId.truncate(size, _store);
+    ParentWindowId.truncate(size, _store);
+    SelectedTabId.truncate(size, _store);
+    SplitAxis.truncate(size, _store);
+    Depth.truncate(size, _store);
+    Flags.truncate(size, _store);
+    Pos.truncate(size, _store);
+    Size.truncate(size, _store);
+    SizeRef.truncate(size, _store);
 }
 
 void DockNodeSettings::Apply(ImGuiContext *ctx) const {
@@ -673,19 +725,30 @@ void WindowSettings::set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore
         Collapsed.set(i, ws->Collapsed, _store);
         i++;
     }
+    ID.truncate(i, _store);
+    ClassId.truncate(i, _store);
+    ViewportId.truncate(i, _store);
+    DockId.truncate(i, _store);
+    DockOrder.truncate(i, _store);
+    Pos.truncate(i, _store);
+    Size.truncate(i, _store);
+    ViewportPos.truncate(i, _store);
+    Collapsed.truncate(i, _store);
 }
 
 void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &_store) const {
     int i = 0;
     for (auto *ts = tss.begin(); ts != nullptr; ts = tss.next_chunk(ts)) {
+        auto columns_count = ts->ColumnsCount;
+
         ID.set(i, int(ts->ID), _store);
         SaveFlags.set(i, ts->SaveFlags, _store);
         RefScale.set(i, ts->RefScale, _store);
-        ColumnsCount.set(i, ts->ColumnsCount, _store);
+        ColumnsCount.set(i, columns_count, _store);
         ColumnsCountMax.set(i, ts->ColumnsCountMax, _store);
         WantApply.set(i, ts->WantApply, _store);
-        for (int column_index = 0; column_index < ts->ColumnsCount; column_index++) {
-            auto &cs = ts->GetColumnSettings()[column_index];
+        for (int column_index = 0; column_index < columns_count; column_index++) {
+            const auto &cs = ts->GetColumnSettings()[column_index];
             Columns.WidthOrWeight.set(i, column_index, cs.WidthOrWeight, _store);
             Columns.UserID.set(i, column_index, int(cs.UserID), _store);
             Columns.Index.set(i, column_index, cs.Index, _store);
@@ -695,12 +758,34 @@ void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &
             Columns.IsEnabled.set(i, column_index, cs.IsEnabled, _store);
             Columns.IsStretch.set(i, column_index, cs.IsStretch, _store);
         }
+        Columns.WidthOrWeight.truncate(i, columns_count, _store);
+        Columns.UserID.truncate(i, columns_count, _store);
+        Columns.Index.truncate(i, columns_count, _store);
+        Columns.DisplayOrder.truncate(i, columns_count, _store);
+        Columns.SortOrder.truncate(i, columns_count, _store);
+        Columns.SortDirection.truncate(i, columns_count, _store);
+        Columns.IsEnabled.truncate(i, columns_count, _store);
+        Columns.IsStretch.truncate(i, columns_count, _store);
         i++;
     }
+    ID.truncate(i, _store);
+    SaveFlags.truncate(i, _store);
+    RefScale.truncate(i, _store);
+    ColumnsCount.truncate(i, _store);
+    ColumnsCountMax.truncate(i, _store);
+    WantApply.truncate(i, _store);
+    Columns.WidthOrWeight.truncate(i, _store);
+    Columns.UserID.truncate(i, _store);
+    Columns.Index.truncate(i, _store);
+    Columns.DisplayOrder.truncate(i, _store);
+    Columns.SortOrder.truncate(i, _store);
+    Columns.SortDirection.truncate(i, _store);
+    Columns.IsEnabled.truncate(i, _store);
+    Columns.IsStretch.truncate(i, _store);
 }
 
 Store ImGuiSettings::set(ImGuiContext *ctx) const {
-    auto _store = c.sm.transient();
+    auto _store = store.transient();
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
     // Convert `ImChunkStream`/`ImVector`s to `vector`s.
     Nodes.set(ctx->DockContext.NodesSettings, _store);
@@ -1000,15 +1085,15 @@ void ProjectPreview::Draw() const {
 //-----------------------------------------------------------------------------
 
 Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    c.set(ColorsDark());
+    set(ColorsDark());
 }
 Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    c.set(ColorsAuto());
+    set(ColorsAuto());
 }
 Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    c.set(ColorsDark());
-    c.set(DiagramColorsDark());
-    c.set(DiagramLayoutFlowGrid());
+    set(ColorsDark());
+    set(DiagramColorsDark());
+    set(DiagramLayoutFlowGrid());
 }
 
 Store Style::ImGuiStyle::ColorsDark() const {

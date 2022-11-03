@@ -39,6 +39,9 @@ using TransientStore = immer::map_transient<string, Primitive>;
 using StoreEntry = std::pair<JsonPath, Primitive>;
 using StoreEntries = vector<StoreEntry>;
 
+// Full, read-only canonical application state. Defined in `main.cpp`.
+extern const Store &store;
+
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec2ih &lhs, const ImVec2ih &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
@@ -264,42 +267,50 @@ struct Vector : Base {
 
     virtual string GetName(size_t index) const { return to_string(index); };
 
-    Store set(const vector<T> &value) const;
-    Store set(size_t index, const T &value) const;
-    void set(const vector<T> &value, TransientStore &store) const;
-    void set(size_t index, const T &value, TransientStore &store) const;
-
     T operator[](size_t index) const;
-    size_t size() const;
+    size_t size(const Store &_store = store) const;
+    size_t size(const TransientStore &) const;
+
+    Store set(const vector<T> &value, const Store &_store = store) const;
+    Store set(size_t index, const T &value, const Store &_store = store) const;
+    void set(const vector<T> &value, TransientStore &) const;
+    void set(size_t index, const T &value, TransientStore &) const;
+    void truncate(size_t length, TransientStore &) const; // Delete every element after index `length - 1`.
 
     bool Draw() const override { return false; };
 };
 
+// Really a vector of vectors. Inner vectors need not have the same length.
 template<typename T>
 struct Vector2D : Base {
     using Base::Base;
 
     virtual string GetName(size_t i, size_t j) const { return format("{}/{}", i, j); };
 
-    Store set(size_t i, size_t j, const T &value) const;
-    void set(size_t i, size_t j, const T &value, TransientStore &store) const;
+    T at(size_t i, size_t j, const Store &_store = store) const;
+    size_t size(const Store &_store = store) const; // Number of outer vectors
+    size_t size(const TransientStore &) const; // Number of outer vectors
+    size_t size(size_t i, const Store &_store = store) const; // Number of elements in ith inner vector
+    size_t size(size_t i, const TransientStore &) const; // Number of elements in ith inner vector
 
-    T at(size_t i, size_t j) const;
-    std::pair<size_t, size_t> size() const;
+    Store set(size_t i, size_t j, const T &value, const Store &_store = store) const;
+    void set(size_t i, size_t j, const T &value, TransientStore &) const;
+    void truncate(size_t length, TransientStore &) const; // Delete every outer vector after index `length - 1`.
+    void truncate(size_t i, size_t length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
 
     bool Draw() const override { return false; };
 };
 
 struct Colors : Vector<ImVec4> {
-    Colors(const StateMember *parent, const string &path_segment, const std::function<const char *(int)> &GetColorName, const bool allow_auto = false)
-        : Vector(parent, path_segment), allow_auto(allow_auto), GetColorName(GetColorName) {}
+    Colors(const StateMember *parent, const string &path_segment, std::function<const char *(int)> GetColorName, const bool allow_auto = false)
+        : Vector(parent, path_segment), allow_auto(allow_auto), GetColorName(std::move(GetColorName)) {}
 
     string GetName(size_t index) const override { return GetColorName(int(index)); };
     bool Draw() const override;
 
 private:
     bool allow_auto;
-    const std::function<const char *(int)> &GetColorName;
+    const std::function<const char *(int)> GetColorName;
 };
 
 } // End `Field` namespace
@@ -793,6 +804,7 @@ struct Style : Window {
         Store ColorsDark() const;
         Store ColorsLight() const;
         Store ColorsClassic() const;
+
         static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 
         // See `ImGui::ImGuiStyle` for field descriptions.
@@ -1339,8 +1351,6 @@ struct Context {
     Context();
     ~Context();
 
-    Store set(Store store);
-    Store set(TransientStore transient);
     static int history_size();
     static StatePatch create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
@@ -1395,7 +1405,6 @@ struct Context {
     //   HAMTs are heavily used in the implementation of Closure.
     //   Big thanks to my friend Justin Smith for suggesting using HAMTs for an efficient application state tree - they're fantastic for it!
     // - Values act like the member of `Primitive` they hold.
-    const Store &sm = store; // Full, canonical application state is made available with this immutable map.
     const State &s = state;
 
 private:
@@ -1415,7 +1424,6 @@ private:
     void set_current_project_path(const fs::path &);
     bool write_preferences() const;
 
-    Store store{};
     State state{};
     std::queue<const Action> queued_actions;
     int gesture_begin_history_index = 0;
@@ -1473,7 +1481,6 @@ const Audio &audio = s.Audio; // Or just access the (read-only) `state` members 
 */
 
 extern const State &s;
-extern const Store &sm;
 extern Context context, &c;
 
 /**
@@ -1488,20 +1495,28 @@ using MemberEntry = std::pair<const StateMember &, Primitive>;
 using MemberEntries = vector<MemberEntry>;
 
 // Immutable store set/get methods
-Primitive get(const JsonPath &path);
-Store set(const JsonPath &path, const Primitive &value, const Store &store = c.sm);
-Store set(const StateMember &member, const Primitive &value, const Store &store = c.sm);
-Store set(const JsonPath &path, const ImVec4 &value, const Store &store = c.sm);
-Store remove(const JsonPath &path, const Store &store = c.sm);
-Store set(const StoreEntries &, const Store &store = c.sm);
-Store set(const MemberEntries &, const Store &store = c.sm);
-Store set(const std::vector<std::pair<JsonPath, ImVec4>> &, const Store &store = c.sm);
+Primitive get(const JsonPath &path, const Store &_store = store);
+Store set(const JsonPath &path, const Primitive &value, const Store &_store = store);
+Store set(const StateMember &member, const Primitive &value, const Store &_store = store);
+Store set(const JsonPath &path, const ImVec4 &value, const Store &_store = store);
+Store remove(const JsonPath &path, const Store &_store = store);
+Store set(const StoreEntries &, const Store &_store = store);
+Store set(const MemberEntries &, const Store &_store = store);
+Store set(const std::vector<std::pair<JsonPath, ImVec4>> &, const Store &_store = store);
 
 // Equivalent get/set methods for transient (mutable) store
-void set(const JsonPath &path, const Primitive &value, TransientStore &store);
-void set(const StateMember &member, const Primitive &value, TransientStore &store);
-void set(const JsonPath &path, const ImVec4 &value, TransientStore &store);
-void remove(const JsonPath &path, TransientStore &store);
-void set(const StoreEntries &, TransientStore &store);
-void set(const MemberEntries &, TransientStore &store);
-void set(const std::vector<std::pair<JsonPath, ImVec4>> &, TransientStore &store);
+void set(const JsonPath &, const Primitive &, TransientStore &);
+void set(const StateMember &, const Primitive &, TransientStore &);
+void set(const JsonPath &, const ImVec4 &, TransientStore &);
+void remove(const JsonPath &, TransientStore &);
+void set(const StoreEntries &, TransientStore &);
+void set(const MemberEntries &, TransientStore &);
+void set(const std::vector<std::pair<JsonPath, ImVec4>> &, TransientStore &);
+
+// Main setters that modify the canonical application state store.
+// These are the only methods that mutate application state.
+Store set(Store store);
+Store set(TransientStore transient);
+
+// todo use custom patch type
+JsonPatch create_patch(const Store &before, const Store &after);

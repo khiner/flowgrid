@@ -86,7 +86,7 @@ struct Preferences {
     std::list<fs::path> recently_opened_paths;
 };
 
-static const StatePath RootPath{""};
+static const StatePath RootPath{"/"};
 
 struct StateMember {
     static std::map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID

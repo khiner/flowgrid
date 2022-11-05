@@ -54,7 +54,7 @@ StateMember::StateMember(const StateMember *parent, const string &id, const Prim
 
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
-    for (const auto &[key, value]: v) j[StatePath(key)] = value;
+    for (const auto &[key, value]: v) j[json::json_pointer(key.string())] = value;
 }
 }
 
@@ -64,7 +64,7 @@ Store store_from_json(const json &j) {
     const auto &flattened = j.flatten();
     StoreEntries entries(flattened.size());
     int item_index = 0;
-    for (const auto &it: flattened.items()) entries[item_index++] = {StatePath(it.key()), Primitive(it.value())};
+    for (const auto &[key, value]: flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
 
     TransientStore _store;
     for (size_t i = 0; i < entries.size(); i++) {

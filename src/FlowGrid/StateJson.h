@@ -101,7 +101,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PatchOpType, {
     { Replace, "replace" },
 })
 
-JsonType(PatchOp, path, op, value, old) // lower-case since these are deserialized and passed directly to json-lib. todo not the case anymore
+JsonType(PatchOp, op, value, old) // lower-case since these are deserialized and passed directly to json-lib. todo not the case anymore
 JsonType(StatePatch, Patch, Time)
 
 JsonType(FileDialogData, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags)

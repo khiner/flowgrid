@@ -135,8 +135,10 @@ void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) cons
 //-----------------------------------------------------------------------------
 
 //Patch merge(const Patch &a, const Patch b) {
-////    Patch merged = a;
-//    return {};
+//    Patch merged = a;
+//    for (const auto &[path, op, value, old] : b) {
+//    }
+//    return merged;
 //}
 
 /**
@@ -1666,30 +1668,6 @@ void Demo::Draw() const {
     }
 }
 
-void ShowJsonPatchOpMetrics(const PatchOp &patch_op) {
-    BulletText("Path: %s", patch_op.path.string().c_str());
-    BulletText("Op: %s", to_string(patch_op.op).c_str());
-    if (patch_op.value.has_value()) {
-        BulletText("Value: %s", to_string(patch_op.value.value()).c_str());
-    }
-    if (patch_op.old.has_value()) {
-        BulletText("Old value: %s", to_string(patch_op.old.value()).c_str());
-    }
-}
-
-void ShowJsonPatchMetrics(const Patch &patch) {
-    if (patch.size() == 1) {
-        ShowJsonPatchOpMetrics(patch[0]);
-    } else {
-        for (size_t i = 0; i < patch.size(); i++) {
-            if (TreeNodeEx(to_string(i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                ShowJsonPatchOpMetrics(patch[i]);
-                TreePop();
-            }
-        }
-    }
-}
-
 void ShowGesture(const Gesture &gesture) {
     for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
         const auto &action = gesture[action_i];
@@ -1761,7 +1739,14 @@ void Metrics::FlowGridMetrics::Draw() const {
 //                            TreePop();
 //                        }
 //                    }
-                    ShowJsonPatchMetrics(diff.Patch);
+                    for (const auto &[path, op]: diff.Patch) {
+                        if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                            BulletText("Op: %s", to_string(op.op).c_str());
+                            if (op.value.has_value()) BulletText("Value: %s", to_string(op.value.value()).c_str());
+                            if (op.old.has_value()) BulletText("Old value: %s", to_string(op.old.value()).c_str());
+                            TreePop();
+                        }
+                    }
 
                     BulletText("Time: %s", format("{}\n", diff.Time).c_str());
                     TreePop();

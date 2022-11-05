@@ -1069,12 +1069,11 @@ enum PatchOpType {
     Replace,
 };
 struct PatchOp {
-    StatePath path;
     PatchOpType op{};
     std::optional<Primitive> value{}; // Present for add/replace
     std::optional<Primitive> old{}; // Present for remove/replace
 };
-using Patch = vector<PatchOp>;
+using Patch = std::map<StatePath, PatchOp>;
 
 struct StatePatch {
     Patch Patch;

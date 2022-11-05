@@ -211,13 +211,13 @@ Patch create_patch(const Store &before, const Store &after) {
         before,
         after,
         [&](auto const &added_element) {
-            patch.push_back({StatePath(added_element.first), Add, added_element.second, {}});
+            patch[StatePath(added_element.first)] = {Add, added_element.second, {}};
         },
         [&](auto const &removed_element) {
-            patch.push_back({StatePath(removed_element.first), Remove, {}, removed_element.second});
+            patch[StatePath(removed_element.first)] = {Remove, {}, removed_element.second};
         },
         [&](auto const &old_element, auto const &new_element) {
-            patch.push_back({StatePath(old_element.first), Replace, new_element.second, old_element.second});
+            patch[StatePath(old_element.first)] = {Replace, new_element.second, old_element.second};
         });
 
     return patch;
@@ -268,9 +268,9 @@ void Context::on_action(const Action &action) {
         },
         [&](const apply_patch &a) {
             auto transient = store.transient();
-            for (const auto &op: a.patch) {
-                if (op.op == Add || op.op == Replace) transient.set(op.path, Primitive(op.value.value()));
-                else if (op.op == Remove) transient.erase(op.path);
+            for (const auto &[path, op]: a.patch) {
+                if (op.op == Add || op.op == Replace) transient.set(path, Primitive(op.value.value()));
+                else if (op.op == Remove) transient.erase(path);
             }
             const auto prev_store = store;
             set(transient);
@@ -401,9 +401,7 @@ void Context::clear() {
 void StateStats::apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
     if (!patch.empty()) latest_updated_paths = {};
 
-    for (const PatchOp &patch_op: patch) {
-        // For add/remove ops, the thing being updated is the _parent_.
-        const StatePath &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.parent_path() : patch_op.path;
+    for (const auto &[path, op]: patch) {
         latest_updated_paths.emplace_back(path);
 
         if (direction == Forward) {
@@ -503,7 +501,7 @@ void Context::on_patch(const Action &action, const Patch &patch) {
     active_gesture_patch = create_patch(gesture_begin_store, store);
 
     state_stats.apply_patch(patch, Clock::now(), Forward, false);
-    for (const auto &patch_op: patch) on_set_value(patch_op.path);
+    for (const auto &[path, _op]: patch) on_set_value(path);
     s.Audio.update_process();
 }
 
@@ -521,7 +519,7 @@ void Context::set_history_index(int new_history_index) {
         const auto &patch = direction == Reverse ? create_patch(store, prev_store) : create_patch(prev_store, store);
         gesture_begin_store = store;
         state_stats.apply_patch(patch, store_history[index].first, direction, true);
-        for (const auto &patch_op: patch) on_set_value(patch_op.path);
+        for (const auto &[path, _op]: patch) on_set_value(path);
     }
     s.Audio.update_process();
 }

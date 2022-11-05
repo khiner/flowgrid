@@ -11,7 +11,7 @@
 #include "faust/gui/MetaDataUI.h"
 #include "faust/gui/PathBuilder.h"
 
-using std::string, std::vector;
+using std::string, std::vector, std::map;
 using Real = Sample;
 
 // Label, shortname, or complete path (to discriminate between possibly identical labels
@@ -144,7 +144,7 @@ public:
     }
 
     Item ui{ItemType_None, ""};
-    std::map<const Real *, NamesAndValues> names_and_values;
+    map<const Real *, NamesAndValues> names_and_values;
 
 private:
     void add_ui_item(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
@@ -159,9 +159,9 @@ private:
     Item &active_group() { return groups.empty() ? ui : *groups.top(); }
 
     std::stack<Item *> groups{};
-    std::map<string, int> index_for_label{};
-    std::map<string, int> index_for_shortname{};
-    std::map<string, int> index_for_path{};
+    map<string, int> index_for_label{};
+    map<string, int> index_for_shortname{};
+    map<string, int> index_for_path{};
 };
 
 class CTree;

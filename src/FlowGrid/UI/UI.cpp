@@ -147,7 +147,7 @@ void render_frame(RenderContext &rc) {
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
 
-const std::map<string, ImGuiModFlags> mod_keys{
+const map<string, ImGuiModFlags> mod_keys{
     {"shift", ImGuiModFlags_Shift},
     {"ctrl", ImGuiModFlags_Ctrl},
     {"alt", ImGuiModFlags_Alt},
@@ -181,7 +181,7 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 const auto key_map = action::shortcut_for_id | transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
-}) | to<std::map<KeyShortcut, ActionID>>;
+}) | to<map<KeyShortcut, ActionID>>;
 
 // TODO what about going the other way? Get list of pressed KeyShortcuts.
 //  Then map from action_id to KeyShortcut. See `faust_editor::HandleInput`.

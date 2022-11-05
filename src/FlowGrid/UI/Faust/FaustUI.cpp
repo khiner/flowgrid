@@ -96,7 +96,7 @@ static inline string get_font_path() {
     return format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
 }
 static inline string get_font_base64() {
-    static std::map<string, string> base64_for_font_name; // avoid recomputing
+    static map<string, string> base64_for_font_name; // avoid recomputing
     const string &font_name = get_font_name();
     if (!base64_for_font_name.contains(font_name)) {
         const string ttf_contents = FileIO::read(get_font_path());
@@ -134,7 +134,7 @@ struct SVGDevice : Device {
     DeviceType type() override { return DeviceType_SVG; }
 
     static string xml_sanitize(const string &name) {
-        static std::map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
+        static map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
 
         auto replaced_name = name;
         for (const auto &[ch, replacement]: replacements) {
@@ -820,7 +820,7 @@ struct SequentialNode : BinaryNode {
 
         ImGuiDir prev_dir = ImGuiDir_None;
         Count size = 0;
-        std::map<ImGuiDir, Count> MaxGroupSize; // Store the size of the largest group for each direction.
+        map<ImGuiDir, Count> MaxGroupSize; // Store the size of the largest group for each direction.
         for (Count i = 0; i < io_count(IO_Out, 0); i++) {
             const float yd = child(1)->point(IO_In, i).y - child(0)->point(IO_Out, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
@@ -833,7 +833,7 @@ struct SequentialNode : BinaryNode {
     }
 
 private:
-    std::map<ImGuiDir, vector<Count>> channels_for_direction;
+    map<ImGuiDir, vector<Count>> channels_for_direction;
 };
 
 // Place and connect two diagrams in merge composition.
@@ -1172,7 +1172,7 @@ string get_box_type(Box t) {
 }
 
 static bool AllowNodeLinks = true; // Set to `false` to draw all nodes inline in one big diagram. Set to `true` to split into files (for SVG rendering).
-static std::map<Tree, bool> IsTreePureRouting{}; // Avoid recomputing pure-routing property. Needs to be reset whenever box changes!
+static map<Tree, bool> IsTreePureRouting{}; // Avoid recomputing pure-routing property. Needs to be reset whenever box changes!
 
 // Returns `true` if the tree is only made of cut, wires and slots.
 static bool isPureRouting(Tree t) {

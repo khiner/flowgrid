@@ -60,6 +60,7 @@ using std::nullopt;
 using std::cout, std::cerr;
 using std::unique_ptr, std::make_unique;
 using std::min, std::max;
+using std::map;
 
 // E.g. '/foo/bar/baz' => 'baz'
 inline string path_variable_name(const StatePath &path) { return path.filename(); }
@@ -89,7 +90,7 @@ struct Preferences {
 static const StatePath RootPath{"/"};
 
 struct StateMember {
-    static std::map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID
+    static map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID
 
     // The `id` parameter is used as the path segment for this state member,
     // and optionally can contain a name and/or an info string.
@@ -1073,7 +1074,7 @@ struct PatchOp {
     std::optional<Primitive> value{}; // Present for add/replace
     std::optional<Primitive> old{}; // Present for remove/replace
 };
-using Patch = std::map<StatePath, PatchOp>;
+using Patch = map<StatePath, PatchOp>;
 
 struct StatePatch {
     Patch Patch;
@@ -1202,7 +1203,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const std::map<ID, string> name_for_id{
+const map <ID, string> name_for_id{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1241,7 +1242,7 @@ const std::map<ID, string> name_for_id{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const std::map<ID, string> shortcut_for_id = {
+const map <ID, string> shortcut_for_id = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1295,14 +1296,14 @@ struct State : UIStateMember {
 // [SECTION] Main `Context` class
 //-----------------------------------------------------------------------------
 
-const std::map<ProjectFormat, string> ExtensionForProjectFormat{
+const map<ProjectFormat, string> ExtensionForProjectFormat{
     {StateFormat, ".fls"},
     {DiffFormat, ".fld"},
     {ActionFormat, ".fla"},
 };
 
 // todo derive from above map
-const std::map<string, ProjectFormat> ProjectFormatForExtension{
+const map<string, ProjectFormat> ProjectFormatForExtension{
     {ExtensionForProjectFormat.at(StateFormat), StateFormat},
     {ExtensionForProjectFormat.at(DiffFormat), DiffFormat},
     {ExtensionForProjectFormat.at(ActionFormat), ActionFormat},
@@ -1338,9 +1339,9 @@ struct StateStats {
     };
 
     vector<StatePath> latest_updated_paths{};
-    std::map<StatePath, vector<TimePoint>> gesture_update_times_for_path{};
-    std::map<StatePath, vector<TimePoint>> committed_update_times_for_path{};
-    std::map<StatePath, TimePoint> latest_update_time_for_path{};
+    map<StatePath, vector<TimePoint>> gesture_update_times_for_path{};
+    map<StatePath, vector<TimePoint>> committed_update_times_for_path{};
+    map<StatePath, TimePoint> latest_update_time_for_path{};
     Plottable PathUpdateFrequency;
 
     void apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);

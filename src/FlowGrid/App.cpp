@@ -4,7 +4,7 @@
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
 
-std::map<ImGuiID, StateMember *> StateMember::WithID{};
+map<ImGuiID, StateMember *> StateMember::WithID{};
 
 Store gesture_begin_store; // Only updated on gesture-end (for diff calculation).
 vector<std::pair<TimePoint, Store>> store_history; // One store checkpoint for every gesture.
@@ -103,7 +103,7 @@ string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 namespace action {
 // An action's menu label is its name, except for a few exceptions.
-const std::map<ID, string> menu_label_for_id{
+const map<ID, string> menu_label_for_id{
     {id<show_open_project_dialog>, "Open project"},
     {id<open_empty_project>, "New project"},
     {id<save_current_project>, "Save project"},

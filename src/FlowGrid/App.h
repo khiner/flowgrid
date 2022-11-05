@@ -1498,7 +1498,6 @@ using MemberEntry = std::pair<const StateMember &, Primitive>;
 using MemberEntries = vector<MemberEntry>;
 
 // Immutable store set/get methods
-Primitive get(const StatePath &path, const Store &_store = store);
 Store set(const StatePath &path, const Primitive &value, const Store &_store = store);
 Store set(const StateMember &member, const Primitive &value, const Store &_store = store);
 Store set(const StatePath &path, const ImVec4 &value, const Store &_store = store);

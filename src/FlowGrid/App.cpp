@@ -9,9 +9,6 @@ std::map<ImGuiID, StateMember *> StateMember::WithID{};
 Store gesture_begin_store; // Only updated on gesture-end (for diff calculation).
 vector<std::pair<TimePoint, Store>> store_history; // One store checkpoint for every gesture.
 
-// Main store getter
-Primitive get(const StatePath &path, const Store &_store) { return _store.at(path); }
-
 // Persistent modifiers
 Store set(const StatePath &path, const Primitive &value, const Store &_store) { return _store.set(path, value); }
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -270,7 +267,7 @@ void Context::on_action(const Action &action) {
         },
         [&](const toggle_value &a) {
             const auto prev_store = store;
-            set(::set(a.path, !std::get<bool>(get(a.path))));
+            set(::set(a.path, !std::get<bool>(store.at(a.path))));
             on_patch(a, create_patch(prev_store, store));
             // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
             finalize_gesture();

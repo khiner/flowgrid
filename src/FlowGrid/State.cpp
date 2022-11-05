@@ -19,25 +19,25 @@ using namespace action;
 //-----------------------------------------------------------------------------
 
 namespace Field {
-Bool::operator bool() const { return std::get<bool>(get(Path)); }
-Int::operator int() const { return std::get<int>(get(Path)); }
+Bool::operator bool() const { return std::get<bool>(store.at(Path)); }
+Int::operator int() const { return std::get<int>(store.at(Path)); }
 Float::operator float() const {
-    const auto &value = get(Path);
+    const auto &value = store.at(Path);
     if (std::holds_alternative<int>(value)) return float(std::get<int>(value));
     return std::get<float>(value);
 }
-Vec2::operator ImVec2() const { return std::get<ImVec2>(get(Path)); }
-Vec2Int::operator ImVec2ih() const { return std::get<ImVec2ih>(get(Path)); }
+Vec2::operator ImVec2() const { return std::get<ImVec2>(store.at(Path)); }
+Vec2Int::operator ImVec2ih() const { return std::get<ImVec2ih>(store.at(Path)); }
 
-String::operator string() const { return std::get<string>(get(Path)); }
+String::operator string() const { return std::get<string>(store.at(Path)); }
 bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
 
-Enum::operator int() const { return std::get<int>(get(Path)); }
-Flags::operator int() const { return std::get<int>(get(Path)); }
+Enum::operator int() const { return std::get<int>(store.at(Path)); }
+Flags::operator int() const { return std::get<int>(store.at(Path)); }
 
 template<typename T>
-T Vector<T>::operator[](size_t index) const { return std::get<T>(get(Path / to_string(index))); };
+T Vector<T>::operator[](size_t index) const { return std::get<T>(store.at(Path / to_string(index))); };
 template<typename T>
 size_t Vector<T>::size(const Store &_store) const {
     return size(_store.transient());
@@ -96,7 +96,7 @@ void Vector<T>::truncate(size_t length, TransientStore &_store) const {
 }
 
 template<typename T>
-T Vector2D<T>::at(size_t i, size_t j, const Store &_store) const { return std::get<T>(::get(Path / to_string(i) / to_string(j), _store)); };
+T Vector2D<T>::at(size_t i, size_t j, const Store &_store) const { return std::get<T>(_store.at(Path / to_string(i) / to_string(j))); };
 template<typename T>
 size_t Vector2D<T>::size(const Store &_store) const {
     int size = -1;

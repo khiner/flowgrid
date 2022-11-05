@@ -10,13 +10,13 @@ Store gesture_begin_store; // Only updated on gesture-end (for diff calculation)
 vector<std::pair<TimePoint, Store>> store_history; // One store checkpoint for every gesture.
 
 // Main store getter
-Primitive get(const JsonPath &path, const Store &_store) { return _store.at(path.to_string()); }
+Primitive get(const StatePath &path, const Store &_store) { return _store.at(path); }
 
 // Persistent modifiers
-Store set(const JsonPath &path, const Primitive &value, const Store &_store) { return _store.set(path.to_string(), value); }
-Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path.to_string(), value); }
-Store set(const JsonPath &path, const ImVec4 &value, const Store &_store) { return _store.set(path.to_string(), value); }
-Store remove(const JsonPath &path, const Store &_store) { return _store.erase(path.to_string()); }
+Store set(const StatePath &path, const Primitive &value, const Store &_store) { return _store.set(path, value); }
+Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
+Store set(const StatePath &path, const ImVec4 &value, const Store &_store) { return _store.set(path, value); }
+Store remove(const StatePath &path, const Store &_store) { return _store.erase(path); }
 Store set(const StoreEntries &values, const Store &_store) {
     auto transient = _store.transient();
     set(values, transient);
@@ -27,25 +27,25 @@ Store set(const MemberEntries &values, const Store &_store) {
     set(values, transient);
     return transient.persistent();
 }
-Store set(const std::vector<std::pair<JsonPath, ImVec4>> &values, const Store &_store) {
+Store set(const std::vector<std::pair<StatePath, ImVec4>> &values, const Store &_store) {
     auto transient = _store.transient();
     set(values, transient);
     return transient.persistent();
 }
 
 // Transient modifiers
-void set(const JsonPath &path, const Primitive &value, TransientStore &_store) { return _store.set(path.to_string(), value); }
-void set(const StateMember &member, const Primitive &value, TransientStore &_store) { _store.set(member.Path.to_string(), value); }
-void set(const JsonPath &path, const ImVec4 &value, TransientStore &_store) { _store.set(path.to_string(), value); }
-void remove(const JsonPath &path, TransientStore &_store) { _store.erase(path.to_string()); }
+void set(const StatePath &path, const Primitive &value, TransientStore &_store) { return _store.set(path, value); }
+void set(const StateMember &member, const Primitive &value, TransientStore &_store) { _store.set(member.Path, value); }
+void set(const StatePath &path, const ImVec4 &value, TransientStore &_store) { _store.set(path, value); }
+void remove(const StatePath &path, TransientStore &_store) { _store.erase(path); }
 void set(const StoreEntries &values, TransientStore &_store) {
-    for (const auto &[path, value]: values) _store.set(path.to_string(), value);
+    for (const auto &[path, value]: values) _store.set(path, value);
 }
 void set(const MemberEntries &values, TransientStore &_store) {
-    for (const auto &[member, value]: values) _store.set(member.Path.to_string(), value);
+    for (const auto &[member, value]: values) _store.set(member.Path, value);
 }
-void set(const std::vector<std::pair<JsonPath, ImVec4>> &values, TransientStore &_store) {
-    for (const auto &[path, value]: values) _store.set(path.to_string(), value);
+void set(const std::vector<std::pair<StatePath, ImVec4>> &values, TransientStore &_store) {
+    for (const auto &[path, value]: values) _store.set(path, value);
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
@@ -54,7 +54,7 @@ StateMember::StateMember(const StateMember *parent, const string &id, const Prim
 
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
-    for (const auto &[key, value]: v) j[JsonPath(key)] = value;
+    for (const auto &[key, value]: v) j[StatePath(key)] = value;
 }
 }
 
@@ -64,31 +64,31 @@ Store store_from_json(const json &j) {
     const auto &flattened = j.flatten();
     StoreEntries entries(flattened.size());
     int item_index = 0;
-    for (const auto &it: flattened.items()) entries[item_index++] = {JsonPath(it.key()), Primitive(it.value())};
+    for (const auto &it: flattened.items()) entries[item_index++] = {StatePath(it.key()), Primitive(it.value())};
 
     TransientStore _store;
     for (size_t i = 0; i < entries.size(); i++) {
         const auto &[path, value] = entries[i];
-        if (path.back() == "w" && i < entries.size() - 3 && entries[i + 3].first.back() == "z") {
+        if (path.filename() == "w" && i < entries.size() - 3 && entries[i + 3].first.filename() == "z") {
             const auto w = std::get<float>(value);
             const auto x = std::get<float>(entries[i + 1].second);
             const auto y = std::get<float>(entries[i + 2].second);
             const auto z = std::get<float>(entries[i + 3].second);
-            _store.set(path.parent_pointer().to_string(), ImVec4{x, y, z, w});
+            _store.set(path.parent_path(), ImVec4{x, y, z, w});
             i += 3;
-        } else if (path.back() == "x" && i < entries.size() - 1 && entries[i + 1].first.back() == "y") {
+        } else if (path.filename() == "x" && i < entries.size() - 1 && entries[i + 1].first.filename() == "y") {
             if (std::holds_alternative<int>(value)) {
                 const auto x = std::get<int>(value);
                 const auto y = std::get<int>(entries[i + 1].second);
-                _store.set(path.parent_pointer().to_string(), ImVec2ih{short(x), short(y)});
+                _store.set(path.parent_path(), ImVec2ih{short(x), short(y)});
             } else {
                 const auto x = std::get<float>(value);
                 const auto y = std::get<float>(entries[i + 1].second);
-                _store.set(path.parent_pointer().to_string(), ImVec2{x, y});
+                _store.set(path.parent_path(), ImVec2{x, y});
             }
             i += 1;
         } else {
-            _store.set(path.to_string(), value);
+            _store.set(path, value);
         }
     }
     return _store.persistent();
@@ -220,13 +220,13 @@ Patch create_patch(const Store &before, const Store &after) {
         before,
         after,
         [&](auto const &added_element) {
-            patch.push_back({JsonPath(added_element.first), Add, added_element.second, {}});
+            patch.push_back({StatePath(added_element.first), Add, added_element.second, {}});
         },
         [&](auto const &removed_element) {
-            patch.push_back({JsonPath(removed_element.first), Remove, {}, removed_element.second});
+            patch.push_back({StatePath(removed_element.first), Remove, {}, removed_element.second});
         },
         [&](auto const &old_element, auto const &new_element) {
-            patch.push_back({JsonPath(old_element.first), Replace, new_element.second, old_element.second});
+            patch.push_back({StatePath(old_element.first), Replace, new_element.second, old_element.second});
         });
 
     return patch;
@@ -413,7 +413,7 @@ void StateStats::apply_patch(const Patch &patch, TimePoint time, Direction direc
 
     for (const PatchOp &patch_op: patch) {
         // For add/remove ops, the thing being updated is the _parent_.
-        const JsonPath &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.parent_pointer() : patch_op.path;
+        const StatePath &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.parent_path() : patch_op.path;
         latest_updated_paths.emplace_back(path);
 
         if (direction == Forward) {
@@ -440,7 +440,7 @@ void StateStats::apply_patch(const Patch &patch, TimePoint time, Direction direc
 }
 
 StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
-    vector<JsonPath> paths;
+    vector<StatePath> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
     for (const auto &path: views::keys(gesture_update_times_for_path)) {
         if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
@@ -541,14 +541,12 @@ void Context::increment_history_index(int delta) {
     set_history_index(store_history_index + delta);
 }
 
-void Context::on_set_value(const JsonPath &path) {
-    const auto &path_str = path.to_string();
-
+void Context::on_set_value(const StatePath &path) {
     // Setting `ImGuiSettings` does not require a `c.update_ui_context` on the action, since the action will be initiated by ImGui itself,
     // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-    if (path_str.rfind(s.ImGuiSettings.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path_str.rfind(s.Style.ImGui.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
-    else if (path_str.rfind(s.Style.ImPlot.Path.to_string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
+    if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
+    else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
     else if (path == s.Audio.Faust.Code.Path || path == s.Audio.OutSampleRate.Path) update_faust_context();
 }
 

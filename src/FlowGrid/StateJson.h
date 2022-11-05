@@ -5,8 +5,8 @@
 #include "App.h"
 
 namespace nlohmann {
-inline void to_json(json &j, const JsonPath &path) { j = path.to_string(); }
-inline void from_json(const json &j, JsonPath &path) { path = JsonPath(j.get<std::string>()); }
+inline void to_json(json &j, const StatePath &path) { j = path.string(); }
+inline void from_json(const json &j, StatePath &path) { path = StatePath(j.get<std::string>()); }
 
 // Convert `std::chrono::time_point`s to/from JSON.
 // From https://github.com/nlohmann/json/issues/2159#issuecomment-638104529

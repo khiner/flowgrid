@@ -37,7 +37,7 @@ Enum::operator int() const { return std::get<int>(get(Path)); }
 Flags::operator int() const { return std::get<int>(get(Path)); }
 
 template<typename T>
-T Vector<T>::operator[](size_t index) const { return std::get<T>(get(Path / index)); };
+T Vector<T>::operator[](size_t index) const { return std::get<T>(get(Path / to_string(index))); };
 template<typename T>
 size_t Vector<T>::size(const Store &_store) const {
     return size(_store.transient());
@@ -45,17 +45,33 @@ size_t Vector<T>::size(const Store &_store) const {
 template<typename T>
 size_t Vector<T>::size(const TransientStore &_store) const {
     int size = -1;
-    while (_store.count((Path / ++size).to_string())) {}
+    while (_store.count(Path / to_string(++size))) {}
     return size_t(size);
 }
 
 // Transient
 template<typename T>
-void Vector<T>::set(size_t index, const T &value, TransientStore &_store) const { ::set(Path / index, value, _store); }
+void Vector<T>::set(size_t index, const T &value, TransientStore &_store) const { ::set(Path / to_string(index), value, _store); }
 template<typename T>
 void Vector<T>::set(const vector<T> &value, TransientStore &_store) const {
-    ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / i, value[i]); }) | to<vector>, _store);
+    ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), value[i]); }) | to<vector>, _store);
     truncate(value.size(), _store);
+}
+template<typename T>
+Store Vector<T>::set(const vector<std::pair<int, Primitive>> &values, const Store &_store) const {
+    auto transient = _store.transient();
+    for (const auto &[index, value]: values) {
+        transient.set(Path / to_string(index), value);
+    }
+    return transient.persistent();
+}
+template<typename T>
+Store Vector<T>::set(const vector<std::pair<int, ImVec4>> &values, const Store &_store) const {
+    auto transient = _store.transient();
+    for (const auto &[index, value]: values) {
+        transient.set(Path / to_string(index), value);
+    }
+    return transient.persistent();
 }
 
 // Persistent
@@ -69,22 +85,22 @@ Store Vector<T>::set(const vector<T> &value, const Store &_store) const {
     set(value, transient);
     // Delete every item after the new end
     size_t new_size = size(transient);
-    for (size_t i = new_size - 1; i >= value.size(); i--) remove(Path / i, transient);
+    for (size_t i = new_size - 1; i >= value.size(); i--) remove(Path / to_string(i), transient);
     return transient.persistent();
 }
 
 template<typename T>
 void Vector<T>::truncate(size_t length, TransientStore &_store) const {
     const size_t current_size = size(_store);
-    for (int i = int(current_size - 1); i >= int(length); i--) remove(Path / i, _store);
+    for (int i = int(current_size - 1); i >= int(length); i--) remove(Path / to_string(i), _store);
 }
 
 template<typename T>
-T Vector2D<T>::at(size_t i, size_t j, const Store &_store) const { return std::get<T>(::get(Path / i / j, _store)); };
+T Vector2D<T>::at(size_t i, size_t j, const Store &_store) const { return std::get<T>(::get(Path / to_string(i) / to_string(j), _store)); };
 template<typename T>
 size_t Vector2D<T>::size(const Store &_store) const {
     int size = -1;
-    while (_store.count((Path / ++size / 0).to_string())) {}
+    while (_store.count(Path / ++size / 0).to_string()) {}
     return size;
 }
 template<typename T>
@@ -94,32 +110,37 @@ size_t Vector2D<T>::size(size_t i, const Store &_store) const {
 template<typename T>
 size_t Vector2D<T>::size(size_t i, const TransientStore &_store) const {
     int size = -1;
-    while (_store.count((Path / i / ++size).to_string())) {}
+    while (_store.count(Path / to_string(i) / to_string(++size))) {}
     return size;
 }
 
 template<typename T>
-Store Vector2D<T>::set(size_t i, size_t j, const T &value, const Store &_store) const { ::set(Path / i / j, value, _store); }
+Store Vector2D<T>::set(size_t i, size_t j, const T &value, const Store &_store) const { ::set(Path / to_string(i) / to_string(j), value, _store); }
 template<typename T>
-void Vector2D<T>::set(size_t i, size_t j, const T &value, TransientStore &_store) const { ::set(Path / i / j, value, _store); }
+void Vector2D<T>::set(size_t i, size_t j, const T &value, TransientStore &_store) const { ::set(Path / to_string(i) / to_string(j), value, _store); }
 template<typename T>
 void Vector2D<T>::truncate(size_t length, TransientStore &_store) const {
     for (int i = int(length - 1); i >= int(length); i--) {
         const size_t j_size = size(i, _store);
         for (size_t j = 0; j < j_size; j++) {
-            remove(Path / i / j, _store);
+            remove(Path / to_string(i) / to_string(j), _store);
         }
     }
 }
 template<typename T>
 void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) const {
-    for (int j = int(size(i, _store) - 1); j >= int(length); j--) remove(Path / i / j, _store);
+    for (int j = int(size(i, _store) - 1); j >= int(length); j--) remove(Path / to_string(i) / to_string(j), _store);
 }
 }
 
 //-----------------------------------------------------------------------------
 // [SECTION] Actions
 //-----------------------------------------------------------------------------
+
+//Patch merge(const Patch &a, const Patch b) {
+////    Patch merged = a;
+//    return {};
+//}
 
 /**
  Provided actions are assumed to be chronologically consecutive.
@@ -951,10 +972,9 @@ void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
 //-----------------------------------------------------------------------------
 
 // TODO option to indicate relative update-recency
-void StateViewer::StateJsonTree(const string &key, const json &value, const JsonPath &path) const {
-    const auto path_string = path.to_string();
-    const string &leaf_name = path == RootPath ? path_string : path.back();
-    const auto &parent_path = path == RootPath ? path : path.parent_pointer();
+void StateViewer::StateJsonTree(const string &key, const json &value, const StatePath &path) const {
+    const string &leaf_name = path == RootPath ? path.string() : path.filename().string();
+    const auto &parent_path = path == RootPath ? path : path.parent_path();
     const bool is_array_item = is_integer(leaf_name);
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_imgui_color = parent_path == s.Style.ImGui.Colors.Path;
@@ -967,7 +987,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Json
                          is_array_item ? leaf_name : key) : key;
     if (AutoSelect) {
         const auto &update_paths = c.state_stats.latest_updated_paths;
-        const auto is_ancestor_path = [path_string](const string &candidate_path) { return candidate_path.rfind(path_string, 0) == 0; };
+        const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
         if (was_recently_updated) FillRowItemBg(s.Style.ImGui.Colors[ImGuiCol_FrameBg]);
@@ -1129,93 +1149,93 @@ Store Style::ImPlotStyle::ColorsClassic() const {
 }
 
 Store Style::FlowGridStyle::ColorsDark() const {
-    return set({
-        {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {Colors.Path / FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
+    return Colors.set({
+        {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+        {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+        {FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
     });
 }
 Store Style::FlowGridStyle::ColorsLight() const {
-    return set({
-        {Colors.Path / FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
-        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {Colors.Path / FlowGridCol_ParamsBg, {1, 1, 1, 1}},
+    return Colors.set({
+        {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
+        {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+        {FlowGridCol_ParamsBg, {1, 1, 1, 1}},
     });
 }
 Store Style::FlowGridStyle::ColorsClassic() const {
-    return set({
-        {Colors.Path / FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-        {Colors.Path / FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {Colors.Path / FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
+    return Colors.set({
+        {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+        {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+        {FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
     });
 }
 
 Store Style::FlowGridStyle::DiagramColorsDark() const {
-    return set({
-        {Colors.Path / FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
-        {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.43, 0.43, 0.5, 0.5}},
-        {Colors.Path / FlowGridCol_DiagramLine, {0.61, 0.61, 0.61, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {1, 1, 1, 1}},
+    return Colors.set({
+        {FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
+        {FlowGridCol_DiagramText, {1, 1, 1, 1}},
+        {FlowGridCol_DiagramGroupTitle, {1, 1, 1, 1}},
+        {FlowGridCol_DiagramGroupStroke, {0.43, 0.43, 0.5, 0.5}},
+        {FlowGridCol_DiagramLine, {0.61, 0.61, 0.61, 1}},
+        {FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
+        {FlowGridCol_DiagramInverter, {1, 1, 1, 1}},
+        {FlowGridCol_DiagramOrientationMark, {1, 1, 1, 1}},
         // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
     });
 }
 Store Style::FlowGridStyle::DiagramColorsClassic() const {
-    return set({
-        {Colors.Path / FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
-        {Colors.Path / FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0.9, 0.9, 0.9, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.5, 0.5, 0.5, 0.5}},
-        {Colors.Path / FlowGridCol_DiagramLine, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0.35, 0.4, 0.61, 0.62}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {0.9, 0.9, 0.9, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0.9, 0.9, 0.9, 1}},
+    return Colors.set({
+        {FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
+        {FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
+        {FlowGridCol_DiagramGroupTitle, {0.9, 0.9, 0.9, 1}},
+        {FlowGridCol_DiagramGroupStroke, {0.5, 0.5, 0.5, 0.5}},
+        {FlowGridCol_DiagramLine, {1, 1, 1, 1}},
+        {FlowGridCol_DiagramLink, {0.35, 0.4, 0.61, 0.62}},
+        {FlowGridCol_DiagramInverter, {0.9, 0.9, 0.9, 1}},
+        {FlowGridCol_DiagramOrientationMark, {0.9, 0.9, 0.9, 1}},
         // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
     });
 }
 Store Style::FlowGridStyle::DiagramColorsLight() const {
-    return set({
-        {Colors.Path / FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
-        {Colors.Path / FlowGridCol_DiagramText, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0, 0, 0, 0.3}},
-        {Colors.Path / FlowGridCol_DiagramLine, {0.39, 0.39, 0.39, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
+    return Colors.set({
+        {FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
+        {FlowGridCol_DiagramText, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramGroupStroke, {0, 0, 0, 0.3}},
+        {FlowGridCol_DiagramLine, {0.39, 0.39, 0.39, 1}},
+        {FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
+        {FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
         // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
     });
 }
 Store Style::FlowGridStyle::DiagramColorsFaust() const {
-    return set({
-        {Colors.Path / FlowGridCol_DiagramBg, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramGroupStroke, {0.2, 0.2, 0.2, 1}},
-        {Colors.Path / FlowGridCol_DiagramLine, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramLink, {0, 0.2, 0.4, 1}},
-        {Colors.Path / FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
-        {Colors.Path / FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
+    return Colors.set({
+        {FlowGridCol_DiagramBg, {1, 1, 1, 1}},
+        {FlowGridCol_DiagramText, {1, 1, 1, 1}},
+        {FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramGroupStroke, {0.2, 0.2, 0.2, 1}},
+        {FlowGridCol_DiagramLine, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramLink, {0, 0.2, 0.4, 1}},
+        {FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
         // Box fills
-        {Colors.Path / FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {Colors.Path / FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {Colors.Path / FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {Colors.Path / FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
+        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
     });
 }
 
@@ -1290,7 +1310,7 @@ bool Colors::Draw() const {
                 SameLine();
             }
             auto value = (*this)[i];
-            changed |= ImGui::ColorEdit4(path_label(Path / i).c_str(), (float *) &value,
+            changed |= ImGui::ColorEdit4(path_label(Path / to_string(i)).c_str(), (float *) &value,
                 (ImGuiColorEditFlags_AlphaBar | alpha_flags) | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
             gestured();
 
@@ -1298,7 +1318,7 @@ bool Colors::Draw() const {
             TextUnformatted(name.c_str());
             PopID();
 
-            if (changed) q(set_value{Path / i, value});
+            if (changed) q(set_value{Path / to_string(i), value});
         }
         if (allow_auto) {
             Separator();
@@ -1650,7 +1670,7 @@ void Demo::Draw() const {
 }
 
 void ShowJsonPatchOpMetrics(const PatchOp &patch_op) {
-    BulletText("Path: %s", patch_op.path.to_string().c_str());
+    BulletText("Path: %s", patch_op.path.string().c_str());
     BulletText("Op: %s", to_string(patch_op.op).c_str());
     if (patch_op.value.has_value()) {
         BulletText("Value: %s", to_string(patch_op.value.value()).c_str());

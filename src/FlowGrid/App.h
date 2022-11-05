@@ -32,12 +32,16 @@ using namespace fmt;
 using namespace nlohmann;
 using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 
-using JsonPath = json::json_pointer;
+using StatePath = fs::path;
+struct StatePathHash {
+    auto operator()(const StatePath &p) const noexcept { return fs::hash_value(p); }
+};
+
 using Primitive = std::variant<bool, int, float, string, ImVec2ih, ImVec2, ImVec4>;
-using Store = immer::map<string, Primitive>;
-using TransientStore = immer::map_transient<string, Primitive>;
-using StoreEntry = std::pair<JsonPath, Primitive>;
+using StoreEntry = std::pair<StatePath, Primitive>;
 using StoreEntries = vector<StoreEntry>;
+using Store = immer::map<StatePath, Primitive, StatePathHash>;
+using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
 
 // Full, read-only canonical application state. Defined in `main.cpp`.
 extern const Store &store;
@@ -58,8 +62,8 @@ using std::unique_ptr, std::make_unique;
 using std::min, std::max;
 
 // E.g. '/foo/bar/baz' => 'baz'
-inline string path_variable_name(const JsonPath &path) { return path.back(); }
-inline string path_label(const JsonPath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
+inline string path_variable_name(const StatePath &path) { return path.filename(); }
+inline string path_label(const StatePath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
 
 // Split the string on '#'.
 // If there is no '#' in the provided string, the first element will have the full input string and the second element will be an empty string.
@@ -82,7 +86,7 @@ struct Preferences {
     std::list<fs::path> recently_opened_paths;
 };
 
-static const JsonPath RootPath{""};
+static const StatePath RootPath{""};
 
 struct StateMember {
     static std::map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID
@@ -96,7 +100,7 @@ struct StateMember {
         const auto &[path_segment_and_name, help] = parse_help_text(id);
         const auto &[path_segment, name] = parse_name(path_segment_and_name);
         PathSegment = path_segment;
-        Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? JsonPath(PathSegment) : RootPath;
+        Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
         Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
         Help = help;
         ImGuiId = ImHashStr(Name.c_str(), 0, Parent ? Parent->ImGuiId : 0);
@@ -114,7 +118,7 @@ struct StateMember {
     }
 
     const StateMember *Parent;
-    JsonPath Path;
+    StatePath Path;
     string PathSegment, Name, Help;
     ImGuiID ImGuiId;
     bool is_temp_instance{false};
@@ -273,6 +277,8 @@ struct Vector : Base {
 
     Store set(const vector<T> &value, const Store &_store = store) const;
     Store set(size_t index, const T &value, const Store &_store = store) const;
+    Store set(const vector<std::pair<int, Primitive>> &, const Store &_store = store) const;
+    Store set(const vector<std::pair<int, ImVec4>> &, const Store &_store = store) const;
     void set(const vector<T> &value, TransientStore &) const;
     void set(size_t index, const T &value, TransientStore &) const;
     void truncate(size_t length, TransientStore &) const; // Delete every element after index `length - 1`.
@@ -409,7 +415,7 @@ struct StateViewer : Window {
                           "The state viewer to the changed state node(s), closing all other state nodes.\n"
                           "State menu items can only be opened or closed manually if auto-select is disabled.", true};
 
-    void StateJsonTree(const string &key, const json &value, const JsonPath &path = RootPath) const;
+    void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const;
 };
 
 struct StateMemoryEditor : Window {
@@ -1063,7 +1069,7 @@ enum PatchOpType {
     Replace,
 };
 struct PatchOp {
-    JsonPath path;
+    StatePath path;
     PatchOpType op{};
     std::optional<Primitive> value{}; // Present for add/replace
     std::optional<Primitive> old{}; // Present for remove/replace
@@ -1128,9 +1134,9 @@ struct show_save_project_dialog {};
 
 struct close_application {};
 
-struct set_value { JsonPath path; Primitive value; };
+struct set_value { StatePath path; Primitive value; };
 struct set_values { StoreEntries values; };
-struct toggle_value { JsonPath path; };
+struct toggle_value { StatePath path; };
 
 struct apply_patch { Patch patch; };
 
@@ -1332,10 +1338,10 @@ struct StateStats {
         vector<ImU64> values;
     };
 
-    vector<JsonPath> latest_updated_paths{};
-    std::map<JsonPath, vector<TimePoint>> gesture_update_times_for_path{};
-    std::map<JsonPath, vector<TimePoint>> committed_update_times_for_path{};
-    std::map<JsonPath, TimePoint> latest_update_time_for_path{};
+    vector<StatePath> latest_updated_paths{};
+    std::map<StatePath, vector<TimePoint>> gesture_update_times_for_path{};
+    std::map<StatePath, vector<TimePoint>> committed_update_times_for_path{};
+    std::map<StatePath, TimePoint> latest_update_time_for_path{};
     Plottable PathUpdateFrequency;
 
     void apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
@@ -1410,7 +1416,7 @@ private:
     void on_patch(const Action &, const Patch &); // Called after every state-changing action
     void set_history_index(int);
     void increment_history_index(int delta);
-    void on_set_value(const JsonPath &);
+    void on_set_value(const StatePath &);
 
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.
@@ -1492,23 +1498,23 @@ using MemberEntry = std::pair<const StateMember &, Primitive>;
 using MemberEntries = vector<MemberEntry>;
 
 // Immutable store set/get methods
-Primitive get(const JsonPath &path, const Store &_store = store);
-Store set(const JsonPath &path, const Primitive &value, const Store &_store = store);
+Primitive get(const StatePath &path, const Store &_store = store);
+Store set(const StatePath &path, const Primitive &value, const Store &_store = store);
 Store set(const StateMember &member, const Primitive &value, const Store &_store = store);
-Store set(const JsonPath &path, const ImVec4 &value, const Store &_store = store);
-Store remove(const JsonPath &path, const Store &_store = store);
+Store set(const StatePath &path, const ImVec4 &value, const Store &_store = store);
+Store remove(const StatePath &path, const Store &_store = store);
 Store set(const StoreEntries &, const Store &_store = store);
 Store set(const MemberEntries &, const Store &_store = store);
-Store set(const std::vector<std::pair<JsonPath, ImVec4>> &, const Store &_store = store);
+Store set(const std::vector<std::pair<StatePath, ImVec4>> &, const Store &_store = store);
 
 // Equivalent get/set methods for transient (mutable) store
-void set(const JsonPath &, const Primitive &, TransientStore &);
+void set(const StatePath &, const Primitive &, TransientStore &);
 void set(const StateMember &, const Primitive &, TransientStore &);
-void set(const JsonPath &, const ImVec4 &, TransientStore &);
-void remove(const JsonPath &, TransientStore &);
+void set(const StatePath &, const ImVec4 &, TransientStore &);
+void remove(const StatePath &, TransientStore &);
 void set(const StoreEntries &, TransientStore &);
 void set(const MemberEntries &, TransientStore &);
-void set(const std::vector<std::pair<JsonPath, ImVec4>> &, TransientStore &);
+void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
 
 // Main setters that modify the canonical application state store.
 // These are the only methods that mutate application state.

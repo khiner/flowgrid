@@ -134,12 +134,36 @@ void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) cons
 // [SECTION] Actions
 //-----------------------------------------------------------------------------
 
-//Patch merge(const Patch &a, const Patch b) {
-//    Patch merged = a;
-//    for (const auto &[path, op, value, old] : b) {
-//    }
-//    return merged;
-//}
+Patch merge(const Patch &a, const Patch &b) {
+    Patch merged = a;
+    for (const auto &[path, op]: b) {
+        if (merged.contains(path)) {
+            const auto &old_op = merged.at(path);
+            // Strictly, two consecutive patches that both add or both remove the same key should throw an exception,
+            // but I'm being lax here to allow for merging multiple patches by only looking at neighbors.
+            // For example, if the first patch removes a path, and the second one adds the same path,
+            // we can't know from only looking at the pair whether the added value was the same as it was before the remove
+            // (in which case it should just be `Remove` during merge) or if it was different (in which case the merged action should be a `Replace`).
+            if (old_op.op == Add) {
+                if (op.op == Remove || ((op.op == Add || op.op == Replace) && old_op.value == op.value)) merged.erase(path); // Cancel out
+                else merged[path] = {Add, op.value, {}};
+            } else if (old_op.op == Remove) {
+                if (op.op == Add || op.op == Replace) {
+                    if (old_op.value == op.value) merged.erase(path); // Cancel out
+                    else merged[path] = {Replace, op.value, old_op.old};
+                } else {
+                    merged[path] = {Remove, {}, old_op.old};
+                }
+            } else if (old_op.op == Replace) {
+                if (op.op == Add || op.op == Replace) merged[path] = {Replace, op.value, old_op.old};
+                else merged[path] = {Remove, {}, old_op.old};
+            }
+        } else {
+            merged[path] = op;
+        }
+    }
+    return merged;
+}
 
 /**
  Provided actions are assumed to be chronologically consecutive.
@@ -158,9 +182,9 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     const ID b_id = get_id(b);
 
     switch (a_id) {
-        case id<undo>:if (b_id == id<set_history_index>) return b;
+        case id<undo>: if (b_id == id<set_history_index>) return b;
             return b_id == id<redo>;
-        case id<redo>:if (b_id == id<set_history_index>) return b;
+        case id<redo>: if (b_id == id<set_history_index>) return b;
             return b_id == id<undo>;
         case id<set_history_index>:
         case id<open_empty_project>:
@@ -176,18 +200,19 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<set_flowgrid_diagram_color_style>:
         case id<set_flowgrid_diagram_layout_style>:
         case id<show_open_faust_file_dialog>:
-        case id<show_save_faust_file_dialog>:if (a_id == b_id) return b;
+        case id<show_save_faust_file_dialog>: if (a_id == b_id) return b;
             return false;
         case id<open_project>:
         case id<open_faust_file>:
-        case id<save_faust_file>:if (a_id == b_id && json(a) == json(b)) return a;
+        case id<save_faust_file>: if (a_id == b_id && json(a) == json(b)) return a;
             return false;
-        case id<set_value>:if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
+        case id<set_value>: if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
             return false;
-        case id<set_values>:if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
+        case id<set_values>: if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
             return false;
-        case id<toggle_value>:return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
-        case id<apply_patch>:
+        case id<toggle_value>: return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
+        case id<apply_patch>: if (a_id == b_id) return apply_patch{merge(std::get<apply_patch>(a).patch, std::get<apply_patch>(b).patch)};
+            return false;
         default: return false;
     }
 }

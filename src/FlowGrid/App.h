@@ -1497,20 +1497,14 @@ bool q(Action &&a, bool flush = false);
 using MemberEntry = std::pair<const StateMember &, Primitive>;
 using MemberEntries = vector<MemberEntry>;
 
-// Immutable store set/get methods
-Store set(const StatePath &path, const Primitive &value, const Store &_store = store);
+// Immutable store setters
 Store set(const StateMember &member, const Primitive &value, const Store &_store = store);
-Store set(const StatePath &path, const ImVec4 &value, const Store &_store = store);
-Store remove(const StatePath &path, const Store &_store = store);
 Store set(const StoreEntries &, const Store &_store = store);
 Store set(const MemberEntries &, const Store &_store = store);
 Store set(const std::vector<std::pair<StatePath, ImVec4>> &, const Store &_store = store);
 
-// Equivalent get/set methods for transient (mutable) store
-void set(const StatePath &, const Primitive &, TransientStore &);
+// Equivalent setters for transient (mutable) store
 void set(const StateMember &, const Primitive &, TransientStore &);
-void set(const StatePath &, const ImVec4 &, TransientStore &);
-void remove(const StatePath &, TransientStore &);
 void set(const StoreEntries &, TransientStore &);
 void set(const MemberEntries &, TransientStore &);
 void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);

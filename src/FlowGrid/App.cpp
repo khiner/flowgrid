@@ -10,10 +10,7 @@ Store gesture_begin_store; // Only updated on gesture-end (for diff calculation)
 vector<std::pair<TimePoint, Store>> store_history; // One store checkpoint for every gesture.
 
 // Persistent modifiers
-Store set(const StatePath &path, const Primitive &value, const Store &_store) { return _store.set(path, value); }
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
-Store set(const StatePath &path, const ImVec4 &value, const Store &_store) { return _store.set(path, value); }
-Store remove(const StatePath &path, const Store &_store) { return _store.erase(path); }
 Store set(const StoreEntries &values, const Store &_store) {
     auto transient = _store.transient();
     set(values, transient);
@@ -31,10 +28,7 @@ Store set(const std::vector<std::pair<StatePath, ImVec4>> &values, const Store &
 }
 
 // Transient modifiers
-void set(const StatePath &path, const Primitive &value, TransientStore &_store) { return _store.set(path, value); }
 void set(const StateMember &member, const Primitive &value, TransientStore &_store) { _store.set(member.Path, value); }
-void set(const StatePath &path, const ImVec4 &value, TransientStore &_store) { _store.set(path, value); }
-void remove(const StatePath &path, TransientStore &_store) { _store.erase(path); }
 void set(const StoreEntries &values, TransientStore &_store) {
     for (const auto &[path, value]: values) _store.set(path, value);
 }
@@ -46,7 +40,7 @@ void set(const std::vector<std::pair<StatePath, ImVec4>> &values, TransientStore
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
-    set(set(Path, value));
+    set(store.set(Path, value));
 }
 
 namespace nlohmann {
@@ -257,7 +251,7 @@ void Context::on_action(const Action &action) {
         // Remaining actions have a direct effect on the application state.
         [&](const set_value &a) {
             const auto prev_store = store;
-            set(::set(a.path, a.value));
+            set(store.set(a.path, a.value));
             on_patch(a, create_patch(prev_store, store));
         },
         [&](const set_values &a) {
@@ -267,17 +261,16 @@ void Context::on_action(const Action &action) {
         },
         [&](const toggle_value &a) {
             const auto prev_store = store;
-            set(::set(a.path, !std::get<bool>(store.at(a.path))));
+            set(store.set(a.path, !std::get<bool>(store.at(a.path))));
             on_patch(a, create_patch(prev_store, store));
             // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
             finalize_gesture();
         },
         [&](const apply_patch &a) {
-            // todo correct implementation
             auto transient = store.transient();
             for (const auto &op: a.patch) {
-                if (op.op == Add || op.op == Replace) ::set(op.path, Primitive(op.value.value()), transient);
-                else if (op.op == Remove) ::remove(op.path, transient);
+                if (op.op == Add || op.op == Replace) transient.set(op.path, Primitive(op.value.value()));
+                else if (op.op == Remove) transient.erase(op.path);
             }
             const auto prev_store = store;
             set(transient);

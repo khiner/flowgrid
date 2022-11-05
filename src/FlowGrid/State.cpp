@@ -113,7 +113,7 @@ void Vector2D<T>::truncate(size_t length, TransientStore &_store) const {
 }
 template<typename T>
 void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) const {
-    for (int j = int(size(i) - 1); j >= int(length); j--) remove(Path / i / j, _store);
+    for (int j = int(size(i, _store) - 1); j >= int(length); j--) remove(Path / i / j, _store);
 }
 }
 
@@ -232,10 +232,10 @@ bool Field::Int::Draw() const {
 bool Field::Int::Draw(const vector<int> &options) const {
     bool edited = false;
     const int value = *this;
-    if (BeginCombo(Name.c_str(), std::to_string(value).c_str())) {
+    if (BeginCombo(Name.c_str(), to_string(value).c_str())) {
         for (const auto option: options) {
             const bool is_selected = option == value;
-            if (Selectable(std::to_string(option).c_str(), is_selected)) {
+            if (Selectable(to_string(option).c_str(), is_selected)) {
                 q(set_value{Path, option});
                 edited = true;
             }
@@ -468,7 +468,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             int i = 0;
             for (const auto &it: value) {
-                JsonTree(std::to_string(i), it, node_flags);
+                JsonTree(to_string(i), it, node_flags);
                 i++;
             }
             if (!label.empty()) ImGui::TreePop();
@@ -843,9 +843,8 @@ void TableSettings::Apply(ImGuiContext *) const {
 }
 
 Store ImGuiSettings::set(ImGuiContext *ctx) const {
-    auto _store = store.transient();
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
-    // Convert `ImChunkStream`/`ImVector`s to `vector`s.
+    auto _store = store.transient();
     Nodes.set(ctx->DockContext.NodesSettings, _store);
     Windows.set(ctx->SettingsWindows, _store);
     Tables.set(ctx->SettingsTables, _store);
@@ -1002,7 +1001,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Json
         if (JsonTreeNode(label, flags)) {
             int i = 0;
             for (const auto &it: value) {
-                StateJsonTree(std::to_string(i), it, path / std::to_string(i));
+                StateJsonTree(to_string(i), it, path / to_string(i));
                 i++;
             }
             TreePop();
@@ -1650,23 +1649,23 @@ void Demo::Draw() const {
     }
 }
 
-void ShowJsonPatchOpMetrics(const JsonPatchOp &patch_op) {
+void ShowJsonPatchOpMetrics(const PatchOp &patch_op) {
     BulletText("Path: %s", patch_op.path.to_string().c_str());
-    BulletText("Op: %s", json(patch_op.op).dump().c_str());
+    BulletText("Op: %s", to_string(patch_op.op).c_str());
     if (patch_op.value.has_value()) {
-        BulletText("Value: %s", patch_op.value.value().dump().c_str());
+        BulletText("Value: %s", to_string(patch_op.value.value()).c_str());
     }
-    if (patch_op.from.has_value()) {
-        BulletText("From: %s", patch_op.from.value().c_str());
+    if (patch_op.old.has_value()) {
+        BulletText("Old value: %s", to_string(patch_op.old.value()).c_str());
     }
 }
 
-void ShowJsonPatchMetrics(const JsonPatch &patch) {
+void ShowJsonPatchMetrics(const Patch &patch) {
     if (patch.size() == 1) {
         ShowJsonPatchOpMetrics(patch[0]);
     } else {
         for (size_t i = 0; i < patch.size(); i++) {
-            if (TreeNodeEx(std::to_string(i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (TreeNodeEx(to_string(i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                 ShowJsonPatchOpMetrics(patch[i]);
                 TreePop();
             }
@@ -1678,7 +1677,7 @@ void ShowGesture(const Gesture &gesture) {
     for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
         const auto &action = gesture[action_i];
         const auto &label = action::get_name(action);
-        JsonTree(label, json(action)[1], JsonTreeNodeFlags_None, std::to_string(action_i).c_str());
+        JsonTree(label, json(action)[1], JsonTreeNodeFlags_None, to_string(action_i).c_str());
     }
 }
 
@@ -1716,7 +1715,7 @@ void Metrics::FlowGridMetrics::Draw() const {
         if (!has_gestures) BeginDisabled();
         if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%lu)", c.gestures.size())) {
             for (size_t gesture_i = 0; gesture_i < c.gestures.size(); gesture_i++) {
-                if (TreeNodeEx(std::to_string(gesture_i).c_str(), gesture_i == c.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
+                if (TreeNodeEx(to_string(gesture_i).c_str(), gesture_i == c.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
                     // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
                     const auto &gesture = c.gestures[gesture_i];
                     ShowGesture(gesture);
@@ -1734,7 +1733,7 @@ void Metrics::FlowGridMetrics::Draw() const {
         if (!has_diffs) BeginDisabled();
         if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", Context::history_size() - 1, c.store_history_index)) {
             for (int i = 0; i < Context::history_size() - 1; i++) {
-                if (TreeNodeEx(std::to_string(i).c_str(), i == c.store_history_index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                if (TreeNodeEx(to_string(i).c_str(), i == c.store_history_index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &diff = Context::create_diff(i);
                     // todo link to gesture corresponding to diff
 //                    if (diff.action_names.size() == 1) {

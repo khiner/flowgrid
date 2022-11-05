@@ -1057,29 +1057,26 @@ struct FileDialog : Window {
     String DefaultFileName{this, "DefaultFileName"};
 };
 
-// Types for [json-patch](https://jsonpatch.com)
-// For a much more well-defined schema, see https://json.schemastore.org/json-patch.
-
-enum JsonPatchOpType {
+enum PatchOpType {
     Add,
     Remove,
     Replace,
-    Copy,
-    Move,
-    Test,
 };
-struct JsonPatchOp {
+struct PatchOp {
     JsonPath path;
-    JsonPatchOpType op{};
-    std::optional<json> value{}; // Present for add/replace/test
-    std::optional<string> from{}; // Present for copy/move
+    PatchOpType op{};
+    std::optional<Primitive> value{}; // Present for add/replace
+    std::optional<Primitive> old{}; // Present for remove/replace
 };
-using JsonPatch = vector<JsonPatchOp>;
+using Patch = vector<PatchOp>;
 
 struct StatePatch {
-    JsonPatch Patch;
+    Patch Patch;
     TimePoint Time;
 };
+
+string to_string(const Primitive &);
+string to_string(PatchOpType);
 
 //-----------------------------------------------------------------------------
 // [SECTION] Actions
@@ -1135,7 +1132,7 @@ struct set_value { JsonPath path; Primitive value; };
 struct set_values { StoreEntries values; };
 struct toggle_value { JsonPath path; };
 
-struct apply_patch { JsonPatch patch; };
+struct apply_patch { Patch patch; };
 
 struct set_imgui_color_style { int id; };
 struct set_implot_color_style { int id; };
@@ -1179,7 +1176,7 @@ using Gestures = vector<Gesture>;
 // From https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
 Action create(ID index) {
-    if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + std::to_string(I + index) + " out of bounds"};
+    if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + to_string(I + index) + " out of bounds"};
     else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
 }
 
@@ -1341,7 +1338,7 @@ struct StateStats {
     std::map<JsonPath, TimePoint> latest_update_time_for_path{};
     Plottable PathUpdateFrequency;
 
-    void apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_gesture);
+    void apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
 
 private:
     Plottable create_path_update_frequency_plottable();
@@ -1380,7 +1377,7 @@ struct Context {
 
     Gesture active_gesture; // uncompressed, uncommitted
     Gestures gestures; // compressed, committed gesture history
-    JsonPatch active_gesture_patch;
+    Patch active_gesture_patch;
 
     std::optional<fs::path> current_project_path;
     size_t project_start_gesture_count = gestures.size();
@@ -1410,7 +1407,7 @@ struct Context {
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
     void finalize_gesture();
-    void on_patch(const Action &, const JsonPatch &); // Called after every state-changing action
+    void on_patch(const Action &, const Patch &); // Called after every state-changing action
     void set_history_index(int);
     void increment_history_index(int delta);
     void on_set_value(const JsonPath &);
@@ -1519,4 +1516,4 @@ Store set(Store store);
 Store set(TransientStore transient);
 
 // todo use custom patch type
-JsonPatch create_patch(const Store &before, const Store &after);
+Patch create_patch(const Store &before, const Store &after);

@@ -95,16 +95,13 @@ inline void from_json(const json &j, Action &value) {
 }
 }
 
-NLOHMANN_JSON_SERIALIZE_ENUM(JsonPatchOpType, {
+NLOHMANN_JSON_SERIALIZE_ENUM(PatchOpType, {
     { Add, "add" },
     { Remove, "remove" },
     { Replace, "replace" },
-    { Copy, "copy" },
-    { Move, "move" },
-    { Test, "test" },
 })
 
-JsonType(JsonPatchOp, path, op, value, from) // lower-case since these are deserialized and passed directly to json-lib.
+JsonType(PatchOp, path, op, value, old) // lower-case since these are deserialized and passed directly to json-lib. todo not the case anymore
 JsonType(StatePatch, Patch, Time)
 
 JsonType(FileDialogData, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags)

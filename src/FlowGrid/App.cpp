@@ -101,6 +101,14 @@ string to_string(const IO io, const bool shorten) {
         case IO_None: return "none";
     }
 }
+string to_string(PatchOpType type) {
+    switch (type) {
+        case Add: return "Add";
+        case Remove: return "Remove";
+        case Replace: return "Replace";
+    }
+}
+string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 namespace action {
 // An action's menu label is its name, except for a few exceptions.
@@ -206,19 +214,19 @@ Store State::Update(const Action &action) const {
 
 void save_box_svg(const string &path); // defined in FaustUI
 
-JsonPatch create_patch(const Store &before, const Store &after) {
-    JsonPatch patch;
+Patch create_patch(const Store &before, const Store &after) {
+    Patch patch;
     diff(
         before,
         after,
         [&](auto const &added_element) {
-            patch.push_back({JsonPath(added_element.first), Add, added_element.second});
+            patch.push_back({JsonPath(added_element.first), Add, added_element.second, {}});
         },
         [&](auto const &removed_element) {
-            patch.push_back({JsonPath(removed_element.first), Remove, removed_element.second});
+            patch.push_back({JsonPath(removed_element.first), Remove, {}, removed_element.second});
         },
         [&](auto const &old_element, auto const &new_element) {
-            patch.push_back({JsonPath(old_element.first), Replace, new_element.second});
+            patch.push_back({JsonPath(old_element.first), Replace, new_element.second, old_element.second});
         });
 
     return patch;
@@ -400,10 +408,10 @@ void Context::clear() {
 
 // StateStats
 
-void StateStats::apply_patch(const JsonPatch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
+void StateStats::apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
     if (!patch.empty()) latest_updated_paths = {};
 
-    for (const JsonPatchOp &patch_op: patch) {
+    for (const PatchOp &patch_op: patch) {
         // For add/remove ops, the thing being updated is the _parent_.
         const JsonPath &path = patch_op.op == Add || patch_op.op == Remove ? patch_op.path.parent_pointer() : patch_op.path;
         latest_updated_paths.emplace_back(path);
@@ -500,7 +508,7 @@ void Context::finalize_gesture() {
     active_gesture_patch.clear();
 }
 
-void Context::on_patch(const Action &action, const JsonPatch &patch) {
+void Context::on_patch(const Action &action, const Patch &patch) {
     active_gesture.emplace_back(action);
     active_gesture_patch = create_patch(gesture_begin_store, store);
 

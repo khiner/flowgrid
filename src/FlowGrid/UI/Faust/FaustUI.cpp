@@ -611,7 +611,7 @@ struct CableNode : Node {
     ImVec2 point(IO, Count i) const override { return points[i]; }
 
 private:
-    vector <ImVec2> points{in_count};
+    vector<ImVec2> points{in_count};
 };
 
 // An inverter is a circle followed by a triangle.
@@ -833,7 +833,7 @@ struct SequentialNode : BinaryNode {
     }
 
 private:
-    std::map<ImGuiDir, vector < Count>> channels_for_direction;
+    std::map<ImGuiDir, vector<Count>> channels_for_direction;
 };
 
 // Place and connect two diagrams in merge composition.
@@ -1040,7 +1040,7 @@ static Node *Tree2NodeNode(Tree t) {
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridCol_DiagramNumber);
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(t, 0, 1, isBoxInt(t) ? to_string(i) : to_string(r), FlowGridCol_DiagramNumber);
     if (isBoxWaveform(t)) return new BlockNode(t, 0, 2, "waveform{...}");
     if (isBoxWire(t)) return new CableNode(t);
     if (isBoxCut(t)) return new CutNode(t);

@@ -791,7 +791,13 @@ void WindowSettings::set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore
 void WindowSettings::Apply(ImGuiContext *) const {
     const auto *main_viewport = GetMainViewport();
     for (int i = 0; i < int(ID.size()); i++) {
-        auto *window = FindWindowByID(ID[i]);
+        ImGuiID id = ID[i];
+        auto *window = FindWindowByID(id);
+        if (!window) {
+            cout << "Unable to apply settings for window with ID " << format("{:#08X}", id) << ": Window not found.\n";
+            continue;
+        }
+
         window->ViewportPos = main_viewport->Pos;
         if (ViewportId[i]) {
             window->ViewportId = ViewportId[i];
@@ -856,7 +862,13 @@ void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
 void TableSettings::Apply(ImGuiContext *) const {
     for (int i = 0; i < int(ID.size()); i++) {
-        const auto table = TableFindByID(ID[i]);
+        ImGuiID id = ID[i];
+        const auto table = TableFindByID(id);
+        if (!table) {
+            cout << "Unable to apply settings for table with ID " << format("{:#08X}", id) << ": Table not found.\n";
+            continue;
+        }
+
         table->IsSettingsRequestLoad = false; // todo remove this var/behavior?
         table->SettingsLoadedFlags = SaveFlags[i]; // todo remove this var/behavior?
         table->RefScale = RefScale[i];

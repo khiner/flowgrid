@@ -68,16 +68,23 @@ JsonType(Preferences, recently_opened_paths)
 
 namespace nlohmann {
 inline void to_json(json &j, const Primitive &value) {
-    std::visit([&](auto &&inner_value) {
-        j = std::forward<decltype(inner_value)>(inner_value);
-    }, value);
+    if (std::holds_alternative<unsigned int>(value)) {
+        j = format("{:#08X}", std::get<unsigned int>(value));
+    } else {
+        std::visit([&](auto &&inner_value) {
+            j = std::forward<decltype(inner_value)>(inner_value);
+        }, value);
+    }
 }
 inline void from_json(const json &j, Primitive &field) {
     if (j.is_boolean()) field = j.get<bool>();
     else if (j.is_number_integer()) field = j.get<int>();
     else if (j.is_number_float()) field = j.get<float>();
-    else if (j.is_string()) field = j.get<string>();
-    else if (j.is_object() && j.contains("w")) field = j.get<ImVec4>();
+    else if (j.is_string()) {
+        const auto j_string = j.get<string>();
+        if (j_string.starts_with("0X")) field = (unsigned int) std::stoul(j_string, nullptr, 0);
+        else field = j.get<string>();
+    } else if (j.is_object() && j.contains("w")) field = j.get<ImVec4>();
     else if (j.is_object() && j.contains("x")) {
         if (j.at("x").is_number_float()) field = j.get<ImVec2>();
         else field = j.get<ImVec2ih>();

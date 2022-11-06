@@ -68,7 +68,11 @@ Store store_from_json(const json &j) {
             _store.set(path.parent_path(), ImVec4{x, y, z, w});
             i += 3;
         } else if (path.filename() == "x" && i < entries.size() - 1 && entries[i + 1].first.filename() == "y") {
-            if (std::holds_alternative<int>(value)) {
+            if (std::holds_alternative<unsigned int>(value)) {
+                const auto x = std::get<unsigned int>(value);
+                const auto y = std::get<unsigned int>(entries[i + 1].second);
+                _store.set(path.parent_path(), ImVec2ih{short(x), short(y)});
+            } else if (std::holds_alternative<int>(value)) {
                 const auto x = std::get<int>(value);
                 const auto y = std::get<int>(entries[i + 1].second);
                 _store.set(path.parent_path(), ImVec2ih{short(x), short(y)});

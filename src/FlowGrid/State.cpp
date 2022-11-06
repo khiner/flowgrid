@@ -21,6 +21,7 @@ using namespace action;
 namespace Field {
 Bool::operator bool() const { return std::get<bool>(store.at(Path)); }
 Int::operator int() const { return std::get<int>(store.at(Path)); }
+UInt::operator unsigned int() const { return std::get<unsigned int>(store.at(Path)); }
 Float::operator float() const {
     const auto &value = store.at(Path);
     if (std::holds_alternative<int>(value)) return float(std::get<int>(value));
@@ -271,6 +272,15 @@ bool Field::Bool::DrawMenu() const {
     HelpMarker(false);
     const bool edited = MenuItem(Name.c_str(), nullptr, value);
     if (edited) q(toggle_value{Path});
+    return edited;
+}
+
+bool Field::UInt::Draw() const {
+    unsigned int value = *this;
+    const bool edited = SliderScalar(Name.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
+    gestured();
+    if (edited) q(set_value{Path, value});
+    HelpMarker();
     return edited;
 }
 
@@ -718,15 +728,14 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih SizeRef;
 };
 
-// todo make `ID : Field::Base` type and use appropriately for these
 void DockNodeSettings::set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
     const int size = dss.Size;
     for (int i = 0; i < size; i++) {
         const auto &ds = dss[i];
-        ID.set(i, int(ds.ID), _store);
-        ParentNodeId.set(i, int(ds.ParentNodeId), _store);
-        ParentWindowId.set(i, int(ds.ParentWindowId), _store);
-        SelectedTabId.set(i, int(ds.SelectedTabId), _store);
+        ID.set(i, ds.ID, _store);
+        ParentNodeId.set(i, ds.ParentNodeId, _store);
+        ParentWindowId.set(i, ds.ParentWindowId, _store);
+        SelectedTabId.set(i, ds.SelectedTabId, _store);
         SplitAxis.set(i, ds.SplitAxis, _store);
         Depth.set(i, ds.Depth, _store);
         Flags.set(i, int(ds.Flags), _store);
@@ -766,10 +775,10 @@ void DockNodeSettings::Apply(ImGuiContext *ctx) const {
 void WindowSettings::set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &_store) const {
     int i = 0;
     for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
-        ID.set(i, int(ws->ID), _store);
-        ClassId.set(i, int(ws->DockId), _store);
-        ViewportId.set(i, int(ws->ViewportId), _store);
-        DockId.set(i, int(ws->DockId), _store);
+        ID.set(i, ws->ID, _store);
+        ClassId.set(i, ws->DockId, _store);
+        ViewportId.set(i, ws->ViewportId, _store);
+        DockId.set(i, ws->DockId, _store);
         DockOrder.set(i, ws->DockOrder, _store);
         Pos.set(i, ws->Pos, _store);
         Size.set(i, ws->Size, _store);
@@ -817,7 +826,7 @@ void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &
     for (auto *ts = tss.begin(); ts != nullptr; ts = tss.next_chunk(ts)) {
         auto columns_count = ts->ColumnsCount;
 
-        ID.set(i, int(ts->ID), _store);
+        ID.set(i, ts->ID, _store);
         SaveFlags.set(i, ts->SaveFlags, _store);
         RefScale.set(i, ts->RefScale, _store);
         ColumnsCount.set(i, columns_count, _store);
@@ -826,7 +835,7 @@ void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &
         for (int column_index = 0; column_index < columns_count; column_index++) {
             const auto &cs = ts->GetColumnSettings()[column_index];
             Columns.WidthOrWeight.set(i, column_index, cs.WidthOrWeight, _store);
-            Columns.UserID.set(i, column_index, int(cs.UserID), _store);
+            Columns.UserID.set(i, column_index, cs.UserID, _store);
             Columns.Index.set(i, column_index, cs.Index, _store);
             Columns.DisplayOrder.set(i, column_index, cs.DisplayOrder, _store);
             Columns.SortOrder.set(i, column_index, cs.SortOrder, _store);

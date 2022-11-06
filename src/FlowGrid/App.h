@@ -37,7 +37,7 @@ struct StatePathHash {
     auto operator()(const StatePath &p) const noexcept { return fs::hash_value(p); }
 };
 
-using Primitive = std::variant<bool, int, float, string, ImVec2ih, ImVec2, ImVec4>;
+using Primitive = std::variant<bool, unsigned int, int, float, string, ImVec2ih, ImVec2, ImVec4>;
 using StoreEntry = std::pair<StatePath, Primitive>;
 using StoreEntries = vector<StoreEntry>;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
@@ -152,6 +152,20 @@ struct Bool : Base {
     bool DrawMenu() const;
 };
 
+struct UInt : Base {
+    UInt(const StateMember *parent, const string &id, unsigned int value = 0, unsigned int min = 0, unsigned int max = 100)
+        : Base(parent, id, value), min(min), max(max) {}
+
+    operator unsigned int() const;
+    operator bool() const { return (bool) (unsigned int) *this; }
+
+    bool operator==(int value) const { return int(*this) == value; }
+
+    bool Draw() const override;
+
+    unsigned int min, max;
+};
+
 struct Int : Base {
     Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100)
         : Base(parent, id, value), min(min), max(max) {}
@@ -161,8 +175,6 @@ struct Int : Base {
     operator short() const { return (short) int(*this); }
     operator char() const { return (char) int(*this); }
     operator signed char() const { return (signed char) int(*this); }
-    operator ImGuiID() const { return (ImGuiID) int(*this); }
-    operator ImU8() const { return (ImU8) int(*this); }
 
     bool operator==(int value) const { return int(*this) == value; }
 
@@ -732,7 +744,7 @@ struct Style : Window {
 
         Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
 
-        Int DiagramFoldComplexity{
+        UInt DiagramFoldComplexity{
             this, "DiagramFoldComplexity?Number of boxes within a diagram before folding into a sub-diagram.\n"
                   "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20};
         Bool DiagramScaleLinked{this, "DiagramScaleLinked?Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
@@ -955,10 +967,10 @@ struct DockNodeSettings : StateMember {
     void set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<int> ID{this, "ID"};
-    Vector<int> ParentNodeId{this, "ParentNodeId"};
-    Vector<int> ParentWindowId{this, "ParentWindowId"};
-    Vector<int> SelectedTabId{this, "SelectedTabId"};
+    Vector<ImGuiID> ID{this, "ID"};
+    Vector<ImGuiID> ParentNodeId{this, "ParentNodeId"};
+    Vector<ImGuiID> ParentWindowId{this, "ParentWindowId"};
+    Vector<ImGuiID> SelectedTabId{this, "SelectedTabId"};
     Vector<int> SplitAxis{this, "SplitAxis"};
     Vector<int> Depth{this, "Depth"};
     Vector<int> Flags{this, "Flags"};
@@ -972,10 +984,10 @@ struct WindowSettings : StateMember {
     void set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<int> ID{this, "ID"};
-    Vector<int> ClassId{this, "ClassId"};
-    Vector<int> ViewportId{this, "ViewportId"};
-    Vector<int> DockId{this, "DockId"};
+    Vector<ImGuiID> ID{this, "ID"};
+    Vector<ImGuiID> ClassId{this, "ClassId"};
+    Vector<ImGuiID> ViewportId{this, "ViewportId"};
+    Vector<ImGuiID> DockId{this, "DockId"};
     Vector<int> DockOrder{this, "DockOrder"};
     Vector<ImVec2ih> Pos{this, "Pos"};
     Vector<ImVec2ih> Size{this, "Size"};
@@ -988,7 +1000,7 @@ struct TableColumnSettings : StateMember {
 
     // [table_index][column_index]
     Vector2D<float> WidthOrWeight{this, "WidthOrWeight"};
-    Vector2D<int> UserID{this, "UserID"};
+    Vector2D<ImGuiID> UserID{this, "UserID"};
     Vector2D<int> Index{this, "Index"};
     Vector2D<int> DisplayOrder{this, "DisplayOrder"};
     Vector2D<int> SortOrder{this, "SortOrder"};
@@ -1002,7 +1014,7 @@ struct TableSettings : StateMember {
     void set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<int> ID{this, "ID"};
+    Vector<ImGuiID> ID{this, "ID"};
     Vector<int> SaveFlags{this, "SaveFlags"};
     Vector<float> RefScale{this, "RefScale"};
     Vector<int> ColumnsCount{this, "ColumnsCount"};

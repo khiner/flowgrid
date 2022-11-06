@@ -248,7 +248,7 @@ void Context::on_action(const Action &action) {
         [&](const undo &) { increment_history_index(-1); },
         [&](const redo &) { increment_history_index(1); },
         [&](const Actions::set_history_index &a) {
-            if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
+            if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
             set_history_index(a.history_index);
         },
 
@@ -359,7 +359,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<undo>: return !active_gesture_patch.empty() || store_history_index > 0;
+        case action::id<undo>: return !active_gesture.empty() || store_history_index > 0;
         case action::id<redo>: return store_history_index < int(store_history.size());
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
@@ -399,7 +399,6 @@ void Context::clear() {
     state_stats = {};
     // todo finalize?
     active_gesture = {};
-    active_gesture_patch = {};
 }
 
 // StateStats
@@ -468,7 +467,8 @@ StateStats::Plottable StateStats::CreatePlottable() {
 void Context::finalize_gesture() {
     if (active_gesture.empty()) return;
 
-    state_stats.apply_patch(active_gesture_patch, Clock::now(), Forward, true);
+    const auto gesture_patch = create_patch(gesture_begin_store, store);
+    state_stats.apply_patch(gesture_patch, Clock::now(), Forward, true);
 
     const auto merged_gesture = action::merge_gesture(active_gesture);
     active_gesture.clear();
@@ -490,7 +490,7 @@ void Context::finalize_gesture() {
     if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
 
     gesture_begin_history_index = store_history_index;
-    if (active_gesture_patch.empty()) return;
+    if (gesture_patch.empty()) return;
     if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
 
     // TODO use an undo _tree_ and keep this history
@@ -499,13 +499,10 @@ void Context::finalize_gesture() {
     store_history_index = int(store_history.size()) - 1;
     gesture_begin_history_index = store_history_index;
     gesture_begin_store = store;
-    active_gesture_patch = {};
 }
 
 void Context::on_patch(const Action &action, const Patch &patch) {
     active_gesture.emplace_back(action);
-    active_gesture_patch = create_patch(gesture_begin_store, store);
-
     state_stats.apply_patch(patch, Clock::now(), Forward, false);
     for (const auto &[path, _op]: patch.ops) on_set_value(patch.base_path / path);
     s.Audio.update_process();
@@ -531,7 +528,7 @@ void Context::set_history_index(int new_history_index) {
 }
 
 void Context::increment_history_index(int delta) {
-    if (!active_gesture_patch.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. _This can change `store_history_index`!_
+    if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. _This can change `store_history_index`!_
     set_history_index(store_history_index + delta);
 }
 

@@ -1394,7 +1394,6 @@ struct Context {
 
     Gesture active_gesture; // uncompressed, uncommitted
     Gestures gestures; // compressed, committed gesture history
-    Patch active_gesture_patch;
 
     std::optional<fs::path> current_project_path;
     size_t project_start_gesture_count = gestures.size();

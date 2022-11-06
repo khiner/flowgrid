@@ -235,7 +235,7 @@ void tick_ui() {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         Store new_store = s.ImGuiSettings.set(c.ui->imgui_context);
-        const Patch &patch = create_patch(store, new_store);
+        const Patch &patch = create_patch(store, new_store, s.ImGuiSettings.Path);
         if (!patch.empty()) q(apply_patch{patch});
         io.WantSaveIniSettings = false;
     }

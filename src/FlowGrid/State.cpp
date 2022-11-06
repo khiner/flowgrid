@@ -134,8 +134,8 @@ void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) cons
 // [SECTION] Actions
 //-----------------------------------------------------------------------------
 
-Patch merge(const Patch &a, const Patch &b) {
-    Patch merged = a;
+PatchOps merge(const PatchOps &a, const PatchOps &b) {
+    PatchOps merged = a;
     for (const auto &[path, op]: b) {
         if (merged.contains(path)) {
             const auto &old_op = merged.at(path);
@@ -211,7 +211,15 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
         case id<set_values>: if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
             return false;
         case id<toggle_value>: return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
-        case id<apply_patch>: if (a_id == b_id) return apply_patch{merge(std::get<apply_patch>(a).patch, std::get<apply_patch>(b).patch)};
+        case id<apply_patch>:
+            if (a_id == b_id) {
+                const auto &_a = std::get<apply_patch>(a);
+                const auto &_b = std::get<apply_patch>(b);
+                // Keep patch actions affecting different base state-paths separate,
+                // since actions affecting different state bases are likely semantically different.
+                if (_a.patch.base_path == _b.patch.base_path) return apply_patch{merge(_a.patch.ops, _b.patch.ops), _b.patch.base_path};
+                return false;
+            }
             return false;
         default: return false;
     }
@@ -1764,7 +1772,8 @@ void Metrics::FlowGridMetrics::Draw() const {
 //                            TreePop();
 //                        }
 //                    }
-                    for (const auto &[path, op]: diff.Patch) {
+                    for (const auto &[partial_path, op]: diff.Patch.ops) {
+                        const auto &path = diff.Patch.base_path / partial_path;
                         if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                             BulletText("Op: %s", to_string(op.op).c_str());
                             if (op.value.has_value()) BulletText("Value: %s", to_string(op.value.value()).c_str());

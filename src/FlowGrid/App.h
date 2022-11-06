@@ -1074,7 +1074,14 @@ struct PatchOp {
     std::optional<Primitive> value{}; // Present for add/replace
     std::optional<Primitive> old{}; // Present for remove/replace
 };
-using Patch = map<StatePath, PatchOp>;
+using PatchOps = map<StatePath, PatchOp>;
+
+struct Patch {
+    PatchOps ops;
+    StatePath base_path{RootPath};
+
+    bool empty() const noexcept { return ops.empty(); }
+};
 
 struct StatePatch {
     Patch Patch;
@@ -1515,4 +1522,4 @@ Store set(Store store);
 Store set(TransientStore transient);
 
 // todo use custom patch type
-Patch create_patch(const Store &before, const Store &after);
+Patch create_patch(const Store &before, const Store &after, const StatePath &base_path = RootPath);

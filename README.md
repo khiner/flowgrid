@@ -38,13 +38,32 @@ Here are some of my current development thoughts/goals, roughly broken up into a
 * Make _everything_ undo/redo-able.
 * As much as possible, make the UI a pure function of the application state.
 
-The main architecture patterns for this app are inspired by [Lager's](https://github.com/arximboldi/lager) value-oriented design and unidirectional data-flow architecture.
-Lager, in turn, is inspired by frameworks like [Elm](https://guide.elm-lang.org/architecture) and [Redux](https://redux.js.org/introduction/getting-started).
-I don't actually use lager in this project, however, since I find it to be too complex.
-Given how fundamental state management is, I'd prefer to understand as much as possible about how it's implemented, and I want to avoid any layers of abstraction.
+### Application architecture
 
-Rather than using proper [persistent data structures](https://github.com/arximboldi/immer), FlowGrid uses regular old C++ data types & `std` data structures, and records state diffs by [computing a JSON diff](https://github.com/nlohmann/json#json-pointer-and-json-patch) after each action.
-This achieves basically the same thing, and trades lower complexity for (generally) more expensive state updates.
+The fundamental aspects of FlowGrid's state management architecture are inspired by [Lager](https://github.com/arximboldi/lager), particularly its value-oriented design and unidirectional data-flow architecture.
+Lager, in turn, is inspired by frameworks like [Elm](https://guide.elm-lang.org/architecture) and [Redux](https://redux.js.org/introduction/getting-started).
+The spirit of the application architecture is similar to Lager, but much simpler, and with none of its dependencies other than [immer](https://github.com/arximboldi/immer/).
+
+FlowGrid uses a single [persistent map](https://sinusoid.es/immer/containers.html#map) to store the full application state.
+Every user action that affects the application state results in the following:
+* Put a snapshot of the current application state into history.
+  This is only a snapshot conceptually, as only a small amount of data needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (HAMT) data structure](https://youtu.be/imrSQ82dYns).
+* Generate an `Action` instance containing all the information needed to execute the logical action.
+* Pass this action to the `State::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.
+* The single canonical application store instance is overwritten with this new resultant store.
+  This assignment is thread-safe.
+  Due to the immutability of the canonical application store instance, readers will always see a consistent version of either the old state (before the action) or the new state (after the action).
+
+A single instance of a simple nested struct of type `State` wraps around the application store and provides hierarchically organized access, metadata (like its path in the store, or its corresponding ImGui ID), and methods for transforming or rendering the state member.
+Each leaf member of `State` is a `Field` or simple collections of `Field`s.
+A `Field` is a thin wrapper around its corresponding `Primitive` value in the application store (of type `immer::map<Path, Primitive>`).
+A `Primitive` is defined as:
+
+```cpp
+using Primitive = std::variant<bool, int, float, string, ImVec2ih, ImVec2, ImVec4>;
+```
+
+`Field`s also provide state metadata, conversion & rendering methods, and behave syntactically like the `Primitive`s they wrap.
 
 ## Build and run
 
@@ -114,20 +133,15 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 ### Backend
 
-* [json](https://github.com/nlohmann/json) for
-  - State serialization
-  - A path-addressable state-mirror, and
-  - The diff-patching mechanism behind undo/redo
-  - Probably other things.
-    Look for usages of the `json Context::state_json` variable, or its global read-only alias, `const json &sj`.
+* [immer](https://github.com/arximboldi/immer) persistent data structures for the main application state store
+  - Used to efficiently create and store persistent state snapshots for undo history, and to compute state diffs.
+* [json](https://github.com/nlohmann/json) for state serialization
 * ~~[ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main event queue~~
-  -For now, I just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to complex structures like JSON
-* ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
-  text~~
+  - For now, I just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to complex structures like JSON.
+    (TODO now that we're using persistent state data structures, we can bring this back (providing a toggle for synchronous vs concurrent action queue processing))
+* ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured text~~
   - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
-    I'll likely be using this again at some point, to adapt [hlohmann json patches](https://github.com/nlohmann/json#json-pointer-and-json-patch)
-    into something like [jsondiffpatch's deltas](https://github.com/benjamine/jsondiffpatch/blob/master/docs/deltas.md#text-diffs),
-    for unified handling of state diffs involving long text strings (like code strings).
+    I'll likely be using this again at some point for generic handling of actions involving long text strings.
 
 ### C++ extensions
 

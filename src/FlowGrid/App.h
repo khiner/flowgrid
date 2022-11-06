@@ -286,7 +286,6 @@ struct Vector : Base {
 
     T operator[](size_t index) const;
     size_t size(const Store &_store = store) const;
-    size_t size(const TransientStore &) const;
 
     Store set(const vector<T> &values, const Store &_store = store) const;
     Store set(size_t index, const T &value, const Store &_store = store) const;
@@ -307,7 +306,6 @@ struct Vector2D : Base {
 
     T at(size_t i, size_t j, const Store &_store = store) const;
     size_t size(const TransientStore &) const; // Number of outer vectors
-    size_t size(size_t i, const TransientStore &) const; // Number of elements in ith inner vector
 
     Store set(size_t i, size_t j, const T &value, const Store &_store = store) const;
     void set(size_t i, size_t j, const T &value, TransientStore &) const;

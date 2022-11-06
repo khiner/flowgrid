@@ -41,10 +41,6 @@ template<typename T>
 T Vector<T>::operator[](size_t index) const { return std::get<T>(store.at(Path / to_string(index))); };
 template<typename T>
 size_t Vector<T>::size(const Store &_store) const {
-    return size(_store.transient());
-}
-template<typename T>
-size_t Vector<T>::size(const TransientStore &_store) const {
     int size = -1;
     while (_store.count(Path / to_string(++size))) {}
     return size_t(size);
@@ -79,8 +75,8 @@ Store Vector<T>::set(const vector<T> &values, const Store &_store) const {
 
 template<typename T>
 void Vector<T>::truncate(size_t length, TransientStore &_store) const {
-    const size_t current_size = size(_store);
-    for (int i = int(current_size - 1); i >= int(length); i--) _store.erase(Path / to_string(i));
+    size_t i = length - 1;
+    while (_store.count(Path / to_string(++i))) _store.erase(Path / to_string(i));
 }
 
 template<typename T>
@@ -92,26 +88,18 @@ size_t Vector2D<T>::size(const TransientStore &_store) const {
     return size;
 }
 template<typename T>
-size_t Vector2D<T>::size(size_t i, const TransientStore &_store) const {
-    int size = -1;
-    while (_store.count(Path / to_string(i) / to_string(++size))) {}
-    return size;
-}
-
-template<typename T>
 Store Vector2D<T>::set(size_t i, size_t j, const T &value, const Store &_store) const { return _store.set(Path / to_string(i) / to_string(j), value); }
 template<typename T>
 void Vector2D<T>::set(size_t i, size_t j, const T &value, TransientStore &_store) const { _store.set(Path / to_string(i) / to_string(j), value); }
 template<typename T>
 void Vector2D<T>::truncate(size_t length, TransientStore &_store) const {
-    for (int i = int(length - 1); i >= int(length); i--) {
-        const size_t j_size = size(i, _store);
-        for (size_t j = 0; j < j_size; j++) _store.erase(Path / to_string(i) / to_string(j));
-    }
+    size_t i = length - 1;
+    while (_store.count(Path / to_string(++i) / "0")) truncate(i, 0, _store);
 }
 template<typename T>
 void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) const {
-    for (int j = int(size(i, _store) - 1); j >= int(length); j--) _store.erase(Path / to_string(i) / to_string(j));
+    size_t j = length - 1;
+    while (_store.count(Path / to_string(i) / to_string(++j))) _store.erase(Path / to_string(i) / to_string(j));
 }
 }
 

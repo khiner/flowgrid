@@ -4,8 +4,7 @@
  * The main `State` instance fully describes the application at any point in time.
  *
  * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
- * which also provides `Draw()` and `Update(const Action &)` methods.
- * This `s` instance is declared here, instantiated in the `Context` constructor, and assigned in `main.cpp`.
+ * which also provides an immutable `Store Update(const Action &) const` method, and a `Draw() const` method.
  */
 
 #include <iostream>
@@ -1406,20 +1405,6 @@ struct Context {
     TimePoint gesture_start_time{};
     float gesture_time_remaining_sec{};
 
-    // ## Read-only public shorthand state references
-    //
-    // `s` is a structured representation of the underlying `Store`.
-    // It provides a full nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
-    // Basically, it has everything about the state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
-    // - Immutable assignment operators, which return a modified copy of the value resulting from applying the assignment.
-    //   Note that this is only _conceptually_ a copy, since it's a persistent data structure.
-    //   Typical modifications require very little data to be copied to store its value before the modification.
-    //   See [CppCon 2017: Phil Nash “The Holy Grail! A Hash Array Mapped Trie for C++”](https://youtu.be/imrSQ82dYns) for details on how this is done.
-    //   HAMTs are heavily used in the implementation of Closure.
-    //   Big thanks to my friend Justin Smith for suggesting using HAMTs for an efficient application state tree - they're fantastic for it!
-    // - Values act like the member of `Primitive` they hold.
-    const State &s = state;
-
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
     void finalize_gesture();
@@ -1437,7 +1422,6 @@ private:
     void set_current_project_path(const fs::path &);
     bool write_preferences() const;
 
-    State state{};
     std::queue<const Action> queued_actions;
     int gesture_begin_history_index = 0;
 };
@@ -1475,15 +1459,25 @@ void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_fla
 //-----------------------------------------------------------------------------
 
 /**
- Declare a full name & convenient shorthand for:
- - The global state instance `s`
- - The global persistent store instance `sm`
- - The global context instances `c = context`
+Declare read-only accessors for:
+ - The global state instance `state` (and its shorthand, `s`)
+ - The global context instance `context` (and its shorthand, `c`)
 
-The state instances are initialized in `Context` and assigned in `main.cpp`.
-The context instance is initialized and and assigned in `main.cpp`.
+The state & context instances are initialized and instantiated in `main.cpp`.
+
+`state`/`s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
+It provides a full nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
+Basically, it has everything about the state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
+- Immutable assignment operators, which return a modified copy of the value resulting from applying the assignment.
+  Note that this is only _conceptually_ a copy, since it's a persistent data structure.
+  Typical modifications require very little data to be copied to store its value before the modification.
+  See [CppCon 2017: Phil Nash “The Holy Grail! A Hash Array Mapped Trie for C++”](https://youtu.be/imrSQ82dYns) for details on how this is done.
+  HAMTs are heavily used in the implementation of Closure.
+  Big thanks to my friend Justin Smith for suggesting using HAMTs for an efficient application state tree - they're fantastic for it!
+- Values act like the member of `Primitive` they hold.
 
 Usage example:
+
 ```cpp
 // Get the canonical application audio state:
 const Audio &audio = s.Audio; // Or just access the (read-only) `state` members directly
@@ -1493,36 +1487,35 @@ const Audio &audio = s.Audio; // Or just access the (read-only) `state` members 
 ```
 */
 
-extern const State &s;
-extern Context context, &c;
+extern const State &state, &s;
+extern Context &context, &c;
 
 /**
  This is the main action-queue method.
  Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
 */
-
 bool q(Action &&a, bool flush = false);
 
 using MemberEntry = std::pair<const StateMember &, Primitive>;
 using MemberEntries = vector<MemberEntry>;
 
-// Immutable store setters
+// Persistent (immutable) store setters
 Store set(const StateMember &member, const Primitive &value, const Store &_store = store);
 Store set(const StoreEntries &, const Store &_store = store);
 Store set(const MemberEntries &, const Store &_store = store);
 Store set(const std::vector<std::pair<StatePath, ImVec4>> &, const Store &_store = store);
 
-// Equivalent setters for transient (mutable) store
+// Equivalent setters for a transient (mutable) store
 void set(const StateMember &, const Primitive &, TransientStore &);
 void set(const StoreEntries &, TransientStore &);
 void set(const MemberEntries &, TransientStore &);
 void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
 
 // Main setters that modify the canonical application state store.
-// These are the only methods that mutate application state.
+// _All_ store assignments happen in these two methods.
 Store set(Store store);
-Store set(TransientStore transient);
+Store set(TransientStore &transient);
 
 // todo use custom patch type
 Patch create_patch(const Store &before, const Store &after, const StatePath &base_path = RootPath);

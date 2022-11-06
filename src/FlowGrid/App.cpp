@@ -431,10 +431,9 @@ void StateStats::apply_patch(const Patch &patch, TimePoint time, Direction direc
     }
 
     if (is_full_gesture) gesture_update_times_for_path.clear();
-    PathUpdateFrequency = create_path_update_frequency_plottable();
 }
 
-StateStats::Plottable StateStats::create_path_update_frequency_plottable() {
+StateStats::Plottable StateStats::CreatePlottable() {
     vector<StatePath> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
     for (const auto &path: views::keys(gesture_update_times_for_path)) {

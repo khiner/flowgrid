@@ -1217,7 +1217,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const map <ID, string> name_for_id{
+const map<ID, string> name_for_id{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1256,7 +1256,7 @@ const map <ID, string> name_for_id{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const map <ID, string> shortcut_for_id = {
+const map<ID, string> shortcut_for_id = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1356,12 +1356,9 @@ struct StateStats {
     map<StatePath, vector<TimePoint>> gesture_update_times_for_path{};
     map<StatePath, vector<TimePoint>> committed_update_times_for_path{};
     map<StatePath, TimePoint> latest_update_time_for_path{};
-    Plottable PathUpdateFrequency;
 
     void apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
-
-private:
-    Plottable create_path_update_frequency_plottable();
+    Plottable CreatePlottable();
 };
 
 struct Context {

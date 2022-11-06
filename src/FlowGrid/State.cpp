@@ -1088,7 +1088,7 @@ void StatePathUpdateFrequency::Draw() const {
         return;
     }
 
-    auto &[labels, values] = c.state_stats.PathUpdateFrequency;
+    auto [labels, values] = c.state_stats.CreatePlottable();
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 

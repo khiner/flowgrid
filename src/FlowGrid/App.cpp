@@ -408,13 +408,13 @@ void StateStats::apply_patch(const Patch &patch, TimePoint time, Direction direc
     if (!patch.empty()) latest_updated_paths = {};
 
     for (const auto &[partial_path, op]: patch.ops) {
-        const auto &path = partial_path / patch.base_path;
+        const auto &path = patch.base_path / partial_path;
         latest_updated_paths.emplace_back(path);
 
         if (direction == Forward) {
             auto &update_times_for_path = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
             update_times_for_path[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
-        } else {
+        } else if (committed_update_times_for_path.contains(path)) {
             // Undo never applies to `gesture_update_times_for_path`
             auto &update_times = committed_update_times_for_path.at(path);
             update_times.pop_back();

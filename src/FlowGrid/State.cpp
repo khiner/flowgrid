@@ -54,24 +54,14 @@ size_t Vector<T>::size(const TransientStore &_store) const {
 template<typename T>
 void Vector<T>::set(size_t index, const T &value, TransientStore &_store) const { _store.set(Path / to_string(index), value); }
 template<typename T>
-void Vector<T>::set(const vector<T> &value, TransientStore &_store) const {
-    ::set(views::ints(0, int(value.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), value[i]); }) | to<vector>, _store);
-    truncate(value.size(), _store);
+void Vector<T>::set(const vector<T> &values, TransientStore &_store) const {
+    ::set(views::ints(0, int(values.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), values[i]); }) | to<vector>, _store);
+    truncate(values.size(), _store);
 }
 template<typename T>
-Store Vector<T>::set(const vector<std::pair<int, Primitive>> &values, const Store &_store) const {
+Store Vector<T>::set(const vector<std::pair<int, T>> &values, const Store &_store) const {
     auto transient = _store.transient();
-    for (const auto &[index, value]: values) {
-        transient.set(Path / to_string(index), value);
-    }
-    return transient.persistent();
-}
-template<typename T>
-Store Vector<T>::set(const vector<std::pair<int, ImVec4>> &values, const Store &_store) const {
-    auto transient = _store.transient();
-    for (const auto &[index, value]: values) {
-        transient.set(Path / to_string(index), value);
-    }
+    for (const auto &[index, value]: values) transient.set(Path / to_string(index), value);
     return transient.persistent();
 }
 
@@ -79,13 +69,11 @@ Store Vector<T>::set(const vector<std::pair<int, ImVec4>> &values, const Store &
 template<typename T>
 Store Vector<T>::set(size_t index, const T &value, const Store &_store) const { return ::set(Path / index, value, _store); }
 template<typename T>
-Store Vector<T>::set(const vector<T> &value, const Store &_store) const {
-    if (value.empty()) return _store;
+Store Vector<T>::set(const vector<T> &values, const Store &_store) const {
+    if (values.empty()) return _store;
 
     auto transient = _store.transient();
-    set(value, transient);
-    // Delete every item after the new end
-    truncate(value.size(), transient);
+    set(values, transient);
     return transient.persistent();
 }
 
@@ -98,14 +86,10 @@ void Vector<T>::truncate(size_t length, TransientStore &_store) const {
 template<typename T>
 T Vector2D<T>::at(size_t i, size_t j, const Store &_store) const { return std::get<T>(_store.at(Path / to_string(i) / to_string(j))); };
 template<typename T>
-size_t Vector2D<T>::size(const Store &_store) const {
+size_t Vector2D<T>::size(const TransientStore &_store) const {
     int size = -1;
     while (_store.count(Path / ++size / 0).to_string()) {}
     return size;
-}
-template<typename T>
-size_t Vector2D<T>::size(size_t i, const Store &_store) const {
-    return size(i, _store.transient());
 }
 template<typename T>
 size_t Vector2D<T>::size(size_t i, const TransientStore &_store) const {

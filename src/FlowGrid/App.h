@@ -288,11 +288,10 @@ struct Vector : Base {
     size_t size(const Store &_store = store) const;
     size_t size(const TransientStore &) const;
 
-    Store set(const vector<T> &value, const Store &_store = store) const;
+    Store set(const vector<T> &values, const Store &_store = store) const;
     Store set(size_t index, const T &value, const Store &_store = store) const;
-    Store set(const vector<std::pair<int, Primitive>> &, const Store &_store = store) const;
-    Store set(const vector<std::pair<int, ImVec4>> &, const Store &_store = store) const;
-    void set(const vector<T> &value, TransientStore &) const;
+    Store set(const vector<std::pair<int, T>> &, const Store &_store = store) const;
+    void set(const vector<T> &values, TransientStore &) const;
     void set(size_t index, const T &value, TransientStore &) const;
     void truncate(size_t length, TransientStore &) const; // Delete every element after index `length - 1`.
 
@@ -307,9 +306,7 @@ struct Vector2D : Base {
     virtual string GetName(size_t i, size_t j) const { return format("{}/{}", i, j); };
 
     T at(size_t i, size_t j, const Store &_store = store) const;
-    size_t size(const Store &_store = store) const; // Number of outer vectors
     size_t size(const TransientStore &) const; // Number of outer vectors
-    size_t size(size_t i, const Store &_store = store) const; // Number of elements in ith inner vector
     size_t size(size_t i, const TransientStore &) const; // Number of elements in ith inner vector
 
     Store set(size_t i, size_t j, const T &value, const Store &_store = store) const;

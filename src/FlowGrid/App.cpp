@@ -6,7 +6,6 @@
 
 map<ImGuiID, StateMember *> StateMember::WithID{};
 
-Store gesture_begin_store; // Only updated on gesture-end (for diff calculation).
 StoreHistory store_history{}; // One store checkpoint for every gesture.
 const StoreHistory &history = store_history;
 
@@ -299,7 +298,6 @@ void Context::on_action(const Action &action) {
 
 Context::Context() {
     store_history.Reset();
-    gesture_begin_store = store;
     if (fs::exists(PreferencesPath)) {
         preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
@@ -370,7 +368,6 @@ void Context::update_faust_context() {
 void Context::clear() {
     current_project_path.reset();
     store_history.Reset();
-    gesture_begin_store = store;
     is_widget_gesturing = false;
 }
 
@@ -412,7 +409,6 @@ void Context::open_project(const fs::path &path) {
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
         set(store_from_json(project));
-        gesture_begin_store = store;
 
         s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
         update_faust_context();
@@ -475,6 +471,7 @@ void StoreHistory::Reset() {
     store_records.clear();
     store_records.emplace_back(Clock::now(), store);
     index = 0;
+    gesture_begin_index = 0;
     gestures.clear();
     active_gesture = {};
     stats = {};
@@ -494,7 +491,7 @@ json StoreHistory::DiffsJson() const {
 void StoreHistory::FinalizeGesture() {
     if (active_gesture.empty()) return;
 
-    const auto gesture_patch = ::CreatePatch(gesture_begin_store, store);
+    const auto gesture_patch = ::CreatePatch(store_records[gesture_begin_index].second, store);
     stats.Apply(gesture_patch, Clock::now(), Forward, true);
 
     const auto merged_gesture = action::merge_gesture(active_gesture);
@@ -525,7 +522,6 @@ void StoreHistory::FinalizeGesture() {
     store_records.emplace_back(Clock::now(), store);
     index = Size() - 1;
     gesture_begin_index = index;
-    gesture_begin_store = store;
 }
 
 void StoreHistory::Stats::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
@@ -598,7 +594,7 @@ void StoreHistory::SetIndex(int new_index) {
         index = direction == Reverse ? --index : ++index;
         const auto prev_store = store;
         set(store_records[index].second);
-        gesture_begin_store = store;
+        gesture_begin_index = index;
         const auto &patch = ::CreatePatch(prev_store, store);
         stats.Apply(patch, store_records[index].first, direction, true);
         for (const auto &[partial_path, _op]: patch.ops) c.on_set_value(patch.base_path / partial_path);

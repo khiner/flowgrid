@@ -1010,8 +1010,10 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
                          is_implot_color ? s.Style.ImPlot.Colors.GetName(array_index) :
                          is_flowgrid_color ? s.Style.FlowGrid.Colors.GetName(array_index) :
                          is_array_item ? leaf_name : key) : key;
+    const auto &stats = history.stats;
+
     if (AutoSelect) {
-        const auto &update_paths = c.state_stats.latest_updated_paths;
+        const auto &update_paths = stats.latest_updated_paths;
         const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
@@ -1019,8 +1021,8 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     }
 
     // Flash background color of nodes when its corresponding path updates.
-    if (c.state_stats.latest_update_time_for_path.contains(path)) {
-        const auto latest_update_time = c.state_stats.latest_update_time_for_path.contains(path) ? c.state_stats.latest_update_time_for_path.at(path) : TimePoint{};
+    if (stats.latest_update_time_for_path.contains(path)) {
+        const auto latest_update_time = stats.latest_update_time_for_path.contains(path) ? stats.latest_update_time_for_path.at(path) : TimePoint{};
         const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
         ImVec4 flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.w = max(0.0f, 1 - flash_elapsed_ratio);
@@ -1083,12 +1085,13 @@ void StateMemoryEditor::Draw() const {
 }
 
 void StatePathUpdateFrequency::Draw() const {
-    if (c.state_stats.committed_update_times_for_path.empty() && c.state_stats.gesture_update_times_for_path.empty()) {
+    const auto &stats = history.stats;
+    if (stats.committed_update_times_for_path.empty() && stats.gesture_update_times_for_path.empty()) {
         Text("No state updates yet.");
         return;
     }
 
-    auto [labels, values] = c.state_stats.CreatePlottable();
+    auto [labels, values] = stats.CreatePlottable();
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
@@ -1100,7 +1103,7 @@ void StatePathUpdateFrequency::Draw() const {
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *item_labels[] = {"Committed updates", "Active updates"};
-        const bool has_gesture = !c.state_stats.gesture_update_times_for_path.empty();
+        const bool has_gesture = !stats.gesture_update_times_for_path.empty();
         const int item_count = has_gesture ? 2 : 1;
         const int group_count = has_gesture ? int(values.size()) / 2 : int(values.size());
         ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
@@ -1640,8 +1643,8 @@ void Style::Draw() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::Draw() const {
-    int value = c.store_history_index;
-    if (SliderInt("History index", &value, 0, Context::history_size() - 1)) q(set_history_index{value});
+    int value = history.index;
+    if (SliderInt("History index", &value, 0, history.Size() - 1)) q(set_history_index{value});
     GestureDurationSec.Draw();
 }
 
@@ -1708,7 +1711,7 @@ void Metrics::FlowGridMetrics::Draw() const {
 
         // Active (uncompressed) gesture
         const bool widget_gesture = c.is_widget_gesturing;
-        const bool active_gesture_present = !c.active_gesture.empty();
+        const bool active_gesture_present = !history.active_gesture.empty();
         if (active_gesture_present || widget_gesture) {
             // Gesture completion progress bar
             const auto row_item_ratio_rect = RowItemRatioRect(1 - c.gesture_time_remaining_sec / s.ApplicationSettings.GestureDurationSec);
@@ -1721,7 +1724,7 @@ void Metrics::FlowGridMetrics::Draw() const {
                 Text("Widget gesture: %s", widget_gesture ? "true" : "false");
                 if (!widget_gesture) EndDisabled();
 
-                if (active_gesture_present) ShowGesture(c.active_gesture);
+                if (active_gesture_present) ShowGesture(history.active_gesture);
                 else Text("No actions yet");
                 TreePop();
             }
@@ -1732,14 +1735,13 @@ void Metrics::FlowGridMetrics::Draw() const {
         }
 
         // Committed gestures
-        const bool has_gestures = !c.gestures.empty();
+        const bool has_gestures = !history.gestures.empty();
         if (!has_gestures) BeginDisabled();
-        if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%lu)", c.gestures.size())) {
-            for (size_t gesture_i = 0; gesture_i < c.gestures.size(); gesture_i++) {
-                if (TreeNodeEx(to_string(gesture_i).c_str(), gesture_i == c.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
+        if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%lu)", history.gestures.size())) {
+            for (size_t gesture_i = 0; gesture_i < history.gestures.size(); gesture_i++) {
+                if (TreeNodeEx(to_string(gesture_i).c_str(), gesture_i == history.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
                     // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
-                    const auto &gesture = c.gestures[gesture_i];
-                    ShowGesture(gesture);
+                    ShowGesture(history.gestures[gesture_i]);
                     TreePop();
                 }
             }
@@ -1750,23 +1752,14 @@ void Metrics::FlowGridMetrics::Draw() const {
     Separator();
     {
         // Diffs
-        const bool has_diffs = Context::history_size() > 1;
+        const bool has_diffs = history.Size() > 1;
         if (!has_diffs) BeginDisabled();
-        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", Context::history_size() - 1, c.store_history_index)) {
-            for (int i = 0; i < Context::history_size() - 1; i++) {
-                if (TreeNodeEx(to_string(i).c_str(), i == c.store_history_index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &diff = Context::create_diff(i);
-                    // todo link to gesture corresponding to diff
-//                    if (diff.action_names.size() == 1) {
-//                        BulletText("Action name: %s", (*diff.action_names.begin()).c_str());
-//                    } else {
-//                        if (TreeNodeEx("Action names", ImGuiTreeNodeFlags_DefaultOpen, "%lu actions", diff.action_names.size())) {
-//                            for (const auto &action_name: diff.action_names) BulletText("%s", action_name.c_str());
-//                            TreePop();
-//                        }
-//                    }
-                    for (const auto &[partial_path, op]: diff.Patch.ops) {
-                        const auto &path = diff.Patch.base_path / partial_path;
+        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", history.Size() - 1, history.index)) {
+            for (int i = 0; i < history.Size() - 1; i++) {
+                if (TreeNodeEx(to_string(i).c_str(), i == history.index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    const auto &[patch, time] = history.CreatePatch(i);
+                    for (const auto &[partial_path, op]: patch.ops) {
+                        const auto &path = patch.base_path / partial_path;
                         if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                             BulletText("Op: %s", to_string(op.op).c_str());
                             if (op.value.has_value()) BulletText("Value: %s", to_string(op.value.value()).c_str());
@@ -1775,7 +1768,7 @@ void Metrics::FlowGridMetrics::Draw() const {
                         }
                     }
 
-                    BulletText("Time: %s", format("{}\n", diff.Time).c_str());
+                    BulletText("Time: %s", format("{}\n", time).c_str());
                     TreePop();
                 }
             }

@@ -1216,7 +1216,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const map<ID, string> name_for_id{
+const map <ID, string> name_for_id{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1255,7 +1255,7 @@ const map<ID, string> name_for_id{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const map<ID, string> shortcut_for_id = {
+const map <ID, string> shortcut_for_id = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1345,34 +1345,16 @@ enum UIContextFlags_ {
 
 enum Direction { Forward, Reverse };
 
-struct StateStats {
-    struct Plottable {
-        vector<const char *> labels;
-        vector<ImU64> values;
-    };
-
-    vector<StatePath> latest_updated_paths{};
-    map<StatePath, vector<TimePoint>> gesture_update_times_for_path{};
-    map<StatePath, vector<TimePoint>> committed_update_times_for_path{};
-    map<StatePath, TimePoint> latest_update_time_for_path{};
-
-    void apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
-    Plottable CreatePlottable();
-};
-
 struct Context {
     Context();
     ~Context();
 
-    static int history_size();
-    static StatePatch create_diff(int history_index);
     static bool is_user_project_path(const fs::path &);
-    bool project_has_changes() const;
     void save_empty_project();
 
     bool clear_preferences();
 
-    json get_project_json(ProjectFormat format = StateFormat) const;
+    static json get_project_json(ProjectFormat format = StateFormat);
 
     void enqueue_action(const Action &);
     void run_queued_actions(bool force_finalize_gesture = false);
@@ -1381,21 +1363,15 @@ struct Context {
 
     void clear();
 
-    void update_ui_context(UIContextFlags flags);
+    void update_ui_context(UIContextFlags flags) const;
     void update_faust_context();
+    void on_set_value(const StatePath &);
 
     Preferences preferences;
 
     UIContext *ui{};
-    StateStats state_stats;
-
-    int store_history_index = 0;
-
-    Gesture active_gesture; // uncompressed, uncommitted
-    Gestures gestures; // compressed, committed gesture history
 
     std::optional<fs::path> current_project_path;
-    size_t project_start_gesture_count = gestures.size();
 
     ImFont *defaultFont{};
     ImFont *fixedWidthFont{};
@@ -1407,11 +1383,8 @@ struct Context {
 
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
-    void finalize_gesture();
     void on_patch(const Action &, const Patch &); // Called after every state-changing action
-    void set_history_index(int);
-    void increment_history_index(int delta);
-    void on_set_value(const StatePath &);
+    static void increment_history_index(int delta);
 
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.
@@ -1423,7 +1396,6 @@ private:
     bool write_preferences() const;
 
     std::queue<const Action> queued_actions;
-    int gesture_begin_history_index = 0;
 };
 
 //-----------------------------------------------------------------------------
@@ -1517,5 +1489,45 @@ void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
 Store set(Store store);
 Store set(TransientStore &transient);
 
-// todo use custom patch type
-Patch create_patch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
+Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
+
+struct StoreHistory {
+    using StoreRecord = std::pair<TimePoint, Store>;
+
+    struct Stats {
+        struct Plottable {
+            vector<const char *> labels;
+            vector<ImU64> values;
+        };
+
+        vector<StatePath> latest_updated_paths{};
+        map<StatePath, vector<TimePoint>> gesture_update_times_for_path{};
+        map<StatePath, vector<TimePoint>> committed_update_times_for_path{};
+        map<StatePath, TimePoint> latest_update_time_for_path{};
+
+        void Apply(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
+        Plottable CreatePlottable() const;
+    };
+
+    StatePatch CreatePatch(int history_index = -1) const;
+    void FinalizeGesture();
+    void Reset();
+    void SetIndex(int);
+
+    int Size() const;
+    bool CanUndo() const;
+    bool CanRedo() const;
+
+    json DiffsJson() const;
+
+    vector<StoreRecord> store_records; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
+    int index{0};
+    Gesture active_gesture; // uncompressed, uncommitted
+    Gestures gestures; // compressed, committed gesture history
+    Stats stats;
+
+private:
+    int gesture_begin_index = 0;
+};
+
+extern const StoreHistory &history;

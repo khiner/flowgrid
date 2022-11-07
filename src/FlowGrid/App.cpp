@@ -7,7 +7,8 @@
 map<ImGuiID, StateMember *> StateMember::WithID{};
 
 Store gesture_begin_store; // Only updated on gesture-end (for diff calculation).
-vector<std::pair<TimePoint, Store>> store_history; // One store checkpoint for every gesture.
+StoreHistory store_history{}; // One store checkpoint for every gesture.
+const StoreHistory &history = store_history;
 
 // Persistent modifiers
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -209,7 +210,7 @@ Store State::Update(const Action &action) const {
 
 void save_box_svg(const string &path); // defined in FaustUI
 
-Patch create_patch(const Store &before, const Store &after, const StatePath &base_path) {
+Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path) {
     PatchOps ops{};
     diff(
         before,
@@ -248,27 +249,27 @@ void Context::on_action(const Action &action) {
         [&](const undo &) { increment_history_index(-1); },
         [&](const redo &) { increment_history_index(1); },
         [&](const Actions::set_history_index &a) {
-            if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed.
-            set_history_index(a.history_index);
+            store_history.FinalizeGesture();
+            store_history.SetIndex(a.history_index);
         },
 
         // Remaining actions have a direct effect on the application state.
         [&](const set_value &a) {
             const auto prev_store = store;
             set(store.set(a.path, a.value));
-            on_patch(a, create_patch(prev_store, store));
+            on_patch(a, CreatePatch(prev_store, store));
         },
         [&](const set_values &a) {
             const auto prev_store = store;
             set(::set(a.values));
-            on_patch(a, create_patch(prev_store, store));
+            on_patch(a, CreatePatch(prev_store, store));
         },
         [&](const toggle_value &a) {
             const auto prev_store = store;
             set(store.set(a.path, !std::get<bool>(store.at(a.path))));
-            on_patch(a, create_patch(prev_store, store));
+            on_patch(a, CreatePatch(prev_store, store));
             // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-            finalize_gesture();
+            store_history.FinalizeGesture();
         },
         [&](const apply_patch &a) {
             const auto &patch = a.patch;
@@ -280,10 +281,10 @@ void Context::on_action(const Action &action) {
             }
             const auto prev_store = store;
             set(transient);
-            on_patch(a, create_patch(prev_store, store, patch.base_path));
+            on_patch(a, CreatePatch(prev_store, store, patch.base_path));
         },
         [&](const auto &a) {
-            on_patch(a, create_patch(store, set(state.Update(a))));
+            on_patch(a, CreatePatch(store, set(state.Update(a))));
         },
     }, action);
 }
@@ -297,7 +298,7 @@ void Context::on_action(const Action &action) {
 #include <utility>
 
 Context::Context() {
-    store_history.emplace_back(Clock::now(), store);
+    store_history.Reset();
     gesture_begin_store = store;
     if (fs::exists(PreferencesPath)) {
         preferences = json::parse(FileIO::read(PreferencesPath));
@@ -308,21 +309,10 @@ Context::Context() {
 
 Context::~Context() = default;
 
-int Context::history_size() { return int(store_history.size()); }
-
-StatePatch Context::create_diff(int history_index) {
-    return {
-        create_patch(store_history[history_index].second, store_history[history_index + 1].second),
-        store_history[history_index + 1].first,
-    };
-}
-
 bool Context::is_user_project_path(const fs::path &path) {
     // Using relative path to avoid error: `filesystem error: in equivalent: Operation not supported`
     return !fs::equivalent(fs::relative(path), EmptyProjectPath) && !fs::equivalent(fs::relative(path), DefaultProjectPath);
 }
-
-bool Context::project_has_changes() const { return gestures.size() != project_start_gesture_count; }
 
 void Context::save_empty_project() {
     save_project(EmptyProjectPath);
@@ -334,14 +324,12 @@ bool Context::clear_preferences() {
     return write_preferences();
 }
 
-json Context::get_project_json(const ProjectFormat format) const {
+json Context::get_project_json(const ProjectFormat format) {
     switch (format) {
         case None: return nullptr;
         case StateFormat: return store;
-        case DiffFormat:
-            return {{"diffs", views::ints(0, int(store_history.size() - 1)) | transform(create_diff) | to<vector<StatePatch>>},
-                    {"history_index", store_history_index}};
-        case ActionFormat: return gestures;
+        case DiffFormat: return history.DiffsJson();
+        case ActionFormat: return history.gestures;
     }
 }
 
@@ -354,18 +342,18 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
         queued_actions.pop();
     }
     gesture_time_remaining_sec = max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
-    if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) finalize_gesture();
+    if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) store_history.FinalizeGesture();
 }
 
 bool Context::action_allowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<undo>: return !active_gesture.empty() || store_history_index > 0;
-        case action::id<redo>: return store_history_index < int(store_history.size());
+        case action::id<undo>: return history.CanUndo();
+        case action::id<redo>: return history.CanRedo();
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
         case action::id<Actions::show_save_project_dialog>:
-        case action::id<Actions::save_default_project>: return project_has_changes();
-        case action::id<Actions::save_current_project>: return current_project_path.has_value() && project_has_changes();
+        case action::id<Actions::save_default_project>: return !history.gestures.empty();
+        case action::id<Actions::save_current_project>: return current_project_path.has_value() && !history.gestures.empty();
         case action::id<Actions::open_file_dialog>: return !s.FileDialog.Visible;
         case action::id<Actions::close_file_dialog>: return s.FileDialog.Visible;
         default: return true;
@@ -373,7 +361,7 @@ bool Context::action_allowed(const ActionID action_id) const {
 }
 bool Context::action_allowed(const Action &action) const { return action_allowed(action::get_id(action)); }
 
-void Context::update_ui_context(UIContextFlags flags) {
+void Context::update_ui_context(UIContextFlags flags) const {
     if (flags == UIContextFlags_None) return;
 
     if (flags & UIContextFlags_ImGuiSettings) s.ImGuiSettings.Apply(ui->imgui_context);
@@ -389,147 +377,23 @@ void Context::update_faust_context() {
 
 void Context::clear() {
     current_project_path.reset();
-    store_history.clear();
-    store_history.emplace_back(Clock::now(), store);
-    store_history_index = 0;
+    store_history.Reset();
     gesture_begin_store = store;
-    gestures.clear();
-    project_start_gesture_count = gestures.size();
     is_widget_gesturing = false;
-    state_stats = {};
-    // todo finalize?
-    active_gesture = {};
-}
-
-// StateStats
-
-void StateStats::apply_patch(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
-    if (!patch.empty()) latest_updated_paths = {};
-
-    for (const auto &[partial_path, op]: patch.ops) {
-        const auto &path = patch.base_path / partial_path;
-        latest_updated_paths.emplace_back(path);
-
-        if (direction == Forward) {
-            auto &update_times_for_path = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
-            update_times_for_path[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
-        } else if (committed_update_times_for_path.contains(path)) {
-            // Undo never applies to `gesture_update_times_for_path`
-            auto &update_times = committed_update_times_for_path.at(path);
-            update_times.pop_back();
-            if (update_times.empty()) committed_update_times_for_path.erase(path);
-        }
-
-        const bool path_in_gesture = gesture_update_times_for_path.contains(path);
-        const bool path_in_committed = committed_update_times_for_path.contains(path);
-        if (path_in_gesture || path_in_committed) {
-            latest_update_time_for_path[path] = path_in_gesture ? gesture_update_times_for_path.at(path).back() : committed_update_times_for_path.at(path).back();
-        } else {
-            latest_update_time_for_path.erase(path);
-        }
-    }
-
-    if (is_full_gesture) gesture_update_times_for_path.clear();
-}
-
-StateStats::Plottable StateStats::CreatePlottable() {
-    vector<StatePath> paths;
-    for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
-    for (const auto &path: views::keys(gesture_update_times_for_path)) {
-        if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
-    }
-
-    const bool has_gesture = !gesture_update_times_for_path.empty();
-    vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
-    int i = 0;
-    for (const auto &path: paths) {
-        values[i++] = committed_update_times_for_path.contains(path) ? committed_update_times_for_path.at(path).size() : 0;
-    }
-    // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
-    if (has_gesture) {
-        for (const auto &path: paths) {
-            values[i++] = gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).size() : 0;
-        }
-    }
-
-    const auto labels = paths | transform([](const string &path) {
-        // Convert `string` to char array, removing first character of the path, which is a '/'.
-        char *label = new char[path.size()];
-        std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
-        return label;
-    }) | to<vector<const char *>>;
-
-    return {labels, values};
 }
 
 // Private methods
 
-void Context::finalize_gesture() {
-    if (active_gesture.empty()) return;
-
-    const auto gesture_patch = create_patch(gesture_begin_store, store);
-    state_stats.apply_patch(gesture_patch, Clock::now(), Forward, true);
-
-    const auto merged_gesture = action::merge_gesture(active_gesture);
-    active_gesture.clear();
-
-    const auto merged_gesture_size = merged_gesture.size();
-    // Apply context-dependent transformations to actions with large data members to compress them before committing them to the gesture history.
-    const auto active_gesture_compressed = merged_gesture | transform([this, merged_gesture_size](const auto &action) -> Action {
-        const auto id = action::get_id(action);
-        if (id == action::id<Actions::set_history_index> && merged_gesture_size == 1) {
-            const auto new_history_index = std::get<Actions::set_history_index>(action).history_index;
-            if (new_history_index == gesture_begin_history_index - 1) return undo{};
-            if (new_history_index == gesture_begin_history_index + 1) return redo{};
-        }
-        return action;
-    }) | views::filter([this](const auto &action) {
-        // Filter out any resulting actions that don't actually result in a `store_history_index` change.
-        return action::get_id(action) != action::id<Actions::set_history_index> || std::get<Actions::set_history_index>(action).history_index != gesture_begin_history_index;
-    }) | to<const Gesture>;
-    if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
-
-    gesture_begin_history_index = store_history_index;
-    if (gesture_patch.empty()) return;
-    if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
-
-    // TODO use an undo _tree_ and keep this history
-    while (int(store_history.size()) > store_history_index + 1) store_history.pop_back();
-    store_history.emplace_back(Clock::now(), store);
-    store_history_index = int(store_history.size()) - 1;
-    gesture_begin_history_index = store_history_index;
-    gesture_begin_store = store;
-}
-
 void Context::on_patch(const Action &action, const Patch &patch) {
-    active_gesture.emplace_back(action);
-    state_stats.apply_patch(patch, Clock::now(), Forward, false);
-    for (const auto &[path, _op]: patch.ops) on_set_value(patch.base_path / path);
-    s.Audio.update_process();
-}
-
-void Context::set_history_index(int new_history_index) {
-    if (new_history_index == store_history_index || new_history_index < 0 || new_history_index >= int(store_history.size())) return;
-
-    active_gesture.emplace_back(Actions::set_history_index{new_history_index});
-
-    const auto direction = new_history_index > store_history_index ? Forward : Reverse;
-    // todo set index directly instead of incrementing - just need to update `state_stats` to reflect recent immer changes
-    while (store_history_index != new_history_index) {
-        const auto index = direction == Reverse ? --store_history_index : ++store_history_index;
-        const auto prev_store = store;
-        set(store_history[index].second);
-        const auto &patch = direction == Reverse ? create_patch(store, prev_store) : create_patch(prev_store, store);
-        gesture_begin_store = store;
-        state_stats.apply_patch(patch, store_history[index].first, direction, true);
-        for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
-    }
+    store_history.active_gesture.emplace_back(action);
+    store_history.stats.Apply(patch, Clock::now(), Forward, false);
+    for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
     s.Audio.update_process();
 }
 
 void Context::increment_history_index(int delta) {
-    if (!active_gesture.empty()) finalize_gesture(); // Make sure any pending actions/diffs are committed. _This can change `store_history_index`!_
-    set_history_index(store_history_index + delta);
+    store_history.FinalizeGesture();
+    store_history.SetIndex(history.index + delta);
 }
 
 void Context::on_set_value(const StatePath &path) {
@@ -571,7 +435,7 @@ void Context::open_project(const fs::path &path) {
         const Gestures project_gestures = project;
         for (const auto &gesture: project_gestures) {
             for (const auto &action: gesture) on_action(action);
-            finalize_gesture();
+            store_history.FinalizeGesture();
         }
     }
 
@@ -586,7 +450,7 @@ bool Context::save_project(const fs::path &path) {
     const auto format = get_project_format(path);
     if (format == None) return false; // TODO log
 
-    finalize_gesture(); // Make sure any pending actions/diffs are committed.
+    store_history.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
     if (FileIO::write(path, get_project_json(format).dump())) {
         if (is_user_project_path(path)) set_current_project_path(path);
         return true;
@@ -596,7 +460,6 @@ bool Context::save_project(const fs::path &path) {
 
 void Context::set_current_project_path(const fs::path &path) {
     current_project_path = path;
-    project_start_gesture_count = gestures.size();
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     write_preferences();
@@ -604,4 +467,148 @@ void Context::set_current_project_path(const fs::path &path) {
 
 bool Context::write_preferences() const {
     return FileIO::write(PreferencesPath, json(preferences).dump());
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] History
+//-----------------------------------------------------------------------------
+
+StatePatch StoreHistory::CreatePatch(const int history_index) const {
+    const size_t i = history_index == -1 ? index : history_index;
+    return {::CreatePatch(store_records[i].second, store_records[i + 1].second), store_records[i + 1].first};
+}
+
+void StoreHistory::Reset() {
+    store_records.clear();
+    store_records.emplace_back(Clock::now(), store);
+    index = 0;
+    gestures.clear();
+    active_gesture = {};
+    stats = {};
+}
+
+int StoreHistory::Size() const { return int(store_records.size()); }
+bool StoreHistory::CanUndo() const { return !active_gesture.empty() || index > 0; }
+bool StoreHistory::CanRedo() const { return index < Size(); }
+
+json StoreHistory::DiffsJson() const {
+    return {
+        {"diffs", views::ints(0, Size() - 1) | transform([this](const int i) { return CreatePatch(i); }) | to<vector>},
+        {"index", index}
+    };
+}
+
+void StoreHistory::FinalizeGesture() {
+    if (active_gesture.empty()) return;
+
+    const auto gesture_patch = ::CreatePatch(gesture_begin_store, store);
+    stats.Apply(gesture_patch, Clock::now(), Forward, true);
+
+    const auto merged_gesture = action::merge_gesture(active_gesture);
+    active_gesture.clear();
+
+    const auto merged_gesture_size = merged_gesture.size();
+    // Apply context-dependent transformations to actions with large data members to compress them before committing them to the gesture history.
+    const auto active_gesture_compressed = merged_gesture | transform([this, merged_gesture_size](const auto &action) -> Action {
+        const auto id = action::get_id(action);
+        if (id == action::id<Actions::set_history_index> && merged_gesture_size == 1) {
+            const auto new_history_index = std::get<Actions::set_history_index>(action).history_index;
+            if (new_history_index == gesture_begin_index - 1) return undo{};
+            if (new_history_index == gesture_begin_index + 1) return redo{};
+        }
+        return action;
+    }) | views::filter([this](const auto &action) {
+        // Filter out any resulting actions that don't actually result in a `index` change.
+        return action::get_id(action) != action::id<Actions::set_history_index> || std::get<Actions::set_history_index>(action).history_index != gesture_begin_index;
+    }) | to<const Gesture>;
+    if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
+
+    gesture_begin_index = index;
+    if (gesture_patch.empty()) return;
+    if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
+
+    // TODO use an undo _tree_ and keep this history
+    while (Size() > index + 1) store_records.pop_back();
+    store_records.emplace_back(Clock::now(), store);
+    index = Size() - 1;
+    gesture_begin_index = index;
+    gesture_begin_store = store;
+}
+
+void StoreHistory::Stats::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
+    if (!patch.empty()) latest_updated_paths = {};
+
+    for (const auto &[partial_path, op]: patch.ops) {
+        const auto &path = patch.base_path / partial_path;
+        latest_updated_paths.emplace_back(path);
+
+        if (direction == Forward) {
+            auto &update_times_for_path = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
+            update_times_for_path[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
+        } else if (committed_update_times_for_path.contains(path)) {
+            // Undo never applies to `gesture_update_times_for_path`
+            auto &update_times = committed_update_times_for_path.at(path);
+            update_times.pop_back();
+            if (update_times.empty()) committed_update_times_for_path.erase(path);
+        }
+
+        const bool path_in_gesture = gesture_update_times_for_path.contains(path);
+        const bool path_in_committed = committed_update_times_for_path.contains(path);
+        if (path_in_gesture || path_in_committed) {
+            latest_update_time_for_path[path] = path_in_gesture ? gesture_update_times_for_path.at(path).back() : committed_update_times_for_path.at(path).back();
+        } else {
+            latest_update_time_for_path.erase(path);
+        }
+    }
+
+    if (is_full_gesture) gesture_update_times_for_path.clear();
+}
+
+StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {
+    vector<StatePath> paths;
+    for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
+    for (const auto &path: views::keys(gesture_update_times_for_path)) {
+        if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
+    }
+
+    const bool has_gesture = !gesture_update_times_for_path.empty();
+    vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
+    int i = 0;
+    for (const auto &path: paths) {
+        values[i++] = committed_update_times_for_path.contains(path) ? committed_update_times_for_path.at(path).size() : 0;
+    }
+    // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
+    if (has_gesture) {
+        for (const auto &path: paths) {
+            values[i++] = gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).size() : 0;
+        }
+    }
+
+    const auto labels = paths | transform([](const string &path) {
+        // Convert `string` to char array, removing first character of the path, which is a '/'.
+        char *label = new char[path.size()];
+        std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
+        return label;
+    }) | to<vector<const char *>>;
+
+    return {labels, values};
+}
+
+void StoreHistory::SetIndex(int new_index) {
+    if (new_index == index || new_index < 0 || new_index >= Size()) return;
+
+    active_gesture.emplace_back(Actions::set_history_index{new_index});
+
+    const auto direction = new_index > index ? Forward : Reverse;
+    // todo set index directly instead of incrementing - first need to update `stats` to reflect recent immer changes
+    while (index != new_index) {
+        index = direction == Reverse ? --index : ++index;
+        const auto prev_store = store;
+        set(store_records[index].second);
+        gesture_begin_store = store;
+        const auto &patch = ::CreatePatch(prev_store, store);
+        stats.Apply(patch, store_records[index].first, direction, true);
+        for (const auto &[partial_path, _op]: patch.ops) c.on_set_value(patch.base_path / partial_path);
+    }
+    s.Audio.update_process();
 }

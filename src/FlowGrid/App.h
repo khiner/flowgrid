@@ -1285,6 +1285,7 @@ struct State : UIStateMember {
 
     void Draw() const override;
     Store Update(const Action &) const; // State is only updated via `context.on_action(action)`
+    void Apply(UIContext::Flags flags) const;
 
     ImGuiSettings ImGuiSettings{this, "ImGuiSettings#ImGui settings"};
     Style Style{this, "Style"};
@@ -1335,14 +1336,6 @@ static const fs::path PreferencesPath = InternalPath / ("preferences" + Preferen
 class CTree;
 typedef CTree *Box;
 
-using UIContextFlags = int;
-enum UIContextFlags_ {
-    UIContextFlags_None = 0,
-    UIContextFlags_ImGuiSettings = 1 << 0,
-    UIContextFlags_ImGuiStyle = 1 << 1,
-    UIContextFlags_ImPlotStyle = 1 << 2,
-};
-
 enum Direction { Forward, Reverse };
 
 struct Context {
@@ -1363,18 +1356,12 @@ struct Context {
 
     void clear();
 
-    void update_ui_context(UIContextFlags flags) const;
     void update_faust_context();
     void on_set_value(const StatePath &);
 
     Preferences preferences;
 
-    UIContext *ui{};
-
     std::optional<fs::path> current_project_path;
-
-    ImFont *defaultFont{};
-    ImFont *fixedWidthFont{};
 
     bool is_widget_gesturing{};
     bool has_new_faust_code{};

@@ -20,9 +20,9 @@ using namespace fg;
 These are the only public methods.
 
 ```cpp
-    create_ui();
-    tick_ui();
-    destroy_ui(render_context);
+    CreateUi();
+    TickUi();
+    DestroyUi(render_context);
 ```
 
 ## Render context methods
@@ -117,6 +117,7 @@ UIContext create_ui_context(const RenderContext &render_context) {
     ImGui_ImplSDL2_InitForOpenGL(render_context.window, render_context.gl_context);
     ImGui_ImplOpenGL3_Init(render_context.glsl_version);
 
+    UIContext ui_context = {imgui_context, implot_context};
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
@@ -124,11 +125,10 @@ UIContext create_ui_context(const RenderContext &render_context) {
     // - Read 'docs/FONTS.md' for more instructions and details.
     const static float atlas_scale = Style::ImGuiStyle::FontAtlasScale;
     io.FontGlobalScale = s.Style.ImGui.FontScale / atlas_scale;
-    c.defaultFont = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * atlas_scale);
-    c.fixedWidthFont = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * atlas_scale);
+    ui_context.Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * atlas_scale);
+    ui_context.Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * atlas_scale);
     io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * atlas_scale);
-//    c.defaultFont = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Roboto-Medium.ttf", font_scale * 16.0f);
-    return {imgui_context, implot_context};
+    return ui_context;
 }
 
 void prepare_frame() {
@@ -192,19 +192,18 @@ bool is_shortcut_pressed(const KeyShortcut &key_shortcut) {
 
 RenderContext render_context;
 
-UIContext create_ui() {
+UIContext CreateUi() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
 
     render_context = create_render_context();
-    const auto &uiContext = create_ui_context(render_context);
-
+    const auto &ui_context = create_ui_context(render_context);
     IGFD::InitializeDemo();
 
-    return uiContext;
+    return ui_context;
 }
 
 // Main UI tick function
-void tick_ui() {
+void TickUi() {
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -234,7 +233,7 @@ void tick_ui() {
     if (io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
-        Store new_store = s.ImGuiSettings.set(c.ui->imgui_context);
+        Store new_store = s.ImGuiSettings.set(UiContext.ImGui);
         const Patch &patch = CreatePatch(store, new_store, s.ImGuiSettings.Path);
         if (!patch.empty()) q(apply_patch{patch});
         io.WantSaveIniSettings = false;
@@ -243,7 +242,7 @@ void tick_ui() {
     FrameMark
 }
 
-void destroy_ui() {
+void DestroyUi() {
     IGFD::CleanupDemo();
     destroy_faust_editor();
     destroy_render_context(render_context);

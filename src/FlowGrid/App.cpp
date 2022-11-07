@@ -361,14 +361,6 @@ bool Context::action_allowed(const ActionID action_id) const {
 }
 bool Context::action_allowed(const Action &action) const { return action_allowed(action::get_id(action)); }
 
-void Context::update_ui_context(UIContextFlags flags) const {
-    if (flags == UIContextFlags_None) return;
-
-    if (flags & UIContextFlags_ImGuiSettings) s.ImGuiSettings.Apply(ui->imgui_context);
-    if (flags & UIContextFlags_ImGuiStyle) s.Style.ImGui.Apply(ui->imgui_context);
-    if (flags & UIContextFlags_ImPlotStyle) s.Style.ImPlot.Apply(ui->implot_context);
-}
-
 void Context::update_faust_context() {
     if (s.Audio.OutSampleRate == 0) return; // Sample rate has not been set up yet (set during first audio stream initialization).
 
@@ -396,12 +388,13 @@ void Context::increment_history_index(int delta) {
     store_history.SetIndex(history.index + delta);
 }
 
+// todo refactor to always run through this when (and only when) global `set(store)` is called
 void Context::on_set_value(const StatePath &path) {
-    // Setting `ImGuiSettings` does not require a `c.update_ui_context` on the action, since the action will be initiated by ImGui itself,
+    // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
     // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-    if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) update_ui_context(UIContextFlags_ImGuiStyle); // TODO add `starts_with` method to nlohmann/json?
-    else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) update_ui_context(UIContextFlags_ImPlotStyle);
+    if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiStyle);
+    else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImPlotStyle);
     else if (path == s.Audio.Faust.Code.Path || path == s.Audio.OutSampleRate.Path) update_faust_context();
 }
 
@@ -421,7 +414,7 @@ void Context::open_project(const fs::path &path) {
         set(store_from_json(project));
         gesture_begin_store = store;
 
-        update_ui_context(UIContextFlags_ImGuiSettings | UIContextFlags_ImGuiStyle | UIContextFlags_ImPlotStyle);
+        s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
         update_faust_context();
     } else if (format == DiffFormat) {
         open_project(EmptyProjectPath); // todo wasteful - need a `set_project_file` method or somesuch to avoid redoing other `open_project` side-effects.

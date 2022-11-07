@@ -8,6 +8,7 @@ const Store &store = application_store;
 State application_state{};
 const State &state = application_state;
 const State &s = application_state;
+UIContext UiContext{};
 
 Context application_context{};
 Context &context = application_context;
@@ -41,15 +42,13 @@ int main(int, const char **) {
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
     s.Audio.update_process(); // Start audio process
-
-    auto ui_context = create_ui();
-    c.ui = &ui_context;
+    UiContext = CreateUi(); // Initialize UI
 
     {
         // Relying on these imperatively-run side effects up front is not great.
-        tick_ui(); // Rendering the first frame has side effects like creating dockspaces & windows.
+        TickUi(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        tick_ui(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        TickUi(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
         c.run_queued_actions(true);
     }
 
@@ -60,11 +59,11 @@ int main(int, const char **) {
     c.save_empty_project();
 
     while (s.Processes.UI.Running) {
-        tick_ui();
+        TickUi();
         c.run_queued_actions();
     }
 
-    destroy_ui();
+    DestroyUi();
 
     return 0;
 }

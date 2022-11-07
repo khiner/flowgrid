@@ -6,8 +6,22 @@
 #include "implot_internal.h"
 
 struct UIContext {
-    UIContext(ImGuiContext *imgui_context, ImPlotContext *implot_context) : imgui_context(imgui_context), implot_context(implot_context) {}
+    enum Flags_ {
+        Flags_None = 0,
+        Flags_ImGuiSettings = 1 << 0,
+        Flags_ImGuiStyle = 1 << 1,
+        Flags_ImPlotStyle = 1 << 2,
+    };
+    using Flags = int;
 
-    ImGuiContext *imgui_context;
-    ImPlotContext *implot_context;
+    struct Fonts {
+        ImFont *Main{nullptr};
+        ImFont *FixedWidth{nullptr};
+    };
+
+    ImGuiContext *ImGui{nullptr};
+    ImPlotContext *ImPlot{nullptr};
+    Fonts Fonts{};
 };
+
+extern UIContext UiContext; // Created in `main.cpp`

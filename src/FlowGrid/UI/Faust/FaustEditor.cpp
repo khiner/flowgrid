@@ -198,7 +198,7 @@ struct ZepEditor_ImGui : ZepEditor {
         if (!handled) {
             for (ImWchar ch: io.InputQueueCharacters) {
                 if (ch == '\r') continue; // Ignore '\r' - sometimes ImGui generates it!
-                ImGuiKey key = ImGuiKey(ch - 'a' + ImGuiKey_A);
+                auto key = ImGuiKey(ch - 'a' + ImGuiKey_A);
                 buffer->GetMode()->AddKeyPress(key, mod);
             }
         }
@@ -314,11 +314,12 @@ void zep_init() {
     zep = make_unique<ZepWrapper>(*zep_editor);
 
     auto *display = zep_editor->display;
-    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.0));
-    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.0));
-    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.5));
-    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.25));
-    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, c.fixedWidthFont, 1.125));
+    auto *font = UiContext.Fonts.FixedWidth;
+    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, font, 1.0));
+    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, font, 1.0));
+    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, font, 1.5));
+    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, font, 1.25));
+    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, font, 1.125));
     zep_editor->InitWithText(s.Audio.Faust.Editor.FileName, s.Audio.Faust.Code);
 }
 

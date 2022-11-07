@@ -992,6 +992,14 @@ void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
+void State::Apply(const UIContext::Flags flags) const {
+    if (flags == UIContext::Flags_None) return;
+
+    if (flags & UIContext::Flags_ImGuiSettings) ImGuiSettings.Apply(UiContext.ImGui);
+    if (flags & UIContext::Flags_ImGuiStyle) Style.ImGui.Apply(UiContext.ImGui);
+    if (flags & UIContext::Flags_ImPlotStyle) Style.ImPlot.Apply(UiContext.ImPlot);
+}
+
 //-----------------------------------------------------------------------------
 // [SECTION] State windows
 //-----------------------------------------------------------------------------

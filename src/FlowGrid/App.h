@@ -1129,15 +1129,14 @@ template<class... Ts> visitor(Ts...)->visitor<Ts...>;
 namespace Actions {
 struct undo {};
 struct redo {};
-struct set_history_index { int history_index; };
+struct set_history_index { int index; };
 
 struct open_project { string path; };
 struct open_empty_project {};
 struct open_default_project {};
+
 struct show_open_project_dialog {};
-
 struct open_file_dialog { FileDialogData dialog; }; // todo store as json and check effect on action size
-
 struct close_file_dialog {};
 
 struct save_project { string path; };
@@ -1356,8 +1355,6 @@ struct Context {
 
     void clear();
 
-    void on_set_value(const StatePath &);
-
     Preferences preferences;
 
     std::optional<fs::path> current_project_path;
@@ -1368,8 +1365,6 @@ struct Context {
 
 private:
     void on_action(const Action &); // This is the only method that modifies `state`.
-    void on_patch(const Action &, const Patch &); // Called after every state-changing action
-    static void increment_history_index(int delta);
 
     // Takes care of all side effects needed to put the app into the provided application state json.
     // This function can be run at any time, but it's not thread-safe.
@@ -1477,7 +1472,11 @@ Store set(TransientStore &transient);
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
 
 struct StoreHistory {
-    using StoreRecord = std::pair<TimePoint, Store>;
+    struct StoreRecord {
+        TimePoint time; // The time the gesture was finalized
+        Store store; // The store at this time
+        Gesture gesture; // Compressed gesture (list of actions) that cause the store change
+    };
 
     struct Stats {
         struct Plottable {
@@ -1500,15 +1499,16 @@ struct StoreHistory {
     void SetIndex(int);
 
     int Size() const;
+    bool Empty() const;
     bool CanUndo() const;
     bool CanRedo() const;
 
-    json DiffsJson() const;
+    vector<StatePatch> Patches() const;
+    vector<Gesture> Gestures() const;
 
     vector<StoreRecord> store_records; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
     int index{0};
     Gesture active_gesture; // uncompressed, uncommitted
-    Gestures gestures; // compressed, committed gesture history
     Stats stats;
 
 private:

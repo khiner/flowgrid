@@ -129,7 +129,7 @@ EmptyJsonType(show_open_faust_file_dialog)
 EmptyJsonType(show_save_faust_file_dialog)
 EmptyJsonType(show_save_faust_svg_file_dialog)
 
-JsonType(set_history_index, history_index)
+JsonType(set_history_index, index)
 JsonType(open_project, path)
 JsonType(open_file_dialog, dialog)
 JsonType(save_project, path)

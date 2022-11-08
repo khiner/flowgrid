@@ -1743,13 +1743,12 @@ void Metrics::FlowGridMetrics::Draw() const {
         }
 
         // Committed gestures
-        const bool has_gestures = !history.gestures.empty();
+        const bool has_gestures = !history.Empty();
         if (!has_gestures) BeginDisabled();
-        if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%lu)", history.gestures.size())) {
-            for (size_t gesture_i = 0; gesture_i < history.gestures.size(); gesture_i++) {
-                if (TreeNodeEx(to_string(gesture_i).c_str(), gesture_i == history.gestures.size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
-                    // todo link gesture actions and corresponding diff (note some action gestures won't have a diff, like `undo`)
-                    ShowGesture(history.gestures[gesture_i]);
+        if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%d)", history.Size())) {
+            for (int gesture_i = 0; gesture_i < history.Size(); gesture_i++) {
+                if (TreeNodeEx(to_string(gesture_i).c_str(), gesture_i == history.Size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
+                    ShowGesture(history.store_records[gesture_i].gesture);
                     TreePop();
                 }
             }

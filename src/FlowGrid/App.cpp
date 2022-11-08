@@ -471,12 +471,10 @@ void StoreHistory::FinalizeGesture() {
 }
 
 void StoreHistory::Stats::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
-    if (!patch.empty()) latest_updated_paths = {};
+    latest_updated_paths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
 
     for (const auto &[partial_path, op]: patch.ops) {
         const auto &path = patch.base_path / partial_path;
-        latest_updated_paths.emplace_back(path);
-
         if (direction == Forward) {
             auto &update_times_for_path = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
             update_times_for_path[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
@@ -486,17 +484,15 @@ void StoreHistory::Stats::Apply(const Patch &patch, TimePoint time, Direction di
             update_times.pop_back();
             if (update_times.empty()) committed_update_times_for_path.erase(path);
         }
-
-        const bool path_in_gesture = gesture_update_times_for_path.contains(path);
-        const bool path_in_committed = committed_update_times_for_path.contains(path);
-        if (path_in_gesture || path_in_committed) {
-            latest_update_time_for_path[path] = path_in_gesture ? gesture_update_times_for_path.at(path).back() : committed_update_times_for_path.at(path).back();
-        } else {
-            latest_update_time_for_path.erase(path);
-        }
     }
 
     if (is_full_gesture) gesture_update_times_for_path.clear();
+}
+
+std::optional<TimePoint> StoreHistory::Stats::LatestUpdateTime(const StatePath &path) const {
+    if (gesture_update_times_for_path.contains(path)) return gesture_update_times_for_path.at(path).back();
+    if (committed_update_times_for_path.contains(path)) return committed_update_times_for_path.at(path).back();
+    return {};
 }
 
 StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {

@@ -1029,9 +1029,9 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     }
 
     // Flash background color of nodes when its corresponding path updates.
-    if (stats.latest_update_time_for_path.contains(path)) {
-        const auto latest_update_time = stats.latest_update_time_for_path.contains(path) ? stats.latest_update_time_for_path.at(path) : TimePoint{};
-        const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
+    const auto &latest_update_time = stats.LatestUpdateTime(path);
+    if (latest_update_time) {
+        const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time.value()).count() / s.Style.FlowGrid.FlashDurationSec;
         ImVec4 flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.w = max(0.0f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);

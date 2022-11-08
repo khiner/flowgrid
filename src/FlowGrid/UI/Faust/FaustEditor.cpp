@@ -338,7 +338,7 @@ void Audio::FaustState::FaustEditor::Draw() const {
         zep_initialized = true;
     }
 
-    auto *active_buffer = zep_editor->GetActiveBuffer();
+    auto *buffer = zep_editor->GetActiveBuffer();
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
@@ -348,7 +348,7 @@ void Audio::FaustState::FaustEditor::Draw() const {
         }
         if (ImGui::BeginMenu("Settings")) {
             if (ImGui::BeginMenu("Editor mode")) {
-                bool enabledVim = strcmp(active_buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
+                bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
                 if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
                     zep_editor->SetGlobalMode(ZepMode_Vim::StaticName());
@@ -373,9 +373,9 @@ void Audio::FaustState::FaustEditor::Draw() const {
         if (ImGui::BeginMenu("Window")) {
             auto *tabWindow = zep_editor->activeTabWindow;
             if (ImGui::MenuItem("Horizontal split")) {
-                tabWindow->AddWindow(active_buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
+                tabWindow->AddWindow(buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
             } else if (ImGui::MenuItem("Vertical split")) {
-                tabWindow->AddWindow(active_buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
+                tabWindow->AddWindow(buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
             }
             ImGui::EndMenu();
         }
@@ -395,15 +395,15 @@ void Audio::FaustState::FaustEditor::Draw() const {
     if (ImGui::IsWindowFocused()) zep_editor->HandleInput();
     else zep_editor->ResetCursorTimer();
 
-    // TODO this is not the usual immediate-mode case. Only set text if  changed the text
-    //  Really what I want is for an application undo/redo containing code text changes to do exactly what
-    //  zep does for undo/redo internally.
+    // TODO this is not the usual immediate-mode case. Only set text if the text changed.
+    //  Really what I want is for an application undo/redo containing code text changes to do exactly what zep does for undo/redo internally.
     //  XXX This currently always redundantly re-sets the buffer when the change comes from the editor.
-    if (c.has_new_faust_code) {
+    //  The comparison is also slow.
+    // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
+    if (s.Audio.Faust.Code != buffer->workingBuffer.string().c_str()) { // NOLINT(readability-redundant-string-cstr)
         ignore_changes = true;
         zep_editor->GetActiveBuffer()->SetText(s.Audio.Faust.Code);
         ignore_changes = false;
-        c.has_new_faust_code = false;
     }
 }
 

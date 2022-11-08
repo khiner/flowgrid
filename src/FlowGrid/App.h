@@ -1356,7 +1356,6 @@ struct Context {
 
     void clear();
 
-    void update_faust_context();
     void on_set_value(const StatePath &);
 
     Preferences preferences;
@@ -1364,7 +1363,6 @@ struct Context {
     std::optional<fs::path> current_project_path;
 
     bool is_widget_gesturing{};
-    bool has_new_faust_code{};
     TimePoint gesture_start_time{};
     float gesture_time_remaining_sec{};
 

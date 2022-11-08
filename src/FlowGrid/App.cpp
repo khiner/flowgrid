@@ -359,12 +359,6 @@ bool Context::action_allowed(const ActionID action_id) const {
 }
 bool Context::action_allowed(const Action &action) const { return action_allowed(action::get_id(action)); }
 
-void Context::update_faust_context() {
-    if (s.Audio.OutSampleRate == 0) return; // Sample rate has not been set up yet (set during first audio stream initialization).
-
-    has_new_faust_code = true; // todo I hate this. also, might be called due to sample rate change, not code change.
-}
-
 void Context::clear() {
     current_project_path.reset();
     store_history.Reset();
@@ -411,7 +405,6 @@ void Context::open_project(const fs::path &path) {
         set(store_from_json(project));
 
         s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
-        update_faust_context();
     } else if (format == DiffFormat) {
         open_project(EmptyProjectPath); // todo wasteful - need a `set_project_file` method or somesuch to avoid redoing other `open_project` side-effects.
 
@@ -497,29 +490,29 @@ void StoreHistory::FinalizeGesture() {
     const auto merged_gesture = action::merge_gesture(active_gesture);
     active_gesture.clear();
 
-    const auto merged_gesture_size = merged_gesture.size();
+    const auto gesture_size = merged_gesture.size();
     // Apply context-dependent transformations to actions with large data members to compress them before committing them to the gesture history.
-    const auto active_gesture_compressed = merged_gesture | transform([this, merged_gesture_size](const auto &action) -> Action {
+    const auto compressed_gesture = merged_gesture | transform([this, gesture_size](const auto &action) -> Action {
         const auto id = action::get_id(action);
-        if (id == action::id<Actions::set_history_index> && merged_gesture_size == 1) {
+        if (id == action::id<Actions::set_history_index> && gesture_size == 1) {
             const auto new_history_index = std::get<Actions::set_history_index>(action).history_index;
             if (new_history_index == gesture_begin_index - 1) return undo{};
             if (new_history_index == gesture_begin_index + 1) return redo{};
         }
         return action;
     }) | views::filter([this](const auto &action) {
-        // Filter out any resulting actions that don't actually result in a `index` change.
+        // Filter out any resulting actions that don't actually result in a `history.index` change.
         return action::get_id(action) != action::id<Actions::set_history_index> || std::get<Actions::set_history_index>(action).history_index != gesture_begin_index;
     }) | to<const Gesture>;
-    if (!active_gesture_compressed.empty()) gestures.emplace_back(active_gesture_compressed);
 
-    gesture_begin_index = index;
-    if (gesture_patch.empty()) return;
-    if (active_gesture_compressed.empty()) throw std::runtime_error("Non-empty state-diff resulting from an empty compressed gesture!");
+    if (compressed_gesture.empty()) {
+        if (!gesture_patch.empty()) throw std::runtime_error("Non-empty patch resulting from an empty compressed gesture.");
+        return;
+    }
 
-    // TODO use an undo _tree_ and keep this history
-    while (Size() > index + 1) store_records.pop_back();
+    while (Size() > index + 1) store_records.pop_back(); // TODO use an undo _tree_ and keep this history
     store_records.emplace_back(Clock::now(), store);
+    gestures.emplace_back(compressed_gesture);
     index = Size() - 1;
     gesture_begin_index = index;
 }

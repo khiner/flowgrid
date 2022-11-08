@@ -150,11 +150,10 @@ void on_set_value(const StatePath &path) {
     else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiStyle);
     else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImPlotStyle);
 }
-void on_patch(const Action &action, const Patch &patch) {
-    store_history.active_gesture.emplace_back(action);
-    store_history.stats.Apply(patch, Clock::now(), Forward, false);
+void on_patch(const Patch &patch) {
     for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
     s.Audio.update_process();
+    store_history.stats.Apply(patch, Clock::now(), Forward, false);
 }
 
 Store State::Update(const Action &action) const {
@@ -266,12 +265,17 @@ void Context::on_action(const Action &action) {
         [&](const save_faust_svg_file &a) { save_box_svg(a.path); },
 
         // `store_history.index`-changing actions:
-        [&](const undo &) { store_history.SetIndex(history.index - 1); },
+        [&](const undo &) {
+            // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
+            // We want undo to only revert the gesture, without navigating back to before the previous gesture.
+            store_history.SetIndex(history.active_gesture.empty() ? history.index - 1 : history.index);
+        },
         [&](const redo &) { store_history.SetIndex(history.index + 1); },
         [&](const Actions::set_history_index &a) { store_history.SetIndex(a.index); },
 
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
+            store_history.active_gesture.emplace_back(a);
             const auto prev_store = store;
             on_patch(CreatePatch(prev_store, set(state.Update(a)), base_path));
         },
@@ -461,7 +465,7 @@ void StoreHistory::FinalizeGesture() {
     active_gesture.clear();
 
     if (merged_gesture.empty()) {
-        if (!gesture_patch.empty()) throw std::runtime_error("Non-empty patch resulting from an empty compressed gesture.");
+        if (!gesture_patch.empty()) throw std::runtime_error("Non-empty patch resulting from an empty merged gesture.");
         return;
     }
 
@@ -471,15 +475,14 @@ void StoreHistory::FinalizeGesture() {
 }
 
 void StoreHistory::Stats::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
-    latest_updated_paths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
+    if (!patch.empty()) latest_updated_paths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
 
     for (const auto &[partial_path, op]: patch.ops) {
         const auto &path = patch.base_path / partial_path;
         if (direction == Forward) {
-            auto &update_times_for_path = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
-            update_times_for_path[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
+            auto &update_times = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
+            update_times[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
         } else if (committed_update_times_for_path.contains(path)) {
-            // Undo never applies to `gesture_update_times_for_path`
             auto &update_times = committed_update_times_for_path.at(path);
             update_times.pop_back();
             if (update_times.empty()) committed_update_times_for_path.erase(path);
@@ -498,22 +501,14 @@ std::optional<TimePoint> StoreHistory::Stats::LatestUpdateTime(const StatePath &
 StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {
     vector<StatePath> paths;
     for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
-    for (const auto &path: views::keys(gesture_update_times_for_path)) {
-        if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
-    }
+    for (const auto &path: views::keys(gesture_update_times_for_path)) if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
 
     const bool has_gesture = !gesture_update_times_for_path.empty();
     vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
     int i = 0;
-    for (const auto &path: paths) {
-        values[i++] = committed_update_times_for_path.contains(path) ? committed_update_times_for_path.at(path).size() : 0;
-    }
+    for (const auto &path: paths) values[i++] = committed_update_times_for_path.contains(path) ? committed_update_times_for_path.at(path).size() : 0;
     // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
-    if (has_gesture) {
-        for (const auto &path: paths) {
-            values[i++] = gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).size() : 0;
-        }
-    }
+    if (has_gesture) for (const auto &path: paths) values[i++] = gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).size() : 0;
 
     const auto labels = paths | transform([](const string &path) {
         // Convert `string` to char array, removing first character of the path, which is a '/'.
@@ -526,19 +521,31 @@ StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {
 }
 
 void StoreHistory::SetIndex(int new_index) {
+    // If we're mid-gesture, cancel the current gesture and navigate to the requested history index.
+    if (!active_gesture.empty()) {
+        // Cancel the gesture.
+        stats.Apply({}, Clock::now(), Forward, true);
+        active_gesture.clear();
+        // Revert the gesture.
+        const auto prev_store = store;
+        const auto &patch = ::CreatePatch(prev_store, set(store_records[index].store));
+        for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
+        s.Audio.update_process();
+    }
     if (new_index == index || new_index < 0 || new_index >= Size()) return;
 
-    FinalizeGesture();
+    int old_index = index;
+    index = new_index;
 
-    const auto direction = new_index > index ? Forward : Reverse;
-    // todo set index directly instead of incrementing - first need to update `stats` to reflect recent immer changes
-    while (index != new_index) {
-        index = direction == Reverse ? --index : ++index;
-        const auto prev_store = store;
-        set(store_records[index].store);
-        const auto &patch = ::CreatePatch(prev_store, store);
-        stats.Apply(patch, store_records[index].time, direction, true);
-        for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
-    }
+    const auto prev_store = store;
+    const auto &patch = ::CreatePatch(prev_store, set(store_records[index].store));
+    for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
     s.Audio.update_process();
+
+    const auto direction = new_index > old_index ? Forward : Reverse;
+    int i = old_index;
+    while (i != new_index) {
+        const auto &segment_patch = CreatePatch(direction == Reverse ? --i : i++);
+        stats.Apply(segment_patch.Patch, segment_patch.Time, direction, true);
+    }
 }

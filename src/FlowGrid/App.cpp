@@ -142,18 +142,23 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
-// todo refactor to always run through this when (and only when) global `set(store)` is called
-void on_set_value(const StatePath &path) {
-    // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
-    // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-    if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiStyle);
-    else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImPlotStyle);
-}
-void on_patch(const Patch &patch) {
-    for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
+Patch ApplyStore(const Store &new_store, const StatePath &base_path = RootPath) {
+    const auto prev_store = store;
+    const auto &patch = CreatePatch(prev_store, SetStore(new_store), base_path);
+
+    UIContext::Flags ui_context_flags = UIContext::Flags_None;
+    for (const auto &[partial_path, _op]: patch.ops) {
+        const auto &path = patch.base_path / partial_path;
+        // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
+        // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
+        if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+        else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
+        else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
+    }
+    if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
     s.Audio.update_process();
-    store_history.stats.Apply(patch, Clock::now(), Forward, false);
+
+    return patch;
 }
 
 Store State::Update(const Action &action) const {
@@ -276,8 +281,8 @@ void Context::on_action(const Action &action) {
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
             store_history.active_gesture.emplace_back(a);
-            const auto prev_store = store;
-            on_patch(CreatePatch(prev_store, SetStore(state.Update(a)), base_path));
+            const auto &patch = ApplyStore(state.Update(a), base_path);
+            store_history.stats.Apply(patch, Clock::now(), Forward, false);
         },
     }, action);
 
@@ -378,7 +383,6 @@ void Context::open_project(const fs::path &path) {
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
         SetStore(store_from_json(project));
-
         s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
     } else if (format == DiffFormat) {
         open_project(EmptyProjectPath); // todo wasteful - need a `set_project_file` method or somesuch to avoid redoing other `open_project` side-effects.
@@ -521,27 +525,19 @@ StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {
 }
 
 void StoreHistory::SetIndex(int new_index) {
-    // If we're mid-gesture, cancel the current gesture and navigate to the requested history index.
+    // If we're mid-gesture, cancel the current gesture before navigating to the requested history index.
     if (!active_gesture.empty()) {
-        // Cancel the gesture.
+        // Cancel & revert the gesture.
         stats.Apply({}, Clock::now(), Forward, true);
         active_gesture.clear();
-        // Revert the gesture.
-        const auto prev_store = store;
-        const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
-        for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
-        s.Audio.update_process();
+        ApplyStore(store_records[index].store);
     }
     if (new_index == index || new_index < 0 || new_index >= Size()) return;
 
     int old_index = index;
     index = new_index;
 
-    const auto prev_store = store;
-    const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
-    for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
-    s.Audio.update_process();
-
+    ApplyStore(store_records[index].store);
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
     while (i != new_index) {

@@ -142,16 +142,43 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
+// todo refactor to always run through this when (and only when) global `set(store)` is called
+void on_set_value(const StatePath &path) {
+    // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
+    // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
+    if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiSettings); // TODO only when not ui-initiated
+    else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiStyle);
+    else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImPlotStyle);
+}
+void on_patch(const Action &action, const Patch &patch) {
+    store_history.active_gesture.emplace_back(action);
+    store_history.stats.Apply(patch, Clock::now(), Forward, false);
+    for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
+    s.Audio.update_process();
+}
+
 Store State::Update(const Action &action) const {
     return std::visit(visitor{
+        [&](const set_value &a) { return store.set(a.path, a.value); },
+        [&](const set_values &a) { return ::set(a.values); },
+        [&](const toggle_value &a) { return store.set(a.path, !std::get<bool>(store.at(a.path))); },
+        [&](const apply_patch &a) {
+            const auto &patch = a.patch;
+            auto transient = store.transient();
+            for (const auto &[partial_path, op]: patch.ops) {
+                const auto &path = patch.base_path / partial_path;
+                if (op.op == Add || op.op == Replace) transient.set(path, op.value.value());
+                else if (op.op == Remove) transient.erase(path);
+            }
+            return transient.persistent();
+        },
+        [&](const open_file_dialog &a) { return FileDialog.set(a.dialog); },
+        [&](const close_file_dialog &) { return set(FileDialog.Visible, false); },
         [&](const show_open_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [&](const show_save_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
         [&](const show_open_faust_file_dialog &) { return FileDialog.set({"Choose file", FaustDspFileExtension, ".", ""}); },
         [&](const show_save_faust_file_dialog &) { return FileDialog.set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
         [&](const show_save_faust_svg_file_dialog &) { return FileDialog.set({"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
-
-        [&](const open_file_dialog &a) { return FileDialog.set(a.dialog); },
-        [&](const close_file_dialog &) { return set(FileDialog.Visible, false); },
 
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
@@ -195,19 +222,10 @@ Store State::Update(const Action &action) const {
             }
         },
         [&](const open_faust_file &a) { return set(Audio.Faust.Code, FileIO::read(a.path)); },
-        [&](const close_application &) {
-            return set({
-                {Processes.UI.Running, false},
-                {Audio.Running, false},
-            });
-        },
-        [&](const auto &) {
-            return store;
-        }, // All actions that don't directly update state (e.g. undo/redo & open/load-project)
+        [&](const close_application &) { return set({{Processes.UI.Running, false}, {Audio.Running, false}}); },
+        [&](const auto &) { return store; }, // All actions that don't directly update state (undo/redo & open/load-project, etc.)
     }, action);
 }
-
-void save_box_svg(const string &path); // defined in FaustUI
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path) {
     PatchOps ops{};
@@ -227,24 +245,12 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &base
     return {ops, base_path};
 }
 
-// todo refactor to always run through this when (and only when) global `set(store)` is called
-void on_set_value(const StatePath &path) {
-    // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
-    // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-    if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiSettings); // TODO only when not ui-initiated
-    else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImGuiStyle);
-    else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) s.Apply(UIContext::Flags_ImPlotStyle);
-}
-void on_patch(const Action &action, const Patch &patch) {
-    store_history.active_gesture.emplace_back(action);
-    store_history.stats.Apply(patch, Clock::now(), Forward, false);
-    for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
-    s.Audio.update_process();
-}
+void save_box_svg(const string &path); // Defined in FaustUI
 
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // Safeguard against actions running in an invalid state.
 
+    const auto &base_path = std::holds_alternative<Actions::apply_patch>(action) ? std::get<Actions::apply_patch>(action).patch.base_path : RootPath;
     std::visit(visitor{
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
@@ -265,39 +271,14 @@ void Context::on_action(const Action &action) {
         [&](const Actions::set_history_index &a) { store_history.SetIndex(a.index); },
 
         // Remaining actions have a direct effect on the application state.
-        [&](const set_value &a) {
-            const auto prev_store = store;
-            set(store.set(a.path, a.value));
-            on_patch(a, CreatePatch(prev_store, store));
-        },
-        [&](const set_values &a) {
-            const auto prev_store = store;
-            set(::set(a.values));
-            on_patch(a, CreatePatch(prev_store, store));
-        },
-        [&](const toggle_value &a) {
-            const auto prev_store = store;
-            set(store.set(a.path, !std::get<bool>(store.at(a.path))));
-            on_patch(a, CreatePatch(prev_store, store));
-            // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-            store_history.FinalizeGesture();
-        },
-        [&](const apply_patch &a) {
-            const auto &patch = a.patch;
-            auto transient = store.transient();
-            for (const auto &[partial_path, op]: patch.ops) {
-                const auto &path = patch.base_path / partial_path;
-                if (op.op == Add || op.op == Replace) transient.set(path, op.value.value());
-                else if (op.op == Remove) transient.erase(path);
-            }
-            const auto prev_store = store;
-            set(transient);
-            on_patch(a, CreatePatch(prev_store, store, patch.base_path));
-        },
         [&](const auto &a) {
-            on_patch(a, CreatePatch(store, set(state.Update(a))));
+            const auto prev_store = store;
+            on_patch(CreatePatch(prev_store, set(state.Update(a)), base_path));
         },
     }, action);
+
+    // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
+    if (std::holds_alternative<toggle_value>(action)) store_history.FinalizeGesture();
 }
 
 //-----------------------------------------------------------------------------

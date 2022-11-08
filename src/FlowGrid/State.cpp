@@ -1714,8 +1714,6 @@ void ShowGesture(const Gesture &gesture) {
 
 void Metrics::FlowGridMetrics::Draw() const {
     {
-        // Gestures (semantically grouped lists of actions)
-
         // Active (uncompressed) gesture
         const bool widget_gesture = c.is_widget_gesturing;
         const bool active_gesture_present = !history.active_gesture.empty();
@@ -1767,7 +1765,7 @@ void Metrics::FlowGridMetrics::Draw() const {
                         ShowGesture(gesture);
                         TreePop();
                     }
-                    if (TreeNode("Store")) {
+                    if (TreeNode("State")) {
                         JsonTree("", store_record);
                         TreePop();
                     }

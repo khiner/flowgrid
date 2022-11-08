@@ -1149,7 +1149,6 @@ struct close_application {};
 struct set_value { StatePath path; Primitive value; };
 struct set_values { StoreEntries values; };
 struct toggle_value { StatePath path; };
-
 struct apply_patch { Patch patch; };
 
 struct set_imgui_color_style { int id; };
@@ -1364,16 +1363,12 @@ struct Context {
     float gesture_time_remaining_sec{};
 
 private:
-    void on_action(const Action &); // This is the only method that modifies `state`.
-
-    // Takes care of all side effects needed to put the app into the provided application state json.
-    // This function can be run at any time, but it's not thread-safe.
-    // Running it on anything but the UI thread could cause correctness issues or event crash with e.g. a NPE during a concurrent read.
-    // This is especially the case when assigning to `state_json`, which is not an atomic operation like assigning to `_state` is.
     void open_project(const fs::path &);
     bool save_project(const fs::path &);
     void set_current_project_path(const fs::path &);
     bool write_preferences() const;
+
+    void on_action(const Action &);
 
     std::queue<const Action> queued_actions;
 };

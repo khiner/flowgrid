@@ -1076,7 +1076,7 @@ void StateViewer::Draw() const {
         EndMenuBar();
     }
 
-    StateJsonTree("State", c.get_project_json());
+    StateJsonTree("State", Context::get_project_json());
 }
 
 void StateMemoryEditor::Draw() const {
@@ -1126,7 +1126,7 @@ void ProjectPreview::Draw() const {
 
     Separator();
 
-    const json project_json = c.get_project_json(ProjectFormat(int(Format)));
+    const json project_json = Context::get_project_json(ProjectFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
@@ -1706,10 +1706,9 @@ void Demo::Draw() const {
 }
 
 void ShowGesture(const Gesture &gesture) {
-    for (size_t action_i = 0; action_i < gesture.size(); action_i++) {
-        const auto &action = gesture[action_i];
-        const auto &label = action::get_name(action);
-        JsonTree(label, json(action)[1], JsonTreeNodeFlags_None, to_string(action_i).c_str());
+    for (size_t action_index = 0; action_index < gesture.size(); action_index++) {
+        const auto &action = gesture[action_index];
+        JsonTree(action::get_name(action), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
     }
 }
 
@@ -1741,47 +1740,43 @@ void Metrics::FlowGridMetrics::Draw() const {
             Text("No active gesture");
             EndDisabled();
         }
-
-        // Committed gestures
-        const bool has_gestures = !history.Empty();
-        if (!has_gestures) BeginDisabled();
-        if (TreeNodeEx("Committed gestures", ImGuiTreeNodeFlags_DefaultOpen, "Committed gestures (%d)", history.Size())) {
-            for (int gesture_i = 0; gesture_i < history.Size(); gesture_i++) {
-                if (TreeNodeEx(to_string(gesture_i).c_str(), gesture_i == history.Size() - 1 ? ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None)) {
-                    ShowGesture(history.store_records[gesture_i].gesture);
-                    TreePop();
-                }
-            }
-            TreePop();
-        }
-        if (!has_gestures) EndDisabled();
     }
     Separator();
     {
-        // Diffs
-        const bool has_diffs = history.Size() > 1;
-        if (!has_diffs) BeginDisabled();
-        if (TreeNodeEx("Diffs", ImGuiTreeNodeFlags_DefaultOpen, "Diffs (Count: %d, Current index: %d)", history.Size() - 1, history.index)) {
-            for (int i = 0; i < history.Size() - 1; i++) {
-                if (TreeNodeEx(to_string(i).c_str(), i == history.index - 1 ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[patch, time] = history.CreatePatch(i);
-                    for (const auto &[partial_path, op]: patch.ops) {
-                        const auto &path = patch.base_path / partial_path;
-                        if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                            BulletText("Op: %s", to_string(op.op).c_str());
-                            if (op.value.has_value()) BulletText("Value: %s", to_string(op.value.value()).c_str());
-                            if (op.old.has_value()) BulletText("Old value: %s", to_string(op.old.value()).c_str());
-                            TreePop();
-                        }
-                    }
-
+        const bool has_records = history.Size() > 1; // The first record is the initial store, with an app-start (basically) timestamp, and an empty gesture.
+        if (!has_records) BeginDisabled();
+        if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Count: %d, Current index: %d)", history.Size() - 1, history.index)) {
+            for (int i = 1; i < history.Size(); i++) {
+                if (TreeNodeEx(to_string(i).c_str(), i == history.index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    const auto &[time, store_record, gesture] = history.store_records[i];
                     BulletText("Time: %s", format("{}\n", time).c_str());
+                    if (TreeNode("Patch")) {
+                        const auto &[patch, _] = history.CreatePatch(i - 1); // We compute the patches when we need them rather than memoizing them.
+                        for (const auto &[partial_path, op]: patch.ops) {
+                            const auto &path = patch.base_path / partial_path;
+                            if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                                BulletText("Op: %s", to_string(op.op).c_str());
+                                if (op.value.has_value()) BulletText("Value: %s", to_string(op.value.value()).c_str());
+                                if (op.old.has_value()) BulletText("Old value: %s", to_string(op.old.value()).c_str());
+                                TreePop();
+                            }
+                        }
+                        TreePop();
+                    }
+                    if (TreeNode("Gesture")) {
+                        ShowGesture(gesture);
+                        TreePop();
+                    }
+                    if (TreeNode("Store")) {
+                        JsonTree("", store_record);
+                        TreePop();
+                    }
                     TreePop();
                 }
             }
             TreePop();
         }
-        if (!has_diffs) EndDisabled();
+        if (!has_records) EndDisabled();
     }
     Separator();
     {

@@ -1461,8 +1461,8 @@ void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
 
 // Main setters that modify the canonical application state store.
 // _All_ store assignments happen in these two methods.
-Store set(Store store);
-Store set(TransientStore &transient);
+Store SetStore(Store store);
+Store SetStore(TransientStore &transient);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
 

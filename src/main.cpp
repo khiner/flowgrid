@@ -14,8 +14,8 @@ Context application_context{};
 Context &context = application_context;
 Context &c = application_context;
 
-Store set(Store persistent) { return application_store = std::move(persistent); }
-Store set(TransientStore &transient) { return application_store = transient.persistent(); }
+Store SetStore(Store persistent) { return application_store = std::move(persistent); }
+Store SetStore(TransientStore &transient) { return application_store = transient.persistent(); }
 
 bool q(Action &&a, bool flush) {
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.

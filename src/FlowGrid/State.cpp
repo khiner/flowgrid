@@ -519,7 +519,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
 //-----------------------------------------------------------------------------
 
 Window::Window(const StateMember *parent, const string &id, const bool visible) : UIStateMember(parent, id) {
-    set(set(Visible, visible));
+    SetStore(set(Visible, visible));
 }
 
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
@@ -1136,15 +1136,15 @@ void ProjectPreview::Draw() const {
 //-----------------------------------------------------------------------------
 
 Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    set(ColorsDark());
+    SetStore(ColorsDark());
 }
 Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    set(ColorsAuto());
+    SetStore(ColorsAuto());
 }
 Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    set(ColorsDark());
-    set(DiagramColorsDark());
-    set(DiagramLayoutFlowGrid());
+    SetStore(ColorsDark());
+    SetStore(DiagramColorsDark());
+    SetStore(DiagramLayoutFlowGrid());
 }
 
 Store Style::ImGuiStyle::ColorsDark() const {

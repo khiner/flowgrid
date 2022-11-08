@@ -40,7 +40,7 @@ void set(const std::vector<std::pair<StatePath, ImVec4>> &values, TransientStore
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
-    set(store.set(Path, value));
+    SetStore(store.set(Path, value));
 }
 
 namespace nlohmann {
@@ -277,7 +277,7 @@ void Context::on_action(const Action &action) {
         [&](const auto &a) {
             store_history.active_gesture.emplace_back(a);
             const auto prev_store = store;
-            on_patch(CreatePatch(prev_store, set(state.Update(a)), base_path));
+            on_patch(CreatePatch(prev_store, SetStore(state.Update(a)), base_path));
         },
     }, action);
 
@@ -377,7 +377,7 @@ void Context::open_project(const fs::path &path) {
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        set(store_from_json(project));
+        SetStore(store_from_json(project));
 
         s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
     } else if (format == DiffFormat) {
@@ -528,7 +528,7 @@ void StoreHistory::SetIndex(int new_index) {
         active_gesture.clear();
         // Revert the gesture.
         const auto prev_store = store;
-        const auto &patch = ::CreatePatch(prev_store, set(store_records[index].store));
+        const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
         for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
         s.Audio.update_process();
     }
@@ -538,7 +538,7 @@ void StoreHistory::SetIndex(int new_index) {
     index = new_index;
 
     const auto prev_store = store;
-    const auto &patch = ::CreatePatch(prev_store, set(store_records[index].store));
+    const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
     for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);
     s.Audio.update_process();
 

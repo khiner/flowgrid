@@ -454,7 +454,6 @@ void StoreHistory::Reset() {
     store_records.clear();
     store_records.push_back({Clock::now(), store, {}});
     index = 0;
-    gesture_begin_index = 0;
     active_gesture = {};
     stats = {};
 }
@@ -474,7 +473,7 @@ vector<Gesture> StoreHistory::Gestures() const {
 void StoreHistory::FinalizeGesture() {
     if (active_gesture.empty()) return;
 
-    const auto gesture_patch = ::CreatePatch(store_records[gesture_begin_index].store, store);
+    const auto gesture_patch = ::CreatePatch(store_records[index].store, store);
     stats.Apply(gesture_patch, Clock::now(), Forward, true);
 
     const auto merged_gesture = action::merge_gesture(active_gesture);
@@ -488,7 +487,6 @@ void StoreHistory::FinalizeGesture() {
     while (Size() > index + 1) store_records.pop_back(); // TODO use an undo _tree_ and keep this history
     store_records.push_back({Clock::now(), store, merged_gesture});
     index = Size() - 1;
-    gesture_begin_index = index;
 }
 
 void StoreHistory::Stats::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
@@ -561,7 +559,6 @@ void StoreHistory::SetIndex(int new_index) {
         index = direction == Reverse ? --index : ++index;
         const auto prev_store = store;
         set(store_records[index].store);
-        gesture_begin_index = index;
         const auto &patch = ::CreatePatch(prev_store, store);
         stats.Apply(patch, store_records[index].time, direction, true);
         for (const auto &[partial_path, _op]: patch.ops) on_set_value(patch.base_path / partial_path);

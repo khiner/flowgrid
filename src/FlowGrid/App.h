@@ -1510,9 +1510,6 @@ struct StoreHistory {
     int index{0};
     Gesture active_gesture; // uncompressed, uncommitted
     Stats stats;
-
-private:
-    int gesture_begin_index = 0;
 };
 
 extern const StoreHistory &history;

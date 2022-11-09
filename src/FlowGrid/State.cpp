@@ -190,7 +190,9 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
                 const auto &_b = std::get<apply_patch>(b);
                 // Keep patch actions affecting different base state-paths separate,
                 // since actions affecting different state bases are likely semantically different.
-                if (_a.patch.base_path == _b.patch.base_path) return apply_patch{merge(_a.patch.ops, _b.patch.ops), _b.patch.base_path};
+                const auto &ops = merge(_a.patch.ops, _b.patch.ops);
+                if (ops.empty()) return true;
+                if (_a.patch.base_path == _b.patch.base_path) return apply_patch{ops, _b.patch.base_path};
                 return false;
             }
             return false;

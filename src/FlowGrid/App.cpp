@@ -254,7 +254,7 @@ void save_box_svg(const string &path); // Defined in FaustUI
 void Context::on_action(const Action &action) {
     if (!action_allowed(action)) return; // Safeguard against actions running in an invalid state.
 
-    const auto &base_path = std::holds_alternative<Actions::apply_patch>(action) ? std::get<Actions::apply_patch>(action).patch.base_path : RootPath;
+    const auto &base_path = std::holds_alternative<apply_patch>(action) ? std::get<apply_patch>(action).patch.base_path : RootPath;
     std::visit(visitor{
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
@@ -326,10 +326,8 @@ bool Context::clear_preferences() {
 
 json Context::get_project_json(const ProjectFormat format) {
     switch (format) {
-        case None: return nullptr;
         case StateFormat: return store;
-        case DiffFormat: return {{"diffs", history.Patches()}, {"index", history.index}};
-        case ActionFormat: return history.Gestures();
+        case ActionFormat: return {{"gestures", history.Gestures()}, {"index", history.index}};
     }
 }
 
@@ -369,14 +367,15 @@ void Context::clear() {
 
 // Private methods
 
-ProjectFormat get_project_format(const fs::path &path) {
+std::optional<ProjectFormat> get_project_format(const fs::path &path) {
     const string &ext = path.extension();
-    return ProjectFormatForExtension.contains(ext) ? ProjectFormatForExtension.at(ext) : None;
+    if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
+    return {};
 }
 
 void Context::open_project(const fs::path &path) {
     const auto format = get_project_format(path);
-    if (format == None) return; // TODO log
+    if (!format) return; // TODO log
 
     clear();
 
@@ -384,20 +383,15 @@ void Context::open_project(const fs::path &path) {
     if (format == StateFormat) {
         SetStore(store_from_json(project));
         s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
-    } else if (format == DiffFormat) {
-        open_project(EmptyProjectPath); // todo wasteful - need a `set_project_file` method or somesuch to avoid redoing other `open_project` side-effects.
-
-//        diffs = project["diffs"]; // todo
-        int new_index = project["history_index"];
-        on_action(Actions::set_history_index{new_index});
     } else if (format == ActionFormat) {
         open_project(EmptyProjectPath);
 
-        const Gestures project_gestures = project;
-        for (const auto &gesture: project_gestures) {
+        const Gestures gestures = project["gestures"];
+        for (const auto &gesture: gestures) {
             for (const auto &action: gesture) on_action(action);
             store_history.FinalizeGesture();
         }
+        store_history.SetIndex(project["index"]);
     }
 
     if (is_user_project_path(path)) set_current_project_path(path);
@@ -409,10 +403,10 @@ bool Context::save_project(const fs::path &path) {
         return false;
 
     const auto format = get_project_format(path);
-    if (format == None) return false; // TODO log
+    if (!format) return false; // TODO log
 
     store_history.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
-    if (FileIO::write(path, get_project_json(format).dump())) {
+    if (FileIO::write(path, get_project_json(format.value()).dump())) {
         if (is_user_project_path(path)) set_current_project_path(path);
         return true;
     }
@@ -452,11 +446,9 @@ bool StoreHistory::Empty() const { return Size() == 0; }
 bool StoreHistory::CanUndo() const { return !active_gesture.empty() || index > 0; }
 bool StoreHistory::CanRedo() const { return index < Size(); }
 
-vector<StatePatch> StoreHistory::Patches() const {
-    return views::ints(0, Size() - 1) | transform([this](const int i) { return CreatePatch(i); }) | to<vector>;
-}
-vector<Gesture> StoreHistory::Gestures() const {
-    return store_records | transform([](const auto &record) { return record.gesture; }) | to<vector>;
+Gestures StoreHistory::Gestures() const {
+    return store_records | transform([](const auto &record) { return record.gesture; }) |
+        views::filter([](const auto &gesture) { return !gesture.empty(); }) | to<vector>; // First gesture is expected to be empty.
 }
 
 void StoreHistory::FinalizeGesture() {

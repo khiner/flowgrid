@@ -6,7 +6,6 @@
 #include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
-#include <range/v3/view/map.hpp>
 
 #include "faust/dsp/libfaust-signal.h"
 #include "faust/dsp/libfaust-box.h"

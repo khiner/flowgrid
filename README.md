@@ -227,29 +227,18 @@ Each type of FlowGrid project file is saved as plain JSON.
     This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
     FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
     This approach provides a pretty strong guarantee that loading a new project will always produce the same, valid empty-project state.
-* `.fgd`: _FlowGrid**Diffs**_
-  - Instead of saving the full application state, `.fgd` project files store a JSON object with two properties:
-    *`diffs`: A list of _bidirectional project state diffs_ (each with forward- and reverse-patches), in [JSON Patch](https://jsonpatch.com/) format, corresponding to the application-state effects of every action that has effected the application's state since its launch
-    *`history_index`: The project's position in the list of diffs. (Or, equivalently, action position or position in the undo-stack)
-    When you save your project as an `.fgd` file, your current undo-position is stored here.
-  - FlowGrid loads `.fgd` project files by:
-    * Running the `open_empty_project` action (explained above) to clear the current application and load a fresh empty one
-    * Setting the application context's `diffs` list to the one stored in the file
-    * Executing each (forward-)diff up to the stored `history_index`
 * `.fga`: _FlowGrid**Actions**_
-  - Finally, FlowGrid can save and load projects as a list of _action gestures_.
+  - FlowGrid can also save and load projects as a list of _action gestures_.
     This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.
     More accurately, an `.fga` file is a list _of lists_ of actions.
     Each top-level list represents a logical _gesture_, composed of a list of actions.
     Each action item contains all the information needed to carry out its effect on the application state.
-    Contrast this with `.fgd` project files, which store the _results_ of each action over the application session.
     Each list of actions in a `.fga` file tells you, in application-domain semantics, what _happened_.
-    A diff item in a `.fgd` file tells you what _changed_ as a result.
   - **Gesture compression:** Actions within each gesture are compressed to a potentially smaller set of actions.
     This compression is done in a way that retains the same application-state effects, while keeping the same application-domain semantics.
   - FlowGrid loads `.fga` project files by:
-    * Running the `open_empty_project` action
-    * Executing each action stored in the file, finalizing the gesture after each sub-list.
+    * Opening an empty project
+    * Executing each action stored in the file, finalizing the gesture after each sub-list
 
 _TODO: Tradeoffs between project types_
 

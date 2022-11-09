@@ -12,6 +12,7 @@
 #include <queue>
 #include <set>
 #include <range/v3/view/iota.hpp>
+#include <range/v3/view/map.hpp>
 
 #include "nlohmann/json.hpp"
 #include "fmt/chrono.h"
@@ -435,7 +436,7 @@ struct StatePathUpdateFrequency : Window {
     void Draw() const override;
 };
 
-enum ProjectFormat { None = 0, StateFormat, DiffFormat, ActionFormat };
+enum ProjectFormat { StateFormat, ActionFormat };
 
 struct ProjectPreview : Window {
     using Window::Window;
@@ -1308,20 +1309,10 @@ struct State : UIStateMember {
 // [SECTION] Main `Context` class
 //-----------------------------------------------------------------------------
 
-const map<ProjectFormat, string> ExtensionForProjectFormat{
-    {StateFormat, ".fls"},
-    {DiffFormat, ".fld"},
-    {ActionFormat, ".fla"},
-};
-
-// todo derive from above map
-const map<string, ProjectFormat> ProjectFormatForExtension{
-    {ExtensionForProjectFormat.at(StateFormat), StateFormat},
-    {ExtensionForProjectFormat.at(DiffFormat), DiffFormat},
-    {ExtensionForProjectFormat.at(ActionFormat), ActionFormat},
-};
-
-static const std::set<string> AllProjectExtensions = {".fls", ".fld", ".fla"}; // todo derive from map
+static const map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
+static const auto ProjectFormatForExtension = ExtensionForProjectFormat |
+    transform([](const auto &pair) { return std::pair<string, ProjectFormat>(pair.second, pair.first); }) | to<map>();
+static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
 static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
 static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";
@@ -1498,8 +1489,7 @@ struct StoreHistory {
     bool CanUndo() const;
     bool CanRedo() const;
 
-    vector<StatePatch> Patches() const;
-    vector<Gesture> Gestures() const;
+    Gestures Gestures() const;
 
     vector<StoreRecord> store_records; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
     int index{0};

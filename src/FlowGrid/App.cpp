@@ -39,8 +39,32 @@ void set(const std::vector<std::pair<StatePath, ImVec4>> &values, TransientStore
     for (const auto &[path, value]: values) _store.set(path, value);
 }
 
+// Split the string on '#'.
+// If there is no '#' in the provided string, the first element will have the full input string and the second element will be an empty string.
+// todo don't split on escaped '\#'
+static std::pair<string, string> parse_name(const string &str) {
+    const auto help_split = str.find_first_of('#');
+    const bool found = help_split != string::npos;
+    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
+}
+
+StateMember::StateMember(const StateMember *parent, const string &id) : Parent(parent) {
+    const auto &[path_segment_and_name, help] = parse_help_text(id);
+    const auto &[path_segment, name] = parse_name(path_segment_and_name);
+    PathSegment = path_segment;
+    Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
+    Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
+    Help = help;
+    ImGuiId = ImHashStr(Name.c_str(), 0, Parent ? Parent->ImGuiId : 0);
+    WithID[ImGuiId] = this;
+}
+
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
     SetStore(store.set(Path, value));
+}
+
+StateMember::~StateMember() {
+    WithID.erase(ImGuiId);
 }
 
 namespace nlohmann {

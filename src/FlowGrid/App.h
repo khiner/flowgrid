@@ -69,14 +69,6 @@ using std::map;
 inline string path_variable_name(const StatePath &path) { return path.filename(); }
 inline string path_label(const StatePath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
 
-// Split the string on '#'.
-// If there is no '#' in the provided string, the first element will have the full input string and the second element will be an empty string.
-// todo don't split on escaped '\#'
-static std::pair<string, string> parse_name(const string &str) {
-    const auto help_split = str.find_first_of('#');
-    const bool found = help_split != string::npos;
-    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
-}
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
 // todo don't split on escaped '\?'
@@ -100,32 +92,14 @@ struct StateMember {
     // Prefix a name segment with a '#', and an info segment with a '?'.
     // E.g. "TestMember#Test-member?A state member for testing things."
     // If no name segment is found, the name defaults to the path segment.
-    StateMember(const StateMember *parent = nullptr, const string &id = "") : Parent(parent) {
-        const auto &[path_segment_and_name, help] = parse_help_text(id);
-        const auto &[path_segment, name] = parse_name(path_segment_and_name);
-        PathSegment = path_segment;
-        Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
-        Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
-        Help = help;
-        ImGuiId = ImHashStr(Name.c_str(), 0, Parent ? Parent->ImGuiId : 0);
-        // This is real ugly - JSON assignment creates a temporary instance to copy from.
-        // We don't want the destructor of that temporary instance to erase this ID.
-        // Without this check, `WithID` will always end up empty!
-        // See https://github.com/nlohmann/json/issues/1050
-        if (WithID.contains(ImGuiId)) is_temp_instance = true;
-        else WithID[ImGuiId] = this;
-    }
+    StateMember(const StateMember *parent = nullptr, const string &id = "");
     StateMember(const StateMember *parent, const string &id, const Primitive &value);
-
-    virtual ~StateMember() {
-        if (!is_temp_instance) WithID.erase(ImGuiId);
-    }
+    virtual ~StateMember();
 
     const StateMember *Parent;
     StatePath Path;
     string PathSegment, Name, Help;
     ImGuiID ImGuiId;
-    bool is_temp_instance{false};
     // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:

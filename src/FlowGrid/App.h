@@ -1092,7 +1092,7 @@ struct open_empty_project {};
 struct open_default_project {};
 
 struct show_open_project_dialog {};
-struct open_file_dialog { FileDialogData dialog; }; // todo store as json and check effect on action size
+struct open_file_dialog { string dialog_json; }; // Storing as JSON string instead of the raw struct to reduce variant size. (Raw struct is 120 bytes.)
 struct close_file_dialog {};
 
 struct save_project { string path; };

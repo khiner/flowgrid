@@ -1,8 +1,8 @@
 #pragma once
 
-#include <variant>
-
 #include "App.h"
+
+#include "nlohmann/json.hpp"
 
 namespace nlohmann {
 inline void to_json(json &j, const StatePath &path) { j = path.string(); }
@@ -92,15 +92,8 @@ inline void from_json(const json &j, Primitive &field) {
 }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
-inline void to_json(json &j, const Action &value) {
-    std::visit([&](auto &&inner_value) {
-        j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
-    }, value);
-}
-inline void from_json(const json &j, Action &value) {
-    auto id = j[0].get<action::ID>();
-    value = action::create(id, j[1]);
-}
+void to_json(json &j, const Action &value);
+void from_json(const json &j, Action &value);
 }
 
 NLOHMANN_JSON_SERIALIZE_ENUM(PatchOpType, {

@@ -7,7 +7,6 @@
 
 #include "UI.h"
 #include "../App.h"
-#include "../StateJson.h"
 
 #include "Faust/FaustEditor.h"
 #include "../FileDialog/ImGuiFileDialogDemo.h"

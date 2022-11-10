@@ -9,12 +9,15 @@
 
 #include <iostream>
 #include <list>
+#include <map>
 #include <queue>
 #include <set>
+#include <variant>
+
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "nlohmann/json.hpp"
+#include "nlohmann/json_fwd.hpp"
 #include "fmt/chrono.h"
 
 #include "UI/UIContext.h"
@@ -1190,10 +1193,13 @@ using ID = size_t;
 using Gesture = vector<Action>;
 using Gestures = vector<Gesture>;
 
-// Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
-// Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
+// Default-construct an (empty) action by its variant index (which is also its `ID`).
+// Adapted from: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
-Action create(ID index, const json &j = {});
+Action create(ID index) {
+    if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + to_string(I + index) + " out of bounds"};
+    else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
+}
 
 #include "../Boost/mp11/mp_find.h"
 

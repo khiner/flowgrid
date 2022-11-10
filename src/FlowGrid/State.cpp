@@ -256,7 +256,7 @@ bool Field::Bool::DrawMenu() const {
 bool Field::UInt::Draw() const {
     unsigned int value = *this;
     const bool edited = SliderScalar(Name.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
-    gestured();
+    UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
@@ -265,7 +265,7 @@ bool Field::UInt::Draw() const {
 bool Field::Int::Draw() const {
     int value = *this;
     const bool edited = SliderInt(Name.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
-    gestured();
+    UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
@@ -291,7 +291,7 @@ bool Field::Int::Draw(const vector<int> &options) const {
 bool Field::Float::Draw(ImGuiSliderFlags flags) const {
     float value = *this;
     const bool edited = SliderFloat(Name.c_str(), &value, min, max, fmt, flags);
-    gestured();
+    UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
@@ -300,7 +300,7 @@ bool Field::Float::Draw(ImGuiSliderFlags flags) const {
 bool Field::Float::Draw(float v_speed, ImGuiSliderFlags flags) const {
     float value = *this;
     const bool edited = DragFloat(Name.c_str(), &value, v_speed, min, max, fmt, flags);
-    gestured();
+    UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
@@ -310,7 +310,7 @@ bool Field::Float::Draw() const { return Draw(ImGuiSliderFlags_None); }
 bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
     ImVec2 value = *this;
     const bool edited = SliderFloat2(Name.c_str(), (float *) &value, min, max, fmt, flags);
-    gestured();
+    UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
@@ -319,7 +319,7 @@ bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
 bool Field::Vec2Int::Draw() const {
     ImVec2ih value = *this;
     const bool edited = SliderInt2(Name.c_str(), (int *) &value, min, max, nullptr, ImGuiSliderFlags_None);
-    gestured();
+    UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
@@ -458,11 +458,6 @@ void FillRowItemBg(const ImVec4 &col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActi
 //-----------------------------------------------------------------------------
 // [SECTION] Widgets
 //-----------------------------------------------------------------------------
-
-void fg::gestured() {
-    if (ImGui::IsItemActivated()) c.is_widget_gesturing = true;
-    if (ImGui::IsItemDeactivated()) c.is_widget_gesturing = false;
-}
 
 void fg::HelpMarker(const char *help) {
     TextDisabled("(?)");
@@ -1354,7 +1349,7 @@ bool Colors::Draw() const {
             auto value = (*this)[i];
             changed |= ImGui::ColorEdit4(path_label(Path / to_string(i)).c_str(), (float *) &value,
                 (ImGuiColorEditFlags_AlphaBar | alpha_flags) | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-            gestured();
+            UiContext.WidgetGestured();
 
             SameLine(0, style.ItemInnerSpacing.x);
             TextUnformatted(name.c_str());
@@ -1721,19 +1716,19 @@ void ShowGesture(const Gesture &gesture) {
 void Metrics::FlowGridMetrics::Draw() const {
     {
         // Active (uncompressed) gesture
-        const bool widget_gesture = c.is_widget_gesturing;
+        const bool widget_gesturing = UiContext.is_widget_gesturing;
         const bool active_gesture_present = !history.active_gesture.empty();
-        if (active_gesture_present || widget_gesture) {
+        if (active_gesture_present || widget_gesturing) {
             // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - c.gesture_time_remaining_sec / s.ApplicationSettings.GestureDurationSec);
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - UiContext.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]));
 
             const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (widget_gesture) FillRowItemBg();
+                if (widget_gesturing) FillRowItemBg();
                 else BeginDisabled();
-                Text("Widget gesture: %s", widget_gesture ? "true" : "false");
-                if (!widget_gesture) EndDisabled();
+                Text("Widget gesture: %s", widget_gesturing ? "true" : "false");
+                if (!widget_gesturing) EndDisabled();
 
                 if (active_gesture_present) ShowGesture(history.active_gesture);
                 else Text("No actions yet");

@@ -5,6 +5,8 @@
 #include "imgui_internal.h"
 #include "implot_internal.h"
 
+#include "../Helper/Time.h"
+
 struct UIContext {
     enum Flags_ {
         Flags_None = 0,
@@ -19,9 +21,15 @@ struct UIContext {
         ImFont *FixedWidth{nullptr};
     };
 
+    float GestureTimeRemainingSec() const;
+    void WidgetGestured();
+
     ImGuiContext *ImGui{nullptr};
     ImPlotContext *ImPlot{nullptr};
     Fonts Fonts{};
+
+    bool is_widget_gesturing{};
+    TimePoint gesture_start_time{};
 };
 
 extern UIContext UiContext; // Created in `main.cpp`

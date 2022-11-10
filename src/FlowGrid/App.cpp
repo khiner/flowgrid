@@ -357,13 +357,12 @@ json Context::get_project_json(const ProjectFormat format) {
 void Context::enqueue_action(const Action &a) { queued_actions.push(a); }
 
 void Context::run_queued_actions(bool force_finalize_gesture) {
-    if (!queued_actions.empty()) gesture_start_time = Clock::now();
+    if (!queued_actions.empty()) UiContext.gesture_start_time = Clock::now();
     while (!queued_actions.empty()) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    gesture_time_remaining_sec = max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
-    if (!(is_widget_gesturing || gesture_time_remaining_sec > 0) || force_finalize_gesture) store_history.FinalizeGesture();
+    if (!(UiContext.is_widget_gesturing || UiContext.GestureTimeRemainingSec() > 0) || force_finalize_gesture) store_history.FinalizeGesture();
 }
 
 bool Context::action_allowed(const ActionID action_id) const {
@@ -385,7 +384,7 @@ bool Context::action_allowed(const Action &action) const { return action_allowed
 void Context::clear() {
     current_project_path.reset();
     store_history.Reset();
-    is_widget_gesturing = false;
+    UiContext.is_widget_gesturing = false;
 }
 
 // Private methods
@@ -445,6 +444,18 @@ void Context::set_current_project_path(const fs::path &path) {
 
 bool Context::write_preferences() const {
     return FileIO::write(PreferencesPath, json(preferences).dump());
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] UIContext
+//-----------------------------------------------------------------------------
+
+float UIContext::GestureTimeRemainingSec() const {
+    return max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
+}
+void UIContext::WidgetGestured() {
+    if (ImGui::IsItemActivated()) is_widget_gesturing = true;
+    if (ImGui::IsItemDeactivated()) is_widget_gesturing = false;
 }
 
 //-----------------------------------------------------------------------------

@@ -18,11 +18,10 @@
 #include <range/v3/view/map.hpp>
 
 #include "nlohmann/json_fwd.hpp"
-#include "fmt/chrono.h"
 
 #include "UI/UIContext.h"
-#include "Helper/String.h"
 #include "Helper/Sample.h"
+#include "Helper/String.h"
 #include "Helper/File.h"
 #include "Helper/UI.h"
 #include "immer/map.hpp"
@@ -33,7 +32,6 @@ namespace fg = FlowGrid;
 
 using namespace fmt;
 using namespace nlohmann;
-using namespace std::chrono_literals; // Support literals like `1s` or `500ms`
 
 using StatePath = fs::path;
 struct StatePathHash {
@@ -54,11 +52,6 @@ extern TransientStore &ctor_store;
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec2ih &lhs, const ImVec2ih &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
-
-// Time declarations inspired by https://stackoverflow.com/a/14391562/780425
-using Clock = std::chrono::system_clock; // Main system clock
-using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
-using TimePoint = Clock::time_point;
 
 using std::nullopt;
 using std::cout, std::cerr;
@@ -1316,10 +1309,6 @@ struct Context {
 
     std::optional<fs::path> current_project_path;
 
-    bool is_widget_gesturing{};
-    TimePoint gesture_start_time{};
-    float gesture_time_remaining_sec{};
-
 private:
     void open_project(const fs::path &);
     bool save_project(const fs::path &);
@@ -1336,8 +1325,6 @@ private:
 //-----------------------------------------------------------------------------
 
 namespace FlowGrid {
-void gestured();
-
 void HelpMarker(const char *help);
 
 void MenuItem(ActionID); // For actions with no data members.

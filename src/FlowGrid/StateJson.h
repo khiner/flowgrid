@@ -98,7 +98,8 @@ inline void to_json(json &j, const Action &value) {
     }, value);
 }
 inline void from_json(const json &j, Action &value) {
-    value = action::create(j[0].get<int>()); // todo fill values
+    auto id = j[0].get<action::ID>();
+    value = action::create(id, j[1]);
 }
 }
 

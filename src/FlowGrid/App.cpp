@@ -106,6 +106,13 @@ string to_string(PatchOpType type) {
 string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 namespace action {
+
+template<ID I>
+Action create(ID index, const json &j) {
+    if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + to_string(I + index) + " out of bounds"};
+    else return index == 0 ? j.get<std::variant_alternative_t<I, Action>>() : create<I + 1>(index - 1, j);
+}
+
 // An action's menu label is its name, except for a few exceptions.
 const map<ID, string> menu_label_for_id{
     {id<show_open_project_dialog>, "Open project"},

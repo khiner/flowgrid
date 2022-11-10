@@ -1190,24 +1190,19 @@ using ID = size_t;
 using Gesture = vector<Action>;
 using Gestures = vector<Gesture>;
 
-// Default-construct an action by its variant index (which is also its `ID`).
-// From https://stackoverflow.com/a/60567091/780425
+// Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
+// Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
-Action create(ID index) {
-    if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + to_string(I + index) + " out of bounds"};
-    else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
-}
-
-// Get the index for action variant type.
-// From https://stackoverflow.com/a/66386518/780425
+Action create(ID index, const json &j = {});
 
 #include "../Boost/mp11/mp_find.h"
 
-// E.g. `const ActionId action_id = id<action>`
+// E.g. `action::ID action_id = id<action>`
 // An action's ID is its index in the `Action` variant.
 // Down the road, this means `Action` would need to be append-only (no order changes) for backwards compatibility.
-// Not worried about that right now, since that should be an easy piece to replace with some uuid system later.
+// Not worried about that right now, since it should be easy enough to replace with some UUID system later.
 // Index is simplest.
+// Mp11 approach from: https://stackoverflow.com/a/66386518/780425
 template<typename T>
 constexpr size_t id = mp_find<Action, T>::value;
 

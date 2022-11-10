@@ -60,7 +60,7 @@ StateMember::StateMember(const StateMember *parent, const string &id) : Parent(p
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
-    SetStore(store.set(Path, value));
+    ctor_store.set(Path, value);
 }
 
 StateMember::~StateMember() {
@@ -188,73 +188,70 @@ Patch ApplyStore(const Store &new_store, const StatePath &base_path = RootPath) 
 }
 
 Store State::Update(const Action &action) const {
-    return std::visit(visitor{
-        [&](const set_value &a) { return store.set(a.path, a.value); },
-        [&](const set_values &a) { return ::set(a.values); },
-        [&](const toggle_value &a) { return store.set(a.path, !std::get<bool>(store.at(a.path))); },
+    auto transient = store.transient();
+
+    std::visit(visitor{
+        [&](const set_value &a) { transient.set(a.path, a.value); },
+        [&](const set_values &a) { ::set(a.values, transient); },
+        [&](const toggle_value &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
         [&](const apply_patch &a) {
             const auto &patch = a.patch;
-            auto transient = store.transient();
             for (const auto &[partial_path, op]: patch.ops) {
                 const auto &path = patch.base_path / partial_path;
                 if (op.op == Add || op.op == Replace) transient.set(path, op.value.value());
                 else if (op.op == Remove) transient.erase(path);
             }
-            return transient.persistent();
         },
-        [&](const open_file_dialog &a) { return FileDialog.set(a.dialog); },
-        [&](const close_file_dialog &) { return set(FileDialog.Visible, false); },
-        [&](const show_open_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
-        [&](const show_save_project_dialog &) { return FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
-        [&](const show_open_faust_file_dialog &) { return FileDialog.set({"Choose file", FaustDspFileExtension, ".", ""}); },
-        [&](const show_save_faust_file_dialog &) { return FileDialog.set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
-        [&](const show_save_faust_svg_file_dialog &) { return FileDialog.set({"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}); },
+        [&](const open_file_dialog &a) { FileDialog.set(a.dialog, transient); },
+        [&](const close_file_dialog &) { set(FileDialog.Visible, false, transient); },
+        [&](const show_open_project_dialog &) { FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
+        [&](const show_save_project_dialog &) { FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}, transient); },
+        [&](const show_open_faust_file_dialog &) { FileDialog.set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
+        [&](const show_save_faust_file_dialog &) { FileDialog.set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}, transient); },
+        [&](const show_save_faust_svg_file_dialog &) { FileDialog.set({"Choose directory", ".*", ".", "faust_diagram", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}, transient); },
 
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
-                case 0: return Style.ImGui.ColorsDark();
-                case 1: return Style.ImGui.ColorsLight();
-                case 2: return Style.ImGui.ColorsClassic();
-                default: return store;
+                case 0: return Style.ImGui.ColorsDark(transient);
+                case 1: return Style.ImGui.ColorsLight(transient);
+                case 2: return Style.ImGui.ColorsClassic(transient);
             }
         },
         [&](const set_implot_color_style &a) {
             switch (a.id) {
-                case 0: return Style.ImPlot.ColorsAuto();
-                case 1: return Style.ImPlot.ColorsDark();
-                case 2: return Style.ImPlot.ColorsLight();
-                case 3: return Style.ImPlot.ColorsClassic();
-                default: return store;
+                case 0: return Style.ImPlot.ColorsAuto(transient);
+                case 1: return Style.ImPlot.ColorsDark(transient);
+                case 2: return Style.ImPlot.ColorsLight(transient);
+                case 3: return Style.ImPlot.ColorsClassic(transient);
             }
         },
         [&](const set_flowgrid_color_style &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.ColorsDark();
-                case 1: return Style.FlowGrid.ColorsLight();
-                case 2: return Style.FlowGrid.ColorsClassic();
-                default: return store;
+                case 0: return Style.FlowGrid.ColorsDark(transient);
+                case 1: return Style.FlowGrid.ColorsLight(transient);
+                case 2: return Style.FlowGrid.ColorsClassic(transient);
             }
         },
         [&](const set_flowgrid_diagram_color_style &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.DiagramColorsDark();
-                case 1: return Style.FlowGrid.DiagramColorsLight();
-                case 2: return Style.FlowGrid.DiagramColorsClassic();
-                case 3: return Style.FlowGrid.DiagramColorsFaust();
-                default: return store;
+                case 0: return Style.FlowGrid.DiagramColorsDark(transient);
+                case 1: return Style.FlowGrid.DiagramColorsLight(transient);
+                case 2: return Style.FlowGrid.DiagramColorsClassic(transient);
+                case 3: return Style.FlowGrid.DiagramColorsFaust(transient);
             }
         },
         [&](const set_flowgrid_diagram_layout_style &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.DiagramLayoutFlowGrid();
-                case 1: return Style.FlowGrid.DiagramLayoutFaust();
-                default: return store;
+                case 0: return Style.FlowGrid.DiagramLayoutFlowGrid(transient);
+                case 1: return Style.FlowGrid.DiagramLayoutFaust(transient);
             }
         },
-        [&](const open_faust_file &a) { return set(Audio.Faust.Code, FileIO::read(a.path)); },
-        [&](const close_application &) { return set({{UiProcess.Running, false}, {Audio.Running, false}}); },
-        [&](const auto &) { return store; }, // All actions that don't directly update state (undo/redo & open/load-project, etc.)
+        [&](const open_faust_file &a) { set(Audio.Faust.Code, FileIO::read(a.path), transient); },
+        [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
+        [&](const auto &) {}, // All actions that don't directly update state (undo/redo & open/load-project, etc.)
     }, action);
+
+    return transient.persistent();
 }
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path) {

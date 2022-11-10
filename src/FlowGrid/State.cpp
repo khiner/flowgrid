@@ -57,7 +57,7 @@ void Vector<T>::set(const vector<T> &values, TransientStore &_store) const {
 template<typename T>
 Store Vector<T>::set(const vector<std::pair<int, T>> &values, const Store &_store) const {
     auto transient = _store.transient();
-    for (const auto &[index, value]: values) transient.set(Path / to_string(index), value);
+    set(values, transient);
     return transient.persistent();
 }
 
@@ -71,6 +71,10 @@ Store Vector<T>::set(const vector<T> &values, const Store &_store) const {
     auto transient = _store.transient();
     set(values, transient);
     return transient.persistent();
+}
+template<typename T>
+void Vector<T>::set(const vector<std::pair<int, T>> &values, TransientStore &_store) const {
+    for (const auto &[index, value]: values) _store.set(Path / to_string(index), value);
 }
 
 template<typename T>
@@ -521,7 +525,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
 //-----------------------------------------------------------------------------
 
 Window::Window(const StateMember *parent, const string &id, const bool visible) : UIStateMember(parent, id) {
-    SetStore(set(Visible, visible));
+    set(Visible, visible, ctor_store);
 }
 
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
@@ -1134,78 +1138,82 @@ void ProjectPreview::Draw() const {
 //-----------------------------------------------------------------------------
 
 Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    SetStore(ColorsDark());
+    ColorsDark(ctor_store);
 }
 Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    SetStore(ColorsAuto());
+    ColorsAuto(ctor_store);
 }
 Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    SetStore(ColorsDark());
-    SetStore(DiagramColorsDark());
-    SetStore(DiagramLayoutFlowGrid());
+    ColorsDark(ctor_store);
+    DiagramColorsDark(ctor_store);
+    DiagramLayoutFlowGrid(ctor_store);
 }
 
-Store Style::ImGuiStyle::ColorsDark() const {
+void Style::ImGuiStyle::ColorsDark(TransientStore &_store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsDark(&dst[0]);
-    return Colors.set(dst);
+    Colors.set(dst, _store);
 }
-Store Style::ImGuiStyle::ColorsLight() const {
+void Style::ImGuiStyle::ColorsLight(TransientStore &_store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsLight(&dst[0]);
-    return Colors.set(dst);
+    Colors.set(dst, _store);
 }
-Store Style::ImGuiStyle::ColorsClassic() const {
+void Style::ImGuiStyle::ColorsClassic(TransientStore &_store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsClassic(&dst[0]);
-    return Colors.set(dst);
+    Colors.set(dst, _store);
 }
 
-Store Style::ImPlotStyle::ColorsAuto() const {
+void Style::ImPlotStyle::ColorsAuto(TransientStore &_store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsAuto(&dst[0]);
-    return set(MinorAlpha, 0.25f, Colors.set(dst));
+    Colors.set(dst, _store);
+    set(MinorAlpha, 0.25f, _store);
 }
-Store Style::ImPlotStyle::ColorsDark() const {
+void Style::ImPlotStyle::ColorsDark(TransientStore &_store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsDark(&dst[0]);
-    return set(MinorAlpha, 0.25f, Colors.set(dst));
+    Colors.set(dst, _store);
+    set(MinorAlpha, 0.25f, _store);
 }
-Store Style::ImPlotStyle::ColorsLight() const {
+void Style::ImPlotStyle::ColorsLight(TransientStore &_store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsLight(&dst[0]);
-    return set(MinorAlpha, 1, Colors.set(dst));
+    Colors.set(dst, _store);
+    set(MinorAlpha, 1, _store);
 }
-Store Style::ImPlotStyle::ColorsClassic() const {
+void Style::ImPlotStyle::ColorsClassic(TransientStore &_store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsClassic(&dst[0]);
-    return set(MinorAlpha, 0.5f, Colors.set(dst));
+    Colors.set(dst, _store);
+    set(MinorAlpha, 0.5f, _store);
 }
 
-Store Style::FlowGridStyle::ColorsDark() const {
-    return Colors.set({
+void Style::FlowGridStyle::ColorsDark(TransientStore &_store) const {
+    Colors.set({
         {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
         {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
         {FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
-    });
+    }, _store);
 }
-Store Style::FlowGridStyle::ColorsLight() const {
-    return Colors.set({
+void Style::FlowGridStyle::ColorsLight(TransientStore &_store) const {
+    Colors.set({
         {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
         {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
         {FlowGridCol_ParamsBg, {1, 1, 1, 1}},
-    });
+    }, _store);
 }
-Store Style::FlowGridStyle::ColorsClassic() const {
-    return Colors.set({
+void Style::FlowGridStyle::ColorsClassic(TransientStore &_store) const {
+    Colors.set({
         {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
         {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
         {FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
-    });
+    }, _store);
 }
 
-Store Style::FlowGridStyle::DiagramColorsDark() const {
-    return Colors.set({
+void Style::FlowGridStyle::DiagramColorsDark(TransientStore &_store) const {
+    Colors.set({
         {FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
         {FlowGridCol_DiagramText, {1, 1, 1, 1}},
         {FlowGridCol_DiagramGroupTitle, {1, 1, 1, 1}},
@@ -1219,10 +1227,10 @@ Store Style::FlowGridStyle::DiagramColorsDark() const {
         {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
         {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
         {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
+    }, _store);
 }
-Store Style::FlowGridStyle::DiagramColorsClassic() const {
-    return Colors.set({
+void Style::FlowGridStyle::DiagramColorsClassic(TransientStore &_store) const {
+    Colors.set({
         {FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
         {FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
         {FlowGridCol_DiagramGroupTitle, {0.9, 0.9, 0.9, 1}},
@@ -1236,10 +1244,10 @@ Store Style::FlowGridStyle::DiagramColorsClassic() const {
         {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
         {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
         {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
+    }, _store);
 }
-Store Style::FlowGridStyle::DiagramColorsLight() const {
-    return Colors.set({
+void Style::FlowGridStyle::DiagramColorsLight(TransientStore &_store) const {
+    Colors.set({
         {FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
         {FlowGridCol_DiagramText, {0, 0, 0, 1}},
         {FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
@@ -1253,10 +1261,10 @@ Store Style::FlowGridStyle::DiagramColorsLight() const {
         {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
         {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
         {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
+    }, _store);
 }
-Store Style::FlowGridStyle::DiagramColorsFaust() const {
-    return Colors.set({
+void Style::FlowGridStyle::DiagramColorsFaust(TransientStore &_store) const {
+    Colors.set({
         {FlowGridCol_DiagramBg, {1, 1, 1, 1}},
         {FlowGridCol_DiagramText, {1, 1, 1, 1}},
         {FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
@@ -1270,11 +1278,11 @@ Store Style::FlowGridStyle::DiagramColorsFaust() const {
         {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
         {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
         {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
-    });
+    }, _store);
 }
 
-Store Style::FlowGridStyle::DiagramLayoutFlowGrid() const {
-    return set({
+void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
+    set({
         {DiagramSequentialConnectionZigzag, false},
         {DiagramOrientationMark, false},
         {DiagramTopLevelMargin, 10},
@@ -1288,10 +1296,10 @@ Store Style::FlowGridStyle::DiagramLayoutFlowGrid() const {
         {DiagramGap, ImVec2{8, 8}},
         {DiagramArrowSize, ImVec2{3, 2}},
         {DiagramInverterRadius, 3},
-    });
+    }, _store);
 }
-Store Style::FlowGridStyle::DiagramLayoutFaust() const {
-    return set({
+void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
+    set({
         {DiagramSequentialConnectionZigzag, true},
         {DiagramOrientationMark, true},
         {DiagramTopLevelMargin, 20},
@@ -1305,7 +1313,7 @@ Store Style::FlowGridStyle::DiagramLayoutFaust() const {
         {DiagramGap, ImVec2{8, 8}},
         {DiagramArrowSize, ImVec2{3, 2}},
         {DiagramInverterRadius, 3},
-    });
+    }, _store);
 }
 
 bool Colors::Draw() const {
@@ -1669,8 +1677,8 @@ void Demo::ImGuiDemo::Draw() const {
 void Demo::ImPlotDemo::Draw() const {
     ImPlot::ShowDemoWindow();
 }
-Store FileDialog::set(const FileDialogData &data) const {
-    return ::set({
+void FileDialog::set(const FileDialogData &data, TransientStore &_store) const {
+    ::set({
         {Title, data.title},
         {Filters, data.filters},
         {FilePath, data.file_path},
@@ -1679,7 +1687,7 @@ Store FileDialog::set(const FileDialogData &data) const {
         {MaxNumSelections, data.max_num_selections},
         {Flags, data.flags},
         {Visible, true},
-    });
+    }, _store);
 }
 
 void Demo::FileDialogDemo::Draw() const {

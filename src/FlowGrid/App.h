@@ -48,6 +48,7 @@ using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>
 
 // Full, read-only canonical application state. Defined in `main.cpp`.
 extern const Store &store;
+extern TransientStore &ctor_store;
 
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
@@ -264,11 +265,13 @@ struct Vector : Base {
     T operator[](size_t index) const;
     size_t size(const Store &_store = store) const;
 
-    Store set(const vector<T> &values, const Store &_store = store) const;
     Store set(size_t index, const T &value, const Store &_store = store) const;
+    Store set(const vector<T> &values, const Store &_store = store) const;
     Store set(const vector<std::pair<int, T>> &, const Store &_store = store) const;
-    void set(const vector<T> &values, TransientStore &) const;
+
     void set(size_t index, const T &value, TransientStore &) const;
+    void set(const vector<T> &values, TransientStore &) const;
+    void set(const vector<std::pair<int, T>> &, TransientStore &) const;
     void truncate(size_t length, TransientStore &) const; // Delete every element after index `length - 1`.
 
     bool Draw() const override { return false; };
@@ -742,16 +745,16 @@ struct Style : Window {
 
         Colors Colors{this, "Colors", GetColorName};
 
-        Store ColorsDark() const;
-        Store ColorsLight() const;
-        Store ColorsClassic() const;
+        void ColorsDark(TransientStore &_store) const;
+        void ColorsLight(TransientStore &_store) const;
+        void ColorsClassic(TransientStore &_store) const;
 
-        Store DiagramColorsDark() const;
-        Store DiagramColorsClassic() const;
-        Store DiagramColorsLight() const;
-        Store DiagramColorsFaust() const; // Color Faust diagrams the same way Faust does when it renders to SVG.
-        Store DiagramLayoutFlowGrid() const;
-        Store DiagramLayoutFaust() const; // Lay out Faust diagrams the same way Faust does when it renders to SVG.
+        void DiagramColorsDark(TransientStore &_store) const;
+        void DiagramColorsClassic(TransientStore &_store) const;
+        void DiagramColorsLight(TransientStore &_store) const;
+        void DiagramColorsFaust(TransientStore &_store) const; // Color Faust diagrams the same way Faust does when it renders to SVG.
+        void DiagramLayoutFlowGrid(TransientStore &_store) const;
+        void DiagramLayoutFaust(TransientStore &_store) const; // Lay out Faust diagrams the same way Faust does when it renders to SVG.
 
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
@@ -779,9 +782,9 @@ struct Style : Window {
         void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
 
-        Store ColorsDark() const;
-        Store ColorsLight() const;
-        Store ColorsClassic() const;
+        void ColorsDark(TransientStore &) const;
+        void ColorsLight(TransientStore &) const;
+        void ColorsClassic(TransientStore &) const;
 
         static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 
@@ -855,10 +858,10 @@ struct Style : Window {
         void Apply(ImPlotContext *ctx) const;
         void Draw() const override;
 
-        Store ColorsAuto() const;
-        Store ColorsDark() const;
-        Store ColorsLight() const;
-        Store ColorsClassic() const;
+        void ColorsAuto(TransientStore &_store) const;
+        void ColorsDark(TransientStore &_store) const;
+        void ColorsLight(TransientStore &_store) const;
+        void ColorsClassic(TransientStore &_store) const;
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.
@@ -1017,7 +1020,7 @@ struct FileDialogData {
 
 struct FileDialog : Window {
     FileDialog(const StateMember *parent, const string &id, const bool visible = false) : Window(parent, id, visible) {}
-    Store set(const FileDialogData &data) const;
+    void set(const FileDialogData &data, TransientStore &) const;
     void Draw() const override;
 
     Bool SaveMode{this, "SaveMode"}; // The same file dialog instance is used for both saving & opening files.

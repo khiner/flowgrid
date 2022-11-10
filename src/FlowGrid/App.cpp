@@ -354,15 +354,19 @@ json Context::get_project_json(const ProjectFormat format) {
     }
 }
 
-void Context::enqueue_action(const Action &a) { queued_actions.push(a); }
+void Context::enqueue_action(const Action &a) {
+    if (queued_actions.empty()) UiContext.gesture_start_time = Clock::now();
+    queued_actions.push(a);
+}
 
 void Context::run_queued_actions(bool force_finalize_gesture) {
-    if (!queued_actions.empty()) UiContext.gesture_start_time = Clock::now();
     while (!queued_actions.empty()) {
         on_action(queued_actions.front());
         queued_actions.pop();
     }
-    if (!(UiContext.is_widget_gesturing || UiContext.GestureTimeRemainingSec() > 0) || force_finalize_gesture) store_history.FinalizeGesture();
+    if (force_finalize_gesture || (!UiContext.is_widget_gesturing && UiContext.GestureTimeRemainingSec() <= 0)) {
+        store_history.FinalizeGesture();
+    }
 }
 
 bool Context::action_allowed(const ActionID action_id) const {

@@ -41,7 +41,7 @@ bool q(Action &&a, bool flush) {
 int main(int, const char **) {
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
-    s.Audio.update_process(); // Start audio process
+    s.Audio.UpdateProcess(); // Start audio process
     UiContext = CreateUi(); // Initialize UI
 
     {
@@ -58,7 +58,7 @@ int main(int, const char **) {
     // This project is loaded before applying diffs when loading any .fgd (FlowGridDiff) project.
     c.save_empty_project();
 
-    while (s.Processes.UI.Running) {
+    while (s.UiProcess.Running) {
         TickUi();
         c.run_queued_actions();
     }

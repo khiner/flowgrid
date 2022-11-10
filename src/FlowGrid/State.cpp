@@ -550,10 +550,6 @@ void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
 
-void Process::Draw() const {
-    Running.Draw();
-}
-
 void Info::Draw() const {
     const auto hovered_id = GetHoveredID();
     if (hovered_id && StateMember::WithID.contains(hovered_id)) {

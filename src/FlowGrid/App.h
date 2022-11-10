@@ -368,15 +368,6 @@ struct Window : UIStateMember {
     void SelectTab() const;
 };
 
-struct Process : Window {
-    using Window::Window;
-
-    void Draw() const override;
-    virtual void update_process() const {}; // Start/stop the thread based on the current `Running` state, and any other needed housekeeping.
-
-    Bool Running{this, format("Running?Disabling completely ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
-};
-
 struct ApplicationSettings : Window {
     using Window::Window;
     void Draw() const override;
@@ -492,8 +483,8 @@ enum FaustDiagramHoverFlags_ {
 };
 using FaustDiagramHoverFlags = int;
 
-struct Audio : Process {
-    using Process::Process;
+struct Audio : Window {
+    using Window::Window;
 
     // A selection of supported formats, corresponding to `SoundIoFormat`
     enum IoFormat_ {
@@ -658,10 +649,11 @@ process = tgroup("grp 1",
         String Error{this, "Error"};
     };
 
-    void update_process() const override;
-    const String &get_device_id(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
+    void UpdateProcess() const;
+    const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Bool FaustRunning{this, "FaustRunning?Disabling completely skips Faust computation when computing audio output.", true};
+    Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
+    Bool FaustRunning{this, "FaustRunning?Disabling skips Faust computation when computing audio output.", true};
     Bool Muted{this, "Muted?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true};
     AudioBackend Backend = none;
     String InDeviceId{this, "InDeviceId#In device ID"};
@@ -674,11 +666,6 @@ process = tgroup("grp 1",
     Bool MonitorInput{this, "MonitorInput?Enabling adds the audio input stream directly to the audio output."};
 
     FaustState Faust{this, "Faust"};
-};
-
-struct File : StateMember {
-    using StateMember::StateMember;
-
 };
 
 enum FlowGridCol_ {
@@ -922,11 +909,6 @@ struct Style : Window {
     ImGuiStyle ImGui{this, "ImGui?Configure style for base UI"};
     ImPlotStyle ImPlot{this, "ImPlot?Configure style for plots"};
     FlowGridStyle FlowGrid{this, "FlowGrid?Configure application-specific style"};
-};
-
-struct Processes : StateMember {
-    using StateMember::StateMember;
-    Process UI{this, "UI"};
 };
 
 struct ImGuiDockNodeSettings;
@@ -1261,11 +1243,18 @@ struct State : UIStateMember {
     Store Update(const Action &) const; // State is only updated via `context.on_action(action)`
     void Apply(UIContext::Flags flags) const;
 
+    struct UIProcess : Window {
+        using Window::Window;
+        void Draw() const override {}
+
+        Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
+    };
+
     ImGuiSettings ImGuiSettings{this, "ImGuiSettings#ImGui settings"};
     Style Style{this, "Style"};
     ApplicationSettings ApplicationSettings{this, "ApplicationSettings"};
     Audio Audio{this, "Audio"};
-    Processes Processes{this, "Processes"};
+    UIProcess UiProcess{this, "UiProcess"};
     FileDialog FileDialog{this, "FileDialog"};
     Info Info{this, "Info"};
 

@@ -266,11 +266,11 @@ void setup_audio() {
         for (int i = 0; i < device_count; i++) device_ids[io].emplace_back(get_device(io, i)->id);
 
         int device_index = default_device_index;
-        if (s.Audio.get_device_id(io)) {
+        if (s.Audio.GetDeviceId(io)) {
             bool found = false;
             for (int i = 0; i < device_count; i++) {
                 auto *device = get_device(io, i);
-                if (s.Audio.get_device_id(io) == device->id) {
+                if (s.Audio.GetDeviceId(io) == device->id) {
                     device_index = i;
                     found = true;
                     soundio_device_unref(device);
@@ -278,7 +278,7 @@ void setup_audio() {
                 }
                 soundio_device_unref(device);
             }
-            if (!found) throw std::runtime_error(format("Invalid audio {} device id: ", to_string(io)) + string(s.Audio.get_device_id(io)));
+            if (!found) throw std::runtime_error(format("Invalid audio {} device id: ", to_string(io)) + string(s.Audio.GetDeviceId(io)));
         }
 
         auto *device = get_device(io, device_index);
@@ -511,7 +511,7 @@ void retrying_setup_audio() {
 string previous_faust_code;
 int previous_faust_sample_rate = 0;
 
-void Audio::update_process() const {
+void Audio::UpdateProcess() const {
     if (Running && !soundio) {
         retrying_setup_audio();
     } else if (!Running && soundio) {

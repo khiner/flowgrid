@@ -182,7 +182,7 @@ Patch ApplyStore(const Store &new_store, const StatePath &base_path = RootPath) 
         else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
     }
     if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
-    s.Audio.update_process();
+    s.Audio.UpdateProcess();
 
     return patch;
 }
@@ -252,7 +252,7 @@ Store State::Update(const Action &action) const {
             }
         },
         [&](const open_faust_file &a) { return set(Audio.Faust.Code, FileIO::read(a.path)); },
-        [&](const close_application &) { return set({{Processes.UI.Running, false}, {Audio.Running, false}}); },
+        [&](const close_application &) { return set({{UiProcess.Running, false}, {Audio.Running, false}}); },
         [&](const auto &) { return store; }, // All actions that don't directly update state (undo/redo & open/load-project, etc.)
     }, action);
 }

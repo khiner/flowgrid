@@ -29,6 +29,7 @@ include_directories(
     lib/range-v3/include
     lib/r8brain
     lib/immer
+    lib/tracy/public/tracy
 )
 
 # See readme for plans with these libraries

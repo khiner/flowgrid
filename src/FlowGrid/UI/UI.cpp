@@ -238,7 +238,7 @@ void TickUi() {
         io.WantSaveIniSettings = false;
     }
 
-    FrameMark
+    FrameMark;
 }
 
 void DestroyUi() {

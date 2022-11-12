@@ -52,7 +52,7 @@ StateMember::StateMember(const StateMember *parent, const string &id) : Parent(p
     const auto &[path_segment, name] = parse_name(path_segment_and_name);
     PathSegment = path_segment;
     Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
-    Name = name.empty() ? path_segment.empty() ? "" : snake_case_to_sentence_case(path_segment) : name;
+    Name = name.empty() ? path_segment.empty() ? "" : SnakeCaseToSentenceCase(path_segment) : name;
     Help = help;
     ImGuiId = ImHashStr(Name.c_str(), 0, Parent ? Parent->ImGuiId : 0);
     WithID[ImGuiId] = this;
@@ -141,10 +141,10 @@ const map<ID, string> menu_label_for_id{
     {id<show_save_faust_file_dialog>, "Save DSP as..."},
     {id<show_save_faust_svg_file_dialog>, "Export SVG"},
 };
-string get_name(const Action &action) { return name_for_id.at(get_id(action)); }
-const char *get_menu_label(ID action_id) {
+string GetName(const Action &action) { return NameForId.at(GetId(action)); }
+const char *GetMenuLabel(ID action_id) {
     if (menu_label_for_id.contains(action_id)) return menu_label_for_id.at(action_id).c_str();
-    return name_for_id.at(action_id).c_str();
+    return NameForId.at(action_id).c_str();
 }
 }
 
@@ -271,25 +271,25 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &base
     return {ops, base_path};
 }
 
-void save_box_svg(const string &path); // Defined in FaustUI
+void SaveBoxSvg(const string &path); // Defined in FaustUI
 
-void Context::on_action(const Action &action) {
-    if (!action_allowed(action)) return; // Safeguard against actions running in an invalid state.
+void Context::OnAction(const Action &action) {
+    if (!ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
 
     const auto &base_path = std::holds_alternative<apply_patch>(action) ? std::get<apply_patch>(action).patch.base_path : RootPath;
     std::visit(visitor{
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Actions::open_project &a) { open_project(a.path); },
-        [&](const open_empty_project &) { open_project(EmptyProjectPath); },
-        [&](const open_default_project &) { open_project(DefaultProjectPath); },
+        [&](const Actions::open_project &a) { OpenProject(a.path); },
+        [&](const open_empty_project &) { OpenProject(EmptyProjectPath); },
+        [&](const open_default_project &) { OpenProject(DefaultProjectPath); },
 
-        [&](const Actions::save_project &a) { save_project(a.path); },
-        [&](const save_default_project &) { save_project(DefaultProjectPath); },
-        [&](const Actions::save_current_project &) { save_project(current_project_path.value()); },
+        [&](const Actions::save_project &a) { SaveProject(a.path); },
+        [&](const save_default_project &) { SaveProject(DefaultProjectPath); },
+        [&](const Actions::save_current_project &) { SaveProject(current_project_path.value()); },
         [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
-        [&](const save_faust_svg_file &a) { save_box_svg(a.path); },
+        [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
 
         // `store_history.index`-changing actions:
         [&](const undo &) {
@@ -325,42 +325,42 @@ Context::Context() {
     if (fs::exists(PreferencesPath)) {
         preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
-        write_preferences();
+        WritePreferences();
     }
 }
 
 Context::~Context() = default;
 
-bool Context::is_user_project_path(const fs::path &path) {
+bool Context::IsUserProjectPath(const fs::path &path) {
     // Using relative path to avoid error: `filesystem error: in equivalent: Operation not supported`
     return !fs::equivalent(fs::relative(path), EmptyProjectPath) && !fs::equivalent(fs::relative(path), DefaultProjectPath);
 }
 
-void Context::save_empty_project() {
-    save_project(EmptyProjectPath);
-    if (!fs::exists(DefaultProjectPath)) save_project(DefaultProjectPath);
+void Context::SaveEmptyProject() {
+    SaveProject(EmptyProjectPath);
+    if (!fs::exists(DefaultProjectPath)) SaveProject(DefaultProjectPath);
 }
 
-bool Context::clear_preferences() {
+bool Context::ClearPreferences() {
     preferences.recently_opened_paths.clear();
-    return write_preferences();
+    return WritePreferences();
 }
 
-json Context::get_project_json(const ProjectFormat format) {
+json Context::GetProjectJson(const ProjectFormat format) {
     switch (format) {
         case StateFormat: return store;
         case ActionFormat: return {{"gestures", history.Gestures()}, {"index", history.index}};
     }
 }
 
-void Context::enqueue_action(const Action &a) {
+void Context::EnqueueAction(const Action &a) {
     if (queued_actions.empty()) UiContext.gesture_start_time = Clock::now();
     queued_actions.push(a);
 }
 
-void Context::run_queued_actions(bool force_finalize_gesture) {
+void Context::RunQueuedActions(bool force_finalize_gesture) {
     while (!queued_actions.empty()) {
-        on_action(queued_actions.front());
+        OnAction(queued_actions.front());
         queued_actions.pop();
     }
     if (force_finalize_gesture || (!UiContext.is_widget_gesturing && UiContext.GestureTimeRemainingSec() <= 0)) {
@@ -368,7 +368,7 @@ void Context::run_queued_actions(bool force_finalize_gesture) {
     }
 }
 
-bool Context::action_allowed(const ActionID action_id) const {
+bool Context::ActionAllowed(const ActionID action_id) const {
     switch (action_id) {
         case action::id<undo>: return history.CanUndo();
         case action::id<redo>: return history.CanRedo();
@@ -382,9 +382,9 @@ bool Context::action_allowed(const ActionID action_id) const {
         default: return true;
     }
 }
-bool Context::action_allowed(const Action &action) const { return action_allowed(action::get_id(action)); }
+bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
 
-void Context::clear() {
+void Context::Clear() {
     current_project_path.reset();
     store_history.Reset();
     UiContext.is_widget_gesturing = false;
@@ -398,54 +398,54 @@ std::optional<ProjectFormat> get_project_format(const fs::path &path) {
     return {};
 }
 
-void Context::open_project(const fs::path &path) {
+void Context::OpenProject(const fs::path &path) {
     const auto format = get_project_format(path);
     if (!format) return; // TODO log
 
-    clear();
+    Clear();
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
         SetStore(store_from_json(project));
         s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
     } else if (format == ActionFormat) {
-        open_project(EmptyProjectPath);
+        OpenProject(EmptyProjectPath);
 
         const Gestures gestures = project["gestures"];
         for (const auto &gesture: gestures) {
-            for (const auto &action: gesture) on_action(action);
+            for (const auto &action: gesture) OnAction(action);
             store_history.FinalizeGesture();
         }
         store_history.SetIndex(project["index"]);
     }
 
-    if (is_user_project_path(path)) set_current_project_path(path);
+    if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
 }
 
-bool Context::save_project(const fs::path &path) {
+bool Context::SaveProject(const fs::path &path) {
     if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) &&
-        !action_allowed(action::id<save_current_project>))
+        !ActionAllowed(action::id<save_current_project>))
         return false;
 
     const auto format = get_project_format(path);
     if (!format) return false; // TODO log
 
     store_history.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
-    if (FileIO::write(path, get_project_json(format.value()).dump())) {
-        if (is_user_project_path(path)) set_current_project_path(path);
+    if (FileIO::write(path, GetProjectJson(format.value()).dump())) {
+        if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
         return true;
     }
     return false;
 }
 
-void Context::set_current_project_path(const fs::path &path) {
+void Context::SetCurrentProjectPath(const fs::path &path) {
     current_project_path = path;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
-    write_preferences();
+    WritePreferences();
 }
 
-bool Context::write_preferences() const {
+bool Context::WritePreferences() const {
     return FileIO::write(PreferencesPath, json(preferences).dump());
 }
 
@@ -494,7 +494,7 @@ void StoreHistory::FinalizeGesture() {
     const auto gesture_patch = ::CreatePatch(store_records[index].store, store);
     stats.Apply(gesture_patch, Clock::now(), Forward, true);
 
-    const auto merged_gesture = action::merge_gesture(active_gesture);
+    const auto merged_gesture = action::MergeGesture(active_gesture);
     active_gesture.clear();
 
     if (merged_gesture.empty()) {

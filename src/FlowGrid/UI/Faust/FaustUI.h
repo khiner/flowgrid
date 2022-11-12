@@ -166,6 +166,6 @@ private:
 
 class CTree;
 typedef CTree *Box;
-void on_ui_change(FaustUI *);
-void on_box_change(Box);
-void save_box_svg(const string &path);
+void OnUiChange(FaustUI *);
+void OnBoxChange(Box);
+void SaveBoxSvg(const string &path);

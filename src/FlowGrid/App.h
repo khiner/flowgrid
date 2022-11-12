@@ -61,7 +61,7 @@ using std::map;
 
 // E.g. '/foo/bar/baz' => 'baz'
 inline string path_variable_name(const StatePath &path) { return path.filename(); }
-inline string path_label(const StatePath &path) { return snake_case_to_sentence_case(path_variable_name(path)); }
+inline string path_label(const StatePath &path) { return SnakeCaseToSentenceCase(path_variable_name(path)); }
 
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
@@ -914,7 +914,7 @@ struct ImGuiDockNodeSettings;
 // todo this will show up counter-intuitively in the json state viewers.
 struct DockNodeSettings : StateMember {
     using StateMember::StateMember;
-    void set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
+    void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
     Vector<ImGuiID> ID{this, "ID"};
@@ -931,7 +931,7 @@ struct DockNodeSettings : StateMember {
 
 struct WindowSettings : StateMember {
     using StateMember::StateMember;
-    void set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
+    void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
     Vector<ImGuiID> ID{this, "ID"};
@@ -961,7 +961,7 @@ struct TableColumnSettings : StateMember {
 
 struct TableSettings : StateMember {
     using StateMember::StateMember;
-    void set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
+    void Set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
     Vector<ImGuiID> ID{this, "ID"};
@@ -1148,9 +1148,9 @@ using Gestures = vector<Gesture>;
 // Default-construct an (empty) action by its variant index (which is also its `ID`).
 // Adapted from: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
-Action create(ID index) {
+Action Create(ID index) {
     if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + to_string(I + index) + " out of bounds"};
-    else return index == 0 ? Action{std::in_place_index<I>} : create<I + 1>(index - 1);
+    else return index == 0 ? Action{std::in_place_index<I>} : Create<I + 1>(index - 1);
 }
 
 #include "../Boost/mp11/mp_find.h"
@@ -1164,11 +1164,11 @@ Action create(ID index) {
 template<typename T>
 constexpr size_t id = mp_find<Action, T>::value;
 
-#define ActionName(action_var_name) snake_case_to_sentence_case(#action_var_name)
+#define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const map <ID, string> name_for_id{
+const map <ID, string> NameForId{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1207,7 +1207,7 @@ const map <ID, string> name_for_id{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const map <ID, string> shortcut_for_id = {
+const map <ID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1217,11 +1217,11 @@ const map <ID, string> shortcut_for_id = {
     {id<save_default_project>, "shift+cmd+s"},
 };
 
-constexpr ID get_id(const Action &action) { return action.index(); }
-string get_name(const Action &action);
-const char *get_menu_label(ID action_id);
+constexpr ID GetId(const Action &action) { return action.index(); }
+string GetName(const Action &action);
+const char *GetMenuLabel(ID action_id);
 
-Gesture merge_gesture(const Gesture &);
+Gesture MergeGesture(const Gesture &);
 } // End `action` namespace
 
 using ActionID = action::ID;
@@ -1236,7 +1236,7 @@ struct State : UIStateMember {
     State() : UIStateMember() {}
 
     void Draw() const override;
-    Store Update(const Action &) const; // State is only updated via `context.on_action(action)`
+    Store Update(const Action &) const; // State is only updated via `context.OnAction(action)`
     void Apply(UIContext::Flags flags) const;
 
     struct UIProcess : Window {
@@ -1291,31 +1291,29 @@ struct Context {
     Context();
     ~Context();
 
-    static bool is_user_project_path(const fs::path &);
-    void save_empty_project();
+    static bool IsUserProjectPath(const fs::path &);
+    static json GetProjectJson(ProjectFormat format = StateFormat);
+    void SaveEmptyProject();
 
-    bool clear_preferences();
+    void EnqueueAction(const Action &);
+    void RunQueuedActions(bool force_finalize_gesture = false);
+    bool ActionAllowed(ActionID) const;
+    bool ActionAllowed(const Action &) const;
 
-    static json get_project_json(ProjectFormat format = StateFormat);
-
-    void enqueue_action(const Action &);
-    void run_queued_actions(bool force_finalize_gesture = false);
-    bool action_allowed(ActionID) const;
-    bool action_allowed(const Action &) const;
-
-    void clear();
+    bool ClearPreferences();
+    void Clear();
 
     Preferences preferences;
-
     std::optional<fs::path> current_project_path;
 
 private:
-    void open_project(const fs::path &);
-    bool save_project(const fs::path &);
-    void set_current_project_path(const fs::path &);
-    bool write_preferences() const;
+    void OpenProject(const fs::path &);
+    bool SaveProject(const fs::path &);
+    void SetCurrentProjectPath(const fs::path &);
 
-    void on_action(const Action &);
+    void OnAction(const Action &);
+
+    bool WritePreferences() const;
 
     std::queue<const Action> queued_actions;
 };
@@ -1407,7 +1405,6 @@ void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
 // Main setters that modify the canonical application state store.
 // _All_ store assignments happen in these two methods.
 Store SetStore(Store store);
-Store SetStore(TransientStore &transient);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
 

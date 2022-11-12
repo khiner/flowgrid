@@ -177,7 +177,7 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 }
 
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
-const auto key_map = action::shortcut_for_id | transform([](const auto &entry) {
+const auto key_map = action::ShortcutForId | transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
 }) | to<map<KeyShortcut, ActionID>>;
@@ -219,8 +219,8 @@ void TickUi() {
     }
 
     for (const auto &[shortcut, action_id]: key_map) {
-        if (is_shortcut_pressed(shortcut) && c.action_allowed(action_id)) {
-            q(action::create(action_id));
+        if (is_shortcut_pressed(shortcut) && c.ActionAllowed(action_id)) {
+            q(action::Create(action_id));
         }
     }
 

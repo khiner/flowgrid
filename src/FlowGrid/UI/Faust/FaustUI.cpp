@@ -1203,7 +1203,7 @@ static Node *Tree2Node(Tree t, bool allow_links) {
     return node; // normal case
 }
 
-void on_box_change(Box box) {
+void OnBoxChange(Box box) {
     IsTreePureRouting.clear();
     focused_node_stack = {};
     if (box) {
@@ -1216,7 +1216,7 @@ void on_box_change(Box box) {
 
 static int prev_fold_complexity = 0; // watch and recompile when it changes
 
-void save_box_svg(const string &path) {
+void SaveBoxSvg(const string &path) {
     if (!root_node) return;
     prev_fold_complexity = s.Style.FlowGrid.DiagramFoldComplexity;
     // Render SVG diagram(s)
@@ -1251,7 +1251,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
 
     if (s.Style.FlowGrid.DiagramFoldComplexity != prev_fold_complexity) {
         prev_fold_complexity = s.Style.FlowGrid.DiagramFoldComplexity;
-        on_box_change(root_node->tree);
+        OnBoxChange(root_node->tree);
     }
 
     {

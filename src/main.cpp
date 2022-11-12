@@ -19,15 +19,14 @@ Context &context = application_context;
 Context &c = application_context;
 
 Store SetStore(Store persistent) { return application_store = std::move(persistent); }
-Store SetStore(TransientStore &transient) { return application_store = transient.persistent(); }
 
 bool q(Action &&a, bool flush) {
     // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
     // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
     // return queue.enqueue(a);
 
-    c.enqueue_action(a); // Actions within a single UI frame are queued up and flushed at the end of the frame (see `main.cpp`).
-    if (flush) c.run_queued_actions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
+    c.EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame (see `main.cpp`).
+    if (flush) c.RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
     return true;
 }
 
@@ -54,18 +53,15 @@ int main(int, const char **) {
         TickUi(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         TickUi(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        c.run_queued_actions(true);
+        c.RunQueuedActions(true);
     }
 
-    c.clear(); // Make sure we don't start with any undo state.
-
-    // Keep the canonical "empty" project up-to-date.
-    // This project is loaded before applying actions in a .fga (FlowGridAction) project.
-    c.save_empty_project();
+    c.Clear(); // Make sure we don't start with any undo state.
+    c.SaveEmptyProject(); // Keep the canonical "empty" project up-to-date.
 
     while (s.UiProcess.Running) {
         TickUi();
-        c.run_queued_actions();
+        c.RunQueuedActions();
     }
 
     DestroyUi();

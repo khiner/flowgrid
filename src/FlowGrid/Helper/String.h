@@ -28,7 +28,7 @@ inline static string lowercase(const string &str) {
 }
 
 // E.g. 'foo_bar_baz' => 'Foo bar baz'
-inline static string snake_case_to_sentence_case(const string &snake_case) {
+inline static string SnakeCaseToSentenceCase(const string &snake_case) {
     auto sentence_case = snake_case | views::split('_') | views::join(' ') | to<string>;
     return capitalize(sentence_case);
 }

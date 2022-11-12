@@ -154,8 +154,8 @@ PatchOps merge(const PatchOps &a, const PatchOps &b) {
  For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
 */
 std::variant<Action, bool> merge(const Action &a, const Action &b) {
-    const ID a_id = get_id(a);
-    const ID b_id = get_id(b);
+    const ID a_id = GetId(a);
+    const ID b_id = GetId(b);
 
     switch (a_id) {
         case id<undo>: if (b_id == id<set_history_index>) return b;
@@ -203,7 +203,7 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
     }
 }
 
-Gesture action::merge_gesture(const Gesture &gesture) {
+Gesture action::MergeGesture(const Gesture &gesture) {
     Gesture compressed_gesture;
 
     std::optional<const Action> active_action;
@@ -470,9 +470,9 @@ void fg::HelpMarker(const char *help) {
 }
 
 void fg::MenuItem(ActionID action_id) {
-    const char *menu_label = action::get_menu_label(action_id);
-    const char *shortcut = action::shortcut_for_id.contains(action_id) ? action::shortcut_for_id.at(action_id).c_str() : nullptr;
-    if (ImGui::MenuItem(menu_label, shortcut, false, c.action_allowed(action_id))) q(action::create(action_id));
+    const char *menu_label = action::GetMenuLabel(action_id);
+    const char *shortcut = action::ShortcutForId.contains(action_id) ? action::ShortcutForId.at(action_id).c_str() : nullptr;
+    if (ImGui::MenuItem(menu_label, shortcut, false, c.ActionAllowed(action_id))) q(action::Create(action_id));
 }
 
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
@@ -696,7 +696,7 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih SizeRef;
 };
 
-void DockNodeSettings::set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
+void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
     const int size = dss.Size;
     for (int i = 0; i < size; i++) {
         const auto &ds = dss[i];
@@ -740,7 +740,7 @@ void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     }
 }
 
-void WindowSettings::set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &_store) const {
+void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &_store) const {
     int i = 0;
     for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
         ID.set(i, ws->ID, _store);
@@ -789,7 +789,7 @@ void WindowSettings::Apply(ImGuiContext *) const {
     }
 }
 
-void TableSettings::set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &_store) const {
+void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &_store) const {
     int i = 0;
     for (auto *ts = tss.begin(); ts != nullptr; ts = tss.next_chunk(ts)) {
         auto columns_count = ts->ColumnsCount;
@@ -887,9 +887,9 @@ void TableSettings::Apply(ImGuiContext *) const {
 Store ImGuiSettings::set(ImGuiContext *ctx) const {
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
     auto _store = store.transient();
-    Nodes.set(ctx->DockContext.NodesSettings, _store);
-    Windows.set(ctx->SettingsWindows, _store);
-    Tables.set(ctx->SettingsTables, _store);
+    Nodes.Set(ctx->DockContext.NodesSettings, _store);
+    Windows.Set(ctx->SettingsWindows, _store);
+    Tables.Set(ctx->SettingsTables, _store);
 
     return _store.persistent();
 }
@@ -1072,7 +1072,7 @@ void StateViewer::Draw() const {
         EndMenuBar();
     }
 
-    StateJsonTree("State", Context::get_project_json());
+    StateJsonTree("State", Context::GetProjectJson());
 }
 
 void StateMemoryEditor::Draw() const {
@@ -1122,7 +1122,7 @@ void ProjectPreview::Draw() const {
 
     Separator();
 
-    const json project_json = Context::get_project_json(ProjectFormat(int(Format)));
+    const json project_json = Context::GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
@@ -1570,12 +1570,12 @@ void Style::FlowGridStyle::Draw() const {
             if (ScaleFill) ImGui::BeginDisabled();
             const ImVec2 scale_before = DiagramScale;
             if (DiagramScale.Draw() && DiagramScaleLinked) {
-                c.run_queued_actions();
+                c.RunQueuedActions();
                 const ImVec2 scale_after = DiagramScale;
                 q(set_value{DiagramScale.Path, scale_after.x != scale_before.x ?
                                                ImVec2{scale_after.x, scale_after.x} :
                                                ImVec2{scale_after.y, scale_after.y}});
-                c.run_queued_actions();
+                c.RunQueuedActions();
             }
             if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
                 const ImVec2 scale = DiagramScale;
@@ -1708,7 +1708,7 @@ void Demo::Draw() const {
 void ShowGesture(const Gesture &gesture) {
     for (size_t action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &action = gesture[action_index];
-        JsonTree(action::get_name(action), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
+        JsonTree(action::GetName(action), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
     }
 }
 
@@ -1781,7 +1781,7 @@ void Metrics::FlowGridMetrics::Draw() const {
         // Preferences
         const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
-            if (SmallButton("Clear")) c.clear_preferences();
+            if (SmallButton("Clear")) c.ClearPreferences();
             SameLine();
             ShowRelativePaths.Draw();
 

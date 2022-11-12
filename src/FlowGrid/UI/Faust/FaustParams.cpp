@@ -389,6 +389,6 @@ void Audio::FaustState::FaustParams::Draw() const {
 //    }
 }
 
-void on_ui_change(FaustUI *ui) {
+void OnUiChange(FaustUI *ui) {
     interface = ui;
 }

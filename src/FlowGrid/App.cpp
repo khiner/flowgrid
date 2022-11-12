@@ -291,11 +291,19 @@ void Context::OnAction(const Action &action) {
         [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
         [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
 
-        // `store_history.index`-changing actions:
+        // `history.index`-changing actions:
         [&](const undo &) {
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
-            // We want undo to only revert the gesture, without navigating back to before the previous gesture.
-            store_history.SetIndex(history.active_gesture.empty() ? history.index - 1 : history.index);
+            // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
+            // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
+            // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
+            // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
+            if (history.index == history.Size() - 1) {
+                if (!history.active_gesture.empty()) store_history.FinalizeGesture();
+                store_history.SetIndex(history.index - 1);
+            } else {
+                store_history.SetIndex(history.index - (history.active_gesture.empty() ? 1 : 0));
+            }
         },
         [&](const redo &) { store_history.SetIndex(history.index + 1); },
         [&](const Actions::set_history_index &a) { store_history.SetIndex(a.index); },

@@ -21,32 +21,18 @@ Context &c = application_context;
 Store SetStore(Store persistent) { return application_store = std::move(persistent); }
 
 bool q(Action &&a, bool flush) {
-    // Bailing on async action consumer for now, to avoid issues with concurrent state reads/writes, esp for json.
-    // Commit dc81a9ff07e1b8e61ae6613d49183abb292abafc gets rid of the queue
-    // return queue.enqueue(a);
-
-    c.EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame (see `main.cpp`).
+    c.EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
     if (flush) c.RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
     return true;
 }
 
-/**md
- # Notes
-
- These are things that might make their way to proper docs/readme, but need ironing out.
-
- ## Terminology
-
- * **Action:** A data structure, representing an event that can change the global state `s`.
-   - An action must contain all the information needed to transform the current state into the new state after the action.
- * **Actor:** A thread that generates **actions**
- */
 int main(int, const char **) {
     application_ctor_store = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
-    s.Audio.UpdateProcess(); // Start audio process
     UiContext = CreateUi(); // Initialize UI
+    s.Audio.UpdateProcess(); // Start audio process
+    s.ApplicationSettings.ActionConsumer.UpdateProcess(); // Start action consumer
 
     {
         // Relying on these imperatively-run side effects up front is not great.

@@ -1651,9 +1651,12 @@ void Style::Draw() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::Draw() const {
-    int value = history.index;
-    if (SliderInt("History index", &value, 0, history.Size() - 1)) q(set_history_index{value});
-    GestureDurationSec.Draw();
+    ActionConsumer.Running.Draw();
+    {
+        int value = history.index;
+        if (SliderInt("History index", &value, 0, history.Size() - 1)) q(set_history_index{value});
+        GestureDurationSec.Draw();
+    }
 }
 
 const vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};

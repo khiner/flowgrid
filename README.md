@@ -136,9 +136,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 * [immer](https://github.com/arximboldi/immer) persistent data structures for the main application state store
   - Used to efficiently create and store persistent state snapshots for undo history, and to compute state diffs.
 * [json](https://github.com/nlohmann/json) for state serialization
-* ~~[ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main event queue~~
-  - For now, I just moved this action processing work to the UI thread to avoid issues with concurrent reads/writes to complex structures like JSON.
-    (TODO now that we're using persistent state data structures, we can bring this back (providing a toggle for synchronous vs concurrent action queue processing))
+* [ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main action queue
 * ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured text~~
   - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
     I'll likely be using this again at some point for generic handling of actions involving long text strings.

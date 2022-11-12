@@ -30,10 +30,10 @@ include_directories(
     lib/r8brain
     lib/immer
     lib/tracy/public/tracy
+    lib/concurrentqueue
 )
 
 # See readme for plans with these libraries
-#include_directories(lib/concurrentqueue) # Not used atm.
 #include_directories(lib/diff-match-patch-cpp-stl)
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name

@@ -1,12 +1,17 @@
 #include "StateJson.h"
 
+#include "blockingconcurrentqueue.h"
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
+
+using namespace moodycamel; // Has `ConcurrentQueue` & `BlockingConcurrentQueue`
 
 map<ImGuiID, StateMember *> StateMember::WithID{};
 
 StoreHistory store_history{}; // One store checkpoint for every gesture.
 const StoreHistory &history = store_history;
+
+BlockingConcurrentQueue<Action> action_queue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
 // Persistent modifiers
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -182,6 +187,7 @@ Patch ApplyStore(const Store &new_store, const StatePath &base_path = RootPath) 
     }
     if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
     s.Audio.UpdateProcess();
+    s.ApplicationSettings.ActionConsumer.UpdateProcess();
 
     return patch;
 }
@@ -246,7 +252,7 @@ Store State::Update(const Action &action) const {
             }
         },
         [&](const open_faust_file &a) { set(Audio.Faust.Code, FileIO::read(a.path), transient); },
-        [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
+        [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}, {ApplicationSettings.ActionConsumer.Running, false}}, transient); },
         [&](const auto &) {}, // All actions that don't directly update state (undo/redo & open/load-project, etc.)
     }, action);
 
@@ -364,6 +370,7 @@ json Context::GetProjectJson(const ProjectFormat format) {
 void Context::EnqueueAction(const Action &a) {
     if (queued_actions.empty()) UiContext.gesture_start_time = Clock::now();
     queued_actions.push(a);
+    action_queue.enqueue(a);
 }
 
 void Context::RunQueuedActions(bool force_finalize_gesture) {
@@ -580,5 +587,24 @@ void StoreHistory::SetIndex(int new_index) {
     while (i != new_index) {
         const auto &segment_patch = CreatePatch(direction == Reverse ? --i : i++);
         stats.Apply(segment_patch.Patch, segment_patch.Time, direction, true);
+    }
+}
+
+void ConsumeActions() {
+    while (s.ApplicationSettings.ActionConsumer.Running) {
+        Action action;
+        const bool has_action = action_queue.try_dequeue(action);
+        if (has_action) {
+            cout << "Found action.\n";
+        }
+    }
+}
+
+std::thread action_consumer;
+void ApplicationSettings::ActionConsumer::UpdateProcess() const {
+    if (Running && !action_consumer.joinable()) {
+        action_consumer = std::thread(ConsumeActions);
+    } else if (!Running && action_consumer.joinable()) {
+        action_consumer.join();
     }
 }

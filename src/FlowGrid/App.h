@@ -1244,7 +1244,7 @@ struct State : UIStateMember {
     State() : UIStateMember() {}
 
     void Draw() const override;
-    Store Update(const Action &) const; // State is only updated via `context.OnAction(action)`
+    void Update(const Action &, TransientStore &) const;
     void Apply(UIContext::Flags flags) const;
 
     struct UIProcess : Window {
@@ -1302,9 +1302,12 @@ struct Context {
     static bool IsUserProjectPath(const fs::path &);
     static json GetProjectJson(ProjectFormat format = StateFormat);
     void SaveEmptyProject();
+    void OpenProject(const fs::path &);
+    bool SaveProject(const fs::path &);
+    void SaveCurrentProject();
 
-    void EnqueueAction(const Action &);
-    void RunQueuedActions(bool force_finalize_gesture = false);
+    static void EnqueueAction(const Action &);
+    static void RunQueuedActions(bool force_finalize_gesture = false);
     bool ActionAllowed(ActionID) const;
     bool ActionAllowed(const Action &) const;
 
@@ -1312,18 +1315,12 @@ struct Context {
     void Clear();
 
     Preferences preferences;
-    std::optional<fs::path> current_project_path;
 
 private:
-    void OpenProject(const fs::path &);
-    bool SaveProject(const fs::path &);
     void SetCurrentProjectPath(const fs::path &);
-
-    void OnAction(const Action &);
-
     bool WritePreferences() const;
 
-    std::queue<const Action> queued_actions;
+    std::optional<fs::path> current_project_path;
 };
 
 //-----------------------------------------------------------------------------

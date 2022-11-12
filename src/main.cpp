@@ -21,8 +21,8 @@ Context &c = application_context;
 Store SetStore(Store persistent) { return application_store = std::move(persistent); }
 
 bool q(Action &&a, bool flush) {
-    c.EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
-    if (flush) c.RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
+    Context::EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
+    if (flush) Context::RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
     return true;
 }
 
@@ -39,7 +39,7 @@ int main(int, const char **) {
         TickUi(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         TickUi(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        c.RunQueuedActions(true);
+        Context::RunQueuedActions(true);
     }
 
     c.Clear(); // Make sure we don't start with any undo state.

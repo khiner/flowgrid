@@ -11,6 +11,7 @@ map<ImGuiID, StateMember *> StateMember::WithID{};
 StoreHistory store_history{}; // One store checkpoint for every gesture.
 const StoreHistory &history = store_history;
 
+std::queue<const Action> queued_actions;
 BlockingConcurrentQueue<Action> action_queue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
 // Persistent modifiers
@@ -172,10 +173,7 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
-Patch ApplyStore(const Store &new_store, const StatePath &base_path = RootPath) {
-    const auto prev_store = store;
-    const auto &patch = CreatePatch(prev_store, SetStore(new_store), base_path);
-
+void OnPatch(const Patch &patch) {
     UIContext::Flags ui_context_flags = UIContext::Flags_None;
     for (const auto &[partial_path, _op]: patch.ops) {
         const auto &path = patch.base_path / partial_path;
@@ -188,13 +186,9 @@ Patch ApplyStore(const Store &new_store, const StatePath &base_path = RootPath) 
     if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
     s.Audio.UpdateProcess();
     s.ApplicationSettings.ActionConsumer.UpdateProcess();
-
-    return patch;
 }
 
-Store State::Update(const Action &action) const {
-    auto transient = store.transient();
-
+void State::Update(const Action &action, TransientStore &transient) const {
     std::visit(visitor{
         [&](const set_value &a) { transient.set(a.path, a.value); },
         [&](const set_values &a) { ::set(a.values, transient); },
@@ -255,8 +249,6 @@ Store State::Update(const Action &action) const {
         [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}, {ApplicationSettings.ActionConsumer.Running, false}}, transient); },
         [&](const auto &) {}, // All actions that don't directly update state (undo/redo & open/load-project, etc.)
     }, action);
-
-    return transient.persistent();
 }
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path) {
@@ -279,21 +271,23 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &base
 
 void SaveBoxSvg(const string &path); // Defined in FaustUI
 
-void Context::OnAction(const Action &action) {
-    if (!ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
+// todo
+//  * Receive and return a `Store` from this fn
+//  * Use above to reduce store effects of all dequeued actions together into a single `SetStore` call
+void ApplyAction(const Action &action, TransientStore &transient) {
+    if (!c.ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
 
-    const auto &base_path = std::holds_alternative<apply_patch>(action) ? std::get<apply_patch>(action).patch.base_path : RootPath;
     std::visit(visitor{
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Actions::open_project &a) { OpenProject(a.path); },
-        [&](const open_empty_project &) { OpenProject(EmptyProjectPath); },
-        [&](const open_default_project &) { OpenProject(DefaultProjectPath); },
+        [&](const Actions::open_project &a) { c.OpenProject(a.path); },
+        [&](const open_empty_project &) { c.OpenProject(EmptyProjectPath); },
+        [&](const open_default_project &) { c.OpenProject(DefaultProjectPath); },
 
-        [&](const Actions::save_project &a) { SaveProject(a.path); },
-        [&](const save_default_project &) { SaveProject(DefaultProjectPath); },
-        [&](const Actions::save_current_project &) { SaveProject(current_project_path.value()); },
+        [&](const Actions::save_project &a) { c.SaveProject(a.path); },
+        [&](const save_default_project &) { c.SaveProject(DefaultProjectPath); },
+        [&](const Actions::save_current_project &) { c.SaveCurrentProject(); },
         [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
         [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
 
@@ -317,13 +311,28 @@ void Context::OnAction(const Action &action) {
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
             store_history.active_gesture.emplace_back(a);
-            const auto &patch = ApplyStore(state.Update(a), base_path);
+            const auto prev_store = transient.persistent();
+            state.Update(a, transient);
+            const auto &patch = CreatePatch(prev_store, SetStore(transient.persistent()));
+            OnPatch(patch);
             store_history.stats.Apply(patch, Clock::now(), Forward, false);
         },
     }, action);
 
     // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
     if (std::holds_alternative<toggle_value>(action)) store_history.FinalizeGesture();
+}
+
+void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
+    bool finalize = force_finalize;
+    auto transient = store.transient();
+    for (const auto &action: gesture) {
+        ApplyAction(action, transient);
+        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
+        finalize |= std::holds_alternative<toggle_value>(action);
+    }
+    SetStore(transient.persistent());
+    if (finalize) store_history.FinalizeGesture();
 }
 
 //-----------------------------------------------------------------------------
@@ -355,6 +364,10 @@ void Context::SaveEmptyProject() {
     if (!fs::exists(DefaultProjectPath)) SaveProject(DefaultProjectPath);
 }
 
+void Context::SaveCurrentProject() {
+    if (current_project_path) SaveProject(current_project_path.value());
+}
+
 bool Context::ClearPreferences() {
     preferences.recently_opened_paths.clear();
     return WritePreferences();
@@ -374,8 +387,9 @@ void Context::EnqueueAction(const Action &a) {
 }
 
 void Context::RunQueuedActions(bool force_finalize_gesture) {
+    auto transient = store.transient();
     while (!queued_actions.empty()) {
-        OnAction(queued_actions.front());
+        ApplyAction(queued_actions.front(), transient);
         queued_actions.pop();
     }
     if (force_finalize_gesture || (!UiContext.is_widget_gesturing && UiContext.GestureTimeRemainingSec() <= 0)) {
@@ -427,8 +441,9 @@ void Context::OpenProject(const fs::path &path) {
         OpenProject(EmptyProjectPath);
 
         const Gestures gestures = project["gestures"];
+        auto transient = store.transient();
         for (const auto &gesture: gestures) {
-            for (const auto &action: gesture) OnAction(action);
+            for (const auto &action: gesture) ApplyAction(action, transient);
             store_history.FinalizeGesture();
         }
         store_history.SetIndex(project["index"]);
@@ -570,18 +585,28 @@ StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {
 
 void StoreHistory::SetIndex(int new_index) {
     // If we're mid-gesture, cancel the current gesture before navigating to the requested history index.
-    if (!active_gesture.empty()) {
+    bool has_gesture = !active_gesture.empty();
+    if (has_gesture) {
         // Cancel & revert the gesture.
         stats.Apply({}, Clock::now(), Forward, true);
         active_gesture.clear();
-        ApplyStore(store_records[index].store);
+        // todo can we just delete this? (Does the index return check below always pass through?)
+        const auto prev_store = store;
+        const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
+        OnPatch(patch);
     }
-    if (new_index == index || new_index < 0 || new_index >= Size()) return;
+    if (new_index == index || new_index < 0 || new_index >= Size()) {
+        if (has_gesture) cout << "YOUYOYOYO\n";
+        return;
+    }
 
     int old_index = index;
     index = new_index;
 
-    ApplyStore(store_records[index].store);
+    // todo DRY
+    const auto prev_store = store;
+    const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
+    OnPatch(patch);
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
     while (i != new_index) {

@@ -18,7 +18,7 @@ Context application_context{};
 Context &context = application_context;
 Context &c = application_context;
 
-Store SetStore(Store persistent) { return application_store = std::move(persistent); }
+Store SetStore(const Store &new_store) { return application_store = new_store; }
 
 bool q(Action &&a, bool flush) {
     Context::EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.

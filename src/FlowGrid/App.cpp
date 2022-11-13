@@ -313,6 +313,16 @@ void ApplyAction(const Action &action, TransientStore &transient) {
     }, action);
 }
 
+// todo integrate `store_history.stats.Apply` as well
+Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store) {
+    const auto &patch = CreatePatch(prev_store, new_store);
+    if (!patch.empty()) {
+        SetStore(new_store); // This is the only place `SetStore` is called.
+        OnPatch(patch);
+    }
+    return patch;
+}
+
 void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
     bool finalize = force_finalize;
     const auto prev_store = store;
@@ -323,12 +333,8 @@ void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
         finalize |= std::holds_alternative<toggle_value>(action);
     }
     const auto new_store = transient.persistent();
-    const auto &patch = CreatePatch(prev_store, new_store);
-    if (!patch.empty()) {
-        SetStore(new_store);
-        OnPatch(patch);
-        store_history.stats.Apply(patch, Clock::now(), Forward, false);
-    }
+    const auto &patch = SetStoreAndNotify(new_store, prev_store);
+    if (!patch.empty()) store_history.stats.Apply(patch, Clock::now(), Forward, false);
     if (finalize) store_history.FinalizeGesture();
 }
 
@@ -430,8 +436,7 @@ void Context::OpenProject(const fs::path &path) {
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        SetStore(store_from_json(project));
-        s.Apply(UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle);
+        SetStoreAndNotify(store_from_json(project));
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 
@@ -582,19 +587,15 @@ void StoreHistory::SetIndex(int new_index) {
         // Cancel & revert the gesture.
         stats.Apply({}, Clock::now(), Forward, true);
         active_gesture.clear();
-        const auto prev_store = store;
-        const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
-        OnPatch(patch);
+        SetStoreAndNotify(store_records[index].store);
     }
     if (new_index == index || new_index < 0 || new_index >= Size()) return;
 
     int old_index = index;
     index = new_index;
 
-    // todo DRY
-    const auto prev_store = store;
-    const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
-    OnPatch(patch);
+    // todo DRY with above
+    SetStoreAndNotify(store_records[index].store);
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
     while (i != new_index) {

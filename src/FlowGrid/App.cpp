@@ -271,9 +271,6 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &base
 
 void SaveBoxSvg(const string &path); // Defined in FaustUI
 
-// todo
-//  * Receive and return a `Store` from this fn
-//  * Use above to reduce store effects of all dequeued actions together into a single `SetStore` call
 void ApplyAction(const Action &action, TransientStore &transient) {
     if (!c.ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
 
@@ -311,27 +308,27 @@ void ApplyAction(const Action &action, TransientStore &transient) {
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
             store_history.active_gesture.emplace_back(a);
-            const auto prev_store = transient.persistent();
             state.Update(a, transient);
-            const auto &patch = CreatePatch(prev_store, SetStore(transient.persistent()));
-            OnPatch(patch);
-            store_history.stats.Apply(patch, Clock::now(), Forward, false);
         },
     }, action);
-
-    // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-    if (std::holds_alternative<toggle_value>(action)) store_history.FinalizeGesture();
 }
 
 void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
     bool finalize = force_finalize;
+    const auto prev_store = store;
     auto transient = store.transient();
     for (const auto &action: gesture) {
         ApplyAction(action, transient);
         // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
         finalize |= std::holds_alternative<toggle_value>(action);
     }
-    SetStore(transient.persistent());
+    const auto new_store = transient.persistent();
+    const auto &patch = CreatePatch(prev_store, new_store);
+    if (!patch.empty()) {
+        SetStore(new_store);
+        OnPatch(patch);
+        store_history.stats.Apply(patch, Clock::now(), Forward, false);
+    }
     if (finalize) store_history.FinalizeGesture();
 }
 
@@ -387,14 +384,12 @@ void Context::EnqueueAction(const Action &a) {
 }
 
 void Context::RunQueuedActions(bool force_finalize_gesture) {
-    auto transient = store.transient();
+    vector<Action> actions;
     while (!queued_actions.empty()) {
-        ApplyAction(queued_actions.front(), transient);
+        actions.push_back(queued_actions.front());
         queued_actions.pop();
     }
-    if (force_finalize_gesture || (!UiContext.is_widget_gesturing && UiContext.GestureTimeRemainingSec() <= 0)) {
-        store_history.FinalizeGesture();
-    }
+    ApplyGesture(actions, force_finalize_gesture || (!UiContext.is_widget_gesturing && UiContext.GestureTimeRemainingSec() <= 0));
 }
 
 bool Context::ActionAllowed(const ActionID action_id) const {
@@ -421,14 +416,14 @@ void Context::Clear() {
 
 // Private methods
 
-std::optional<ProjectFormat> get_project_format(const fs::path &path) {
+std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();
     if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
     return {};
 }
 
 void Context::OpenProject(const fs::path &path) {
-    const auto format = get_project_format(path);
+    const auto format = GetProjectFormat(path);
     if (!format) return; // TODO log
 
     Clear();
@@ -442,10 +437,7 @@ void Context::OpenProject(const fs::path &path) {
 
         const Gestures gestures = project["gestures"];
         auto transient = store.transient();
-        for (const auto &gesture: gestures) {
-            for (const auto &action: gesture) ApplyAction(action, transient);
-            store_history.FinalizeGesture();
-        }
+        for (const auto &gesture: gestures) ApplyGesture(gesture, true);
         store_history.SetIndex(project["index"]);
     }
 
@@ -457,7 +449,7 @@ bool Context::SaveProject(const fs::path &path) {
         !ActionAllowed(action::id<save_current_project>))
         return false;
 
-    const auto format = get_project_format(path);
+    const auto format = GetProjectFormat(path);
     if (!format) return false; // TODO log
 
     store_history.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
@@ -590,15 +582,11 @@ void StoreHistory::SetIndex(int new_index) {
         // Cancel & revert the gesture.
         stats.Apply({}, Clock::now(), Forward, true);
         active_gesture.clear();
-        // todo can we just delete this? (Does the index return check below always pass through?)
         const auto prev_store = store;
         const auto &patch = ::CreatePatch(prev_store, SetStore(store_records[index].store));
         OnPatch(patch);
     }
-    if (new_index == index || new_index < 0 || new_index >= Size()) {
-        if (has_gesture) cout << "YOUYOYOYO\n";
-        return;
-    }
+    if (new_index == index || new_index < 0 || new_index >= Size()) return;
 
     int old_index = index;
     index = new_index;
@@ -627,9 +615,9 @@ void ConsumeActions() {
 
 std::thread action_consumer;
 void ApplicationSettings::ActionConsumer::UpdateProcess() const {
-    if (Running && !action_consumer.joinable()) {
-        action_consumer = std::thread(ConsumeActions);
-    } else if (!Running && action_consumer.joinable()) {
-        action_consumer.join();
-    }
+//    if (Running && !action_consumer.joinable()) {
+//        action_consumer = std::thread(ConsumeActions);
+//    } else if (!Running && action_consumer.joinable()) {
+//        action_consumer.join();
+//    }
 }

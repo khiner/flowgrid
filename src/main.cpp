@@ -47,7 +47,7 @@ int main(int, const char **) {
 
     while (s.UiProcess.Running) {
         TickUi();
-        c.RunQueuedActions();
+        Context::RunQueuedActions();
     }
 
     DestroyUi();

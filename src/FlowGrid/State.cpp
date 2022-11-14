@@ -1712,8 +1712,7 @@ void Demo::Draw() const {
 void ShowGesture(const Gesture &gesture) {
     for (size_t action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &[action, time] = gesture[action_index];
-        BulletText("Time: %s", format("{}\n", time).c_str());
-        JsonTree(action::GetName(action), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
+        JsonTree(format("{}: {}", action::GetName(action), time), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
     }
 }
 
@@ -1721,20 +1720,20 @@ void Metrics::FlowGridMetrics::Draw() const {
     {
         // Active (uncompressed) gesture
         const bool widget_gesturing = UiContext.is_widget_gesturing;
-        const bool active_gesture_present = !history.active_gesture.empty();
-        if (active_gesture_present || widget_gesturing) {
+        const bool ActiveGesturePresent = !history.ActiveGesture.empty();
+        if (ActiveGesturePresent || widget_gesturing) {
             // Gesture completion progress bar
             const auto row_item_ratio_rect = RowItemRatioRect(1 - history.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]));
 
-            const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");
-            if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            const auto &ActiveGesture_title = string("Active gesture") + (ActiveGesturePresent ? " (uncompressed)" : "");
+            if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (widget_gesturing) FillRowItemBg();
                 else BeginDisabled();
                 Text("Widget gesture: %s", widget_gesturing ? "true" : "false");
                 if (!widget_gesturing) EndDisabled();
 
-                if (active_gesture_present) ShowGesture(history.active_gesture);
+                if (ActiveGesturePresent) ShowGesture(history.ActiveGesture);
                 else Text("No actions yet");
                 TreePop();
             }
@@ -1748,10 +1747,10 @@ void Metrics::FlowGridMetrics::Draw() const {
     {
         const bool has_records = history.Size() > 1; // The first record is the initial store, with an app-start (basically) timestamp, and an empty gesture.
         if (!has_records) BeginDisabled();
-        if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Count: %d, Current index: %d)", history.Size() - 1, history.index)) {
+        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", history.Size() - 1, history.StoreIndex)) {
             for (int i = 1; i < history.Size(); i++) {
-                if (TreeNodeEx(to_string(i).c_str(), i == history.index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[time, store_record, gesture] = history.store_records[i];
+                if (TreeNodeEx(to_string(i).c_str(), i == history.StoreIndex ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    const auto &[time, store_record, gesture] = history.StoreRecords[i];
                     BulletText("Time: %s", format("{}\n", time).c_str());
                     if (TreeNode("Patch")) {
                         const auto &[patch, _] = history.CreatePatch(i - 1); // We compute the patches when we need them rather than memoizing them.

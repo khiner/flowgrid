@@ -1418,20 +1418,18 @@ struct StoreHistory {
         Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
     };
 
-    struct Stats {
-        struct Plottable {
-            vector<const char *> Labels;
-            vector<ImU64> Values;
-        };
-
-        vector<StatePath> LatestUpdatedPaths{};
-        map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
-        map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
-
-        void Apply(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
-        Plottable CreatePlottable() const;
-        std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
+    struct Plottable {
+        vector<const char *> Labels;
+        vector<ImU64> Values;
     };
+
+    vector<StatePath> LatestUpdatedPaths{};
+    map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
+    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
+
+    void Apply(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
+    Plottable StatePathUpdateFrequencyPlottable() const;
+    std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
 
     StatePatch CreatePatch(int history_index = -1) const;
     void FinalizeGesture();
@@ -1450,7 +1448,6 @@ struct StoreHistory {
     vector<StoreRecord> StoreRecords; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
     int StoreIndex{0};
     Gesture ActiveGesture; // uncompressed, uncommitted
-    Stats Stats;
 };
 
 extern const StoreHistory &history;

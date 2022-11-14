@@ -1015,10 +1015,9 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
                          is_implot_color ? s.Style.ImPlot.Colors.GetName(array_index) :
                          is_flowgrid_color ? s.Style.FlowGrid.Colors.GetName(array_index) :
                          is_array_item ? leaf_name : key) : key;
-    const auto &Stats = history.Stats;
 
     if (AutoSelect) {
-        const auto &update_paths = Stats.LatestUpdatedPaths;
+        const auto &update_paths = history.LatestUpdatedPaths;
         const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
@@ -1026,7 +1025,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     }
 
     // Flash background color of nodes when its corresponding path updates.
-    const auto &latest_update_time = Stats.LatestUpdateTime(path);
+    const auto &latest_update_time = history.LatestUpdateTime(path);
     if (latest_update_time) {
         const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time.value()).count() / s.Style.FlowGrid.FlashDurationSec;
         ImVec4 flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
@@ -1090,13 +1089,12 @@ void StateMemoryEditor::Draw() const {
 }
 
 void StatePathUpdateFrequency::Draw() const {
-    const auto &Stats = history.Stats;
-    if (Stats.CommittedUpdateTimesForPath.empty() && Stats.GestureUpdateTimesForPath.empty()) {
+    if (history.CommittedUpdateTimesForPath.empty() && history.GestureUpdateTimesForPath.empty()) {
         Text("No state updates yet.");
         return;
     }
 
-    auto [labels, values] = Stats.CreatePlottable();
+    auto [labels, values] = history.StatePathUpdateFrequencyPlottable();
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
@@ -1108,7 +1106,7 @@ void StatePathUpdateFrequency::Draw() const {
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *item_labels[] = {"Committed updates", "Active updates"};
-        const bool has_gesture = !Stats.GestureUpdateTimesForPath.empty();
+        const bool has_gesture = !history.GestureUpdateTimesForPath.empty();
         const int item_count = has_gesture ? 2 : 1;
         const int group_count = has_gesture ? int(values.size()) / 2 : int(values.size());
         ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);

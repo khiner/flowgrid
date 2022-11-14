@@ -1173,7 +1173,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const map <ID, string> NameForId{
+const map<ID, string> NameForId{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1212,7 +1212,7 @@ const map <ID, string> NameForId{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const map <ID, string> ShortcutForId = {
+const map<ID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1376,7 +1376,7 @@ Usage example:
 const Audio &audio = s.Audio; // Or just access the (read-only) `state` members directly
 
 // Get the currently active gesture (collection of actions) from the global application context:
- const Gesture &active_gesture = c.active_gesture;
+ const Gesture &ActiveGesture = c.ActiveGesture;
 ```
 */
 
@@ -1413,20 +1413,20 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &base
 
 struct StoreHistory {
     struct StoreRecord {
-        TimePoint time; // The time the gesture was finalized
-        Store store; // The store at this time
-        Gesture gesture; // Compressed gesture (list of actions) that cause the store change
+        TimePoint Committed;
+        Store Store; // The store as it was at `Committed` time
+        Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
     };
 
     struct Stats {
         struct Plottable {
-            vector<const char *> labels;
-            vector<ImU64> values;
+            vector<const char *> Labels;
+            vector<ImU64> Values;
         };
 
-        vector<StatePath> latest_updated_paths{};
-        map<StatePath, vector<TimePoint>> gesture_update_times_for_path{};
-        map<StatePath, vector<TimePoint>> committed_update_times_for_path{};
+        vector<StatePath> LatestUpdatedPaths{};
+        map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
+        map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
 
         void Apply(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
         Plottable CreatePlottable() const;
@@ -1447,10 +1447,10 @@ struct StoreHistory {
     TimePoint GestureStartTime() const;
     float GestureTimeRemainingSec() const;
 
-    vector<StoreRecord> store_records; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
-    int index{0};
-    Gesture active_gesture; // uncompressed, uncommitted
-    Stats stats;
+    vector<StoreRecord> StoreRecords; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
+    int StoreIndex{0};
+    Gesture ActiveGesture; // uncompressed, uncommitted
+    Stats Stats;
 };
 
 extern const StoreHistory &history;

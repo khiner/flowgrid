@@ -297,25 +297,25 @@ void ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
             // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
             // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
-            if (history.index == history.Size() - 1) {
-                if (!history.active_gesture.empty()) store_history.FinalizeGesture();
-                store_history.SetIndex(history.index - 1);
+            if (history.StoreIndex == history.Size() - 1) {
+                if (!history.ActiveGesture.empty()) store_history.FinalizeGesture();
+                store_history.SetIndex(history.StoreIndex - 1);
             } else {
-                store_history.SetIndex(history.index - (history.active_gesture.empty() ? 1 : 0));
+                store_history.SetIndex(history.StoreIndex - (history.ActiveGesture.empty() ? 1 : 0));
             }
         },
-        [&](const redo &) { store_history.SetIndex(history.index + 1); },
+        [&](const redo &) { store_history.SetIndex(history.StoreIndex + 1); },
         [&](const Actions::set_history_index &a) { store_history.SetIndex(a.index); },
 
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
-            store_history.active_gesture.emplace_back(action_moment);
+            store_history.ActiveGesture.emplace_back(action_moment);
             state.Update(a, transient);
         },
     }, action);
 }
 
-// todo integrate `store_history.stats.Apply` as well
+// todo integrate `store_history.Stats.Apply` as well
 Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store) {
     const auto &patch = CreatePatch(prev_store, new_store);
     if (!patch.empty()) {
@@ -336,7 +336,7 @@ void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
     }
     const auto new_store = transient.persistent();
     const auto &patch = SetStoreAndNotify(new_store, prev_store);
-    if (!patch.empty()) store_history.stats.Apply(patch, Clock::now(), Forward, false);
+    if (!patch.empty()) store_history.Stats.Apply(patch, Clock::now(), Forward, false);
     if (finalize) store_history.FinalizeGesture();
 }
 
@@ -377,7 +377,7 @@ bool Context::ClearPreferences() {
 json Context::GetProjectJson(const ProjectFormat format) {
     switch (format) {
         case StateFormat: return store;
-        case ActionFormat: return {{"gestures", history.Gestures()}, {"index", history.index}};
+        case ActionFormat: return {{"gestures", history.Gestures()}, {"index", history.StoreIndex}};
     }
 }
 
@@ -487,91 +487,91 @@ void UIContext::WidgetGestured() {
 //-----------------------------------------------------------------------------
 
 StatePatch StoreHistory::CreatePatch(const int history_index) const {
-    const size_t i = history_index == -1 ? index : history_index;
-    return {::CreatePatch(store_records[i].store, store_records[i + 1].store), store_records[i + 1].time};
+    const size_t i = history_index == -1 ? StoreIndex : history_index;
+    return {::CreatePatch(StoreRecords[i].Store, StoreRecords[i + 1].Store), StoreRecords[i + 1].Committed};
 }
 
 void StoreHistory::Reset() {
-    store_records.clear();
-    store_records.push_back({Clock::now(), store, {}});
-    index = 0;
-    active_gesture = {};
-    stats = {};
+    StoreRecords.clear();
+    StoreRecords.push_back({Clock::now(), store, {}});
+    StoreIndex = 0;
+    ActiveGesture = {};
+    Stats = {};
 }
 
-int StoreHistory::Size() const { return int(store_records.size()); }
+int StoreHistory::Size() const { return int(StoreRecords.size()); }
 bool StoreHistory::Empty() const { return Size() == 0; }
-bool StoreHistory::CanUndo() const { return !active_gesture.empty() || index > 0; }
-bool StoreHistory::CanRedo() const { return index < Size(); }
+bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || StoreIndex > 0; }
+bool StoreHistory::CanRedo() const { return StoreIndex < Size(); }
 
 Gestures StoreHistory::Gestures() const {
-    return store_records | transform([](const auto &record) { return record.gesture; }) |
+    return StoreRecords | transform([](const auto &record) { return record.Gesture; }) |
         views::filter([](const auto &gesture) { return !gesture.empty(); }) | to<vector>; // First gesture is expected to be empty.
 }
 TimePoint StoreHistory::GestureStartTime() const {
-    if (active_gesture.empty()) return {};
-    return active_gesture.back().second;
+    if (ActiveGesture.empty()) return {};
+    return ActiveGesture.back().second;
 }
 
 float StoreHistory::GestureTimeRemainingSec() const {
-    if (active_gesture.empty()) return 0;
+    if (ActiveGesture.empty()) return 0;
     return max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - GestureStartTime()).count());
 }
 
 void StoreHistory::FinalizeGesture() {
-    if (active_gesture.empty()) return;
+    if (ActiveGesture.empty()) return;
 
-    const auto gesture_patch = ::CreatePatch(store_records[index].store, store);
-    stats.Apply(gesture_patch, Clock::now(), Forward, true);
+    const auto gesture_patch = ::CreatePatch(StoreRecords[StoreIndex].Store, store);
+    Stats.Apply(gesture_patch, Clock::now(), Forward, true);
 
-    const auto merged_gesture = action::MergeGesture(active_gesture);
-    active_gesture.clear();
+    const auto merged_gesture = action::MergeGesture(ActiveGesture);
+    ActiveGesture.clear();
 
     if (merged_gesture.empty()) {
         if (!gesture_patch.empty()) throw std::runtime_error("Non-empty patch resulting from an empty merged gesture.");
         return;
     }
 
-    while (Size() > index + 1) store_records.pop_back(); // TODO use an undo _tree_ and keep this history
-    store_records.push_back({Clock::now(), store, merged_gesture});
-    index = Size() - 1;
+    while (Size() > StoreIndex + 1) StoreRecords.pop_back(); // TODO use an undo _tree_ and keep this history
+    StoreRecords.push_back({Clock::now(), store, merged_gesture});
+    StoreIndex = Size() - 1;
 }
 
 void StoreHistory::Stats::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
-    if (!patch.empty()) latest_updated_paths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
+    if (!patch.empty()) LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
 
     for (const auto &[partial_path, op]: patch.ops) {
         const auto &path = patch.base_path / partial_path;
         if (direction == Forward) {
-            auto &update_times = is_full_gesture ? committed_update_times_for_path : gesture_update_times_for_path;
-            update_times[path].emplace_back(is_full_gesture && gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).back() : time);
-        } else if (committed_update_times_for_path.contains(path)) {
-            auto &update_times = committed_update_times_for_path.at(path);
+            auto &update_times = is_full_gesture ? CommittedUpdateTimesForPath : GestureUpdateTimesForPath;
+            update_times[path].emplace_back(is_full_gesture && GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).back() : time);
+        } else if (CommittedUpdateTimesForPath.contains(path)) {
+            auto &update_times = CommittedUpdateTimesForPath.at(path);
             update_times.pop_back();
-            if (update_times.empty()) committed_update_times_for_path.erase(path);
+            if (update_times.empty()) CommittedUpdateTimesForPath.erase(path);
         }
     }
 
-    if (is_full_gesture) gesture_update_times_for_path.clear();
+    if (is_full_gesture) GestureUpdateTimesForPath.clear();
 }
 
 std::optional<TimePoint> StoreHistory::Stats::LatestUpdateTime(const StatePath &path) const {
-    if (gesture_update_times_for_path.contains(path)) return gesture_update_times_for_path.at(path).back();
-    if (committed_update_times_for_path.contains(path)) return committed_update_times_for_path.at(path).back();
+    if (GestureUpdateTimesForPath.contains(path)) return GestureUpdateTimesForPath.at(path).back();
+    if (CommittedUpdateTimesForPath.contains(path)) return CommittedUpdateTimesForPath.at(path).back();
     return {};
 }
 
 StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {
     vector<StatePath> paths;
-    for (const auto &path: views::keys(committed_update_times_for_path)) paths.emplace_back(path);
-    for (const auto &path: views::keys(gesture_update_times_for_path)) if (!committed_update_times_for_path.contains(path)) paths.emplace_back(path);
+    for (const auto &path: views::keys(CommittedUpdateTimesForPath)) paths.emplace_back(path);
+    for (const auto &path: views::keys(GestureUpdateTimesForPath)) if (!CommittedUpdateTimesForPath.contains(path)) paths.emplace_back(path);
 
-    const bool has_gesture = !gesture_update_times_for_path.empty();
+    const bool has_gesture = !GestureUpdateTimesForPath.empty();
     vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
     int i = 0;
-    for (const auto &path: paths) values[i++] = committed_update_times_for_path.contains(path) ? committed_update_times_for_path.at(path).size() : 0;
+    for (const auto &path: paths) values[i++] = CommittedUpdateTimesForPath.contains(path) ? CommittedUpdateTimesForPath.at(path).size() : 0;
     // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
-    if (has_gesture) for (const auto &path: paths) values[i++] = gesture_update_times_for_path.contains(path) ? gesture_update_times_for_path.at(path).size() : 0;
+    if (has_gesture) for (const auto &path: paths) values[i++] = GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).size() : 0;
 
     const auto labels = paths | transform([](const string &path) {
         // Convert `string` to char array, removing first character of the path, which is a '/'.
@@ -585,25 +585,25 @@ StoreHistory::Stats::Plottable StoreHistory::Stats::CreatePlottable() const {
 
 void StoreHistory::SetIndex(int new_index) {
     // If we're mid-gesture, cancel the current gesture before navigating to the requested history index.
-    bool has_gesture = !active_gesture.empty();
+    bool has_gesture = !ActiveGesture.empty();
     if (has_gesture) {
         // Cancel & revert the gesture.
-        stats.Apply({}, Clock::now(), Forward, true);
-        active_gesture.clear();
-        SetStoreAndNotify(store_records[index].store);
+        Stats.Apply({}, Clock::now(), Forward, true);
+        ActiveGesture.clear();
+        SetStoreAndNotify(StoreRecords[StoreIndex].Store);
     }
-    if (new_index == index || new_index < 0 || new_index >= Size()) return;
+    if (new_index == StoreIndex || new_index < 0 || new_index >= Size()) return;
 
-    int old_index = index;
-    index = new_index;
+    int old_index = StoreIndex;
+    StoreIndex = new_index;
 
     // todo DRY with above
-    SetStoreAndNotify(store_records[index].store);
+    SetStoreAndNotify(StoreRecords[StoreIndex].Store);
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
     while (i != new_index) {
         const auto &segment_patch = CreatePatch(direction == Reverse ? --i : i++);
-        stats.Apply(segment_patch.Patch, segment_patch.Time, direction, true);
+        Stats.Apply(segment_patch.Patch, segment_patch.Time, direction, true);
     }
 }
 

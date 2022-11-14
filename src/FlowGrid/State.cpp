@@ -1015,10 +1015,10 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
                          is_implot_color ? s.Style.ImPlot.Colors.GetName(array_index) :
                          is_flowgrid_color ? s.Style.FlowGrid.Colors.GetName(array_index) :
                          is_array_item ? leaf_name : key) : key;
-    const auto &stats = history.stats;
+    const auto &Stats = history.Stats;
 
     if (AutoSelect) {
-        const auto &update_paths = stats.latest_updated_paths;
+        const auto &update_paths = Stats.LatestUpdatedPaths;
         const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
@@ -1026,7 +1026,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     }
 
     // Flash background color of nodes when its corresponding path updates.
-    const auto &latest_update_time = stats.LatestUpdateTime(path);
+    const auto &latest_update_time = Stats.LatestUpdateTime(path);
     if (latest_update_time) {
         const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time.value()).count() / s.Style.FlowGrid.FlashDurationSec;
         ImVec4 flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
@@ -1090,13 +1090,13 @@ void StateMemoryEditor::Draw() const {
 }
 
 void StatePathUpdateFrequency::Draw() const {
-    const auto &stats = history.stats;
-    if (stats.committed_update_times_for_path.empty() && stats.gesture_update_times_for_path.empty()) {
+    const auto &Stats = history.Stats;
+    if (Stats.CommittedUpdateTimesForPath.empty() && Stats.GestureUpdateTimesForPath.empty()) {
         Text("No state updates yet.");
         return;
     }
 
-    auto [labels, values] = stats.CreatePlottable();
+    auto [labels, values] = Stats.CreatePlottable();
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
@@ -1108,7 +1108,7 @@ void StatePathUpdateFrequency::Draw() const {
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *item_labels[] = {"Committed updates", "Active updates"};
-        const bool has_gesture = !stats.gesture_update_times_for_path.empty();
+        const bool has_gesture = !Stats.GestureUpdateTimesForPath.empty();
         const int item_count = has_gesture ? 2 : 1;
         const int group_count = has_gesture ? int(values.size()) / 2 : int(values.size());
         ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
@@ -1654,7 +1654,7 @@ void Style::Draw() const {
 void ApplicationSettings::Draw() const {
     ActionConsumer.Running.Draw();
     {
-        int value = history.index;
+        int value = history.StoreIndex;
         if (SliderInt("History index", &value, 0, history.Size() - 1)) q(set_history_index{value});
         GestureDurationSec.Draw();
     }
@@ -1750,8 +1750,8 @@ void Metrics::FlowGridMetrics::Draw() const {
         if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", history.Size() - 1, history.StoreIndex)) {
             for (int i = 1; i < history.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == history.StoreIndex ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[time, store_record, gesture] = history.StoreRecords[i];
-                    BulletText("Time: %s", format("{}\n", time).c_str());
+                    const auto &[committed, store_record, gesture] = history.StoreRecords[i];
+                    BulletText("Committed: %s", format("{}\n", committed).c_str());
                     if (TreeNode("Patch")) {
                         const auto &[patch, _] = history.CreatePatch(i - 1); // We compute the patches when we need them rather than memoizing them.
                         for (const auto &[partial_path, op]: patch.ops) {

@@ -153,7 +153,7 @@ PatchOps merge(const PatchOps &a, const PatchOps &b) {
  One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
  For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
 */
-std::variant<Action, bool> merge(const Action &a, const Action &b) {
+std::variant<Action, bool> Merge(const Action &a, const Action &b) {
     const ID a_id = GetId(a);
     const ID b_id = GetId(b);
 
@@ -204,28 +204,29 @@ std::variant<Action, bool> merge(const Action &a, const Action &b) {
 }
 
 Gesture action::MergeGesture(const Gesture &gesture) {
-    Gesture compressed_gesture;
-
-    std::optional<const Action> active_action;
+    Gesture merged_gesture; // Mutable return value
+    // `active` keeps track of which action we're merging into.
+    // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
+    std::optional<const ActionMoment> active;
     for (size_t i = 0; i < gesture.size(); i++) {
-        if (!active_action.has_value()) active_action.emplace(gesture[i]);
-        const auto &a = active_action.value();
+        if (!active.has_value()) active.emplace(gesture[i]);
+        const auto &a = active.value();
         const auto &b = gesture[i + 1];
-        const auto merged = merge(a, b);
+        std::variant<Action, bool> merge_result = Merge(a.first, b.first);
         std::visit(visitor{
-            [&](const bool result) {
-                if (result) i++; // The two actions in consideration (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
-                else compressed_gesture.emplace_back(a); // The left-side action (`a`) can't be merged into any further - nothing more we can do for it!
-                active_action.reset(); // No merge in either case. Move on to try compressing the next action.
+            [&](const bool cancel_out) {
+                if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
+                else merged_gesture.emplace_back(a); // The left-side action (`a`) can't be merged into any further - nothing more we can do for it!
+                active.reset(); // No merge in either case. Move on to try compressing the next action.
             },
-            [&](const Action &result) {
-                active_action.emplace(result); // `Action` result is a merged action. Don't add it yet - maybe we can merge more actions into it.
+            [&](const Action &merged_action) {
+                active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
             },
-        }, merged);
+        }, merge_result);
     }
-    if (active_action.has_value()) compressed_gesture.emplace_back(active_action.value());
+    if (active.has_value()) merged_gesture.emplace_back(active.value());
 
-    return compressed_gesture;
+    return merged_gesture;
 }
 
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
@@ -1570,12 +1571,12 @@ void Style::FlowGridStyle::Draw() const {
             if (ScaleFill) ImGui::BeginDisabled();
             const ImVec2 scale_before = DiagramScale;
             if (DiagramScale.Draw() && DiagramScaleLinked) {
-                c.RunQueuedActions();
+                Context::RunQueuedActions();
                 const ImVec2 scale_after = DiagramScale;
                 q(set_value{DiagramScale.Path, scale_after.x != scale_before.x ?
                                                ImVec2{scale_after.x, scale_after.x} :
                                                ImVec2{scale_after.y, scale_after.y}});
-                c.RunQueuedActions();
+                Context::RunQueuedActions();
             }
             if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
                 const ImVec2 scale = DiagramScale;
@@ -1710,7 +1711,8 @@ void Demo::Draw() const {
 
 void ShowGesture(const Gesture &gesture) {
     for (size_t action_index = 0; action_index < gesture.size(); action_index++) {
-        const auto &action = gesture[action_index];
+        const auto &[action, time] = gesture[action_index];
+        BulletText("Time: %s", format("{}\n", time).c_str());
         JsonTree(action::GetName(action), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
     }
 }
@@ -1722,7 +1724,7 @@ void Metrics::FlowGridMetrics::Draw() const {
         const bool active_gesture_present = !history.active_gesture.empty();
         if (active_gesture_present || widget_gesturing) {
             // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - UiContext.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - history.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]));
 
             const auto &active_gesture_title = string("Active gesture") + (active_gesture_present ? " (uncompressed)" : "");

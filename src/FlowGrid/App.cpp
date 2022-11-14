@@ -1,6 +1,7 @@
 #include "StateJson.h"
 
 #include "blockingconcurrentqueue.h"
+#include <range/v3/view/filter.hpp>
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
 
@@ -11,8 +12,8 @@ map<ImGuiID, StateMember *> StateMember::WithID{};
 StoreHistory store_history{}; // One store checkpoint for every gesture.
 const StoreHistory &history = store_history;
 
-std::queue<const Action> queued_actions;
-BlockingConcurrentQueue<Action> action_queue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
+std::queue<const ActionMoment> queued_actions;
+BlockingConcurrentQueue<ActionMoment> action_queue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
 // Persistent modifiers
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -271,7 +272,8 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &base
 
 void SaveBoxSvg(const string &path); // Defined in FaustUI
 
-void ApplyAction(const Action &action, TransientStore &transient) {
+void ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
+    const auto &[action, time] = action_moment;
     if (!c.ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
 
     std::visit(visitor{
@@ -307,7 +309,7 @@ void ApplyAction(const Action &action, TransientStore &transient) {
 
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
-            store_history.active_gesture.emplace_back(a);
+            store_history.active_gesture.emplace_back(action_moment);
             state.Update(a, transient);
         },
     }, action);
@@ -327,10 +329,10 @@ void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
     bool finalize = force_finalize;
     const auto prev_store = store;
     auto transient = store.transient();
-    for (const auto &action: gesture) {
-        ApplyAction(action, transient);
+    for (const auto &action_moment: gesture) {
+        ApplyAction(action_moment, transient);
         // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-        finalize |= std::holds_alternative<toggle_value>(action);
+        finalize |= std::holds_alternative<toggle_value>(action_moment.first);
     }
     const auto new_store = transient.persistent();
     const auto &patch = SetStoreAndNotify(new_store, prev_store);
@@ -341,10 +343,6 @@ void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
 //-----------------------------------------------------------------------------
 // [SECTION] Context
 //-----------------------------------------------------------------------------
-
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/map.hpp>
-#include <utility>
 
 Context::Context() {
     store_history.Reset();
@@ -383,19 +381,19 @@ json Context::GetProjectJson(const ProjectFormat format) {
     }
 }
 
-void Context::EnqueueAction(const Action &a) {
-    if (queued_actions.empty()) UiContext.gesture_start_time = Clock::now();
-    queued_actions.push(a);
-    action_queue.enqueue(a);
+void Context::EnqueueAction(const Action &action) {
+    const ActionMoment action_moment = {action, Clock::now()};
+    queued_actions.push(action_moment);
+    action_queue.enqueue(action_moment);
 }
 
 void Context::RunQueuedActions(bool force_finalize_gesture) {
-    vector<Action> actions;
+    vector<ActionMoment> actions; // Same type as `Gesture`, but semantically different, since the queued actions may not represent a full gesture.
     while (!queued_actions.empty()) {
         actions.push_back(queued_actions.front());
         queued_actions.pop();
     }
-    ApplyGesture(actions, force_finalize_gesture || (!UiContext.is_widget_gesturing && UiContext.GestureTimeRemainingSec() <= 0));
+    ApplyGesture(actions, force_finalize_gesture || (!UiContext.is_widget_gesturing && history.GestureTimeRemainingSec() <= 0));
 }
 
 bool Context::ActionAllowed(const ActionID action_id) const {
@@ -450,8 +448,7 @@ void Context::OpenProject(const fs::path &path) {
 }
 
 bool Context::SaveProject(const fs::path &path) {
-    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) &&
-        !ActionAllowed(action::id<save_current_project>))
+    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !ActionAllowed(action::id<save_current_project>))
         return false;
 
     const auto format = GetProjectFormat(path);
@@ -480,9 +477,6 @@ bool Context::WritePreferences() const {
 // [SECTION] UIContext
 //-----------------------------------------------------------------------------
 
-float UIContext::GestureTimeRemainingSec() const {
-    return max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - gesture_start_time).count());
-}
 void UIContext::WidgetGestured() {
     if (ImGui::IsItemActivated()) is_widget_gesturing = true;
     if (ImGui::IsItemDeactivated()) is_widget_gesturing = false;
@@ -513,6 +507,15 @@ bool StoreHistory::CanRedo() const { return index < Size(); }
 Gestures StoreHistory::Gestures() const {
     return store_records | transform([](const auto &record) { return record.gesture; }) |
         views::filter([](const auto &gesture) { return !gesture.empty(); }) | to<vector>; // First gesture is expected to be empty.
+}
+TimePoint StoreHistory::GestureStartTime() const {
+    if (active_gesture.empty()) return {};
+    return active_gesture.back().second;
+}
+
+float StoreHistory::GestureTimeRemainingSec() const {
+    if (active_gesture.empty()) return 0;
+    return max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - GestureStartTime()).count());
 }
 
 void StoreHistory::FinalizeGesture() {
@@ -606,10 +609,11 @@ void StoreHistory::SetIndex(int new_index) {
 
 void ConsumeActions() {
     while (s.ApplicationSettings.ActionConsumer.Running) {
-        Action action;
-        const bool has_action = action_queue.try_dequeue(action);
-        if (has_action) {
-            cout << "Found action.\n";
+        ActionMoment action_moment;
+        const bool action_consumed = action_queue.try_dequeue(action_moment);
+        if (action_consumed) {
+            const auto &[action, time] = action_moment;
+            cout << format("Consumed action produced at {}:\n{}\n\n", time, json(action).dump(4));
         }
     }
 }

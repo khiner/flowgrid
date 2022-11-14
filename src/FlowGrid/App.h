@@ -1066,19 +1066,15 @@ string to_string(PatchOpType);
 //-----------------------------------------------------------------------------
 
 /**
- An `Action` is an immutable representation of a user interaction event.
- Each action stores all information needed to apply the action to the global `State` instance.
+An `Action` is an immutable representation of a user interaction event.
+Each action stores all information needed to apply the action to a `Store` instance.
+An `ActionMoment` contains an `Action` and the `TimePoint` at which the action happened.
 
- Conventions:
- * Static members
-   - _Not relevant as there aren't any static members atm, but note to future-self._
-   - Any static members should be prefixed with an underscore to avoid name collisions with data members.
-   - All such static members are declared _after_ data members, to allow for default construction using only non-static members.
-   - Note that adding static members does not increase the size of the parent `Action` variant.
-     (You can verify this by looking at the 'Action variant size' in the FlowGrid metrics window.)
- * Large action structs
-   - Use JSON types for actions that hold very large structured data.
-     An `Action` is a `std::variant`, which can hold any type, and thus must be large enough to hold its largest type.
+An `Action` is a `std::variant`, which can hold any type, and thus must be large enough to hold its largest type.
+- For actions holding very large structured data, using a JSON string is a good approach to keep the `Action` size down
+  (at the expense of losing type safety and storing the string contents in heap memory).
+- Note that adding static members does not increase the size of the parent `Action` variant.
+  (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
 
 // Utility to make a variant visitor out of lambdas, using the "overloaded pattern" described
@@ -1150,7 +1146,8 @@ using Action = std::variant<
 namespace action {
 using ID = size_t;
 
-using Gesture = vector<Action>;
+using ActionMoment = std::pair<Action, TimePoint>;
+using Gesture = vector<ActionMoment>;
 using Gestures = vector<Gesture>;
 
 // Default-construct an (empty) action by its variant index (which is also its `ID`).
@@ -1235,6 +1232,7 @@ Gesture MergeGesture(const Gesture &);
 using ActionID = action::ID;
 using action::Gesture;
 using action::Gestures;
+using action::ActionMoment;
 
 //-----------------------------------------------------------------------------
 // [SECTION] Main application `State` struct
@@ -1446,6 +1444,8 @@ struct StoreHistory {
     bool CanRedo() const;
 
     Gestures Gestures() const;
+    TimePoint GestureStartTime() const;
+    float GestureTimeRemainingSec() const;
 
     vector<StoreRecord> store_records; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
     int index{0};

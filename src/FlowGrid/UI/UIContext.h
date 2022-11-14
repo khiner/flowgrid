@@ -21,7 +21,6 @@ struct UIContext {
         ImFont *FixedWidth{nullptr};
     };
 
-    float GestureTimeRemainingSec() const;
     void WidgetGestured();
 
     ImGuiContext *ImGui{nullptr};
@@ -29,7 +28,6 @@ struct UIContext {
     Fonts Fonts{};
 
     bool is_widget_gesturing{};
-    TimePoint gesture_start_time{};
 };
 
 extern UIContext UiContext; // Created in `main.cpp`

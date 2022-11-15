@@ -27,7 +27,7 @@ struct UIContext {
     ImPlotContext *ImPlot{nullptr};
     Fonts Fonts{};
 
-    bool is_widget_gesturing{};
+    bool IsWidgetGesturing{};
 };
 
 extern UIContext UiContext; // Created in `main.cpp`

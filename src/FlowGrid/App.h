@@ -1293,19 +1293,58 @@ typedef CTree *Box;
 
 enum Direction { Forward, Reverse };
 
+struct StoreHistory {
+    struct Record {
+        TimePoint Committed;
+        Store Store; // The store as it was at `Committed` time
+        Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
+    };
+    struct Plottable {
+        vector<const char *> Labels;
+        vector<ImU64> Values;
+    };
+
+    StoreHistory() : Records{{Clock::now(), store, {}}} {}
+
+    vector<StatePath> LatestUpdatedPaths{};
+
+    void ApplyToCurrentGesture(const Gesture &, const Patch &);
+    Plottable StatePathUpdateFrequencyPlottable() const;
+    std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
+
+    void FinalizeGesture();
+    void SetIndex(int);
+
+    int Size() const;
+    bool Empty() const;
+    bool CanUndo() const;
+    bool CanRedo() const;
+
+    Gestures Gestures() const;
+    TimePoint GestureStartTime() const;
+    float GestureTimeRemainingSec() const;
+
+    int Index{0};
+    Gesture ActiveGesture; // uncompressed, uncommitted
+    vector<Record> Records;
+
+private:
+    map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
+    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
+};
+
 struct Context {
     Context();
     ~Context();
 
     static bool IsUserProjectPath(const fs::path &);
-    static json GetProjectJson(ProjectFormat format = StateFormat);
+    json GetProjectJson(ProjectFormat format = StateFormat);
     void SaveEmptyProject();
     void OpenProject(const fs::path &);
     bool SaveProject(const fs::path &);
     void SaveCurrentProject();
 
-    static void EnqueueAction(const Action &);
-    static void RunQueuedActions(bool force_finalize_gesture = false);
+    void RunQueuedActions(bool force_finalize_gesture = false) const;
     bool ActionAllowed(ActionID) const;
     bool ActionAllowed(const Action &) const;
 
@@ -1313,12 +1352,13 @@ struct Context {
     void Clear();
 
     Preferences preferences;
+    StoreHistory History; // One store checkpoint for every gesture.
 
 private:
     void SetCurrentProjectPath(const fs::path &);
     bool WritePreferences() const;
 
-    std::optional<fs::path> current_project_path;
+    std::optional<fs::path> CurrentProjectPath;
 };
 
 //-----------------------------------------------------------------------------
@@ -1411,44 +1451,4 @@ Store SetStore(const Store &store);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
 
-struct StoreHistory {
-    struct StoreRecord {
-        TimePoint Committed;
-        Store Store; // The store as it was at `Committed` time
-        Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
-    };
-
-    struct Plottable {
-        vector<const char *> Labels;
-        vector<ImU64> Values;
-    };
-
-    vector<StatePath> LatestUpdatedPaths{};
-
-    void ApplyToCurrentGesture(const Gesture &, const Patch &);
-    Plottable StatePathUpdateFrequencyPlottable() const;
-    std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
-
-    void FinalizeGesture();
-    void Reset();
-    void SetIndex(int);
-
-    int Size() const;
-    bool Empty() const;
-    bool CanUndo() const;
-    bool CanRedo() const;
-
-    Gestures Gestures() const;
-    TimePoint GestureStartTime() const;
-    float GestureTimeRemainingSec() const;
-
-    vector<StoreRecord> StoreRecords; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
-    int StoreIndex{0};
-    Gesture ActiveGesture; // uncompressed, uncommitted
-
-private:
-    map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
-    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
-};
-
-extern const StoreHistory &history;
+extern const StoreHistory &History;

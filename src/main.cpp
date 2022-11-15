@@ -14,14 +14,9 @@ const Store &store = application_store; // ... and assign to its immutable, read
 // Create global, mutable `UIContext` and `Context` instances.
 UIContext UiContext{};
 Context c{};
+const StoreHistory &History = c.History;
 
 Store SetStore(const Store &new_store) { return application_store = new_store; }
-
-bool q(Action &&a, bool flush) {
-    Context::EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
-    if (flush) Context::RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
-    return true;
-}
 
 int main(int, const char **) {
     application_ctor_store = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
@@ -36,7 +31,7 @@ int main(int, const char **) {
         TickUi(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         TickUi(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        Context::RunQueuedActions(true);
+        c.RunQueuedActions(true);
     }
 
     c.Clear(); // Make sure we don't start with any undo state.
@@ -44,7 +39,7 @@ int main(int, const char **) {
 
     while (s.UiProcess.Running) {
         TickUi();
-        Context::RunQueuedActions();
+        c.RunQueuedActions();
     }
 
     DestroyUi();

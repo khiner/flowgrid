@@ -10,9 +10,6 @@ using namespace moodycamel; // Has `ConcurrentQueue` & `BlockingConcurrentQueue`
 
 map<ImGuiID, StateMember *> StateMember::WithID{};
 
-StoreHistory store_history{}; // One store checkpoint for every gesture.
-const StoreHistory &history = store_history;
-
 std::queue<const ActionMoment> ActionQueue;
 BlockingConcurrentQueue<ActionMoment> ActionConcurrentQueue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
@@ -276,32 +273,31 @@ void ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
         [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
         [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
 
-        // `history.index`-changing actions:
+        // `History.Index`-changing actions:
         [&](const undo &) {
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
             // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
             // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
             // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
-            if (history.StoreIndex == history.Size() - 1) {
-                if (!history.ActiveGesture.empty()) store_history.FinalizeGesture();
-                store_history.SetIndex(history.StoreIndex - 1);
+            if (History.Index == History.Size() - 1) {
+                if (!History.ActiveGesture.empty()) c.History.FinalizeGesture();
+                c.History.SetIndex(History.Index - 1);
             } else {
-                store_history.SetIndex(history.StoreIndex - (history.ActiveGesture.empty() ? 1 : 0));
+                c.History.SetIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
             }
         },
-        [&](const redo &) { store_history.SetIndex(history.StoreIndex + 1); },
-        [&](const Actions::set_history_index &a) { store_history.SetIndex(a.index); },
+        [&](const redo &) { c.History.SetIndex(History.Index + 1); },
+        [&](const Actions::set_history_index &a) { c.History.SetIndex(a.index); },
 
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
-            store_history.ActiveGesture.emplace_back(action_moment);
+            c.History.ActiveGesture.emplace_back(action_moment);
             s.Update(a, transient);
         },
     }, action);
 }
 
-// todo integrate `store_history.Apply` as well
 Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store) {
     const auto &patch = CreatePatch(prev_store, new_store);
     if (!patch.empty()) {
@@ -318,7 +314,7 @@ Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store)
         if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
         s.Audio.UpdateProcess();
         s.ApplicationSettings.ActionConsumer.UpdateProcess();
-        store_history.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
+        c.History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
     }
     return patch;
 }
@@ -333,8 +329,8 @@ void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
         finalize |= std::holds_alternative<toggle_value>(action_moment.first);
     }
     const auto &patch = SetStoreAndNotify(transient.persistent(), prev_store);
-    store_history.ApplyToCurrentGesture(gesture, patch);
-    if (finalize) store_history.FinalizeGesture();
+    c.History.ApplyToCurrentGesture(gesture, patch);
+    if (finalize) c.History.FinalizeGesture();
 }
 
 //-----------------------------------------------------------------------------
@@ -342,7 +338,7 @@ void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
 //-----------------------------------------------------------------------------
 
 Context::Context() {
-    store_history.Reset();
+    History = {};
     if (fs::exists(PreferencesPath)) {
         preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
@@ -363,7 +359,7 @@ void Context::SaveEmptyProject() {
 }
 
 void Context::SaveCurrentProject() {
-    if (current_project_path) SaveProject(current_project_path.value());
+    if (CurrentProjectPath) SaveProject(CurrentProjectPath.value());
 }
 
 bool Context::ClearPreferences() {
@@ -374,34 +370,28 @@ bool Context::ClearPreferences() {
 json Context::GetProjectJson(const ProjectFormat format) {
     switch (format) {
         case StateFormat: return store;
-        case ActionFormat: return {{"gestures", history.Gestures()}, {"index", history.StoreIndex}};
+        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
     }
 }
 
-void Context::EnqueueAction(const Action &action) {
-    const ActionMoment action_moment = {action, Clock::now()};
-    ActionQueue.push(action_moment);
-    ActionConcurrentQueue.enqueue(action_moment);
-}
-
-void Context::RunQueuedActions(bool force_finalize_gesture) {
+void Context::RunQueuedActions(bool force_finalize_gesture) const {
     vector<ActionMoment> actions; // Same type as `Gesture`, but semantically different, since the queued actions may not represent a full gesture.
     while (!ActionQueue.empty()) {
         actions.push_back(ActionQueue.front());
         ActionQueue.pop();
     }
-    ApplyGesture(actions, force_finalize_gesture || (!UiContext.is_widget_gesturing && !history.ActiveGesture.empty() && history.GestureTimeRemainingSec() <= 0));
+    ApplyGesture(actions, force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0));
 }
 
 bool Context::ActionAllowed(const ActionID action_id) const {
     switch (action_id) {
-        case action::id<undo>: return history.CanUndo();
-        case action::id<redo>: return history.CanRedo();
+        case action::id<undo>: return History.CanUndo();
+        case action::id<redo>: return History.CanRedo();
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<Actions::save_project>:
         case action::id<Actions::show_save_project_dialog>:
-        case action::id<Actions::save_default_project>: return !history.Empty();
-        case action::id<Actions::save_current_project>: return current_project_path.has_value() && !history.Empty();
+        case action::id<Actions::save_default_project>: return !History.Empty();
+        case action::id<Actions::save_current_project>: return CurrentProjectPath.has_value() && !History.Empty();
         case action::id<Actions::open_file_dialog>: return !s.FileDialog.Visible;
         case action::id<Actions::close_file_dialog>: return s.FileDialog.Visible;
         default: return true;
@@ -410,9 +400,9 @@ bool Context::ActionAllowed(const ActionID action_id) const {
 bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
 
 void Context::Clear() {
-    current_project_path.reset();
-    store_history.Reset();
-    UiContext.is_widget_gesturing = false;
+    CurrentProjectPath = {};
+    History = {};
+    UiContext.IsWidgetGesturing = false;
 }
 
 // Private methods
@@ -437,20 +427,20 @@ void Context::OpenProject(const fs::path &path) {
 
         const Gestures gestures = project["gestures"];
         for (const auto &gesture: gestures) ApplyGesture(gesture, true);
-        store_history.SetIndex(project["index"]);
+        History.SetIndex(project["index"]);
     }
 
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
 }
 
 bool Context::SaveProject(const fs::path &path) {
-    if (current_project_path.has_value() && fs::equivalent(path, current_project_path.value()) && !ActionAllowed(action::id<save_current_project>))
+    if (CurrentProjectPath.has_value() && fs::equivalent(path, CurrentProjectPath.value()) && !ActionAllowed(action::id<save_current_project>))
         return false;
 
     const auto format = GetProjectFormat(path);
     if (!format) return false; // TODO log
 
-    store_history.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
+    History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
     if (FileIO::write(path, GetProjectJson(format.value()).dump())) {
         if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
         return true;
@@ -459,7 +449,7 @@ bool Context::SaveProject(const fs::path &path) {
 }
 
 void Context::SetCurrentProjectPath(const fs::path &path) {
-    current_project_path = path;
+    CurrentProjectPath = path;
     preferences.recently_opened_paths.remove(path);
     preferences.recently_opened_paths.emplace_front(path);
     WritePreferences();
@@ -474,30 +464,21 @@ bool Context::WritePreferences() const {
 //-----------------------------------------------------------------------------
 
 void UIContext::WidgetGestured() {
-    if (ImGui::IsItemActivated()) is_widget_gesturing = true;
-    if (ImGui::IsItemDeactivated()) is_widget_gesturing = false;
+    if (ImGui::IsItemActivated()) IsWidgetGesturing = true;
+    if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
 }
 
 //-----------------------------------------------------------------------------
 // [SECTION] History
 //-----------------------------------------------------------------------------
 
-void StoreHistory::Reset() {
-    StoreRecords.clear();
-    StoreRecords.push_back({Clock::now(), store, {}});
-    StoreIndex = 0;
-    ActiveGesture.clear();
-    GestureUpdateTimesForPath.clear();
-    CommittedUpdateTimesForPath.clear();
-}
-
-int StoreHistory::Size() const { return int(StoreRecords.size()); }
+int StoreHistory::Size() const { return int(Records.size()); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
-bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || StoreIndex > 0; }
-bool StoreHistory::CanRedo() const { return StoreIndex < Size(); }
+bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || Index > 0; }
+bool StoreHistory::CanRedo() const { return Index < Size(); }
 
 Gestures StoreHistory::Gestures() const {
-    return StoreRecords | transform([](const auto &record) { return record.Gesture; }) |
+    return Records | transform([](const auto &record) { return record.Gesture; }) |
         views::filter([](const auto &gesture) { return !gesture.empty(); }) | to<vector>; // First gesture is expected to be empty.
 }
 TimePoint StoreHistory::GestureStartTime() const {
@@ -518,12 +499,12 @@ void StoreHistory::FinalizeGesture() {
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;
 
-    const auto &patch = CreatePatch(store, StoreRecords[StoreIndex].Store);
+    const auto &patch = CreatePatch(store, Records[Index].Store);
     if (patch.empty()) return;
 
-    while (Size() > StoreIndex + 1) StoreRecords.pop_back(); // TODO use an undo _tree_ and keep this history
-    StoreRecords.push_back({Clock::now(), store, merged_gesture});
-    StoreIndex = Size() - 1;
+    while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
+    Records.push_back({Clock::now(), store, merged_gesture});
+    Index = Size() - 1;
     const auto &gesture_time = merged_gesture.back().second;
     for (const auto &[partial_path, op]: patch.ops) CommittedUpdateTimesForPath[patch.base_path / partial_path].emplace_back(gesture_time);
 }
@@ -565,21 +546,21 @@ void StoreHistory::SetIndex(int new_index) {
     if (!ActiveGesture.empty()) {
         ActiveGesture.clear();
         GestureUpdateTimesForPath.clear();
-        SetStoreAndNotify(StoreRecords[StoreIndex].Store);
+        SetStoreAndNotify(Records[Index].Store);
     }
-    if (new_index == StoreIndex || new_index < 0 || new_index >= Size()) return;
+    if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
-    int old_index = StoreIndex;
-    StoreIndex = new_index;
+    int old_index = Index;
+    Index = new_index;
 
-    SetStoreAndNotify(StoreRecords[StoreIndex].Store);
+    SetStoreAndNotify(Records[Index].Store);
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
     while (i != new_index) {
         const int history_index = direction == Reverse ? --i : i++;
-        const size_t record_index = history_index == -1 ? StoreIndex : history_index;
-        const auto &segment_patch = CreatePatch(StoreRecords[record_index].Store, StoreRecords[record_index + 1].Store);
-        const auto &gesture_time = StoreRecords[record_index + 1].Gesture.back().second;
+        const size_t record_index = history_index == -1 ? Index : history_index;
+        const auto &segment_patch = CreatePatch(Records[record_index].Store, Records[record_index + 1].Store);
+        const auto &gesture_time = Records[record_index + 1].Gesture.back().second;
         for (const auto &[partial_path, op]: segment_patch.ops) {
             const auto &path = segment_patch.base_path / partial_path;
             if (direction == Forward) {
@@ -612,4 +593,16 @@ void ApplicationSettings::ActionConsumer::UpdateProcess() const {
 //    } else if (!Running && action_consumer.joinable()) {
 //        action_consumer.join();
 //    }
+}
+
+void EnqueueAction(const Action &action) {
+    const ActionMoment action_moment = {action, Clock::now()};
+    ActionQueue.push(action_moment);
+    ActionConcurrentQueue.enqueue(action_moment);
+}
+
+bool q(Action &&a, bool flush) {
+    EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
+    if (flush) c.RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
+    return true;
 }

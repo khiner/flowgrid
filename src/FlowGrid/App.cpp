@@ -174,21 +174,6 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
-void OnPatch(const Patch &patch) {
-    UIContext::Flags ui_context_flags = UIContext::Flags_None;
-    for (const auto &[partial_path, _op]: patch.ops) {
-        const auto &path = patch.base_path / partial_path;
-        // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
-        // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
-        else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
-        else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
-    }
-    if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
-    s.Audio.UpdateProcess();
-    s.ApplicationSettings.ActionConsumer.UpdateProcess();
-}
-
 void State::Update(const Action &action, TransientStore &transient) const {
     std::visit(visitor{
         [&](const set_value &a) { transient.set(a.path, a.value); },
@@ -320,7 +305,19 @@ Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store)
     const auto &patch = CreatePatch(prev_store, new_store);
     if (!patch.empty()) {
         SetStore(new_store); // This is the only place `SetStore` is called.
-        OnPatch(patch);
+        UIContext::Flags ui_context_flags = UIContext::Flags_None;
+        for (const auto &[partial_path, _op]: patch.ops) {
+            const auto &path = patch.base_path / partial_path;
+            // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
+            // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
+            if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+            else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
+            else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
+        }
+        if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
+        s.Audio.UpdateProcess();
+        s.ApplicationSettings.ActionConsumer.UpdateProcess();
+        store_history.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
     }
     return patch;
 }
@@ -537,8 +534,6 @@ void StoreHistory::FinalizeGesture() {
 }
 
 void StoreHistory::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
-    if (!patch.empty()) LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
-
     for (const auto &[partial_path, op]: patch.ops) {
         const auto &path = patch.base_path / partial_path;
         if (direction == Forward) {

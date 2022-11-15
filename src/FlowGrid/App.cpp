@@ -486,11 +486,13 @@ void StoreHistory::Reset() {
     StoreRecords.clear();
     StoreRecords.push_back({Clock::now(), store, {}});
     StoreIndex = 0;
-    ActiveGesture = {};
+    ActiveGesture.clear();
+    GestureUpdateTimesForPath.clear();
+    CommittedUpdateTimesForPath.clear();
 }
 
 int StoreHistory::Size() const { return int(StoreRecords.size()); }
-bool StoreHistory::Empty() const { return Size() == 0; }
+bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
 bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || StoreIndex > 0; }
 bool StoreHistory::CanRedo() const { return StoreIndex < Size(); }
 
@@ -539,6 +541,8 @@ std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) c
 
 StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const {
     std::set < StatePath > paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<std::set>;
+    if (paths.empty()) return {};
+
     const bool has_gesture = !GestureUpdateTimesForPath.empty();
     vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
     int i = 0;
@@ -557,10 +561,8 @@ StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const 
 }
 
 void StoreHistory::SetIndex(int new_index) {
-    // If we're mid-gesture, cancel the current gesture before navigating to the requested history index.
-    bool has_gesture = !ActiveGesture.empty();
-    if (has_gesture) {
-        // Revert the active gesture.
+    // If we're mid-gesture, revert the current gesture before navigating to the requested history index.
+    if (!ActiveGesture.empty()) {
         ActiveGesture.clear();
         GestureUpdateTimesForPath.clear();
         SetStoreAndNotify(StoreRecords[StoreIndex].Store);

@@ -1088,12 +1088,12 @@ void StateMemoryEditor::Draw() const {
 }
 
 void StatePathUpdateFrequency::Draw() const {
-    if (history.CommittedUpdateTimesForPath.empty() && history.GestureUpdateTimesForPath.empty()) {
+    auto [labels, values] = history.StatePathUpdateFrequencyPlottable();
+    if (labels.empty()) {
         Text("No state updates yet.");
         return;
     }
 
-    auto [labels, values] = history.StatePathUpdateFrequencyPlottable();
     if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
         ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
 
@@ -1105,9 +1105,8 @@ void StatePathUpdateFrequency::Draw() const {
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *item_labels[] = {"Committed updates", "Active updates"};
-        const bool has_gesture = !history.GestureUpdateTimesForPath.empty();
-        const int item_count = has_gesture ? 2 : 1;
-        const int group_count = has_gesture ? int(values.size()) / 2 : int(values.size());
+        const int item_count = !history.ActiveGesture.empty() ? 2 : 1;
+        const int group_count = int(values.size()) / item_count;
         ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
         ImPlot::EndPlot();
@@ -1742,8 +1741,8 @@ void Metrics::FlowGridMetrics::Draw() const {
     }
     Separator();
     {
-        const bool has_records = history.Size() > 1; // The first record is the initial store, with an app-start (basically) timestamp, and an empty gesture.
-        if (!has_records) BeginDisabled();
+        const bool no_history = history.Empty();
+        if (no_history) BeginDisabled();
         if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", history.Size() - 1, history.StoreIndex)) {
             for (int i = 1; i < history.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == history.StoreIndex ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
@@ -1776,7 +1775,7 @@ void Metrics::FlowGridMetrics::Draw() const {
             }
             TreePop();
         }
-        if (!has_records) EndDisabled();
+        if (no_history) EndDisabled();
     }
     Separator();
     {

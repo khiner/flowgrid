@@ -1424,8 +1424,6 @@ struct StoreHistory {
     };
 
     vector<StatePath> LatestUpdatedPaths{};
-    map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
-    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
 
     void ApplyToCurrentGesture(const Gesture &, const Patch &);
     Plottable StatePathUpdateFrequencyPlottable() const;
@@ -1447,6 +1445,10 @@ struct StoreHistory {
     vector<StoreRecord> StoreRecords; // TODO use an undo tree and persist all branches (like Emacs/Vim undo tree)
     int StoreIndex{0};
     Gesture ActiveGesture; // uncompressed, uncommitted
+
+private:
+    map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
+    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
 };
 
 extern const StoreHistory &history;

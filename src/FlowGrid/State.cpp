@@ -1021,7 +1021,6 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
         const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
-        if (was_recently_updated) FillRowItemBg(s.Style.ImGui.Colors[ImGuiCol_FrameBg]);
     }
 
     // Flash background color of nodes when its corresponding path updates.

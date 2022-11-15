@@ -393,7 +393,7 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
         actions.push_back(queued_actions.front());
         queued_actions.pop();
     }
-    ApplyGesture(actions, force_finalize_gesture || (!UiContext.is_widget_gesturing && history.GestureTimeRemainingSec() <= 0));
+    ApplyGesture(actions, force_finalize_gesture || (!UiContext.is_widget_gesturing && !history.ActiveGesture.empty() && history.GestureTimeRemainingSec() <= 0));
 }
 
 bool Context::ActionAllowed(const ActionID action_id) const {

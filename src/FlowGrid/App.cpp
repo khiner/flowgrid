@@ -12,8 +12,8 @@ map<ImGuiID, StateMember *> StateMember::WithID{};
 StoreHistory store_history{}; // One store checkpoint for every gesture.
 const StoreHistory &history = store_history;
 
-std::queue<const ActionMoment> queued_actions;
-BlockingConcurrentQueue<ActionMoment> action_queue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
+std::queue<const ActionMoment> ActionQueue;
+BlockingConcurrentQueue<ActionMoment> ActionConcurrentQueue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
 // Persistent modifiers
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -310,7 +310,7 @@ void ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
             store_history.ActiveGesture.emplace_back(action_moment);
-            state.Update(a, transient);
+            s.Update(a, transient);
         },
     }, action);
 }
@@ -383,15 +383,15 @@ json Context::GetProjectJson(const ProjectFormat format) {
 
 void Context::EnqueueAction(const Action &action) {
     const ActionMoment action_moment = {action, Clock::now()};
-    queued_actions.push(action_moment);
-    action_queue.enqueue(action_moment);
+    ActionQueue.push(action_moment);
+    ActionConcurrentQueue.enqueue(action_moment);
 }
 
 void Context::RunQueuedActions(bool force_finalize_gesture) {
     vector<ActionMoment> actions; // Same type as `Gesture`, but semantically different, since the queued actions may not represent a full gesture.
-    while (!queued_actions.empty()) {
-        actions.push_back(queued_actions.front());
-        queued_actions.pop();
+    while (!ActionQueue.empty()) {
+        actions.push_back(ActionQueue.front());
+        ActionQueue.pop();
     }
     ApplyGesture(actions, force_finalize_gesture || (!UiContext.is_widget_gesturing && !history.ActiveGesture.empty() && history.GestureTimeRemainingSec() <= 0));
 }
@@ -609,7 +609,7 @@ void StoreHistory::SetIndex(int new_index) {
 void ConsumeActions() {
     while (s.ApplicationSettings.ActionConsumer.Running) {
         ActionMoment action_moment;
-        const bool action_consumed = action_queue.try_dequeue(action_moment);
+        const bool action_consumed = ActionConcurrentQueue.try_dequeue(action_moment);
         if (action_consumed) {
             const auto &[action, time] = action_moment;
             cout << format("Consumed action produced at {}:\n{}\n\n", time, json(action).dump(4));

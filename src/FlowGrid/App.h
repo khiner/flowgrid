@@ -1173,7 +1173,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const map<ID, string> NameForId{
+const map <ID, string> NameForId{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1212,7 +1212,7 @@ const map<ID, string> NameForId{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const map<ID, string> ShortcutForId = {
+const map <ID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1380,8 +1380,8 @@ const Audio &audio = s.Audio; // Or just access the (read-only) `state` members 
 ```
 */
 
-extern const State &state, &s;
-extern Context &context, &c;
+extern const State &s;
+extern Context c;
 
 /**
  This is the main action-queue method.

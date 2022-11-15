@@ -6,17 +6,14 @@ TransientStore application_ctor_store{}; // Create the local transient store use
 TransientStore &ctor_store = application_ctor_store; // ... and assign to its mutable, read-write reference global.
 
 State application_state{}; // Create the transient store used only for `State` construction...
-const State &state = application_state; // ... and assign to its immutable, read-only reference global...
-const State &s = application_state; // ... and a convenient single-letter duplicate reference.
+const State &s = application_state; // ... and assign to its immutable, read-only reference global...
 
 Store application_store = application_ctor_store.persistent(); // Create the local canonical store, initially containing the full application state constructed by `State`...
 const Store &store = application_store; // ... and assign to its immutable, read-only reference global.
 
+// Create global, mutable `UIContext` and `Context` instances.
 UIContext UiContext{};
-
-Context application_context{};
-Context &context = application_context;
-Context &c = application_context;
+Context c{};
 
 Store SetStore(const Store &new_store) { return application_store = new_store; }
 

@@ -333,7 +333,7 @@ void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
     }
     const auto new_store = transient.persistent();
     const auto &patch = SetStoreAndNotify(new_store, prev_store);
-    if (!patch.empty()) store_history.Apply(patch, Clock::now(), Forward, false);
+    if (!patch.empty()) store_history.Apply(gesture, patch, Forward, false);
     if (finalize) store_history.FinalizeGesture();
 }
 
@@ -483,11 +483,6 @@ void UIContext::WidgetGestured() {
 // [SECTION] History
 //-----------------------------------------------------------------------------
 
-StatePatch StoreHistory::CreatePatch(const int history_index) const {
-    const size_t i = history_index == -1 ? StoreIndex : history_index;
-    return {::CreatePatch(StoreRecords[i].Store, StoreRecords[i + 1].Store), StoreRecords[i + 1].Committed};
-}
-
 void StoreHistory::Reset() {
     StoreRecords.clear();
     StoreRecords.push_back({Clock::now(), store, {}});
@@ -517,10 +512,9 @@ float StoreHistory::GestureTimeRemainingSec() const {
 void StoreHistory::FinalizeGesture() {
     if (ActiveGesture.empty()) return;
 
-    const auto gesture_patch = ::CreatePatch(StoreRecords[StoreIndex].Store, store);
-    Apply(gesture_patch, Clock::now(), Forward, true);
-
+    const auto gesture_patch = CreatePatch(StoreRecords[StoreIndex].Store, store);
     const auto merged_gesture = action::MergeGesture(ActiveGesture);
+    Apply(merged_gesture, gesture_patch, Forward, true);
     ActiveGesture.clear();
 
     if (merged_gesture.empty()) {
@@ -533,12 +527,13 @@ void StoreHistory::FinalizeGesture() {
     StoreIndex = Size() - 1;
 }
 
-void StoreHistory::Apply(const Patch &patch, TimePoint time, Direction direction, bool is_full_gesture) {
+void StoreHistory::Apply(const Gesture &gesture, const Patch &patch, Direction direction, bool is_gesture) {
     for (const auto &[partial_path, op]: patch.ops) {
         const auto &path = patch.base_path / partial_path;
         if (direction == Forward) {
-            auto &update_times = is_full_gesture ? CommittedUpdateTimesForPath : GestureUpdateTimesForPath;
-            update_times[path].emplace_back(is_full_gesture && GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).back() : time);
+            const auto time = gesture.back().second;
+            auto &update_times = is_gesture ? CommittedUpdateTimesForPath : GestureUpdateTimesForPath;
+            update_times[path].emplace_back(is_gesture && GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).back() : time);
         } else if (CommittedUpdateTimesForPath.contains(path)) {
             auto &update_times = CommittedUpdateTimesForPath.at(path);
             update_times.pop_back();
@@ -546,7 +541,7 @@ void StoreHistory::Apply(const Patch &patch, TimePoint time, Direction direction
         }
     }
 
-    if (is_full_gesture) GestureUpdateTimesForPath.clear();
+    if (is_gesture) GestureUpdateTimesForPath.clear();
 }
 
 std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) const {
@@ -581,9 +576,9 @@ void StoreHistory::SetIndex(int new_index) {
     // If we're mid-gesture, cancel the current gesture before navigating to the requested history index.
     bool has_gesture = !ActiveGesture.empty();
     if (has_gesture) {
-        // Cancel & revert the gesture.
-        Apply({}, Clock::now(), Forward, true);
+        // Revert the active gesture.
         ActiveGesture.clear();
+        GestureUpdateTimesForPath.clear();
         SetStoreAndNotify(StoreRecords[StoreIndex].Store);
     }
     if (new_index == StoreIndex || new_index < 0 || new_index >= Size()) return;
@@ -596,8 +591,10 @@ void StoreHistory::SetIndex(int new_index) {
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
     while (i != new_index) {
-        const auto &segment_patch = CreatePatch(direction == Reverse ? --i : i++);
-        Apply(segment_patch.Patch, segment_patch.Time, direction, true);
+        const int history_index = direction == Reverse ? --i : i++;
+        const size_t record_index = history_index == -1 ? StoreIndex : history_index;
+        const Patch &segment_patch = CreatePatch(StoreRecords[record_index].Store, StoreRecords[record_index + 1].Store);
+        Apply(StoreRecords[record_index + 1].Gesture, segment_patch, direction, true);
     }
 }
 

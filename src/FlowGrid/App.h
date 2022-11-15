@@ -1427,11 +1427,10 @@ struct StoreHistory {
     map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
     map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
 
-    void Apply(const Patch &patch, TimePoint time, Direction direction, bool is_gesture);
+    void Apply(const Gesture &, const Patch &, Direction, bool is_gesture);
     Plottable StatePathUpdateFrequencyPlottable() const;
     std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
 
-    StatePatch CreatePatch(int history_index = -1) const;
     void FinalizeGesture();
     void Reset();
     void SetIndex(int);

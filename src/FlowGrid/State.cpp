@@ -1751,7 +1751,8 @@ void Metrics::FlowGridMetrics::Draw() const {
                     const auto &[committed, store_record, gesture] = history.StoreRecords[i];
                     BulletText("Committed: %s", format("{}\n", committed).c_str());
                     if (TreeNode("Patch")) {
-                        const auto &[patch, _] = history.CreatePatch(i - 1); // We compute the patches when we need them rather than memoizing them.
+                        // We compute patches as we need them rather than memoizing them.
+                        const auto &patch = CreatePatch(history.StoreRecords[i - 1].Store, history.StoreRecords[i].Store);
                         for (const auto &[partial_path, op]: patch.ops) {
                             const auto &path = patch.base_path / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

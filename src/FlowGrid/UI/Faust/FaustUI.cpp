@@ -382,7 +382,7 @@ struct Node {
         for (const auto *child: children) child->draw(device);
         _draw(device);
         if (device.type() == DeviceType_ImGui &&
-            (!hovered_node || (is_inside(*hovered_node) && IsMouseHoveringRect(device.at(position), device.at(position + size))))) {
+            (!hovered_node || is_inside(*hovered_node)) && IsMouseHoveringRect(device.at(position), device.at(position + size))) {
             hovered_node = this;
         }
     };

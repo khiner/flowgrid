@@ -14,7 +14,6 @@ const Store &store = application_store; // ... and assign to its immutable, read
 // Create global, mutable `UIContext` and `Context` instances.
 UIContext UiContext{};
 Context c{};
-const StoreHistory &History = c.History;
 
 Store SetStore(const Store &new_store) { return application_store = new_store; }
 

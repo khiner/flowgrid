@@ -1344,7 +1344,7 @@ struct Context {
     bool SaveProject(const fs::path &);
     void SaveCurrentProject();
 
-    void RunQueuedActions(bool force_finalize_gesture = false) const;
+    void RunQueuedActions(bool force_finalize_gesture = false);
     bool ActionAllowed(ActionID) const;
     bool ActionAllowed(const Action &) const;
 
@@ -1355,6 +1355,9 @@ struct Context {
     StoreHistory History; // One store checkpoint for every gesture.
 
 private:
+    void ApplyGesture(const Gesture &, bool force_finalize = false);
+    void ApplyAction(const ActionMoment &, TransientStore &);
+
     void SetCurrentProjectPath(const fs::path &);
     bool WritePreferences() const;
 
@@ -1450,5 +1453,3 @@ void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
 Store SetStore(const Store &store);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
-
-extern const StoreHistory &History;

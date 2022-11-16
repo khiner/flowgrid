@@ -13,6 +13,8 @@ using namespace ImGui;
 using namespace fg;
 using namespace action;
 
+const auto &History = c.History;
+
 //-----------------------------------------------------------------------------
 // [SECTION] Fields
 //-----------------------------------------------------------------------------

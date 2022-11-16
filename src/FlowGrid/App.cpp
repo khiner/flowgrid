@@ -255,84 +255,6 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &base
 
 void SaveBoxSvg(const string &path); // Defined in FaustUI
 
-void ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
-    const auto &[action, time] = action_moment;
-    if (!c.ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
-
-    std::visit(visitor{
-        // Handle actions that don't directly update state.
-        // These options don't get added to the action/gesture history, since they only have non-application side effects,
-        // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Actions::open_project &a) { c.OpenProject(a.path); },
-        [&](const open_empty_project &) { c.OpenProject(EmptyProjectPath); },
-        [&](const open_default_project &) { c.OpenProject(DefaultProjectPath); },
-
-        [&](const Actions::save_project &a) { c.SaveProject(a.path); },
-        [&](const save_default_project &) { c.SaveProject(DefaultProjectPath); },
-        [&](const Actions::save_current_project &) { c.SaveCurrentProject(); },
-        [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
-        [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
-
-        // `History.Index`-changing actions:
-        [&](const undo &) {
-            // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
-            // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
-            // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
-            // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
-            // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
-            if (History.Index == History.Size() - 1) {
-                if (!History.ActiveGesture.empty()) c.History.FinalizeGesture();
-                c.History.SetIndex(History.Index - 1);
-            } else {
-                c.History.SetIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
-            }
-        },
-        [&](const redo &) { c.History.SetIndex(History.Index + 1); },
-        [&](const Actions::set_history_index &a) { c.History.SetIndex(a.index); },
-
-        // Remaining actions have a direct effect on the application state.
-        [&](const auto &a) {
-            c.History.ActiveGesture.emplace_back(action_moment);
-            s.Update(a, transient);
-        },
-    }, action);
-}
-
-Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store) {
-    const auto &patch = CreatePatch(prev_store, new_store);
-    if (!patch.empty()) {
-        SetStore(new_store); // This is the only place `SetStore` is called.
-        UIContext::Flags ui_context_flags = UIContext::Flags_None;
-        for (const auto &[partial_path, _op]: patch.ops) {
-            const auto &path = patch.base_path / partial_path;
-            // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
-            // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-            if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
-            else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
-            else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
-        }
-        if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
-        s.Audio.UpdateProcess();
-        s.ApplicationSettings.ActionConsumer.UpdateProcess();
-        c.History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
-    }
-    return patch;
-}
-
-void ApplyGesture(const Gesture &gesture, const bool force_finalize = false) {
-    bool finalize = force_finalize;
-    const auto prev_store = store;
-    auto transient = store.transient();
-    for (const auto &action_moment: gesture) {
-        ApplyAction(action_moment, transient);
-        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-        finalize |= std::holds_alternative<toggle_value>(action_moment.first);
-    }
-    const auto &patch = SetStoreAndNotify(transient.persistent(), prev_store);
-    c.History.ApplyToCurrentGesture(gesture, patch);
-    if (finalize) c.History.FinalizeGesture();
-}
-
 //-----------------------------------------------------------------------------
 // [SECTION] Context
 //-----------------------------------------------------------------------------
@@ -374,7 +296,7 @@ json Context::GetProjectJson(const ProjectFormat format) {
     }
 }
 
-void Context::RunQueuedActions(bool force_finalize_gesture) const {
+void Context::RunQueuedActions(bool force_finalize_gesture) {
     vector<ActionMoment> actions; // Same type as `Gesture`, but semantically different, since the queued actions may not represent a full gesture.
     while (!ActionQueue.empty()) {
         actions.push_back(ActionQueue.front());
@@ -405,12 +327,31 @@ void Context::Clear() {
     UiContext.IsWidgetGesturing = false;
 }
 
-// Private methods
-
 std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();
     if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
     return {};
+}
+
+Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store) {
+    const auto &patch = CreatePatch(prev_store, new_store);
+    if (!patch.empty()) {
+        SetStore(new_store); // This is the only place `SetStore` is called.
+        UIContext::Flags ui_context_flags = UIContext::Flags_None;
+        for (const auto &[partial_path, _op]: patch.ops) {
+            const auto &path = patch.base_path / partial_path;
+            // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
+            // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
+            if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+            else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
+            else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
+        }
+        if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
+        s.Audio.UpdateProcess();
+        s.ApplicationSettings.ActionConsumer.UpdateProcess();
+        c.History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
+    }
+    return patch;
 }
 
 void Context::OpenProject(const fs::path &path) {
@@ -457,6 +398,63 @@ void Context::SetCurrentProjectPath(const fs::path &path) {
 
 bool Context::WritePreferences() const {
     return FileIO::write(PreferencesPath, json(preferences).dump());
+}
+
+void Context::ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
+    const auto &[action, time] = action_moment;
+    if (!ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
+
+    std::visit(visitor{
+        // Handle actions that don't directly update state.
+        // These options don't get added to the action/gesture history, since they only have non-application side effects,
+        // and we don't want them replayed when loading a saved `.fga` project.
+        [&](const Actions::open_project &a) { OpenProject(a.path); },
+        [&](const open_empty_project &) { OpenProject(EmptyProjectPath); },
+        [&](const open_default_project &) { OpenProject(DefaultProjectPath); },
+
+        [&](const Actions::save_project &a) { SaveProject(a.path); },
+        [&](const save_default_project &) { SaveProject(DefaultProjectPath); },
+        [&](const Actions::save_current_project &) { SaveCurrentProject(); },
+        [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
+        [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
+
+        // `History.Index`-changing actions:
+        [&](const undo &) {
+            // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
+            // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
+            // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
+            // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
+            // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
+            if (History.Index == History.Size() - 1) {
+                if (!History.ActiveGesture.empty()) History.FinalizeGesture();
+                History.SetIndex(History.Index - 1);
+            } else {
+                History.SetIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
+            }
+        },
+        [&](const redo &) { History.SetIndex(History.Index + 1); },
+        [&](const Actions::set_history_index &a) { History.SetIndex(a.index); },
+
+        // Remaining actions have a direct effect on the application state.
+        [&](const auto &a) {
+            History.ActiveGesture.emplace_back(action_moment);
+            s.Update(a, transient);
+        },
+    }, action);
+}
+
+void Context::ApplyGesture(const Gesture &gesture, const bool force_finalize) {
+    bool finalize = force_finalize;
+    const auto prev_store = store;
+    auto transient = store.transient();
+    for (const auto &action_moment: gesture) {
+        ApplyAction(action_moment, transient);
+        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
+        finalize |= std::holds_alternative<toggle_value>(action_moment.first);
+    }
+    const auto &patch = SetStoreAndNotify(transient.persistent(), prev_store);
+    History.ApplyToCurrentGesture(gesture, patch);
+    if (finalize) History.FinalizeGesture();
 }
 
 //-----------------------------------------------------------------------------

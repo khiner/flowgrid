@@ -4,7 +4,7 @@
  * The main `State` instance fully describes the application at any point in time.
  *
  * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
- * which also provides an immutable `Store Update(const Action &) const` method, and a `Draw() const` method.
+ * which also provides an immutable `Update(const Action &, TransientState &) const` method, and a `Draw() const` method.
  */
 
 #include <iostream>
@@ -14,18 +14,17 @@
 #include <set>
 #include <variant>
 
+#include "immer/map.hpp"
+#include "immer/map_transient.hpp"
+#include "nlohmann/json_fwd.hpp"
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/map.hpp>
-
-#include "nlohmann/json_fwd.hpp"
 
 #include "UI/UIContext.h"
 #include "Helper/Sample.h"
 #include "Helper/String.h"
 #include "Helper/File.h"
 #include "Helper/UI.h"
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
@@ -1235,7 +1234,7 @@ using action::Gestures;
 using action::ActionMoment;
 
 //-----------------------------------------------------------------------------
-// [SECTION] Main application `State` struct
+// [SECTION] Main application `State`
 //-----------------------------------------------------------------------------
 
 struct State : UIStateMember {
@@ -1272,7 +1271,7 @@ struct State : UIStateMember {
 };
 
 //-----------------------------------------------------------------------------
-// [SECTION] Main `Context` class
+// [SECTION] Main application `Context`
 //-----------------------------------------------------------------------------
 
 static const map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
@@ -1287,9 +1286,6 @@ static const fs::path InternalPath = ".flowgrid";
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
 static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
 static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
-
-class CTree;
-typedef CTree *Box;
 
 enum Direction { Forward, Reverse };
 

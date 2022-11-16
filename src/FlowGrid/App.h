@@ -369,7 +369,7 @@ struct ApplicationSettings : Window {
     struct ActionConsumer : StateMember {
         using StateMember::StateMember;
         void UpdateProcess() const;
-        Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
+        Bool Running{this, format("Running#{}Running?Disabling ends the {} process.\nEnabling will start the process up again.", Name, Name), true};
     };
 
     void Draw() const override;

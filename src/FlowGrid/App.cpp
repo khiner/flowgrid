@@ -458,15 +458,6 @@ void Context::ApplyGesture(const Gesture &gesture, const bool force_finalize) {
 }
 
 //-----------------------------------------------------------------------------
-// [SECTION] UIContext
-//-----------------------------------------------------------------------------
-
-void UIContext::WidgetGestured() {
-    if (ImGui::IsItemActivated()) IsWidgetGesturing = true;
-    if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
-}
-
-//-----------------------------------------------------------------------------
 // [SECTION] History
 //-----------------------------------------------------------------------------
 
@@ -573,24 +564,30 @@ void StoreHistory::SetIndex(int new_index) {
     GestureUpdateTimesForPath.clear();
 }
 
+//-----------------------------------------------------------------------------
+// [SECTION] Action queueing
+//-----------------------------------------------------------------------------
+
+static bool ActionConsumerRunning = false; // Thread loop signal
+
 void ConsumeActions() {
-    while (s.ApplicationSettings.ActionConsumer.Running) {
-        ActionMoment action_moment;
-        const bool action_consumed = ActionConcurrentQueue.try_dequeue(action_moment);
-        if (action_consumed) {
+    ActionMoment action_moment;
+    while (ActionConsumerRunning) {
+        if (ActionConcurrentQueue.try_dequeue(action_moment)) {
             const auto &[action, time] = action_moment;
             cout << format("Consumed action produced at {}:\n{}\n\n", time, json(action).dump(4));
         }
     }
 }
 
-std::thread action_consumer;
 void ApplicationSettings::ActionConsumer::UpdateProcess() const {
-//    if (Running && !action_consumer.joinable()) {
-//        action_consumer = std::thread(ConsumeActions);
-//    } else if (!Running && action_consumer.joinable()) {
-//        action_consumer.join();
-//    }
+    static std::thread ActionConsumerThread;
+    ActionConsumerRunning = Running;
+    if (ActionConsumerRunning && !ActionConsumerThread.joinable()) {
+        ActionConsumerThread = std::thread(ConsumeActions);
+    } else if (!ActionConsumerRunning && ActionConsumerThread.joinable()) {
+        ActionConsumerThread.join();
+    }
 }
 
 void EnqueueAction(const Action &action) {

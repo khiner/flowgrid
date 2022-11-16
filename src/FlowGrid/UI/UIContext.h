@@ -21,7 +21,10 @@ struct UIContext {
         ImFont *FixedWidth{nullptr};
     };
 
-    void WidgetGestured();
+    void WidgetGestured() {
+        if (ImGui::IsItemActivated()) IsWidgetGesturing = true;
+        if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
+    }
 
     ImGuiContext *ImGui{nullptr};
     ImPlotContext *ImPlot{nullptr};

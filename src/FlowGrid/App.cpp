@@ -568,10 +568,10 @@ void StoreHistory::SetIndex(int new_index) {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
-static bool ActionConsumerRunning = false; // Thread loop signal
+static std::atomic<bool> ActionConsumerRunning = false; // Thread loop signal
 
 void ConsumeActions() {
-    ActionMoment action_moment;
+    static ActionMoment action_moment;
     while (ActionConsumerRunning) {
         if (ActionConcurrentQueue.try_dequeue(action_moment)) {
             const auto &[action, time] = action_moment;

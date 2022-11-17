@@ -1365,7 +1365,7 @@ public:
 
 private:
     void ApplyGesture(const Gesture &, bool force_finalize = false);
-    void ApplyAction(const ActionMoment &, TransientStore &);
+    bool ApplyAction(const ActionMoment &, TransientStore &); // Returns `true` if the provided transient store is updated.
 
     void SetCurrentProjectPath(const fs::path &);
     bool WritePreferences() const;

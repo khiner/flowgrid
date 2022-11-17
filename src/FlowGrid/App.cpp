@@ -401,10 +401,11 @@ bool Context::WritePreferences() const {
     return FileIO::write(PreferencesPath, json(preferences).dump());
 }
 
-void Context::ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
+bool Context::ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
     const auto &[action, time] = action_moment;
-    if (!ActionAllowed(action)) return; // Safeguard against actions running in an invalid state.
+    if (!ActionAllowed(action)) return false; // Safeguard against actions running in an invalid state.
 
+    bool altered = false;
     std::visit(visitor{
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
@@ -438,26 +439,28 @@ void Context::ApplyAction(const ActionMoment &action_moment, TransientStore &tra
 
         // Remaining actions have a direct effect on the application state.
         [&](const auto &a) {
-            History.ActiveGesture.emplace_back(action_moment);
             s.Update(a, transient);
+            altered = true;
         },
     }, action);
+
+    return altered;
 }
 
 void Context::ApplyGesture(const Gesture &gesture, const bool force_finalize) {
-    bool finalize = force_finalize;
     auto transient = store.transient();
+    bool finalize = force_finalize;
+    bool altered = false;
     for (const auto &action_moment: gesture) {
-        ApplyAction(action_moment, transient);
+        if (ApplyAction(action_moment, transient)) {
+            History.ActiveGesture.emplace_back(action_moment);
+            altered = true;
+        }
         // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
         finalize |= std::holds_alternative<toggle_value>(action_moment.first);
     }
-    // xxx pretty bad to rely on side effects to `History.ActiveGesture` in `ApplyAction` to determine if transient state was updated.
-    if (!History.ActiveGesture.empty()) {
-        const auto &patch = SetStore(transient.persistent());
-        History.UpdateGesturePaths(gesture, patch);
-        if (finalize) History.FinalizeGesture();
-    }
+    if (altered) History.UpdateGesturePaths(gesture, SetStore(transient.persistent()));
+    if (finalize) History.FinalizeGesture();
 }
 
 //-----------------------------------------------------------------------------

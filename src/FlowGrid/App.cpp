@@ -64,7 +64,7 @@ StateMember::StateMember(const StateMember *parent, const string &id) : Parent(p
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
-    ctor_store.set(Path, value);
+    c.ctor_store.set(Path, value);
 }
 
 StateMember::~StateMember() {
@@ -260,7 +260,7 @@ void SaveBoxSvg(const string &path); // Defined in FaustUI
 //-----------------------------------------------------------------------------
 
 Context::Context() {
-    History = {};
+    ctor_store = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
     if (fs::exists(PreferencesPath)) {
         preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
@@ -323,7 +323,7 @@ bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(a
 
 void Context::Clear() {
     CurrentProjectPath = {};
-    History = {};
+    History = {ApplicationStore};
     UiContext.IsWidgetGesturing = false;
 }
 
@@ -333,24 +333,25 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Patch SetStoreAndNotify(const Store &new_store, const Store &prev_store = store) {
-    const auto &patch = CreatePatch(prev_store, new_store);
-    if (!patch.empty()) {
-        SetStore(new_store); // This is the only place `SetStore` is called.
-        UIContext::Flags ui_context_flags = UIContext::Flags_None;
-        for (const auto &[partial_path, _op]: patch.ops) {
-            const auto &path = patch.base_path / partial_path;
-            // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
-            // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-            if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
-            else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
-            else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
-        }
-        if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
-        s.Audio.UpdateProcess();
-        s.ApplicationSettings.ActionConsumer.UpdateProcess();
-        c.History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
+Patch Context::SetStore(const Store &new_store) {
+    const auto &patch = CreatePatch(store, new_store);
+    if (patch.empty()) return {};
+
+    ApplicationStore = new_store; // This is the only place `ApplicationStore` is modified.
+    UIContext::Flags ui_context_flags = UIContext::Flags_None;
+    for (const auto &[partial_path, _op]: patch.ops) {
+        const auto &path = patch.base_path / partial_path;
+        // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
+        // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
+        if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+        else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
+        else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
     }
+    if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
+    s.Audio.UpdateProcess();
+    s.ApplicationSettings.ActionConsumer.UpdateProcess();
+    History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
+
     return patch;
 }
 
@@ -362,7 +363,7 @@ void Context::OpenProject(const fs::path &path) {
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        SetStoreAndNotify(store_from_json(project));
+        SetStore(store_from_json(project));
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 
@@ -445,16 +446,18 @@ void Context::ApplyAction(const ActionMoment &action_moment, TransientStore &tra
 
 void Context::ApplyGesture(const Gesture &gesture, const bool force_finalize) {
     bool finalize = force_finalize;
-    const auto prev_store = store;
     auto transient = store.transient();
     for (const auto &action_moment: gesture) {
         ApplyAction(action_moment, transient);
         // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
         finalize |= std::holds_alternative<toggle_value>(action_moment.first);
     }
-    const auto &patch = SetStoreAndNotify(transient.persistent(), prev_store);
-    History.ApplyToCurrentGesture(gesture, patch);
-    if (finalize) History.FinalizeGesture();
+    // xxx pretty bad to rely on side effects to `History.ActiveGesture` in `ApplyAction` to determine if transient state was updated.
+    if (!History.ActiveGesture.empty()) {
+        const auto &patch = SetStore(transient.persistent());
+        History.UpdateGesturePaths(gesture, patch);
+        if (finalize) History.FinalizeGesture();
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -498,7 +501,7 @@ void StoreHistory::FinalizeGesture() {
     for (const auto &[partial_path, op]: patch.ops) CommittedUpdateTimesForPath[patch.base_path / partial_path].emplace_back(gesture_time);
 }
 
-void StoreHistory::ApplyToCurrentGesture(const Gesture &gesture, const Patch &patch) {
+void StoreHistory::UpdateGesturePaths(const Gesture &gesture, const Patch &patch) {
     const auto &gesture_time = gesture.back().second;
     for (const auto &[partial_path, op]: patch.ops) GestureUpdateTimesForPath[patch.base_path / partial_path].emplace_back(gesture_time);
 }
@@ -535,14 +538,14 @@ void StoreHistory::SetIndex(int new_index) {
     if (!ActiveGesture.empty()) {
         ActiveGesture.clear();
         GestureUpdateTimesForPath.clear();
-        SetStoreAndNotify(Records[Index].Store);
+        c.SetStore(Records[Index].Store);
     }
     if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
     int old_index = Index;
     Index = new_index;
 
-    SetStoreAndNotify(Records[Index].Store);
+    c.SetStore(Records[Index].Store);
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
     while (i != new_index) {

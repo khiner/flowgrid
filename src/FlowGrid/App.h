@@ -43,9 +43,7 @@ using StoreEntries = vector<StoreEntry>;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
 
-// Full, read-only canonical application state. Defined in `main.cpp`.
-extern const Store &store;
-extern TransientStore &ctor_store;
+extern const Store &store; // Read-only global for full, read-only canonical application state.
 
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
@@ -1172,7 +1170,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const map <ID, string> NameForId{
+const map<ID, string> NameForId{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1211,7 +1209,7 @@ const map <ID, string> NameForId{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const map <ID, string> ShortcutForId = {
+const map<ID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1300,11 +1298,11 @@ struct StoreHistory {
         vector<ImU64> Values;
     };
 
-    StoreHistory() : Records{{Clock::now(), store, {}}} {}
+    StoreHistory(const Store &_store) : Records{{Clock::now(), _store, {}}} {}
 
     vector<StatePath> LatestUpdatedPaths{};
 
-    void ApplyToCurrentGesture(const Gesture &, const Patch &);
+    void UpdateGesturePaths(const Gesture &, const Patch &);
     Plottable StatePathUpdateFrequencyPlottable() const;
     std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
 
@@ -1347,8 +1345,22 @@ struct Context {
     bool ClearPreferences();
     void Clear();
 
+    // Main setter to modify the canonical application state store.
+    // _All_ store assignments happen via this method.
+    Patch SetStore(const Store &new_store);
+
+    TransientStore ctor_store{};
+
+private:
+    State ApplicationState{};
+    Store ApplicationStore{ctor_store.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
+
+public:
+    const State &s = ApplicationState;
+    const Store &store = ApplicationStore;
+
     Preferences preferences;
-    StoreHistory History; // One store checkpoint for every gesture.
+    StoreHistory History{store}; // One store checkpoint for every gesture.
 
 private:
     void ApplyGesture(const Gesture &, bool force_finalize = false);
@@ -1443,9 +1455,5 @@ void set(const StateMember &, const Primitive &, TransientStore &);
 void set(const StoreEntries &, TransientStore &);
 void set(const MemberEntries &, TransientStore &);
 void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
-
-// Main setters that modify the canonical application state store.
-// _All_ store assignments happen in these two methods.
-Store SetStore(const Store &store);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);

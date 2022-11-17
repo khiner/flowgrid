@@ -169,8 +169,8 @@ struct Float : Base {
 
 struct Vec2 : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id, value), min(min), max(max), fmt(fmt) {}
+    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr, const Bool *link_values = nullptr)
+        : Base(parent, id, value), min(min), max(max), fmt(fmt), link_values(link_values) {}
 
     operator ImVec2() const;
 
@@ -179,6 +179,7 @@ struct Vec2 : Base {
 
     float min, max;
     const char *fmt;
+    const Bool *link_values;
 };
 
 struct Vec2Int : Base {
@@ -709,7 +710,7 @@ struct Style : Window {
                   "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20};
         Bool DiagramScaleLinked{this, "DiagramScaleLinked?Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
         Bool DiagramScaleFill{this, "DiagramScaleFill?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings."};
-        Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10};
+        Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10, nullptr, &DiagramScaleLinked};
         Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
         Bool DiagramRouteFrame{this, "DiagramRouteFrame"};
         Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
@@ -1170,7 +1171,7 @@ constexpr size_t id = mp_find<Action, T>::value;
 
 // todo find a performant way to not compile if not exhaustive.
 //  Could use a visitor on the action...
-const map<ID, string> NameForId{
+const map <ID, string> NameForId{
     {id<undo>, ActionName(undo)},
     {id<redo>, ActionName(redo)},
     {id<set_history_index>, ActionName(set_history_index)},
@@ -1209,7 +1210,7 @@ const map<ID, string> NameForId{
     {id<save_faust_svg_file>, "Save Faust SVG file"},
 };
 
-const map<ID, string> ShortcutForId = {
+const map <ID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1352,7 +1353,7 @@ struct Context {
     TransientStore ctor_store{};
 
 private:
-    State ApplicationState{};
+    const State ApplicationState{};
     Store ApplicationStore{ctor_store.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
 
 public:

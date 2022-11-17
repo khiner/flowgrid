@@ -13,7 +13,7 @@ using namespace ImGui;
 using namespace fg;
 using namespace action;
 
-const auto &History = c.History;
+static const auto &History = c.History;
 
 //-----------------------------------------------------------------------------
 // [SECTION] Fields
@@ -313,7 +313,17 @@ bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
     ImVec2 value = *this;
     const bool edited = SliderFloat2(Name.c_str(), (float *) &value, min, max, fmt, flags);
     UiContext.WidgetGestured();
-    if (edited) q(set_value{Path, value});
+    if (edited) {
+        if (link_values && *link_values) {
+            ImVec2 before_value = *this;
+            q(set_value{Path, value.x != before_value.x ? ImVec2{value.x, value.x} : ImVec2{value.y, value.y}});
+        } else {
+            q(set_value{Path, value});
+        }
+    } else if (link_values && *link_values && value.x != value.y) {
+        const float min_value = std::min(value.x, value.y);
+        q(set_value{Path, ImVec2{min_value, min_value}});
+    }
     HelpMarker();
     return edited;
 }
@@ -1567,20 +1577,8 @@ void Style::FlowGridStyle::Draw() const {
             const bool ScaleFill = DiagramScaleFill;
             DiagramScaleFill.Draw();
             if (ScaleFill) ImGui::BeginDisabled();
-            const ImVec2 scale_before = DiagramScale;
-            if (DiagramScale.Draw() && DiagramScaleLinked) {
-                c.RunQueuedActions();
-                const ImVec2 scale_after = DiagramScale;
-                q(set_value{DiagramScale.Path, scale_after.x != scale_before.x ?
-                                               ImVec2{scale_after.x, scale_after.x} :
-                                               ImVec2{scale_after.y, scale_after.y}});
-                c.RunQueuedActions();
-            }
-            if (DiagramScaleLinked.Draw() && !DiagramScaleLinked) {
-                const ImVec2 scale = DiagramScale;
-                const float min_scale = min(scale.x, scale.y);
-                q(set_value{DiagramScale.Path, ImVec2{min_scale, min_scale}});
-            }
+            DiagramScale.Draw();
+            DiagramScaleLinked.Draw();
             if (ScaleFill) {
                 SameLine();
                 Text("Uncheck 'ScaleFill' to edit scale settings.");

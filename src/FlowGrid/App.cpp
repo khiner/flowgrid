@@ -6,12 +6,7 @@
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
 
-using namespace moodycamel; // Has `ConcurrentQueue` & `BlockingConcurrentQueue`
-
 map<ImGuiID, StateMember *> StateMember::WithID{};
-
-std::queue<const ActionMoment> ActionQueue;
-BlockingConcurrentQueue<ActionMoment> ActionConcurrentQueue{}; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
 // Persistent modifiers
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -296,31 +291,6 @@ json Context::GetProjectJson(const ProjectFormat format) {
     }
 }
 
-void Context::RunQueuedActions(bool force_finalize_gesture) {
-    vector<ActionMoment> actions; // Same type as `Gesture`, but semantically different, since the queued actions may not represent a full gesture.
-    while (!ActionQueue.empty()) {
-        actions.push_back(ActionQueue.front());
-        ActionQueue.pop();
-    }
-    ApplyGesture(actions, force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0));
-}
-
-bool Context::ActionAllowed(const ActionID action_id) const {
-    switch (action_id) {
-        case action::id<undo>: return History.CanUndo();
-        case action::id<redo>: return History.CanRedo();
-        case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
-        case action::id<Actions::save_project>:
-        case action::id<Actions::show_save_project_dialog>:
-        case action::id<Actions::save_default_project>: return !History.Empty();
-        case action::id<Actions::save_current_project>: return CurrentProjectPath.has_value() && !History.Empty();
-        case action::id<Actions::open_file_dialog>: return !s.FileDialog.Visible;
-        case action::id<Actions::close_file_dialog>: return s.FileDialog.Visible;
-        default: return true;
-    }
-}
-bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
-
 void Context::Clear() {
     CurrentProjectPath = {};
     History = {ApplicationStore};
@@ -367,8 +337,9 @@ void Context::OpenProject(const fs::path &path) {
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 
+        // todo inline `ApplyGesture` logic here, and optimize (don't update `ApplicationState` state until the end)
         const Gestures gestures = project["gestures"];
-        for (const auto &gesture: gestures) ApplyGesture(gesture, true);
+        for (const auto &gesture: gestures) ApplyGesture(gesture);
         History.SetIndex(project["index"]);
     }
 
@@ -400,6 +371,22 @@ void Context::SetCurrentProjectPath(const fs::path &path) {
 bool Context::WritePreferences() const {
     return FileIO::write(PreferencesPath, json(preferences).dump());
 }
+
+bool Context::ActionAllowed(const ActionID action_id) const {
+    switch (action_id) {
+        case action::id<undo>: return History.CanUndo();
+        case action::id<redo>: return History.CanRedo();
+        case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
+        case action::id<Actions::save_project>:
+        case action::id<Actions::show_save_project_dialog>:
+        case action::id<Actions::save_default_project>: return !History.Empty();
+        case action::id<Actions::save_current_project>: return CurrentProjectPath.has_value() && !History.Empty();
+        case action::id<Actions::open_file_dialog>: return !s.FileDialog.Visible;
+        case action::id<Actions::close_file_dialog>: return s.FileDialog.Visible;
+        default: return true;
+    }
+}
+bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
 
 bool Context::ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
     const auto &[action, time] = action_moment;
@@ -447,20 +434,17 @@ bool Context::ApplyAction(const ActionMoment &action_moment, TransientStore &tra
     return altered;
 }
 
-void Context::ApplyGesture(const Gesture &gesture, const bool force_finalize) {
+void Context::ApplyGesture(const Gesture &gesture) {
     auto transient = store.transient();
-    bool finalize = force_finalize;
     bool altered = false;
     for (const auto &action_moment: gesture) {
-        if (ApplyAction(action_moment, transient)) {
-            History.ActiveGesture.emplace_back(action_moment);
-            altered = true;
-        }
-        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-        finalize |= std::holds_alternative<toggle_value>(action_moment.first);
+        if (ApplyAction(action_moment, transient)) altered = true;
     }
-    if (altered) History.UpdateGesturePaths(gesture, SetStore(transient.persistent()));
-    if (finalize) History.FinalizeGesture();
+    if (altered) {
+        History.ActiveGesture.insert(History.ActiveGesture.end(), gesture.begin(), gesture.end());
+        History.UpdateGesturePaths(gesture, SetStore(transient.persistent()));
+    }
+    History.FinalizeGesture();
 }
 
 //-----------------------------------------------------------------------------
@@ -574,15 +558,40 @@ void StoreHistory::SetIndex(int new_index) {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
+static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue; // NOLINT(cppcoreguidelines-interfaces-global-init)
+
+void Context::RunQueuedActions(bool force_finalize_gesture) {
+    static ActionMoment action_moment;
+    static vector<ActionMoment> dequeued_actions;
+    dequeued_actions.clear();
+
+    while (ActionQueue.try_dequeue(action_moment)) dequeued_actions.emplace_back(action_moment);
+
+    bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0);
+    auto transient = store.transient();
+    bool altered = false;
+    for (const auto &action: dequeued_actions) {
+        if (ApplyAction(action, transient)) altered = true;
+        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
+        finalize |= std::holds_alternative<toggle_value>(action_moment.first);
+    }
+
+    if (altered) {
+        History.ActiveGesture.insert(History.ActiveGesture.end(), dequeued_actions.begin(), dequeued_actions.end());
+        History.UpdateGesturePaths(dequeued_actions, SetStore(transient.persistent()));
+    }
+    if (finalize) History.FinalizeGesture();
+}
+
 static std::atomic<bool> ActionConsumerRunning = false; // Thread loop signal
 
 void ConsumeActions() {
     static ActionMoment action_moment;
     while (ActionConsumerRunning) {
-        if (ActionConcurrentQueue.try_dequeue(action_moment)) {
-            const auto &[action, time] = action_moment;
-            cout << format("Consumed action produced at {}:\n{}\n\n", time, json(action).dump(4));
-        }
+//        if (ActionQueue.try_dequeue(action_moment)) {
+//            const auto &[action, time] = action_moment;
+//            cout << format("Consumed action produced at {}:\n{}\n\n", time, json(action).dump(4));
+//        }
     }
 }
 
@@ -596,14 +605,8 @@ void ApplicationSettings::ActionConsumer::UpdateProcess() const {
     }
 }
 
-void EnqueueAction(const Action &action) {
-    const ActionMoment action_moment = {action, Clock::now()};
-    ActionQueue.push(action_moment);
-    ActionConcurrentQueue.enqueue(action_moment);
-}
-
-bool q(Action &&a, bool flush) {
-    EnqueueAction(a); // Actions within a single UI frame are queued up and flushed at the end of the frame.
+bool q(Action &&action, bool flush) {
+    ActionQueue.enqueue({action, Clock::now()});
     if (flush) c.RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
     return true;
 }

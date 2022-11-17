@@ -1364,7 +1364,7 @@ public:
     StoreHistory History{store}; // One store checkpoint for every gesture.
 
 private:
-    void ApplyGesture(const Gesture &, bool force_finalize = false);
+    void ApplyGesture(const Gesture &);
     bool ApplyAction(const ActionMoment &, TransientStore &); // Returns `true` if the provided transient store is updated.
 
     void SetCurrentProjectPath(const fs::path &);

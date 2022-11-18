@@ -412,7 +412,7 @@ struct ProjectPreview : Window {
     using Window::Window;
     void Draw() const override;
 
-    Enum Format{this, "Format", {"None", "StateFormat", "DiffFormat", "ActionFormat"}, 1};
+    Enum Format{this, "Format", {"StateFormat", "ActionFormat"}, 1};
     Bool Raw{this, "Raw"};
 };
 

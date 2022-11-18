@@ -249,7 +249,7 @@ void SetupAudio() {
     if (!soundio) throw std::runtime_error("Out of memory");
 
     int err = s.Audio.Backend == AudioBackend::none ? soundio_connect(soundio) : soundio_connect_backend(soundio, ToSoundIoBackend(s.Audio.Backend));
-    if (err) throw std::runtime_error(string("Unable to connect to backend: ") + soundio_strerror(err));
+    if (err) throw std::runtime_error("Unable to connect to backend: "s + soundio_strerror(err));
 
     soundio_flush_events(soundio);
 
@@ -283,7 +283,7 @@ void SetupAudio() {
 
         auto *device = GetDevice(io, device_index);
         if (!device) throw std::runtime_error(format("Could not get audio {} device: out of memory", to_string(io)));
-        if (device->probe_error) throw std::runtime_error(string("Cannot probe device: ") + soundio_strerror(device->probe_error));
+        if (device->probe_error) throw std::runtime_error("Cannot probe device: "s + soundio_strerror(device->probe_error));
 
         for (int i = 0; i < device->sample_rate_count; i++) supported_sample_rates[io].push_back(device->sample_rates[i].max);
         if (supported_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", capitalize(to_string(io))));

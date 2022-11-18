@@ -50,6 +50,7 @@ constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x =
 constexpr bool operator==(const ImVec2ih &lhs, const ImVec2ih &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
+using namespace std::string_literals;
 using std::nullopt;
 using std::cout, std::cerr;
 using std::unique_ptr, std::make_unique;
@@ -1081,8 +1082,16 @@ template<class... Ts>
 struct visitor : Ts ... {
     using Ts::operator()...;
 };
-
 template<class... Ts> visitor(Ts...)->visitor<Ts...>;
+
+// Utility to flatten two variants together into one variant.
+// From https://stackoverflow.com/a/59251342/780425
+template<typename Var1, typename Var2>
+struct variant_flat;
+template<typename ... Ts1, typename ... Ts2>
+struct variant_flat<std::variant<Ts1...>, std::variant<Ts2...>> {
+    using type = std::variant<Ts1..., Ts2...>;
+};
 
 namespace Actions {
 struct undo {};
@@ -1125,30 +1134,54 @@ struct save_faust_svg_file { string path; };
 
 using namespace Actions;
 
-using Action = std::variant<
+// Actions that don't directly update state.
+// These don't get added to the action/gesture history, since they result in side effects that don't change values in the main state store.
+// These are not saved in a FlowGridAction (.fga) project.
+using ProjectAction = std::variant<
     undo, redo, set_history_index,
-    open_project, open_empty_project, open_default_project, show_open_project_dialog,
-    save_project, save_default_project, save_current_project, show_save_project_dialog,
+    open_project, open_empty_project, open_default_project,
+    save_project, save_default_project, save_current_project, save_faust_file, save_faust_svg_file
+>;
+using StateAction = std::variant<
     open_file_dialog, close_file_dialog,
-    close_application,
+    show_open_project_dialog, show_save_project_dialog, show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
+    open_faust_file,
 
     set_value, set_values, toggle_value, apply_patch,
 
     set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
     set_flowgrid_diagram_layout_style,
 
-    show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
-    open_faust_file, save_faust_file, save_faust_svg_file
+    close_application
+>;
+using Action = variant_flat<ProjectAction, StateAction>::type;
+
+// All actions that don't have any member data.
+using EmptyAction = std::variant<
+    undo,
+    redo,
+    open_empty_project,
+    open_default_project,
+    show_open_project_dialog,
+    close_file_dialog,
+    save_current_project,
+    save_default_project,
+    show_save_project_dialog,
+    close_application,
+    show_open_faust_file_dialog,
+    show_save_faust_file_dialog,
+    show_save_faust_svg_file_dialog
 >;
 
 namespace action {
 using ID = size_t;
 
 using ActionMoment = std::pair<Action, TimePoint>;
-using Gesture = vector<ActionMoment>;
+using StateActionMoment = std::pair<StateAction, TimePoint>;
+using Gesture = vector<StateActionMoment>;
 using Gestures = vector<Gesture>;
 
-// Default-construct an (empty) action by its variant index (which is also its `ID`).
+// Default-construct an action by its variant index (which is also its `ID`).
 // Adapted from: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
 Action Create(ID index) {
@@ -1158,58 +1191,18 @@ Action Create(ID index) {
 
 #include "../Boost/mp11/mp_find.h"
 
-// E.g. `action::ID action_id = id<action>`
+// E.g. `action::ID action_id = id<action_type>`
 // An action's ID is its index in the `Action` variant.
 // Down the road, this means `Action` would need to be append-only (no order changes) for backwards compatibility.
 // Not worried about that right now, since it should be easy enough to replace with some UUID system later.
 // Index is simplest.
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
 template<typename T>
-constexpr size_t id = mp_find<Action, T>::value;
+constexpr ID id = mp_find<Action, T>::value;
 
 #define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
 
-// todo find a performant way to not compile if not exhaustive.
-//  Could use a visitor on the action...
-const map <ID, string> NameForId{
-    {id<undo>, ActionName(undo)},
-    {id<redo>, ActionName(redo)},
-    {id<set_history_index>, ActionName(set_history_index)},
-
-    {id<open_project>, ActionName(open_project)},
-    {id<open_empty_project>, ActionName(open_empty_project)},
-    {id<open_default_project>, ActionName(open_default_project)},
-    {id<show_open_project_dialog>, ActionName(show_open_project_dialog)},
-
-    {id<open_file_dialog>, ActionName(open_file_dialog)},
-    {id<close_file_dialog>, ActionName(close_file_dialog)},
-
-    {id<save_project>, ActionName(save_project)},
-    {id<save_default_project>, ActionName(save_default_project)},
-    {id<save_current_project>, ActionName(save_current_project)},
-    {id<show_save_project_dialog>, ActionName(show_save_project_dialog)},
-
-    {id<close_application>, ActionName(close_application)},
-
-    {id<set_value>, ActionName(set_value)},
-    {id<set_values>, ActionName(set_values)},
-    {id<toggle_value>, ActionName(toggle_value)},
-    {id<apply_patch>, ActionName(apply_patch)},
-
-    {id<set_imgui_color_style>, "Set ImGui color style"},
-    {id<set_implot_color_style>, "Set ImPlot color style"},
-    {id<set_flowgrid_color_style>, "Set FlowGrid color style"},
-    {id<set_flowgrid_diagram_color_style>, "Set FlowGrid diagram color style"},
-    {id<set_flowgrid_diagram_color_style>, "Set FlowGrid diagram layout style"},
-
-    {id<show_open_faust_file_dialog>, "Show open Faust file dialog"},
-    {id<show_save_faust_file_dialog>, "Show save Faust file dialog"},
-    {id<show_save_faust_svg_file_dialog>, "Show save Faust SVG file dialog"},
-    {id<open_faust_file>, "Open Faust file"},
-    {id<save_faust_file>, "Save Faust file"},
-    {id<save_faust_svg_file>, "Save Faust SVG file"},
-};
-
+// Note: ID here is index within `Action`, not `EmptyAction`
 const map <ID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
@@ -1221,8 +1214,14 @@ const map <ID, string> ShortcutForId = {
 };
 
 constexpr ID GetId(const Action &action) { return action.index(); }
-string GetName(const Action &action);
-const char *GetMenuLabel(ID action_id);
+constexpr ID GetId(const StateAction &action) { return action.index(); }
+constexpr ID GetId(const ProjectAction &action) { return action.index(); }
+
+string GetName(const ProjectAction &action);
+string GetName(const StateAction &action);
+
+string GetShortcut(const EmptyAction &);
+string GetMenuLabel(const EmptyAction &);
 
 Gesture MergeGesture(const Gesture &);
 } // End `action` namespace
@@ -1231,6 +1230,7 @@ using ActionID = action::ID;
 using action::Gesture;
 using action::Gestures;
 using action::ActionMoment;
+using action::StateActionMoment;
 
 //-----------------------------------------------------------------------------
 // [SECTION] Main application `State`
@@ -1240,7 +1240,7 @@ struct State : UIStateMember {
     State() : UIStateMember() {}
 
     void Draw() const override;
-    void Update(const Action &, TransientStore &) const;
+    void Update(const StateAction &, TransientStore &) const;
     void Apply(UIContext::Flags flags) const;
 
     struct UIProcess : Window {
@@ -1343,6 +1343,7 @@ struct Context {
     void RunQueuedActions(bool force_finalize_gesture = false);
     bool ActionAllowed(ActionID) const;
     bool ActionAllowed(const Action &) const;
+    bool ActionAllowed(const EmptyAction &) const;
 
     bool ClearPreferences();
     void Clear();
@@ -1365,7 +1366,7 @@ public:
     StoreHistory History{store}; // One store checkpoint for every gesture.
 
 private:
-    bool ApplyAction(const Action &, TransientStore &); // Returns `true` if the provided transient store is updated.
+    void ApplyAction(const ProjectAction &);
 
     void SetCurrentProjectPath(const fs::path &);
     bool WritePreferences() const;
@@ -1380,7 +1381,7 @@ private:
 namespace FlowGrid {
 void HelpMarker(const char *help);
 
-void MenuItem(ActionID); // For actions with no data members.
+void MenuItem(const EmptyAction &); // For actions with no data members.
 
 enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None = 0,

@@ -92,8 +92,10 @@ inline void from_json(const json &j, Primitive &field) {
 }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
-void to_json(json &j, const Action &value);
-void from_json(const json &j, Action &value);
+void to_json(json &j, const StateAction &value);
+void from_json(const json &j, StateAction &value);
+void to_json(json &j, const ProjectAction &value);
+void from_json(const json &j, ProjectAction &value);
 } // End `nlohmann` namespace
 
 NLOHMANN_JSON_SERIALIZE_ENUM(PatchOpType, {

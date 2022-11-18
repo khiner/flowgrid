@@ -155,21 +155,14 @@ PatchOps merge(const PatchOps &a, const PatchOps &b) {
  One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
  For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
 */
-std::variant<Action, bool> Merge(const Action &a, const Action &b) {
+std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b) {
     const ID a_id = GetId(a);
     const ID b_id = GetId(b);
 
     switch (a_id) {
-        case id<undo>: if (b_id == id<set_history_index>) return b;
-            return b_id == id<redo>;
-        case id<redo>: if (b_id == id<set_history_index>) return b;
-            return b_id == id<undo>;
-        case id<set_history_index>:
-        case id<open_empty_project>:
-        case id<open_default_project>:
-        case id<show_open_project_dialog>:
         case id<open_file_dialog>:
         case id<close_file_dialog>:
+        case id<show_open_project_dialog>:
         case id<show_save_project_dialog>:
         case id<close_application>:
         case id<set_imgui_color_style>:
@@ -180,10 +173,7 @@ std::variant<Action, bool> Merge(const Action &a, const Action &b) {
         case id<show_open_faust_file_dialog>:
         case id<show_save_faust_file_dialog>: if (a_id == b_id) return b;
             return false;
-        case id<open_project>:
         case id<open_faust_file>:
-        case id<save_faust_file>: if (a_id == b_id && json(a) == json(b)) return a;
-            return false;
         case id<set_value>: if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
             return false;
         case id<set_values>: if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
@@ -203,25 +193,51 @@ std::variant<Action, bool> Merge(const Action &a, const Action &b) {
             return false;
         default: return false;
     }
+
+}
+
+std::variant<ProjectAction, bool> Merge(const ProjectAction &a, const ProjectAction &b) {
+    const ID a_id = GetId(a);
+    const ID b_id = GetId(b);
+
+    switch (a_id) {
+        case id<open_project>:
+        case id<open_empty_project>:
+        case id<open_default_project>:
+        case id<save_faust_file>: {
+            if (a_id == b_id && json(a) == json(b)) return a;
+            return false;
+        }
+        case id<undo>: {
+            if (b_id == id<set_history_index>) return b;
+            return b_id == id<redo>;
+        }
+        case id<redo>: {
+            if (b_id == id<set_history_index>) return b;
+            return b_id == id<undo>;
+        }
+        case id<set_history_index>:
+        default: return false;
+    }
 }
 
 Gesture action::MergeGesture(const Gesture &gesture) {
     Gesture merged_gesture; // Mutable return value
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
-    std::optional<const ActionMoment> active;
+    std::optional<const StateActionMoment> active;
     for (size_t i = 0; i < gesture.size(); i++) {
         if (!active.has_value()) active.emplace(gesture[i]);
         const auto &a = active.value();
         const auto &b = gesture[i + 1];
-        std::variant<Action, bool> merge_result = Merge(a.first, b.first);
+        std::variant<StateAction, bool> merge_result = Merge(a.first, b.first);
         std::visit(visitor{
             [&](const bool cancel_out) {
                 if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
                 else merged_gesture.emplace_back(a); // The left-side action (`a`) can't be merged into any further - nothing more we can do for it!
                 active.reset(); // No merge in either case. Move on to try compressing the next action.
             },
-            [&](const Action &merged_action) {
+            [&](const StateAction &merged_action) {
                 active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
             },
         }, merge_result);
@@ -482,10 +498,12 @@ void fg::HelpMarker(const char *help) {
     }
 }
 
-void fg::MenuItem(ActionID action_id) {
-    const char *menu_label = action::GetMenuLabel(action_id);
-    const char *shortcut = action::ShortcutForId.contains(action_id) ? action::ShortcutForId.at(action_id).c_str() : nullptr;
-    if (ImGui::MenuItem(menu_label, shortcut, false, c.ActionAllowed(action_id))) q(action::Create(action_id));
+void fg::MenuItem(const EmptyAction &action) {
+    const string menu_label = action::GetMenuLabel(action);
+    const string shortcut = action::GetShortcut(action);
+    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, c.ActionAllowed(action))) {
+        std::visit(visitor{[](const auto &a) { q(a); }}, action);
+    }
 }
 
 bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
@@ -586,8 +604,8 @@ void State::Draw() const {
 
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
-            MenuItem(action::id<open_empty_project>);
-            MenuItem(action::id<show_open_project_dialog>);
+            MenuItem(open_empty_project{});
+            MenuItem(show_open_project_dialog{});
 
             const auto &recently_opened_paths = c.preferences.recently_opened_paths;
             if (BeginMenu("Open recent project", !recently_opened_paths.empty())) {
@@ -597,15 +615,15 @@ void State::Draw() const {
                 EndMenu();
             }
 
-            MenuItem(action::id<save_current_project>);
-            MenuItem(action::id<show_save_project_dialog>);
-            MenuItem(action::id<open_default_project>);
-            MenuItem(action::id<save_default_project>);
+            MenuItem(save_current_project{});
+            MenuItem(show_save_project_dialog{});
+            MenuItem(open_default_project{});
+            MenuItem(save_default_project{});
             EndMenu();
         }
         if (BeginMenu("Edit")) {
-            MenuItem(action::id<undo>);
-            MenuItem(action::id<redo>);
+            MenuItem(undo{});
+            MenuItem(redo{});
             EndMenu();
         }
         if (BeginMenu("Windows")) {
@@ -1722,7 +1740,7 @@ void Metrics::FlowGridMetrics::Draw() const {
             const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]));
 
-            const auto &ActiveGesture_title = string("Active gesture") + (ActiveGesturePresent ? " (uncompressed)" : "");
+            const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
             if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (widget_gesturing) FillRowItemBg();
                 else BeginDisabled();

@@ -130,21 +130,63 @@ string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 namespace action {
 
+string GetName(const ProjectAction &action) {
+    return std::visit(visitor{
+        [&](const undo &) { return ActionName(undo); },
+        [&](const redo &) { return ActionName(redo); },
+        [&](const set_history_index &) { return ActionName(set_history_index); },
+        [&](const open_project &) { return ActionName(open_project); },
+        [&](const open_empty_project &) { return ActionName(open_empty_project); },
+        [&](const open_default_project &) { return ActionName(open_default_project); },
+        [&](const save_project &) { return ActionName(save_project); },
+        [&](const save_default_project &) { return ActionName(save_default_project); },
+        [&](const save_current_project &) { return ActionName(save_current_project); },
+        [&](const save_faust_file &) { return "Save Faust file"s; },
+        [&](const save_faust_svg_file &) { return "Save Faust SVG file"s; },
+    }, action);
+}
 
-// An action's menu label is its name, except for a few exceptions.
-const map<ID, string> menu_label_for_id{
-    {id<show_open_project_dialog>, "Open project"},
-    {id<open_empty_project>, "New project"},
-    {id<save_current_project>, "Save project"},
-    {id<show_save_project_dialog>, "Save project as..."},
-    {id<show_open_faust_file_dialog>, "Open DSP file"},
-    {id<show_save_faust_file_dialog>, "Save DSP as..."},
-    {id<show_save_faust_svg_file_dialog>, "Export SVG"},
-};
-string GetName(const Action &action) { return NameForId.at(GetId(action)); }
-const char *GetMenuLabel(ID action_id) {
-    if (menu_label_for_id.contains(action_id)) return menu_label_for_id.at(action_id).c_str();
-    return NameForId.at(action_id).c_str();
+string GetName(const StateAction &action) {
+    return std::visit(visitor{
+        [&](const open_faust_file &) { return "Open Faust file"s; },
+        [&](const show_open_faust_file_dialog &) { return "Show open Faust file dialog"s; },
+        [&](const show_save_faust_file_dialog &) { return "Show save Faust file dialog"s; },
+        [&](const show_save_faust_svg_file_dialog &) { return "Show save Faust SVG file dialog"s; },
+        [&](const set_imgui_color_style &) { return "Set ImGui color style"s; },
+        [&](const set_implot_color_style &) { return "Set ImPlot color style"s; },
+        [&](const set_flowgrid_color_style &) { return "Set FlowGrid color style"s; },
+        [&](const set_flowgrid_diagram_color_style &) { return "Set FlowGrid diagram color style"s; },
+        [&](const set_flowgrid_diagram_layout_style &) { return "Set FlowGrid diagram layout style"s; },
+        [&](const open_file_dialog &) { return ActionName(open_file_dialog); },
+        [&](const close_file_dialog &) { return ActionName(close_file_dialog); },
+        [&](const show_open_project_dialog &) { return ActionName(show_open_project_dialog); },
+        [&](const show_save_project_dialog &) { return ActionName(show_save_project_dialog); },
+        [&](const set_value &) { return ActionName(set_value); },
+        [&](const set_values &) { return ActionName(set_values); },
+        [&](const toggle_value &) { return ActionName(toggle_value); },
+        [&](const apply_patch &) { return ActionName(apply_patch); },
+        [&](const close_application &) { return ActionName(close_application); },
+    }, action);
+}
+
+string GetShortcut(const EmptyAction &action) {
+    const ActionID id = std::visit(visitor{[&](const Action &a) { return GetId(a); }}, action);
+    return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
+}
+
+string GetMenuLabel(const EmptyAction &action) {
+    // An action's menu label is its name, except for a few exceptions.
+    return std::visit(visitor{
+        [&](const show_open_project_dialog &) { return "Open project"s; },
+        [&](const open_empty_project &) { return "New project"s; },
+        [&](const save_current_project &) { return "Save project"s; },
+        [&](const show_save_project_dialog &) { return "Save project as..."s; },
+        [&](const show_open_faust_file_dialog &) { return "Open DSP file"s; },
+        [&](const show_save_faust_file_dialog &) { return "Save DSP as..."s; },
+        [&](const show_save_faust_svg_file_dialog &) { return "Export SVG"s; },
+        [&](const ProjectAction &a) { return GetName(a); },
+        [&](const StateAction &a) { return GetName(a); },
+    }, action);
 }
 }
 
@@ -167,7 +209,7 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
-void State::Update(const Action &action, TransientStore &transient) const {
+void State::Update(const StateAction &action, TransientStore &transient) const {
     std::visit(visitor{
         [&](const set_value &a) { transient.set(a.path, a.value); },
         [&](const set_values &a) { ::set(a.values, transient); },
@@ -226,7 +268,6 @@ void State::Update(const Action &action, TransientStore &transient) const {
         },
         [&](const open_faust_file &a) { set(Audio.Faust.Code, FileIO::read(a.path), transient); },
         [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}, {ApplicationSettings.ActionConsumer.Running, false}}, transient); },
-        [&](const auto &) {}, // All actions that don't directly update state (undo/redo & open/load-project, etc.)
     }, action);
 }
 
@@ -340,9 +381,7 @@ void Context::OpenProject(const fs::path &path) {
         for (const auto &gesture: gestures) {
             const auto before_store = transient.persistent();
             for (const auto &action_moment: gesture) {
-                if (!ApplyAction(action_moment.first, transient)) {
-                    throw std::runtime_error("A saved action has no effect on state."); // todo only throw in debug build
-                }
+                s.Update(action_moment.first, transient);
             }
             const auto after_store = transient.persistent();
             const auto &patch = CreatePatch(before_store, after_store);
@@ -399,9 +438,9 @@ bool Context::ActionAllowed(const ActionID action_id) const {
     }
 }
 bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
+bool Context::ActionAllowed(const EmptyAction &action) const { return std::visit(visitor{[&](const Action &a) { return ActionAllowed(a); }}, action); }
 
-bool Context::ApplyAction(const Action &action, TransientStore &transient) {
-    bool altered = false;
+void Context::ApplyAction(const ProjectAction &action) {
     std::visit(visitor{
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
@@ -432,15 +471,7 @@ bool Context::ApplyAction(const Action &action, TransientStore &transient) {
         },
         [&](const redo &) { History.SetIndex(History.Index + 1); },
         [&](const Actions::set_history_index &a) { History.SetIndex(a.index); },
-
-        // Remaining actions have a direct effect on the application state.
-        [&](const auto &a) {
-            s.Update(a, transient);
-            altered = true;
-        },
     }, action);
-
-    return altered;
 }
 
 //-----------------------------------------------------------------------------
@@ -558,29 +589,31 @@ static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue; // NOLINT(
 
 void Context::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
-    static vector<ActionMoment> dequeued_actions;
-    dequeued_actions.clear();
+    static vector<StateActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
+    state_actions.clear();
 
+    auto transient = store.transient();
     while (ActionQueue.try_dequeue(action_moment)) {
         // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
-        if (ActionAllowed(action_moment.first)) dequeued_actions.emplace_back(action_moment);
-    }
-
-    auto transient = store.transient();
-    bool altered = false;
-    for (const auto &dequeued_action: dequeued_actions) {
-        const auto &[action, _] = dequeued_action;
-        if (ApplyAction(action, transient)) altered = true;
+        const auto &[action, _] = action_moment;
+        if (!ActionAllowed(action)) continue;
+        std::visit(visitor{
+            [&](const ProjectAction &a) { ApplyAction(a); },
+            [&](const StateAction &a) {
+                s.Update(a, transient);
+                state_actions.emplace_back(a, action_moment.second);
+            },
+        }, action);
         // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
         force_finalize_gesture |= std::holds_alternative<toggle_value>(action);
     }
 
     bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0);
-    if (altered) {
-        History.ActiveGesture.insert(History.ActiveGesture.end(), dequeued_actions.begin(), dequeued_actions.end());
-        History.UpdateGesturePaths(dequeued_actions, SetStore(transient.persistent()));
+    if (!state_actions.empty()) {
+        History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());
+        History.UpdateGesturePaths(state_actions, SetStore(transient.persistent()));
     }
     if (finalize) History.FinalizeGesture();
 }

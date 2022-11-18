@@ -1237,7 +1237,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
 
     if (BeginMenuBar()) {
         if (BeginMenu("File")) {
-            fg::MenuItem(action::id<show_save_faust_svg_file_dialog>);
+            fg::MenuItem(show_save_faust_svg_file_dialog{});
             EndMenu();
         }
         if (BeginMenu("View")) {

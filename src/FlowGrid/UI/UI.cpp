@@ -177,14 +177,12 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 }
 
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
-const auto key_map = action::ShortcutForId | transform([](const auto &entry) {
+const auto KeyMap = action::ShortcutForId | transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);
-}) | to<map<KeyShortcut, ActionID>>;
+}) | to<map>;
 
-// TODO what about going the other way? Get list of pressed KeyShortcuts.
-//  Then map from action_id to KeyShortcut. See `faust_editor::HandleInput`.
-bool is_shortcut_pressed(const KeyShortcut &key_shortcut) {
+bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
     const auto &[mod, key] = key_shortcut;
     return mod == ImGui::GetIO().KeyMods && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
@@ -224,8 +222,8 @@ void TickUi() {
         UiContext.ApplyFlags = UIContext::Flags_None;
     }
 
-    for (const auto &[shortcut, action_id]: key_map) {
-        if (is_shortcut_pressed(shortcut) && c.ActionAllowed(action_id)) {
+    for (const auto &[shortcut, action_id]: KeyMap) {
+        if (IsShortcutPressed(shortcut) && c.ActionAllowed(action_id)) {
             q(action::Create(action_id));
         }
     }

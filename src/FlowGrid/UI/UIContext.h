@@ -31,6 +31,7 @@ struct UIContext {
     Fonts Fonts{};
 
     bool IsWidgetGesturing{};
+    Flags ApplyFlags = Flags_None;
 };
 
 extern UIContext UiContext; // Created in `main.cpp`

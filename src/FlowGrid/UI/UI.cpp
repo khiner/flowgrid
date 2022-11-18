@@ -218,6 +218,12 @@ void TickUi() {
         }
     }
 
+    // Check if new UI settings need to be applied.
+    if (UiContext.ApplyFlags != UIContext::Flags_None) {
+        s.Apply(UiContext.ApplyFlags);
+        UiContext.ApplyFlags = UIContext::Flags_None;
+    }
+
     for (const auto &[shortcut, action_id]: key_map) {
         if (is_shortcut_pressed(shortcut) && c.ActionAllowed(action_id)) {
             q(action::Create(action_id));

@@ -308,16 +308,14 @@ Patch Context::SetStore(const Store &new_store) {
     if (patch.empty()) return {};
 
     ApplicationStore = new_store; // This is the only place `ApplicationStore` is modified.
-    UIContext::Flags ui_context_flags = UIContext::Flags_None;
     for (const auto &[partial_path, _op]: patch.ops) {
         const auto &path = patch.base_path / partial_path;
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
-        else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImGuiStyle;
-        else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) ui_context_flags |= UIContext::Flags_ImPlotStyle;
+        if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+        else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiStyle;
+        else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
     }
-    if (ui_context_flags != UIContext::Flags_None) s.Apply(ui_context_flags);
     s.Audio.UpdateProcess();
     s.ApplicationSettings.ActionConsumer.UpdateProcess();
     History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;

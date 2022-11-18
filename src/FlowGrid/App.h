@@ -1323,9 +1323,10 @@ struct StoreHistory {
     Gesture ActiveGesture; // uncompressed, uncommitted
     vector<Record> Records;
 
+    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
+
 private:
     map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
-    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
 };
 
 struct Context {
@@ -1364,8 +1365,7 @@ public:
     StoreHistory History{store}; // One store checkpoint for every gesture.
 
 private:
-    void ApplyGesture(const Gesture &);
-    bool ApplyAction(const ActionMoment &, TransientStore &); // Returns `true` if the provided transient store is updated.
+    bool ApplyAction(const Action &, TransientStore &); // Returns `true` if the provided transient store is updated.
 
     void SetCurrentProjectPath(const fs::path &);
     bool WritePreferences() const;

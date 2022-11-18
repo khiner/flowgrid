@@ -335,9 +335,23 @@ void Context::OpenProject(const fs::path &path) {
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 
-        // todo inline `ApplyGesture` logic here, and optimize (don't update `ApplicationState` state until the end)
         const Gestures gestures = project["gestures"];
-        for (const auto &gesture: gestures) ApplyGesture(gesture);
+        auto transient = store.transient();
+        for (const auto &gesture: gestures) {
+            const auto before_store = transient.persistent();
+            for (const auto &action_moment: gesture) {
+                if (!ApplyAction(action_moment.first, transient)) {
+                    throw std::runtime_error("A saved action has no effect on state."); // todo only throw in debug build
+                }
+            }
+            const auto after_store = transient.persistent();
+            const auto &patch = CreatePatch(before_store, after_store);
+            const auto &gesture_time = gesture.back().second;
+            History.Records.push_back({gesture_time, after_store, gesture}); // todo save/load gesture commit times
+            History.Index = History.Size() - 1;
+            for (const auto &[partial_path, op]: patch.ops) History.CommittedUpdateTimesForPath[patch.base_path / partial_path].emplace_back(gesture_time);
+        }
+        SetStore(transient.persistent());
         History.SetIndex(project["index"]);
     }
 
@@ -386,10 +400,7 @@ bool Context::ActionAllowed(const ActionID action_id) const {
 }
 bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
 
-bool Context::ApplyAction(const ActionMoment &action_moment, TransientStore &transient) {
-    const auto &[action, time] = action_moment;
-    if (!ActionAllowed(action)) return false; // Safeguard against actions running in an invalid state.
-
+bool Context::ApplyAction(const Action &action, TransientStore &transient) {
     bool altered = false;
     std::visit(visitor{
         // Handle actions that don't directly update state.
@@ -430,19 +441,6 @@ bool Context::ApplyAction(const ActionMoment &action_moment, TransientStore &tra
     }, action);
 
     return altered;
-}
-
-void Context::ApplyGesture(const Gesture &gesture) {
-    auto transient = store.transient();
-    bool altered = false;
-    for (const auto &action_moment: gesture) {
-        if (ApplyAction(action_moment, transient)) altered = true;
-    }
-    if (altered) {
-        History.ActiveGesture.insert(History.ActiveGesture.end(), gesture.begin(), gesture.end());
-        History.UpdateGesturePaths(gesture, SetStore(transient.persistent()));
-    }
-    History.FinalizeGesture();
 }
 
 //-----------------------------------------------------------------------------
@@ -563,17 +561,23 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
     static vector<ActionMoment> dequeued_actions;
     dequeued_actions.clear();
 
-    while (ActionQueue.try_dequeue(action_moment)) dequeued_actions.emplace_back(action_moment);
-
-    bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0);
-    auto transient = store.transient();
-    bool altered = false;
-    for (const auto &action: dequeued_actions) {
-        if (ApplyAction(action, transient)) altered = true;
-        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-        finalize |= std::holds_alternative<toggle_value>(action_moment.first);
+    while (ActionQueue.try_dequeue(action_moment)) {
+        // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
+        // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
+        // the current approach would incorrectly throw this later action away.
+        if (ActionAllowed(action_moment.first)) dequeued_actions.emplace_back(action_moment);
     }
 
+    auto transient = store.transient();
+    bool altered = false;
+    for (const auto &dequeued_action: dequeued_actions) {
+        const auto &[action, _] = dequeued_action;
+        if (ApplyAction(action, transient)) altered = true;
+        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
+        force_finalize_gesture |= std::holds_alternative<toggle_value>(action);
+    }
+
+    bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0);
     if (altered) {
         History.ActiveGesture.insert(History.ActiveGesture.end(), dequeued_actions.begin(), dequeued_actions.end());
         History.UpdateGesturePaths(dequeued_actions, SetStore(transient.persistent()));

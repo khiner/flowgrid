@@ -4,11 +4,9 @@ _Still actively building this._
 
 ## Application goals
 
-My goal with FlowGrid to create artful/(self-)educational/useful interactive audiovisual programs.
+My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
 
 ## Current development goals
-
-After learning a lot of lessons developing the [first iteration](https://github.com/khiner/flowgrid_old) of this project, I'm starting from scratch with a [new stack](#Stack) and expanded scope.
 
 So far, I'm basically trying to mash together some great libraries.
 Here are some of my current development thoughts/goals, roughly broken up into abstract/concrete:
@@ -228,17 +226,12 @@ Each type of FlowGrid project file is saved as plain JSON.
 * `.fga`: _FlowGrid**Actions**_
   - FlowGrid can also save and load projects as a list of _action gestures_.
     This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.
-    More accurately, an `.fga` file is a list _of lists_ of actions.
-    Each top-level list represents a logical _gesture_, composed of a list of actions.
+    More accurately, an `.fga` file is a list _of lists_ of (action, timestamp) pairs.
+    Each top-level list represents a logical _gesture_, composed of a list of actions, along with the absolute time they occurred.
     Each action item contains all the information needed to carry out its effect on the application state.
-    Each list of actions in a `.fga` file tells you, in application-domain semantics, what _happened_.
-  - **Gesture compression:** Actions within each gesture are compressed to a potentially smaller set of actions.
-    This compression is done in a way that retains the same application-state effects, while keeping the same application-domain semantics.
-  - FlowGrid loads `.fga` project files by:
-    * Opening an empty project
-    * Executing each action stored in the file, finalizing the gesture after each sub-list
-
-_TODO: Tradeoffs between project types_
+    In other words, each list of actions in an `.fga` file tells you, in application-domain semantics, what _happened_.
+  - **Gesture compression:** Actions within each gesture are compressed down to a potentially smaller set of actions.
+    This compression is done in a way that retains the same application-state effects, while also keeping the same application-domain semantics.
 
 ## License
 

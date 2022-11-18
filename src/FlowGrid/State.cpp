@@ -140,6 +140,7 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
             merged[path] = op;
         }
     }
+
     return merged;
 }
 
@@ -191,33 +192,6 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
                 return false;
             }
             return false;
-        default: return false;
-    }
-
-}
-
-// Not used, but keeping around since it might be at some point (say for accepting actions produced outside the UI).
-std::variant<ProjectAction, bool> Merge(const ProjectAction &a, const ProjectAction &b) {
-    const ID a_id = GetId(a);
-    const ID b_id = GetId(b);
-
-    switch (a_id) {
-        case id<open_project>:
-        case id<open_empty_project>:
-        case id<open_default_project>:
-        case id<save_faust_file>: {
-            if (a_id == b_id && json(a) == json(b)) return a;
-            return false;
-        }
-        case id<undo>: {
-            if (b_id == id<set_history_index>) return b;
-            return b_id == id<redo>;
-        }
-        case id<redo>: {
-            if (b_id == id<set_history_index>) return b;
-            return b_id == id<undo>;
-        }
-        case id<set_history_index>:
         default: return false;
     }
 }

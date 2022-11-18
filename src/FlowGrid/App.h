@@ -366,15 +366,8 @@ struct Window : UIStateMember {
 struct ApplicationSettings : Window {
     using Window::Window;
 
-    struct ActionConsumer : StateMember {
-        using StateMember::StateMember;
-        void UpdateProcess() const;
-        Bool Running{this, format("Running#{}Running?Disabling ends the {} process.\nEnabling will start the process up again.", Name, Name), true};
-    };
-
     void Draw() const override;
 
-    ActionConsumer ActionConsumer{this, "ActionConsumer"};
     Float GestureDurationSec{this, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
 };
 

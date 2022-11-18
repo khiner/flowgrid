@@ -12,7 +12,6 @@ int main(int, const char **) {
 
     UiContext = CreateUi(); // Initialize UI
     s.Audio.UpdateProcess(); // Start audio process
-    s.ApplicationSettings.ActionConsumer.UpdateProcess(); // Start action consumer
 
     {
         // Relying on these imperatively-run side effects up front is not great.

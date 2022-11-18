@@ -267,7 +267,7 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
             }
         },
         [&](const open_faust_file &a) { set(Audio.Faust.Code, FileIO::read(a.path), transient); },
-        [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}, {ApplicationSettings.ActionConsumer.Running, false}}, transient); },
+        [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
     }, action);
 }
 
@@ -358,7 +358,6 @@ Patch Context::SetStore(const Store &new_store) {
         else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
     }
     s.Audio.UpdateProcess();
-    s.ApplicationSettings.ActionConsumer.UpdateProcess();
     History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
 
     return patch;
@@ -616,28 +615,6 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
         History.UpdateGesturePaths(state_actions, SetStore(transient.persistent()));
     }
     if (finalize) History.FinalizeGesture();
-}
-
-static std::atomic<bool> ActionConsumerRunning = false; // Thread loop signal
-
-void ConsumeActions() {
-    static ActionMoment action_moment;
-    while (ActionConsumerRunning) {
-//        if (ActionQueue.try_dequeue(action_moment)) {
-//            const auto &[action, time] = action_moment;
-//            cout << format("Consumed action produced at {}:\n{}\n\n", time, json(action).dump(4));
-//        }
-    }
-}
-
-void ApplicationSettings::ActionConsumer::UpdateProcess() const {
-    static std::thread ActionConsumerThread;
-    ActionConsumerRunning = Running;
-    if (ActionConsumerRunning && !ActionConsumerThread.joinable()) {
-        ActionConsumerThread = std::thread(ConsumeActions);
-    } else if (!ActionConsumerRunning && ActionConsumerThread.joinable()) {
-        ActionConsumerThread.join();
-    }
 }
 
 bool q(Action &&action, bool flush) {

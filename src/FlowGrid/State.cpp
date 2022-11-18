@@ -112,7 +112,7 @@ void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) cons
 // [SECTION] Actions
 //-----------------------------------------------------------------------------
 
-PatchOps merge(const PatchOps &a, const PatchOps &b) {
+PatchOps Merge(const PatchOps &a, const PatchOps &b) {
     PatchOps merged = a;
     for (const auto &[path, op]: b) {
         if (merged.contains(path)) {
@@ -185,7 +185,7 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
                 const auto &_b = std::get<apply_patch>(b);
                 // Keep patch actions affecting different base state-paths separate,
                 // since actions affecting different state bases are likely semantically different.
-                const auto &ops = merge(_a.patch.ops, _b.patch.ops);
+                const auto &ops = Merge(_a.patch.ops, _b.patch.ops);
                 if (ops.empty()) return true;
                 if (_a.patch.base_path == _b.patch.base_path) return apply_patch{ops, _b.patch.base_path};
                 return false;
@@ -196,6 +196,7 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
 
 }
 
+// Not used, but keeping around since it might be at some point (say for accepting actions produced outside the UI).
 std::variant<ProjectAction, bool> Merge(const ProjectAction &a, const ProjectAction &b) {
     const ID a_id = GetId(a);
     const ID b_id = GetId(b);
@@ -1666,12 +1667,9 @@ void Style::Draw() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::Draw() const {
-    ActionConsumer.Running.Draw();
-    {
-        int value = History.Index;
-        if (SliderInt("History index", &value, 0, History.Size() - 1)) q(set_history_index{value});
-        GestureDurationSec.Draw();
-    }
+    int value = History.Index;
+    if (SliderInt("History index", &value, 0, History.Size() - 1)) q(set_history_index{value});
+    GestureDurationSec.Draw();
 }
 
 const vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};

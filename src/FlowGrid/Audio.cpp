@@ -51,8 +51,10 @@ SoundIoBackend ToSoundIoBackend(const AudioBackend backend) {
         case coreaudio: return SoundIoBackendCoreAudio;
         case wasapi: return SoundIoBackendWasapi;
         case none:
-        default:cerr << "Invalid backend: " << backend << ". Defaulting to `SoundIoBackendNone`.\n";
+        default: {
+            cerr << "Invalid backend: " << backend << ". Defaulting to `SoundIoBackendNone`.\n";
             return SoundIoBackendNone;
+        }
     }
 }
 

@@ -172,15 +172,21 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
         case id<set_flowgrid_diagram_color_style>:
         case id<set_flowgrid_diagram_layout_style>:
         case id<show_open_faust_file_dialog>:
-        case id<show_save_faust_file_dialog>: if (a_id == b_id) return b;
+        case id<show_save_faust_file_dialog>: {
+            if (a_id == b_id) return b;
             return false;
+        }
         case id<open_faust_file>:
-        case id<set_value>: if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
+        case id<set_value>: {
+            if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
             return false;
-        case id<set_values>: if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
+        }
+        case id<set_values>: {
+            if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
             return false;
+        }
         case id<toggle_value>: return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
-        case id<apply_patch>:
+        case id<apply_patch>: {
             if (a_id == b_id) {
                 const auto &_a = std::get<apply_patch>(a);
                 const auto &_b = std::get<apply_patch>(b);
@@ -192,6 +198,7 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
                 return false;
             }
             return false;
+        }
         default: return false;
     }
 }

@@ -158,21 +158,23 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
     switch (item.type) {
         case ItemType_NumEntry:
         case ItemType_HSlider:
-        case ItemType_HBargraph:return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + label_width_with_spacing;
-        case ItemType_HRadioButtons:
+        case ItemType_HBargraph: return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + label_width_with_spacing;
+        case ItemType_HRadioButtons: {
             return label_width_with_spacing +
                 ranges::accumulate(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth), 0.0f) +
                 inner_spacing * float(interface->names_and_values.size());
-        case ItemType_Menu:
+        }
+        case ItemType_Menu: {
             return label_width_with_spacing + ranges::max(interface->names_and_values[item.zone].names | transform([](const string &choice_name) {
                 return CalcTextSize(choice_name.c_str()).x;
             })) + GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
-        case ItemType_CheckButton:return frame_height + label_width_with_spacing;
+        }
+        case ItemType_CheckButton: return frame_height + label_width_with_spacing;
         case ItemType_VBargraph:
-        case ItemType_VSlider:return max(frame_height, label_width);
-        case ItemType_VRadioButtons:return max(ranges::max(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth)), label_width);
-        case ItemType_Button:return raw_label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
-        case ItemType_Knob:return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, label_width);
+        case ItemType_VSlider: return max(frame_height, label_width);
+        case ItemType_VRadioButtons: return max(ranges::max(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth)), label_width);
+        case ItemType_Button: return raw_label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
+        case ItemType_Knob: return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, label_width);
         default:return GetContentRegionAvail().x;
     }
 }
@@ -181,15 +183,15 @@ static float CalcItemHeight(const FaustUI::Item &item) {
     switch (item.type) {
         case ItemType_VBargraph:
         case ItemType_VSlider:
-        case ItemType_VRadioButtons:return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height;
+        case ItemType_VRadioButtons: return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height;
         case ItemType_HSlider:
         case ItemType_NumEntry:
         case ItemType_HBargraph:
         case ItemType_Button:
         case ItemType_CheckButton:
         case ItemType_HRadioButtons:
-        case ItemType_Menu:return frame_height;
-        case ItemType_Knob:return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + frame_height + GetStyle().ItemSpacing.y;
+        case ItemType_Menu: return frame_height;
+        case ItemType_Knob: return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + frame_height + GetStyle().ItemSpacing.y;
         default:return 0;
     }
 }
@@ -202,7 +204,7 @@ static float CalcItemLabelHeight(const FaustUI::Item &item) {
         case ItemType_Knob:
         case ItemType_HGroup:
         case ItemType_VGroup:
-        case ItemType_TGroup:return GetTextLineHeightWithSpacing();
+        case ItemType_TGroup: return GetTextLineHeightWithSpacing();
         case ItemType_Button:
         case ItemType_HSlider:
         case ItemType_NumEntry:
@@ -210,7 +212,7 @@ static float CalcItemLabelHeight(const FaustUI::Item &item) {
         case ItemType_CheckButton:
         case ItemType_HRadioButtons:
         case ItemType_Menu:
-        case ItemType_None:return 0;
+        case ItemType_None: return 0;
     }
 }
 

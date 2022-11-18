@@ -233,8 +233,8 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
                         q(set_value{s.Audio.Faust.Code.Path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
-                }
                     break;
+                }
                 case BufferMessageType::PreBufferChange:
                 case BufferMessageType::Loaded:
                 case BufferMessageType::MarkersChanged: break;

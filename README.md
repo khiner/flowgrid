@@ -6,37 +6,7 @@ _Still actively building this._
 
 My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
 
-## Current development goals
-
-So far, I'm basically trying to mash together some great libraries.
-Here are some of my current development thoughts/goals, roughly broken up into abstract/concrete:
-
-### Abstract development goals
-
-* **Keep it as simple as I possibly can.**
-* Focus on making it fun to use _and create_ the application.
-* Spend more time up front getting the foundation right (simple, transparent, flexible, powerful).
-* Keep (re-)build times low.
-* At this early stage, my main application goal is to _facilitate the development of the app_.
-  - Invest early in things like adding debugging capabilities.
-  - Make the application state and context transparent and easily modifiable.
-  - Provide performance & debug metrics in real-time.
-* Let myself optimize.
-  In computers, fast things are good and always more fun than slow things.
-* Prioritize learning over development velocity.
-  Dig into, and take ownership over, low-level concerns where appropriate.
-  Feed curiosity.
-  Bias towards reinventing wheels over accepting bloated/overly-complex dependencies that do too much.
-
-### Concrete development goals
-
-* Store the source-of-truth application state in a single `struct` with global read access.
-* Perform all actions that affect the application state in one place.
-* Provide global read access to all application runtime state.
-* Make _everything_ undo/redo-able.
-* As much as possible, make the UI a pure function of the application state.
-
-### Application architecture
+## Application architecture
 
 The fundamental aspects of FlowGrid's state management architecture are inspired by [Lager](https://github.com/arximboldi/lager), particularly its value-oriented design and unidirectional data-flow architecture.
 Lager, in turn, is inspired by frameworks like [Elm](https://guide.elm-lang.org/architecture) and [Redux](https://redux.js.org/introduction/getting-started).
@@ -62,6 +32,32 @@ using Primitive = std::variant<bool, unsigned int, int, float, string, ImVec2ih,
 ```
 
 `Field`s also provide state metadata, conversion & rendering methods, and behave syntactically like the `Primitive`s they wrap.
+
+## Application docs
+
+### Project files
+
+FlowGrid supports three project formats.
+When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file dialog.
+Each type of FlowGrid project file is saved as plain JSON.
+
+* `.fgs`: _FlowGrid**State**_
+  - The full application state.
+    An `.fgs` file contains a JSON blob with all the information needed to get back to the saved project state.
+    Loading a `.fgs` project file will completely replace the application state with its own.
+  - As a special case, the project file `./flowgrid/empty.fgs` (relative to the project build folder) is used internally to load projects.
+    This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
+    FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
+    This approach provides a pretty strong guarantee that loading a new project will always produce the same, valid empty-project state.
+* `.fga`: _FlowGrid**Actions**_
+  - FlowGrid can also save and load projects as a list of _action gestures_.
+    This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.
+    More accurately, an `.fga` file is a list _of lists_ of (action, timestamp) pairs.
+    Each top-level list represents a logical _gesture_, composed of a list of actions, along with the absolute time they occurred.
+    Each action item contains all the information needed to carry out its effect on the application state.
+    In other words, each list of actions in an `.fga` file tells you, in application-domain semantics, what _happened_.
+  - **Gesture compression:** Actions within each gesture are compressed down to a potentially smaller set of actions.
+    This compression is done in a way that retains the same application-state effects, while also keeping the same application-domain semantics.
 
 ## Build and run
 
@@ -113,7 +109,7 @@ $ ./FlowGrid
 
 If the build/run doesn't work for you, please [file an issue](https://github.com/khiner/flowgrid/issues/new), providing your environment and any other relevant details, and I will try and fix it!
 
-## [**Stack**](#stack)
+## Stack
 
 ### Audio
 
@@ -207,31 +203,35 @@ $ ... # Resolve any conflicts, port any missing changes manually, verify...
 $ git push --force
 ```
 
-## Application docs
+### Current development goals
 
-### Project files
+So far, I'm basically trying to mash together some great libraries.
+Here are some of my current development thoughts/goals, roughly broken up into abstract/concrete:
 
-FlowGrid supports three project formats.
-When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file dialog.
-Each type of FlowGrid project file is saved as plain JSON.
+#### Abstract development goals
 
-* `.fgs`: _FlowGrid**State**_
-  - The full application state.
-    An `.fgs` file contains a JSON blob with all the information needed to get back to the saved project state.
-    Loading a `.fgs` project file will completely replace the application state with its own.
-  - As a special case, the project file `./flowgrid/empty.fgs` (relative to the project build folder) is used internally to load projects.
-    This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
-    FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
-    This approach provides a pretty strong guarantee that loading a new project will always produce the same, valid empty-project state.
-* `.fga`: _FlowGrid**Actions**_
-  - FlowGrid can also save and load projects as a list of _action gestures_.
-    This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.
-    More accurately, an `.fga` file is a list _of lists_ of (action, timestamp) pairs.
-    Each top-level list represents a logical _gesture_, composed of a list of actions, along with the absolute time they occurred.
-    Each action item contains all the information needed to carry out its effect on the application state.
-    In other words, each list of actions in an `.fga` file tells you, in application-domain semantics, what _happened_.
-  - **Gesture compression:** Actions within each gesture are compressed down to a potentially smaller set of actions.
-    This compression is done in a way that retains the same application-state effects, while also keeping the same application-domain semantics.
+* **Keep it as simple as I possibly can.**
+* Focus on making it fun to use _and create_ the application.
+* Spend more time up front getting the foundation right (simple, transparent, flexible, powerful).
+* Keep (re-)build times low.
+* At this early stage, my main application goal is to _facilitate the development of the app_.
+  - Invest early in things like adding debugging capabilities.
+  - Make the application state and context transparent and easily modifiable.
+  - Provide performance & debug metrics in real-time.
+* Let myself optimize.
+  In computers, fast things are good and always more fun than slow things.
+* Prioritize learning over development velocity.
+  Dig into, and take ownership over, low-level concerns where appropriate.
+  Feed curiosity.
+  Bias towards reinventing wheels over accepting bloated/overly-complex dependencies that do too much.
+
+#### Concrete development goals
+
+* Store the source-of-truth application state in a single `struct` with global read access.
+* Perform all actions that affect the application state in one place.
+* Provide global read access to all application runtime state.
+* Make _everything_ undo/redo-able.
+* As much as possible, make the UI a pure function of the application state.
 
 ## License
 

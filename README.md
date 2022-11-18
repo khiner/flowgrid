@@ -131,6 +131,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
   - Used to efficiently create and store persistent state snapshots for undo history, and to compute state diffs.
 * [json](https://github.com/nlohmann/json) for state serialization
 * [ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main action queue
+  - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
 * ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured text~~
   - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
     I'll likely be using this again at some point for generic handling of actions involving long text strings.

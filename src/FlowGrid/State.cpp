@@ -548,9 +548,7 @@ void Window::DrawWindow(ImGuiWindowFlags flags) const {
     if (!Visible) return;
 
     bool open = Visible;
-    if (Begin(Name.c_str(), &open, flags)) {
-        if (open) Draw();
-    }
+    if (Begin(Name.c_str(), &open, flags) && open) Draw();
     End();
 
     if (Visible && !open) q(set_value{Visible.Path, false});
@@ -706,7 +704,7 @@ void State::Draw() const {
 }
 // Copy of ImGui version, which is not defined publicly
 struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
-    ImGuiID ID;
+    ImGuiID NodeId;
     ImGuiID ParentNodeId;
     ImGuiID ParentWindowId;
     ImGuiID SelectedTabId;
@@ -722,7 +720,7 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
     const int size = dss.Size;
     for (int i = 0; i < size; i++) {
         const auto &ds = dss[i];
-        ID.set(i, ds.ID, _store);
+        NodeId.set(i, ds.NodeId, _store);
         ParentNodeId.set(i, ds.ParentNodeId, _store);
         ParentWindowId.set(i, ds.ParentWindowId, _store);
         SelectedTabId.set(i, ds.SelectedTabId, _store);
@@ -733,7 +731,7 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
         Size.set(i, ds.Size, _store);
         SizeRef.set(i, ds.SizeRef, _store);
     }
-    ID.truncate(size, _store);
+    NodeId.truncate(size, _store);
     ParentNodeId.truncate(size, _store);
     ParentWindowId.truncate(size, _store);
     SelectedTabId.truncate(size, _store);
@@ -746,9 +744,9 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
 }
 void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
-    for (int i = 0; i < int(ID.size()); i++) {
+    for (int i = 0; i < int(NodeId.size()); i++) {
         ctx->DockContext.NodesSettings.push_back({
-            ImGuiID(ID[i]),
+            ImGuiID(NodeId[i]),
             ImGuiID(ParentNodeId[i]),
             ImGuiID(ParentWindowId[i]),
             ImGuiID(SelectedTabId[i]),

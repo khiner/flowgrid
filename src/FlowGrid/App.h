@@ -32,6 +32,7 @@ namespace fg = FlowGrid;
 using namespace fmt;
 using namespace nlohmann;
 
+using ID = ImGuiID;
 using StatePath = fs::path;
 struct StatePathHash {
     auto operator()(const StatePath &p) const noexcept { return fs::hash_value(p); }
@@ -78,7 +79,7 @@ struct Preferences {
 static const StatePath RootPath{"/"};
 
 struct StateMember {
-    static map<ImGuiID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
+    static map<ID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
 
     // The `id` parameter is used as the path segment for this state member,
     // and optionally can contain a name and/or an info string.
@@ -92,7 +93,7 @@ struct StateMember {
     const StateMember *Parent;
     StatePath Path;
     string PathSegment, Name, Help;
-    ImGuiID ImGuiId;
+    ID Id;
     // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:
@@ -935,7 +936,7 @@ struct DockNodeSettings : StateMember {
     void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<ImGuiID> ID{this, "ID"};
+    Vector<ImGuiID> NodeId{this, "NodeId"};
     Vector<ImGuiID> ParentNodeId{this, "ParentNodeId"};
     Vector<ImGuiID> ParentWindowId{this, "ParentWindowId"};
     Vector<ImGuiID> SelectedTabId{this, "SelectedTabId"};
@@ -1141,7 +1142,7 @@ struct show_save_faust_svg_file_dialog {};
 struct save_faust_file { string path; };
 struct open_faust_file { string path; };
 struct save_faust_svg_file { string path; };
-} // End `Action` namespace
+} // End `Actions` namespace
 
 using namespace Actions;
 
@@ -1166,6 +1167,7 @@ using StateAction = std::variant<
     close_application
 >;
 using Action = variant_flat<ProjectAction, StateAction>::type;
+using ActionID = ID;
 
 // All actions that don't have any member data.
 using EmptyAction = std::variant<
@@ -1185,7 +1187,6 @@ using EmptyAction = std::variant<
 >;
 
 namespace action {
-using ID = size_t;
 
 using ActionMoment = std::pair<Action, TimePoint>;
 using StateActionMoment = std::pair<StateAction, TimePoint>;
@@ -1202,19 +1203,19 @@ Action Create(ID index) {
 
 #include "../Boost/mp11/mp_find.h"
 
-// E.g. `action::ID action_id = id<action_type>`
+// E.g. `ActionID action_id = id<action_type>`
 // An action's ID is its index in the `Action` variant.
 // Down the road, this means `Action` would need to be append-only (no order changes) for backwards compatibility.
 // Not worried about that right now, since it should be easy enough to replace with some UUID system later.
 // Index is simplest.
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
 template<typename T>
-constexpr ID id = mp_find<Action, T>::value;
+constexpr ActionID id = mp_find<Action, T>::value;
 
 #define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
 
-// Note: ID here is index within `Action`, not `EmptyAction`
-const map <ID, string> ShortcutForId = {
+// Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
+const map<ActionID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1224,20 +1225,17 @@ const map <ID, string> ShortcutForId = {
     {id<save_default_project>, "shift+cmd+s"},
 };
 
-constexpr ID GetId(const Action &action) { return action.index(); }
-constexpr ID GetId(const StateAction &action) { return action.index(); }
-constexpr ID GetId(const ProjectAction &action) { return action.index(); }
+constexpr ActionID GetId(const Action &action) { return action.index(); }
+constexpr ActionID GetId(const StateAction &action) { return action.index(); }
+constexpr ActionID GetId(const ProjectAction &action) { return action.index(); }
 
 string GetName(const ProjectAction &action);
 string GetName(const StateAction &action);
-
 string GetShortcut(const EmptyAction &);
 string GetMenuLabel(const EmptyAction &);
-
 Gesture MergeGesture(const Gesture &);
 } // End `action` namespace
 
-using ActionID = action::ID;
 using action::Gesture;
 using action::Gestures;
 using action::ActionMoment;
@@ -1352,7 +1350,7 @@ struct Context {
     void SaveCurrentProject();
 
     void RunQueuedActions(bool force_finalize_gesture = false);
-    bool ActionAllowed(ActionID) const;
+    bool ActionAllowed(ID) const;
     bool ActionAllowed(const Action &) const;
     bool ActionAllowed(const EmptyAction &) const;
 

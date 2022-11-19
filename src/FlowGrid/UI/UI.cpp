@@ -177,6 +177,7 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 }
 
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
+// todo Find/implement a `BidirectionalMap` and use it here.
 const auto KeyMap = action::ShortcutForId | transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
     return std::pair<KeyShortcut, ActionID>(parse_shortcut(shortcut).value(), action_id);

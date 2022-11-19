@@ -6,7 +6,7 @@
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
 
-map<ImGuiID, StateMember *> StateMember::WithId{};
+map<ID, StateMember *> StateMember::WithId{};
 
 // Persistent modifiers
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -54,8 +54,8 @@ StateMember::StateMember(const StateMember *parent, const string &id) : Parent(p
     Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
     Name = name.empty() ? path_segment.empty() ? "" : SnakeCaseToSentenceCase(path_segment) : name;
     Help = help;
-    ImGuiId = ImHashStr(Name.c_str(), 0, Parent ? Parent->ImGuiId : 0);
-    WithId[ImGuiId] = this;
+    Id = ImHashStr(Name.c_str(), 0, Parent ? Parent->Id : 0);
+    WithId[Id] = this;
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
@@ -63,7 +63,7 @@ StateMember::StateMember(const StateMember *parent, const string &id, const Prim
 }
 
 StateMember::~StateMember() {
-    WithId.erase(ImGuiId);
+    WithId.erase(Id);
 }
 
 namespace nlohmann {
@@ -170,7 +170,7 @@ string GetName(const StateAction &action) {
 }
 
 string GetShortcut(const EmptyAction &action) {
-    const ActionID id = std::visit(visitor{[&](const Action &a) { return GetId(a); }}, action);
+    const ID id = std::visit(visitor{[&](const Action &a) { return GetId(a); }}, action);
     return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
 }
 
@@ -422,8 +422,8 @@ bool Context::WritePreferences() const {
     return FileIO::write(PreferencesPath, json(preferences).dump());
 }
 
-bool Context::ActionAllowed(const ActionID action_id) const {
-    switch (action_id) {
+bool Context::ActionAllowed(const ActionID id) const {
+    switch (id) {
         case action::id<undo>: return History.CanUndo();
         case action::id<redo>: return History.CanRedo();
         case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);

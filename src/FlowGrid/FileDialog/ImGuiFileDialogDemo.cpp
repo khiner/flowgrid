@@ -17,7 +17,7 @@ inline bool RadioButtonLabeled(const char *label, const char *help, bool active,
     const ImGuiStyle &style = g.Style;
     float w = CalcItemWidth();
     if (w == window->ItemWidthDefault) w = 0; // no push item width
-    const ImGuiID id = window->GetID(label);
+    const ID id = window->GetID(label);
     const ImVec2 label_size = CalcTextSize(label, nullptr, true);
     ImVec2 bb_size = ImVec2(style.FramePadding.x * 2 - 1, style.FramePadding.y * 2 - 1) + label_size;
     bb_size.x = ImMax(w, bb_size.x);

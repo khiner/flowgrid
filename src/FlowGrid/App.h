@@ -56,6 +56,7 @@ using std::cout, std::cerr;
 using std::unique_ptr, std::make_unique;
 using std::min, std::max;
 using std::map;
+//using std::set; todo capitalize all `set` global methods and uncomment
 
 // E.g. '/foo/bar/baz' => 'baz'
 inline string path_variable_name(const StatePath &path) { return path.filename(); }
@@ -77,7 +78,7 @@ struct Preferences {
 static const StatePath RootPath{"/"};
 
 struct StateMember {
-    static map<ImGuiID, StateMember *> WithID; // Allows for access of any state member by ImGui ID
+    static map<ImGuiID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
 
     // The `id` parameter is used as the path segment for this state member,
     // and optionally can contain a name and/or an info string.
@@ -107,10 +108,13 @@ struct UIStateMember : StateMember {
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
+
 struct Base : StateMember {
     using StateMember::StateMember;
     virtual bool Draw() const = 0;
 };
+
+struct Linkable;
 
 struct Bool : Base {
     Bool(const StateMember *parent, const string &identifier, bool value = false) : Base(parent, identifier, value) {}
@@ -119,6 +123,19 @@ struct Bool : Base {
 
     bool Draw() const override;
     bool DrawMenu() const;
+
+    std::set<Linkable *> Links;
+private:
+    void Toggle() const; // Used in draw methods.
+};
+
+struct Linkable {
+    Linkable(Bool *linked) : Linked(linked) { if (Linked) Linked->Links.emplace(this); }
+    ~Linkable() { if (Linked) Linked->Links.erase(this); }
+
+    virtual void LinkValues() const = 0;
+
+    Bool *Linked;
 };
 
 struct UInt : Base {
@@ -168,19 +185,20 @@ struct Float : Base {
     const char *fmt;
 };
 
-struct Vec2 : Base {
+struct Vec2 : Base, Linkable {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr, const Bool *link_values = nullptr)
-        : Base(parent, id, value), min(min), max(max), fmt(fmt), link_values(link_values) {}
+    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1,
+         const char *fmt = nullptr, Bool *link_values = nullptr)
+        : Base(parent, id, value), Linkable(link_values), min(min), max(max), fmt(fmt) {}
 
     operator ImVec2() const;
 
     bool Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const;
+    void LinkValues() const override;
 
     float min, max;
     const char *fmt;
-    const Bool *link_values;
 };
 
 struct Vec2Int : Base {

@@ -6,7 +6,7 @@
 #include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
 
-map<ImGuiID, StateMember *> StateMember::WithID{};
+map<ImGuiID, StateMember *> StateMember::WithId{};
 
 // Persistent modifiers
 Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
@@ -55,7 +55,7 @@ StateMember::StateMember(const StateMember *parent, const string &id) : Parent(p
     Name = name.empty() ? path_segment.empty() ? "" : SnakeCaseToSentenceCase(path_segment) : name;
     Help = help;
     ImGuiId = ImHashStr(Name.c_str(), 0, Parent ? Parent->ImGuiId : 0);
-    WithID[ImGuiId] = this;
+    WithId[ImGuiId] = this;
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
@@ -63,7 +63,7 @@ StateMember::StateMember(const StateMember *parent, const string &id, const Prim
 }
 
 StateMember::~StateMember() {
-    WithID.erase(ImGuiId);
+    WithId.erase(ImGuiId);
 }
 
 namespace nlohmann {

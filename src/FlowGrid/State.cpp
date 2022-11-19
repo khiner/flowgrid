@@ -238,10 +238,16 @@ void StateMember::HelpMarker(const bool after) const {
     if (!after) SameLine();
 }
 
+void Bool::Toggle() const {
+    // If I'm toggling from off to on, tell my `Links` to link their values together.
+    if (!(*this)) for (const auto &link: Links) link->LinkValues();
+    q(toggle_value{Path});
+}
+
 bool Field::Bool::Draw() const {
     bool value = *this;
     const bool edited = Checkbox(Name.c_str(), &value);
-    if (edited) q(toggle_value{Path});
+    if (edited) Toggle();
     HelpMarker();
     return edited;
 }
@@ -249,7 +255,7 @@ bool Field::Bool::DrawMenu() const {
     const bool value = *this;
     HelpMarker(false);
     const bool edited = MenuItem(Name.c_str(), nullptr, value);
-    if (edited) q(toggle_value{Path});
+    if (edited) Toggle();
     return edited;
 }
 
@@ -307,20 +313,23 @@ bool Field::Float::Draw(float v_speed, ImGuiSliderFlags flags) const {
 }
 bool Field::Float::Draw() const { return Draw(ImGuiSliderFlags_None); }
 
+void Field::Vec2::LinkValues() const {
+    ImVec2 value = *this;
+    const float min_value = std::min(value.x, value.y);
+    q(set_value{Path, ImVec2{min_value, min_value}});
+}
+
 bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
     ImVec2 value = *this;
     const bool edited = SliderFloat2(Name.c_str(), (float *) &value, min, max, fmt, flags);
     UiContext.WidgetGestured();
     if (edited) {
-        if (link_values && *link_values) {
+        if (Linked && *Linked) {
             ImVec2 before_value = *this;
             q(set_value{Path, value.x != before_value.x ? ImVec2{value.x, value.x} : ImVec2{value.y, value.y}});
         } else {
             q(set_value{Path, value});
         }
-    } else if (link_values && *link_values && value.x != value.y) {
-        const float min_value = std::min(value.x, value.y);
-        q(set_value{Path, ImVec2{min_value, min_value}});
     }
     HelpMarker();
     return edited;
@@ -563,8 +572,8 @@ void Window::SelectTab() const {
 
 void Info::Draw() const {
     const auto hovered_id = GetHoveredID();
-    if (hovered_id && StateMember::WithID.contains(hovered_id)) {
-        const auto *member = StateMember::WithID.at(hovered_id);
+    if (hovered_id && StateMember::WithId.contains(hovered_id)) {
+        const auto *member = StateMember::WithId.at(hovered_id);
         const string &help = member->Help;
         PushTextWrapPos(0);
         TextUnformatted((help.empty() ? format("No info available for {}.", member->Name) : help).c_str());

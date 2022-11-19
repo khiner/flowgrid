@@ -6,7 +6,6 @@
  * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
  * which also provides an immutable `Update(const Action &, TransientState &) const` method, and a `Draw() const` method.
  */
-#include <inttypes.h>
 #include <iostream>
 #include <list>
 #include <map>
@@ -69,8 +68,7 @@ using ImU32 = unsigned int; // 32-bit unsigned integer (often used to store pack
 using ImS64 = signed long long; // 64-bit signed integer
 using ImU64 = unsigned long long; // 64-bit unsigned integer
 
-// Scalar data types, pointing to ImGui scalar types.
-// Defined as `{TypeName} = Im{TypeName}`.
+// Scalar data types, pointing to ImGui scalar types, with `{TypeName} = Im{TypeName}`.
 using S8 = ImS8;
 using U8 = ImU8;
 using S16 = ImS16;
@@ -82,8 +80,7 @@ using U64 = ImU64;
 
 using Count = U32;
 
-// TODO store/load colors as U32 in store & json, and remove a bunch of conversions from ImVec4 to U32
-using Primitive = std::variant<bool, U32, S32, float, string, ImVec2ih, ImVec2, ImVec4>;
+using Primitive = std::variant<bool, U32, S32, float, string, ImVec2ih, ImVec2>;
 using StoreEntry = std::pair<StatePath, Primitive>;
 using StoreEntries = vector<StoreEntry>;
 
@@ -356,15 +353,31 @@ struct Vector2D : Base {
     bool Draw() const override { return false; };
 };
 
-struct Colors : Vector<ImVec4> {
-    Colors(const StateMember *parent, const string &path_segment, std::function<const char *(int)> GetColorName, const bool allow_auto = false)
-        : Vector(parent, path_segment), allow_auto(allow_auto), GetColorName(std::move(GetColorName)) {}
+struct Colors : Vector<U32> {
+    // An arbitrary transparent color is used to mark colors as "auto".
+    // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
+    // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67),
+    // but not using a value so it can be represented in a U32.
+    static constexpr U32 AutoColor = 0X00010101;
+
+    Colors(const StateMember *parent, const string &path_segment, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
+        : Vector(parent, path_segment), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {}
+
+    static U32 ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
+    static ImVec4 ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
     string GetName(Count index) const override { return GetColorName(int(index)); };
     bool Draw() const override;
 
+    void set(const vector<ImVec4> &values, TransientStore &transient) const {
+        Vector::set(values | transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | to<vector>, transient);
+    }
+    void set(const vector<std::pair<int, ImVec4>> &entries, TransientStore &transient) const {
+        Vector::set(entries | transform([](const auto &entry) { return std::pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | to<vector>, transient);
+    }
+
 private:
-    bool allow_auto;
+    bool AllowAuto;
     const std::function<const char *(int)> GetColorName;
 };
 
@@ -1329,7 +1342,7 @@ struct State : UIStateMember {
 
 static const map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
 static const auto ProjectFormatForExtension = ExtensionForProjectFormat |
-    transform([](const auto &pair) { return std::pair<string, ProjectFormat>(pair.second, pair.first); }) | to<map>();
+    transform([](const auto &pair) { return std::pair(pair.second, pair.first); }) | to<map>();
 static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
 static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
 static const string PreferencesFileExtension = ".flp";
@@ -1504,12 +1517,10 @@ using MemberEntries = vector<MemberEntry>;
 Store set(const StateMember &member, const Primitive &value, const Store &_store = store);
 Store set(const StoreEntries &, const Store &_store = store);
 Store set(const MemberEntries &, const Store &_store = store);
-Store set(const std::vector<std::pair<StatePath, ImVec4>> &, const Store &_store = store);
 
 // Equivalent setters for a transient (mutable) store
 void set(const StateMember &, const Primitive &, TransientStore &);
 void set(const StoreEntries &, TransientStore &);
 void set(const MemberEntries &, TransientStore &);
-void set(const std::vector<std::pair<StatePath, ImVec4>> &, TransientStore &);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);

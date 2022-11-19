@@ -32,7 +32,7 @@ struct TextStyle {
         Italic,
     };
 
-    const ImVec4 color{1, 1, 1, 1};
+    const ImColor color{1, 1, 1, 1};
     const Justify justify{Middle};
     const float padding_right{0};
     const float padding_bottom{0};
@@ -41,8 +41,8 @@ struct TextStyle {
 };
 
 struct RectStyle {
-    const ImVec4 &fill_color{1, 1, 1, 1};
-    const ImVec4 &stroke_color{0, 0, 0, 0};
+    const ImColor fill_color{1, 1, 1, 1};
+    const ImColor stroke_color{0, 0, 0, 0};
     const float stroke_width{0};
     const float corner_radius{0};
 };
@@ -70,12 +70,12 @@ struct Device {
     virtual DeviceType type() = 0;
     virtual void rect(const ImRect &rect, const RectStyle &style) = 0;
     virtual void grouprect(const ImRect &rect, const string &text) = 0; // A labeled grouping
-    virtual void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) = 0;
-    virtual void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) = 0;
+    virtual void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
+    virtual void circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) = 0;
     virtual void arrow(const ImVec2 &pos, Diagram orientation) = 0;
     virtual void line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
-    virtual void dot(const ImVec2 &pos, const ImVec4 &fill_color) = 0;
+    virtual void dot(const ImVec2 &pos, const ImColor &fill_color) = 0;
 
     ImVec2 at(const ImVec2 &p) const { return offset + scale(p); }
 
@@ -162,8 +162,8 @@ struct SVGDevice : Device {
         const float text_x = tl.x + scale(DecorateLabelOffset);
         const auto &padding = scale({DecorateLabelXPadding, 0});
         const ImVec2 &text_right = {min(text_x + scale(text_size(text)).x + padding.x, tr.x), tr.y};
-        const auto &label_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle];
-        const auto &stroke_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke];
+        const U32 label_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle];
+        const U32 stroke_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke];
         const float rad = scale(s.Style.FlowGrid.DiagramDecorateCornerRadius);
         const float line_width = scale(s.Style.FlowGrid.DiagramDecorateLineWidth);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
@@ -178,11 +178,11 @@ struct SVGDevice : Device {
             text_x, tl.y, get_font_name(), get_font_size(), rgb_color(label_color), xml_sanitize(text));
     }
 
-    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
+    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
         stream << get_triangle(at(p1), at(p2), at(p3), {0, 0, 0, 0}, color);
     }
 
-    void circle(const ImVec2 &pos, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
+    void circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) override {
         const auto [x, y] = at(pos);
         stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)",
             rgb_color(fill_color), rgb_color(stroke_color), x, y, radius);
@@ -196,7 +196,7 @@ struct SVGDevice : Device {
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
         const auto &start_scaled = at(start);
         const auto &end_scaled = at(end);
-        const auto &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
+        const ImColor &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
         const auto width = scale(s.Style.FlowGrid.DiagramWireWidth);
         stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)",
             start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, rgb_color(color), line_cap, width);
@@ -219,25 +219,25 @@ struct SVGDevice : Device {
         if (!link.empty()) stream << "</a>";
     }
 
-    void dot(const ImVec2 &pos, const ImVec4 &fill_color) override {
+    void dot(const ImVec2 &pos, const ImColor &fill_color) override {
         const auto &p = at(pos);
         const float radius = scale(s.Style.FlowGrid.DiagramOrientationMarkRadius);
         stream << format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, rgb_color(fill_color));
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Diagram orientation, const ImVec4 &color) {
+    static string arrow_pointing_at(const ImVec2 &pos, ImVec2 half_sz, Diagram orientation, const ImColor &color) {
         const float d = is_lr(orientation) ? -1 : 1;
         return get_triangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
     }
 
-    static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &fill_color, const ImVec4 &stroke_color) {
+    static string get_triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &fill_color, const ImColor &stroke_color) {
         return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)",
             rgb_color(fill_color), rgb_color(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
 
-    static string rgb_color(const ImVec4 &color) {
-        return format("rgb({}, {}, {}, {})", color.x * 255, color.y * 255, color.z * 255, color.w * 255);
+    static string rgb_color(const ImColor &color) {
+        return format("rgb({}, {}, {}, {})", color.Value.x * 255, color.Value.y * 255, color.Value.z * 255, color.Value.w * 255);
     }
 
     // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
@@ -258,16 +258,16 @@ struct ImGuiDevice : Device {
 
     void rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
-        if (fill_color.w != 0) draw_list->AddRectFilled(at(rect.Min), at(rect.Max), ColorConvertFloat4ToU32(fill_color), corner_radius);
-        if (stroke_color.w != 0) draw_list->AddRect(at(rect.Min), at(rect.Max), ColorConvertFloat4ToU32(stroke_color), corner_radius);
+        if (fill_color.Value.w != 0) draw_list->AddRectFilled(at(rect.Min), at(rect.Max), fill_color, corner_radius);
+        if (stroke_color.Value.w != 0) draw_list->AddRect(at(rect.Min), at(rect.Max), stroke_color, corner_radius);
     }
 
     void grouprect(const ImRect &rect, const string &text) override {
         const auto &a = at(rect.Min);
         const auto &b = at(rect.Max);
         const auto &text_top_left = at(rect.Min + ImVec2{DecorateLabelOffset, 0});
-        const auto &stroke_color = ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke]);
-        const auto &label_color = ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle]);
+        const U32 stroke_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke];
+        const U32 label_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle];
 
         // Decorate a potentially rounded outline rect with a break in the top-left (to the right of max rounding) for the label text
         const float rad = scale(s.Style.FlowGrid.DiagramDecorateCornerRadius);
@@ -292,13 +292,13 @@ struct ImGuiDevice : Device {
         draw_list->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, label_color, text.c_str());
     }
 
-    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImVec4 &color) override {
-        draw_list->AddTriangle(at(p1), at(p2), at(p3), ColorConvertFloat4ToU32(color));
+    void triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
+        draw_list->AddTriangle(at(p1), at(p2), at(p3), color);
     }
 
-    void circle(const ImVec2 &p, float radius, const ImVec4 &fill_color, const ImVec4 &stroke_color) override {
-        if (fill_color.w != 0) draw_list->AddCircleFilled(at(p), scale(radius), ColorConvertFloat4ToU32(fill_color));
-        if (stroke_color.w != 0) draw_list->AddCircle(at(p), scale(radius), ColorConvertFloat4ToU32(stroke_color));
+    void circle(const ImVec2 &p, float radius, const ImColor &fill_color, const ImColor &stroke_color) override {
+        if (fill_color.Value.w != 0) draw_list->AddCircleFilled(at(p), scale(radius), fill_color);
+        if (stroke_color.Value.w != 0) draw_list->AddCircle(at(p), scale(radius), stroke_color);
     }
 
     void arrow(const ImVec2 &p, Diagram orientation) override {
@@ -306,26 +306,26 @@ struct ImGuiDevice : Device {
             at(p) + ImVec2{0, 0.5f},
             scale(s.Style.FlowGrid.DiagramArrowSize),
             global_direction(orientation),
-            ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine])
+            s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine]
         );
     }
 
     void line(const ImVec2 &start, const ImVec2 &end) override {
-        const auto &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
+        const U32 color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
         const auto width = scale(s.Style.FlowGrid.DiagramWireWidth);
         // ImGui adds {0.5, 0.5} to line points.
-        draw_list->AddLine(at(start) - ImVec2{0.5f, 0}, at(end) - ImVec2{0.5f, 0}, ColorConvertFloat4ToU32(color), width);
+        draw_list->AddLine(at(start) - ImVec2{0.5f, 0}, at(end) - ImVec2{0.5f, 0}, color, width);
     }
 
     void text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding_right, padding_bottom, scale_height, font_style] = style;
         const auto &text_pos = p - ImVec2{padding_right, padding_bottom} - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? text_size(text) / ImVec2{2, 1} : text_size(text));
-        draw_list->AddText(at(text_pos), ColorConvertFloat4ToU32(color), text.c_str());
+        draw_list->AddText(at(text_pos), color, text.c_str());
     }
 
-    void dot(const ImVec2 &p, const ImVec4 &fill_color) override {
+    void dot(const ImVec2 &p, const ImColor &fill_color) override {
         const float radius = scale(s.Style.FlowGrid.DiagramOrientationMarkRadius);
-        draw_list->AddCircleFilled(at(p), radius, ColorConvertFloat4ToU32(fill_color));
+        draw_list->AddCircleFilled(at(p), radius, fill_color);
     }
 
     ImDrawList *draw_list;
@@ -413,13 +413,13 @@ struct Node {
 
     // Debug
     void draw_rect(Device &device) const {
-        device.rect(rect(), {.fill_color={0.5, 0.5, 0.5, 0.1}, .stroke_color={0, 0, 1, 1}, .stroke_width = 1});
+        device.rect(rect(), {.fill_color={0.5f, 0.5f, 0.5f, 0.1f}, .stroke_color={0.0f, 0.0f, 1.0f, 1.0f}, .stroke_width = 1});
     }
     void draw_type(Device &device) const {
         const string &type = get_box_type(tree); // todo cache this at construction time if we ever use it outside the debug hover context
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
-        device.rect({position, position + text_size(type_label) + ImVec2{padding, padding} * 2}, {.fill_color={0.5, 0.5, 0.5, 0.3}});
+        device.rect({position, position + text_size(type_label) + ImVec2{padding, padding} * 2}, {.fill_color={0.5f, 0.5f, 0.5f, 0.3f}});
         device.text(position, type_label, {.color={0, 0, 1, 1}, .justify=TextStyle::Justify::Left, .padding_right=-padding, .padding_bottom=-padding});
     }
     void draw_channel_labels(Device &device) const {
@@ -511,7 +511,7 @@ struct IONode : Node {
         if (!s.Style.FlowGrid.DiagramOrientationMark) return;
 
         const auto &rect = get_frame_rect();
-        const auto &color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramOrientationMark];
+        const U32 color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramOrientationMark];
         device.dot(ImVec2{
             is_lr() ? rect.Min.x : rect.Max.x,
             is_forward() ? rect.Min.y : rect.Max.y
@@ -539,8 +539,8 @@ struct BlockNode : IONode {
     }
 
     void _draw(Device &device) const override {
-        const auto &fill_color = s.Style.FlowGrid.Colors[color];
-        const auto &text_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramText];
+        const U32 fill_color = s.Style.FlowGrid.Colors[color];
+        const U32 text_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramText];
         const ImRect &rect = get_frame_rect();
         if (device.type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
@@ -916,7 +916,7 @@ struct RouteNode : IONode {
 
     void _draw(Device &device) const override {
         if (s.Style.FlowGrid.DiagramRouteFrame) {
-            device.rect(get_frame_rect(), {.fill_color={0.93, 0.93, 0.65, 1}}); // todo move to style
+            device.rect(get_frame_rect(), {.fill_color={0.93f, 0.93f, 0.65f, 1.0f}}); // todo move to style
             draw_orientation_mark(device);
             // Input arrows
             for (Count i = 0; i < io_count(IO_In); i++) device.arrow(point(IO_In, i) + ImVec2{dir_unit() * XGap(), 0}, orientation);
@@ -1269,8 +1269,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
     if (!s.Style.FlowGrid.DiagramScaleFill) SetNextWindowContentSize(scale(focused->size));
     BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = scale(1);
-    GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(),
-        ColorConvertFloat4ToU32(s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]));
+    GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]);
 
     ImGuiDevice device;
     hovered_node = nullptr;

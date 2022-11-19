@@ -290,7 +290,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                     for (const auto &child: children) {
                         if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                         TableNextColumn();
-                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, ColorConvertFloat4ToU32(fg_style.Colors[FlowGridCol_ParamsBg]));
+                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, fg_style.Colors[FlowGridCol_ParamsBg]);
                         const string &child_label = child.type == ItemType_Button || !is_h || !fg_style.ParamsHeaderTitles ? child.label : "";
                         DrawUiItem(child, child_label, suggested_item_height);
                     }

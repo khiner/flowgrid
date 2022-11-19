@@ -13,8 +13,6 @@ using namespace ImGui;
 using namespace fg;
 using namespace action;
 
-static const auto &History = c.History;
-
 //-----------------------------------------------------------------------------
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
@@ -42,9 +40,9 @@ template<typename T>
 T Vector<T>::operator[](Count index) const { return std::get<T>(store.at(Path / to_string(index))); };
 template<typename T>
 Count Vector<T>::size(const Store &_store) const {
-    int size = -1;
-    while (_store.count(Path / to_string(++size))) {}
-    return Count(size);
+    Count i = 0;
+    while (_store.count(Path / to_string(i++))) {}
+    return i - 1;
 }
 
 // Transient
@@ -81,16 +79,16 @@ void Vector<T>::set(const vector<std::pair<int, T>> &values, TransientStore &_st
 template<typename T>
 void Vector<T>::truncate(const Count length, TransientStore &_store) const {
     Count i = length;
-    while (_store.count(Path / to_string(i++))) _store.erase(Path / to_string(i));
+    while (_store.count(Path / to_string(i))) _store.erase(Path / to_string(i++));
 }
 
 template<typename T>
 T Vector2D<T>::at(Count i, Count j, const Store &_store) const { return std::get<T>(_store.at(Path / to_string(i) / to_string(j))); };
 template<typename T>
 Count Vector2D<T>::size(const TransientStore &_store) const {
-    Count size = 0;
-    while (_store.count(Path / size++ / 0).to_string()) {}
-    return size;
+    Count i = 0;
+    while (_store.count(Path / i++ / 0).to_string()) {}
+    return i - 1;
 }
 template<typename T>
 Store Vector2D<T>::set(Count i, Count j, const T &value, const Store &_store) const { return _store.set(Path / to_string(i) / to_string(j), value); }
@@ -99,12 +97,12 @@ void Vector2D<T>::set(Count i, Count j, const T &value, TransientStore &_store) 
 template<typename T>
 void Vector2D<T>::truncate(const Count length, TransientStore &_store) const {
     Count i = length;
-    while (_store.count(Path / to_string(i++) / "0")) truncate(i, 0, _store);
+    while (_store.count(Path / to_string(i) / "0")) truncate(i++, 0, _store);
 }
 template<typename T>
 void Vector2D<T>::truncate(const Count i, const Count length, TransientStore &_store) const {
     Count j = length;
-    while (_store.count(Path / to_string(i) / to_string(j++))) _store.erase(Path / to_string(i) / to_string(j));
+    while (_store.count(Path / to_string(i) / to_string(j))) _store.erase(Path / to_string(i) / to_string(j++));
 }
 }
 
@@ -469,9 +467,9 @@ ImRect RowItemRatioRect(float ratio) {
     return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.0f, 1.0f), GetFontSize()}};
 }
 
-void FillRowItemBg(const ImVec4 &col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
+void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
     const auto &rect = RowItemRect();
-    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, ImColor(col));
+    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
 }
 
 //-----------------------------------------------------------------------------
@@ -719,7 +717,7 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
 void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
     const Count size = dss.Size;
     for (Count i = 0; i < size; i++) {
-        const auto &ds = dss[i];
+        const auto &ds = dss[int(i)];
         NodeId.set(i, ds.NodeId, _store);
         ParentNodeId.set(i, ds.ParentNodeId, _store);
         ParentWindowId.set(i, ds.ParentWindowId, _store);
@@ -968,7 +966,7 @@ void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
     style.AntiAliasedFill = AntiAliasedFill;
     style.CurveTessellationTol = CurveTessellationTol;
     style.CircleTessellationMaxError = CircleTessellationMaxError;
-    for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = Colors[i];
+    for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = ColorConvertU32ToFloat4(Colors[i]);
 }
 
 void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
@@ -1004,7 +1002,7 @@ void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
     style.UseLocalTime = UseLocalTime;
     style.UseISO8601 = UseISO8601;
     style.Use24HourClock = Use24HourClock;
-    for (int i = 0; i < ImPlotCol_COUNT; i++) style.Colors[i] = Colors[i];
+    for (int i = 0; i < ImPlotCol_COUNT; i++) style.Colors[i] = Colors::ConvertU32ToFloat4(Colors[i]);
     ImPlot::BustItemCache();
 }
 
@@ -1036,18 +1034,18 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
                          is_array_item ? leaf_name : key) : key;
 
     if (AutoSelect) {
-        const auto &update_paths = History.LatestUpdatedPaths;
+        const auto &update_paths = c.History.LatestUpdatedPaths;
         const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
         const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
         SetNextItemOpen(was_recently_updated);
     }
 
     // Flash background color of nodes when its corresponding path updates.
-    const auto &latest_update_time = History.LatestUpdateTime(path);
+    const auto &latest_update_time = c.History.LatestUpdateTime(path);
     if (latest_update_time) {
         const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time.value()).count() / s.Style.FlowGrid.FlashDurationSec;
-        ImVec4 flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
-        flash_color.w = max(0.0f, 1 - flash_elapsed_ratio);
+        ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
+        flash_color.Value.w = max(0.0f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
 
@@ -1107,7 +1105,7 @@ void StateMemoryEditor::Draw() const {
 }
 
 void StatePathUpdateFrequency::Draw() const {
-    auto [labels, values] = History.StatePathUpdateFrequencyPlottable();
+    auto [labels, values] = c.History.StatePathUpdateFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;
@@ -1124,7 +1122,7 @@ void StatePathUpdateFrequency::Draw() const {
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *item_labels[] = {"Committed updates", "Active updates"};
-        const int item_count = !History.ActiveGesture.empty() ? 2 : 1;
+        const int item_count = !c.History.ActiveGesture.empty() ? 2 : 1;
         const int group_count = int(values.size()) / item_count;
         ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
@@ -1348,31 +1346,36 @@ bool Colors::Draw() const {
 
         const auto &style = GetStyle();
         for (Count i = 0; i < size(); i++) {
+            const U32 value = (*this)[i];
+            const bool is_auto = AllowAuto && value == AutoColor;
+            const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : value;
+
             const string &name = GetName(i);
             if (!filter.PassFilter(name.c_str())) continue;
 
-            PushID(i);
-            if (allow_auto) {
-                // todo generalize auto colors (linked to ImGui colors) and use in FG colors
-                auto temp = ImPlot::GetStyleColorVec4(i);
-                const bool is_auto = ImPlot::IsColorAuto(i);
+            PushID(int(i));
+            // todo use auto for FG colors (link to ImGui colors)
+            if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) q(set_value{Path, is_auto ? temp : IMPLOT_AUTO_COL});
+                if (Button("Auto")) q(set_value{Path / to_string(i), is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
-            auto value = (*this)[i];
-            changed |= ImGui::ColorEdit4(path_label(Path / to_string(i)).c_str(), (float *) &value,
-                (ImGuiColorEditFlags_AlphaBar | alpha_flags) | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
+            auto mutable_value = ColorConvertU32ToFloat4(mapped_value);
+            if (is_auto) BeginDisabled();
+            const bool item_changed = ColorEdit4(path_label(Path / to_string(i)).c_str(), (float *) &mutable_value,
+                alpha_flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
             UiContext.WidgetGestured();
+            if (is_auto) EndDisabled();
 
             SameLine(0, style.ItemInnerSpacing.x);
             TextUnformatted(name.c_str());
             PopID();
 
-            if (changed) q(set_value{Path / to_string(i), value});
+            if (item_changed) q(set_value{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});
+            changed |= item_changed;
         }
-        if (allow_auto) {
+        if (AllowAuto) {
             Separator();
             PushTextWrapPos(0);
             Text("Colors that are set to Auto will be automatically deduced from your ImGui style or the current ImPlot colormap.\n"
@@ -1655,8 +1658,8 @@ void Style::Draw() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::Draw() const {
-    int value = History.Index;
-    if (SliderInt("History index", &value, 0, History.Size() - 1)) q(set_history_index{value});
+    int value = int(c.History.Index);
+    if (SliderInt("History index", &value, 0, int(c.History.Size() - 1))) q(set_history_index{value});
     GestureDurationSec.Draw();
 }
 
@@ -1720,11 +1723,11 @@ void Metrics::FlowGridMetrics::Draw() const {
     {
         // Active (uncompressed) gesture
         const bool widget_gesturing = UiContext.IsWidgetGesturing;
-        const bool ActiveGesturePresent = !History.ActiveGesture.empty();
+        const bool ActiveGesturePresent = !c.History.ActiveGesture.empty();
         if (ActiveGesturePresent || widget_gesturing) {
             // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, ImColor(s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]));
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - c.History.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
             const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
             if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -1733,7 +1736,7 @@ void Metrics::FlowGridMetrics::Draw() const {
                 Text("Widget gesture: %s", widget_gesturing ? "true" : "false");
                 if (!widget_gesturing) EndDisabled();
 
-                if (ActiveGesturePresent) ShowGesture(History.ActiveGesture);
+                if (ActiveGesturePresent) ShowGesture(c.History.ActiveGesture);
                 else Text("No actions yet");
                 TreePop();
             }
@@ -1745,9 +1748,10 @@ void Metrics::FlowGridMetrics::Draw() const {
     }
     Separator();
     {
+        const auto &History = c.History;
         const bool no_history = History.Empty();
         if (no_history) BeginDisabled();
-        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", History.Size() - 1, History.Index)) {
+        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", c.History.Size() - 1, History.Index)) {
             for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[committed, store_record, gesture] = History.Records[i];

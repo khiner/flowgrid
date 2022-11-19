@@ -20,11 +20,6 @@ Store set(const MemberEntries &values, const Store &_store) {
     set(values, transient);
     return transient.persistent();
 }
-Store set(const std::vector<std::pair<StatePath, ImVec4>> &values, const Store &_store) {
-    auto transient = _store.transient();
-    set(values, transient);
-    return transient.persistent();
-}
 
 // Transient modifiers
 void set(const StateMember &member, const Primitive &value, TransientStore &_store) { _store.set(member.Path, value); }
@@ -33,9 +28,6 @@ void set(const StoreEntries &values, TransientStore &_store) {
 }
 void set(const MemberEntries &values, TransientStore &_store) {
     for (const auto &[member, value]: values) _store.set(member.Path, value);
-}
-void set(const std::vector<std::pair<StatePath, ImVec4>> &values, TransientStore &_store) {
-    for (const auto &[path, value]: values) _store.set(path, value);
 }
 
 // Split the string on '#'.
@@ -83,14 +75,7 @@ Store store_from_json(const json &j) {
     TransientStore _store;
     for (size_t i = 0; i < entries.size(); i++) {
         const auto &[path, value] = entries[i];
-        if (path.filename() == "w" && i < entries.size() - 3 && entries[i + 3].first.filename() == "z") {
-            const auto w = std::get<float>(value);
-            const auto x = std::get<float>(entries[i + 1].second);
-            const auto y = std::get<float>(entries[i + 2].second);
-            const auto z = std::get<float>(entries[i + 3].second);
-            _store.set(path.parent_path(), ImVec4{x, y, z, w});
-            i += 3;
-        } else if (path.filename() == "x" && i < entries.size() - 1 && entries[i + 1].first.filename() == "y") {
+        if (path.filename() == "x" && i < entries.size() - 1 && entries[i + 1].first.filename() == "y") {
             if (std::holds_alternative<U32>(value)) {
                 const auto x = std::get<U32>(value);
                 const auto y = std::get<U32>(entries[i + 1].second);
@@ -562,7 +547,7 @@ void StoreHistory::SetIndex(Count new_index) {
 
     c.SetStore(Records[Index].Store);
     const auto direction = new_index > old_index ? Forward : Reverse;
-    int i = old_index;
+    auto i = int(old_index);
     while (i != int(new_index)) {
         const int history_index = direction == Reverse ? --i : i++;
         const Count record_index = history_index == -1 ? Index : history_index;

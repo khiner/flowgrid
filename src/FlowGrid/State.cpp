@@ -22,7 +22,7 @@ static const auto &History = c.History;
 namespace Field {
 Bool::operator bool() const { return std::get<bool>(store.at(Path)); }
 Int::operator int() const { return std::get<int>(store.at(Path)); }
-UInt::operator unsigned int() const { return std::get<unsigned int>(store.at(Path)); }
+UInt::operator U32() const { return std::get<U32>(store.at(Path)); }
 Float::operator float() const {
     const auto &value = store.at(Path);
     if (std::holds_alternative<int>(value)) return float(std::get<int>(value));
@@ -39,17 +39,17 @@ Enum::operator int() const { return std::get<int>(store.at(Path)); }
 Flags::operator int() const { return std::get<int>(store.at(Path)); }
 
 template<typename T>
-T Vector<T>::operator[](size_t index) const { return std::get<T>(store.at(Path / to_string(index))); };
+T Vector<T>::operator[](Count index) const { return std::get<T>(store.at(Path / to_string(index))); };
 template<typename T>
-size_t Vector<T>::size(const Store &_store) const {
+Count Vector<T>::size(const Store &_store) const {
     int size = -1;
     while (_store.count(Path / to_string(++size))) {}
-    return size_t(size);
+    return Count(size);
 }
 
 // Transient
 template<typename T>
-void Vector<T>::set(size_t index, const T &value, TransientStore &_store) const { _store.set(Path / to_string(index), value); }
+void Vector<T>::set(Count index, const T &value, TransientStore &_store) const { _store.set(Path / to_string(index), value); }
 template<typename T>
 void Vector<T>::set(const vector<T> &values, TransientStore &_store) const {
     ::set(views::ints(0, int(values.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), values[i]); }) | to<vector>, _store);
@@ -64,7 +64,7 @@ Store Vector<T>::set(const vector<std::pair<int, T>> &values, const Store &_stor
 
 // Persistent
 template<typename T>
-Store Vector<T>::set(size_t index, const T &value, const Store &_store) const { return ::set(Path / index, value, _store); }
+Store Vector<T>::set(Count index, const T &value, const Store &_store) const { return ::set(Path / index, value, _store); }
 template<typename T>
 Store Vector<T>::set(const vector<T> &values, const Store &_store) const {
     if (values.empty()) return _store;
@@ -79,32 +79,32 @@ void Vector<T>::set(const vector<std::pair<int, T>> &values, TransientStore &_st
 }
 
 template<typename T>
-void Vector<T>::truncate(size_t length, TransientStore &_store) const {
-    size_t i = length - 1;
-    while (_store.count(Path / to_string(++i))) _store.erase(Path / to_string(i));
+void Vector<T>::truncate(const Count length, TransientStore &_store) const {
+    Count i = length;
+    while (_store.count(Path / to_string(i++))) _store.erase(Path / to_string(i));
 }
 
 template<typename T>
-T Vector2D<T>::at(size_t i, size_t j, const Store &_store) const { return std::get<T>(_store.at(Path / to_string(i) / to_string(j))); };
+T Vector2D<T>::at(Count i, Count j, const Store &_store) const { return std::get<T>(_store.at(Path / to_string(i) / to_string(j))); };
 template<typename T>
-size_t Vector2D<T>::size(const TransientStore &_store) const {
-    int size = -1;
-    while (_store.count(Path / ++size / 0).to_string()) {}
+Count Vector2D<T>::size(const TransientStore &_store) const {
+    Count size = 0;
+    while (_store.count(Path / size++ / 0).to_string()) {}
     return size;
 }
 template<typename T>
-Store Vector2D<T>::set(size_t i, size_t j, const T &value, const Store &_store) const { return _store.set(Path / to_string(i) / to_string(j), value); }
+Store Vector2D<T>::set(Count i, Count j, const T &value, const Store &_store) const { return _store.set(Path / to_string(i) / to_string(j), value); }
 template<typename T>
-void Vector2D<T>::set(size_t i, size_t j, const T &value, TransientStore &_store) const { _store.set(Path / to_string(i) / to_string(j), value); }
+void Vector2D<T>::set(Count i, Count j, const T &value, TransientStore &_store) const { _store.set(Path / to_string(i) / to_string(j), value); }
 template<typename T>
-void Vector2D<T>::truncate(size_t length, TransientStore &_store) const {
-    size_t i = length - 1;
-    while (_store.count(Path / to_string(++i) / "0")) truncate(i, 0, _store);
+void Vector2D<T>::truncate(const Count length, TransientStore &_store) const {
+    Count i = length;
+    while (_store.count(Path / to_string(i++) / "0")) truncate(i, 0, _store);
 }
 template<typename T>
-void Vector2D<T>::truncate(size_t i, size_t length, TransientStore &_store) const {
-    size_t j = length - 1;
-    while (_store.count(Path / to_string(i) / to_string(++j))) _store.erase(Path / to_string(i) / to_string(j));
+void Vector2D<T>::truncate(const Count i, const Count length, TransientStore &_store) const {
+    Count j = length;
+    while (_store.count(Path / to_string(i) / to_string(j++))) _store.erase(Path / to_string(i) / to_string(j));
 }
 }
 
@@ -208,7 +208,7 @@ Gesture action::MergeGesture(const Gesture &gesture) {
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
     std::optional<const StateActionMoment> active;
-    for (size_t i = 0; i < gesture.size(); i++) {
+    for (Count i = 0; i < gesture.size(); i++) {
         if (!active.has_value()) active.emplace(gesture[i]);
         const auto &a = active.value();
         const auto &b = gesture[i + 1];
@@ -260,7 +260,7 @@ bool Field::Bool::DrawMenu() const {
 }
 
 bool Field::UInt::Draw() const {
-    unsigned int value = *this;
+    U32 value = *this;
     const bool edited = SliderScalar(Name.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
     UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
@@ -369,11 +369,11 @@ bool Field::Enum::Draw(const vector<int> &choices) const {
 
 }
 bool Field::Enum::DrawMenu() const {
-    const int value = *this;
+    const U32 value = *this;
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
-        for (int i = 0; i < int(names.size()); i++) {
+        for (Count i = 0; i < names.size(); i++) {
             const bool is_selected = value == i;
             if (MenuItem(names[i].c_str(), nullptr, is_selected)) {
                 q(set_value{Path, i});
@@ -390,7 +390,7 @@ bool Field::Flags::Draw() const {
     const int value = *this;
     bool edited = false;
     if (TreeNodeEx(Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        for (int i = 0; i < int(items.size()); i++) {
+        for (Count i = 0; i < items.size(); i++) {
             const auto &item = items[i];
             const int option_mask = 1 << i;
             bool is_selected = option_mask & value;
@@ -409,11 +409,11 @@ bool Field::Flags::Draw() const {
     return edited;
 }
 bool Field::Flags::DrawMenu() const {
-    const int value = *this;
+    const U32 value = *this;
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
-        for (int i = 0; i < int(items.size()); i++) {
+        for (Count i = 0; i < items.size(); i++) {
             const auto &item = items[i];
             const int option_mask = 1 << i;
             const bool is_selected = option_mask & value;
@@ -523,7 +523,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
         }
     } else if (value.is_array()) {
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
-            int i = 0;
+            Count i = 0;
             for (const auto &it: value) {
                 JsonTree(to_string(i), it, node_flags);
                 i++;
@@ -554,7 +554,7 @@ void Window::DrawWindow(ImGuiWindowFlags flags) const {
     if (Visible && !open) q(set_value{Visible.Path, false});
 }
 
-void Window::Dock(ImGuiID node_id) const {
+void Window::Dock(ID node_id) const {
     DockBuilderDockWindow(Name.c_str(), node_id);
 }
 
@@ -704,11 +704,11 @@ void State::Draw() const {
 }
 // Copy of ImGui version, which is not defined publicly
 struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
-    ImGuiID NodeId;
-    ImGuiID ParentNodeId;
-    ImGuiID ParentWindowId;
-    ImGuiID SelectedTabId;
-    signed char SplitAxis;
+    ID NodeId;
+    ID ParentNodeId;
+    ID ParentWindowId;
+    ID SelectedTabId;
+    S8 SplitAxis;
     char Depth;
     ImGuiDockNodeFlags Flags;
     ImVec2ih Pos;
@@ -717,8 +717,8 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
 };
 
 void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
-    const int size = dss.Size;
-    for (int i = 0; i < size; i++) {
+    const Count size = dss.Size;
+    for (Count i = 0; i < size; i++) {
         const auto &ds = dss[i];
         NodeId.set(i, ds.NodeId, _store);
         ParentNodeId.set(i, ds.ParentNodeId, _store);
@@ -744,13 +744,13 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
 }
 void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
-    for (int i = 0; i < int(NodeId.size()); i++) {
+    for (Count i = 0; i < NodeId.size(); i++) {
         ctx->DockContext.NodesSettings.push_back({
-            ImGuiID(NodeId[i]),
-            ImGuiID(ParentNodeId[i]),
-            ImGuiID(ParentWindowId[i]),
-            ImGuiID(SelectedTabId[i]),
-            (signed char) SplitAxis[i],
+            NodeId[i],
+            ParentNodeId[i],
+            ParentWindowId[i],
+            SelectedTabId[i],
+            S8(SplitAxis[i]),
             char(Depth[i]),
             Flags[i],
             Pos[i],
@@ -761,7 +761,7 @@ void DockNodeSettings::Apply(ImGuiContext *ctx) const {
 }
 
 void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &_store) const {
-    int i = 0;
+    Count i = 0;
     for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
         ID.set(i, ws->ID, _store);
         ClassId.set(i, ws->DockId, _store);
@@ -787,8 +787,8 @@ void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore
 // See `imgui.cpp::ApplyWindowSettings`
 void WindowSettings::Apply(ImGuiContext *) const {
     const auto *main_viewport = GetMainViewport();
-    for (int i = 0; i < int(ID.size()); i++) {
-        ImGuiID id = ID[i];
+    for (Count i = 0; i < ID.size(); i++) {
+        const auto id = ID[i];
         auto *window = FindWindowByID(id);
         if (!window) {
             cout << "Unable to apply settings for window with ID " << format("{:#08X}", id) << ": Window not found.\n";
@@ -810,7 +810,7 @@ void WindowSettings::Apply(ImGuiContext *) const {
 }
 
 void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &_store) const {
-    int i = 0;
+    Count i = 0;
     for (auto *ts = tss.begin(); ts != nullptr; ts = tss.next_chunk(ts)) {
         auto columns_count = ts->ColumnsCount;
 
@@ -858,8 +858,8 @@ void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &
 }
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
 void TableSettings::Apply(ImGuiContext *) const {
-    for (int i = 0; i < int(ID.size()); i++) {
-        ImGuiID id = ID[i];
+    for (Count i = 0; i < ID.size(); i++) {
+        const auto id = ID[i];
         const auto table = TableFindByID(id);
         if (!table) {
             cout << "Unable to apply settings for table with ID " << format("{:#08X}", id) << ": Table not found.\n";
@@ -872,7 +872,7 @@ void TableSettings::Apply(ImGuiContext *) const {
 
         // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
         ImU64 display_order_mask = 0;
-        for (int j = 0; j < ColumnsCount[i]; j++) {
+        for (Count j = 0; j < ColumnsCount[i]; j++) {
             int column_n = Columns.Index.at(i, j);
             if (column_n < 0 || column_n >= table->ColumnsCount) continue;
 
@@ -1068,7 +1068,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
         }
     } else if (value.is_array()) {
         if (JsonTreeNode(label, flags)) {
-            int i = 0;
+            Count i = 0;
             for (const auto &it: value) {
                 StateJsonTree(to_string(i), it, path / to_string(i));
                 i++;
@@ -1347,7 +1347,7 @@ bool Colors::Draw() const {
         PushItemWidth(-160);
 
         const auto &style = GetStyle();
-        for (int i = 0; i < int(size()); i++) {
+        for (Count i = 0; i < size(); i++) {
             const string &name = GetName(i);
             if (!filter.PassFilter(name.c_str())) continue;
 
@@ -1710,7 +1710,7 @@ void Demo::Draw() const {
 }
 
 void ShowGesture(const Gesture &gesture) {
-    for (size_t action_index = 0; action_index < gesture.size(); action_index++) {
+    for (Count action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &[action, time] = gesture[action_index];
         JsonTree(format("{}: {}", action::GetName(action), time), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
     }
@@ -1748,7 +1748,7 @@ void Metrics::FlowGridMetrics::Draw() const {
         const bool no_history = History.Empty();
         if (no_history) BeginDisabled();
         if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", History.Size() - 1, History.Index)) {
-            for (int i = 1; i < History.Size(); i++) {
+            for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[committed, store_record, gesture] = History.Records[i];
                     BulletText("Committed: %s", format("{}\n", committed).c_str());

@@ -91,9 +91,9 @@ Store store_from_json(const json &j) {
             _store.set(path.parent_path(), ImVec4{x, y, z, w});
             i += 3;
         } else if (path.filename() == "x" && i < entries.size() - 1 && entries[i + 1].first.filename() == "y") {
-            if (std::holds_alternative<unsigned int>(value)) {
-                const auto x = std::get<unsigned int>(value);
-                const auto y = std::get<unsigned int>(entries[i + 1].second);
+            if (std::holds_alternative<U32>(value)) {
+                const auto x = std::get<U32>(value);
+                const auto y = std::get<U32>(entries[i + 1].second);
                 _store.set(path.parent_path(), ImVec2ih{short(x), short(y)});
             } else if (std::holds_alternative<int>(value)) {
                 const auto x = std::get<int>(value);
@@ -456,6 +456,8 @@ void Context::ApplyAction(const ProjectAction &action) {
 
         // `History.Index`-changing actions:
         [&](const undo &) {
+            if (History.Empty()) return;
+
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
             // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
             // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
@@ -477,7 +479,7 @@ void Context::ApplyAction(const ProjectAction &action) {
 // [SECTION] History
 //-----------------------------------------------------------------------------
 
-int StoreHistory::Size() const { return int(Records.size()); }
+Count StoreHistory::Size() const { return Records.size(); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
 bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size(); }
@@ -531,7 +533,7 @@ StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const 
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();
     vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
-    int i = 0;
+    Count i = 0;
     for (const auto &path: paths) values[i++] = CommittedUpdateTimesForPath.contains(path) ? CommittedUpdateTimesForPath.at(path).size() : 0;
     // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
     if (has_gesture) for (const auto &path: paths) values[i++] = GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).size() : 0;
@@ -546,7 +548,7 @@ StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const 
     return {labels, values};
 }
 
-void StoreHistory::SetIndex(int new_index) {
+void StoreHistory::SetIndex(Count new_index) {
     // If we're mid-gesture, revert the current gesture before navigating to the requested history index.
     if (!ActiveGesture.empty()) {
         ActiveGesture.clear();
@@ -555,15 +557,15 @@ void StoreHistory::SetIndex(int new_index) {
     }
     if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
-    int old_index = Index;
+    Count old_index = Index;
     Index = new_index;
 
     c.SetStore(Records[Index].Store);
     const auto direction = new_index > old_index ? Forward : Reverse;
     int i = old_index;
-    while (i != new_index) {
+    while (i != int(new_index)) {
         const int history_index = direction == Reverse ? --i : i++;
-        const size_t record_index = history_index == -1 ? Index : history_index;
+        const Count record_index = history_index == -1 ? Index : history_index;
         const auto &segment_patch = CreatePatch(Records[record_index].Store, Records[record_index + 1].Store);
         const auto &gesture_time = Records[record_index + 1].Gesture.back().second;
         for (const auto &[partial_path, op]: segment_patch.ops) {

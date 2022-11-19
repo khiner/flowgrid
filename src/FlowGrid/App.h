@@ -6,7 +6,7 @@
  * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
  * which also provides an immutable `Update(const Action &, TransientState &) const` method, and a `Draw() const` method.
  */
-
+#include <inttypes.h>
 #include <iostream>
 #include <list>
 #include <map>
@@ -46,13 +46,50 @@ This results in the nice property that we can find any `UIStateMember` instance 
  */
 using ID = ImGuiID;
 using StatePath = fs::path;
+
+/**
+Redefining [ImGui's scalar data types](https://github.com/ocornut/imgui/blob/master/imgui.h#L223-L232)
+
+This is done in order to:
+  * clarify & document the actual meanings of the FlowGrid integer type aliases below, and
+  * emphasize the importance of FlowGrid integer types reflecting ImGui types.
+
+If it wasn't important to keep FlowGrid's integer types mapped 1:1 to ImGui's, we would be using
+ [C++11's fixed width integer types](https://en.cppreference.com/w/cpp/types/integer) instead.
+
+Make sure to double check once in a blue moon that the ImGui types have not changed!
+*/
+
+using ImS8 = signed char; // 8-bit signed integer
+using ImU8 = unsigned char; // 8-bit unsigned integer
+using ImS16 = signed short; // 16-bit signed integer
+using ImU16 = unsigned short; // 16-bit unsigned integer
+using ImS32 = signed int; // 32-bit signed integer == int
+using ImU32 = unsigned int; // 32-bit unsigned integer (often used to store packed colors)
+using ImS64 = signed long long; // 64-bit signed integer
+using ImU64 = unsigned long long; // 64-bit unsigned integer
+
+// Scalar data types, pointing to ImGui scalar types.
+// Defined as `{TypeName} = Im{TypeName}`.
+using S8 = ImS8;
+using U8 = ImU8;
+using S16 = ImS16;
+using U16 = ImU16;
+using S32 = ImS32;
+using U32 = ImU32;
+using S64 = ImS64;
+using U64 = ImU64;
+
+using Count = U32;
+
+// TODO store/load colors as U32 in store & json, and remove a bunch of conversions from ImVec4 to U32
+using Primitive = std::variant<bool, U32, S32, float, string, ImVec2ih, ImVec2, ImVec4>;
+using StoreEntry = std::pair<StatePath, Primitive>;
+using StoreEntries = vector<StoreEntry>;
+
 struct StatePathHash {
     auto operator()(const StatePath &p) const noexcept { return fs::hash_value(p); }
 };
-
-using Primitive = std::variant<bool, unsigned int, int, float, string, ImVec2ih, ImVec2, ImVec4>;
-using StoreEntry = std::pair<StatePath, Primitive>;
-using StoreEntries = vector<StoreEntry>;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
 
@@ -152,17 +189,17 @@ struct Linkable {
 };
 
 struct UInt : Base {
-    UInt(const StateMember *parent, const string &id, unsigned int value = 0, unsigned int min = 0, unsigned int max = 100)
+    UInt(const StateMember *parent, const string &id, U32 value = 0, U32 min = 0, U32 max = 100)
         : Base(parent, id, value), min(min), max(max) {}
 
-    operator unsigned int() const;
-    operator bool() const { return (bool) (unsigned int) *this; }
+    operator U32() const;
+    operator bool() const { return (bool) (U32) *this; }
 
     bool operator==(int value) const { return int(*this) == value; }
 
     bool Draw() const override;
 
-    unsigned int min, max;
+    U32 min, max;
 };
 
 struct Int : Base {
@@ -170,10 +207,11 @@ struct Int : Base {
         : Base(parent, id, value), min(min), max(max) {}
 
     operator int() const;
-    operator bool() const { return (bool) int(*this); }
-    operator short() const { return (short) int(*this); }
-    operator char() const { return (char) int(*this); }
-    operator signed char() const { return (signed char) int(*this); }
+
+    operator bool() const { return bool(int(*this)); }
+    operator short() const { return short(int(*this)); }
+    operator char() const { return char(int(*this)); }
+    operator S8() const { return S8(int(*this)); }
 
     bool operator==(int value) const { return int(*this) == value; }
 
@@ -283,19 +321,19 @@ template<typename T>
 struct Vector : Base {
     using Base::Base;
 
-    virtual string GetName(size_t index) const { return to_string(index); };
+    virtual string GetName(Count index) const { return to_string(index); };
 
-    T operator[](size_t index) const;
-    size_t size(const Store &_store = store) const;
+    T operator[](Count index) const;
+    Count size(const Store &_store = store) const;
 
-    Store set(size_t index, const T &value, const Store &_store = store) const;
+    Store set(Count index, const T &value, const Store &_store = store) const;
     Store set(const vector<T> &values, const Store &_store = store) const;
     Store set(const vector<std::pair<int, T>> &, const Store &_store = store) const;
 
-    void set(size_t index, const T &value, TransientStore &) const;
+    void set(Count index, const T &value, TransientStore &) const;
     void set(const vector<T> &values, TransientStore &) const;
     void set(const vector<std::pair<int, T>> &, TransientStore &) const;
-    void truncate(size_t length, TransientStore &) const; // Delete every element after index `length - 1`.
+    void truncate(Count length, TransientStore &) const; // Delete every element after index `length - 1`.
 
     bool Draw() const override { return false; };
 };
@@ -305,15 +343,15 @@ template<typename T>
 struct Vector2D : Base {
     using Base::Base;
 
-    virtual string GetName(size_t i, size_t j) const { return format("{}/{}", i, j); };
+    virtual string GetName(Count i, Count j) const { return format("{}/{}", i, j); };
 
-    T at(size_t i, size_t j, const Store &_store = store) const;
-    size_t size(const TransientStore &) const; // Number of outer vectors
+    T at(Count i, Count j, const Store &_store = store) const;
+    Count size(const TransientStore &) const; // Number of outer vectors
 
-    Store set(size_t i, size_t j, const T &value, const Store &_store = store) const;
-    void set(size_t i, size_t j, const T &value, TransientStore &) const;
-    void truncate(size_t length, TransientStore &) const; // Delete every outer vector after index `length - 1`.
-    void truncate(size_t i, size_t length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
+    Store set(Count i, Count j, const T &value, const Store &_store = store) const;
+    void set(Count i, Count j, const T &value, TransientStore &) const;
+    void truncate(Count length, TransientStore &) const; // Delete every outer vector after index `length - 1`.
+    void truncate(Count i, Count length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
 
     bool Draw() const override { return false; };
 };
@@ -322,7 +360,7 @@ struct Colors : Vector<ImVec4> {
     Colors(const StateMember *parent, const string &path_segment, std::function<const char *(int)> GetColorName, const bool allow_auto = false)
         : Vector(parent, path_segment), allow_auto(allow_auto), GetColorName(std::move(GetColorName)) {}
 
-    string GetName(size_t index) const override { return GetColorName(int(index)); };
+    string GetName(Count index) const override { return GetColorName(int(index)); };
     bool Draw() const override;
 
 private:
@@ -389,7 +427,7 @@ struct Window : UIStateMember {
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(Name.c_str()); }
     void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
-    void Dock(ImGuiID node_id) const;
+    void Dock(ID node_id) const;
     bool ToggleMenuItem() const;
     void SelectTab() const;
 };
@@ -407,12 +445,11 @@ struct StateViewer : Window {
     void Draw() const override;
 
     enum LabelMode { Annotated, Raw };
-    Enum LabelMode{
-        this, "LabelMode?The raw JSON state doesn't store keys for all items.\n"
-              "For example, the main `ui.style.colors` state is a list.\n\n"
-              "'Annotated' mode shows (highlighted) labels for such state items.\n"
-              "'Raw' mode shows the state exactly as it is in the raw JSON state.",
-        {"Annotated", "Raw"}, Annotated
+    Enum LabelMode{this, "LabelMode?The raw JSON state doesn't store keys for all items.\n"
+                         "For example, the main `ui.style.colors` state is a list.\n\n"
+                         "'Annotated' mode shows (highlighted) labels for such state items.\n"
+                         "'Raw' mode shows the state exactly as it is in the raw JSON state.",
+                   {"Annotated", "Raw"}, Annotated
     };
     Bool AutoSelect{this, "AutoSelect#Auto-Select?When auto-select is enabled, state changes automatically open.\n"
                           "The state viewer to the changed state node(s), closing all other state nodes.\n"
@@ -489,11 +526,7 @@ struct Metrics : Window {
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
 
 // Starting at `-1` allows for using `IO` types as array indices.
-enum IO_ {
-    IO_None = -1,
-    IO_In,
-    IO_Out,
-};
+enum IO_ { IO_None = -1, IO_In, IO_Out };
 using IO = IO_;
 
 constexpr IO IO_All[] = {IO_In, IO_Out};
@@ -948,10 +981,10 @@ struct DockNodeSettings : StateMember {
     void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<ImGuiID> NodeId{this, "NodeId"};
-    Vector<ImGuiID> ParentNodeId{this, "ParentNodeId"};
-    Vector<ImGuiID> ParentWindowId{this, "ParentWindowId"};
-    Vector<ImGuiID> SelectedTabId{this, "SelectedTabId"};
+    Vector<ID> NodeId{this, "NodeId"};
+    Vector<ID> ParentNodeId{this, "ParentNodeId"};
+    Vector<ID> ParentWindowId{this, "ParentWindowId"};
+    Vector<ID> SelectedTabId{this, "SelectedTabId"};
     Vector<int> SplitAxis{this, "SplitAxis"};
     Vector<int> Depth{this, "Depth"};
     Vector<int> Flags{this, "Flags"};
@@ -981,7 +1014,7 @@ struct TableColumnSettings : StateMember {
 
     // [table_index][column_index]
     Vector2D<float> WidthOrWeight{this, "WidthOrWeight"};
-    Vector2D<ImGuiID> UserID{this, "UserID"};
+    Vector2D<ID> UserID{this, "UserID"};
     Vector2D<int> Index{this, "Index"};
     Vector2D<int> DisplayOrder{this, "DisplayOrder"};
     Vector2D<int> SortOrder{this, "SortOrder"};
@@ -998,8 +1031,8 @@ struct TableSettings : StateMember {
     Vector<ImGuiID> ID{this, "ID"};
     Vector<int> SaveFlags{this, "SaveFlags"};
     Vector<float> RefScale{this, "RefScale"};
-    Vector<int> ColumnsCount{this, "ColumnsCount"};
-    Vector<int> ColumnsCountMax{this, "ColumnsCountMax"};
+    Vector<Count> ColumnsCount{this, "ColumnsCount"};
+    Vector<Count> ColumnsCountMax{this, "ColumnsCountMax"};
     Vector<bool> WantApply{this, "WantApply"};
     TableColumnSettings Columns{this, "Columns"};
 };
@@ -1227,7 +1260,7 @@ constexpr ActionID id = mp_find<Action, T>::value;
 #define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-const map<ActionID, string> ShortcutForId = {
+const map <ActionID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1329,9 +1362,9 @@ struct StoreHistory {
     std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
 
     void FinalizeGesture();
-    void SetIndex(int);
+    void SetIndex(Count);
 
-    int Size() const;
+    Count Size() const;
     bool Empty() const;
     bool CanUndo() const;
     bool CanRedo() const;
@@ -1340,7 +1373,7 @@ struct StoreHistory {
     TimePoint GestureStartTime() const;
     float GestureTimeRemainingSec() const;
 
-    int Index{0};
+    Count Index{0};
     Gesture ActiveGesture; // uncompressed, uncommitted
     vector<Record> Records;
 

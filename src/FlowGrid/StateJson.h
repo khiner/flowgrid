@@ -68,8 +68,8 @@ JsonType(Preferences, recently_opened_paths)
 
 namespace nlohmann {
 inline void to_json(json &j, const Primitive &value) {
-    if (std::holds_alternative<unsigned int>(value)) {
-        j = format("{:#08X}", std::get<unsigned int>(value));
+    if (std::holds_alternative<U32>(value)) {
+        j = format("{:#08X}", std::get<U32>(value));
     } else {
         std::visit([&](auto &&inner_value) {
             j = std::forward<decltype(inner_value)>(inner_value);
@@ -82,7 +82,7 @@ inline void from_json(const json &j, Primitive &field) {
     else if (j.is_number_float()) field = j.get<float>();
     else if (j.is_string()) {
         const auto j_string = j.get<string>();
-        if (j_string.starts_with("0X")) field = (unsigned int) std::stoul(j_string, nullptr, 0);
+        if (j_string.starts_with("0X")) field = (U32) std::stoul(j_string, nullptr, 0);
         else field = j.get<string>();
     } else if (j.is_object() && j.contains("w")) field = j.get<ImVec4>();
     else if (j.is_object() && j.contains("x")) {

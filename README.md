@@ -28,7 +28,7 @@ A `Field` is a thin wrapper around its corresponding `Primitive` value in the ap
 A `Primitive` is defined as:
 
 ```cpp
-using Primitive = std::variant<bool, unsigned int, int, float, string, ImVec2ih, ImVec2, ImVec4>;
+using Primitive = std::variant<bool, U32, int, float, string, ImVec2ih, ImVec2, ImVec4>;
 ```
 
 `Field`s also provide state metadata, conversion & rendering methods, and behave syntactically like the `Primitive`s they wrap.

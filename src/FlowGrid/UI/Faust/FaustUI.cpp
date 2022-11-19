@@ -17,7 +17,6 @@
 // [SECTION] Diagram
 //-----------------------------------------------------------------------------
 
-using Count = unsigned int;
 enum DeviceType { DeviceType_ImGui, DeviceType_SVG };
 enum Diagram { DiagramForward, DiagramReverse };
 

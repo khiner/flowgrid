@@ -32,6 +32,18 @@ namespace fg = FlowGrid;
 using namespace fmt;
 using namespace nlohmann;
 
+/**
+An ID is used to uniquely identify something.
+## Notable uses
+
+### `StateMember`
+A `StateMember` has an `ID id` instance member.
+`StateMember::Id` reflects its `StatePath Path`, using `ImHashStr` to calculate its own `Id` using its `parent.Id` as a seed.
+In the same way, each segment in `StateMember::Path` is calculated by appending its own `PathSegment` to its parent's `Path`.
+This exactly reflects the way ImGui calculates its window/tab/dockspace/etc. ID calculation.
+A drawable `UIStateMember` uses its `ID` (which is also an `ImGuiID`) as the ID for the top-level `ImGui` widget rendered during its `Draw` call.
+This results in the nice property that we can find any `UIStateMember` instance by calling `StateMember::WithId.contains(ImGui::GetHoveredID())` any time during a `UIStateMember::Draw`.
+ */
 using ID = ImGuiID;
 using StatePath = fs::path;
 struct StatePathHash {

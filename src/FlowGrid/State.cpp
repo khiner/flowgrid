@@ -367,14 +367,14 @@ bool Field::Enum::Draw(const vector<int> &choices) const {
 
 }
 bool Field::Enum::DrawMenu() const {
-    const U32 value = *this;
+    const int value = *this;
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {
         for (Count i = 0; i < names.size(); i++) {
-            const bool is_selected = value == i;
+            const bool is_selected = value == int(i);
             if (MenuItem(names[i].c_str(), nullptr, is_selected)) {
-                q(set_value{Path, i});
+                q(set_value{Path, int(i)});
                 edited = true;
             }
             if (is_selected) SetItemDefaultFocus();
@@ -407,7 +407,7 @@ bool Field::Flags::Draw() const {
     return edited;
 }
 bool Field::Flags::DrawMenu() const {
-    const U32 value = *this;
+    const int value = *this;
     HelpMarker(false);
     bool edited = false;
     if (BeginMenu(Name.c_str())) {

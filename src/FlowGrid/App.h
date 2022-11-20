@@ -1120,17 +1120,17 @@ enum PatchOpType {
     Replace,
 };
 struct PatchOp {
-    PatchOpType op{};
-    std::optional<Primitive> value{}; // Present for add/replace
-    std::optional<Primitive> old{}; // Present for remove/replace
+    PatchOpType Op{};
+    std::optional<Primitive> Value{}; // Present for add/replace
+    std::optional<Primitive> Old{}; // Present for remove/replace
 };
 using PatchOps = map<StatePath, PatchOp>;
 
 struct Patch {
-    PatchOps ops;
-    StatePath base_path{RootPath};
+    PatchOps Ops;
+    StatePath BasePath{RootPath};
 
-    bool empty() const noexcept { return ops.empty(); }
+    bool empty() const noexcept { return Ops.empty(); }
 };
 
 struct StatePatch {
@@ -1534,4 +1534,4 @@ void set(const StateMember &, const Primitive &, TransientStore &);
 void set(const StoreEntries &, TransientStore &);
 void set(const MemberEntries &, TransientStore &);
 
-Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path = RootPath);
+Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);

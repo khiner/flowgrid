@@ -181,10 +181,10 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
         [&](const toggle_value &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
         [&](const apply_patch &a) {
             const auto &patch = a.patch;
-            for (const auto &[partial_path, op]: patch.ops) {
-                const auto &path = patch.base_path / partial_path;
-                if (op.op == Add || op.op == Replace) transient.set(path, op.value.value());
-                else if (op.op == Remove) transient.erase(path);
+            for (const auto &[partial_path, op]: patch.Ops) {
+                const auto &path = patch.BasePath / partial_path;
+                if (op.Op == Add || op.Op == Replace) transient.set(path, op.Value.value());
+                else if (op.Op == Remove) transient.erase(path);
             }
         },
         [&](const open_file_dialog &a) { FileDialog.set(json(a.dialog_json), transient); },
@@ -236,22 +236,22 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
     }, action);
 }
 
-Patch CreatePatch(const Store &before, const Store &after, const StatePath &base_path) {
+Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath) {
     PatchOps ops{};
     diff(
         before,
         after,
         [&](auto const &added_element) {
-            ops[added_element.first.lexically_relative(base_path)] = {Add, added_element.second, {}};
+            ops[added_element.first.lexically_relative(BasePath)] = {Add, added_element.second, {}};
         },
         [&](auto const &removed_element) {
-            ops[removed_element.first.lexically_relative(base_path)] = {Remove, {}, removed_element.second};
+            ops[removed_element.first.lexically_relative(BasePath)] = {Remove, {}, removed_element.second};
         },
         [&](auto const &old_element, auto const &new_element) {
-            ops[old_element.first.lexically_relative(base_path)] = {Replace, new_element.second, old_element.second};
+            ops[old_element.first.lexically_relative(BasePath)] = {Replace, new_element.second, old_element.second};
         });
 
-    return {ops, base_path};
+    return {ops, BasePath};
 }
 
 void SaveBoxSvg(const string &path); // Defined in FaustUI
@@ -314,8 +314,8 @@ Patch Context::SetStore(const Store &new_store) {
     if (patch.empty()) return {};
 
     ApplicationStore = new_store; // This is the only place `ApplicationStore` is modified.
-    for (const auto &[partial_path, _op]: patch.ops) {
-        const auto &path = patch.base_path / partial_path;
+    for (const auto &[partial_path, _op]: patch.Ops) {
+        const auto &path = patch.BasePath / partial_path;
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
         if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
@@ -323,7 +323,7 @@ Patch Context::SetStore(const Store &new_store) {
         else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
     }
     s.Audio.UpdateProcess();
-    History.LatestUpdatedPaths = patch.ops | transform([&patch](const auto &entry) { return patch.base_path / entry.first; }) | to<vector>;
+    History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
 
     return patch;
 }
@@ -352,7 +352,7 @@ void Context::OpenProject(const fs::path &path) {
             const auto &gesture_time = gesture.back().second;
             History.Records.push_back({gesture_time, after_store, gesture}); // todo save/load gesture commit times
             History.Index = History.Size() - 1;
-            for (const auto &[partial_path, op]: patch.ops) History.CommittedUpdateTimesForPath[patch.base_path / partial_path].emplace_back(gesture_time);
+            for (const auto &[partial_path, op]: patch.Ops) History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
         }
         SetStore(transient.persistent());
         History.SetIndex(project["index"]);
@@ -478,12 +478,12 @@ void StoreHistory::FinalizeGesture() {
     Records.push_back({Clock::now(), store, merged_gesture});
     Index = Size() - 1;
     const auto &gesture_time = merged_gesture.back().second;
-    for (const auto &[partial_path, op]: patch.ops) CommittedUpdateTimesForPath[patch.base_path / partial_path].emplace_back(gesture_time);
+    for (const auto &[partial_path, op]: patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
 void StoreHistory::UpdateGesturePaths(const Gesture &gesture, const Patch &patch) {
     const auto &gesture_time = gesture.back().second;
-    for (const auto &[partial_path, op]: patch.ops) GestureUpdateTimesForPath[patch.base_path / partial_path].emplace_back(gesture_time);
+    for (const auto &[partial_path, op]: patch.Ops) GestureUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
 std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) const {
@@ -533,8 +533,8 @@ void StoreHistory::SetIndex(Count new_index) {
         const Count record_index = history_index == -1 ? Index : history_index;
         const auto &segment_patch = CreatePatch(Records[record_index].Store, Records[record_index + 1].Store);
         const auto &gesture_time = Records[record_index + 1].Gesture.back().second;
-        for (const auto &[partial_path, op]: segment_patch.ops) {
-            const auto &path = segment_patch.base_path / partial_path;
+        for (const auto &[partial_path, op]: segment_patch.Ops) {
+            const auto &path = segment_patch.BasePath / partial_path;
             if (direction == Forward) {
                 CommittedUpdateTimesForPath[path].emplace_back(gesture_time);
             } else if (CommittedUpdateTimesForPath.contains(path)) {

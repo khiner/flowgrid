@@ -118,19 +118,19 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
             // For example, if the first patch removes a path, and the second one adds the same path,
             // we can't know from only looking at the pair whether the added value was the same as it was before the remove
             // (in which case it should just be `Remove` during merge) or if it was different (in which case the merged action should be a `Replace`).
-            if (old_op.op == Add) {
-                if (op.op == Remove || ((op.op == Add || op.op == Replace) && old_op.value == op.value)) merged.erase(path); // Cancel out
-                else merged[path] = {Add, op.value, {}};
-            } else if (old_op.op == Remove) {
-                if (op.op == Add || op.op == Replace) {
-                    if (old_op.value == op.value) merged.erase(path); // Cancel out
-                    else merged[path] = {Replace, op.value, old_op.old};
+            if (old_op.Op == Add) {
+                if (op.Op == Remove || ((op.Op == Add || op.Op == Replace) && old_op.Value == op.Value)) merged.erase(path); // Cancel out
+                else merged[path] = {Add, op.Value, {}};
+            } else if (old_op.Op == Remove) {
+                if (op.Op == Add || op.Op == Replace) {
+                    if (old_op.Value == op.Value) merged.erase(path); // Cancel out
+                    else merged[path] = {Replace, op.Value, old_op.Old};
                 } else {
-                    merged[path] = {Remove, {}, old_op.old};
+                    merged[path] = {Remove, {}, old_op.Old};
                 }
-            } else if (old_op.op == Replace) {
-                if (op.op == Add || op.op == Replace) merged[path] = {Replace, op.value, old_op.old};
-                else merged[path] = {Remove, {}, old_op.old};
+            } else if (old_op.Op == Replace) {
+                if (op.Op == Add || op.Op == Replace) merged[path] = {Replace, op.Value, old_op.Old};
+                else merged[path] = {Remove, {}, old_op.Old};
             }
         } else {
             merged[path] = op;
@@ -188,9 +188,9 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
                 const auto &_b = std::get<apply_patch>(b);
                 // Keep patch actions affecting different base state-paths separate,
                 // since actions affecting different state bases are likely semantically different.
-                const auto &ops = Merge(_a.patch.ops, _b.patch.ops);
+                const auto &ops = Merge(_a.patch.Ops, _b.patch.Ops);
                 if (ops.empty()) return true;
-                if (_a.patch.base_path == _b.patch.base_path) return apply_patch{ops, _b.patch.base_path};
+                if (_a.patch.BasePath == _b.patch.BasePath) return apply_patch{ops, _b.patch.BasePath};
                 return false;
             }
             return false;
@@ -1763,12 +1763,12 @@ void Metrics::FlowGridMetrics::Draw() const {
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing them.
                         const auto &patch = CreatePatch(History.Records[i - 1].Store, History.Records[i].Store);
-                        for (const auto &[partial_path, op]: patch.ops) {
-                            const auto &path = patch.base_path / partial_path;
+                        for (const auto &[partial_path, op]: patch.Ops) {
+                            const auto &path = patch.BasePath / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                                BulletText("Op: %s", to_string(op.op).c_str());
-                                if (op.value.has_value()) BulletText("Value: %s", to_string(op.value.value()).c_str());
-                                if (op.old.has_value()) BulletText("Old value: %s", to_string(op.old.value()).c_str());
+                                BulletText("Op: %s", to_string(op.Op).c_str());
+                                if (op.Value.has_value()) BulletText("Value: %s", to_string(op.Value.value()).c_str());
+                                if (op.Old.has_value()) BulletText("Old value: %s", to_string(op.Old.value()).c_str());
                                 TreePop();
                             }
                         }

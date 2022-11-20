@@ -161,7 +161,7 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
         case ItemType_HBargraph: return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + label_width_with_spacing;
         case ItemType_HRadioButtons: {
             return label_width_with_spacing +
-                ranges::accumulate(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth), 0.0f) +
+                ranges::accumulate(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth), 0.f) +
                 inner_spacing * float(interface->names_and_values.size());
         }
         case ItemType_Menu: {
@@ -238,8 +238,8 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         if (type == ItemType_TGroup) {
             const bool is_height_constrained = suggested_height != 0;
             // In addition to the group contents, account for the tab height and the space between the tabs and the content.
-            const float group_height = max(0.0f, is_height_constrained ? suggested_height - label_height : 0);
-            const float item_height = max(0.0f, group_height - frame_height - style.ItemSpacing.y);
+            const float group_height = max(0.f, is_height_constrained ? suggested_height - label_height : 0);
+            const float item_height = max(0.f, group_height - frame_height - style.ItemSpacing.y);
             BeginTabBar(item.label.c_str());
             for (const auto &child: children) {
                 if (BeginTabItem(child.label.c_str())) {
@@ -280,7 +280,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                                 const char *column_name = TableGetColumnName(column);
                                 PushID(column);
                                 const float header_x = CalcAlignedX(align.x, GetContentRegionAvail().x, CalcTextSize(column_name).x);
-                                SetCursorPosX(GetCursorPosX() + max(0.0f, header_x));
+                                SetCursorPosX(GetCursorPosX() + max(0.f, header_x));
                                 TableHeader(column_name);
                                 PopID();
                             }
@@ -313,8 +313,8 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
 
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{
-            max(0.0f, CalcAlignedX(align.x, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)),
-            max(0.0f, CalcAlignedY(align.y, item_size.y, max(item_size.y, suggested_height)))
+            max(0.f, CalcAlignedX(align.x, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)),
+            max(0.f, CalcAlignedY(align.y, item_size.y, max(item_size.y, suggested_height)))
         });
 
         if (type == ItemType_Button) {

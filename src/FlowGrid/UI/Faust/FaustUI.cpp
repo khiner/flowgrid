@@ -32,7 +32,7 @@ struct TextStyle {
         Italic,
     };
 
-    const ImColor Color{1, 1, 1, 1};
+    const ImColor Color{1.f, 1.f, 1.f, 1.f};
     const Justify Justify{Middle};
     const float PaddingRight{0};
     const float PaddingBottom{0};
@@ -41,8 +41,8 @@ struct TextStyle {
 };
 
 struct RectStyle {
-    const ImColor FillColor{1, 1, 1, 1};
-    const ImColor StrokeColor{0, 0, 0, 0};
+    const ImColor FillColor{1.f, 1.f, 1.f, 1.f};
+    const ImColor StrokeColor{0.f, 0.f, 0.f, 0.f};
     const float StrokeWidth{0};
     const float CornerRadius{0};
 };
@@ -177,7 +177,7 @@ struct SVGDevice : Device {
     }
 
     void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
-        Stream << CreateTriangle(At(p1), At(p2), At(p3), {0, 0, 0, 0}, color);
+        Stream << CreateTriangle(At(p1), At(p2), At(p3), {0.f, 0.f, 0.f, 0.f}, color);
     }
 
     void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) override {
@@ -409,14 +409,14 @@ struct Node {
 
     // Debug
     void DrawRect(Device &device) const {
-        device.Rect(Rect(), {.FillColor={0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor={0.0f, 0.0f, 1.0f, 1.0f}, .StrokeWidth=1});
+        device.Rect(Rect(), {.FillColor={0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor={0.f, 0.f, 1.f, 1.f}, .StrokeWidth=1});
     }
     void DrawType(Device &device) const {
         const string &type = GetBoxType(tree); // todo cache this at construction time if we ever use it outside the debug hover context
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
         device.Rect({Position, Position + TextSize(type_label) + ImVec2{padding, padding} * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text(Position, type_label, {.Color={0, 0, 1, 1}, .Justify=TextStyle::Justify::Left, .PaddingRight=-padding, .PaddingBottom=-padding});
+        device.Text(Position, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Left, .PaddingRight=-padding, .PaddingBottom=-padding});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io: IO_All) {
@@ -424,9 +424,9 @@ struct Node {
                 device.Text(
                     Point(io, channel),
                     format("{}:{}", capitalize(to_string(io, true)), channel),
-                    {.Color={0, 0, 1, 1}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .PaddingBottom=6, .ScaleHeight=1.3, .FontStyle=TextStyle::FontStyle::Bold}
+                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .PaddingBottom=6, .ScaleHeight=1.3, .FontStyle=TextStyle::FontStyle::Bold}
                 );
-                device.Circle(Point(io, channel), 3, {0, 0, 1, 1}, {0, 0, 0, 1});
+                device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
             }
         }
     }
@@ -437,9 +437,9 @@ struct Node {
                     device.Text(
                         Child(ci)->Point(io, channel),
                         format("C{}->{}:{}", ci, capitalize(to_string(io, true)), channel),
-                        {.Color={1, 0, 0, 1}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .ScaleHeight=0.9, .FontStyle=TextStyle::FontStyle::Bold}
+                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .ScaleHeight=0.9, .FontStyle=TextStyle::FontStyle::Bold}
                     );
-                    device.Circle(Child(ci)->Point(io, channel), 2, {1, 0, 0, 1}, {0, 0, 0, 1});
+                    device.Circle(Child(ci)->Point(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }
             }
         }
@@ -524,7 +524,7 @@ struct BlockNode : IONode {
         const float text_w = TextSize(text).x;
         Size = (Gap() * 2) + ImVec2{
             max(3 * WireGap(), 2 * XGap() + text_w),
-            max(3.0f, float(max(InCount, OutCount))) * WireGap(),
+            max(3.f, float(max(InCount, OutCount))) * WireGap(),
         };
         if (inner && type == DeviceType_SVG) inner->PlaceSize(type);
     }
@@ -621,7 +621,7 @@ struct InverterNode : BlockNode {
         const auto tri_a = Position + ImVec2{XGap() + (IsLr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : X()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
-        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0, 0, 0, 0}, s.Style.FlowGrid.Colors[color]);
+        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Colors[color]);
         device.Triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Colors[color]);
         draw_connections(device);
     }
@@ -669,7 +669,7 @@ struct ParallelNode : Node {
     }
 
     ImVec2 Point(IO io, Count i) const override {
-        const float dx = (io == IO_In ? -1 : 1) * DirUnit();
+        const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
         return i < IoCount(io, 0) ?
                Child(0)->Point(io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
                Child(1)->Point(io, i - IoCount(io, 0)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
@@ -751,8 +751,8 @@ struct BinaryNode : Node {
     void DoPlace(const DeviceType type) override {
         auto *left = Children[IsLr() ? 0 : 1];
         auto *right = Children[IsLr() ? 1 : 0];
-        left->Place(type, Position + ImVec2{0, max(0.0f, right->H() - left->H()) / 2}, Orientation);
-        right->Place(type, Position + ImVec2{left->W() + HorizontalGap(), max(0.0f, left->H() - right->H()) / 2}, Orientation);
+        left->Place(type, Position + ImVec2{0, max(0.f, right->H() - left->H()) / 2}, Orientation);
+        right->Place(type, Position + ImVec2{left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
     }
 
     virtual float HorizontalGap() const { return (C1()->H() + C2()->H()) * s.Style.FlowGrid.DiagramBinaryHorizontalGapRatio; }
@@ -766,8 +766,8 @@ struct SequentialNode : BinaryNode {
 
     void DoPlaceSize(const DeviceType type) override {
         if (C1()->X() == 0 && C1()->Y() == 0 && C2()->X() == 0 && C2()->Y() == 0) {
-            C1()->Place(type, {0, max(0.0f, C2()->H() - C1()->H()) / 2}, DiagramForward);
-            C2()->Place(type, {0, max(0.0f, C1()->H() - C2()->H()) / 2}, DiagramForward);
+            C1()->Place(type, {0, max(0.f, C2()->H() - C1()->H()) / 2}, DiagramForward);
+            C2()->Place(type, {0, max(0.f, C1()->H() - C2()->H()) / 2}, DiagramForward);
         }
         BinaryNode::DoPlaceSize(type);
     }
@@ -877,7 +877,7 @@ struct DecorateNode : IONode {
 
     void DoDraw(Device &device) const override {
         const ImVec2 &arrow_size = s.Style.FlowGrid.DiagramArrowSize;
-        const float m = 2 * (IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0) + s.Style.FlowGrid.DiagramDecorateMargin;
+        const float m = 2.f * (IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0) + s.Style.FlowGrid.DiagramDecorateMargin;
         device.GroupRect({Position + ImVec2{m, m} / 2, Position + Size - ImVec2{m, m} / 2}, text);
         for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && IsTopLevel;
@@ -889,11 +889,11 @@ struct DecorateNode : IONode {
     }
 
     ImVec2 Point(IO io, Count i) const override {
-        return Child(0)->Point(io, i) + ImVec2{DirUnit() * (io == IO_In ? -1 : 1) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
+        return Child(0)->Point(io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
     inline float margin(const Node *node = nullptr) const {
-        return s.Style.FlowGrid.DiagramDecorateMargin + ((node ? node->IsTopLevel : IsTopLevel) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0);
+        return s.Style.FlowGrid.DiagramDecorateMargin + ((node ? node->IsTopLevel : IsTopLevel) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.f);
     }
 
 private:
@@ -912,7 +912,7 @@ struct RouteNode : IONode {
 
     void DoDraw(Device &device) const override {
         if (s.Style.FlowGrid.DiagramRouteFrame) {
-            device.Rect(GetFrameRect(), {.FillColor={0.93f, 0.93f, 0.65f, 1.0f}}); // todo move to style
+            device.Rect(GetFrameRect(), {.FillColor={0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
             DrawOrientationMark(device);
             // Input arrows
             for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XGap(), 0}, Orientation);

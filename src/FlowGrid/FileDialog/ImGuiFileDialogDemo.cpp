@@ -171,14 +171,14 @@ void OpenDialog(const FileDialogData &data) {
 
 void IGFD::ShowDemoWindow() {
 #ifdef USE_EXPLORATION_BY_KEYS
-    static float flashingAttenuationInSeconds = 1.0f;
+    static float flashingAttenuationInSeconds = 1.f;
     if (Button("R##resetflashlifetime")) {
-        flashingAttenuationInSeconds = 1.0f;
+        flashingAttenuationInSeconds = 1.f;
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
     }
     SameLine();
     PushItemWidth(200);
-    if (SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.0f)) {
+    if (SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.f)) {
         dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
     }
     PopItemWidth();

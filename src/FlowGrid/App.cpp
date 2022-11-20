@@ -480,7 +480,7 @@ TimePoint StoreHistory::GestureStartTime() const {
 
 float StoreHistory::GestureTimeRemainingSec() const {
     if (ActiveGesture.empty()) return 0;
-    return max(0.0f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - GestureStartTime()).count());
+    return max(0.f, s.ApplicationSettings.GestureDurationSec - fsec(Clock::now() - GestureStartTime()).count());
 }
 
 void StoreHistory::FinalizeGesture() {

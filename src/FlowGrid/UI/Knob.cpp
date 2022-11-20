@@ -18,7 +18,7 @@ void draw_arc1(ImVec2 center, float radius, float start_angle, float end_angle, 
     const auto &b = end - center;
     const auto q1 = a.x * a.x + a.y * a.y;
     const auto q2 = q1 + a.x * b.x + a.y * b.y;
-    const auto k2 = (4.0f / 3.0f) * (sqrtf((2.0f * q1 * q2)) - q2) / (a.x * b.y - a.y * b.x);
+    const auto k2 = (4.f / 3.f) * (sqrtf((2.f * q1 * q2)) - q2) / (a.x * b.y - a.y * b.x);
     const auto &arc1 = center + a + ImVec2{-k2 * a.y, k2 * a.x};
     const auto &arc2 = center + b + ImVec2{k2 * b.y, -k2 * b.x};
 
@@ -29,7 +29,7 @@ void draw_arc(ImVec2 center, float radius, float start_angle, float end_angle, f
     // Overlap and angle of ends of Bézier curves needs work, only looks good when not transparent
     const auto overlap = thickness * radius * 0.00001f * PI;
     const auto delta = end_angle - start_angle;
-    const auto bez_step = 1.0f / float(bezier_count);
+    const auto bez_step = 1.f / float(bezier_count);
 
     auto mid_angle = start_angle + overlap;
     for (auto i = 0; i < bezier_count - 1; i++) {

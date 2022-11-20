@@ -464,7 +464,7 @@ ImRect RowItemRect() {
 
 ImRect RowItemRatioRect(float ratio) {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.0f, 1.0f), GetFontSize()}};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
 }
 
 void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
@@ -1045,7 +1045,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     if (latest_update_time) {
         const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time.value()).count() / s.Style.FlowGrid.FlashDurationSec;
         ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
-        flash_color.Value.w = max(0.0f, 1 - flash_elapsed_ratio);
+        flash_color.Value.w = max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
 
@@ -1499,7 +1499,7 @@ void Style::ImGuiStyle::Draw() const {
                 for (int n = 0; n < 8; n++) {
                     const float RAD_MIN = 5;
                     const float RAD_MAX = 70;
-                    const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * float(n) / 7.0f;
+                    const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * float(n) / 7.f;
 
                     BeginGroup();
 

@@ -65,18 +65,18 @@ public:
 
     void openHorizontalBox(const char *label) override {
         pushLabel(label);
-        active_group().items.emplace_back(ItemType_HGroup, label);
-        groups.push(&active_group().items.back());
+        activeGroup().items.emplace_back(ItemType_HGroup, label);
+        groups.push(&activeGroup().items.back());
     }
     void openVerticalBox(const char *label) override {
         pushLabel(label);
-        active_group().items.emplace_back(ItemType_VGroup, label);
-        groups.push(&active_group().items.back());
+        activeGroup().items.emplace_back(ItemType_VGroup, label);
+        groups.push(&activeGroup().items.back());
     }
     void openTabBox(const char *label) override {
         pushLabel(label);
-        active_group().items.emplace_back(ItemType_TGroup, label);
-        groups.push(&active_group().items.back());
+        activeGroup().items.emplace_back(ItemType_TGroup, label);
+        groups.push(&activeGroup().items.back());
     }
     void closeBox() override {
         groups.pop();
@@ -88,10 +88,10 @@ public:
 
     // Active widgets
     void addButton(const char *label, Real *zone) override {
-        add_ui_item(ItemType_Button, label, zone);
+        addUiItem(ItemType_Button, label, zone);
     }
     void addCheckButton(const char *label, Real *zone) override {
-        add_ui_item(ItemType_CheckButton, label, zone);
+        addUiItem(ItemType_CheckButton, label, zone);
     }
     void addHorizontalSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
         addSlider(label, zone, init, min, max, step, false);
@@ -100,31 +100,31 @@ public:
         addSlider(label, zone, init, min, max, step, true);
     }
     void addNumEntry(const char *label, Real *zone, Real init, Real min, Real max, Real step) override {
-        add_ui_item(ItemType_NumEntry, label, zone, min, max, init, step);
+        addUiItem(ItemType_NumEntry, label, zone, min, max, init, step);
     }
     void addSlider(const char *label, Real *zone, Real init, Real min, Real max, Real step, bool is_vertical) {
-        if (isKnob(zone)) add_ui_item(ItemType_Knob, label, zone, min, max, init, step);
+        if (isKnob(zone)) addUiItem(ItemType_Knob, label, zone, min, max, init, step);
         else if (isRadio(zone)) addRadioButtons(label, zone, init, min, max, step, fRadioDescription[zone].c_str(), is_vertical);
         else if (isMenu(zone)) addMenu(label, zone, init, min, max, step, fMenuDescription[zone].c_str());
-        else add_ui_item(is_vertical ? ItemType_VSlider : ItemType_HSlider, label, zone, min, max, init, step);
+        else addUiItem(is_vertical ? ItemType_VSlider : ItemType_HSlider, label, zone, min, max, init, step);
     }
     void addRadioButtons(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *text, bool is_vertical) {
         names_and_values[zone] = {};
         parseMenuList(text, names_and_values[zone].names, names_and_values[zone].values);
-        add_ui_item(is_vertical ? ItemType_VRadioButtons : ItemType_HRadioButtons, label, zone, min, max, init, step);
+        addUiItem(is_vertical ? ItemType_VRadioButtons : ItemType_HRadioButtons, label, zone, min, max, init, step);
     }
     void addMenu(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *text) {
         names_and_values[zone] = {};
         parseMenuList(text, names_and_values[zone].names, names_and_values[zone].values);
-        add_ui_item(ItemType_Menu, label, zone, min, max, init, step);
+        addUiItem(ItemType_Menu, label, zone, min, max, init, step);
     }
 
     // Passive widgets
     void addHorizontalBargraph(const char *label, Real *zone, Real min, Real max) override {
-        add_ui_item(ItemType_HBargraph, label, zone, min, max);
+        addUiItem(ItemType_HBargraph, label, zone, min, max);
     }
     void addVerticalBargraph(const char *label, Real *zone, Real min, Real max) override {
-        add_ui_item(ItemType_VBargraph, label, zone, min, max);
+        addUiItem(ItemType_VBargraph, label, zone, min, max);
     }
 
     // Soundfile
@@ -147,8 +147,8 @@ public:
     map<const Real *, NamesAndValues> names_and_values;
 
 private:
-    void add_ui_item(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        active_group().items.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
+    void addUiItem(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
+        activeGroup().items.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
         const int index = int(ui.items.size() - 1);
         string path = buildPath(label);
         fFullPaths.push_back(path);
@@ -156,7 +156,7 @@ private:
         index_for_label[label] = index;
     }
 
-    Item &active_group() { return groups.empty() ? ui : *groups.top(); }
+    Item &activeGroup() { return groups.empty() ? ui : *groups.top(); }
 
     std::stack<Item *> groups{};
     map<string, int> index_for_label{};

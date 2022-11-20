@@ -73,27 +73,7 @@ Store store_from_json(const json &j) {
     for (const auto &[key, value]: flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
 
     TransientStore _store;
-    for (size_t i = 0; i < entries.size(); i++) {
-        const auto &[path, value] = entries[i];
-        if (path.filename() == "x" && i < entries.size() - 1 && entries[i + 1].first.filename() == "y") {
-            if (std::holds_alternative<U32>(value)) {
-                const auto x = std::get<U32>(value);
-                const auto y = std::get<U32>(entries[i + 1].second);
-                _store.set(path.parent_path(), ImVec2ih{short(x), short(y)});
-            } else if (std::holds_alternative<int>(value)) {
-                const auto x = std::get<int>(value);
-                const auto y = std::get<int>(entries[i + 1].second);
-                _store.set(path.parent_path(), ImVec2ih{short(x), short(y)});
-            } else {
-                const auto x = std::get<float>(value);
-                const auto y = std::get<float>(entries[i + 1].second);
-                _store.set(path.parent_path(), ImVec2{x, y});
-            }
-            i += 1;
-        } else {
-            _store.set(path, value);
-        }
-    }
+    for (const auto &[path, value]: entries) _store.set(path, value);
     return _store.persistent();
 }
 

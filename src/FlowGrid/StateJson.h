@@ -61,8 +61,6 @@ constexpr void extended_from_json(const char *key, const json &j, T &value) {
     constexpr inline void to_json(nlohmann::json &, const Type &) {} \
     constexpr inline void from_json(const nlohmann::json &, Type &) {}
 
-JsonType(ImVec2, x, y)
-JsonType(ImVec2ih, x, y)
 JsonType(Preferences, recently_opened_paths)
 
 namespace nlohmann {
@@ -83,9 +81,6 @@ inline void from_json(const json &j, Primitive &field) {
         const auto j_string = j.get<string>();
         if (j_string.starts_with("0X")) field = U32(std::stoul(j_string, nullptr, 0));
         else field = j.get<string>();
-    } else if (j.is_object() && j.contains("x")) {
-        if (j.at("x").is_number_float()) field = j.get<ImVec2>();
-        else field = j.get<ImVec2ih>();
     } else throw std::runtime_error(format("Could not parse Primitive JSON value: {}", j.dump()));
 }
 

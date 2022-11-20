@@ -26,8 +26,6 @@ Float::operator float() const {
     if (std::holds_alternative<int>(value)) return float(std::get<int>(value));
     return std::get<float>(value);
 }
-Vec2::operator ImVec2() const { return std::get<ImVec2>(store.at(Path)); }
-Vec2Int::operator ImVec2ih() const { return std::get<ImVec2ih>(store.at(Path)); }
 
 String::operator string() const { return std::get<string>(store.at(Path)); }
 bool String::operator==(const string &v) const { return string(*this) == v; }
@@ -311,39 +309,6 @@ bool Field::Float::Draw(float v_speed, ImGuiSliderFlags flags) const {
 }
 bool Field::Float::Draw() const { return Draw(ImGuiSliderFlags_None); }
 
-void Field::Vec2::LinkValues() const {
-    ImVec2 value = *this;
-    const float min_value = std::min(value.x, value.y);
-    q(set_value{Path, ImVec2{min_value, min_value}});
-}
-
-bool Field::Vec2::Draw(ImGuiSliderFlags flags) const {
-    ImVec2 value = *this;
-    const bool edited = SliderFloat2(Name.c_str(), (float *) &value, min, max, fmt, flags);
-    UiContext.WidgetGestured();
-    if (edited) {
-        if (Linked && *Linked) {
-            ImVec2 before_value = *this;
-            q(set_value{Path, value.x != before_value.x ? ImVec2{value.x, value.x} : ImVec2{value.y, value.y}});
-        } else {
-            q(set_value{Path, value});
-        }
-    }
-    HelpMarker();
-    return edited;
-}
-
-bool Field::Vec2Int::Draw() const {
-    ImVec2ih value = *this;
-    const bool edited = SliderInt2(Name.c_str(), (int *) &value, min, max, nullptr, ImGuiSliderFlags_None);
-    UiContext.WidgetGestured();
-    if (edited) q(set_value{Path, value});
-    HelpMarker();
-    return edited;
-}
-
-bool Field::Vec2::Draw() const { return Draw(ImGuiSliderFlags_None); }
-
 bool Field::Enum::Draw() const {
     return Draw(views::ints(0, int(names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
@@ -533,6 +498,38 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
         else ImGui::Text("%s: %s", label.c_str(), value.dump().c_str());
     }
 }
+
+void Vec2::LinkValues() const {
+    // Linking sets the max value to the min value.
+    if (X < Y) q(set_value{Y.Path, X});
+    else if (Y < X) q(set_value{X.Path, Y});
+}
+
+bool Vec2::Draw(ImGuiSliderFlags flags) const {
+    ImVec2 values = *this;
+    const bool edited = SliderFloat2(Name.c_str(), (float *) &values, min, max, fmt, flags);
+    UiContext.WidgetGestured();
+    if (edited) {
+        if (Linked && *Linked) {
+            const float changed_value = values.x != X ? values.x : values.y;
+            q(set_values{{{X.Path, changed_value}, {Y.Path, changed_value}}});
+        } else {
+            q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
+        }
+    }
+    HelpMarker();
+    return edited;
+}
+
+void Vec2Int::Draw() const {
+    ImVec2ih values = *this;
+    const bool edited = SliderInt2(Name.c_str(), (int *) &values, min, max, nullptr, ImGuiSliderFlags_None);
+    UiContext.WidgetGestured();
+    if (edited) q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
+    HelpMarker();
+}
+
+void Vec2::Draw() const { Draw(ImGuiSliderFlags_None); }
 
 //-----------------------------------------------------------------------------
 // [SECTION] Window methods
@@ -725,9 +722,9 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
         SplitAxis.set(i, ds.SplitAxis, _store);
         Depth.set(i, ds.Depth, _store);
         Flags.set(i, int(ds.Flags), _store);
-        Pos.set(i, ds.Pos, _store);
-        Size.set(i, ds.Size, _store);
-        SizeRef.set(i, ds.SizeRef, _store);
+        Pos.set(i, PackImVec2ih(ds.Pos), _store);
+        Size.set(i, PackImVec2ih(ds.Size), _store);
+        SizeRef.set(i, PackImVec2ih(ds.SizeRef), _store);
     }
     NodeId.truncate(size, _store);
     ParentNodeId.truncate(size, _store);
@@ -751,9 +748,9 @@ void DockNodeSettings::Apply(ImGuiContext *ctx) const {
             S8(SplitAxis[i]),
             char(Depth[i]),
             Flags[i],
-            Pos[i],
-            Size[i],
-            SizeRef[i],
+            UnpackImVec2ih(Pos[i]),
+            UnpackImVec2ih(Size[i]),
+            UnpackImVec2ih(SizeRef[i]),
         });
     }
 }
@@ -766,9 +763,9 @@ void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore
         ViewportId.set(i, ws->ViewportId, _store);
         DockId.set(i, ws->DockId, _store);
         DockOrder.set(i, ws->DockOrder, _store);
-        Pos.set(i, ws->Pos, _store);
-        Size.set(i, ws->Size, _store);
-        ViewportPos.set(i, ws->ViewportPos, _store);
+        Pos.set(i, PackImVec2ih(ws->Pos), _store);
+        Size.set(i, PackImVec2ih(ws->Size), _store);
+        ViewportPos.set(i, PackImVec2ih(ws->ViewportPos), _store);
         Collapsed.set(i, ws->Collapsed, _store);
         i++;
     }
@@ -796,11 +793,14 @@ void WindowSettings::Apply(ImGuiContext *) const {
         window->ViewportPos = main_viewport->Pos;
         if (ViewportId[i]) {
             window->ViewportId = ViewportId[i];
-            window->ViewportPos = ImVec2(ViewportPos[i].x, ViewportPos[i].y);
+            const auto viewport_pos = UnpackImVec2ih(ViewportPos[i]);
+            window->ViewportPos = ImVec2(viewport_pos.x, viewport_pos.y);
         }
-        window->Pos = ImVec2(Pos[i].x, Pos[i].y) + ImFloor(window->ViewportPos);
-        const auto size = ImVec2(Size[i].x, Size[i].y);
-        if (size.x > 0 && size.y > 0) window->Size = window->SizeFull = size;
+        const auto pos = UnpackImVec2ih(Pos[i]);
+        window->Pos = ImVec2(pos.x, pos.y) + ImFloor(window->ViewportPos);
+
+        const auto size = UnpackImVec2ih(Size[i]);
+        if (size.x > 0 && size.y > 0) window->Size = window->SizeFull = ImVec2(size.x, size.y);
         window->Collapsed = Collapsed[i];
         window->DockId = DockId[i];
         window->DockOrder = short(DockOrder[i]);
@@ -1301,8 +1301,10 @@ void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
         {DiagramWireGap, 16},
-        {DiagramGap, ImVec2{8, 8}},
-        {DiagramArrowSize, ImVec2{3, 2}},
+        {DiagramGap.Y, 8},
+        {DiagramGap.Y, 8},
+        {DiagramArrowSize.X, 3},
+        {DiagramArrowSize.Y, 2},
         {DiagramInverterRadius, 3},
     }, _store);
 }
@@ -1318,8 +1320,10 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
         {DiagramWireGap, 16},
-        {DiagramGap, ImVec2{8, 8}},
-        {DiagramArrowSize, ImVec2{3, 2}},
+        {DiagramGap.X, 8},
+        {DiagramGap.Y, 8},
+        {DiagramArrowSize.X, 3},
+        {DiagramArrowSize.Y, 2},
         {DiagramInverterRadius, 3},
     }, _store);
 }
@@ -1499,7 +1503,7 @@ void Style::ImGuiStyle::Draw() const {
                 for (int n = 0; n < 8; n++) {
                     const float RAD_MIN = 5;
                     const float RAD_MAX = 70;
-                    const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * float(n) / 7.f;
+                    const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * float(n) / 7.0f;
 
                     BeginGroup();
 

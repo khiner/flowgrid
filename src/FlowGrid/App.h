@@ -64,7 +64,7 @@ using ImU8 = unsigned char; // 8-bit unsigned integer
 using ImS16 = signed short; // 16-bit signed integer
 using ImU16 = unsigned short; // 16-bit unsigned integer
 using ImS32 = signed int; // 32-bit signed integer == int
-using ImU32 = unsigned int; // 32-bit unsigned integer (often used to store packed colors)
+using ImU32 = unsigned int; // 32-bit unsigned integer (used to store packed colors & positions)
 using ImS64 = signed long long; // 64-bit signed integer
 using ImU64 = unsigned long long; // 64-bit unsigned integer
 
@@ -80,7 +80,11 @@ using U64 = ImU64;
 
 using Count = U32;
 
-using Primitive = std::variant<bool, U32, S32, float, string, ImVec2ih, ImVec2>;
+// todo move to ImVec2ih, or make a new Vec2S16 type
+constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
+constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >> 16), S16(U32(packed) & 0xffff)}; }
+
+using Primitive = std::variant<bool, U32, S32, float, string>;
 using StoreEntry = std::pair<StatePath, Primitive>;
 using StoreEntries = vector<StoreEntry>;
 
@@ -231,37 +235,6 @@ struct Float : Base {
 
     float min, max;
     const char *fmt;
-};
-
-struct Vec2 : Base, Linkable {
-    // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1,
-         const char *fmt = nullptr, Bool *link_values = nullptr)
-        : Base(parent, id, value), Linkable(link_values), min(min), max(max), fmt(fmt) {}
-
-    operator ImVec2() const;
-
-    bool Draw() const override;
-    bool Draw(ImGuiSliderFlags flags) const;
-    void LinkValues() const override;
-
-    float min, max;
-    const char *fmt;
-};
-
-struct Vec2Int : Base {
-    Vec2Int(const StateMember *parent, const string &id, const ImVec2ih &value = {0, 0}, int min = 0, int max = 1)
-        : Base(parent, id, value), min(min), max(max) {}
-
-    operator ImVec2ih() const;
-    operator ImVec2() const {
-        ImVec2ih vec_ih = *this;
-        return {float(vec_ih.x), float(vec_ih.y)};
-    }
-
-    bool Draw() const override;
-
-    int min, max;
 };
 
 struct String : Base {
@@ -765,6 +738,41 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
+struct Vec2 : UIStateMember, Linkable {
+    // `fmt` defaults to ImGui slider default, which is "%.3f"
+    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1,
+         const char *fmt = nullptr, Bool *link_values = nullptr)
+        : UIStateMember(parent, id), Linkable(link_values),
+          X(this, "X", value.x, min, max), Y(this, "Y", value.y, min, max),
+          min(min), max(max), fmt(fmt) {}
+
+    operator ImVec2() const { return {X, Y}; }
+
+    void Draw() const override;
+    bool Draw(ImGuiSliderFlags flags) const;
+    void LinkValues() const override;
+
+    Float X, Y;
+
+    float min, max; // todo don't need these anymore, derive from X/Y
+    const char *fmt;
+};
+
+struct Vec2Int : UIStateMember {
+    Vec2Int(const StateMember *parent, const string &id, const ImVec2ih &value = {0, 0}, int min = 0, int max = 1)
+        : UIStateMember(parent, id),
+          X(this, "X", value.x, min, max), Y(this, "Y", value.y, min, max),
+          min(min), max(max) {}
+
+    operator ImVec2ih() const { return {X, Y}; }
+    operator ImVec2() const { return {float(int(X)), float(int(Y))}; }
+
+    void Draw() const override;
+
+    Int X, Y;
+    int min, max;
+};
+
 struct Style : Window {
     using Window::Window;
 
@@ -987,8 +995,11 @@ struct Style : Window {
 struct ImGuiDockNodeSettings;
 
 // These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
-// They are stored here a structs-of-arrays (vs. array-of-structs)
-// todo this will show up counter-intuitively in the json state viewers.
+// They are stored here a structs-of-arrays (vs. arrays-of-structs)
+// todo These will show up counter-intuitively in the json state viewers.
+//  Use Raw/Formatted settings in state viewers to:
+//  * convert structs-of-arrays to arrays-of-structs,
+//  * unpack positions/sizes
 struct DockNodeSettings : StateMember {
     using StateMember::StateMember;
     void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
@@ -1001,9 +1012,9 @@ struct DockNodeSettings : StateMember {
     Vector<int> SplitAxis{this, "SplitAxis"};
     Vector<int> Depth{this, "Depth"};
     Vector<int> Flags{this, "Flags"};
-    Vector<ImVec2ih> Pos{this, "Pos"};
-    Vector<ImVec2ih> Size{this, "Size"};
-    Vector<ImVec2ih> SizeRef{this, "SizeRef"};
+    Vector<U32> Pos{this, "Pos"}; // Packed ImVec2ih
+    Vector<U32> Size{this, "Size"}; // Packed ImVec2ih
+    Vector<U32> SizeRef{this, "SizeRef"}; // Packed ImVec2ih
 };
 
 struct WindowSettings : StateMember {
@@ -1016,9 +1027,9 @@ struct WindowSettings : StateMember {
     Vector<ImGuiID> ViewportId{this, "ViewportId"};
     Vector<ImGuiID> DockId{this, "DockId"};
     Vector<int> DockOrder{this, "DockOrder"};
-    Vector<ImVec2ih> Pos{this, "Pos"};
-    Vector<ImVec2ih> Size{this, "Size"};
-    Vector<ImVec2ih> ViewportPos{this, "ViewportPos"};
+    Vector<U32> Pos{this, "Pos"}; // Packed ImVec2ih
+    Vector<U32> Size{this, "Size"}; // Packed ImVec2ih
+    Vector<U32> ViewportPos{this, "ViewportPos"}; // Packed ImVec2ih
     Vector<bool> Collapsed{this, "Collapsed"};
 };
 
@@ -1055,7 +1066,7 @@ struct ImGuiSettings : StateMember {
     Store set(ImGuiContext *ctx) const;
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
-    // in this struct instead of the serialized .ini text format.
+    //  in this struct instead of the serialized .ini text format.
     void Apply(ImGuiContext *ctx) const;
 
     DockNodeSettings Nodes{this, "Nodes"};
@@ -1079,7 +1090,7 @@ struct DebugLog : Window {
 };
 
 using ImGuiFileDialogFlags = int;
-constexpr int FileDialogFlags_Modal = 1 << 27; // Copied from ImGuiFileDialog source with a different name to avoid redefinition. Brittle but we can avoid an include this way.
+constexpr int FileDialogFlags_Modal = 1 << 27; // Copied from `ImGuiFileDialog` source with a different name to avoid redefinition. Brittle but we can avoid an include this way.
 
 struct FileDialogData {
     string title = "Choose file", filters, file_path = ".", default_file_name;

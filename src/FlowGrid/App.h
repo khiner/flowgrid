@@ -1361,7 +1361,9 @@ static const string FaustDspFileExtension = ".dsp";
 
 static const fs::path InternalPath = ".flowgrid";
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
-static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(StateFormat));
+// The default project is a user-created project that loads on app start, instead of the empty project.
+// As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(ActionFormat));
 static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
 
 enum Direction { Forward, Reverse };

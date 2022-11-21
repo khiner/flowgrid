@@ -272,18 +272,12 @@ Context::Context() {
 Context::~Context() = default;
 
 bool Context::IsUserProjectPath(const fs::path &path) {
-    // Using relative path to avoid error: `filesystem error: in equivalent: Operation not supported`
-    return !fs::equivalent(fs::relative(path), EmptyProjectPath) && !fs::equivalent(fs::relative(path), DefaultProjectPath);
+    return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
+        fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
 }
 
-void Context::SaveEmptyProject() {
-    SaveProject(EmptyProjectPath);
-    if (!fs::exists(DefaultProjectPath)) SaveProject(DefaultProjectPath);
-}
-
-void Context::SaveCurrentProject() {
-    if (CurrentProjectPath) SaveProject(CurrentProjectPath.value());
-}
+void Context::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
+void Context::SaveCurrentProject() { if (CurrentProjectPath) SaveProject(CurrentProjectPath.value()); }
 
 bool Context::ClearPreferences() {
     preferences.recently_opened_paths.clear();

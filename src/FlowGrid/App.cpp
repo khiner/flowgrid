@@ -447,7 +447,7 @@ void Context::ApplyAction(const ProjectAction &action) {
 Count StoreHistory::Size() const { return Records.size(); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
 bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || Index > 0; }
-bool StoreHistory::CanRedo() const { return Index < Size(); }
+bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 Gestures StoreHistory::Gestures() const {
     return Records | transform([](const auto &record) { return record.Gesture; }) |

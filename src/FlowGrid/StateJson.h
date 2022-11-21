@@ -61,7 +61,7 @@ constexpr void extended_from_json(const char *key, const json &j, T &value) {
     constexpr inline void to_json(nlohmann::json &, const Type &) {} \
     constexpr inline void from_json(const nlohmann::json &, Type &) {}
 
-JsonType(Preferences, recently_opened_paths)
+JsonType(Preferences, RecentlyOpenedPaths)
 
 namespace nlohmann {
 inline void to_json(json &j, const Primitive &value) {

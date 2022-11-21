@@ -536,7 +536,7 @@ void Vec2::Draw() const { Draw(ImGuiSliderFlags_None); }
 //-----------------------------------------------------------------------------
 
 Window::Window(const StateMember *parent, const string &id, const bool visible) : UIStateMember(parent, id) {
-    set(Visible, visible, c.ctor_store);
+    set(Visible, visible, c.CtorStore);
 }
 
 void Window::DrawWindow(ImGuiWindowFlags flags) const {
@@ -591,9 +591,9 @@ void State::Draw() const {
             MenuItem(open_empty_project{});
             MenuItem(show_open_project_dialog{});
 
-            const auto &recently_opened_paths = c.preferences.recently_opened_paths;
-            if (BeginMenu("Open recent project", !recently_opened_paths.empty())) {
-                for (const auto &recently_opened_path: recently_opened_paths) {
+            const auto &RecentlyOpenedPaths = c.Preferences.RecentlyOpenedPaths;
+            if (BeginMenu("Open recent project", !RecentlyOpenedPaths.empty())) {
+                for (const auto &recently_opened_path: RecentlyOpenedPaths) {
                     if (MenuItem(recently_opened_path.filename().c_str())) q(open_project{recently_opened_path});
                 }
                 EndMenu();
@@ -1146,15 +1146,15 @@ void ProjectPreview::Draw() const {
 //-----------------------------------------------------------------------------
 
 Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    ColorsDark(c.ctor_store);
+    ColorsDark(c.CtorStore);
 }
 Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    ColorsAuto(c.ctor_store);
+    ColorsAuto(c.CtorStore);
 }
 Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
-    ColorsDark(c.ctor_store);
-    DiagramColorsDark(c.ctor_store);
-    DiagramLayoutFlowGrid(c.ctor_store);
+    ColorsDark(c.CtorStore);
+    DiagramColorsDark(c.CtorStore);
+    DiagramLayoutFlowGrid(c.CtorStore);
 }
 
 void Style::ImGuiStyle::ColorsDark(TransientStore &_store) const {
@@ -1792,20 +1792,20 @@ void Metrics::FlowGridMetrics::Draw() const {
     Separator();
     {
         // Preferences
-        const bool has_recently_opened_paths = !c.preferences.recently_opened_paths.empty();
+        const bool has_RecentlyOpenedPaths = !c.Preferences.RecentlyOpenedPaths.empty();
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) c.ClearPreferences();
             SameLine();
             ShowRelativePaths.Draw();
 
-            if (!has_recently_opened_paths) BeginDisabled();
+            if (!has_RecentlyOpenedPaths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
-                for (const auto &recently_opened_path: c.preferences.recently_opened_paths) {
+                for (const auto &recently_opened_path: c.Preferences.RecentlyOpenedPaths) {
                     BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();
             }
-            if (!has_recently_opened_paths) EndDisabled();
+            if (!has_RecentlyOpenedPaths) EndDisabled();
 
             TreePop();
         }

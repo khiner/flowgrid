@@ -51,7 +51,7 @@ StateMember::StateMember(const StateMember *parent, const string &id) : Parent(p
 }
 
 StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
-    c.ctor_store.set(Path, value);
+    c.CtorStore.set(Path, value);
 }
 
 StateMember::~StateMember() {
@@ -261,9 +261,9 @@ void SaveBoxSvg(const string &path); // Defined in FaustUI
 //-----------------------------------------------------------------------------
 
 Context::Context() {
-    ctor_store = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
+    CtorStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
     if (fs::exists(PreferencesPath)) {
-        preferences = json::parse(FileIO::read(PreferencesPath));
+        Preferences = json::parse(FileIO::read(PreferencesPath));
     } else {
         WritePreferences();
     }
@@ -280,7 +280,7 @@ void Context::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
 void Context::SaveCurrentProject() { if (CurrentProjectPath) SaveProject(CurrentProjectPath.value()); }
 
 bool Context::ClearPreferences() {
-    preferences.recently_opened_paths.clear();
+    Preferences.RecentlyOpenedPaths.clear();
     return WritePreferences();
 }
 
@@ -372,14 +372,12 @@ bool Context::SaveProject(const fs::path &path) {
 
 void Context::SetCurrentProjectPath(const fs::path &path) {
     CurrentProjectPath = path;
-    preferences.recently_opened_paths.remove(path);
-    preferences.recently_opened_paths.emplace_front(path);
+    Preferences.RecentlyOpenedPaths.remove(path);
+    Preferences.RecentlyOpenedPaths.emplace_front(path);
     WritePreferences();
 }
 
-bool Context::WritePreferences() const {
-    return FileIO::write(PreferencesPath, json(preferences).dump());
-}
+bool Context::WritePreferences() const { return FileIO::write(PreferencesPath, json(Preferences).dump()); }
 
 bool Context::ActionAllowed(const ActionID id) const {
     switch (id) {

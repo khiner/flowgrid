@@ -123,7 +123,7 @@ static std::pair<string, string> parse_help_text(const string &str) {
 }
 
 struct Preferences {
-    std::list<fs::path> recently_opened_paths;
+    std::list<fs::path> RecentlyOpenedPaths;
 };
 
 static const StatePath RootPath{"/"};
@@ -1364,7 +1364,7 @@ static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForP
 // The default project is a user-created project that loads on app start, instead of the empty project.
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
 static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(ActionFormat));
-static const fs::path PreferencesPath = InternalPath / ("preferences" + PreferencesFileExtension);
+static const fs::path PreferencesPath = InternalPath / ("Preferences" + PreferencesFileExtension);
 
 enum Direction { Forward, Reverse };
 
@@ -1380,8 +1380,6 @@ struct StoreHistory {
     };
 
     StoreHistory(const Store &_store) : Records{{Clock::now(), _store, {}}} {}
-
-    vector<StatePath> LatestUpdatedPaths{};
 
     void UpdateGesturePaths(const Gesture &, const Patch &);
     Plottable StatePathUpdateFrequencyPlottable() const;
@@ -1400,9 +1398,10 @@ struct StoreHistory {
     float GestureTimeRemainingSec() const;
 
     Count Index{0};
-    Gesture ActiveGesture; // uncompressed, uncommitted
     vector<Record> Records;
+    Gesture ActiveGesture; // uncompressed, uncommitted
 
+    vector<StatePath> LatestUpdatedPaths{};
     map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
 
 private:
@@ -1432,17 +1431,17 @@ struct Context {
     // _All_ store assignments happen via this method.
     Patch SetStore(const Store &new_store);
 
-    TransientStore ctor_store{};
+    TransientStore CtorStore{}; // Used in `StateMember` constructors to initialize the store.
 
 private:
     const State ApplicationState{};
-    Store ApplicationStore{ctor_store.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
+    Store ApplicationStore{CtorStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
 
 public:
     const State &s = ApplicationState;
     const Store &store = ApplicationStore;
 
-    Preferences preferences;
+    Preferences Preferences;
     StoreHistory History{store}; // One store checkpoint for every gesture.
 
 private:

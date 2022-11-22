@@ -129,12 +129,6 @@ void IGFD::ShowDemoWindow() {
 #ifdef USE_BOOKMARK
         CheckboxFlags("Disable bookmark mode", &flags, ImGuiFileDialogFlags_DisableBookmarkMode, "Disable bookmark display in dialog");
 #endif
-
-        Spacing();
-        Text("Hide columns by default:");
-        CheckboxFlags("Hide 'Type' column", &flags, ImGuiFileDialogFlags_HideColumnType);
-        CheckboxFlags("Hide 'Size' column", &flags, ImGuiFileDialogFlags_HideColumnSize);
-        CheckboxFlags("Hide 'Date' column", &flags, ImGuiFileDialogFlags_HideColumnDate);
         Unindent();
     }
 

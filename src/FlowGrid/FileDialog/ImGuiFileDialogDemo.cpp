@@ -7,85 +7,27 @@
 
 using namespace ImGui;
 
-inline bool RadioButtonLabeled(const char *label, const char *help, bool active, bool disabled) {
-    using namespace ImGui;
-
-    ImGuiWindow *window = GetCurrentWindow();
-    if (window->SkipItems) return false;
-
-    ImGuiContext &g = *GImGui;
-    const ImGuiStyle &style = g.Style;
-    float w = CalcItemWidth();
-    if (w == window->ItemWidthDefault) w = 0; // no push item width
-    const ID id = window->GetID(label);
-    const ImVec2 label_size = CalcTextSize(label, nullptr, true);
-    ImVec2 bb_size = ImVec2(style.FramePadding.x * 2 - 1, style.FramePadding.y * 2 - 1) + label_size;
-    bb_size.x = ImMax(w, bb_size.x);
-
-    const ImRect check_bb(window->DC.CursorPos, window->DC.CursorPos + bb_size);
-    ItemSize(check_bb, style.FramePadding.y);
-
-    if (!ItemAdd(check_bb, id)) return false;
-
-    // check
-    bool pressed = false;
-    if (!disabled) {
-        bool hovered, held;
-        pressed = ButtonBehavior(check_bb, id, &hovered, &held);
-
-        window->DrawList->AddRectFilled(check_bb.Min, check_bb.Max, GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg), style.FrameRounding);
-        if (active) {
-            const ImU32 col = GetColorU32((hovered && held) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
-            window->DrawList->AddRectFilled(check_bb.Min, check_bb.Max, col, style.FrameRounding);
-        }
-    }
-
-    // circle shadow + bg
-    if (style.FrameBorderSize > 0) {
-        window->DrawList->AddRect(check_bb.Min + ImVec2(1, 1), check_bb.Max, GetColorU32(ImGuiCol_BorderShadow), style.FrameRounding);
-        window->DrawList->AddRect(check_bb.Min, check_bb.Max, GetColorU32(ImGuiCol_Border), style.FrameRounding);
-    }
-
-    if (label_size.x > 0) RenderText(check_bb.GetCenter() - label_size * 0, label);
-    if (help && IsItemHovered()) SetTooltip("%s", help);
-
-    return pressed;
-}
-
-// todo can we replace with `ImGui::CheckboxFlags`?
-template<typename T>
-inline bool RadioButtonLabeled_BitWise(const char *label, const char *help, T *container, T flag,
-                                       bool at_most_one_selected = false, bool exactly_one_selected = true,
-                                       T flags = (T) 0, bool disable_selection = false) {
-    bool selected = (*container) & flag;
-    if (!RadioButtonLabeled(label, help, selected, disable_selection)) return false;
-
-    if (selected) {
-        if (at_most_one_selected) {
-            if (!exactly_one_selected) *container = (T) (0); // remove all
-        } else *container = (T) (*container & ~flag); // remove one
-    } else {
-        if (at_most_one_selected) {
-            if (flags) {
-                if (flag & flags) {
-                    *container = (T) (*container & ~flags); // remove these flags
-                    *container = (T) (*container | flag); // add
-                }
-            } else *container = flag; // set
-        } else {
-            if (flags) {
-                if (flag & flags) {
-                    *container = (T) (*container & ~flags); // remove these flags
-                    *container = (T) (*container | flag); // add
-                }
-            } else *container = (T) (*container | flag); // add
-        }
-    }
-
-    return true;
-}
-
 ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
+
+// todo move `fg::HelpMarker` to a new header that only requires imgui and use it here
+void HelpMarker(const char *help) {
+    TextDisabled("(?)");
+    if (IsItemHovered()) {
+        BeginTooltip();
+        PushTextWrapPos(GetFontSize() * 35);
+        TextUnformatted(help);
+        PopTextWrapPos();
+        EndTooltip();
+    }
+}
+
+// Same as `ImGui::CheckboxFlags`, but with `help` arg.
+bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *help) {
+    const bool result = ImGui::CheckboxFlags(label, flags, flags_value);
+    SameLine();
+    HelpMarker(help);
+    return result;
+}
 
 void IGFD::InitializeDemo() {
 #ifdef USE_THUMBNAILS
@@ -174,31 +116,27 @@ void IGFD::ShowDemoWindow() {
     Separator();
 
     static ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_Default;
-    Text("ImGuiFileDialog flags: ");
-    Indent();
     {
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Overwrite", "Overwrite verification before dialog closing", &flags, ImGuiFileDialogFlags_ConfirmOverwrite);
-        SameLine();
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide hidden files", "Hide hidden files", &flags, ImGuiFileDialogFlags_DontShowHiddenFiles);
-
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Disable directory creation", "Disable directory creation button in dialog", &flags, ImGuiFileDialogFlags_DisableCreateDirectoryButton);
+        Text("ImGuiFileDialog flags: ");
+        Indent();
+        CheckboxFlags("Overwrite", &flags, ImGuiFileDialogFlags_ConfirmOverwrite, "Overwrite verification before dialog closing");
+        CheckboxFlags("Hide hidden files", &flags, ImGuiFileDialogFlags_DontShowHiddenFiles, "Hide hidden files");
+        CheckboxFlags("Case-insensitive extensions", &flags, ImGuiFileDialogFlags_CaseInsensitiveExtention, "Don't take into account the case of file extensions");
+        CheckboxFlags("Disable directory creation", &flags, ImGuiFileDialogFlags_DisableCreateDirectoryButton, "Disable directory creation button in dialog");
 #ifdef USE_THUMBNAILS
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Disable thumbnails mode", "Disable thumbnails display in dialog", &flags, ImGuiFileDialogFlags_DisableThumbnailMode);
+        CheckboxFlags("Disable thumbnails mode", &flags, ImGuiFileDialogFlags_DisableThumbnailMode, "Disable thumbnails display in dialog");
 #endif
 #ifdef USE_BOOKMARK
-        SameLine();
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Disable bookmark mode", "Disable bookmark display in dialog", &flags, ImGuiFileDialogFlags_DisableBookmarkMode);
+        CheckboxFlags("Disable bookmark mode", &flags, ImGuiFileDialogFlags_DisableBookmarkMode, "Disable bookmark display in dialog");
 #endif
 
-        Text("Hide Column by default: (saved in imgui.ini, \n\tso defined when the imgui.ini does not exist)");
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide 'Type' column", "Hide file type by default", &flags, ImGuiFileDialogFlags_HideColumnType);
-        SameLine();
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide 'Size' column", "Hide file size by default", &flags, ImGuiFileDialogFlags_HideColumnSize);
-        SameLine();
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Hide 'Date' column", "Hide file date by default", &flags, ImGuiFileDialogFlags_HideColumnDate);
-        RadioButtonLabeled_BitWise<ImGuiFileDialogFlags>("Case-insensitive extensions", "will not take into account the case of file extensions", &flags, ImGuiFileDialogFlags_CaseInsensitiveExtention);
+        Spacing();
+        Text("Hide columns by default:");
+        CheckboxFlags("Hide 'Type' column", &flags, ImGuiFileDialogFlags_HideColumnType);
+        CheckboxFlags("Hide 'Size' column", &flags, ImGuiFileDialogFlags_HideColumnSize);
+        CheckboxFlags("Hide 'Date' column", &flags, ImGuiFileDialogFlags_HideColumnDate);
+        Unindent();
     }
-    Unindent();
 
     static string choose_file_open = ICON_IGFD_FOLDER_OPEN " Choose a file";
     static const string choose_file_save = ICON_IGFD_SAVE " Choose a file";

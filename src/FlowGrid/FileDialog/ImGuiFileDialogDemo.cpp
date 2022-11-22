@@ -115,7 +115,7 @@ void IGFD::ShowDemoWindow() {
 
     Separator();
 
-    static ImGuiFileDialogFlags flags = ImGuiFileDialogFlags_Default;
+    static ImGuiFileDialogFlags flags = FileDialogFlags_Default;
     {
         Text("ImGuiFileDialog flags: ");
         Indent();
@@ -166,7 +166,7 @@ void IGFD::ShowDemoWindow() {
     }
 
     if (Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
-        OpenDialog({choose_file_save, "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}", ".", file_path_name, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite});
+        OpenDialog({choose_file_save, "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}", ".", file_path_name, true, 1, flags | ImGuiFileDialogFlags_ConfirmOverwrite});
     }
 
     // Keeping this around to remind myself that custom panes & UserDatas are a thing.

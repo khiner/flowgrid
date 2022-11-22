@@ -385,13 +385,13 @@ bool Context::ActionAllowed(const ActionID id) const {
     switch (id) {
         case action::id<undo>: return History.CanUndo();
         case action::id<redo>: return History.CanRedo();
-        case action::id<Actions::open_default_project>: return fs::exists(DefaultProjectPath);
-        case action::id<Actions::save_project>:
-        case action::id<Actions::show_save_project_dialog>:
-        case action::id<Actions::save_default_project>: return !History.Empty();
-        case action::id<Actions::save_current_project>: return !History.Empty() && CurrentProjectPath && ProjectHasChanges;
-        case action::id<Actions::open_file_dialog>: return !s.FileDialog.Visible;
-        case action::id<Actions::close_file_dialog>: return s.FileDialog.Visible;
+        case action::id<open_default_project>: return fs::exists(DefaultProjectPath);
+        case action::id<save_project>:
+        case action::id<show_save_project_dialog>:
+        case action::id<save_default_project>: return !History.Empty();
+        case action::id<save_current_project>: return !History.Empty() && CurrentProjectPath && ProjectHasChanges;
+        case action::id<open_file_dialog>: return !s.FileDialog.Visible;
+        case action::id<close_file_dialog>: return s.FileDialog.Visible;
         default: return true;
     }
 }
@@ -403,13 +403,13 @@ void Context::ApplyAction(const ProjectAction &action) {
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Actions::open_project &a) { OpenProject(a.path); },
+        [&](const open_project &a) { OpenProject(a.path); },
         [&](const open_empty_project &) { OpenProject(EmptyProjectPath); },
         [&](const open_default_project &) { OpenProject(DefaultProjectPath); },
 
-        [&](const Actions::save_project &a) { SaveProject(a.path); },
+        [&](const save_project &a) { SaveProject(a.path); },
         [&](const save_default_project &) { SaveProject(DefaultProjectPath); },
-        [&](const Actions::save_current_project &) { SaveCurrentProject(); },
+        [&](const save_current_project &) { SaveCurrentProject(); },
         [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
         [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
 
@@ -430,7 +430,7 @@ void Context::ApplyAction(const ProjectAction &action) {
             }
         },
         [&](const redo &) { History.SetIndex(History.Index + 1); },
-        [&](const Actions::set_history_index &a) { History.SetIndex(a.index); },
+        [&](const set_history_index &a) { History.SetIndex(a.index); },
     }, action);
 }
 

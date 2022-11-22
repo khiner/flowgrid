@@ -1289,9 +1289,9 @@ const map <ActionID, string> ShortcutForId = {
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
     {id<show_open_project_dialog>, "cmd+o"},
-    {id<save_current_project>, "cmd+s"},
     {id<open_default_project>, "shift+cmd+o"},
-    {id<save_default_project>, "shift+cmd+s"},
+    {id<save_current_project>, "cmd+s"},
+    {id<show_save_project_dialog>, "shift+cmd+s"},
 };
 
 constexpr ActionID GetId(const Action &action) { return action.index(); }

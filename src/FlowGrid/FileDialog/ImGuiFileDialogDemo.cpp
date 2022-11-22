@@ -47,45 +47,42 @@ inline bool RadioButtonLabeled(const char *label, const char *help, bool active,
     }
 
     if (label_size.x > 0) RenderText(check_bb.GetCenter() - label_size * 0, label);
-    if (help && IsItemHovered())SetTooltip("%s", help);
+    if (help && IsItemHovered()) SetTooltip("%s", help);
 
     return pressed;
 }
 
+// todo can we replace with `ImGui::CheckboxFlags`?
 template<typename T>
-inline bool RadioButtonLabeled_BitWise(
-    const char *label, const char *help, T *container, T flag,
-    bool oneOrZeroAtTime = false, // only one selected at a time
-    bool alwaysOne = true, // radio behavior, always one selected
-    T flagsToTakeIntoAccount = (T) 0,
-    bool disableSelection = false) {
-
+inline bool RadioButtonLabeled_BitWise(const char *label, const char *help, T *container, T flag,
+                                       bool at_most_one_selected = false, bool exactly_one_selected = true,
+                                       T flags = (T) 0, bool disable_selection = false) {
     bool selected = (*container) & flag;
-    const bool res = RadioButtonLabeled(label, help, selected, disableSelection);
-    if (res) {
-        if (!selected) {
-            if (oneOrZeroAtTime) {
-                if (flagsToTakeIntoAccount) {
-                    if (flag & flagsToTakeIntoAccount) {
-                        *container = (T) (*container & ~flagsToTakeIntoAccount); // remove these flags
-                        *container = (T) (*container | flag); // add
-                    }
-                } else *container = flag; // set
-            } else {
-                if (flagsToTakeIntoAccount) {
-                    if (flag & flagsToTakeIntoAccount) {
-                        *container = (T) (*container & ~flagsToTakeIntoAccount); // remove these flags
-                        *container = (T) (*container | flag); // add
-                    }
-                } else *container = (T) (*container | flag); // add
-            }
+    if (!RadioButtonLabeled(label, help, selected, disable_selection)) return false;
+
+    if (selected) {
+        if (at_most_one_selected) {
+            if (!exactly_one_selected) *container = (T) (0); // remove all
+        } else *container = (T) (*container & ~flag); // remove one
+    } else {
+        if (at_most_one_selected) {
+            if (flags) {
+                if (flag & flags) {
+                    *container = (T) (*container & ~flags); // remove these flags
+                    *container = (T) (*container | flag); // add
+                }
+            } else *container = flag; // set
         } else {
-            if (oneOrZeroAtTime) {
-                if (!alwaysOne) *container = (T) (0); // remove all
-            } else *container = (T) (*container & ~flag); // remove one
+            if (flags) {
+                if (flag & flags) {
+                    *container = (T) (*container & ~flags); // remove these flags
+                    *container = (T) (*container | flag); // add
+                }
+            } else *container = (T) (*container | flag); // add
         }
     }
-    return res;
+
+    return true;
 }
 
 ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
@@ -120,8 +117,8 @@ void IGFD::InitializeDemo() {
     dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
     {
         if (thumbnail_info) {
-            GLuint texID = (GLuint)(size_t)thumbnail_info->textureID;
-            glDeleteTextures(1, &texID);
+            GLuint tex_id = (GLuint)(size_t)thumbnail_info->textureID;
+            glDeleteTextures(1, &tex_id);
             glFinish();
         }
     });
@@ -135,32 +132,24 @@ void IGFD::InitializeDemo() {
     GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15, &icons_config, icons_ranges);
 
     // Singleton access
-    dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", ImVec4(1, 1, 0, 0.9f)); // use a regex
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", ImVec4(1, 1, 0, 0.9f));
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", ImVec4(0, 0, 1, 0.9f));
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", ImVec4(1, 0, 1, 0.9f));
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0, 1, 1, 0.9f), ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0, 1, 0.5f, 0.9f), "[GIF]"); // add an text for a filter type
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, ImVec4(0.5f, 1, 0.9f, 0.9f), ICON_IGFD_FOLDER); // for all dirs
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", ImVec4(0.1f, 0.5f, 0.5f, 0.9f), ICON_IGFD_ADD);
-    dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0, 0.9f), ICON_IGFD_FILE_PIC);
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, ImVec4(0.2f, 0.9f, 0.2f, 0.9f), ICON_IGFD_FILE); // for all link files
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FOLDER); // for all link dirs
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, ImVec4(0.8f, 0.8f, 0.8f, 0.8f), ICON_IGFD_FILE); // for all link files
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0, 0.9f), ICON_IGFD_BOOKMARK);
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.5f, 0.8f, 0.5f, 0.9f), ICON_IGFD_SAVE);
+    dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", {1, 1, 0, 0.9f});
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", {0, 0, 1, 0.9f});
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", {1, 0, 1, 0.9f});
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", {0, 1, 1, 0.9f}, ICON_IGFD_FILE_PIC); // add an icon for the filter type
+    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", {0, 1, 0.5f, 0.9f}, "[GIF]"); // add an text for a filter type
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, {0.5f, 1, 0.9f, 0.9f}, ICON_IGFD_FOLDER); // for all dirs
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", {0.1f, 0.5f, 0.5f, 0.9f}, ICON_IGFD_ADD);
+    dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_FILE_PIC);
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, {0.2f, 0.9f, 0.2f, 0.9f}, ICON_IGFD_FILE); // for all link files
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FOLDER); // for all link dirs
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FILE); // for all link files
+    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_BOOKMARK);
+    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", {0.5f, 0.8f, 0.5f, 0.9f}, ICON_IGFD_SAVE);
 
 #ifdef USE_BOOKMARK
     // Load bookmarks
-    std::ifstream docFile_1("bookmarks.conf", std::ios::in);
-    if (docFile_1.is_open()) {
-        std::stringstream strStream;
-        strStream << docFile_1.rdbuf();//read the file
-        dialog->DeserializeBookmarks(strStream.str());
-        docFile_1.close();
-    }
-
-    // Add bookmark by code
+    if (fs::exists("bookmarks.conf")) dialog->DeserializeBookmarks(FileIO::read("bookmarks.conf"));
     dialog->AddBookmark("Current dir", ".");
 #endif
 }
@@ -169,15 +158,15 @@ void OpenDialog(const FileDialogData &data) { q(open_file_dialog{json(data).dump
 
 void IGFD::ShowDemoWindow() {
 #ifdef USE_EXPLORATION_BY_KEYS
-    static float flashingAttenuationInSeconds = 1.f;
+    static float flash_attenuation_sec = 1.f;
     if (Button("R##resetflashlifetime")) {
-        flashingAttenuationInSeconds = 1.f;
-        dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
+        flash_attenuation_sec = 1.f;
+        dialog->SetFlashingAttenuationInSeconds(flash_attenuation_sec);
     }
     SameLine();
     PushItemWidth(200);
-    if (SliderFloat("Flash lifetime (s)", &flashingAttenuationInSeconds, 0.01f, 5.f)) {
-        dialog->SetFlashingAttenuationInSeconds(flashingAttenuationInSeconds);
+    if (SliderFloat("Flash lifetime (s)", &flash_attenuation_sec, 0.01f, 5.f)) {
+        dialog->SetFlashingAttenuationInSeconds(flash_attenuation_sec);
     }
     PopItemWidth();
 #endif
@@ -211,61 +200,58 @@ void IGFD::ShowDemoWindow() {
     }
     Unindent();
 
-    static string filePathName; // Keep track of the last chosen file. There's an option below to open this path.
-    static string chooseFile = ICON_IGFD_FOLDER_OPEN " Choose a file";
-    static const char *chooseFileSave = ICON_IGFD_SAVE " Choose a file";
+    static string choose_file_open = ICON_IGFD_FOLDER_OPEN " Choose a file";
+    static const string choose_file_save = ICON_IGFD_SAVE " Choose a file";
+    static string file_path_name; // Keep track of the last chosen file. There's an option below to open this path.
 
     Text("Singleton access:");
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
-        OpenDialog({chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
+        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with collections of filters")) {
-        const string filters = "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md";
-        OpenDialog({chooseFile, filters, ".", "", false, 1, flags});
+        OpenDialog({choose_file_open, "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open all file types with \".*\" filter")) {
-        OpenDialog({chooseFile, ".*", ".", filePathName, false, 1, flags});
+        OpenDialog({choose_file_open, ".*", ".", file_path_name, false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
-        OpenDialog({chooseFile, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags});
+        OpenDialog({choose_file_open, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
-        OpenDialog({chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags});
+        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
-        OpenDialog({chooseFile, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags});
+        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags});
     }
-    if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with last file path name")) {
-        OpenDialog({chooseFile, ".*,.cpp,.h,.hpp", ".", filePathName, false, 1, flags});
+    if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with most recent file path name")) {
+        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", file_path_name, false, 1, flags});
     }
 
     if (Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
-        const string filters = "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}";
-        OpenDialog({chooseFileSave, filters, ".", filePathName, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite});
+        OpenDialog({choose_file_save, "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}", ".", file_path_name, true, 1, ImGuiFileDialogFlags_ConfirmOverwrite});
     }
 
     // Keeping this around to remind myself that custom panes & UserDatas are a thing.
-    // If `cantContinue` is false, the user can't validate the dialog.
-    // static bool canValidateDialog = false;
-    // inline void InfosPane(const char *filter, IGFDUserDatas userData, bool *cantContinue) {
+    // If `cant_continue` is false, the user can't validate the dialog.
+    // static bool can_validate_dialog = false;
+    // inline void InfosPane(const char *filter, IGFDUserDatas user_data, bool *cant_continue) {
     //     TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
     //     Text("Selected Filter: %s", filter);
-    //     if (userData) Text("User Data: %s", (const char *) userData);
-    //     Checkbox("If not checked, you can't validate the dialog", &canValidateDialog);
-    //     if (cantContinue) *cantContinue = canValidateDialog;
+    //     if (user_data) Text("User Data: %s", (const char *) user_data);
+    //     Checkbox("If not checked, you can't validate the dialog", &can_validate_dialog);
+    //     if (cant_continue) *cant_continue = can_validate_dialog;
     // }
-    //
-    // auto saveFileUserData = IGFDUserDatas("SaveFile");
+    // auto save_file_user_data = IGFDUserDatas("SaveFile");
     // if (Button(ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
     //     const char *filters = "C++ File (*.cpp){.cpp}";
-    //     dialog->OpenDialog(chooseFileDialogKey, chooseFileSave, filters,
+    //     dialog->OpenDialog(key, choose_file_save, filters,
     //         ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
-    //         saveFileUserData, flags);
+    //         save_file_user_data, flags);
     // }
 
-    filePathName = dialog->GetFilePathName();
-    static string filePath = dialog->GetCurrentPath();
-    static string userData = dialog->GetUserDatas() ? string((const char *) dialog->GetUserDatas()) : "";
+    file_path_name = dialog->GetFilePathName();
+    static string file_path = dialog->GetCurrentPath();
+    static string user_data = dialog->GetUserDatas() ? string((const char *) dialog->GetUserDatas()) : "";
 
     // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
     const auto &selections = dialog->GetSelection();
@@ -278,10 +264,10 @@ void IGFD::ShowDemoWindow() {
     TextUnformatted("FileDialog state:\n");
     Indent();
     {
-        TextUnformatted(format("FilePathName: {}", filePathName).c_str());
-        TextUnformatted(format("FilePath: {}", filePath).c_str());
+        TextUnformatted(format("FilePathName: {}", file_path_name).c_str());
+        TextUnformatted(format("FilePath: {}", file_path).c_str());
         TextUnformatted(format("Filters: {}", string(s.FileDialog.Filters)).c_str());
-        TextUnformatted(format("UserDatas: {}", userData).c_str());
+        TextUnformatted(format("UserDatas: {}", user_data).c_str());
         TextUnformatted("Selection: ");
         Indent();
         {
@@ -325,12 +311,6 @@ void IGFD::CleanupDemo() {
 
 #ifdef USE_BOOKMARK
     dialog->RemoveBookmark("Current dir");
-
-    // Save bookmarks dialog 1
-    std::ofstream configFileWriter_1("bookmarks_1.conf", std::ios::out);
-    if (!configFileWriter_1.bad()) {
-        configFileWriter_1 << dialog->SerializeBookmarks();
-        configFileWriter_1.close();
-    }
+    FileIO::write("bookmarks_1.conf", dialog->SerializeBookmarks());
 #endif
 }

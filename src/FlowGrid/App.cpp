@@ -187,7 +187,7 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
                 else if (op.Op == Remove) transient.erase(path);
             }
         },
-        [&](const open_file_dialog &a) { FileDialog.set(json(a.dialog_json), transient); },
+        [&](const open_file_dialog &a) { FileDialog.set(json::parse(a.dialog_json), transient); },
         [&](const close_file_dialog &) { set(FileDialog.Visible, false, transient); },
         [&](const show_open_project_dialog &) { FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
         [&](const show_save_project_dialog &) { FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1, ImGuiFileDialogFlags_ConfirmOverwrite}, transient); },

@@ -165,9 +165,7 @@ void IGFD::InitializeDemo() {
 #endif
 }
 
-void OpenDialog(const FileDialogData &data) {
-    q(open_file_dialog{json(data).dump()});
-}
+void OpenDialog(const FileDialogData &data) { q(open_file_dialog{json(data).dump()}); }
 
 void IGFD::ShowDemoWindow() {
 #ifdef USE_EXPLORATION_BY_KEYS

@@ -1443,6 +1443,7 @@ public:
 
     Preferences Preferences;
     StoreHistory History{store}; // One store checkpoint for every gesture.
+    bool ProjectHasChanges;
 
 private:
     void ApplyAction(const ProjectAction &);

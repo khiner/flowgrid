@@ -183,7 +183,7 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
             const auto &patch = a.patch;
             for (const auto &[partial_path, op]: patch.Ops) {
                 const auto &path = patch.BasePath / partial_path;
-                if (op.Op == Add || op.Op == Replace) transient.set(path, op.Value.value());
+                if (op.Op == Add || op.Op == Replace) transient.set(path, *op.Value);
                 else if (op.Op == Remove) transient.erase(path);
             }
         },
@@ -277,7 +277,7 @@ bool Context::IsUserProjectPath(const fs::path &path) {
 }
 
 void Context::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
-void Context::SaveCurrentProject() { if (CurrentProjectPath) SaveProject(CurrentProjectPath.value()); }
+void Context::SaveCurrentProject() { if (CurrentProjectPath) SaveProject(*CurrentProjectPath); }
 
 bool Context::ClearPreferences() {
     Preferences.RecentlyOpenedPaths.clear();
@@ -293,6 +293,7 @@ json Context::GetProjectJson(const ProjectFormat format) {
 
 void Context::Clear() {
     CurrentProjectPath = {};
+    ProjectHasChanges = false;
     History = {ApplicationStore};
     UiContext.IsWidgetGesturing = false;
 }
@@ -318,6 +319,7 @@ Patch Context::SetStore(const Store &new_store) {
     }
     s.Audio.UpdateProcess();
     History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
+    ProjectHasChanges = true;
 
     return patch;
 }
@@ -356,21 +358,21 @@ void Context::OpenProject(const fs::path &path) {
 }
 
 bool Context::SaveProject(const fs::path &path) {
-    if (CurrentProjectPath.has_value() && fs::equivalent(path, CurrentProjectPath.value()) && !ActionAllowed(action::id<save_current_project>))
-        return false;
+    const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
+    if (is_current_project && !ActionAllowed(action::id<save_current_project>)) return false;
 
     const auto format = GetProjectFormat(path);
     if (!format) return false; // TODO log
 
     History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
-    if (FileIO::write(path, GetProjectJson(format.value()).dump())) {
-        if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
-        return true;
-    }
-    return false;
+    if (!FileIO::write(path, GetProjectJson(*format).dump())) return false; // TODO log
+
+    if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
+    return true;
 }
 
 void Context::SetCurrentProjectPath(const fs::path &path) {
+    ProjectHasChanges = false;
     CurrentProjectPath = path;
     Preferences.RecentlyOpenedPaths.remove(path);
     Preferences.RecentlyOpenedPaths.emplace_front(path);
@@ -387,7 +389,7 @@ bool Context::ActionAllowed(const ActionID id) const {
         case action::id<Actions::save_project>:
         case action::id<Actions::show_save_project_dialog>:
         case action::id<Actions::save_default_project>: return !History.Empty();
-        case action::id<Actions::save_current_project>: return CurrentProjectPath.has_value() && !History.Empty();
+        case action::id<Actions::save_current_project>: return !History.Empty() && CurrentProjectPath && ProjectHasChanges;
         case action::id<Actions::open_file_dialog>: return !s.FileDialog.Visible;
         case action::id<Actions::close_file_dialog>: return s.FileDialog.Visible;
         default: return true;

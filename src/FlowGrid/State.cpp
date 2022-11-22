@@ -205,8 +205,8 @@ Gesture action::MergeGesture(const Gesture &gesture) {
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
     std::optional<const StateActionMoment> active;
     for (Count i = 0; i < gesture.size(); i++) {
-        if (!active.has_value()) active.emplace(gesture[i]);
-        const auto &a = active.value();
+        if (!active) active.emplace(gesture[i]);
+        const auto &a = *active;
         const auto &b = gesture[i + 1];
         std::variant<StateAction, bool> merge_result = Merge(a.first, b.first);
         std::visit(visitor{
@@ -220,7 +220,7 @@ Gesture action::MergeGesture(const Gesture &gesture) {
             },
         }, merge_result);
     }
-    if (active.has_value()) merged_gesture.emplace_back(active.value());
+    if (active) merged_gesture.emplace_back(*active);
 
     return merged_gesture;
 }
@@ -480,7 +480,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
     } else if (value.is_object()) {
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
-                JsonTree(it.key(), it.value(), node_flags);
+                JsonTree(it.key(), *it, node_flags);
             }
             if (!label.empty()) ImGui::TreePop();
         }
@@ -1043,7 +1043,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     // Flash background color of nodes when its corresponding path updates.
     const auto &latest_update_time = c.History.LatestUpdateTime(path);
     if (latest_update_time) {
-        const float flash_elapsed_ratio = fsec(Clock::now() - latest_update_time.value()).count() / s.Style.FlowGrid.FlashDurationSec;
+        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
         ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.Value.w = max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
@@ -1060,7 +1060,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     } else if (value.is_object()) {
         if (JsonTreeNode(label, flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
-                StateJsonTree(it.key(), it.value(), path / it.key());
+                StateJsonTree(it.key(), *it, path / it.key());
             }
             TreePop();
         }
@@ -1767,8 +1767,8 @@ void Metrics::FlowGridMetrics::Draw() const {
                             const auto &path = patch.BasePath / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                                 BulletText("Op: %s", to_string(op.Op).c_str());
-                                if (op.Value.has_value()) BulletText("Value: %s", to_string(op.Value.value()).c_str());
-                                if (op.Old.has_value()) BulletText("Old value: %s", to_string(op.Old.value()).c_str());
+                                if (op.Value) BulletText("Value: %s", to_string(*op.Value).c_str());
+                                if (op.Old) BulletText("Old value: %s", to_string(*op.Old).c_str());
                                 TreePop();
                             }
                         }

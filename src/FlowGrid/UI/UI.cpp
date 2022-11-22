@@ -156,7 +156,7 @@ const map<string, ImGuiModFlags> mod_keys{
 // Handles any number of mods, along with any single non-mod character.
 // Example: 'shift+cmd+s'
 // **Case-sensitive. `shortcut` must be lowercase.**
-std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
+std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
     vector<string> tokens;
     Zep::string_split(shortcut, "+", tokens);
     if (tokens.empty()) return {};
@@ -180,7 +180,7 @@ std::optional<KeyShortcut> parse_shortcut(const string &shortcut) {
 // todo Find/implement a `BidirectionalMap` and use it here.
 const auto KeyMap = action::ShortcutForId | transform([](const auto &entry) {
     const auto &[action_id, shortcut] = entry;
-    return std::pair(parse_shortcut(shortcut).value(), action_id);
+    return std::pair(*ParseShortcut(shortcut), action_id);
 }) | to<map>;
 
 bool IsShortcutPressed(const KeyShortcut &key_shortcut) {

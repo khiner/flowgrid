@@ -590,18 +590,16 @@ void State::Draw() const {
         if (BeginMenu("File")) {
             MenuItem(open_empty_project{});
             MenuItem(show_open_project_dialog{});
-
-            const auto &RecentlyOpenedPaths = c.Preferences.RecentlyOpenedPaths;
-            if (BeginMenu("Open recent project", !RecentlyOpenedPaths.empty())) {
-                for (const auto &recently_opened_path: RecentlyOpenedPaths) {
+            if (BeginMenu("Open recent project", !c.Preferences.RecentlyOpenedPaths.empty())) {
+                for (const auto &recently_opened_path: c.Preferences.RecentlyOpenedPaths) {
                     if (MenuItem(recently_opened_path.filename().c_str())) q(open_project{recently_opened_path});
                 }
                 EndMenu();
             }
+            MenuItem(open_default_project{});
 
             MenuItem(save_current_project{});
             MenuItem(show_save_project_dialog{});
-            MenuItem(open_default_project{});
             MenuItem(save_default_project{});
             EndMenu();
         }

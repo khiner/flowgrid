@@ -387,9 +387,10 @@ bool Context::ActionAllowed(const ActionID id) const {
         case action::id<redo>: return History.CanRedo();
         case action::id<open_default_project>: return fs::exists(DefaultProjectPath);
         case action::id<save_project>:
-        case action::id<show_save_project_dialog>:
         case action::id<save_default_project>: return !History.Empty();
-        case action::id<save_current_project>: return !History.Empty() && CurrentProjectPath && ProjectHasChanges;
+        case action::id<show_save_project_dialog>:
+            // If there is no current project, `save_current_project` will be transformed into a `show_save_project_dialog`.
+        case action::id<save_current_project>: return ProjectHasChanges;
         case action::id<open_file_dialog>: return !s.FileDialog.Visible;
         case action::id<close_file_dialog>: return s.FileDialog.Visible;
         default: return true;
@@ -557,8 +558,15 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
         // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
-        const auto &[action, _] = action_moment;
+        auto &[action, _] = action_moment;
         if (!ActionAllowed(action)) continue;
+
+        // Special cases:
+        // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
+        if (std::holds_alternative<save_current_project>(action) && !CurrentProjectPath) action = show_save_project_dialog{};
+        // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
+        force_finalize_gesture |= std::holds_alternative<toggle_value>(action);
+
         std::visit(visitor{
             [&](const ProjectAction &a) { ApplyAction(a); },
             [&](const StateAction &a) {
@@ -566,11 +574,9 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
                 state_actions.emplace_back(a, action_moment.second);
             },
         }, action);
-        // Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing.
-        force_finalize_gesture |= std::holds_alternative<toggle_value>(action);
     }
 
-    bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0);
+    const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0);
     if (!state_actions.empty()) {
         History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());
         History.UpdateGesturePaths(state_actions, SetStore(transient.persistent()));

@@ -1133,7 +1133,6 @@ string GetBoxType(Box t) {
     return "";
 }
 
-static bool AllowNodeLinks = true; // Set to `false` to draw all nodes inline in one big diagram. Set to `true` to split into files (for SVG rendering).
 static map<Tree, bool> IsTreePureRouting{}; // Avoid recomputing pure-routing property. Needs to be reset whenever box changes!
 
 // Returns `true` if the tree is only made of cut, wires and slots.
@@ -1155,7 +1154,7 @@ static Node *Tree2Node(Tree t, bool allow_links) {
     auto *node = Tree2NodeNode(t);
     if (const char *name = GetTreeName(t)) {
         auto *decorate_node = new DecorateNode{t, node, name};
-        if (decorate_node->IsTopLevel && AllowNodeLinks && allow_links) {
+        if (decorate_node->IsTopLevel && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
             return new BlockNode(t, ins, outs, name, FlowGridCol_DiagramLink, decorate_node);

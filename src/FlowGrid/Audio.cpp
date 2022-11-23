@@ -191,7 +191,7 @@ static void CreateStream(const IO io) {
             supported_formats[io].emplace_back(format);
         }
     }
-    if (supported_formats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", capitalize(to_string(io))));
+    if (supported_formats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", Capitalize(to_string(io))));
 
     const Enum &saved_format = io == IO_In ? s.Audio.InFormat : s.Audio.OutFormat;
     // If the project has a saved format, choose it. Otherwise, default to the highest-priority supported format.
@@ -288,7 +288,7 @@ void SetupAudio() {
         if (device->probe_error) throw std::runtime_error("Cannot probe device: "s + soundio_strerror(device->probe_error));
 
         for (int i = 0; i < device->sample_rate_count; i++) supported_sample_rates[io].push_back(device->sample_rates[i].max);
-        if (supported_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", capitalize(to_string(io))));
+        if (supported_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", Capitalize(to_string(io))));
 
         devices[io] = device;
         CreateStream(io);
@@ -654,7 +654,7 @@ void ShowDevice(const SoundIoDevice &device, bool is_default) {
 void ShowDevices() {
     for (const IO io: IO_All) {
         const auto device_count = GetDeviceCount(io);
-        const string &io_label = capitalize(to_string(io));
+        const string &io_label = Capitalize(to_string(io));
         if (TreeNodeEx(format("{} devices ({})", io_label, device_count).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
             const auto default_device_index = GetDefaultDeviceIndex(io);
             for (int device_index = 0; device_index < device_count; device_index++) {
@@ -705,7 +705,7 @@ void ShowStreams() {
 void ShowBufferPlots() {
     for (IO io: IO_All) {
         const bool is_in = io == IO_In;
-        if (TreeNode(capitalize(to_string(io)).c_str())) {
+        if (TreeNode(Capitalize(to_string(io)).c_str())) {
             const auto *area = is_in ? areas[IO_In] : areas[IO_Out];
             if (!area) continue;
 

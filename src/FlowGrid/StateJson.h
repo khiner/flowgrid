@@ -91,10 +91,11 @@ void to_json(json &j, const ProjectAction &value);
 void from_json(const json &j, ProjectAction &value);
 } // End `nlohmann` namespace
 
-NLOHMANN_JSON_SERIALIZE_ENUM(PatchOpType, {
-    { Add, "add" },
-    { Remove, "remove" },
-    { Replace, "replace" },
+
+NLOHMANN_JSON_SERIALIZE_ENUM(PatchOp::Type, {
+    { PatchOp::Type::Add, "add" },
+    { PatchOp::Type::Remove, "remove" },
+    { PatchOp::Type::Replace, "replace" },
 })
 
 JsonType(PatchOp, Op, Value, Old)

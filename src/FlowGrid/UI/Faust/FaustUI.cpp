@@ -135,7 +135,7 @@ struct SVGDevice : Device {
         static map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
 
         auto replaced_name = name;
-        for (const auto &[ch, replacement]: replacements) replaced_name = replace(replaced_name, ch, replacement);
+        for (const auto &[ch, replacement]: replacements) replaced_name = StringHelper::Replace(replaced_name, ch, replacement);
         return replaced_name;
     }
 
@@ -423,7 +423,7 @@ struct Node {
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 device.Text(
                     Point(io, channel),
-                    format("{}:{}", capitalize(to_string(io, true)), channel),
+                    format("{}:{}", Capitalize(to_string(io, true)), channel),
                     {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .PaddingBottom=6, .ScaleHeight=1.3, .FontStyle=TextStyle::FontStyle::Bold}
                 );
                 device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
@@ -436,7 +436,7 @@ struct Node {
                 for (Count channel = 0; channel < IoCount(io, ci); channel++) {
                     device.Text(
                         Child(ci)->Point(io, channel),
-                        format("C{}->{}:{}", ci, capitalize(to_string(io, true)), channel),
+                        format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
                         {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .ScaleHeight=0.9, .FontStyle=TextStyle::FontStyle::Bold}
                     );
                     device.Circle(Child(ci)->Point(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});

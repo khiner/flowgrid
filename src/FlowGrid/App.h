@@ -28,6 +28,8 @@
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
+using namespace StringHelper;
+
 using namespace fmt;
 using namespace nlohmann;
 
@@ -676,7 +678,7 @@ process = tgroup("grp 1",
     void UpdateProcess() const;
     const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
+    Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true};
     Bool FaustRunning{this, "FaustRunning?Disabling skips Faust computation when computing audio output.", true};
     Bool Muted{this, "Muted?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true};
     AudioBackend Backend = none;
@@ -1094,18 +1096,22 @@ struct FileDialog : Window {
     String FilePath{this, "FilePath", "."};
     String DefaultFileName{this, "DefaultFileName"};
 };
-
-enum PatchOpType {
-    Add,
-    Remove,
-    Replace,
-};
 struct PatchOp {
-    PatchOpType Op{};
+    enum Type {
+        Add,
+        Remove,
+        Replace,
+    };
+
+    PatchOp::Type Op{};
     std::optional<Primitive> Value{}; // Present for add/replace
     std::optional<Primitive> Old{}; // Present for remove/replace
 };
 using PatchOps = map<StatePath, PatchOp>;
+
+static constexpr auto AddOp = PatchOp::Type::Add;
+static constexpr auto RemoveOp = PatchOp::Type::Remove;
+static constexpr auto ReplaceOp = PatchOp::Type::Replace;
 
 struct Patch {
     PatchOps Ops;
@@ -1120,7 +1126,7 @@ struct StatePatch {
 };
 
 string to_string(const Primitive &);
-string to_string(PatchOpType);
+string to_string(PatchOp::Type);
 
 //-----------------------------------------------------------------------------
 // [SECTION] Actions
@@ -1306,7 +1312,7 @@ struct State : UIStateMember {
         using Window::Window;
         void Draw() const override {}
 
-        Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", lowercase(Name)), true};
+        Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true};
     };
 
     ImGuiSettings ImGuiSettings{this, "ImGuiSettings#ImGui settings"};

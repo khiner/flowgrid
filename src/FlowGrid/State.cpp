@@ -3,7 +3,6 @@
 #include <fstream>
 #include <range/v3/view/concat.hpp>
 
-#include "ImGuiFileDialog.h"
 #include "imgui_memory_editor.h"
 
 #include "FileDialog/FileDialogDemo.h"
@@ -118,19 +117,19 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
             // For example, if the first patch removes a path, and the second one adds the same path,
             // we can't know from only looking at the pair whether the added value was the same as it was before the remove
             // (in which case it should just be `Remove` during merge) or if it was different (in which case the merged action should be a `Replace`).
-            if (old_op.Op == Add) {
-                if (op.Op == Remove || ((op.Op == Add || op.Op == Replace) && old_op.Value == op.Value)) merged.erase(path); // Cancel out
-                else merged[path] = {Add, op.Value, {}};
-            } else if (old_op.Op == Remove) {
-                if (op.Op == Add || op.Op == Replace) {
+            if (old_op.Op == AddOp) {
+                if (op.Op == RemoveOp || ((op.Op == AddOp || op.Op == ReplaceOp) && old_op.Value == op.Value)) merged.erase(path); // Cancel out
+                else merged[path] = {AddOp, op.Value, {}};
+            } else if (old_op.Op == RemoveOp) {
+                if (op.Op == AddOp || op.Op == ReplaceOp) {
                     if (old_op.Value == op.Value) merged.erase(path); // Cancel out
-                    else merged[path] = {Replace, op.Value, old_op.Old};
+                    else merged[path] = {ReplaceOp, op.Value, old_op.Old};
                 } else {
-                    merged[path] = {Remove, {}, old_op.Old};
+                    merged[path] = {RemoveOp, {}, old_op.Old};
                 }
-            } else if (old_op.Op == Replace) {
-                if (op.Op == Add || op.Op == Replace) merged[path] = {Replace, op.Value, old_op.Old};
-                else merged[path] = {Remove, {}, old_op.Old};
+            } else if (old_op.Op == ReplaceOp) {
+                if (op.Op == AddOp || op.Op == ReplaceOp) merged[path] = {ReplaceOp, op.Value, old_op.Old};
+                else merged[path] = {RemoveOp, {}, old_op.Old};
             }
         } else {
             merged[path] = op;
@@ -1022,7 +1021,7 @@ void State::Apply(const UIContext::Flags flags) const {
 void StateViewer::StateJsonTree(const string &key, const json &value, const StatePath &path) const {
     const string &leaf_name = path == RootPath ? path.string() : path.filename().string();
     const auto &parent_path = path == RootPath ? path : path.parent_path();
-    const bool is_array_item = is_integer(leaf_name);
+    const bool is_array_item = IsInteger(leaf_name);
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_imgui_color = parent_path == s.Style.ImGui.Colors.Path;
     const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;

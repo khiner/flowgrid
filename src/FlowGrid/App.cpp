@@ -84,11 +84,11 @@ string to_string(const IO io, const bool shorten) {
         case IO_None: return "none";
     }
 }
-string to_string(PatchOpType type) {
-    switch (type) {
-        case Add: return "Add";
-        case Remove: return "Remove";
-        case Replace: return "Replace";
+string to_string(PatchOp::Type patch_op_type) {
+    switch (patch_op_type) {
+        case AddOp: return "Add";
+        case RemoveOp: return "Remove";
+        case ReplaceOp: return "Replace";
     }
 }
 string to_string(const Primitive &primitive) { return json(primitive).dump(); }
@@ -183,8 +183,8 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
             const auto &patch = a.patch;
             for (const auto &[partial_path, op]: patch.Ops) {
                 const auto &path = patch.BasePath / partial_path;
-                if (op.Op == Add || op.Op == Replace) transient.set(path, *op.Value);
-                else if (op.Op == Remove) transient.erase(path);
+                if (op.Op == AddOp || op.Op == ReplaceOp) transient.set(path, *op.Value);
+                else if (op.Op == RemoveOp) transient.erase(path);
             }
         },
         [&](const open_file_dialog &a) { FileDialog.set(json::parse(a.dialog_json), transient); },
@@ -242,13 +242,13 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &Base
         before,
         after,
         [&](auto const &added_element) {
-            ops[added_element.first.lexically_relative(BasePath)] = {Add, added_element.second, {}};
+            ops[added_element.first.lexically_relative(BasePath)] = {AddOp, added_element.second, {}};
         },
         [&](auto const &removed_element) {
-            ops[removed_element.first.lexically_relative(BasePath)] = {Remove, {}, removed_element.second};
+            ops[removed_element.first.lexically_relative(BasePath)] = {RemoveOp, {}, removed_element.second};
         },
         [&](auto const &old_element, auto const &new_element) {
-            ops[old_element.first.lexically_relative(BasePath)] = {Replace, new_element.second, old_element.second};
+            ops[old_element.first.lexically_relative(BasePath)] = {ReplaceOp, new_element.second, old_element.second};
         });
 
     return {ops, BasePath};

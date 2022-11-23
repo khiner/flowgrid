@@ -1097,11 +1097,7 @@ struct FileDialog : Window {
     String DefaultFileName{this, "DefaultFileName"};
 };
 struct PatchOp {
-    enum Type {
-        Add,
-        Remove,
-        Replace,
-    };
+    enum Type { Add, Remove, Replace, };
 
     PatchOp::Type Op{};
     std::optional<Primitive> Value{}; // Present for add/replace

@@ -279,7 +279,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                                 TableSetColumnIndex(column);
                                 const char *column_name = TableGetColumnName(column);
                                 PushID(column);
-                                const float header_x = CalcAlignedX(align.x, GetContentRegionAvail().x, CalcTextSize(column_name).x);
+                                const float header_x = CalcAlignedX(align.x, CalcTextSize(column_name).x, GetContentRegionAvail().x);
                                 SetCursorPosX(GetCursorPosX() + max(0.f, header_x));
                                 TableHeader(column_name);
                                 PopID();

@@ -343,7 +343,6 @@ struct Node {
     const vector<Node *> Children{};
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
-    const bool IsTopLevel;
     ImVec2 Position; // Populated in `place`
     ImVec2 Size; // Populated in `place_size`
 
@@ -351,9 +350,7 @@ struct Node {
 
     Node(Tree tree, Count in_count, Count out_count, vector<Node *> children = {}, Count direct_descendents = 0)
         : FaustTree(tree), Children(std::move(children)), InCount(in_count), OutCount(out_count),
-          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)),
-        // `DiagramFoldComplexity == 0` means no folding
-          IsTopLevel(s.Style.FlowGrid.DiagramFoldComplexity != 0 && direct_descendents == 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {}
+          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)) {}
 
     virtual ~Node() = default;
 
@@ -859,10 +856,13 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
 }
 
 // A `DecorateNode` is a node surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
-// If the number of boxes inside is over the `box_complexity` threshold, add additional padding and draw output arrows.
+// If the number of boxes inside is over the box complexity threshold, add additional padding and draw output arrows.
 struct DecorateNode : IONode {
-    DecorateNode(Tree tree, Node *inner, string text)
-        : IONode(tree, inner->InCount, inner->OutCount, {inner}, 0), Text(std::move(text)) {}
+    DecorateNode(Tree tree, Node *inner, string text, bool is_group = false)
+        : IONode(tree, inner->InCount, inner->OutCount, {inner}, 0),
+        // `DiagramFoldComplexity == 0` means no folding.
+          IsTopLevel(!is_group && s.Style.FlowGrid.DiagramFoldComplexity != 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)),
+          Text(std::move(text)) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
     void DoPlace(const DeviceType type) override { C1()->Place(type, Position + Margin(), Orientation); }
@@ -884,12 +884,14 @@ struct DecorateNode : IONode {
         return Child(0)->Point(io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
+    const bool IsTopLevel;
+
 private:
     inline float Margin() const {
         return s.Style.FlowGrid.DiagramDecorateMargin + (IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.f);
     }
 
-    string Text;
+    const string Text;
 };
 
 struct RouteNode : IONode {
@@ -1037,7 +1039,7 @@ static Node *Tree2NodeNode(Tree t) {
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
 
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
-    if (is_vgroup || is_hgroup || is_tgroup) return new DecorateNode(a, Tree2Node(a), format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)));
+    if (is_vgroup || is_hgroup || is_tgroup) return new DecorateNode(a, Tree2Node(a), format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)), true);
 
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
@@ -1056,7 +1058,7 @@ static Node *Tree2NodeNode(Tree t) {
             b = _b;
         }
         auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));
-        return GetTreeName(t) ? abstraction : new DecorateNode(t, abstraction, "Abstraction");
+        return GetTreeName(t) ? abstraction : new DecorateNode(t, abstraction, "Abstraction", true);
     }
     if (isBoxEnvironment(t)) return new BlockNode(t, 0, 0, "environment{...}");
 

@@ -9,7 +9,7 @@
 #include "../App.h"
 
 #include "Faust/FaustEditor.h"
-#include "../FileDialog/ImGuiFileDialogDemo.h"
+#include "../FileDialog/FileDialogDemo.h"
 
 using namespace fg;
 

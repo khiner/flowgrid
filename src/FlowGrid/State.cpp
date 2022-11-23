@@ -6,7 +6,7 @@
 #include "ImGuiFileDialog.h"
 #include "imgui_memory_editor.h"
 
-#include "FileDialog/ImGuiFileDialogDemo.h"
+#include "FileDialog/FileDialogDemo.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -1846,42 +1846,4 @@ void DebugLog::Draw() const {
 }
 void StackTool::Draw() const {
     ShowStackToolWindow();
-}
-
-//-----------------------------------------------------------------------------
-// [SECTION] File
-//-----------------------------------------------------------------------------
-
-static auto *Dialog = ImGuiFileDialog::Instance();
-
-void FileDialog::Draw() const {
-    if (!Visible) return Dialog->Close();
-
-    static const string DialogKey = "FileDialog";
-    // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
-    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
-
-    const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
-    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-        q(close_file_dialog{}, true);
-        if (Dialog->IsOk()) {
-            const fs::path &file_path = Dialog->GetFilePathName();
-            const string &extension = file_path.extension();
-            if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
-                // TODO provide an option to save with undo state.
-                //   This file format would be a json list of diffs.
-                //   The file would generally be larger, and the load time would be slower,
-                //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
-                //   with full undo/redo history/position/etc.!
-                if (SaveMode) q(save_project{file_path});
-                else q(open_project{file_path});
-            } else if (extension == FaustDspFileExtension) {
-                if (SaveMode) q(save_faust_file{file_path});
-                else q(open_faust_file{file_path});
-            } else {
-                // todo need a way to tell it's the svg-save case
-                if (SaveMode) q(save_faust_svg_file{file_path});
-            }
-        }
-    }
 }

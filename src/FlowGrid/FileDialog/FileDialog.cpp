@@ -1,6 +1,6 @@
 #include <sstream>
 
-#include "ImGuiFileDialogDemo.h"
+#include "FileDialogDemo.h"
 #include "ImGuiFileDialog.h"
 
 #include "../StateJson.h"
@@ -8,7 +8,7 @@
 
 using namespace ImGui;
 
-ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
+static auto *Dialog = ImGuiFileDialog::Instance();
 
 // Same as `ImGui::CheckboxFlags`, but with `help` arg.
 bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *help) {
@@ -20,7 +20,7 @@ bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *h
 
 void IGFD::InitializeDemo() {
 #ifdef USE_THUMBNAILS
-    dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void
+    Dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void
     {
         if (thumbnail_info && thumbnail_info->isReadyToUpload && thumbnail_info->textureFileDatas) {
             GLuint textureId = 0;
@@ -45,7 +45,7 @@ void IGFD::InitializeDemo() {
             thumbnail_info->isReadyToDisplay = true;
         }
     });
-    dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
+    Dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
     {
         if (thumbnail_info) {
             GLuint tex_id = (GLuint)(size_t)thumbnail_info->textureID;
@@ -63,25 +63,25 @@ void IGFD::InitializeDemo() {
     GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * Style::ImGuiStyle::FontAtlasScale, &icons_config, IconRanges);
 
     // Singleton access
-    dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", {1, 1, 0, 0.9f});
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", {0, 0, 1, 0.9f});
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", {1, 0, 1, 0.9f});
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", {0, 1, 1, 0.9f}, ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", {0, 1, 0.5f, 0.9f}, "[GIF]"); // add an text for a filter type
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, {0.5f, 1, 0.9f, 0.9f}, ICON_IGFD_FOLDER); // for all dirs
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", {0.1f, 0.5f, 0.5f, 0.9f}, ICON_IGFD_ADD);
-    dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_FILE_PIC);
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, {0.2f, 0.9f, 0.2f, 0.9f}, ICON_IGFD_FILE); // for all link files
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FOLDER); // for all link dirs
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FILE); // for all link files
-    dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_BOOKMARK);
-    dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", {0.5f, 0.8f, 0.5f, 0.9f}, ICON_IGFD_SAVE);
+    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex
+    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", {1, 1, 0, 0.9f});
+    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", {0, 0, 1, 0.9f});
+    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", {1, 0, 1, 0.9f});
+    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", {0, 1, 1, 0.9f}, ICON_IGFD_FILE_PIC); // add an icon for the filter type
+    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", {0, 1, 0.5f, 0.9f}, "[GIF]"); // add an text for a filter type
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, {0.5f, 1, 0.9f, 0.9f}, ICON_IGFD_FOLDER); // for all dirs
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", {0.1f, 0.5f, 0.5f, 0.9f}, ICON_IGFD_ADD);
+    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_FILE_PIC);
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, {0.2f, 0.9f, 0.2f, 0.9f}, ICON_IGFD_FILE); // for all link files
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FOLDER); // for all link dirs
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FILE); // for all link files
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_BOOKMARK);
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", {0.5f, 0.8f, 0.5f, 0.9f}, ICON_IGFD_SAVE);
 
 #ifdef USE_BOOKMARK
     // Load bookmarks
-    if (fs::exists("bookmarks.conf")) dialog->DeserializeBookmarks(FileIO::read("bookmarks.conf"));
-    dialog->AddBookmark("Current dir", ".");
+    if (fs::exists("bookmarks.conf")) Dialog->DeserializeBookmarks(FileIO::read("bookmarks.conf"));
+    Dialog->AddBookmark("Current dir", ".");
 #endif
 }
 
@@ -92,12 +92,12 @@ void IGFD::ShowDemoWindow() {
     static float flash_attenuation_sec = 1.f;
     if (Button("R##resetflashlifetime")) {
         flash_attenuation_sec = 1.f;
-        dialog->SetFlashingAttenuationInSeconds(flash_attenuation_sec);
+        Dialog->SetFlashingAttenuationInSeconds(flash_attenuation_sec);
     }
     SameLine();
     PushItemWidth(200);
     if (SliderFloat("Flash lifetime (s)", &flash_attenuation_sec, 0.01f, 5.f)) {
-        dialog->SetFlashingAttenuationInSeconds(flash_attenuation_sec);
+        Dialog->SetFlashingAttenuationInSeconds(flash_attenuation_sec);
     }
     PopItemWidth();
 #endif
@@ -165,17 +165,17 @@ void IGFD::ShowDemoWindow() {
     // auto save_file_user_data = IGFDUserDatas("SaveFile");
     // if (Button(ICON_IGFD_SAVE " Save file dialog with a custom pane")) {
     //     const char *filters = "C++ File (*.cpp){.cpp}";
-    //     dialog->OpenDialog(key, choose_file_save, filters,
+    //     Dialog->OpenDialog(key, choose_file_save, filters,
     //         ".", "", [](auto &&PH1, auto &&PH2, auto &&PH3) { return InfosPane(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); }, 350, 1,
     //         save_file_user_data, flags);
     // }
 
-    FilePathName = dialog->GetFilePathName();
-    static string file_path = dialog->GetCurrentPath();
-    static string user_data = dialog->GetUserDatas() ? string((const char *) dialog->GetUserDatas()) : "";
+    FilePathName = Dialog->GetFilePathName();
+    static string file_path = Dialog->GetCurrentPath();
+    static string user_data = Dialog->GetUserDatas() ? string((const char *) Dialog->GetUserDatas()) : "";
 
     // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
-    const auto &selections = dialog->GetSelection();
+    const auto &selections = Dialog->GetSelection();
     static vector<std::pair<string, string>> selection = {};
     selection.clear();
     for (const auto &sel: selections) selection.emplace_back(sel.first, sel.second);
@@ -227,11 +227,43 @@ void IGFD::ShowDemoWindow() {
 
 void IGFD::CleanupDemo() {
 #ifdef USE_THUMBNAILS
-    dialog->ManageGPUThumbnails();
+    Dialog->ManageGPUThumbnails();
 #endif
 
 #ifdef USE_BOOKMARK
-    dialog->RemoveBookmark("Current dir");
-    FileIO::write("bookmarks_1.conf", dialog->SerializeBookmarks());
+    Dialog->RemoveBookmark("Current dir");
+    FileIO::write("bookmarks_1.conf", Dialog->SerializeBookmarks());
 #endif
+}
+
+void FileDialog::Draw() const {
+    if (!Visible) return Dialog->Close();
+
+    static const string DialogKey = "FileDialog";
+    // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
+    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
+
+    const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
+    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
+        q(close_file_dialog{}, true);
+        if (Dialog->IsOk()) {
+            const fs::path &file_path = Dialog->GetFilePathName();
+            const string &extension = file_path.extension();
+            if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
+                // TODO provide an option to save with undo state.
+                //   This file format would be a json list of diffs.
+                //   The file would generally be larger, and the load time would be slower,
+                //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
+                //   with full undo/redo history/position/etc.!
+                if (SaveMode) q(save_project{file_path});
+                else q(open_project{file_path});
+            } else if (extension == FaustDspFileExtension) {
+                if (SaveMode) q(save_faust_file{file_path});
+                else q(open_faust_file{file_path});
+            } else {
+                // todo need a way to tell it's the svg-save case
+                if (SaveMode) q(save_faust_svg_file{file_path});
+            }
+        }
+    }
 }

@@ -4,28 +4,17 @@
 #include "ImGuiFileDialog.h"
 
 #include "../StateJson.h"
+#include "../UI/Widgets.h"
 
 using namespace ImGui;
 
 ImGuiFileDialog *dialog = ImGuiFileDialog::Instance();
 
-// todo move `fg::HelpMarker` to a new header that only requires imgui and use it here
-void HelpMarker(const char *help) {
-    TextDisabled("(?)");
-    if (IsItemHovered()) {
-        BeginTooltip();
-        PushTextWrapPos(GetFontSize() * 35);
-        TextUnformatted(help);
-        PopTextWrapPos();
-        EndTooltip();
-    }
-}
-
 // Same as `ImGui::CheckboxFlags`, but with `help` arg.
 bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *help) {
     const bool result = ImGui::CheckboxFlags(label, flags, flags_value);
     SameLine();
-    HelpMarker(help);
+    fg::HelpMarker(help);
     return result;
 }
 

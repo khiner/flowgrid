@@ -7,7 +7,7 @@
 #include "imgui_memory_editor.h"
 
 #include "FileDialog/ImGuiFileDialogDemo.h"
-#include "Helper/File.h"
+#include "UI/Widgets.h"
 
 using namespace ImGui;
 using namespace fg;
@@ -441,7 +441,8 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
 // [SECTION] Widgets
 //-----------------------------------------------------------------------------
 
-void fg::HelpMarker(const char *help) {
+namespace FlowGrid {
+void HelpMarker(const char *help) {
     TextDisabled("(?)");
     if (IsItemHovered()) {
         BeginTooltip();
@@ -452,7 +453,7 @@ void fg::HelpMarker(const char *help) {
     }
 }
 
-void fg::MenuItem(const EmptyAction &action) {
+void MenuItem(const EmptyAction &action) {
     const string menu_label = action::GetMenuLabel(action);
     const string shortcut = action::GetShortcut(action);
     if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, c.ActionAllowed(action))) {
@@ -460,7 +461,7 @@ void fg::MenuItem(const EmptyAction &action) {
     }
 }
 
-bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
+bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
     const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
     const bool disabled = flags & JsonTreeNodeFlags_Disabled;
     const ImGuiTreeNodeFlags imgui_flags = flags & JsonTreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
@@ -474,7 +475,7 @@ bool fg::JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *
     return is_open;
 }
 
-void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
+void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
     if (value.is_null()) {
         ImGui::TextUnformatted(label.empty() ? "(null)" : label.c_str());
     } else if (value.is_object()) {
@@ -497,6 +498,7 @@ void fg::JsonTree(const string &label, const json &value, JsonTreeNodeFlags node
         if (label.empty()) ImGui::TextUnformatted(value.dump().c_str());
         else ImGui::Text("%s: %s", label.c_str(), value.dump().c_str());
     }
+}
 }
 
 void Vec2::LinkValues() const {

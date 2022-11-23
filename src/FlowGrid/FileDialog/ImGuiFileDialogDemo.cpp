@@ -55,12 +55,12 @@ void IGFD::InitializeDemo() {
     });
 #endif // USE_THUMBNAILS
 
-    static const ImWchar icons_ranges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
+    static const ImWchar IconRanges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
     ImFontConfig icons_config;
     icons_config.DstFont = GetDefaultFont();
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
-    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * Style::ImGuiStyle::FontAtlasScale, &icons_config, icons_ranges);
+    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * Style::ImGuiStyle::FontAtlasScale, &icons_config, IconRanges);
 
     // Singleton access
     dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex
@@ -121,35 +121,35 @@ void IGFD::ShowDemoWindow() {
         Unindent();
     }
 
-    static string choose_file_open = ICON_IGFD_FOLDER_OPEN " Choose a file";
-    static const string choose_file_save = ICON_IGFD_SAVE " Choose a file";
-    static string file_path_name; // Keep track of the last chosen file. There's an option below to open this path.
+    static const string ChooseFileOpen = ICON_IGFD_FOLDER_OPEN " Choose a file";
+    static const string ChooseFileSave = ICON_IGFD_SAVE " Choose a file";
+    static string FilePathName; // Keep track of the last chosen file. There's an option below to open this path.
 
     Text("Singleton access:");
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
-        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
+        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with collections of filters")) {
-        OpenDialog({choose_file_open, "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md", ".", "", false, 1, flags});
+        OpenDialog({ChooseFileOpen, "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open all file types with \".*\" filter")) {
-        OpenDialog({choose_file_open, ".*", ".", file_path_name, false, 1, flags});
+        OpenDialog({ChooseFileOpen, ".*", ".", FilePathName, false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
-        OpenDialog({choose_file_open, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags});
+        OpenDialog({ChooseFileOpen, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
-        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags});
+        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
-        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags});
+        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with most recent file path name")) {
-        OpenDialog({choose_file_open, ".*,.cpp,.h,.hpp", ".", file_path_name, false, 1, flags});
+        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", FilePathName, false, 1, flags});
     }
 
     if (Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
-        OpenDialog({choose_file_save, "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}", ".", file_path_name, true, 1, flags | ImGuiFileDialogFlags_ConfirmOverwrite});
+        OpenDialog({ChooseFileSave, "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}", ".", FilePathName, true, 1, flags | ImGuiFileDialogFlags_ConfirmOverwrite});
     }
 
     // Keeping this around to remind myself that custom panes & UserDatas are a thing.
@@ -170,7 +170,7 @@ void IGFD::ShowDemoWindow() {
     //         save_file_user_data, flags);
     // }
 
-    file_path_name = dialog->GetFilePathName();
+    FilePathName = dialog->GetFilePathName();
     static string file_path = dialog->GetCurrentPath();
     static string user_data = dialog->GetUserDatas() ? string((const char *) dialog->GetUserDatas()) : "";
 
@@ -185,7 +185,7 @@ void IGFD::ShowDemoWindow() {
     TextUnformatted("FileDialog state:\n");
     Indent();
     {
-        TextUnformatted(format("FilePathName: {}", file_path_name).c_str());
+        TextUnformatted(format("FilePathName: {}", FilePathName).c_str());
         TextUnformatted(format("FilePath: {}", file_path).c_str());
         TextUnformatted(format("Filters: {}", string(s.FileDialog.Filters)).c_str());
         TextUnformatted(format("UserDatas: {}", user_data).c_str());

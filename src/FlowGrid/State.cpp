@@ -1121,10 +1121,10 @@ void StatePathUpdateFrequency::Draw() const {
         // todo add an axis flag to exclude non-integer ticks
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
-        static const char *item_labels[] = {"Committed updates", "Active updates"};
+        static const char *ItemLabels[] = {"Committed updates", "Active updates"};
         const int item_count = !c.History.ActiveGesture.empty() ? 2 : 1;
         const int group_count = int(values.size()) / item_count;
-        ImPlot::PlotBarGroups(item_labels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
+        ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
         ImPlot::EndPlot();
     }
@@ -1852,20 +1852,20 @@ void StackTool::Draw() const {
 // [SECTION] File
 //-----------------------------------------------------------------------------
 
-static auto *file_dialog = ImGuiFileDialog::Instance();
-static const string file_dialog_key = "FileDialog";
+static auto *Dialog = ImGuiFileDialog::Instance();
 
 void FileDialog::Draw() const {
-    if (!Visible) return file_dialog->Close();
+    if (!Visible) return Dialog->Close();
 
+    static const string DialogKey = "FileDialog";
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
-    file_dialog->OpenDialog(file_dialog_key, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
+    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
 
     const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
-    if (file_dialog->Display(file_dialog_key, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
+    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
         q(close_file_dialog{}, true);
-        if (file_dialog->IsOk()) {
-            const fs::path &file_path = file_dialog->GetFilePathName();
+        if (Dialog->IsOk()) {
+            const fs::path &file_path = Dialog->GetFilePathName();
             const string &extension = file_path.extension();
             if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
                 // TODO provide an option to save with undo state.

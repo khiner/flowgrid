@@ -117,12 +117,12 @@ struct b64_conversion_traits {
     }
 
     static char decode(char c) {
-        static const int alph_len = 26;
-        if (c >= 'A' && c <= 'Z')return c - 'A';
-        if (c >= 'a' && c <= 'z')return c - 'a' + alph_len * 1;
-        if (c >= '0' && c <= '9')return c - '0' + alph_len * 2;
-        if (c == '+')return c - '+' + alph_len * 2 + 10;
-        if (c == '/')return c - '/' + alph_len * 2 + 11;
+        static const int LetterCount = 26;
+        if (c >= 'A' && c <= 'Z') return c - 'A';
+        if (c >= 'a' && c <= 'z') return c - 'a' + LetterCount * 1;
+        if (c >= '0' && c <= '9') return c - '0' + LetterCount * 2;
+        if (c == '+') return c - '+' + LetterCount * 2 + 10;
+        if (c == '/') return c - '/' + LetterCount * 2 + 11;
         return Error;
     }
 };

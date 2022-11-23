@@ -339,9 +339,9 @@ static string GetBoxType(Box t);
 
 // An abstract block diagram node
 struct Node {
-    Tree tree;
-    const Count InCount, OutCount;
+    Tree FaustTree;
     const vector<Node *> Children{};
+    const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
     const bool IsTopLevel;
     ImVec2 Position; // Populated in `place`
@@ -349,11 +349,11 @@ struct Node {
 
     DiagramOrientation Orientation = DiagramForward;
 
-    Node(Tree t, Count InCount, Count OutCount, vector<Node *> Children = {}, Count directDescendents = 0)
-        : tree(t), InCount(InCount), OutCount(OutCount), Children(std::move(Children)),
-          Descendents(directDescendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)),
+    Node(Tree tree, Count in_count, Count out_count, vector<Node *> children = {}, Count direct_descendents = 0)
+        : FaustTree(tree), Children(std::move(children)), InCount(in_count), OutCount(out_count),
+          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)),
         // `DiagramFoldComplexity == 0` means no folding
-          IsTopLevel(int(s.Style.FlowGrid.DiagramFoldComplexity) > 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {}
+          IsTopLevel(s.Style.FlowGrid.DiagramFoldComplexity != 0 && direct_descendents == 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {}
 
     virtual ~Node() = default;
 
@@ -412,7 +412,7 @@ struct Node {
         device.Rect(Rect(), {.FillColor={0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor={0.f, 0.f, 1.f, 1.f}, .StrokeWidth=1});
     }
     void DrawType(Device &device) const {
-        const string &type = GetBoxType(tree); // todo cache this at construction time if we ever use it outside the debug hover context
+        const string &type = GetBoxType(FaustTree); // todo cache this at construction time if we ever use it outside the debug hover context
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
         device.Rect({Position, Position + TextSize(type_label) + padding * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
@@ -462,9 +462,9 @@ static inline ImVec2 GetScale() {
     return s.Style.FlowGrid.DiagramScale;
 }
 
-static const char *GetTreeName(Tree t) {
+static const char *GetTreeName(Tree tree) {
     Tree name;
-    return getDefNameProperty(t, name) ? tree2str(name) : nullptr;
+    return getDefNameProperty(tree, name) ? tree2str(name) : nullptr;
 }
 
 // Hex address (without the '0x' prefix)
@@ -472,24 +472,24 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
 // If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
-static string SvgFileName(Tree t) {
-    if (!t) return "";
+static string SvgFileName(Tree tree) {
+    if (!tree) return "";
 
-    const string &tree_name = GetTreeName(t);
+    const string &tree_name = GetTreeName(tree);
     if (tree_name == "process") return tree_name + ".svg";
 
-    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>) + format("-{}", UniqueId(t)) + ".svg";
+    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>) + format("-{}", UniqueId(tree)) + ".svg";
 }
 
 void WriteSvg(Node *node, const fs::path &path) {
-    SVGDevice device(path, SvgFileName(node->tree), node->Size);
+    SVGDevice device(path, SvgFileName(node->FaustTree), node->Size);
     device.Rect(node->Rect(), {.FillColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]});
     node->Draw(device);
 }
 
 struct IONode : Node {
-    IONode(Tree t, Count InCount, Count OutCount, vector<Node *> Children = {}, Count directDescendents = 0)
-        : Node(t, InCount, OutCount, std::move(Children), directDescendents) {}
+    IONode(Tree tree, Count in_count, Count out_count, vector<Node *> children = {}, Count direct_descendents = 0)
+        : Node(tree, in_count, out_count, std::move(children), direct_descendents) {}
 
     ImVec2 Point(IO io, Count i) const override {
         return {
@@ -517,8 +517,8 @@ struct IONode : Node {
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : IONode {
-    BlockNode(Tree t, Count InCount, Count OutCount, string text, FlowGridCol color = FlowGridCol_DiagramNormal, Node *inner = nullptr)
-        : IONode(t, InCount, OutCount, {}, 1), text(std::move(text)), color(color), inner(inner) {}
+    BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridCol_DiagramNormal, Node *inner = nullptr)
+        : IONode(tree, in_count, out_count, {}, 1), text(std::move(text)), color(color), inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
         const float text_w = TextSize(text).x;
@@ -542,8 +542,8 @@ struct BlockNode : IONode {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             // todo why is draw called twice for each block with an inner child? (or maybe even every node?)
             //  note this is likely double-writing in ImGui too
-            if (inner && !fs::exists(svg_device.Directory / SvgFileName(inner->tree))) WriteSvg(inner, svg_device.Directory);
-            const string &link = inner ? SvgFileName(tree) : "";
+            if (inner && !fs::exists(svg_device.Directory / SvgFileName(inner->FaustTree))) WriteSvg(inner, svg_device.Directory);
+            const string &link = inner ? SvgFileName(FaustTree) : "";
             svg_device.Rect(rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
             svg_device.Text(Mid(), text, {.Color=text_color}, link);
         } else {
@@ -588,7 +588,7 @@ struct BlockNode : IONode {
 
 // Simple cables (identity box) in parallel.
 struct CableNode : Node {
-    CableNode(Tree t, Count n = 1) : Node(t, n, n) {}
+    CableNode(Tree tree, Count n = 1) : Node(tree, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
     void DoPlaceSize(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
@@ -610,7 +610,7 @@ private:
 // An inverter is a circle followed by a triangle.
 // It corresponds to '*(-1)', and it's used to create more compact diagrams.
 struct InverterNode : BlockNode {
-    InverterNode(Tree t) : BlockNode(t, 1, 1, "-1", FlowGridCol_DiagramInverter) {}
+    InverterNode(Tree tree) : BlockNode(tree, 1, 1, "-1", FlowGridCol_DiagramInverter) {}
 
     void DoPlaceSize(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
 
@@ -630,7 +630,7 @@ struct InverterNode : BlockNode {
 struct CutNode : Node {
     // A Cut is represented by a small black dot.
     // It has 1 input and no output.
-    CutNode(Tree t) : Node(t, 1, 0) {}
+    CutNode(Tree tree) : Node(tree, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
     void DoPlaceSize(const DeviceType) override { Size = {0, 1}; }
@@ -648,8 +648,8 @@ struct CutNode : Node {
 };
 
 struct ParallelNode : Node {
-    ParallelNode(Tree t, Node *s1, Node *s2)
-        : Node(t, s1->InCount + s2->InCount, s1->OutCount + s2->OutCount, {s1, s2}) {}
+    ParallelNode(Tree tree, Node *c1, Node *c2)
+        : Node(tree, c1->InCount + c2->InCount, c1->OutCount + c2->OutCount, {c1, c2}) {}
 
     void DoPlaceSize(const DeviceType) override { Size = {max(C1()->W(), C2()->W()), C1()->H() + C2()->H()}; }
     void DoPlace(const DeviceType type) override {
@@ -677,9 +677,9 @@ struct ParallelNode : Node {
 
 // Place and connect two diagrams in recursive composition
 struct RecursiveNode : Node {
-    RecursiveNode(Tree t, Node *s1, Node *s2) : Node(t, s1->InCount - s2->OutCount, s1->OutCount, {s1, s2}) {
-        assert(s1->InCount >= s2->OutCount);
-        assert(s1->OutCount >= s2->InCount);
+    RecursiveNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount - c2->OutCount, c1->OutCount, {c1, c2}) {
+        assert(c1->InCount >= c2->OutCount);
+        assert(c1->OutCount >= c2->InCount);
     }
 
     void DoPlaceSize(const DeviceType) override {
@@ -740,7 +740,7 @@ struct RecursiveNode : Node {
 };
 
 struct BinaryNode : Node {
-    BinaryNode(Tree t, Node *s1, Node *s2) : Node(t, s1->InCount, s2->OutCount, {s1, s2}) {}
+    BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, {c1, c2}) {}
 
     ImVec2 Point(IO io, Count i) const override { return Child(io == IO_In ? 0 : 1)->Point(io, i); }
 
@@ -758,9 +758,9 @@ struct BinaryNode : Node {
 };
 
 struct SequentialNode : BinaryNode {
-    // The components s1 and s2 must be "compatible" (s1: n->m and s2: m->q).
-    SequentialNode(Tree t, Node *s1, Node *s2) : BinaryNode(t, s1, s2) {
-        assert(s1->OutCount == s2->InCount);
+    // The components c1 and c2 must be "compatible" (c1: n->m and c2: m->q).
+    SequentialNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {
+        assert(c1->OutCount == c2->InCount);
     }
 
     void DoPlaceSize(const DeviceType type) override {
@@ -832,7 +832,7 @@ private:
 // Place and connect two diagrams in merge composition.
 // The outputs of the first node are merged to the inputs of the second.
 struct MergeNode : BinaryNode {
-    MergeNode(Tree t, Node *s1, Node *s2) : BinaryNode(t, s1, s2) {}
+    MergeNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Child(0)->Point(IO_Out, i), Child(1)->Point(IO_In, i % IoCount(IO_In, 1)));
@@ -842,40 +842,39 @@ struct MergeNode : BinaryNode {
 // Place and connect two diagrams in split composition.
 // The outputs the first node are distributed to the inputs of the second.
 struct SplitNode : BinaryNode {
-    SplitNode(Tree t, Node *s1, Node *s2) : BinaryNode(t, s1, s2) {}
+    SplitNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
         for (Count i = 0; i < IoCount(IO_In, 1); i++) device.Line(Child(0)->Point(IO_Out, i % IoCount(IO_Out, 0)), Child(1)->Point(IO_In, i));
     }
 };
 
-Node *MakeSequential(Tree t, Node *s1, Node *s2) {
-    const auto o = s1->OutCount;
-    const auto i = s2->InCount;
-    return new SequentialNode(t,
-        o < i ? new ParallelNode(t, s1, new CableNode(t, i - o)) : s1,
-        o > i ? new ParallelNode(t, s2, new CableNode(t, o - i)) : s2
+Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
+    const auto o = c1->OutCount;
+    const auto i = c2->InCount;
+    return new SequentialNode(tree,
+        o < i ? new ParallelNode(tree, c1, new CableNode(tree, i - o)) : c1,
+        o > i ? new ParallelNode(tree, c2, new CableNode(tree, o - i)) : c2
     );
 }
 
 // A `DecorateNode` is a node surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
 // If the number of boxes inside is over the `box_complexity` threshold, add additional padding and draw output arrows.
 struct DecorateNode : IONode {
-    DecorateNode(Tree t, Node *inner, string text)
-        : IONode(t, inner->InCount, inner->OutCount, {inner}, 0), text(std::move(text)) {}
+    DecorateNode(Tree tree, Node *inner, string text)
+        : IONode(tree, inner->InCount, inner->OutCount, {inner}, 0), Text(std::move(text)) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + margin(C1()) * 2; }
-
-    void DoPlace(const DeviceType type) override { C1()->Place(type, Position + margin(), Orientation); }
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, Position + Margin(), Orientation); }
 
     void DoDraw(Device &device) const override {
-        const float margin = IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.f + s.Style.FlowGrid.DiagramDecorateMargin / 2;
-        device.GroupRect({Position + margin, Position + Size - margin}, text);
+        const float margin = Margin();
+        device.GroupRect({Position + margin, Position + Size - margin}, Text);
         const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
         for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && IsTopLevel;
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Child(0)->Point(io, i), Point(io, i) - ImVec2{has_arrow ? DirUnit() * arrow_width : 0, 0});
+                device.Line(Child(0)->Point(io, i), Point(io, i) - ImVec2{has_arrow ? arrow_width : 0, 0});
                 if (has_arrow) device.Arrow(Point(io, i), Orientation);
             }
         }
@@ -885,17 +884,17 @@ struct DecorateNode : IONode {
         return Child(0)->Point(io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
-    inline float margin(const Node *node = nullptr) const {
-        return s.Style.FlowGrid.DiagramDecorateMargin + ((node ? node->IsTopLevel : IsTopLevel) ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.f);
+private:
+    inline float Margin() const {
+        return s.Style.FlowGrid.DiagramDecorateMargin + (IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.f);
     }
 
-private:
-    string text;
+    string Text;
 };
 
 struct RouteNode : IONode {
-    RouteNode(Tree t, Count InCount, Count OutCount, vector<int> routes)
-        : IONode(t, InCount, OutCount), routes(std::move(routes)) {}
+    RouteNode(Tree tree, Count in_count, Count out_count, vector<int> routes)
+        : IONode(tree, in_count, out_count), routes(std::move(routes)) {}
 
     void DoPlaceSize(const DeviceType) override {
         const float minimal = 3 * WireGap();
@@ -930,19 +929,16 @@ struct RouteNode : IONode {
     }
 
 protected:
-    const vector<int> routes; // Route description: s1,d2,s2,d2,...
+    const vector<int> routes; // Route description: c1,d2,c2,d2,...
 };
 
-static bool isBoxBinary(Tree t, Tree &x, Tree &y) {
-    return isBoxPar(t, x, y) || isBoxSeq(t, x, y) || isBoxSplit(t, x, y) || isBoxMerge(t, x, y) || isBoxRec(t, x, y);
+static bool isBoxBinary(Box box, Box &x, Box &y) {
+    return isBoxPar(box, x, y) || isBoxSeq(box, x, y) || isBoxSplit(box, x, y) || isBoxMerge(box, x, y) || isBoxRec(box, x, y);
 }
-
-// Generate a 1->0 block node for an input slot.
-static Node *make_input_slot(Tree t) { return new BlockNode(t, 1, 0, GetTreeName(t), FlowGridCol_DiagramSlot); }
 
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify diagram by using a special symbol for inverters.
-static bool isInverter(Tree t) {
+static bool isBoxInverter(Box box) {
     static Tree inverters[6]{
         boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul)),
         boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul)),
@@ -951,59 +947,62 @@ static bool isInverter(Tree t) {
         boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub)),
         boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub)),
     };
-    return ::ranges::contains(inverters, t);
+    return ::ranges::contains(inverters, box);
 }
 
-static inline string print_tree(Tree tree) {
+static inline string PrintTree(Tree tree) {
     const auto &str = printBox(tree, false);
     return str.substr(0, str.size() - 1); // Last character is a newline.
 }
 
-// Collect the leaf numbers of tree `t` into vector `v`.
-// Return true if `t` is a number or a parallel tree of numbers.
-static bool IsIntTree(Tree t, vector<int> &v) {
+// Convert user interface box into a textual representation
+static string GetUiDescription(Box box) {
+    Tree t1, label, cur, min, max, step, chan;
+    if (isBoxButton(box, label)) return "button(" + extractName(label) + ')';
+    if (isBoxCheckbox(box, label)) return "checkbox(" + extractName(label) + ')';
+    if (isBoxVSlider(box, label, cur, min, max, step)) return "vslider(" + extractName(label) + ", " + PrintTree(cur) + ", " + PrintTree(min) + ", " + PrintTree(max) + ", " + PrintTree(step) + ')';
+    if (isBoxHSlider(box, label, cur, min, max, step)) return "hslider(" + extractName(label) + ", " + PrintTree(cur) + ", " + PrintTree(min) + ", " + PrintTree(max) + ", " + PrintTree(step) + ')';
+    if (isBoxVGroup(box, label, t1)) return "vgroup(" + extractName(label) + ", " + PrintTree(t1) + ')';
+    if (isBoxHGroup(box, label, t1)) return "hgroup(" + extractName(label) + ", " + PrintTree(t1) + ')';
+    if (isBoxTGroup(box, label, t1)) return "tgroup(" + extractName(label) + ", " + PrintTree(t1) + ')';
+    if (isBoxHBargraph(box, label, min, max)) return "hbargraph(" + extractName(label) + ", " + PrintTree(min) + ", " + PrintTree(max) + ')';
+    if (isBoxVBargraph(box, label, min, max)) return "vbargraph(" + extractName(label) + ", " + PrintTree(min) + ", " + PrintTree(max) + ')';
+    if (isBoxNumEntry(box, label, cur, min, max, step)) return "nentry(" + extractName(label) + ", " + PrintTree(cur) + ", " + PrintTree(min) + ", " + PrintTree(max) + ", " + PrintTree(step) + ')';
+    if (isBoxSoundfile(box, label, chan)) return "soundfile(" + extractName(label) + ", " + PrintTree(chan) + ')';
+
+    throw std::runtime_error("ERROR : unknown user interface element");
+}
+
+static Node *Tree2Node(Tree, bool allow_links = true);
+
+// Generate a 1->0 block node for an input slot.
+static Node *MakeInputSlot(Tree tree) { return new BlockNode(tree, 1, 0, GetTreeName(tree), FlowGridCol_DiagramSlot); }
+
+// Collect the leaf numbers `tree` into vector `v`.
+// Return `true` if `tree` is a number or a parallel tree of numbers.
+static bool isBoxInts(Box box, vector<int> &v) {
     int i;
-    if (isBoxInt(t, &i)) {
+    if (isBoxInt(box, &i)) {
         v.push_back(i);
         return true;
     }
 
     double r;
-    if (isBoxReal(t, &r)) {
+    if (isBoxReal(box, &r)) {
         v.push_back(int(r));
         return true;
     }
 
     Tree x, y;
-    if (isBoxPar(t, x, y)) return IsIntTree(x, v) && IsIntTree(y, v);
+    if (isBoxPar(box, x, y)) return isBoxInts(x, v) && isBoxInts(y, v);
 
-    throw std::runtime_error("Not a valid list of numbers : " + print_tree(t));
+    throw std::runtime_error("Not a valid list of numbers : " + PrintTree(box));
 }
-
-// Convert user interface box into a textual representation
-static string GetUiDescription(Tree box) {
-    Tree t1, label, cur, min, max, step, chan;
-    if (isBoxButton(box, label)) return "button(" + extractName(label) + ')';
-    if (isBoxCheckbox(box, label)) return "checkbox(" + extractName(label) + ')';
-    if (isBoxVSlider(box, label, cur, min, max, step)) return "vslider(" + extractName(label) + ", " + print_tree(cur) + ", " + print_tree(min) + ", " + print_tree(max) + ", " + print_tree(step) + ')';
-    if (isBoxHSlider(box, label, cur, min, max, step)) return "hslider(" + extractName(label) + ", " + print_tree(cur) + ", " + print_tree(min) + ", " + print_tree(max) + ", " + print_tree(step) + ')';
-    if (isBoxVGroup(box, label, t1)) return "vgroup(" + extractName(label) + ", " + print_tree(t1) + ')';
-    if (isBoxHGroup(box, label, t1)) return "hgroup(" + extractName(label) + ", " + print_tree(t1) + ')';
-    if (isBoxTGroup(box, label, t1)) return "tgroup(" + extractName(label) + ", " + print_tree(t1) + ')';
-    if (isBoxHBargraph(box, label, min, max)) return "hbargraph(" + extractName(label) + ", " + print_tree(min) + ", " + print_tree(max) + ')';
-    if (isBoxVBargraph(box, label, min, max)) return "vbargraph(" + extractName(label) + ", " + print_tree(min) + ", " + print_tree(max) + ')';
-    if (isBoxNumEntry(box, label, cur, min, max, step)) return "nentry(" + extractName(label) + ", " + print_tree(cur) + ", " + print_tree(min) + ", " + print_tree(max) + ", " + print_tree(step) + ')';
-    if (isBoxSoundfile(box, label, chan)) return "soundfile(" + extractName(label) + ", " + print_tree(chan) + ')';
-
-    throw std::runtime_error("ERROR : unknown user interface element");
-}
-
-static Node *Tree2Node(Tree t, bool allow_links = true);
 
 // Generate the inside node of a block diagram according to its type.
 static Node *Tree2NodeNode(Tree t) {
     if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
-    if (isInverter(t)) return new InverterNode(t);
+    if (isBoxInverter(t)) return new InverterNode(t);
 
     int i;
     double r;
@@ -1037,13 +1036,9 @@ static Node *Tree2NodeNode(Tree t) {
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
 
-    const bool isVGroup = isBoxVGroup(t, label, a);
-    const bool isHGroup = isBoxHGroup(t, label, a);
-    const bool isTGroup = isBoxTGroup(t, label, a);
-    if (isVGroup || isHGroup || isTGroup) {
-        const string groupId = isVGroup ? "v" : isHGroup ? "h" : "t";
-        return new DecorateNode(a, Tree2Node(a), groupId + "group(" + extractName(label) + ")");
-    }
+    const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
+    if (is_vgroup || is_hgroup || is_tgroup) return new DecorateNode(a, Tree2Node(a), format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)));
+
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
     if (isBoxSplit(t, a, b)) return new SplitNode(t, Tree2Node(a), Tree2Node(b));
@@ -1054,10 +1049,10 @@ static Node *Tree2NodeNode(Tree t) {
 
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction node by placing in sequence the input slots and the body.
-        auto *input_slots = make_input_slot(a);
+        auto *input_slots = MakeInputSlot(a);
         Tree _a, _b;
         while (isBoxSymbolic(b, _a, _b)) {
-            input_slots = new ParallelNode(b, input_slots, make_input_slot(_a));
+            input_slots = new ParallelNode(b, input_slots, MakeInputSlot(_a));
             b = _b;
         }
         auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));
@@ -1070,16 +1065,16 @@ static Node *Tree2NodeNode(Tree t) {
         int ins, outs;
         vector<int> routes;
         // Build n x m cable routing
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && IsIntTree(route, routes)) return new RouteNode(t, ins, outs, routes);
-        throw std::runtime_error("Invalid route expression : " + print_tree(t));
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isBoxInts(route, routes)) return new RouteNode(t, ins, outs, routes);
+        throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
-    throw std::runtime_error("ERROR in Tree2NodeNode, box expression not recognized: " + print_tree(t));
+    throw std::runtime_error("ERROR in Tree2NodeNode, box expression not recognized: " + PrintTree(t));
 }
 
 string GetBoxType(Box t) {
     if (getUserData(t) != nullptr) return format("{}({},{})", xtendedName(t), xtendedArity(t), 1);
-    if (isInverter(t)) return "Inverter";
+    if (isBoxInverter(t)) return "Inverter";
     if (isBoxInt(t)) return "Int";
     if (isBoxReal(t)) return "Real";
     if (isBoxWaveform(t)) return "Waveform";
@@ -1132,7 +1127,7 @@ string GetBoxType(Box t) {
     if (isBoxRoute(t, a, b, route)) {
         int ins, outs;
         if (isBoxInt(a, &ins) && isBoxInt(b, &outs)) return format("Route({}x{})", ins, outs);
-        throw std::runtime_error("Invalid route expression : " + print_tree(t));
+        throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
     return "";
@@ -1146,7 +1141,7 @@ static bool IsPureRouting(Tree t) {
     if (IsTreePureRouting.contains(t)) return IsTreePureRouting[t];
 
     Tree x, y;
-    if (isBoxCut(t) || isBoxWire(t) || isInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && IsPureRouting(x) && IsPureRouting(y))) {
+    if (isBoxCut(t) || isBoxWire(t) || isBoxInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && IsPureRouting(x) && IsPureRouting(y))) {
         IsTreePureRouting.emplace(t, true);
         return true;
     }
@@ -1190,7 +1185,7 @@ void SaveBoxSvg(const string &path) {
     // Render SVG diagram(s)
     fs::remove_all(path);
     fs::create_directory(path);
-    auto *node = Tree2Node(RootNode->tree, false); // Ensure top-level is not compressed into a link.
+    auto *node = Tree2Node(RootNode->FaustTree, false); // Ensure top-level is not compressed into a link.
     node->PlaceSize(DeviceType_SVG);
     node->Place(DeviceType_SVG);
     WriteSvg(node, path);
@@ -1219,7 +1214,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
 
     if (s.Style.FlowGrid.DiagramFoldComplexity != FoldComplexity) {
         FoldComplexity = s.Style.FlowGrid.DiagramFoldComplexity;
-        OnBoxChange(RootNode->tree);
+        OnBoxChange(RootNode->FaustTree);
     }
 
     {

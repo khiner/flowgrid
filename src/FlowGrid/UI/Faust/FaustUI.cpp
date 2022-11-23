@@ -415,7 +415,7 @@ struct Node {
         const string &type = GetBoxType(tree); // todo cache this at construction time if we ever use it outside the debug hover context
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
-        device.Rect({Position, Position + TextSize(type_label) + ImVec2{padding, padding} * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
+        device.Rect({Position, Position + TextSize(type_label) + padding * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
         device.Text(Position, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Left, .PaddingRight=-padding, .PaddingBottom=-padding});
     }
     void DrawChannelLabels(Device &device) const {
@@ -565,13 +565,12 @@ struct BlockNode : IONode {
             SetCursorPos(cursor_pos);
         }
         DrawOrientationMark(device);
-        draw_connections(device);
+        DrawConnections(device);
     }
 
-    void draw_connections(Device &device) const {
-        const ImVec2 &arrow_size = s.Style.FlowGrid.DiagramArrowSize;
+    void DrawConnections(Device &device) const {
         const ImVec2 d = {DirUnit() * XGap(), 0};
-        const ImVec2 arrow_d = {DirUnit() * arrow_size.x, 0};
+        const ImVec2 arrow_d = {DirUnit() * s.Style.FlowGrid.DiagramArrowSize.X, 0};
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
             for (Count i = 0; i < IoCount(io); i++) {
@@ -623,7 +622,7 @@ struct InverterNode : BlockNode {
         const auto tri_c = tri_a + ImVec2{0, H()};
         device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Colors[color]);
         device.Triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Colors[color]);
-        draw_connections(device);
+        DrawConnections(device);
     }
 };
 
@@ -865,24 +864,18 @@ struct DecorateNode : IONode {
     DecorateNode(Tree t, Node *inner, string text)
         : IONode(t, inner->InCount, inner->OutCount, {inner}, 0), text(std::move(text)) {}
 
-    void DoPlaceSize(const DeviceType) override {
-        const float m = margin(C1());
-        Size = C1()->Size + ImVec2{m, m} * 2;
-    }
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + margin(C1()) * 2; }
 
-    void DoPlace(const DeviceType type) override {
-        const float m = margin();
-        C1()->Place(type, Position + ImVec2{m, m}, Orientation);
-    }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, Position + margin(), Orientation); }
 
     void DoDraw(Device &device) const override {
-        const ImVec2 &arrow_size = s.Style.FlowGrid.DiagramArrowSize;
-        const float m = 2.f * (IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0) + s.Style.FlowGrid.DiagramDecorateMargin;
-        device.GroupRect({Position + ImVec2{m, m} / 2, Position + Size - ImVec2{m, m} / 2}, text);
+        const float margin = IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.f + s.Style.FlowGrid.DiagramDecorateMargin / 2;
+        device.GroupRect({Position + margin, Position + Size - margin}, text);
+        const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
         for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && IsTopLevel;
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Child(0)->Point(io, i), Point(io, i) - ImVec2{has_arrow ? DirUnit() * arrow_size.x : 0, 0});
+                device.Line(Child(0)->Point(io, i), Point(io, i) - ImVec2{has_arrow ? DirUnit() * arrow_width : 0, 0});
                 if (has_arrow) device.Arrow(Point(io, i), Orientation);
             }
         }

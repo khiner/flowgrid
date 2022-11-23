@@ -7,6 +7,10 @@
 
 #include "../Helper/Time.h"
 
+// Adding/subtracting scalars to/from vectors is not defined with `IMGUI_DEFINE_MATH_OPERATORS`.
+static inline ImVec2 operator+(const ImVec2 &lhs, const float rhs) { return {lhs.x + rhs, lhs.y + rhs}; }
+static inline ImVec2 operator-(const ImVec2 &lhs, const float rhs) { return {lhs.x - rhs, lhs.y - rhs}; }
+
 struct UIContext {
     enum Flags_ {
         Flags_None = 0,

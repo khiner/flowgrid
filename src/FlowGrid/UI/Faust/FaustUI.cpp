@@ -310,7 +310,7 @@ struct ImGuiDevice : Device {
 
     void Line(const ImVec2 &start, const ImVec2 &end) override {
         const U32 color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramLine];
-        const auto width = Scale(s.Style.FlowGrid.DiagramWireWidth);
+        const float width = Scale(s.Style.FlowGrid.DiagramWireWidth);
         // ImGui adds {0.5, 0.5} to line points.
         DrawList->AddLine(At(start) - ImVec2{0.5f, 0}, At(end) - ImVec2{0.5f, 0}, color, width);
     }
@@ -336,6 +336,8 @@ std::stack<Node *> FocusedNodeStack;
 const Node *HoveredNode;
 
 static string GetBoxType(Box t);
+
+static map<const Node *, Count> DrawCountForNode{};
 
 // An abstract block diagram node
 struct Node {
@@ -369,12 +371,14 @@ struct Node {
         for (auto *child: Children) child->PlaceSize(type);
         DoPlaceSize(type);
     }
-    void Place(const DeviceType type) {
-        DoPlace(type);
-    }
+    void Place(const DeviceType type) { DoPlace(type); }
     void Draw(Device &device) const {
-        for (const auto *child: Children) child->Draw(device);
+        DrawCountForNode[this] += 1;
+        // todo only log in release build
+        if (DrawCountForNode[this] > 1) throw std::runtime_error(format("Node drawn more than once in a single frame. Draw count: {}", DrawCountForNode[this]));
+
         DoDraw(device);
+        for (auto *child: Children) child->Draw(device);
         if (device.Type() == DeviceType_ImGui &&
             (!HoveredNode || IsInside(*HoveredNode)) && IsMouseHoveringRect(device.At(Position), device.At(Position + Size))) {
             HoveredNode = this;
@@ -440,6 +444,11 @@ struct Node {
                 }
             }
         }
+    }
+
+    void MarkFrame() {
+        DrawCountForNode[this] = 0;
+        for (auto *child: Children) child->MarkFrame();
     }
 
 protected:
@@ -537,8 +546,6 @@ struct BlockNode : IONode {
         const ImRect &rect = GetFrameRect();
         if (device.Type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
-            // todo why is draw called twice for each block with an inner child? (or maybe even every node?)
-            //  note this is likely double-writing in ImGui too
             if (inner && !fs::exists(svg_device.Directory / SvgFileName(inner->FaustTree))) WriteSvg(inner, svg_device.Directory);
             const string &link = inner ? SvgFileName(FaustTree) : "";
             svg_device.Rect(rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
@@ -855,8 +862,8 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
     );
 }
 
-// A `DecorateNode` is a node surrounded by a dashed rectangle with a label on the top left, and arrows added to the outputs.
-// If the number of boxes inside is over the box complexity threshold, add additional padding and draw output arrows.
+// Surround the `inner` node with a rectangle, showing `text` as a label in the top left.
+// If this is a top-level node, add additional padding and draw output arrows.
 struct DecorateNode : IONode {
     DecorateNode(Tree tree, Node *inner, string text, bool is_group = false)
         : IONode(tree, inner->InCount, inner->OutCount, {inner}, 0),
@@ -1155,7 +1162,7 @@ static bool IsPureRouting(Tree t) {
 static Node *Tree2Node(Tree t, bool allow_links) {
     auto *node = Tree2NodeNode(t);
     if (const char *name = GetTreeName(t)) {
-        auto *decorate_node = new DecorateNode{t, node, name};
+        auto *decorate_node = new DecorateNode(t, node, name);
         if (decorate_node->IsTopLevel && allow_links) {
             int ins, outs;
             getBoxType(t, &ins, &outs);
@@ -1238,6 +1245,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
 
     ImGuiDevice device;
     HoveredNode = nullptr;
+    focused->MarkFrame();
     focused->Draw(device);
     if (HoveredNode) {
         if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowRect) HoveredNode->DrawRect(device);

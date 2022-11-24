@@ -65,9 +65,11 @@ struct Device {
     static constexpr float DecorateLabelOffset = 14; // Not configurable, since it's a pain to deal with right.
     static constexpr float DecorateLabelXPadding = 3;
 
-    Device(const ImVec2 &offset = {0, 0}) : Offset(offset) {}
+    Device(const ImVec2 &position = {0, 0}) : Position(position) {}
     virtual ~Device() = default;
+
     virtual DeviceType Type() = 0;
+
     virtual void Rect(const ImRect &rect, const RectStyle &style) = 0;
     virtual void GroupRect(const ImRect &rect, const string &text) = 0; // A labeled grouping
     virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
@@ -76,10 +78,12 @@ struct Device {
     virtual void Line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void Text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
     virtual void Dot(const ImVec2 &pos, const ImColor &fill_color) = 0;
+    virtual void SetCursorPos(const ImVec2 &local_pos) {
+//        Position = local_pos;
+    }
+    ImVec2 At(const ImVec2 &pos) const { return Position + Scale(pos); }
 
-    ImVec2 At(const ImVec2 &pos) const { return Offset + Scale(pos); }
-
-    ImVec2 Offset{};
+    ImVec2 Position{};
 };
 
 using namespace ImGui;
@@ -254,6 +258,10 @@ struct ImGuiDevice : Device {
 
     DeviceType Type() override { return DeviceType_ImGui; }
 
+    void SetCursorPos(const ImVec2 &local_pos) override {
+        Device::SetCursorPos(local_pos);
+        ImGui::SetCursorPos(local_pos);
+    }
     void Rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
         if (fill_color.Value.w != 0) DrawList->AddRectFilled(At(rect.Min), At(rect.Max), fill_color, corner_radius);
@@ -342,14 +350,15 @@ static map<const Node *, Count> DrawCountForNode{};
 // Hex address (without the '0x' prefix)
 static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
+// todo nextup: Refactor so that `Position` actually is relative to parent.
 // An abstract block diagram node
 struct Node {
     Tree FaustTree;
     const vector<Node *> Children{};
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
-    ImVec2 Position; // Relative to parent. Populated in `place`.
-    ImVec2 Size; // Populated in `place_size`
+    ImVec2 Position; // Relative to parent. Populated in `Place`.
+    ImVec2 Size; // Populated in `PlaceSize`.
     DiagramOrientation Orientation = DiagramForward;
 
     Node(Tree tree, Count in_count, Count out_count, vector<Node *> children = {}, Count direct_descendents = 0)
@@ -364,9 +373,9 @@ struct Node {
     Count IoCount(IO io, const Count child_index) const { return child_index < Children.size() ? Children[child_index]->IoCount(io) : 0; };
     virtual ImVec2 Point(IO io, Count channel) const = 0;
 
-    void Place(const DeviceType type, const ImVec2 &new_position, DiagramOrientation new_orientation) {
-        Position = new_position;
-        Orientation = new_orientation;
+    void Place(const DeviceType type, const ImVec2 &position, DiagramOrientation orientation) {
+        Position = position;
+        Orientation = orientation;
         DoPlace(type);
     }
     void PlaceSize(const DeviceType type) {
@@ -380,18 +389,25 @@ struct Node {
         if (DrawCountForNode[this] > 1) throw std::runtime_error(format("Node drawn more than once in a single frame. Draw count: {}", DrawCountForNode[this]));
 
         const auto before_cursor = GetCursorPos();
-        SetCursorPos(before_cursor + Position);
-        PushID(UniqueId(FaustTree).c_str());
-        Dummy(Size);
+        device.SetCursorPos(before_cursor + Position);
+
+        const bool is_imgui = device.Type() == DeviceType_ImGui;
+        if (is_imgui) {
+            PushID(UniqueId(FaustTree).c_str());
+            Dummy(Size);
+        }
 
         DoDraw(device);
         for (auto *child: Children) child->Draw(device);
-        if (device.Type() == DeviceType_ImGui &&
-            (!HoveredNode || IsInside(*HoveredNode)) && IsMouseHoveringRect(device.At(Position), device.At(Position + Size))) {
-            HoveredNode = this;
+
+        if (is_imgui) {
+            if ((!HoveredNode || IsInside(*HoveredNode)) && IsMouseHoveringRect(device.At(Position), device.At(Position + Size))) {
+                HoveredNode = this;
+            }
+            PopID();
         }
-        PopID();
-        SetCursorPos(before_cursor);
+
+        device.SetCursorPos(before_cursor);
     };
     inline bool IsLr() const { return ::IsLr(Orientation); }
     inline float DirUnit() const { return IsLr() ? 1 : -1; }
@@ -406,7 +422,9 @@ struct Node {
     inline float Right() const { return X() + W(); }
     inline float Bottom() const { return Y() + H(); }
 
-    inline ImRect Rect() const { return {Position, Position + Size}; }
+    inline ImVec2 AbsolutePosition() const { return RootNode->Position + Position; }
+
+    inline ImRect Rect() const { return {Position, Position + Size}; } // todo convert to `operator ImRect()`
     inline ImVec2 Mid() const { return Position + Size / 2; }
 
     inline Node *C1() const { return Children[0]; }
@@ -466,10 +484,6 @@ protected:
     virtual void DoDraw(Device &) const {}
 };
 
-static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
-static inline ImRect Scale(const ImRect &r) { return {Scale(r.Min), Scale(r.Max)}; }
-static inline float Scale(const float f) { return f * GetScale().y; }
-
 static inline ImVec2 GetScale() {
     if (s.Style.FlowGrid.DiagramScaleFill && !FocusedNodeStack.empty() && GetCurrentWindowRead()) {
         const auto *focused_node = FocusedNodeStack.top();
@@ -477,6 +491,10 @@ static inline ImVec2 GetScale() {
     }
     return s.Style.FlowGrid.DiagramScale;
 }
+
+static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
+static inline ImRect Scale(const ImRect &r) { return {Scale(r.Min), Scale(r.Max)}; }
+static inline float Scale(const float f) { return f * GetScale().y; }
 
 static const char *GetTreeName(Tree tree) {
     Tree name;
@@ -496,7 +514,7 @@ static string SvgFileName(Tree tree) {
 
 void WriteSvg(Node *node, const fs::path &path) {
     SVGDevice device(path, SvgFileName(node->FaustTree), node->Size);
-    device.Rect(node->Rect(), {.FillColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]});
+    device.Rect(node->Rect(), {.FillColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]}); // todo this should be done in both cases
     node->Draw(device);
 }
 
@@ -1255,10 +1273,11 @@ void Audio::FaustState::FaustDiagram::Draw() const {
     focused->MarkFrame();
     focused->Draw(device);
     if (HoveredNode) {
-        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowRect) HoveredNode->DrawRect(device);
-        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowType) HoveredNode->DrawType(device);
-        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowChannels) HoveredNode->DrawChannelLabels(device);
-        if (Settings.HoverFlags & FaustDiagramHoverFlags_ShowChildChannels) HoveredNode->DrawChildChannelLabels(device);
+        const auto &flags = Settings.HoverFlags;
+        if (flags & FaustDiagramHoverFlags_ShowRect) HoveredNode->DrawRect(device);
+        if (flags & FaustDiagramHoverFlags_ShowType) HoveredNode->DrawType(device);
+        if (flags & FaustDiagramHoverFlags_ShowChannels) HoveredNode->DrawChannelLabels(device);
+        if (flags & FaustDiagramHoverFlags_ShowChildChannels) HoveredNode->DrawChildChannelLabels(device);
     }
 
     EndChild();

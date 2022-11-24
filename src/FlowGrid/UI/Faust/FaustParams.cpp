@@ -34,7 +34,7 @@ using ValueBarFlags = int;
 bool ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1,
               const ValueBarFlags flags = ValueBarFlags_None, const HAlign h_align = HAlign_Center) {
     const float rect_width = CalcItemWidth();
-    const ImVec2 &rect_size = {rect_width, rect_height};
+    const ImVec2 &size = {rect_width, rect_height};
     const auto &style = GetStyle();
     const bool is_h = !(flags & ValueBarFlags_Vertical);
     const bool has_title = !(flags & ValueBarFlags_NoTitle);
@@ -54,24 +54,24 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
     bool changed = false;
     if (flags & ValueBarFlags_ReadOnly) {
         const float fraction = (*value - min_value) / max_value;
-        RenderFrame(rect_pos, rect_pos + rect_size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
+        RenderFrame(rect_pos, rect_pos + size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
         draw_list->AddRectFilled(
-            rect_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * rect_size.y},
-            rect_pos + rect_size * ImVec2{is_h ? fraction : 1, 1},
+            rect_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
+            rect_pos + size * ImVec2{is_h ? fraction : 1, 1},
             GetColorU32(ImGuiCol_PlotHistogram),
             style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
         );
-        Dummy(rect_size);
+        Dummy(size);
     } else {
         // Draw ImGui widget without value or label text.
         const string &id = format("##{}", label);
-        changed = is_h ? SliderFloat(id.c_str(), value, min_value, max_value, "") : VSliderFloat(id.c_str(), rect_size, value, min_value, max_value, "");
+        changed = is_h ? SliderFloat(id.c_str(), value, min_value, max_value, "") : VSliderFloat(id.c_str(), size, value, min_value, max_value, "");
     }
 
     const string value_text = format("{:.2f}", *value);
     const float value_text_w = CalcTextSize(value_text.c_str()).x;
     const float value_text_x = CalcAlignedX(is_h ? HAlign_Center : h_align, value_text_w, rect_width);
-    draw_list->AddText(rect_pos + ImVec2{value_text_x, (rect_size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());
+    draw_list->AddText(rect_pos + ImVec2{value_text_x, (size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());
 
     if (has_title && is_h) {
         SameLine();

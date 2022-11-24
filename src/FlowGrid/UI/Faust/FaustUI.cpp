@@ -348,7 +348,7 @@ struct Node {
     const vector<Node *> Children{};
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
-    ImVec2 Position; // Populated in `place`
+    ImVec2 Position; // Relative to parent. Populated in `place`.
     ImVec2 Size; // Populated in `place_size`
     DiagramOrientation Orientation = DiagramForward;
 
@@ -375,10 +375,14 @@ struct Node {
     }
     void Place(const DeviceType type) { DoPlace(type); }
     void Draw(Device &device) const {
-        PushID(UniqueId(FaustTree).c_str());
         DrawCountForNode[this] += 1;
         // todo only log in release build
         if (DrawCountForNode[this] > 1) throw std::runtime_error(format("Node drawn more than once in a single frame. Draw count: {}", DrawCountForNode[this]));
+
+        const auto before_cursor = GetCursorPos();
+        SetCursorPos(before_cursor + Position);
+        PushID(UniqueId(FaustTree).c_str());
+        Dummy(Size);
 
         DoDraw(device);
         for (auto *child: Children) child->Draw(device);
@@ -387,6 +391,7 @@ struct Node {
             HoveredNode = this;
         }
         PopID();
+        SetCursorPos(before_cursor);
     };
     inline bool IsLr() const { return ::IsLr(Orientation); }
     inline float DirUnit() const { return IsLr() ? 1 : -1; }

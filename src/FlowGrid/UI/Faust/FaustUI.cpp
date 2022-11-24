@@ -70,6 +70,8 @@ struct Device {
 
     virtual DeviceType Type() = 0;
 
+    // All positions received and drawn relative to this device's `Position` and `CursorPosition`.
+    // Drawing assumes `SetCursorPos` has been called to set the desired origin.
     virtual void Rect(const ImRect &rect, const RectStyle &style) = 0;
     virtual void GroupRect(const ImRect &rect, const string &text) = 0; // A labeled grouping
     virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
@@ -78,12 +80,13 @@ struct Device {
     virtual void Line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void Text(const ImVec2 &pos, const string &text, const TextStyle &style) = 0;
     virtual void Dot(const ImVec2 &pos, const ImColor &fill_color) = 0;
-    virtual void SetCursorPos(const ImVec2 &local_pos) {
-//        Position = local_pos;
-    }
-    ImVec2 At(const ImVec2 &pos) const { return Position + Scale(pos); }
 
-    ImVec2 Position{};
+    virtual void SetCursorPos(const ImVec2 &scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
+    void AdvanceCursor(const ImVec2 &unscaled_pos) { SetCursorPos(CursorPosition + Scale(unscaled_pos)); }
+    ImVec2 At(const ImVec2 &pos) const { return Position + CursorPosition + Scale(pos); }
+
+    ImVec2 Position{}; // Absolute window position of device
+    ImVec2 CursorPosition{}; // In local coordinates, relative to `Position`
 };
 
 using namespace ImGui;
@@ -136,10 +139,10 @@ struct SVGDevice : Device {
     DeviceType Type() override { return DeviceType_SVG; }
 
     static string XmlSanitize(const string &name) {
-        static map<char, string> replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
+        static map<char, string> Replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
 
         auto replaced_name = name;
-        for (const auto &[ch, replacement]: replacements) replaced_name = StringHelper::Replace(replaced_name, ch, replacement);
+        for (const auto &[ch, replacement]: Replacements) replaced_name = StringHelper::Replace(replaced_name, ch, replacement);
         return replaced_name;
     }
 
@@ -160,38 +163,38 @@ struct SVGDevice : Device {
     // Determined empirically to make the two renderings look the same.
     static float GetFontSize() { return Scale(GetTextLineHeight()) * 0.8f; }
 
-    void Rect(const ImRect &r, const RectStyle &style) override {
-        const auto &sr = Scale(r);
+    void Rect(const ImRect &local_rect, const RectStyle &style) override {
+        const ImRect &rect = {At(local_rect.Min), At(local_rect.Max)};
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
         Stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="{}" style="stroke:{};stroke-width={};fill:{};"/>)",
-            sr.Min.x, sr.Min.y, sr.GetWidth(), sr.GetHeight(), corner_radius, RgbColor(stroke_color), stroke_width, RgbColor(fill_color));
+            rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), corner_radius, RgbColor(stroke_color), stroke_width, RgbColor(fill_color));
     }
 
     // Only SVG device has a rect-with-link method
-    void Rect(const ImRect &r, const RectStyle &style, const string &link) {
+    void Rect(const ImRect &local_rect, const RectStyle &style, const string &link) {
         if (!link.empty()) Stream << format(R"(<a href="{}">)", XmlSanitize(link));
-        Rect(r, style);
+        Rect(local_rect, style);
         if (!link.empty()) Stream << "</a>";
     }
 
-    void GroupRect(const ImRect &r, const string &text) override {
-        const auto &sr = Scale(r);
-        const auto &tl = sr.Min;
-        const auto &tr = sr.GetTR();
+    void GroupRect(const ImRect &local_rect, const string &text) override {
+        const ImRect &rect = {At(local_rect.Min), At(local_rect.Max)};
+        const auto &tl = rect.Min;
+        const auto &tr = rect.GetTR();
         const float text_x = tl.x + Scale(DecorateLabelOffset);
         const auto &padding = Scale({DecorateLabelXPadding, 0});
         const ImVec2 &text_right = {min(text_x + Scale(TextSize(text)).x + padding.x, tr.x), tr.y};
         const U32 label_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle];
         const U32 stroke_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke];
-        const float rad = Scale(s.Style.FlowGrid.DiagramDecorateCornerRadius);
+        const float r = Scale(s.Style.FlowGrid.DiagramDecorateCornerRadius);
         const float line_width = Scale(s.Style.FlowGrid.DiagramDecorateLineWidth);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
         Stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)",
-            text_x - padding.x, tl.y, -Scale(DecorateLabelOffset) + padding.x + rad, rad, rad, -rad, rad, // before text to top-left
-            (sr.GetHeight() - 2 * rad), rad, rad, rad, rad, // top-left to bottom-left
-            (sr.GetWidth() - 2 * rad), rad, rad, rad, -rad, // bottom-left to bottom-right
-            -(sr.GetHeight() - 2 * rad), rad, rad, -rad, -rad, // bottom-right to top-right
-            -(tr.x - rad - text_right.x), // top-right to after text
+            text_x - padding.x, tl.y, -Scale(DecorateLabelOffset) + padding.x + r, r, r, -r, r, // before text to top-left
+            (rect.GetHeight() - 2 * r), r, r, r, r, // top-left to bottom-left
+            (rect.GetWidth() - 2 * r), r, r, r, -r, // bottom-left to bottom-right
+            -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
+            -(tr.x - r - text_right.x), // top-right to after text
             line_width, RgbColor(stroke_color));
         Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
             text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(label_color), XmlSanitize(text));
@@ -256,9 +259,9 @@ struct ImGuiDevice : Device {
 
     DeviceType Type() override { return DeviceType_ImGui; }
 
-    void SetCursorPos(const ImVec2 &local_pos) override {
-        Device::SetCursorPos(local_pos);
-        ImGui::SetCursorPos(local_pos);
+    void SetCursorPos(const ImVec2 &scaled_cursor_pos) override {
+        Device::SetCursorPos(scaled_cursor_pos);
+        ImGui::SetCursorScreenPos(At({0, 0}));
     }
     void Rect(const ImRect &rect, const RectStyle &style) override {
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
@@ -266,10 +269,11 @@ struct ImGuiDevice : Device {
         if (stroke_color.Value.w != 0) DrawList->AddRect(At(rect.Min), At(rect.Max), stroke_color, corner_radius);
     }
 
-    void GroupRect(const ImRect &rect, const string &text) override {
-        const auto &a = At(rect.Min);
-        const auto &b = At(rect.Max);
-        const auto &text_top_left = At(rect.Min + ImVec2{DecorateLabelOffset, 0});
+    void GroupRect(const ImRect &local_rect, const string &text) override {
+        const ImRect &rect = {At(local_rect.Min), At(local_rect.Max)};
+        const auto &a = rect.Min;
+        const auto &b = rect.Max;
+        const auto &text_top_left = a + Scale({DecorateLabelOffset, 0});
         const U32 stroke_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke];
         const U32 label_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle];
 
@@ -351,6 +355,11 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 // todo nextup: Refactor so that `Position` actually is relative to parent.
 // An abstract block diagram node
 struct Node {
+    inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
+    inline static ImVec2 Gap() { return s.Style.FlowGrid.DiagramGap; }
+    inline static float XGap() { return Gap().x; }
+    inline static float YGap() { return Gap().y; }
+
     Tree FaustTree;
     const vector<Node *> Children{};
     const Count InCount, OutCount;
@@ -369,7 +378,7 @@ struct Node {
 
     Count IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
     Count IoCount(IO io, const Count child_index) const { return child_index < Children.size() ? Children[child_index]->IoCount(io) : 0; };
-    virtual ImVec2 Point(IO io, Count channel) const = 0;
+    ImVec2 Point(Count child, IO io, Count channel) const { return Child(child)->Position + Child(child)->Point(io, channel); }
 
     void Place(const DeviceType type, const ImVec2 &position, DiagramOrientation orientation) {
         Position = position;
@@ -386,63 +395,44 @@ struct Node {
         // todo only log in release build
         if (DrawCountForNode[this] > 1) throw std::runtime_error(format("Node drawn more than once in a single frame. Draw count: {}", DrawCountForNode[this]));
 
-        const auto before_cursor = GetCursorPos();
-        device.SetCursorPos(before_cursor + Position);
+        const auto before_cursor = device.CursorPosition;
+        device.AdvanceCursor(Position);
 
         const bool is_imgui = device.Type() == DeviceType_ImGui;
         if (is_imgui) {
             PushID(UniqueId(FaustTree).c_str());
             Dummy(Size);
+            if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
         }
 
         DoDraw(device);
         for (auto *child: Children) child->Draw(device);
 
-        if (is_imgui) {
-            if ((!HoveredNode || IsInside(*HoveredNode)) && IsMouseHoveringRect(device.At(Position), device.At(Position + Size))) {
-                HoveredNode = this;
-            }
-            PopID();
-        }
+        if (is_imgui) PopID();
 
         device.SetCursorPos(before_cursor);
     };
+    inline operator ImRect() const { return {{0, 0}, Size}; }
+
     inline bool IsLr() const { return ::IsLr(Orientation); }
     inline float DirUnit() const { return IsLr() ? 1 : -1; }
     inline bool IsForward() const { return Orientation == DiagramForward; }
     inline float OrientationUnit() const { return IsForward() ? 1 : -1; }
-    inline bool IsInside(const Node &node) const { return X() > node.X() && Right() < node.Right() && Y() > node.Y() && Y() < node.Bottom(); }
-
-    inline float X() const { return Position.x; }
-    inline float Y() const { return Position.y; }
     inline float W() const { return Size.x; }
     inline float H() const { return Size.y; }
-    inline float Right() const { return X() + W(); }
-    inline float Bottom() const { return Y() + H(); }
-
-    inline ImVec2 AbsolutePosition() const { return RootNode->Position + Position; }
-
-    inline ImRect Rect() const { return {Position, Position + Size}; } // todo convert to `operator ImRect()`
-    inline ImVec2 Mid() const { return Position + Size / 2; }
-
     inline Node *C1() const { return Children[0]; }
     inline Node *C2() const { return Children[1]; }
 
-    inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
-    inline static ImVec2 Gap() { return s.Style.FlowGrid.DiagramGap; }
-    inline static float XGap() { return Gap().x; }
-    inline static float YGap() { return Gap().y; }
-
     // Debug
     void DrawRect(Device &device) const {
-        device.Rect(Rect(), {.FillColor={0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor={0.f, 0.f, 1.f, 1.f}, .StrokeWidth=1});
+        device.Rect(*this, {.FillColor={0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor={0.f, 0.f, 1.f, 1.f}, .StrokeWidth=1});
     }
     void DrawType(Device &device) const {
         const string &type = GetBoxType(FaustTree); // todo cache this at construction time if we ever use it outside the debug hover context
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
-        device.Rect({Position, Position + TextSize(type_label) + padding * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text(Position, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Left, .PaddingRight=-padding, .PaddingBottom=-padding});
+        device.Rect({{0, 0}, TextSize(type_label) + padding * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
+        device.Text({0, 0}, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Left, .PaddingRight=-padding, .PaddingBottom=-padding});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io: IO_All) {
@@ -461,11 +451,11 @@ struct Node {
             for (Count ci = 0; ci < Children.size(); ci++) {
                 for (Count channel = 0; channel < IoCount(io, ci); channel++) {
                     device.Text(
-                        Child(ci)->Point(io, channel),
+                        Point(ci, io, channel),
                         format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
                         {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .ScaleHeight=0.9, .FontStyle=TextStyle::FontStyle::Bold}
                     );
-                    device.Circle(Child(ci)->Point(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
+                    device.Circle(Point(ci, io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }
             }
         }
@@ -477,6 +467,7 @@ struct Node {
     }
 
 protected:
+    virtual ImVec2 Point(IO io, Count channel) const = 0;
     virtual void DoPlaceSize(DeviceType) = 0;
     virtual void DoPlace(DeviceType) {};
     virtual void DoDraw(Device &) const {}
@@ -512,7 +503,7 @@ static string SvgFileName(Tree tree) {
 
 void WriteSvg(Node *node, const fs::path &path) {
     SVGDevice device(path, SvgFileName(node->FaustTree), node->Size);
-    device.Rect(node->Rect(), {.FillColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]}); // todo this should be done in both cases
+    device.Rect(*node, {.FillColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]}); // todo this should be done in both cases
     node->Draw(device);
 }
 
@@ -522,12 +513,12 @@ struct IONode : Node {
 
     ImVec2 Point(IO io, Count i) const override {
         return {
-            X() + ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
-            Mid().y - WireGap() * (float(IoCount(io) - 1) / 2 - float(i)) * OrientationUnit()
+            (io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W(),
+            (Size / 2).y - WireGap() * (float(IoCount(io) - 1) / 2 - float(i)) * OrientationUnit()
         };
     }
 
-    ImRect GetFrameRect() const { return {Position + Gap(), Position + Size - Gap()}; }
+    ImRect GetFrameRect() const { return {Gap(), Size - Gap()}; }
 
     // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
     // Marker on top: Forward orientation. Inputs go from top to bottom.
@@ -566,17 +557,17 @@ struct BlockNode : IONode {
     void DoDraw(Device &device) const override {
         const U32 fill_color = s.Style.FlowGrid.Colors[color];
         const U32 text_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramText];
-        const ImRect &rect = GetFrameRect();
+        const auto &rect = GetFrameRect();
+
         if (device.Type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (inner && !fs::exists(svg_device.Directory / SvgFileName(inner->FaustTree))) WriteSvg(inner, svg_device.Directory);
             const string &link = inner ? SvgFileName(FaustTree) : "";
             svg_device.Rect(rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
-            svg_device.Text(Mid(), text, {.Color=text_color}, link);
+            svg_device.Text(Size / 2, text, {.Color=text_color}, link);
         } else {
-            const ImRect &scaled_rect = Scale(ImRect{Position + Gap(), Position + Size - Gap()});
-            const auto cursor_pos = GetCursorPos();
-            SetCursorPos(scaled_rect.Min);
+            const auto before_cursor = device.CursorPosition;
+            device.AdvanceCursor(rect.Min);
             PushStyleVar(ImGuiStyleVar_FrameRounding, s.Style.FlowGrid.DiagramBoxCornerRadius);
             PushStyleColor(ImGuiCol_Button, fill_color);
             PushStyleColor(ImGuiCol_Text, text_color);
@@ -585,11 +576,11 @@ struct BlockNode : IONode {
                 PushStyleColor(ImGuiCol_ButtonHovered, fill_color);
                 PushStyleColor(ImGuiCol_ButtonActive, fill_color);
             }
-            if (Button(text.c_str(), scaled_rect.GetSize()) && inner) FocusedNodeStack.push(inner);
+            if (Button(text.c_str(), Scale(rect).GetSize()) && inner) FocusedNodeStack.push(inner);
             if (!inner) PopStyleColor(2);
             PopStyleColor(2);
             PopStyleVar(1);
-            SetCursorPos(cursor_pos);
+            device.SetCursorPos(before_cursor);
         }
         DrawOrientationMark(device);
         DrawConnections(device);
@@ -624,7 +615,7 @@ struct CableNode : Node {
     void DoPlace(const DeviceType) override {
         for (Count i = 0; i < InCount; i++) {
             const float dx = WireGap() * (float(i) + 0.5f);
-            Points[i] = Position + ImVec2{0, IsLr() ? dx : H() - dx};
+            Points[i] = {0, IsLr() ? dx : H() - dx};
         }
     }
 
@@ -644,8 +635,8 @@ struct InverterNode : BlockNode {
     void DoDraw(Device &device) const override {
         const float radius = s.Style.FlowGrid.DiagramInverterRadius;
         const ImVec2 p1 = {W() - 2 * XGap(), 1 + (H() - 1) / 2};
-        const auto tri_a = Position + ImVec2{XGap() + (IsLr() ? 0 : p1.x), 0};
-        const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : X()), p1.y};
+        const auto tri_a = ImVec2{XGap() + (IsLr() ? 0 : p1.x), 0};
+        const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : W()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
         device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Colors[color]);
         device.Triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Colors[color]);
@@ -670,7 +661,7 @@ struct CutNode : Node {
     // A Cut has only one input point
     ImVec2 Point(IO io, Count) const override {
         assert(io == IO_In);
-        return {X(), Mid().y};
+        return {0, (Size / 2).y};
     }
 };
 
@@ -682,14 +673,14 @@ struct ParallelNode : Node {
     void DoPlace(const DeviceType type) override {
         auto *top = Children[IsForward() ? 0 : 1];
         auto *bottom = Children[IsForward() ? 1 : 0];
-        top->Place(type, Position + ImVec2{(W() - top->W()) / 2, 0}, Orientation);
-        bottom->Place(type, Position + ImVec2{(W() - bottom->W()) / 2, top->H()}, Orientation);
+        top->Place(type, ImVec2{(W() - top->W()) / 2, 0}, Orientation);
+        bottom->Place(type, ImVec2{(W() - bottom->W()) / 2, top->H()}, Orientation);
     }
 
     void DoDraw(Device &device) const override {
         for (const IO io: IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Point(io, i), i < C1()->IoCount(io) ? C1()->Point(io, i) : C2()->Point(io, i - C1()->IoCount(io)));
+                device.Line(Point(io, i), i < C1()->IoCount(io) ? Node::Point(0, io, i) : Node::Point(1, io, i - C1()->IoCount(io)));
             }
         }
     }
@@ -697,8 +688,8 @@ struct ParallelNode : Node {
     ImVec2 Point(IO io, Count i) const override {
         const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
         return i < C1()->IoCount(io) ?
-               C1()->Point(io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
-               C2()->Point(io, i - C1()->IoCount(io)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
+               Node::Point(0, io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
+               Node::Point(1, io, i - C1()->IoCount(io)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
     }
 };
 
@@ -720,16 +711,16 @@ struct RecursiveNode : Node {
     void DoPlace(const DeviceType type) override {
         auto *top_node = Children[IsForward() ? 1 : 0];
         auto *bottom_node = Children[IsForward() ? 0 : 1];
-        top_node->Place(type, Position + ImVec2{(W() - top_node->W()) / 2, 0}, DiagramReverse);
-        bottom_node->Place(type, Position + ImVec2{(W() - bottom_node->W()) / 2, top_node->H()}, DiagramForward);
+        top_node->Place(type, {(W() - top_node->W()) / 2, 0}, DiagramReverse);
+        bottom_node->Place(type, {(W() - bottom_node->W()) / 2, top_node->H()}, DiagramForward);
     }
 
     void DoDraw(Device &device) const override {
         const float dw = OrientationUnit() * WireGap();
         // Out0->In1 feedback connections
         for (Count i = 0; i < IoCount(IO_In, 1); i++) {
-            const auto &in1 = C2()->Point(IO_In, i);
-            const auto &out0 = C1()->Point(IO_Out, i);
+            const auto &in1 = Node::Point(1, IO_In, i);
+            const auto &out0 = Node::Point(0, IO_Out, i);
             const auto &from = ImVec2{IsLr() ? max(in1.x, out0.x) : min(in1.x, out0.x), out0.y} + ImVec2{float(i) * dw, 0};
             // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
             const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
@@ -743,14 +734,14 @@ struct RecursiveNode : Node {
             device.Line(bend, in1);
         }
         // Non-recursive output lines
-        for (Count i = 0; i < OutCount; i++) device.Line(C1()->Point(IO_Out, i), Point(IO_Out, i));
+        for (Count i = 0; i < OutCount; i++) device.Line(Node::Point(0, IO_Out, i), Point(IO_Out, i));
         // Input lines
-        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), C1()->Point(IO_In, i + C2()->OutCount));
+        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), Node::Point(0, IO_In, i + C2()->OutCount));
         // Out1->In0 feedfront connections
         for (Count i = 0; i < IoCount(IO_Out, 1); i++) {
-            const auto &from = C2()->Point(IO_Out, i);
+            const auto &from = Node::Point(1, IO_Out, i);
             const auto &from_dx = from - ImVec2{dw * float(i), 0};
-            const auto &to = C1()->Point(IO_In, i);
+            const auto &to = Node::Point(0, IO_In, i);
             const ImVec2 &corner1 = {to.x, from_dx.y};
             const ImVec2 &corner2 = {from_dx.x, to.y};
             const ImVec2 &bend = IsLr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
@@ -762,14 +753,14 @@ struct RecursiveNode : Node {
 
     ImVec2 Point(IO io, Count i) const override {
         const bool lr = (io == IO_In && IsLr()) || (io == IO_Out && !IsLr());
-        return {lr ? X() : Right(), C1()->Point(io, i + (io == IO_In ? IoCount(IO_Out, 1) : 0)).y};
+        return {lr ? 0 : W(), Node::Point(0, io, i + (io == IO_In ? IoCount(IO_Out, 1) : 0)).y};
     }
 };
 
 struct BinaryNode : Node {
     BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, {c1, c2}) {}
 
-    ImVec2 Point(IO io, Count i) const override { return Child(io == IO_In ? 0 : 1)->Point(io, i); }
+    ImVec2 Point(IO io, Count i) const override { return Node::Point(io == IO_In ? 0 : 1, io, i); }
 
     void DoPlaceSize(const DeviceType) override { Size = {C1()->W() + C2()->W() + HorizontalGap(), max(C1()->H(), C2()->H())}; }
 
@@ -777,8 +768,8 @@ struct BinaryNode : Node {
     void DoPlace(const DeviceType type) override {
         auto *left = Children[IsLr() ? 0 : 1];
         auto *right = Children[IsLr() ? 1 : 0];
-        left->Place(type, Position + ImVec2{0, max(0.f, right->H() - left->H()) / 2}, Orientation);
-        right->Place(type, Position + ImVec2{left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
+        left->Place(type, {0, max(0.f, right->H() - left->H()) / 2}, Orientation);
+        right->Place(type, {left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
     }
 
     virtual float HorizontalGap() const { return (C1()->H() + C2()->H()) * s.Style.FlowGrid.DiagramBinaryHorizontalGapRatio; }
@@ -791,7 +782,7 @@ struct SequentialNode : BinaryNode {
     }
 
     void DoPlaceSize(const DeviceType type) override {
-        if (C1()->X() == 0 && C1()->Y() == 0 && C2()->X() == 0 && C2()->Y() == 0) {
+        if (C1()->Position.x == 0 && C1()->Position.y == 0 && C2()->Position.x == 0 && C2()->Position.y == 0) {
             C1()->Place(type, {0, max(0.f, C2()->H() - C1()->H()) / 2}, DiagramForward);
             C2()->Place(type, {0, max(0.f, C1()->H() - C2()->H()) / 2}, DiagramForward);
         }
@@ -802,7 +793,7 @@ struct SequentialNode : BinaryNode {
         BinaryNode::DoPlace(type);
         ChannelsForDirection = {};
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
-            const auto dy = C2()->Point(IO_In, i).y - C1()->Point(IO_Out, i).y;
+            const auto dy = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
             ChannelsForDirection[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up : ImGuiDir_Down].emplace_back(i);
         }
     }
@@ -810,7 +801,7 @@ struct SequentialNode : BinaryNode {
     void DoDraw(Device &device) const override {
         if (!s.Style.FlowGrid.DiagramSequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
-            for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(C1()->Point(IO_Out, i), C2()->Point(IO_In, i));
+            for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i));
             return;
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
@@ -818,8 +809,8 @@ struct SequentialNode : BinaryNode {
             const auto &channels = ChannelsForDirection.at(dir);
             for (Count i = 0; i < channels.size(); i++) {
                 const auto channel = channels[i];
-                const auto from = C1()->Point(IO_Out, channel);
-                const auto to = C2()->Point(IO_In, channel);
+                const auto from = Node::Point(0, IO_Out, channel);
+                const auto to = Node::Point(1, IO_In, channel);
                 if (dir == ImGuiDir_None) {
                     device.Line(from, to); // Draw a  straight cable
                 } else {
@@ -842,7 +833,7 @@ struct SequentialNode : BinaryNode {
         Count size = 0;
         map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
-            const float yd = C2()->Point(IO_In, i).y - C1()->Point(IO_Out, i).y;
+            const float yd = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
             size = dir == prev_dir ? size + 1 : 1;
             prev_dir = dir;
@@ -862,7 +853,7 @@ struct MergeNode : BinaryNode {
     MergeNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(C1()->Point(IO_Out, i), C2()->Point(IO_In, i % IoCount(IO_In, 1)));
+        for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i % IoCount(IO_In, 1)));
     }
 };
 
@@ -872,7 +863,7 @@ struct SplitNode : BinaryNode {
     SplitNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_In, 1); i++) device.Line(C1()->Point(IO_Out, i % IoCount(IO_Out, 0)), C2()->Point(IO_In, i));
+        for (Count i = 0; i < IoCount(IO_In, 1); i++) device.Line(Node::Point(0, IO_Out, i % IoCount(IO_Out, 0)), Node::Point(1, IO_In, i));
     }
 };
 
@@ -895,23 +886,23 @@ struct DecorateNode : IONode {
           Text(std::move(text)) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, Position + Margin(), Orientation); }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, {Margin(), Margin()}, Orientation); }
 
     void DoDraw(Device &device) const override {
         const float margin = Margin();
-        device.GroupRect({Position + margin, Position + Size - margin}, Text);
+        device.GroupRect({{margin, margin}, Size - margin}, Text);
         const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
         for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && IsTopLevel;
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(C1()->Point(io, i), Point(io, i) - ImVec2{has_arrow ? arrow_width : 0, 0});
+                device.Line(Node::Point(0, io, i), Point(io, i) - ImVec2{has_arrow ? arrow_width : 0, 0});
                 if (has_arrow) device.Arrow(Point(io, i), Orientation);
             }
         }
     }
 
     ImVec2 Point(IO io, Count i) const override {
-        return C1()->Point(io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
+        return Node::Point(0, io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
     const bool IsTopLevel;
@@ -1272,6 +1263,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
     focused->Draw(device);
     if (HoveredNode) {
         const auto &flags = Settings.HoverFlags;
+        // todo get abs pos by traversing through ancestors
         if (flags & FaustDiagramHoverFlags_ShowRect) HoveredNode->DrawRect(device);
         if (flags & FaustDiagramHoverFlags_ShowType) HoveredNode->DrawType(device);
         if (flags & FaustDiagramHoverFlags_ShowChannels) HoveredNode->DrawChannelLabels(device);

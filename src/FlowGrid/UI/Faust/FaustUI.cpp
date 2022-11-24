@@ -659,16 +659,16 @@ struct ParallelNode : Node {
     void DoDraw(Device &device) const override {
         for (const IO io: IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Point(io, i), i < IoCount(io, 0) ? Child(0)->Point(io, i) : Child(1)->Point(io, i - IoCount(io, 0)));
+                device.Line(Point(io, i), i < C1()->IoCount(io) ? C1()->Point(io, i) : C2()->Point(io, i - C1()->IoCount(io)));
             }
         }
     }
 
     ImVec2 Point(IO io, Count i) const override {
         const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
-        return i < IoCount(io, 0) ?
-               Child(0)->Point(io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
-               Child(1)->Point(io, i - IoCount(io, 0)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
+        return i < C1()->IoCount(io) ?
+               C1()->Point(io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
+               C2()->Point(io, i - C1()->IoCount(io)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
     }
 };
 
@@ -698,8 +698,8 @@ struct RecursiveNode : Node {
         const float dw = OrientationUnit() * WireGap();
         // Out0->In1 feedback connections
         for (Count i = 0; i < IoCount(IO_In, 1); i++) {
-            const auto &in1 = Child(1)->Point(IO_In, i);
-            const auto &out0 = Child(0)->Point(IO_Out, i);
+            const auto &in1 = C2()->Point(IO_In, i);
+            const auto &out0 = C1()->Point(IO_Out, i);
             const auto &from = ImVec2{IsLr() ? max(in1.x, out0.x) : min(in1.x, out0.x), out0.y} + ImVec2{float(i) * dw, 0};
             // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
             const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
@@ -713,14 +713,14 @@ struct RecursiveNode : Node {
             device.Line(bend, in1);
         }
         // Non-recursive output lines
-        for (Count i = 0; i < OutCount; i++) device.Line(Child(0)->Point(IO_Out, i), Point(IO_Out, i));
+        for (Count i = 0; i < OutCount; i++) device.Line(C1()->Point(IO_Out, i), Point(IO_Out, i));
         // Input lines
-        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), Child(0)->Point(IO_In, i + C2()->OutCount));
+        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), C1()->Point(IO_In, i + C2()->OutCount));
         // Out1->In0 feedfront connections
         for (Count i = 0; i < IoCount(IO_Out, 1); i++) {
-            const auto &from = Child(1)->Point(IO_Out, i);
+            const auto &from = C2()->Point(IO_Out, i);
             const auto &from_dx = from - ImVec2{dw * float(i), 0};
-            const auto &to = Child(0)->Point(IO_In, i);
+            const auto &to = C1()->Point(IO_In, i);
             const ImVec2 &corner1 = {to.x, from_dx.y};
             const ImVec2 &corner2 = {from_dx.x, to.y};
             const ImVec2 &bend = IsLr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
@@ -732,7 +732,7 @@ struct RecursiveNode : Node {
 
     ImVec2 Point(IO io, Count i) const override {
         const bool lr = (io == IO_In && IsLr()) || (io == IO_Out && !IsLr());
-        return {lr ? X() : Right(), Child(0)->Point(io, i + (io == IO_In ? IoCount(IO_Out, 1) : 0)).y};
+        return {lr ? X() : Right(), C1()->Point(io, i + (io == IO_In ? IoCount(IO_Out, 1) : 0)).y};
     }
 };
 
@@ -772,7 +772,7 @@ struct SequentialNode : BinaryNode {
         BinaryNode::DoPlace(type);
         ChannelsForDirection = {};
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
-            const auto dy = Child(1)->Point(IO_In, i).y - Child(0)->Point(IO_Out, i).y;
+            const auto dy = C2()->Point(IO_In, i).y - C1()->Point(IO_Out, i).y;
             ChannelsForDirection[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up : ImGuiDir_Down].emplace_back(i);
         }
     }
@@ -780,7 +780,7 @@ struct SequentialNode : BinaryNode {
     void DoDraw(Device &device) const override {
         if (!s.Style.FlowGrid.DiagramSequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
-            for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Child(0)->Point(IO_Out, i), Child(1)->Point(IO_In, i));
+            for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(C1()->Point(IO_Out, i), C2()->Point(IO_In, i));
             return;
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
@@ -788,8 +788,8 @@ struct SequentialNode : BinaryNode {
             const auto &channels = ChannelsForDirection.at(dir);
             for (Count i = 0; i < channels.size(); i++) {
                 const auto channel = channels[i];
-                const auto from = Child(0)->Point(IO_Out, channel);
-                const auto to = Child(1)->Point(IO_In, channel);
+                const auto from = C1()->Point(IO_Out, channel);
+                const auto to = C2()->Point(IO_In, channel);
                 if (dir == ImGuiDir_None) {
                     device.Line(from, to); // Draw a  straight cable
                 } else {
@@ -812,7 +812,7 @@ struct SequentialNode : BinaryNode {
         Count size = 0;
         map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
-            const float yd = Child(1)->Point(IO_In, i).y - Child(0)->Point(IO_Out, i).y;
+            const float yd = C2()->Point(IO_In, i).y - C1()->Point(IO_Out, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
             size = dir == prev_dir ? size + 1 : 1;
             prev_dir = dir;
@@ -832,7 +832,7 @@ struct MergeNode : BinaryNode {
     MergeNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Child(0)->Point(IO_Out, i), Child(1)->Point(IO_In, i % IoCount(IO_In, 1)));
+        for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(C1()->Point(IO_Out, i), C2()->Point(IO_In, i % IoCount(IO_In, 1)));
     }
 };
 
@@ -842,7 +842,7 @@ struct SplitNode : BinaryNode {
     SplitNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_In, 1); i++) device.Line(Child(0)->Point(IO_Out, i % IoCount(IO_Out, 0)), Child(1)->Point(IO_In, i));
+        for (Count i = 0; i < IoCount(IO_In, 1); i++) device.Line(C1()->Point(IO_Out, i % IoCount(IO_Out, 0)), C2()->Point(IO_In, i));
     }
 };
 
@@ -874,14 +874,14 @@ struct DecorateNode : IONode {
         for (const IO io: IO_All) {
             const bool has_arrow = io == IO_Out && IsTopLevel;
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Child(0)->Point(io, i), Point(io, i) - ImVec2{has_arrow ? arrow_width : 0, 0});
+                device.Line(C1()->Point(io, i), Point(io, i) - ImVec2{has_arrow ? arrow_width : 0, 0});
                 if (has_arrow) device.Arrow(Point(io, i), Orientation);
             }
         }
     }
 
     ImVec2 Point(IO io, Count i) const override {
-        return Child(0)->Point(io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
+        return C1()->Point(io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
     }
 
     const bool IsTopLevel;

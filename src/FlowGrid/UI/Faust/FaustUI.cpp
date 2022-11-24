@@ -143,6 +143,23 @@ struct SVGDevice : Device {
         return replaced_name;
     }
 
+    // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
+    static string ArrowPointingAt(const ImVec2 &pos, ImVec2 half_sz, DiagramOrientation orientation, const ImColor &color) {
+        const float d = IsLr(orientation) ? -1 : 1;
+        return CreateTriangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
+    }
+    static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &fill_color, const ImColor &stroke_color) {
+        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)",
+            RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    }
+    static string RgbColor(const ImColor &color) {
+        const auto &[r, g, b, a] = color.Value * 255;
+        return format("rgb({}, {}, {}, {})", r, g, b, a);
+    }
+    // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
+    // Determined empirically to make the two renderings look the same.
+    static float GetFontSize() { return Scale(GetTextLineHeight()) * 0.8f; }
+
     void Rect(const ImRect &r, const RectStyle &style) override {
         const auto &sr = Scale(r);
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
@@ -226,25 +243,6 @@ struct SVGDevice : Device {
         const float radius = Scale(s.Style.FlowGrid.DiagramOrientationMarkRadius);
         Stream << format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, RgbColor(fill_color));
     }
-
-    // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    static string ArrowPointingAt(const ImVec2 &pos, ImVec2 half_sz, DiagramOrientation orientation, const ImColor &color) {
-        const float d = IsLr(orientation) ? -1 : 1;
-        return CreateTriangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
-    }
-
-    static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &fill_color, const ImColor &stroke_color) {
-        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)",
-            RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-    }
-
-    static string RgbColor(const ImColor &color) {
-        return format("rgb({}, {}, {}, {})", color.Value.x * 255, color.Value.y * 255, color.Value.z * 255, color.Value.w * 255);
-    }
-
-    // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
-    // Determined empirically to make the two renderings look the same.
-    static float GetFontSize() { return Scale(GetTextLineHeight()) * 0.8f; }
 
     fs::path Directory;
     string FileName;

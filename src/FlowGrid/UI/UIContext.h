@@ -10,6 +10,8 @@
 // Adding/subtracting scalars to/from vectors is not defined with `IMGUI_DEFINE_MATH_OPERATORS`.
 static inline ImVec2 operator+(const ImVec2 &lhs, const float rhs) { return {lhs.x + rhs, lhs.y + rhs}; }
 static inline ImVec2 operator-(const ImVec2 &lhs, const float rhs) { return {lhs.x - rhs, lhs.y - rhs}; }
+// Neither is multiplying by an `ImVec4`.
+static inline ImVec4 operator*(const ImVec4 &lhs, const float rhs) { return {lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs}; }
 
 struct UIContext {
     enum Flags_ {

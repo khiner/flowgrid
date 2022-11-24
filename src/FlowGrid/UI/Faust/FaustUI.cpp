@@ -339,6 +339,9 @@ static string GetBoxType(Box t);
 
 static map<const Node *, Count> DrawCountForNode{};
 
+// Hex address (without the '0x' prefix)
+static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
+
 // An abstract block diagram node
 struct Node {
     Tree FaustTree;
@@ -347,7 +350,6 @@ struct Node {
     const Count Descendents = 0; // The number of boxes within this node (recursively).
     ImVec2 Position; // Populated in `place`
     ImVec2 Size; // Populated in `place_size`
-
     DiagramOrientation Orientation = DiagramForward;
 
     Node(Tree tree, Count in_count, Count out_count, vector<Node *> children = {}, Count direct_descendents = 0)
@@ -373,6 +375,7 @@ struct Node {
     }
     void Place(const DeviceType type) { DoPlace(type); }
     void Draw(Device &device) const {
+        PushID(UniqueId(FaustTree).c_str());
         DrawCountForNode[this] += 1;
         // todo only log in release build
         if (DrawCountForNode[this] > 1) throw std::runtime_error(format("Node drawn more than once in a single frame. Draw count: {}", DrawCountForNode[this]));
@@ -383,6 +386,7 @@ struct Node {
             (!HoveredNode || IsInside(*HoveredNode)) && IsMouseHoveringRect(device.At(Position), device.At(Position + Size))) {
             HoveredNode = this;
         }
+        PopID();
     };
     inline bool IsLr() const { return ::IsLr(Orientation); }
     inline float DirUnit() const { return IsLr() ? 1 : -1; }
@@ -460,6 +464,7 @@ protected:
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
 static inline ImRect Scale(const ImRect &r) { return {Scale(r.Min), Scale(r.Max)}; }
 static inline float Scale(const float f) { return f * GetScale().y; }
+
 static inline ImVec2 GetScale() {
     if (s.Style.FlowGrid.DiagramScaleFill && !FocusedNodeStack.empty() && GetCurrentWindowRead()) {
         const auto *focused_node = FocusedNodeStack.top();
@@ -472,9 +477,6 @@ static const char *GetTreeName(Tree tree) {
     Tree name;
     return getDefNameProperty(tree, name) ? tree2str(name) : nullptr;
 }
-
-// Hex address (without the '0x' prefix)
-static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
 // If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
@@ -562,7 +564,7 @@ struct BlockNode : IONode {
                 PushStyleColor(ImGuiCol_ButtonHovered, fill_color);
                 PushStyleColor(ImGuiCol_ButtonActive, fill_color);
             }
-            if (Button(format("{}##{}", text, UniqueId(this)).c_str(), scaled_rect.GetSize()) && inner) FocusedNodeStack.push(inner);
+            if (Button(text.c_str(), scaled_rect.GetSize()) && inner) FocusedNodeStack.push(inner);
             if (!inner) PopStyleColor(2);
             PopStyleColor(2);
             PopStyleVar(1);

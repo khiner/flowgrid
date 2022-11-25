@@ -1050,10 +1050,32 @@ static bool IsPureRouting(Tree t) {
 
 static Node *Tree2Node(Tree);
 
+static std::optional<std::pair<Count, string>> GetBoxPrimCountAndName(Box box) {
+    prim0 p0;
+    if (isBoxPrim0(box, &p0)) return std::pair(0, prim0name(p0));
+    prim1 p1;
+    if (isBoxPrim1(box, &p1)) return std::pair(1, prim1name(p1));
+    prim2 p2;
+    if (isBoxPrim2(box, &p2)) return std::pair(2, prim2name(p2));
+    prim3 p3;
+    if (isBoxPrim3(box, &p3)) return std::pair(3, prim3name(p3));
+    prim4 p4;
+    if (isBoxPrim4(box, &p4)) return std::pair(4, prim4name(p4));
+    prim5 p5;
+    if (isBoxPrim5(box, &p5)) return std::pair(5, prim5name(p5));
+
+    return {};
+}
+
 // Generate the inside node of a block diagram according to its type.
 static Node *Tree2NodeInner(Tree t) {
     if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
     if (isBoxInverter(t)) return new InverterNode(t);
+
+    if (const auto prim_count_and_name = GetBoxPrimCountAndName(t)) {
+        const auto &[prim_count, name] = *prim_count_and_name;
+        return new BlockNode(t, prim_count, 1, name);
+    }
 
     int i;
     double r;
@@ -1061,19 +1083,6 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxWaveform(t)) return new BlockNode(t, 0, 2, "waveform{...}");
     if (isBoxWire(t)) return new CableNode(t);
     if (isBoxCut(t)) return new CutNode(t);
-
-    prim0 p0;
-    prim1 p1;
-    prim2 p2;
-    prim3 p3;
-    prim4 p4;
-    prim5 p5;
-    if (isBoxPrim0(t, &p0)) return new BlockNode(t, 0, 1, prim0name(p0));
-    if (isBoxPrim1(t, &p1)) return new BlockNode(t, 1, 1, prim1name(p1));
-    if (isBoxPrim2(t, &p2)) return new BlockNode(t, 2, 1, prim2name(p2));
-    if (isBoxPrim3(t, &p3)) return new BlockNode(t, 3, 1, prim3name(p3));
-    if (isBoxPrim4(t, &p4)) return new BlockNode(t, 4, 1, prim4name(p4));
-    if (isBoxPrim5(t, &p5)) return new BlockNode(t, 5, 1, prim5name(p5));
 
     Tree ff;
     if (isBoxFFun(t, ff)) return new BlockNode(t, ffarity(ff), 1, ffname(ff));
@@ -1152,18 +1161,7 @@ string GetBoxType(Box t) {
     if (isBoxWire(t)) return "Cable";
     if (isBoxCut(t)) return "Cut";
 
-    prim0 p0;
-    prim1 p1;
-    prim2 p2;
-    prim3 p3;
-    prim4 p4;
-    prim5 p5;
-    if (isBoxPrim0(t, &p0)) return prim0name(p0);
-    if (isBoxPrim1(t, &p1)) return prim1name(p1);
-    if (isBoxPrim2(t, &p2)) return prim2name(p2);
-    if (isBoxPrim3(t, &p3)) return prim3name(p3);
-    if (isBoxPrim4(t, &p4)) return prim4name(p4);
-    if (isBoxPrim5(t, &p5)) return prim5name(p5);
+    if (const auto prim_count_and_name = GetBoxPrimCountAndName(t)) return (*prim_count_and_name).second;
 
     Tree ff;
     if (isBoxFFun(t, ff)) return format("FFun:{}({})", ffname(ff), ffarity(ff));

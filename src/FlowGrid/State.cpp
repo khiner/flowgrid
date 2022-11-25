@@ -1521,11 +1521,9 @@ void Style::ImGuiStyle::Draw() const {
 
                     Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
 
-                    const float canvas_width = ImMax(min_widget_width, rad * 2);
-                    const ImVec2 offset = {floorf(canvas_width * 0.5f), floorf(RAD_MAX)};
-                    const ImVec2 p1 = GetCursorScreenPos();
-                    draw_list->AddCircle(p1 + offset, rad, GetColorU32(ImGuiCol_Text));
-                    Dummy(ImVec2(canvas_width, RAD_MAX * 2));
+                    const float canvas_width = max(min_widget_width, rad * 2);
+                    draw_list->AddCircle(GetCursorScreenPos() + ImVec2{floorf(canvas_width * 0.5f), floorf(RAD_MAX)}, rad, GetColorU32(ImGuiCol_Text));
+                    Dummy({canvas_width, RAD_MAX * 2});
 
                     EndGroup();
                     SameLine();

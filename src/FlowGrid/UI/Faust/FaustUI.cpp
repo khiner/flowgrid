@@ -11,6 +11,7 @@
 #include "faust/dsp/libfaust-box.h"
 
 #include "../../App.h"
+#include "../Widgets.h"
 #include "../../Helper/basen.h"
 
 //-----------------------------------------------------------------------------
@@ -48,7 +49,6 @@ struct RectStyle {
 };
 
 static inline ImVec2 Scale(const ImVec2 &p);
-static inline ImRect Scale(const ImRect &r);
 static inline float Scale(float f);
 static inline ImVec2 GetScale();
 
@@ -83,7 +83,8 @@ struct Device {
 
     virtual void SetCursorPos(const ImVec2 &scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
     void AdvanceCursor(const ImVec2 &unscaled_pos) { SetCursorPos(CursorPosition + Scale(unscaled_pos)); }
-    ImVec2 At(const ImVec2 &pos) const { return Position + CursorPosition + Scale(pos); }
+    inline ImVec2 At(const ImVec2 &local_pos) const { return Position + CursorPosition + Scale(local_pos); }
+    inline ImRect At(const ImRect &local_rect) { return {At(local_rect.Min), At(local_rect.Max)}; }
 
     ImVec2 Position{}; // Absolute window position of device
     ImVec2 CursorPosition{}; // In local coordinates, relative to `Position`
@@ -164,7 +165,7 @@ struct SVGDevice : Device {
     static float GetFontSize() { return Scale(GetTextLineHeight()) * 0.8f; }
 
     void Rect(const ImRect &local_rect, const RectStyle &style) override {
-        const ImRect &rect = {At(local_rect.Min), At(local_rect.Max)};
+        const ImRect &rect = At(local_rect);
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
         Stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="{}" style="stroke:{};stroke-width={};fill:{};"/>)",
             rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), corner_radius, RgbColor(stroke_color), stroke_width, RgbColor(fill_color));
@@ -178,7 +179,7 @@ struct SVGDevice : Device {
     }
 
     void GroupRect(const ImRect &local_rect, const string &text) override {
-        const ImRect &rect = {At(local_rect.Min), At(local_rect.Max)};
+        const ImRect &rect = At(local_rect);
         const auto &tl = rect.Min;
         const auto &tr = rect.GetTR();
         const float text_x = tl.x + Scale(DecorateLabelOffset);
@@ -263,14 +264,15 @@ struct ImGuiDevice : Device {
         Device::SetCursorPos(scaled_cursor_pos);
         ImGui::SetCursorScreenPos(At({0, 0}));
     }
-    void Rect(const ImRect &rect, const RectStyle &style) override {
+    void Rect(const ImRect &local_rect, const RectStyle &style) override {
+        const auto &rect = At(local_rect);
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
-        if (fill_color.Value.w != 0) DrawList->AddRectFilled(At(rect.Min), At(rect.Max), fill_color, corner_radius);
-        if (stroke_color.Value.w != 0) DrawList->AddRect(At(rect.Min), At(rect.Max), stroke_color, corner_radius);
+        if (fill_color.Value.w != 0) DrawList->AddRectFilled(rect.Min, rect.Max, fill_color, corner_radius);
+        if (stroke_color.Value.w != 0) DrawList->AddRect(rect.Min, rect.Max, stroke_color, corner_radius);
     }
 
     void GroupRect(const ImRect &local_rect, const string &text) override {
-        const ImRect &rect = {At(local_rect.Min), At(local_rect.Max)};
+        const ImRect &rect = At(local_rect);
         const auto &a = rect.Min;
         const auto &b = rect.Max;
         const auto &text_top_left = a + Scale({DecorateLabelOffset, 0});
@@ -401,7 +403,8 @@ struct Node {
         const bool is_imgui = device.Type() == DeviceType_ImGui;
         if (is_imgui) {
             PushID(UniqueId(FaustTree).c_str());
-            Dummy(Size);
+//            InvisibleButton("", Scale(Size));
+//            SetItemAllowOverlap();
             if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
         }
 
@@ -482,7 +485,6 @@ static inline ImVec2 GetScale() {
 }
 
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
-static inline ImRect Scale(const ImRect &r) { return {Scale(r.Min), Scale(r.Max)}; }
 static inline float Scale(const float f) { return f * GetScale().y; }
 
 static const char *GetTreeName(Tree tree) {
@@ -555,31 +557,29 @@ struct BlockNode : IONode {
     }
 
     void DoDraw(Device &device) const override {
-        const U32 fill_color = s.Style.FlowGrid.Colors[color];
+        U32 fill_color = s.Style.FlowGrid.Colors[color];
         const U32 text_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramText];
-        const auto &rect = GetFrameRect();
+        const auto &local_rect = GetFrameRect();
 
         if (device.Type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (inner && !fs::exists(svg_device.Directory / SvgFileName(inner->FaustTree))) WriteSvg(inner, svg_device.Directory);
             const string &link = inner ? SvgFileName(FaustTree) : "";
-            svg_device.Rect(rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
+            svg_device.Rect(local_rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
             svg_device.Text(Size / 2, text, {.Color=text_color}, link);
         } else {
             const auto before_cursor = device.CursorPosition;
-            device.AdvanceCursor(rect.Min);
-            PushStyleVar(ImGuiStyleVar_FrameRounding, s.Style.FlowGrid.DiagramBoxCornerRadius);
-            PushStyleColor(ImGuiCol_Button, fill_color);
-            PushStyleColor(ImGuiCol_Text, text_color);
-            if (!inner) {
-                // Emulate disabled behavior, but without making color dimmer, by just allowing clicks but not changing color.
-                PushStyleColor(ImGuiCol_ButtonHovered, fill_color);
-                PushStyleColor(ImGuiCol_ButtonActive, fill_color);
+            const auto &rect = device.At(local_rect);
+            device.AdvanceCursor(local_rect.Min); // todo this pattern should be RIAA style
+
+            if (inner) {
+                bool hovered, held;
+                if (fg::InvisibleButton(rect.GetSize(), &hovered, &held)) FocusedNodeStack.push(inner);
+                fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
             }
-            if (Button(text.c_str(), Scale(rect).GetSize()) && inner) FocusedNodeStack.push(inner);
-            if (!inner) PopStyleColor(2);
-            PopStyleColor(2);
-            PopStyleVar(1);
+            RenderFrame(rect.Min, rect.Max, fill_color, false, s.Style.FlowGrid.DiagramBoxCornerRadius);
+            device.Text(ImVec2{rect.GetWidth(), rect.GetHeight() + GetFontSize()} / 2, text, {.Color=text_color});
+
             device.SetCursorPos(before_cursor);
         }
         DrawOrientationMark(device);
@@ -878,6 +878,8 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
 
 // Surround the `inner` node with a rectangle, showing `text` as a label in the top left.
 // If this is a top-level node, add additional padding and draw output arrows.
+// todo delete in favor of using a setting on the decorated node, so that node hierarchy is more 1:1 with Faust tree hierarchy (without adding layers)
+// todo along with this, don't display an extra decorator around a single group
 struct DecorateNode : IONode {
     DecorateNode(Tree tree, Node *inner, string text, bool is_group = false)
         : IONode(tree, inner->InCount, inner->OutCount, {inner}, 0),

@@ -8,7 +8,8 @@
 using std::string;
 
 namespace FlowGrid {
-void HelpMarker(const char *help);
+void HelpMarker(const char *help); // Like the one defined in `imgui_demo.cpp`
+bool InvisibleButton(const ImVec2 &size_arg, bool *out_hovered, bool *out_held); // Basically `ImGui::InvisibleButton`, but supporting hover/held testing.
 
 enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None = 0,

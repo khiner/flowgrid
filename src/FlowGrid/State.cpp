@@ -452,6 +452,19 @@ void HelpMarker(const char *help) {
     }
 }
 
+bool InvisibleButton(const ImVec2 &size_arg, bool *out_hovered, bool *out_held) {
+    auto *window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    const auto id = window->GetID("");
+    const auto size = CalcItemSize(size_arg, 0.0f, 0.0f);
+    const auto &cursor = GetCursorScreenPos();
+    const ImRect rect{cursor, cursor + size};
+    if (!ItemAdd(rect, id)) return false;
+
+    return ButtonBehavior(rect, id, out_hovered, out_held, ImGuiButtonFlags_None);
+}
+
 void MenuItem(const EmptyAction &action) {
     const string menu_label = action::GetMenuLabel(action);
     const string shortcut = action::GetShortcut(action);

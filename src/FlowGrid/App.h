@@ -772,13 +772,16 @@ struct Style : Window {
         Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10, nullptr, &DiagramScaleLinked};
         Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
         Bool DiagramRouteFrame{this, "DiagramRouteFrame"};
-        Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
         Bool DiagramOrientationMark{this, "DiagramOrientationMark", true};
-        Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
-        Float DiagramTopLevelMargin{this, "DiagramTopLevelMargin", 20, 0, 40};
+        Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
+
+        Bool DiagramDecorateFoldedNodes{this, "DiagramDecorateFoldedNodes", false};
         Float DiagramDecorateMargin{this, "DiagramDecorateMargin", 20, 0, 40};
-        Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
         Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
+        Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
+
+        Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
+        Float DiagramGroupMargin{this, "DiagramGroupMargin", 20, 0, 40};
         Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};
         Float DiagramBinaryHorizontalGapRatio{this, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
         Float DiagramWireWidth{this, "DiagramWireWidth", 1, 0.5, 4};

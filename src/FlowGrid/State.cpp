@@ -1305,8 +1305,9 @@ void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
     set({
         {DiagramSequentialConnectionZigzag, false},
         {DiagramOrientationMark, false},
-        {DiagramTopLevelMargin, 10},
-        {DiagramDecorateMargin, 15},
+        {DiagramDecorateMargin, 10},
+        {DiagramDecorateFoldedNodes, false},
+        {DiagramGroupMargin, 15},
         {DiagramDecorateLineWidth, 2},
         {DiagramDecorateCornerRadius, 5},
         {DiagramBoxCornerRadius, 4},
@@ -1324,8 +1325,9 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
     set({
         {DiagramSequentialConnectionZigzag, true},
         {DiagramOrientationMark, true},
-        {DiagramTopLevelMargin, 20},
         {DiagramDecorateMargin, 20},
+        {DiagramDecorateFoldedNodes, true},
+        {DiagramGroupMargin, 20},
         {DiagramDecorateLineWidth, 1},
         {DiagramBoxCornerRadius, 0},
         {DiagramDecorateCornerRadius, 0},
@@ -1617,10 +1619,13 @@ void Style::FlowGridStyle::Draw() const {
             }
             DiagramRouteFrame.Draw();
             DiagramSequentialConnectionZigzag.Draw();
-            DiagramTopLevelMargin.Draw();
+            Separator();
+            DiagramDecorateFoldedNodes.Draw();
             DiagramDecorateMargin.Draw();
+            DiagramGroupMargin.Draw();
             DiagramDecorateLineWidth.Draw();
             DiagramDecorateCornerRadius.Draw();
+            Separator();
             DiagramBoxCornerRadius.Draw();
             DiagramBinaryHorizontalGapRatio.Draw();
             DiagramWireGap.Draw();

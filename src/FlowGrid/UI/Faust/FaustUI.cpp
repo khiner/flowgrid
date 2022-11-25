@@ -341,6 +341,11 @@ struct ImGuiDevice : Device {
     ImDrawList *DrawList;
 };
 
+static string GetTreeName(Tree tree) {
+    Tree name;
+    return getDefNameProperty(tree, name) ? tree2str(name) : "";
+}
+
 struct Node;
 
 Node *RootNode; // This diagram is drawn every frame if present.
@@ -369,10 +374,15 @@ struct Node {
     ImVec2 Position; // Relative to parent. Populated in `Place`.
     ImVec2 Size; // Populated in `PlaceSize`.
     DiagramOrientation Orientation = DiagramForward;
+    const bool IsFolded;
+    const string Text;
 
-    Node(Tree tree, Count in_count, Count out_count, vector<Node *> children = {}, Count direct_descendents = 0)
+    Node(Tree tree, Count in_count, Count out_count, string text = "", vector<Node *> children = {}, Count direct_descendents = 0)
         : FaustTree(tree), Children(std::move(children)), InCount(in_count), OutCount(out_count),
-          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)) {}
+          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)),
+        // `DiagramFoldComplexity == 0` means no folding.
+          IsFolded(s.Style.FlowGrid.DiagramFoldComplexity != 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)),
+          Text(!text.empty() ? std::move(text) : GetTreeName(tree)) {}
 
     virtual ~Node() = default;
 
@@ -470,27 +480,43 @@ struct Node {
     }
 
 protected:
-    virtual ImVec2 Point(IO io, Count channel) const = 0;
+    virtual ImVec2 Point(IO io, Count channel) const {
+        return {
+            (io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W(),
+            (Size / 2).y - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()
+        };
+    }
+
     virtual void DoPlaceSize(DeviceType) = 0;
     virtual void DoPlace(DeviceType) {};
     virtual void DoDraw(Device &) const {}
+    // todo private
+    bool ShouldDecorate() const { return IsFolded && s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
+    float Margin() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
+    ImRect GetFrameRect() const { return {Gap(), Size - Gap()}; }
+
+    // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
+    // Marker on top: Forward orientation. Inputs go from top to bottom.
+    // Marker on bottom: Backward orientation. Inputs go from bottom to top.
+    void DrawOrientationMark(Device &device) const {
+        if (!s.Style.FlowGrid.DiagramOrientationMark) return;
+
+        const auto &rect = GetFrameRect();
+        const U32 color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramOrientationMark];
+        device.Dot(ImVec2{
+            IsLr() ? rect.Min.x : rect.Max.x,
+            IsForward() ? rect.Min.y : rect.Max.y
+        } + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
+    }
 };
 
 static inline ImVec2 GetScale() {
-    if (s.Style.FlowGrid.DiagramScaleFill && !FocusedNodeStack.empty() && GetCurrentWindowRead()) {
-        const auto *focused_node = FocusedNodeStack.top();
-        return GetWindowSize() / focused_node->Size;
-    }
-    return s.Style.FlowGrid.DiagramScale;
+    if (!s.Style.FlowGrid.DiagramScaleFill || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return s.Style.FlowGrid.DiagramScale;
+    return GetWindowSize() / FocusedNodeStack.top()->Size;
 }
 
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
 static inline float Scale(const float f) { return f * GetScale().y; }
-
-static const char *GetTreeName(Tree tree) {
-    Tree name;
-    return getDefNameProperty(tree, name) ? tree2str(name) : nullptr;
-}
 
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
 // If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
@@ -509,41 +535,13 @@ void WriteSvg(Node *node, const fs::path &path) {
     node->Draw(device);
 }
 
-struct IONode : Node {
-    IONode(Tree tree, Count in_count, Count out_count, vector<Node *> children = {}, Count direct_descendents = 0)
-        : Node(tree, in_count, out_count, std::move(children), direct_descendents) {}
-
-    ImVec2 Point(IO io, Count i) const override {
-        return {
-            (io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W(),
-            (Size / 2).y - WireGap() * (float(IoCount(io) - 1) / 2 - float(i)) * OrientationUnit()
-        };
-    }
-
-    ImRect GetFrameRect() const { return {Gap(), Size - Gap()}; }
-
-    // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
-    // Marker on top: Forward orientation. Inputs go from top to bottom.
-    // Marker on bottom: Backward orientation. Inputs go from bottom to top.
-    void DrawOrientationMark(Device &device) const {
-        if (!s.Style.FlowGrid.DiagramOrientationMark) return;
-
-        const auto &rect = GetFrameRect();
-        const U32 color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramOrientationMark];
-        device.Dot(ImVec2{
-            IsLr() ? rect.Min.x : rect.Max.x,
-            IsForward() ? rect.Min.y : rect.Max.y
-        } + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
-    }
-};
-
 // A simple rectangular box with text and inputs/outputs.
-struct BlockNode : IONode {
+struct BlockNode : Node {
     BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridCol_DiagramNormal, Node *inner = nullptr)
-        : IONode(tree, in_count, out_count, {}, 1), text(std::move(text)), color(color), inner(inner) {}
+        : Node(tree, in_count, out_count, std::move(text), {}, 1), color(color), inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
-        const float text_w = TextSize(text).x;
+        const float text_w = TextSize(Text).x;
         Size = (Gap() * 2) + ImVec2{
             max(3 * WireGap(), 2 * XGap() + text_w),
             max(3.f, float(max(InCount, OutCount))) * WireGap(),
@@ -552,7 +550,7 @@ struct BlockNode : IONode {
     }
 
     void DoPlace(const DeviceType type) override {
-        IONode::DoPlace(type);
+        Node::DoPlace(type);
         if (inner && type == DeviceType_SVG) inner->Place(type);
     }
 
@@ -566,7 +564,7 @@ struct BlockNode : IONode {
             if (inner && !fs::exists(svg_device.Directory / SvgFileName(inner->FaustTree))) WriteSvg(inner, svg_device.Directory);
             const string &link = inner ? SvgFileName(FaustTree) : "";
             svg_device.Rect(local_rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
-            svg_device.Text(Size / 2, text, {.Color=text_color}, link);
+            svg_device.Text(Size / 2, Text, {.Color=text_color}, link);
         } else {
             const auto before_cursor = device.CursorPosition;
             const auto &rect = device.At(local_rect);
@@ -578,7 +576,7 @@ struct BlockNode : IONode {
                 fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
             }
             RenderFrame(rect.Min, rect.Max, fill_color, false, s.Style.FlowGrid.DiagramBoxCornerRadius);
-            device.Text(ImVec2{rect.GetWidth(), rect.GetHeight() + GetFontSize()} / 2, text, {.Color=text_color});
+            device.Text(ImVec2{rect.GetWidth(), rect.GetHeight() + GetFontSize()} / 2, Text, {.Color=text_color});
 
             device.SetCursorPos(before_cursor);
         }
@@ -599,7 +597,6 @@ struct BlockNode : IONode {
         }
     }
 
-    const string text;
     const FlowGridCol color;
     Node *inner;
 };
@@ -667,7 +664,7 @@ struct CutNode : Node {
 
 struct ParallelNode : Node {
     ParallelNode(Tree tree, Node *c1, Node *c2)
-        : Node(tree, c1->InCount + c2->InCount, c1->OutCount + c2->OutCount, {c1, c2}) {}
+        : Node(tree, c1->InCount + c2->InCount, c1->OutCount + c2->OutCount, "", {c1, c2}) {}
 
     void DoPlaceSize(const DeviceType) override { Size = {max(C1()->W(), C2()->W()), C1()->H() + C2()->H()}; }
     void DoPlace(const DeviceType type) override {
@@ -695,7 +692,7 @@ struct ParallelNode : Node {
 
 // Place and connect two diagrams in recursive composition
 struct RecursiveNode : Node {
-    RecursiveNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount - c2->OutCount, c1->OutCount, {c1, c2}) {
+    RecursiveNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount - c2->OutCount, c1->OutCount, "", {c1, c2}) {
         assert(c1->InCount >= c2->OutCount);
         assert(c1->OutCount >= c2->InCount);
     }
@@ -758,7 +755,7 @@ struct RecursiveNode : Node {
 };
 
 struct BinaryNode : Node {
-    BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, {c1, c2}) {}
+    BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, "", {c1, c2}) {}
 
     ImVec2 Point(IO io, Count i) const override { return Node::Point(io == IO_In ? 0 : 1, io, i); }
 
@@ -876,16 +873,39 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
     );
 }
 
-// Surround the `inner` node with a rectangle, showing `text` as a label in the top left.
+// Surround the `inner` node with a rectangle, with `text` label breaking into the top left.
 // If this is a top-level node, add additional padding and draw output arrows.
 // todo delete in favor of using a setting on the decorated node, so that node hierarchy is more 1:1 with Faust tree hierarchy (without adding layers)
 // todo along with this, don't display an extra decorator around a single group
-struct DecorateNode : IONode {
-    DecorateNode(Tree tree, Node *inner, string text = "", bool is_group = false)
-        : IONode(tree, inner->InCount, inner->OutCount, {inner}, 0),
-        // `DiagramFoldComplexity == 0` means no folding.
-          IsTopLevel(!is_group && s.Style.FlowGrid.DiagramFoldComplexity != 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)),
-          Text(!text.empty() ? std::move(text) : GetTreeName(tree)) {}
+struct GroupNode : Node {
+    GroupNode(Tree tree, Node *inner, string text = "") : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}) {}
+
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, {Margin(), Margin()}, Orientation); }
+
+    void DoDraw(Device &device) const override {
+        const float margin = Margin();
+        device.GroupRect({{margin, margin}, Size - margin}, Text);
+//        const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X; // todo show group arrows if not decorated
+        for (const IO io: IO_All) {
+            for (Count i = 0; i < IoCount(io); i++) {
+                device.Line(Node::Point(0, io, i), Point(io, i));
+            }
+        }
+    }
+
+    ImVec2 Point(IO io, Count i) const override {
+        return Node::Point(0, io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramGroupMargin, 0};
+    }
+
+private:
+    static float Margin() { return s.Style.FlowGrid.DiagramGroupMargin; }
+};
+
+// Surround the `inner` node with a rectangle, with `text` label breaking into the top left.
+// Add additional padding and draw output arrows.
+struct DecorateNode : Node {
+    using Node::Node;
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
     void DoPlace(const DeviceType type) override { C1()->Place(type, {Margin(), Margin()}, Orientation); }
@@ -895,7 +915,7 @@ struct DecorateNode : IONode {
         device.GroupRect({{margin, margin}, Size - margin}, Text);
         const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
         for (const IO io: IO_All) {
-            const bool has_arrow = io == IO_Out && IsTopLevel;
+            const bool has_arrow = io == IO_Out && IsFolded;
             for (Count i = 0; i < IoCount(io); i++) {
                 device.Line(Node::Point(0, io, i), Point(io, i) - ImVec2{has_arrow ? arrow_width : 0, 0});
                 if (has_arrow) device.Arrow(Point(io, i), Orientation);
@@ -904,26 +924,17 @@ struct DecorateNode : IONode {
     }
 
     ImVec2 Point(IO io, Count i) const override {
-        return Node::Point(0, io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramTopLevelMargin, 0};
+        return Node::Point(0, io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramDecorateMargin, 0};
     }
-
-    const bool IsTopLevel;
-
-private:
-    inline float Margin() const {
-        return s.Style.FlowGrid.DiagramDecorateMargin + (IsTopLevel ? s.Style.FlowGrid.DiagramTopLevelMargin : 0.f);
-    }
-
-    const string Text;
 };
 
-struct RouteNode : IONode {
+struct RouteNode : Node {
     RouteNode(Tree tree, Count in_count, Count out_count, vector<int> routes)
-        : IONode(tree, in_count, out_count), routes(std::move(routes)) {}
+        : Node(tree, in_count, out_count), routes(std::move(routes)) {}
 
     void DoPlaceSize(const DeviceType) override {
         const float minimal = 3 * WireGap();
-        const float h = 2 * YGap() + max(minimal, max(float(InCount), float(OutCount)) * WireGap());
+        const float h = 2 * YGap() + max(minimal, float(max(InCount, OutCount)) * WireGap());
         Size = {2 * XGap() + max(minimal, h * 0.75f), h};
     }
 
@@ -999,7 +1010,7 @@ static string GetUiDescription(Box box) {
 }
 
 // Generate a 1->0 block node for an input slot.
-static Node *MakeInputSlot(Tree tree) { return new BlockNode(tree, 1, 0, GetTreeName(tree), FlowGridCol_DiagramSlot); }
+static Node *MakeInputSlot(Tree tree) { return new BlockNode(tree, 1, 0, "", FlowGridCol_DiagramSlot); }
 
 // Collect the leaf numbers `tree` into vector `v`.
 // Return `true` if `tree` is a number or a parallel tree of numbers.
@@ -1077,7 +1088,7 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
 
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
-    if (is_vgroup || is_hgroup || is_tgroup) return new DecorateNode(a, Tree2Node(a), format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)), true);
+    if (is_vgroup || is_hgroup || is_tgroup) return new GroupNode(a, Tree2Node(a), format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)));
 
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
@@ -1085,7 +1096,7 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxMerge(t, a, b)) return new MergeNode(t, Tree2Node(a), Tree2Node(b));
     if (isBoxRec(t, a, b)) return new RecursiveNode(t, Tree2Node(a), Tree2Node(b));
 
-    if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, GetTreeName(t), FlowGridCol_DiagramSlot);
+    if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, "", FlowGridCol_DiagramSlot);
 
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction node by placing in sequence the input slots and the body.
@@ -1096,7 +1107,7 @@ static Node *Tree2NodeInner(Tree t) {
             b = _b;
         }
         auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));
-        return GetTreeName(t) ? abstraction : new DecorateNode(t, abstraction, "Abstraction", true);
+        return !GetTreeName(t).empty() ? abstraction : new GroupNode(t, abstraction, "Abstraction");
     }
     if (isBoxEnvironment(t)) return new BlockNode(t, 0, 0, "environment{...}");
 
@@ -1116,17 +1127,20 @@ static Node *Tree2NodeInner(Tree t) {
 // (Keeping that bad name to remind me to clean this up, likely into a `Node` ctor.)
 static Node *Tree2Node(Tree t) {
     auto *node = Tree2NodeInner(t);
-    if (const char *name = GetTreeName(t)) {
-        auto *decorate_node = new DecorateNode(t, node, name);
-        if (decorate_node->IsTopLevel) {
-            int ins, outs;
-            getBoxType(t, &ins, &outs);
-            return new BlockNode(t, ins, outs, name, FlowGridCol_DiagramLink, decorate_node);
-        }
-        if (!IsPureRouting(t)) return decorate_node; // Draw a line around the object with its name.
-    }
+    if (GetTreeName(t).empty()) return node; // Normal case
 
-    return node; // normal case
+    if (node->IsFolded) {
+        int ins, outs;
+        getBoxType(t, &ins, &outs);
+        // todo
+        //  - Adjust size/placement accordingly & draw a rect similar to GroupNode but no corner rounding
+        //    (and separately customizable line thickness/color from (default-rounded) GroupNode).
+        //  - Make the `DiagramDecorateFoldedNodes` toggle actually work by basing the
+        //  - This also makes node hierarchy closer to 1:1 with Faust tree hierarchy (favor adding props to tree nodes over adding layers in tree structure)
+        // todo Fix saving to SVG with `DecorateNestedNodes = false`.
+        return new BlockNode(t, ins, outs, "", FlowGridCol_DiagramLink, s.Style.FlowGrid.DiagramDecorateFoldedNodes ? new DecorateNode(t, node->InCount, node->OutCount, "", {node}) : node);
+    }
+    return IsPureRouting(t) ? node : new GroupNode(t, node);
 }
 
 string GetBoxType(Box t) {
@@ -1190,7 +1204,10 @@ string GetBoxType(Box t) {
     return "";
 }
 
-static Node *CreateRootNode(Tree t) { return new DecorateNode(t, Tree2NodeInner(t)); }
+static Node *CreateRootNode(Tree t) {
+    auto *inner = Tree2NodeInner(t);
+    return new DecorateNode(t, inner->InCount, inner->OutCount, "", {inner});
+}
 
 void OnBoxChange(Box box) {
     IsTreePureRouting.clear();

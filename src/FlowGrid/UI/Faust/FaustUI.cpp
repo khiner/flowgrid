@@ -84,7 +84,7 @@ struct Device {
     virtual void SetCursorPos(const ImVec2 &scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
     void AdvanceCursor(const ImVec2 &unscaled_pos) { SetCursorPos(CursorPosition + Scale(unscaled_pos)); }
     inline ImVec2 At(const ImVec2 &local_pos) const { return Position + CursorPosition + Scale(local_pos); }
-    inline ImRect At(const ImRect &local_rect) { return {At(local_rect.Min), At(local_rect.Max)}; }
+    inline ImRect At(const ImRect &local_rect) const { return {At(local_rect.Min), At(local_rect.Max)}; }
 
     ImVec2 Position{}; // Absolute window position of device
     ImVec2 CursorPosition{}; // In local coordinates, relative to `Position`
@@ -881,11 +881,11 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
 // todo delete in favor of using a setting on the decorated node, so that node hierarchy is more 1:1 with Faust tree hierarchy (without adding layers)
 // todo along with this, don't display an extra decorator around a single group
 struct DecorateNode : IONode {
-    DecorateNode(Tree tree, Node *inner, string text, bool is_group = false)
+    DecorateNode(Tree tree, Node *inner, string text = "", bool is_group = false)
         : IONode(tree, inner->InCount, inner->OutCount, {inner}, 0),
         // `DiagramFoldComplexity == 0` means no folding.
           IsTopLevel(!is_group && s.Style.FlowGrid.DiagramFoldComplexity != 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)),
-          Text(std::move(text)) {}
+          Text(!text.empty() ? std::move(text) : GetTreeName(tree)) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
     void DoPlace(const DeviceType type) override { C1()->Place(type, {Margin(), Margin()}, Orientation); }
@@ -998,8 +998,6 @@ static string GetUiDescription(Box box) {
     throw std::runtime_error("ERROR : unknown user interface element");
 }
 
-static Node *Tree2Node(Tree, bool allow_links = true);
-
 // Generate a 1->0 block node for an input slot.
 static Node *MakeInputSlot(Tree tree) { return new BlockNode(tree, 1, 0, GetTreeName(tree), FlowGridCol_DiagramSlot); }
 
@@ -1024,8 +1022,25 @@ static bool isBoxInts(Box box, vector<int> &v) {
     throw std::runtime_error("Not a valid list of numbers : " + PrintTree(box));
 }
 
+// Track trees only made of cut, wires, or slots ("pure routing" trees).
+static map<Tree, bool> IsTreePureRouting{};
+static bool IsPureRouting(Tree t) {
+    if (IsTreePureRouting.contains(t)) return IsTreePureRouting[t];
+
+    Tree x, y;
+    if (isBoxCut(t) || isBoxWire(t) || isBoxInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && IsPureRouting(x) && IsPureRouting(y))) {
+        IsTreePureRouting.emplace(t, true);
+        return true;
+    }
+
+    IsTreePureRouting.emplace(t, false);
+    return false;
+}
+
+static Node *Tree2Node(Tree);
+
 // Generate the inside node of a block diagram according to its type.
-static Node *Tree2NodeNode(Tree t) {
+static Node *Tree2NodeInner(Tree t) {
     if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
     if (isBoxInverter(t)) return new InverterNode(t);
 
@@ -1094,7 +1109,24 @@ static Node *Tree2NodeNode(Tree t) {
         throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
-    throw std::runtime_error("ERROR in Tree2NodeNode, box expression not recognized: " + PrintTree(t));
+    throw std::runtime_error("ERROR in Tree2NodeInner, box expression not recognized: " + PrintTree(t));
+}
+
+// This method calls itself through `Tree2NodeInner`.
+// (Keeping that bad name to remind me to clean this up, likely into a `Node` ctor.)
+static Node *Tree2Node(Tree t) {
+    auto *node = Tree2NodeInner(t);
+    if (const char *name = GetTreeName(t)) {
+        auto *decorate_node = new DecorateNode(t, node, name);
+        if (decorate_node->IsTopLevel) {
+            int ins, outs;
+            getBoxType(t, &ins, &outs);
+            return new BlockNode(t, ins, outs, name, FlowGridCol_DiagramLink, decorate_node);
+        }
+        if (!IsPureRouting(t)) return decorate_node; // Draw a line around the object with its name.
+    }
+
+    return node; // normal case
 }
 
 string GetBoxType(Box t) {
@@ -1158,62 +1190,33 @@ string GetBoxType(Box t) {
     return "";
 }
 
-static map<Tree, bool> IsTreePureRouting{}; // Avoid recomputing pure-routing property. Needs to be reset whenever box changes!
-
-// Returns `true` if the tree is only made of cut, wires and slots.
-static bool IsPureRouting(Tree t) {
-    if (IsTreePureRouting.contains(t)) return IsTreePureRouting[t];
-
-    Tree x, y;
-    if (isBoxCut(t) || isBoxWire(t) || isBoxInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && IsPureRouting(x) && IsPureRouting(y))) {
-        IsTreePureRouting.emplace(t, true);
-        return true;
-    }
-
-    IsTreePureRouting.emplace(t, false);
-    return false;
-}
-
-// This method is called recursively.
-static Node *Tree2Node(Tree t, bool allow_links) {
-    auto *node = Tree2NodeNode(t);
-    if (const char *name = GetTreeName(t)) {
-        auto *decorate_node = new DecorateNode(t, node, name);
-        if (decorate_node->IsTopLevel && allow_links) {
-            int ins, outs;
-            getBoxType(t, &ins, &outs);
-            return new BlockNode(t, ins, outs, name, FlowGridCol_DiagramLink, decorate_node);
-        }
-        if (!IsPureRouting(t)) return decorate_node; // Draw a line around the object with its name.
-    }
-
-    return node; // normal case
-}
+static Node *CreateRootNode(Tree t) { return new DecorateNode(t, Tree2NodeInner(t)); }
 
 void OnBoxChange(Box box) {
     IsTreePureRouting.clear();
     FocusedNodeStack = {};
     if (box) {
-        RootNode = Tree2Node(box, false); // Ensure top-level is not compressed into a link.
+        RootNode = CreateRootNode(box);
         FocusedNodeStack.push(RootNode);
     } else {
         RootNode = nullptr;
     }
 }
 
-static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
-
 void SaveBoxSvg(const string &path) {
     if (!RootNode) return;
-    FoldComplexity = s.Style.FlowGrid.DiagramFoldComplexity;
+
     // Render SVG diagram(s)
     fs::remove_all(path);
     fs::create_directory(path);
-    auto *node = Tree2Node(RootNode->FaustTree, false); // Ensure top-level is not compressed into a link.
+
+    auto *node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
     node->PlaceSize(DeviceType_SVG);
     node->Place(DeviceType_SVG);
     WriteSvg(node, path);
 }
+
+static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
 
 void Audio::FaustState::FaustDiagram::Draw() const {
     if (!RootNode) {

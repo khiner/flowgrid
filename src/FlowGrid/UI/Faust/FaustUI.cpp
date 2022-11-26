@@ -364,7 +364,6 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 // * Surround the `inner` node with a rectangle, with `text` label breaking into the top left.
 // * Add additional padding and draw output arrows.
 // todo next up:
-//  - Always draw arrows for top-level nodes (root/folded)
 //  - For `GroupNode` instantiation, try and just pass the tree without creating an inner node
 //  - Don't nest folded nodes or root nodes into an abstract `Node` with one child.
 //    Instead, take margin into account appropriately and handle in non-`Do...` versions of `Place`/`Size`,
@@ -493,7 +492,7 @@ struct Node {
 
 protected:
     virtual ImVec2 Point(IO io, Count channel) const {
-        if (ShouldDecorate()) return Point(0, io, channel) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * s.Style.FlowGrid.DiagramDecorateMargin, 0};
+        if (Children.size() == 1 && IsFolded) return Point(0, io, channel) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * Margin(), 0};
 
         return {
             (io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W(),
@@ -504,9 +503,9 @@ protected:
     virtual void DoPlaceSize(DeviceType) { if (C1()) Size = C1()->Size + Margin() * 2; };
     virtual void DoPlace(const DeviceType type) { if (C1()) C1()->Place(type, {Margin(), Margin()}, Orientation); }
     virtual void DoDraw(Device &device) const {
-        if (ShouldDecorate()) {
+        if (Children.size() == 1 && IsFolded) {
             const float margin = Margin();
-            device.GroupRect({{margin, margin}, Size - margin}, Text);
+            if (ShouldDecorate()) device.GroupRect({{margin, margin}, Size - margin}, Text);
             const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
             for (const IO io: IO_All) {
                 const bool has_arrow = io == IO_Out && IsFolded;
@@ -536,7 +535,7 @@ protected:
 
 private:
     float Margin() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
-    bool ShouldDecorate() const { return Children.size() == 1 && (IsFolded && s.Style.FlowGrid.DiagramDecorateFoldedNodes); }
+    bool ShouldDecorate() const { return Children.size() == 1 && IsFolded && s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
 };
 
 static inline ImVec2 GetScale() {

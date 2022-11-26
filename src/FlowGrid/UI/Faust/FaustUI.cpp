@@ -364,10 +364,6 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 // * Surround the `inner` node with a rectangle, with `text` label breaking into the top left.
 // * Add additional padding and draw output arrows.
 // todo next up:
-//  - For `GroupNode` instantiation, try and just pass the tree without creating an inner node
-//  - Don't nest folded nodes or root nodes into an abstract `Node` with one child.
-//    Instead, take margin into account appropriately and handle in non-`Do...` versions of `Place`/`Size`,
-//    and make `Node` abstract again.
 //  - By default, no corner rounding for decorate rect
 //  - Separately customizable line thickness/color from (default-rounded) GroupNode
 //  - Separate `ShowProcessNode` (default-false, default-true for Faust diagram layout preset)
@@ -382,17 +378,16 @@ struct Node {
     const vector<Node *> Children{};
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
-    ImVec2 Position; // Relative to parent. Populated in `Place`.
-    ImVec2 Size; // Populated in `PlaceSize`.
-    DiagramOrientation Orientation = DiagramForward;
-    const bool IsFolded;
     const string Text;
+    bool IsFolded{false}; // This is set from outside the class (which I don't like).
+
+    ImVec2 Position; // Relative to parent. Set in `Place`.
+    ImVec2 Size; // Set in `PlaceSize`.
+    DiagramOrientation Orientation = DiagramForward; // Set in `Place`.
 
     Node(Tree tree, Count in_count, Count out_count, string text = "", vector<Node *> children = {}, Count direct_descendents = 0)
         : FaustTree(tree), Children(std::move(children)), InCount(in_count), OutCount(out_count),
           Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)),
-        // `DiagramFoldComplexity == 0` means no folding.
-          IsFolded(s.Style.FlowGrid.DiagramFoldComplexity != 0 && Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)),
           Text(!text.empty() ? std::move(text) : GetTreeName(tree)) {}
 
     virtual ~Node() = default;
@@ -404,7 +399,7 @@ struct Node {
     ImVec2 Point(Count child, IO io, Count channel) const { return Child(child)->Position + Child(child)->Point(io, channel); }
 
     void Place(const DeviceType type, const ImVec2 &position, DiagramOrientation orientation) {
-        Position = position;
+        Position = position + ImVec2{Margin(), Margin()};
         Orientation = orientation;
         DoPlace(type);
     }
@@ -412,7 +407,10 @@ struct Node {
         for (auto *child: Children) child->PlaceSize(type);
         DoPlaceSize(type);
     }
-    void Place(const DeviceType type) { DoPlace(type); }
+    void Place(const DeviceType type) {
+        Position = {Margin(), Margin()};
+        DoPlace(type);
+    }
     void Draw(Device &device) const {
         DrawCountForNode[this] += 1;
         // todo only log in release build
@@ -429,6 +427,17 @@ struct Node {
             if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
         }
 
+        if (IsFolded) {
+            if (ShouldDecorate()) device.GroupRect({{0, 0}, Size}, Text);
+            const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
+            for (const IO io: IO_All) {
+                const float offset = PointXOffset(io);
+                for (Count i = 0; i < IoCount(io); i++) {
+                    device.Line(Point(io, i), Point(io, i) + ImVec2{offset, 0} - ImVec2{io == IO_Out ? arrow_width : 0, 0});
+                    if (io == IO_Out) device.Arrow(Point(io, i) + ImVec2{offset, 0}, Orientation);
+                }
+            }
+        }
         DoDraw(device);
         for (auto *child: Children) child->Draw(device);
 
@@ -492,31 +501,17 @@ struct Node {
 
 protected:
     virtual ImVec2 Point(IO io, Count channel) const {
-        if (Children.size() == 1 && IsFolded) return Point(0, io, channel) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * Margin(), 0};
-
         return {
-            (io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W(),
-            (Size / 2).y - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()
+            ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()) + PointXOffset(io),
+            Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()
         };
     }
 
-    virtual void DoPlaceSize(DeviceType) { if (C1()) Size = C1()->Size + Margin() * 2; };
-    virtual void DoPlace(const DeviceType type) { if (C1()) C1()->Place(type, {Margin(), Margin()}, Orientation); }
-    virtual void DoDraw(Device &device) const {
-        if (Children.size() == 1 && IsFolded) {
-            const float margin = Margin();
-            if (ShouldDecorate()) device.GroupRect({{margin, margin}, Size - margin}, Text);
-            const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
-            for (const IO io: IO_All) {
-                const bool has_arrow = io == IO_Out && IsFolded;
-                for (Count i = 0; i < IoCount(io); i++) {
-                    device.Line(Node::Point(0, io, i), Point(io, i) - ImVec2{has_arrow ? arrow_width : 0, 0});
-                    if (has_arrow) device.Arrow(Point(io, i), Orientation);
-                }
-            }
-        }
-    }
+    virtual void DoPlaceSize(DeviceType) = 0;
+    virtual void DoPlace(const DeviceType) {}
+    virtual void DoDraw(Device &) const {}
 
+    float Margin() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
     ImRect GetFrameRect() const { return {Gap(), Size - Gap()}; }
 
     // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
@@ -534,8 +529,8 @@ protected:
     }
 
 private:
-    float Margin() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
-    bool ShouldDecorate() const { return Children.size() == 1 && IsFolded && s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
+    bool ShouldDecorate() const { return IsFolded && s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
+    float PointXOffset(IO io) const { return DirUnit() * (io == IO_In ? -1.f : 1.f) * Margin(); }
 };
 
 static inline ImVec2 GetScale() {
@@ -903,15 +898,15 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
 // todo delete in favor of using a setting on the decorated node, so that node hierarchy is more 1:1 with Faust tree hierarchy (without adding layers)
 // todo along with this, don't display an extra decorator around a single group
 struct GroupNode : Node {
-    GroupNode(Tree tree, Node *inner, string text = "") : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}) {}
+    GroupNode(Tree tree, Node *inner, string text = "", string label = "group")
+        : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(std::move(label)) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
     void DoPlace(const DeviceType type) override { C1()->Place(type, {Margin(), Margin()}, Orientation); }
 
     void DoDraw(Device &device) const override {
         const float margin = Margin();
-        device.GroupRect({{margin, margin}, Size - margin}, Text);
-//        const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X; // todo show group arrows if not decorated
+        device.GroupRect({{margin, margin}, Size - margin}, Label);
         for (const IO io: IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
                 device.Line(Node::Point(0, io, i), Point(io, i));
@@ -925,6 +920,8 @@ struct GroupNode : Node {
 
 private:
     static float Margin() { return s.Style.FlowGrid.DiagramGroupMargin; }
+
+    const string Label;
 };
 
 struct RouteNode : Node {
@@ -1096,7 +1093,7 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
 
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
-    if (is_vgroup || is_hgroup || is_tgroup) return new GroupNode(a, Tree2Node(a), format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)));
+    if (is_vgroup || is_hgroup || is_tgroup) return new GroupNode(t, Tree2Node(a), "", format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)));
 
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
@@ -1137,10 +1134,12 @@ static Node *Tree2Node(Tree t) {
     auto *node = Tree2NodeInner(t);
     if (GetTreeName(t).empty()) return node; // Normal case
 
-    if (node->IsFolded) {
+    // `DiagramFoldComplexity == 0` means no folding.
+    if (s.Style.FlowGrid.DiagramFoldComplexity != 0 && node->Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {
+        node->IsFolded = true;
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        return new BlockNode(t, ins, outs, "", FlowGridCol_DiagramLink, new Node(t, node->InCount, node->OutCount, "", {node}));
+        return new BlockNode(t, ins, outs, "", FlowGridCol_DiagramLink, node);
     }
     return IsPureRouting(t) ? node : new GroupNode(t, node);
 }
@@ -1197,7 +1196,8 @@ string GetBoxType(Box t) {
 
 static Node *CreateRootNode(Tree t) {
     auto *inner = Tree2NodeInner(t);
-    return new Node(t, inner->InCount, inner->OutCount, "", {inner});
+    inner->IsFolded = true;
+    return inner;
 }
 
 void OnBoxChange(Box box) {

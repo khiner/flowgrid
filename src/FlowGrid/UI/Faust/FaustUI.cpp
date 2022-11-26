@@ -363,6 +363,16 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 // If this is root node, or a node containing a single folded node:
 // * Surround the `inner` node with a rectangle, with `text` label breaking into the top left.
 // * Add additional padding and draw output arrows.
+// todo next up:
+//  - Always draw arrows for top-level nodes (root/folded)
+//  - For `GroupNode` instantiation, try and just pass the tree without creating an inner node
+//  - Don't nest folded nodes or root nodes into an abstract `Node` with one child.
+//    Instead, take margin into account appropriately and handle in non-`Do...` versions of `Place`/`Size`,
+//    and make `Node` abstract again.
+//  - By default, no corner rounding for decorate rect
+//  - Separately customizable line thickness/color from (default-rounded) GroupNode
+//  - Separate `ShowProcessNode` (default-false, default-true for Faust diagram layout preset)
+//  - Fix saving to SVG with `DecorateFoldedNodes = false`.
 struct Node {
     inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
     inline static ImVec2 Gap() { return s.Style.FlowGrid.DiagramGap; }
@@ -1131,12 +1141,6 @@ static Node *Tree2Node(Tree t) {
     if (node->IsFolded) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        // todo
-        //  - Adjust size/placement accordingly & draw a rect similar to GroupNode but no corner rounding
-        //    (and separately customizable line thickness/color from (default-rounded) GroupNode).
-        //  - Make the `DiagramDecorateFoldedNodes` toggle actually work by basing the
-        //  - This also makes node hierarchy closer to 1:1 with Faust tree hierarchy (favor adding props to tree nodes over adding layers in tree structure)
-        // todo Fix saving to SVG with `DecorateNestedNodes = false`.
         return new BlockNode(t, ins, outs, "", FlowGridCol_DiagramLink, new Node(t, node->InCount, node->OutCount, "", {node}));
     }
     return IsPureRouting(t) ? node : new GroupNode(t, node);

@@ -778,13 +778,13 @@ struct Style : Window {
         Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
 
         Bool DiagramDecorateFoldedNodes{this, "DiagramDecorateFoldedNodes", false};
-        Float DiagramDecorateMargin{this, "DiagramDecorateMargin", 20, 0, 40};
-        Float DiagramDecoratePadding{this, "DiagramDecoratePadding", 20, 0, 40};
         Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
         Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
+        Vec2 DiagramDecorateMargin{this, "DiagramDecorateMargin", {10, 10}, 0, 20};
+        Vec2 DiagramDecoratePadding{this, "DiagramDecoratePadding", {10, 10}, 0, 20};
 
-        Float DiagramGroupMargin{this, "DiagramGroupMargin", 8, 0, 20};
-        Float DiagramGroupPadding{this, "DiagramGroupPadding", 8, 0, 20};
+        Vec2 DiagramGroupMargin{this, "DiagramGroupMargin", {8, 8}, 0, 20};
+        Vec2 DiagramGroupPadding{this, "DiagramGroupPadding", {8, 8}, 0, 20};
 
         Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
         Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};

@@ -1305,11 +1305,17 @@ void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
     set({
         {DiagramSequentialConnectionZigzag, false},
         {DiagramOrientationMark, false},
-        {DiagramDecorateMargin, 10},
-        {DiagramDecoratePadding, 10},
         {DiagramDecorateFoldedNodes, false},
         {DiagramDecorateLineWidth, 2},
         {DiagramDecorateCornerRadius, 5},
+        {DiagramDecorateMargin.X, 10},
+        {DiagramDecorateMargin.Y, 10},
+        {DiagramDecoratePadding.X, 10},
+        {DiagramDecoratePadding.Y, 10},
+        {DiagramGroupMargin.X, 8},
+        {DiagramGroupMargin.Y, 8},
+        {DiagramGroupPadding.X, 8},
+        {DiagramGroupPadding.Y, 8},
         {DiagramBoxCornerRadius, 4},
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
@@ -1325,8 +1331,14 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
     set({
         {DiagramSequentialConnectionZigzag, true},
         {DiagramOrientationMark, true},
-        {DiagramDecorateMargin, 20},
-        {DiagramDecoratePadding, 20},
+        {DiagramDecorateMargin.X, 10},
+        {DiagramDecorateMargin.Y, 10},
+        {DiagramDecoratePadding.X, 10},
+        {DiagramDecoratePadding.Y, 10},
+        {DiagramGroupMargin.X, 10},
+        {DiagramGroupMargin.Y, 10},
+        {DiagramGroupPadding.X, 10},
+        {DiagramGroupPadding.Y, 10},
         {DiagramDecorateFoldedNodes, true},
         {DiagramDecorateLineWidth, 1},
         {DiagramBoxCornerRadius, 0},
@@ -1621,10 +1633,10 @@ void Style::FlowGridStyle::Draw() const {
             DiagramSequentialConnectionZigzag.Draw();
             Separator();
             DiagramDecorateFoldedNodes.Draw();
-            DiagramDecorateMargin.Draw();
-            DiagramDecoratePadding.Draw();
             DiagramDecorateLineWidth.Draw();
             DiagramDecorateCornerRadius.Draw();
+            DiagramDecorateMargin.Draw();
+            DiagramDecoratePadding.Draw();
             Separator();
             DiagramGroupMargin.Draw();
             DiagramGroupPadding.Draw();

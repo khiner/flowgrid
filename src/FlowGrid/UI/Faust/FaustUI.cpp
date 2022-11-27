@@ -919,8 +919,8 @@ struct GroupNode : Node {
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, ImVec2{0, 0} + Margin() + Padding(), Orientation); }
-    void DoDraw(Device &device) const override { device.GroupRect({ImVec2{0, 0} + Margin(), Size - Margin()}, Label); }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding(), Orientation); }
+    void DoDraw(Device &device) const override { device.GroupRect({Margin(), Size - Margin()}, Label); }
 
     ImVec2 Point(IO io, Count channel) const override {
         const auto child_point = Node::Point(0, io, channel);
@@ -928,16 +928,17 @@ struct GroupNode : Node {
     }
 
 private:
-    static float Margin() { return s.Style.FlowGrid.DiagramGroupMargin; }
-    static float Padding() { return s.Style.FlowGrid.DiagramGroupPadding; }
+    static ImVec2 Margin() { return s.Style.FlowGrid.DiagramGroupMargin; }
+    static ImVec2 Padding() { return s.Style.FlowGrid.DiagramGroupPadding; }
 
     void DrawConnections(Device &device) const override {
+        const auto &offset = Margin() + Padding();
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Node::Point(0, io, channel);
-                const ImVec2 &a = {in ? 0 : Size.x - (Margin() + Padding()), channel_point.y};
-                const ImVec2 &b = {in ? Margin() + Padding() : Size.x, channel_point.y};
+                const ImVec2 &a = {in ? 0 : (Size - offset).x, channel_point.y};
+                const ImVec2 &b = {in ? offset.x : Size.x, channel_point.y};
                 device.Line(a, b);
             }
         }
@@ -951,22 +952,24 @@ struct DecorateNode : Node {
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{s.Style.FlowGrid.DiagramArrowSize.X, 0}; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, ImVec2{0, 0} + Margin() + Padding(), Orientation); }
-    void DoDraw(Device &device) const override { if (ShouldDecorate()) device.GroupRect({ImVec2{0, 0} + Margin(), Size - Margin()}, Label); }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding(), Orientation); }
+    void DoDraw(Device &device) const override { if (ShouldDecorate()) device.GroupRect({Margin(), Size - Margin()}, Label); }
 
 private:
-    static float Margin() { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
-    static float Padding() { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecoratePadding : 0.f; }
+    static ImVec2 Margin() { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : ImVec2{0, 0}; }
+    static ImVec2 Padding() { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecoratePadding : ImVec2{0, 0}; }
     static bool ShouldDecorate() { return s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
 
     void DrawConnections(Device &device) const override {
+        const auto &margin = Margin();
+        const auto &offset = margin + Padding();
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
             const float arrow_width = in ? 0.f : s.Style.FlowGrid.DiagramArrowSize.X;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(0, io, channel);
-                const ImVec2 &a = {in ? -Margin() : Size.x - (Margin() + Padding()) - arrow_width, channel_point.y};
-                const ImVec2 &b = {in ? Margin() + Padding() : Size.x - arrow_width, channel_point.y};
+                const ImVec2 &a = {in ? -margin.x : (Size - offset).x - arrow_width, channel_point.y};
+                const ImVec2 &b = {in ? offset.x : Size.x - arrow_width, channel_point.y};
                 if (ShouldDecorate()) device.Line(a, b);
                 if (!in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
             }

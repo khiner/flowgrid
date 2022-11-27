@@ -1335,6 +1335,9 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
     set({
         {DiagramSequentialConnectionZigzag, true},
         {DiagramOrientationMark, true},
+        {DiagramDecorateFoldedNodes, true},
+        {DiagramDecorateLineWidth, 1},
+        {DiagramDecorateCornerRadius, 0},
         {DiagramDecorateMargin.X, 10},
         {DiagramDecorateMargin.Y, 10},
         {DiagramDecoratePadding.X, 10},
@@ -1343,10 +1346,7 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
         {DiagramGroupMargin.Y, 10},
         {DiagramGroupPadding.X, 10},
         {DiagramGroupPadding.Y, 10},
-        {DiagramDecorateFoldedNodes, true},
-        {DiagramDecorateLineWidth, 1},
         {DiagramBoxCornerRadius, 0},
-        {DiagramDecorateCornerRadius, 0},
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
         {DiagramWireGap, 16},
@@ -1616,11 +1616,11 @@ void Style::FlowGridStyle::Draw() const {
     if (BeginTabBar("")) {
         if (BeginTabItem("Faust diagram", nullptr, ImGuiTabItemFlags_NoPushId)) {
             DiagramFoldComplexity.Draw();
-            const bool ScaleFill = DiagramScaleFill;
+            const bool scale_fill = DiagramScaleFill;
             DiagramScaleFill.Draw();
-            if (ScaleFill) ImGui::BeginDisabled();
+            if (scale_fill) ImGui::BeginDisabled();
             DiagramScale.Draw();
-            if (ScaleFill) {
+            if (scale_fill) {
                 SameLine();
                 Text("Uncheck 'ScaleFill' to edit scale settings.");
                 ImGui::EndDisabled();
@@ -1635,11 +1635,14 @@ void Style::FlowGridStyle::Draw() const {
             DiagramRouteFrame.Draw();
             DiagramSequentialConnectionZigzag.Draw();
             Separator();
+            const bool decorate_folded = DiagramDecorateFoldedNodes;
             DiagramDecorateFoldedNodes.Draw();
+            if (!decorate_folded) ImGui::BeginDisabled();
             DiagramDecorateLineWidth.Draw();
             DiagramDecorateCornerRadius.Draw();
             DiagramDecorateMargin.Draw();
             DiagramDecoratePadding.Draw();
+            if (!decorate_folded) ImGui::EndDisabled();
             Separator();
             DiagramGroupMargin.Draw();
             DiagramGroupPadding.Draw();

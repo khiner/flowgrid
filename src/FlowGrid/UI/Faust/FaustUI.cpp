@@ -564,9 +564,8 @@ struct BlockNode : Node {
         : Node(tree, in_count, out_count, std::move(text), {}, 1), color(color), inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
-        const float text_w = TextSize(Text).x;
-        Size = (Gap() * 2) + ImVec2{
-            max(3 * WireGap(), 2 * XGap() + text_w),
+        Size = Gap() * 2 + ImVec2{
+            max(3.f * WireGap(), TextSize(Text).x),
             max(3.f, float(max(InCount, OutCount))) * WireGap(),
         };
         if (inner && type == DeviceType_SVG) inner->PlaceSize(type);

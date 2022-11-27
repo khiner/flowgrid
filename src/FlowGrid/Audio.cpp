@@ -15,12 +15,6 @@
 
 static constexpr int SampleSize = sizeof(Sample);
 
-// Used to initialize the static Faust buffer.
-// This is the highest `max_frames` value I've seen coming into the output audio callback, using a sample rate of 96kHz
-// AND switching between different sample rates, which seems to make for high peak frames at the transition.
-// If it needs bumping up, bump away!
-static constexpr int FaustBufferFrames = 2048;
-
 SoundIoFormat ToSoundIoFormat(const Audio::IoFormat format) {
     switch (format) {
         case Audio::IoFormat_Invalid: return SoundIoFormatInvalid;
@@ -92,7 +86,7 @@ inline static void WriteSampleS16NE(char *ptr, Sample sample) {
     *buf = int16_t(sample * (Sample(INT16_MAX) - Sample(INT16_MIN)) / 2.0);
 }
 
-auto ReadSampeForFormat(const SoundIoFormat soundio_format) {
+auto ReadSampleForFormat(const SoundIoFormat soundio_format) {
     switch (soundio_format) {
         case SoundIoFormatFloat64NE: return ReadSampleFloat64NE;
         case SoundIoFormatFloat32NE: return ReadSampleFloat32NE;
@@ -116,37 +110,8 @@ static Sample (*ReadSample)(const char *ptr);
 static void (*WriteSample)(char *ptr, Sample sample);
 
 SoundIo *soundio = nullptr;
-SoundIoInStream *instream = nullptr;
-SoundIoOutStream *outstream = nullptr;
-
-// Each of these arrays can be indexed by an `IO`, e.g. `device_ids[IO_In]`.
-vector<string> device_ids[IO_Count];
-vector<Audio::IoFormat> supported_formats[IO_Count];
-vector<int> supported_sample_rates[IO_Count];
-SoundIoDevice *devices[IO_Count];
-SoundIoChannelArea *areas[IO_Count];
-Sample **faust_buffers[IO_Count];
-
-/**
- Samples from the input (e.g. microphone) are read directly into `InputBufferDirect`,
- optionally performing sample format conversion, but with no sample _rate_ conversion.
- * `InputBufferDirect` will contain 64 bit double samples, with the same sample rate as the input stream.
- * `InputBuffer` will contain 64 bit double samples, with the same sample rate as the output stream.
- * If the input/output stream sample rates are the same, `InputBuffer` will simply point to `InputBufferDirect`
-   todo notes about the exact latency (see https://github.com/avaneev/r8brain-free-src/issues/12 for resampling latency calculation)
-*/
-SoundIoRingBuffer *InputBuffer = nullptr, *InputBufferDirect = nullptr;
-unique_ptr<r8b::CDSPResampler24> Resampler;
-
-// Faust vars
-Box box = nullptr;
-llvm_dsp_factory *DspFactory;
-dsp *dsp = nullptr;
-unique_ptr<FaustUI> faust_ui;
-
-static float MicLatency = 0.2; // Seconds todo do better than this guess
-int UnderflowCount = 0, LastReadFrameCount = 0, LastWriteFrameCount = 0;
-bool SoundIoReady = false, FaustReady = false;
+SoundIoInStream *InStream = nullptr;
+SoundIoOutStream *OutStream = nullptr;
 
 static int GetDeviceCount(const IO io) {
     switch (io) {
@@ -171,80 +136,116 @@ static int GetDefaultDeviceIndex(const IO io) {
 }
 static int GetChannelCount(const IO io) {
     switch (io) {
-        case IO_In : return instream ? instream->layout.channel_count : 0;
-        case IO_Out : return outstream ? outstream->layout.channel_count : 0;
+        case IO_In : return InStream ? InStream->layout.channel_count : 0;
+        case IO_Out : return OutStream ? OutStream->layout.channel_count : 0;
         case IO_None : return 0;
     }
 }
 
+/**
+ Samples from the input (e.g. microphone) are read directly into `InputBufferDirect`,
+ optionally performing sample format conversion, but with no sample _rate_ conversion.
+ * `InputBufferDirect` will contain 64 bit double samples, with the same sample rate as the input stream.
+ * `InputBuffer` will contain 64 bit double samples, with the same sample rate as the output stream.
+ * If the input/output stream sample rates are the same, `InputBuffer` will simply point to `InputBufferDirect`
+   todo notes about the exact latency (see https://github.com/avaneev/r8brain-free-src/issues/12 for resampling latency calculation)
+*/
+static SoundIoRingBuffer *InputBuffer = nullptr, *InputBufferDirect = nullptr;
+static unique_ptr<r8b::CDSPResampler24> Resampler;
+
+// Each of these arrays can be indexed by an `IO`, e.g. `DeviceIds[IO_In]`.
+static vector<string> DeviceIds[IO_Count];
+static vector<Audio::IoFormat> SupportedFormats[IO_Count];
+static vector<int> SupportedSampleRates[IO_Count];
+static SoundIoDevice *Devices[IO_Count];
+static SoundIoChannelArea *Areas[IO_Count];
+static Sample **FaustBuffers[IO_Count];
+
 static void CreateStream(const IO io) {
     if (io == IO_None) return;
 
-    auto *device = devices[io];
-    if (io == IO_In) instream = soundio_instream_create(device);
-    else outstream = soundio_outstream_create(device);
-    if ((io == IO_In && !instream) || (io == IO_Out && !outstream)) throw std::runtime_error("Out of memory");
+    auto *device = Devices[io];
+    if (io == IO_In) InStream = soundio_instream_create(device);
+    else OutStream = soundio_outstream_create(device);
+    if ((io == IO_In && !InStream) || (io == IO_Out && !OutStream)) throw std::runtime_error("Out of memory");
 
     auto prioritized_formats = Audio::PrioritizedDefaultFormats;
     for (const auto &format: prioritized_formats) {
         if (format != Audio::IoFormat_Invalid && soundio_device_supports_format(device, ToSoundIoFormat(format))) {
-            supported_formats[io].emplace_back(format);
+            SupportedFormats[io].emplace_back(format);
         }
     }
-    if (supported_formats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", Capitalize(to_string(io))));
+    if (SupportedFormats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", Capitalize(to_string(io))));
 
     const Enum &saved_format = io == IO_In ? s.Audio.InFormat : s.Audio.OutFormat;
     // If the project has a saved format, choose it. Otherwise, default to the highest-priority supported format.
-    auto *soundio_format_ptr = &(io == IO_In ? instream->format : outstream->format);
-    *soundio_format_ptr = ToSoundIoFormat(saved_format != Audio::IoFormat_Invalid ? saved_format : supported_formats[io].front());
+    auto *soundio_format_ptr = &(io == IO_In ? InStream->format : OutStream->format);
+    *soundio_format_ptr = ToSoundIoFormat(saved_format != Audio::IoFormat_Invalid ? saved_format : SupportedFormats[io].front());
 
     auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
     // If the project has a saved sample rate, give it the highest priority.
     const Int &saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
     if (saved_sample_rate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), saved_sample_rate);
 
-    // Could just check `supported_sample_rates`, but this `supports_sample_rate` function handles devices supporting ranges.
-    auto *sample_rate_ptr = &(io == IO_In ? instream->sample_rate : outstream->sample_rate);
+    // Could just check `SupportedSampleRates`, but this `supports_sample_rate` function handles devices supporting ranges.
+    auto *sample_rate_ptr = &(io == IO_In ? InStream->sample_rate : OutStream->sample_rate);
     for (const auto &preferred_sample_rate: prioritized_sample_rates) {
-        if (soundio_device_supports_sample_rate(devices[io], preferred_sample_rate)) {
+        if (soundio_device_supports_sample_rate(Devices[io], preferred_sample_rate)) {
             *sample_rate_ptr = preferred_sample_rate;
             break;
         }
     }
     // Fall back to the highest supported sample rate.
-    if (!(*sample_rate_ptr) && !supported_sample_rates[io].empty()) *sample_rate_ptr = supported_sample_rates[io].back();
+    if (!(*sample_rate_ptr) && !SupportedSampleRates[io].empty()) *sample_rate_ptr = SupportedSampleRates[io].back();
     if (*soundio_format_ptr == SoundIoFormatInvalid) throw std::runtime_error(format("No audio {} device sample rate available", to_string(io)));
 }
 static void OpenStream(const IO io) {
     if (io == IO_None) return;
 
     int err;
-    if ((err = (io == IO_In ? soundio_instream_open(instream) : soundio_outstream_open(outstream)))) {
+    if ((err = (io == IO_In ? soundio_instream_open(InStream) : soundio_outstream_open(OutStream)))) {
         throw std::runtime_error(format("Unable to open audio {} device: ", to_string(io)) + soundio_strerror(err));
     }
 
-    if (io == IO_In && instream->layout_error) { cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(instream->layout_error); }
-    else if (io == IO_Out && outstream->layout_error) { cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(outstream->layout_error); }
+    if (io == IO_In && InStream->layout_error) { cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(InStream->layout_error); }
+    else if (io == IO_Out && OutStream->layout_error) { cerr << "Unable to set " << io << " channel layout: " << soundio_strerror(OutStream->layout_error); }
 }
 static void StartStream(const IO io) {
     if (io == IO_None) return;
 
     int err;
-    if ((err = (io == IO_In ? soundio_instream_start(instream) : soundio_outstream_start(outstream)))) {
+    if ((err = (io == IO_In ? soundio_instream_start(InStream) : soundio_outstream_start(OutStream)))) {
         throw std::runtime_error(format("Unable to start audio {} device: ", to_string(io)) + soundio_strerror(err));
     }
 }
 static void DestroyStream(const IO io) {
     if (io == IO_None) return;
 
-    if (io == IO_In) soundio_instream_destroy(instream);
-    else soundio_outstream_destroy(outstream);
+    if (io == IO_In) soundio_instream_destroy(InStream);
+    else soundio_outstream_destroy(OutStream);
 
-    soundio_device_unref(devices[io]);
+    soundio_device_unref(Devices[io]);
 }
 
+static float MicLatency = 0.2; // Seconds todo do better than this guess
+static int UnderflowCount = 0, LastReadFrameCount = 0, LastWriteFrameCount = 0;
+static bool SoundIoReady = false, FaustReady = false;
+
+// Faust vars
+
+// Used to initialize the static Faust buffer.
+// This is the highest `max_frames` value I've seen coming into the output audio callback, using a sample rate of 96kHz
+// AND switching between different sample rates, which seems to make for high peak frames at the transition.
+// If it needs bumping up, bump away!
+static constexpr int FaustBufferFrames = 2048;
+
+static llvm_dsp_factory *DspFactory;
+static dsp *FaustDsp = nullptr;
+static Box FaustBox = nullptr;
+static unique_ptr<FaustUI> FaustUi;
+
 void SetupAudio() {
-    // Local copies for bookkeeping in read/write callbacks, so others can safely use the global `areas` pointers above (e.g. for charting):
+    // Local copies for bookkeeping in read/write callbacks, so others can safely use the global `Areas` pointers above (e.g. for charting):
     static char *area_pointers[2][SOUNDIO_MAX_CHANNELS];
 
     soundio = soundio_create();
@@ -257,15 +258,15 @@ void SetupAudio() {
 
     // Input/output device setup
     for (const IO io: IO_All) {
-        device_ids[io].clear();
-        supported_formats[io].clear();
-        supported_sample_rates[io].clear();
+        DeviceIds[io].clear();
+        SupportedFormats[io].clear();
+        SupportedSampleRates[io].clear();
 
         int default_device_index = GetDefaultDeviceIndex(io);
         if (default_device_index < 0) throw std::runtime_error(format("No audio {} device found", to_string(io))); // todo move on without input
 
         const auto device_count = GetDeviceCount(io);
-        for (int i = 0; i < device_count; i++) device_ids[io].emplace_back(GetDevice(io, i)->id);
+        for (int i = 0; i < device_count; i++) DeviceIds[io].emplace_back(GetDevice(io, i)->id);
 
         int device_index = default_device_index;
         if (s.Audio.GetDeviceId(io)) {
@@ -287,10 +288,10 @@ void SetupAudio() {
         if (!device) throw std::runtime_error(format("Could not get audio {} device: out of memory", to_string(io)));
         if (device->probe_error) throw std::runtime_error("Cannot probe device: "s + soundio_strerror(device->probe_error));
 
-        for (int i = 0; i < device->sample_rate_count; i++) supported_sample_rates[io].push_back(device->sample_rates[i].max);
-        if (supported_sample_rates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", Capitalize(to_string(io))));
+        for (int i = 0; i < device->sample_rate_count; i++) SupportedSampleRates[io].push_back(device->sample_rates[i].max);
+        if (SupportedSampleRates[io].empty()) throw std::runtime_error(format("{} audio stream has no supported sample rates", Capitalize(to_string(io))));
 
-        devices[io] = device;
+        Devices[io] = device;
         CreateStream(io);
     }
 
@@ -299,11 +300,11 @@ void SetupAudio() {
 //    soundio_device_sort_channel_layouts(out_device);
 //    const auto *layout = soundio_best_matching_channel_layout(out_device->layouts, out_device->layout_count, in_device->layouts, in_device->layout_count);
 //    if (!layout) throw std::runtime_error("Channel layouts not compatible");
-//    instream->layout = *layout;
-//    outstream->layout = *layout;
+//    InStream->layout = *layout;
+//    OutStream->layout = *layout;
 
-    instream->read_callback = [](SoundIoInStream *instream, int min_frames, int max_frames) {
-        const auto channel_count = instream->layout.channel_count;
+    InStream->read_callback = [](SoundIoInStream *InStream, int min_frames, int max_frames) {
+        const auto channel_count = InStream->layout.channel_count;
         auto *write_ptr_direct = (Sample *) soundio_ring_buffer_write_ptr(InputBufferDirect);
         const int available_write_frames = soundio_ring_buffer_free_count(InputBufferDirect) / SampleSize;
         if (min_frames > available_write_frames) {
@@ -316,7 +317,7 @@ void SetupAudio() {
         int err;
         while (true) {
             int inner_frames = remaining_frames;
-            if ((err = soundio_instream_begin_read(instream, &areas[IO_In], &inner_frames))) {
+            if ((err = soundio_instream_begin_read(InStream, &Areas[IO_In], &inner_frames))) {
                 cerr << "Begin read error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
@@ -324,26 +325,26 @@ void SetupAudio() {
             LastReadFrameCount = inner_frames;
             if (!inner_frames) break;
 
-            if (!areas[IO_In]) {
+            if (!Areas[IO_In]) {
                 // Due to an overflow there is a hole. Fill the hole in the ring buffer with silence.
                 memset(write_ptr_direct, 0, inner_frames * SampleSize * channel_count);
                 cerr << format("Dropped {} frames due to internal overflow", inner_frames) << '\n';
             } else {
                 // Make a local copy of the input area pointers for incrementing, so others can read directly from the device areas.
                 // todo Others assume doubles, so we'll need indirect converted buffers when the input stream uses a different format.
-                for (int channel = 0; channel < channel_count; channel += 1) area_pointers[IO_In][channel] = areas[IO_In][channel].ptr;
+                for (int channel = 0; channel < channel_count; channel += 1) area_pointers[IO_In][channel] = Areas[IO_In][channel].ptr;
 
                 for (int frame = 0; frame < inner_frames; frame += 1) {
                     for (int channel = 0; channel < channel_count; channel += 1) {
                         *write_ptr_direct = ReadSample(area_pointers[IO_In][channel]);
-                        area_pointers[IO_In][channel] += areas[IO_In][channel].step;
+                        area_pointers[IO_In][channel] += Areas[IO_In][channel].step;
                         write_ptr_direct += 1;
                     }
                 }
             }
             soundio_ring_buffer_advance_write_ptr(InputBufferDirect, inner_frames * SampleSize * channel_count);
 
-            if ((err = soundio_instream_end_read(instream))) {
+            if ((err = soundio_instream_end_read(InStream))) {
                 if (err == SoundIoErrorUnderflow) return;
 
                 cerr << "End read error: " << soundio_strerror(err) << '\n';
@@ -366,7 +367,7 @@ void SetupAudio() {
                 cerr << format("Resampled input ring buffer overflow: Available:{}, Need:{}", available_resample_write_frames, resampled_frames);
                 exit(1);
             }
-            const int resample_input_bytes = available_resample_read_frames * SampleSize * instream->layout.channel_count;
+            const int resample_input_bytes = available_resample_read_frames * SampleSize * InStream->layout.channel_count;
             soundio_ring_buffer_advance_read_ptr(InputBufferDirect, resample_input_bytes);
 
             if (resampled_frames > 0) {
@@ -378,8 +379,8 @@ void SetupAudio() {
         }
     };
 
-    outstream->write_callback = [](SoundIoOutStream *outstream, int /*min_frames*/, int max_frames) {
-        const auto channel_count = outstream->layout.channel_count;
+    OutStream->write_callback = [](SoundIoOutStream *OutStream, int /*min_frames*/, int max_frames) {
+        const auto channel_count = OutStream->layout.channel_count;
         const int input_sample_count = soundio_ring_buffer_fill_count(InputBuffer) / SampleSize;
         const bool compute_faust = s.Audio.FaustRunning && FaustReady;
 
@@ -387,7 +388,7 @@ void SetupAudio() {
         int remaining_frames = max_frames;
         while (remaining_frames > 0) {
             int inner_frames = remaining_frames;
-            if ((err = soundio_outstream_begin_write(outstream, &areas[IO_Out], &inner_frames))) {
+            if ((err = soundio_outstream_begin_write(OutStream, &Areas[IO_Out], &inner_frames))) {
                 cerr << "Begin write error: " << soundio_strerror(err) << '\n';
                 exit(1);
             }
@@ -398,15 +399,15 @@ void SetupAudio() {
                          << "(Increase `Audio.cpp::FaustBufferFrames`.)\n";
                 }
 
-                if (dsp->getNumInputs() > 0 && GetChannelCount(IO_In) == 1) {
+                if (FaustDsp->getNumInputs() > 0 && GetChannelCount(IO_In) == 1) {
                     auto *read_ptr = (Sample *) soundio_ring_buffer_read_ptr(InputBuffer);
                     // Point every Faust input channel to the first audio input channel.
                     // Not advancing the input read pointer until after any input monitoring below.
                     // todo this works for 1:1 channel case, but need to properly handle input routing between more channels on either side
-                    for (int i = 0; i < dsp->getNumInputs(); i++) faust_buffers[IO_In][i] = read_ptr;
+                    for (int i = 0; i < FaustDsp->getNumInputs(); i++) FaustBuffers[IO_In][i] = read_ptr;
                 }
 
-                if (FaustReady) dsp->compute(inner_frames, faust_buffers[IO_In], faust_buffers[IO_Out]);
+                if (FaustReady) FaustDsp->compute(inner_frames, FaustBuffers[IO_In], FaustBuffers[IO_Out]);
             }
 
             LastWriteFrameCount = inner_frames;
@@ -414,7 +415,7 @@ void SetupAudio() {
 
             // Make a local copy of the output area pointers for incrementing, so others can read directly from the device areas.
             // todo Others assume doubles, so we'll need indirect converted buffers when the output stream uses a different format.
-            for (int channel = 0; channel < channel_count; channel += 1) area_pointers[IO_Out][channel] = areas[IO_Out][channel].ptr;
+            for (int channel = 0; channel < channel_count; channel += 1) area_pointers[IO_Out][channel] = Areas[IO_Out][channel].ptr;
 
             auto *read_ptr = (Sample *) soundio_ring_buffer_read_ptr(InputBuffer);
             for (int inner_frame = 0; inner_frame < inner_frames; inner_frame++) {
@@ -425,18 +426,18 @@ void SetupAudio() {
                         if (s.Audio.MonitorInput) out_sample += *read_ptr;
                         if (compute_faust) {
                             const int outer_frame = max_frames - remaining_frames + inner_frame;
-                            out_sample += faust_buffers[IO_Out][min(channel, dsp->getNumOutputs() - 1)][outer_frame];
+                            out_sample += FaustBuffers[IO_Out][min(channel, FaustDsp->getNumOutputs() - 1)][outer_frame];
                         }
                     }
 
                     WriteSample(area_pointers[IO_Out][channel], out_sample);
-                    area_pointers[IO_Out][channel] += areas[IO_Out][channel].step;
+                    area_pointers[IO_Out][channel] += Areas[IO_Out][channel].step;
                 }
                 read_ptr += 1; // todo xxx this assumes mono input!
             }
             soundio_ring_buffer_advance_read_ptr(InputBuffer, min(input_sample_count, inner_frames) * SampleSize);
 
-            if ((err = soundio_outstream_end_write(outstream))) {
+            if ((err = soundio_outstream_end_write(OutStream))) {
                 if (err == SoundIoErrorUnderflow) return;
                 cerr << "End write error: " << soundio_strerror(err) << '\n';
                 exit(1);
@@ -446,28 +447,28 @@ void SetupAudio() {
         }
     };
 
-    outstream->underflow_callback = [](SoundIoOutStream *) { cerr << "Underflow #" << UnderflowCount++ << '\n'; };
+    OutStream->underflow_callback = [](SoundIoOutStream *) { cerr << "Underflow #" << UnderflowCount++ << '\n'; };
 
     for (IO io: IO_All) OpenStream(io);
 
     // Set up resampler if needed.
-    if (instream->sample_rate != outstream->sample_rate) {
-        Resampler = make_unique<r8b::CDSPResampler24>(instream->sample_rate, outstream->sample_rate, 1024); // todo can we get max frame size here?
+    if (InStream->sample_rate != OutStream->sample_rate) {
+        Resampler = make_unique<r8b::CDSPResampler24>(InStream->sample_rate, OutStream->sample_rate, 1024); // todo can we get max frame size here?
     }
 
     // Initialize the input ring buffer(s).
-    InputBufferDirect = soundio_ring_buffer_create(soundio, int(ceil(MicLatency * 2 * float(instream->sample_rate)) * SampleSize));
+    InputBufferDirect = soundio_ring_buffer_create(soundio, int(ceil(MicLatency * 2 * float(InStream->sample_rate)) * SampleSize));
     if (!InputBufferDirect) throw std::runtime_error("Unable to create direct input buffer: Out of memory");
 
-    if (instream->sample_rate == outstream->sample_rate) {
+    if (InStream->sample_rate == OutStream->sample_rate) {
         InputBuffer = InputBufferDirect;
     } else {
-        InputBuffer = soundio_ring_buffer_create(soundio, int(ceil(MicLatency * 2 * float(outstream->sample_rate)) * SampleSize));
+        InputBuffer = soundio_ring_buffer_create(soundio, int(ceil(MicLatency * 2 * float(OutStream->sample_rate)) * SampleSize));
         if (!InputBuffer) throw std::runtime_error("Unable to create input buffer: Out of memory");
     }
 
-    ReadSample = ReadSampeForFormat(instream->format);
-    WriteSample = WriteSampleForFormat(outstream->format);
+    ReadSample = ReadSampleForFormat(InStream->format);
+    WriteSample = WriteSampleForFormat(OutStream->format);
 
     for (IO io: IO_All) StartStream(io);
     SoundIoReady = true;
@@ -510,8 +511,8 @@ void RetryingSetupAudio() {
     }
 }
 
-string previous_faust_code;
-int previous_faust_sample_rate = 0;
+static string PreviousFaustCode;
+static int PreviousFaustSampleRate = 0;
 
 void Audio::UpdateProcess() const {
     if (Running && !soundio) {
@@ -519,9 +520,9 @@ void Audio::UpdateProcess() const {
     } else if (!Running && soundio) {
         TeardownAudio();
     } else if (SoundIoReady &&
-        (instream->device->id != InDeviceId || outstream->device->id != OutDeviceId ||
-            instream->sample_rate != s.Audio.InSampleRate || outstream->sample_rate != OutSampleRate ||
-            instream->format != ToSoundIoFormat(InFormat) || outstream->format != ToSoundIoFormat(OutFormat))) {
+        (InStream->device->id != InDeviceId || OutStream->device->id != OutDeviceId ||
+            InStream->sample_rate != s.Audio.InSampleRate || OutStream->sample_rate != OutSampleRate ||
+            InStream->format != ToSoundIoFormat(InFormat) || OutStream->format != ToSoundIoFormat(OutFormat))) {
         // Reset to make any audio config changes take effect.
         TeardownAudio();
         RetryingSetupAudio();
@@ -532,18 +533,18 @@ void Audio::UpdateProcess() const {
         first_run = false;
 
         static StoreEntries values;
-        if (instream->device->id != InDeviceId) values.emplace_back(InDeviceId.Path, instream->device->id);
-        if (outstream->device->id != OutDeviceId) values.emplace_back(OutDeviceId.Path, outstream->device->id);
-        if (instream->sample_rate != InSampleRate) values.emplace_back(InSampleRate.Path, instream->sample_rate);
-        if (outstream->sample_rate != OutSampleRate) values.emplace_back(OutSampleRate.Path, outstream->sample_rate);
-        if (instream->format != InFormat) values.emplace_back(InFormat.Path, ToAudioFormat(instream->format));
-        if (outstream->format != OutFormat) values.emplace_back(OutFormat.Path, ToAudioFormat(outstream->format));
+        if (InStream->device->id != InDeviceId) values.emplace_back(InDeviceId.Path, InStream->device->id);
+        if (OutStream->device->id != OutDeviceId) values.emplace_back(OutDeviceId.Path, OutStream->device->id);
+        if (InStream->sample_rate != InSampleRate) values.emplace_back(InSampleRate.Path, InStream->sample_rate);
+        if (OutStream->sample_rate != OutSampleRate) values.emplace_back(OutSampleRate.Path, OutStream->sample_rate);
+        if (InStream->format != InFormat) values.emplace_back(InFormat.Path, ToAudioFormat(InStream->format));
+        if (OutStream->format != OutFormat) values.emplace_back(OutFormat.Path, ToAudioFormat(OutStream->format));
         if (!values.empty()) q(set_values{values}, true);
     }
 
-    if (Faust.Code != previous_faust_code || OutSampleRate != previous_faust_sample_rate) {
-        previous_faust_code = string(Faust.Code);
-        previous_faust_sample_rate = OutSampleRate;
+    if (Faust.Code != PreviousFaustCode || OutSampleRate != PreviousFaustSampleRate) {
+        PreviousFaustCode = string(Faust.Code);
+        PreviousFaustSampleRate = OutSampleRate;
 
         string error_msg;
 
@@ -558,39 +559,39 @@ void Audio::UpdateProcess() const {
             argv[argc++] = "-double";
 
             int num_inputs, num_outputs;
-            box = DSPToBoxes("FlowGrid", Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
-            if (box && error_msg.empty()) {
+            FaustBox = DSPToBoxes("FlowGrid", Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+            if (FaustBox && error_msg.empty()) {
                 static const int optimize_level = -1;
-                DspFactory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv, "", error_msg, optimize_level);
+                DspFactory = createDSPFactoryFromBoxes("FlowGrid", FaustBox, argc, argv, "", error_msg, optimize_level);
             }
         }
         if (DspFactory && error_msg.empty()) {
-            dsp = DspFactory->createDSPInstance();
-            dsp->init(OutSampleRate);
+            FaustDsp = DspFactory->createDSPInstance();
+            FaustDsp->init(OutSampleRate);
 
-            // Init `faust_buffers`
+            // Init `FaustBuffers`
             for (const IO io: IO_All) {
-                const int channels = io == IO_In ? dsp->getNumInputs() : dsp->getNumOutputs();
-                if (channels > 0) faust_buffers[io] = new Sample *[channels];
+                const int channels = io == IO_In ? FaustDsp->getNumInputs() : FaustDsp->getNumOutputs();
+                if (channels > 0) FaustBuffers[io] = new Sample *[channels];
             }
-            for (int i = 0; i < dsp->getNumOutputs(); i++) { faust_buffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
+            for (int i = 0; i < FaustDsp->getNumOutputs(); i++) { FaustBuffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
 
             FaustReady = true;
-            faust_ui = make_unique<FaustUI>();
-            dsp->buildUserInterface(faust_ui.get());
+            FaustUi = make_unique<FaustUI>();
+            FaustDsp->buildUserInterface(FaustUi.get());
         } else {
-            faust_ui = nullptr;
+            FaustUi = nullptr;
             FaustReady = false;
 
-            if (dsp) {
-                // Destroy `faust_buffers`
-                for (int i = 0; i < dsp->getNumOutputs(); i++) { delete[] faust_buffers[IO_Out][i]; }
+            if (FaustDsp) {
+                // Destroy `FaustBuffers`
+                for (int i = 0; i < FaustDsp->getNumOutputs(); i++) { delete[] FaustBuffers[IO_Out][i]; }
                 for (const IO io: IO_All) {
-                    delete[] faust_buffers[io];
-                    faust_buffers[io] = nullptr;
+                    delete[] FaustBuffers[io];
+                    FaustBuffers[io] = nullptr;
                 }
-                delete dsp;
-                dsp = nullptr;
+                delete FaustDsp;
+                FaustDsp = nullptr;
                 deleteDSPFactory(DspFactory);
                 DspFactory = nullptr;
             }
@@ -599,14 +600,13 @@ void Audio::UpdateProcess() const {
         if (!error_msg.empty()) q(set_value{Faust.Error.Path, error_msg});
         else if (Faust.Error) q(set_value{Faust.Error.Path, ""});
 
-        OnBoxChange(box);
-        OnUiChange(faust_ui.get());
+        OnBoxChange(FaustBox);
+        OnUiChange(FaustUi.get());
     }
 
-    if (SoundIoReady && outstream->volume != OutDeviceVolume) soundio_outstream_set_volume(outstream, OutDeviceVolume);
+    if (SoundIoReady && OutStream->volume != OutDeviceVolume) soundio_outstream_set_volume(OutStream, OutDeviceVolume);
 }
 
-using namespace fg;
 using namespace ImGui;
 
 void ShowChannelLayout(const SoundIoChannelLayout &layout, bool is_current) {
@@ -670,33 +670,33 @@ void ShowDevices() {
 void ShowStreams() {
     // todo maybe modify SoundIoInStream/SoundIoOutStream to share a common interface to DRY up? This is a pain elsewhere, too.
     if (TreeNode("Input stream")) {
-        BulletText("Name: %s", instream->name);
-        BulletText("Device ID: %s", instream->device->id);
-        BulletText("Format: %s", soundio_format_string(instream->format));
-        BulletText("Sample rate: %d", instream->sample_rate);
+        BulletText("Name: %s", InStream->name);
+        BulletText("Device ID: %s", InStream->device->id);
+        BulletText("Format: %s", soundio_format_string(InStream->format));
+        BulletText("Sample rate: %d", InStream->sample_rate);
         if (TreeNodeEx("Channel layout", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ShowChannelLayout(instream->layout, false);
+            ShowChannelLayout(InStream->layout, false);
             TreePop();
         }
-        BulletText("Software latency: %0.8f sec", instream->software_latency);
-        BulletText("Bytes per frame: %d", instream->bytes_per_frame);
-        BulletText("Bytes per sample: %d", instream->bytes_per_sample);
+        BulletText("Software latency: %0.8f sec", InStream->software_latency);
+        BulletText("Bytes per frame: %d", InStream->bytes_per_frame);
+        BulletText("Bytes per sample: %d", InStream->bytes_per_sample);
 
         TreePop();
     }
     if (TreeNode("Output stream")) {
-        BulletText("Name: %s", outstream->name);
-        BulletText("Device ID: %s", outstream->device->id);
-        BulletText("Format: %s", soundio_format_string(outstream->format));
-        BulletText("Sample rate: %d", outstream->sample_rate);
+        BulletText("Name: %s", OutStream->name);
+        BulletText("Device ID: %s", OutStream->device->id);
+        BulletText("Format: %s", soundio_format_string(OutStream->format));
+        BulletText("Sample rate: %d", OutStream->sample_rate);
         if (TreeNodeEx("Channel layout", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ShowChannelLayout(outstream->layout, false);
+            ShowChannelLayout(OutStream->layout, false);
             TreePop();
         }
-        BulletText("Volume: %0.8f", outstream->volume);
-        BulletText("Software latency: %0.8f sec", outstream->software_latency);
-        BulletText("Bytes per frame: %d", outstream->bytes_per_frame);
-        BulletText("Bytes per sample: %d", outstream->bytes_per_sample);
+        BulletText("Volume: %0.8f", OutStream->volume);
+        BulletText("Software latency: %0.8f sec", OutStream->software_latency);
+        BulletText("Bytes per frame: %d", OutStream->bytes_per_frame);
+        BulletText("Bytes per sample: %d", OutStream->bytes_per_sample);
 
         TreePop();
     }
@@ -706,11 +706,11 @@ void ShowBufferPlots() {
     for (IO io: IO_All) {
         const bool is_in = io == IO_In;
         if (TreeNode(Capitalize(to_string(io)).c_str())) {
-            const auto *area = is_in ? areas[IO_In] : areas[IO_Out];
+            const auto *area = is_in ? Areas[IO_In] : Areas[IO_Out];
             if (!area) continue;
 
-            const auto *device = is_in ? instream->device : outstream->device;
-            const auto &layout = is_in ? instream->layout : outstream->layout;
+            const auto *device = is_in ? InStream->device : OutStream->device;
+            const auto &layout = is_in ? InStream->layout : OutStream->layout;
             const auto frame_count = is_in ? LastReadFrameCount : LastWriteFrameCount;
             if (ImPlot::BeginPlot(device->name, {-1, 160})) {
                 ImPlot::SetupAxes("Sample index", "Value");
@@ -745,12 +745,12 @@ void Audio::Draw() const {
     MonitorInput.Draw();
     OutDeviceVolume.Draw();
 
-    if (!device_ids[IO_In].empty()) InDeviceId.Draw(device_ids[IO_In]);
-    if (!device_ids[IO_Out].empty()) OutDeviceId.Draw(device_ids[IO_Out]);
-    if (!supported_formats[IO_In].empty()) InFormat.Draw(supported_formats[IO_In]);
-    if (!supported_formats[IO_Out].empty()) OutFormat.Draw(supported_formats[IO_Out]);
-    if (!supported_sample_rates[IO_In].empty()) InSampleRate.Draw(supported_sample_rates[IO_In]);
-    if (!supported_sample_rates[IO_Out].empty()) OutSampleRate.Draw(supported_sample_rates[IO_Out]);
+    if (!DeviceIds[IO_In].empty()) InDeviceId.Draw(DeviceIds[IO_In]);
+    if (!DeviceIds[IO_Out].empty()) OutDeviceId.Draw(DeviceIds[IO_Out]);
+    if (!SupportedFormats[IO_In].empty()) InFormat.Draw(SupportedFormats[IO_In]);
+    if (!SupportedFormats[IO_Out].empty()) OutFormat.Draw(SupportedFormats[IO_Out]);
+    if (!SupportedSampleRates[IO_In].empty()) InSampleRate.Draw(SupportedSampleRates[IO_In]);
+    if (!SupportedSampleRates[IO_Out].empty()) OutSampleRate.Draw(SupportedSampleRates[IO_Out]);
     NewLine();
     if (TreeNode("Devices")) {
         ShowDevices();

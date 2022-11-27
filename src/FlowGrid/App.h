@@ -781,7 +781,6 @@ struct Style : Window {
         Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
 
         Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
-        Float DiagramGroupMargin{this, "DiagramGroupMargin", 20, 0, 40};
         Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};
         Float DiagramBinaryHorizontalGapRatio{this, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
         Float DiagramWireWidth{this, "DiagramWireWidth", 1, 0.5, 4};

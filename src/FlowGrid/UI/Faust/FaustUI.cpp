@@ -900,12 +900,12 @@ struct GroupNode : Node {
     GroupNode(Tree tree, Node *inner, string text = "", string label = "group")
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(std::move(label)) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Margin() * 2; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, {Margin(), Margin()}, Orientation); }
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Gap() * 2; }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, Gap(), Orientation); }
 
     void DoDraw(Device &device) const override {
-        const float margin = Margin();
-        device.GroupRect({{margin, margin}, Size - margin}, Label);
+        const ImVec2 margin = Gap();
+        device.GroupRect({margin, Size - margin}, Label);
         for (const IO io: IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
                 device.Line(Node::Point(0, io, i), Point(io, i));
@@ -914,12 +914,10 @@ struct GroupNode : Node {
     }
 
     ImVec2 Point(IO io, Count i) const override {
-        return Node::Point(0, io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * Margin(), 0};
+        return Node::Point(0, io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * Gap().x, 0};
     }
 
 private:
-    static float Margin() { return s.Style.FlowGrid.DiagramGroupMargin; }
-
     const string Label;
 };
 

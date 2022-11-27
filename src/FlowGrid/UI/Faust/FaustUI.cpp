@@ -359,10 +359,7 @@ static map<const Node *, Count> DrawCountForNode{};
 // Hex address (without the '0x' prefix)
 static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
-// A block diagram node
-// If this is root node, or a node containing a single folded node:
-// * Surround the `inner` node with a rectangle, with `text` label breaking into the top left.
-// * Add additional padding and draw output arrows.
+// An abstract block diagram node.
 // todo next up:
 //  - By default, no corner rounding for decorate rect
 //  - Separately customizable line thickness/color from (default-rounded) GroupNode
@@ -379,7 +376,6 @@ struct Node {
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
     const string Text;
-    bool IsFolded{false}; // This is set from outside the class (which I don't like).
 
     ImVec2 Position; // Relative to parent. Set in `Place`.
     ImVec2 Size; // Set in `PlaceSize`.
@@ -399,7 +395,7 @@ struct Node {
     ImVec2 Point(Count child, IO io, Count channel) const { return Child(child)->Position + Child(child)->Point(io, channel); }
 
     void Place(const DeviceType type, const ImVec2 &position, DiagramOrientation orientation) {
-        Position = position + ImVec2{Margin(), Margin()};
+        Position = position;
         Orientation = orientation;
         DoPlace(type);
     }
@@ -407,10 +403,7 @@ struct Node {
         for (auto *child: Children) child->PlaceSize(type);
         DoPlaceSize(type);
     }
-    void Place(const DeviceType type) {
-        Position = {Margin(), Margin()};
-        DoPlace(type);
-    }
+    void Place(const DeviceType type) { DoPlace(type); }
     void Draw(Device &device) const {
         DrawCountForNode[this] += 1;
         // todo only log in release build
@@ -427,7 +420,6 @@ struct Node {
             if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
         }
 
-        if (ShouldDecorate()) device.GroupRect({{0, 0}, Size}, Text);
         DoDraw(device);
         DrawConnections(device);
         for (auto *child: Children) child->Draw(device);
@@ -452,21 +444,7 @@ struct Node {
     inline float DirUnit() const { return IsLr() ? 1 : -1; }
     inline float DirUnit(IO io) const { return DirUnit() * (io == IO_In ? 1.f : -1.f); }
 
-    virtual void DrawConnections(Device &device) const {
-        if (IsFolded) {
-            const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
-            for (const IO io: IO_All) {
-                const bool in = io == IO_In;
-                for (Count channel = 0; channel < IoCount(io); channel++) {
-                    const auto &channel_point = Point(0, io, channel);
-                    const ImVec2 &a = {in ? -Margin() : Size.x - Padding(), channel_point.y};
-                    const ImVec2 &b = {in ? Size.x - Padding() : Size.x + Margin(), channel_point.y};
-                    device.Line(a, b);
-                    if (!in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
-                }
-            }
-        }
-    }
+    virtual void DrawConnections(Device &) const {}
 
     // Debug
     void DrawRect(Device &device) const {
@@ -511,22 +489,18 @@ struct Node {
         for (auto *child: Children) child->MarkFrame();
     }
 
-protected:
     virtual ImVec2 Point(IO io, Count channel) const {
         return {
             ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
             Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()
         };
     }
+protected:
 
     virtual void DoPlaceSize(DeviceType) = 0;
-    virtual void DoPlace(const DeviceType type) {
-        if (C1()) C1()->Place(type, {Padding(), Padding()}, Orientation);
-    }
+    virtual void DoPlace(DeviceType) = 0;
     virtual void DoDraw(Device &) const {}
 
-    virtual float Margin() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
-    virtual float Padding() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecoratePadding : 0.f; }
     ImRect GetFrameRect() const { return {Gap(), Size - Gap()}; }
 
     // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
@@ -542,9 +516,6 @@ protected:
             IsForward() ? rect.Min.y : rect.Max.y
         } + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
-
-private:
-    bool ShouldDecorate() const { return IsFolded && s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
 };
 
 static inline ImVec2 GetScale() {
@@ -619,9 +590,12 @@ struct BlockNode : Node {
     void DrawConnections(Device &device) const override {
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
+            const float arrow_width = in ? s.Style.FlowGrid.DiagramArrowSize.X : 0.f;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(io, channel);
-                device.Line(channel_point, channel_point + ImVec2{XGap() * DirUnit(io), 0});
+                const auto &b = channel_point + ImVec2{(XGap() - arrow_width) * DirUnit(io), 0};
+                device.Line(channel_point, b);
+                if (in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
             }
         }
     }
@@ -677,6 +651,7 @@ struct CutNode : Node {
 
     // 0 width and 1 height, for the wire.
     void DoPlaceSize(const DeviceType) override { Size = {0, 1}; }
+    void DoPlace(const DeviceType) override {}
 
     // A cut is represented by a small black dot.
     void DoDraw(Device &) const override {
@@ -910,42 +885,93 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
 }
 
 /**
-Draw a grouping border around the provided `inner` node.
+Both `GroupNode` and `DecorateNode` render a grouping border around the provided `inner` node.
 
 # Respected layout properties
 
-Each property can be changed in `Style.FlowGrid`.
+Each property can be changed in `Style.FlowGrid.Diagram(Group|Decorate){PropertyName}`.
 
+* Margin (`Vec2`):
+  - Adds to total size.
+  - Offsets child position
+  - Offsets grouping border
 * Padding (`Vec2`):
-  - All children are placed just inside this moat.
-  - _(Margins handled only by parent, `this` node never thinks about margins.)_
+  - Adds to total size.
+  - Offsets child position (in addition to `Margin`)
 
 # Render:
 
-1) Border rectangle top-left to bottom-right, with a break for a label in the top-left
-  * Unstylable fields:
-    * Y border offset, to draw top centered with label
+1) Border rectangle at `Margin` offset, with a break for a label in the top-left,
+  and additional half-text-height Y-offset to center top border line with label.
   * Stylable fields:
     * Stroke width
     * Stroke color
 2) Horizontal channel IO connection lines, at channel's vertical offset and from/to X:
   * Input:
      From: My left
-     To: The left of my child at index `channel` (my left + node gap + padding)
+     To: The left of my child at index `channel`
   * Output:
-    * From: The right of my child at index `channel` (my right - node gap - padding)
+    * From: The right of my child at index `channel`
     * To: My right
-3)
 */
 struct GroupNode : Node {
-    GroupNode(Tree tree, Node *inner, string text = "", string label = "group")
-        : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(std::move(label)) {}
+    GroupNode(Tree tree, Node *inner, string text = "", const string &label = "")
+        : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Padding() * 2; }
-    void DoDraw(Device &device) const override { device.GroupRect({{0, 0}, Size}, Label); }
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2; }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, ImVec2{0, 0} + Margin() + Padding(), Orientation); }
+    void DoDraw(Device &device) const override { device.GroupRect({ImVec2{0, 0} + Margin(), Size - Margin()}, Label); }
 
-    float Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin; }
-    float Padding() const override { return s.Style.FlowGrid.DiagramGroupPadding; }
+    ImVec2 Point(IO io, Count channel) const override {
+        const auto child_point = Node::Point(0, io, channel);
+        return {Node::Point(io, channel).x, child_point.y};
+    }
+
+private:
+    static float Margin() { return s.Style.FlowGrid.DiagramGroupMargin; }
+    static float Padding() { return s.Style.FlowGrid.DiagramGroupPadding; }
+
+    void DrawConnections(Device &device) const override {
+        for (const IO io: IO_All) {
+            const bool in = io == IO_In;
+            for (Count channel = 0; channel < IoCount(io); channel++) {
+                const auto &channel_point = Node::Point(0, io, channel);
+                const ImVec2 &a = {in ? 0 : Size.x - (Margin() + Padding()), channel_point.y};
+                const ImVec2 &b = {in ? Margin() + Padding() : Size.x, channel_point.y};
+                device.Line(a, b);
+            }
+        }
+    }
+
+    const string Label;
+};
+
+struct DecorateNode : Node {
+    DecorateNode(Tree tree, Node *inner, string text = "", const string &label = "")
+        : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
+
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{s.Style.FlowGrid.DiagramArrowSize.X, 0}; }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, ImVec2{0, 0} + Margin() + Padding(), Orientation); }
+    void DoDraw(Device &device) const override { if (ShouldDecorate()) device.GroupRect({ImVec2{0, 0} + Margin(), Size - Margin()}, Label); }
+
+private:
+    static float Margin() { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
+    static float Padding() { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecoratePadding : 0.f; }
+    static bool ShouldDecorate() { return s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
+
+    void DrawConnections(Device &device) const override {
+        for (const IO io: IO_All) {
+            const bool in = io == IO_In;
+            const float arrow_width = in ? 0.f : s.Style.FlowGrid.DiagramArrowSize.X;
+            for (Count channel = 0; channel < IoCount(io); channel++) {
+                const auto &channel_point = Point(0, io, channel);
+                const ImVec2 &a = {in ? -Margin() : Size.x - (Margin() + Padding()) - arrow_width, channel_point.y};
+                const ImVec2 &b = {in ? Margin() + Padding() : Size.x - arrow_width, channel_point.y};
+                if (ShouldDecorate()) device.Line(a, b);
+                if (!in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
+            }
+        }
+    }
 
 private:
     const string Label;
@@ -960,6 +986,7 @@ struct RouteNode : Node {
         const float h = 2 * YGap() + max(minimal, float(max(InCount, OutCount)) * WireGap());
         Size = {2 * XGap() + max(minimal, h * 0.75f), h};
     }
+    void DoPlace(const DeviceType) override {}
 
     void DoDraw(Device &device) const override {
         if (s.Style.FlowGrid.DiagramRouteFrame) {
@@ -1163,10 +1190,9 @@ static Node *Tree2Node(Tree t) {
 
     // `DiagramFoldComplexity == 0` means no folding.
     if (s.Style.FlowGrid.DiagramFoldComplexity != 0 && node->Descendents >= Count(s.Style.FlowGrid.DiagramFoldComplexity)) {
-        node->IsFolded = true;
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        return new BlockNode(t, ins, outs, "", FlowGridCol_DiagramLink, node);
+        return new BlockNode(t, ins, outs, "", FlowGridCol_DiagramLink, new DecorateNode(t, node));
     }
     return IsPureRouting(t) ? node : new GroupNode(t, node);
 }
@@ -1223,8 +1249,7 @@ string GetBoxType(Box t) {
 
 static Node *CreateRootNode(Tree t) {
     auto *inner = Tree2NodeInner(t);
-    inner->IsFolded = true;
-    return inner;
+    return new DecorateNode(t, inner);
 }
 
 void OnBoxChange(Box box) {

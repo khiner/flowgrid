@@ -459,9 +459,10 @@ struct Node {
                 const bool in = io == IO_In;
                 for (Count channel = 0; channel < IoCount(io); channel++) {
                     const auto &channel_point = Point(0, io, channel);
-                    const auto &out_point = channel_point - ImVec2{Margin() * DirUnit(io), 0};
-                    device.Line(channel_point - ImVec2{Padding() * DirUnit(io), 0}, out_point);
-                    if (io == IO_Out) device.Arrow(out_point + ImVec2{arrow_width, 0}, Orientation);
+                    const ImVec2 &a = {in ? -Margin() : Size.x - Padding(), channel_point.y};
+                    const ImVec2 &b = {in ? Size.x - Padding() : Size.x + Margin(), channel_point.y};
+                    device.Line(a, b);
+                    if (!in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
                 }
             }
         }
@@ -701,7 +702,7 @@ struct ParallelNode : Node {
         bottom->Place(type, ImVec2{(W() - bottom->W()) / 2, top->H()}, Orientation);
     }
 
-    void DoDraw(Device &device) const override {
+    void DrawConnections(Device &device) const override {
         for (const IO io: IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
                 device.Line(Point(io, i), i < C1()->IoCount(io) ? Node::Point(0, io, i) : Node::Point(1, io, i - C1()->IoCount(io)));
@@ -826,7 +827,7 @@ struct SequentialNode : BinaryNode {
         }
     }
 
-    void DoDraw(Device &device) const override {
+    void DrawConnections(Device &device) const override {
         if (!s.Style.FlowGrid.DiagramSequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
             for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i));
@@ -880,7 +881,7 @@ private:
 struct MergeNode : BinaryNode {
     MergeNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
-    void DoDraw(Device &device) const override {
+    void DrawConnections(Device &device) const override {
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
             device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i % IoCount(IO_In, 1)));
         }
@@ -892,7 +893,7 @@ struct MergeNode : BinaryNode {
 struct SplitNode : BinaryNode {
     SplitNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
-    void DoDraw(Device &device) const override {
+    void DrawConnections(Device &device) const override {
         for (Count i = 0; i < IoCount(IO_In, 1); i++) {
             device.Line(Node::Point(0, IO_Out, i % IoCount(IO_Out, 0)), Node::Point(1, IO_In, i));
         }
@@ -941,16 +942,7 @@ struct GroupNode : Node {
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(std::move(label)) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Padding() * 2; }
-
-    void DoDraw(Device &device) const override {
-        device.GroupRect({{0, 0}, Size}, Label);
-        for (const IO io: IO_All) {
-            for (Count channel = 0; channel < IoCount(io); channel++) {
-                const auto &channel_point = Node::Point(0, io, channel);
-                device.Line(channel_point, {Point(io, channel).x, channel_point.y});
-            }
-        }
-    }
+    void DoDraw(Device &device) const override { device.GroupRect({{0, 0}, Size}, Label); }
 
     float Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin; }
     float Padding() const override { return s.Style.FlowGrid.DiagramGroupPadding; }
@@ -976,8 +968,8 @@ struct RouteNode : Node {
             // Input arrows
             for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XGap(), 0}, Orientation);
         }
-
-        // Input/output & route wires
+    }
+    void DrawConnections(Device &device) const override {
         const auto d = ImVec2{DirUnit() * XGap(), 0};
         for (const IO io: IO_All) {
             const bool in = io == IO_In;

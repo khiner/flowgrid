@@ -9,25 +9,25 @@
 map<ID, StateMember *> StateMember::WithId{};
 
 // Persistent modifiers
-Store set(const StateMember &member, const Primitive &value, const Store &_store) { return _store.set(member.Path, value); }
+Store set(const Field::Base &field, const Primitive &value, const Store &_store) { return _store.set(field.Path, value); }
 Store set(const StoreEntries &values, const Store &_store) {
     auto transient = _store.transient();
     set(values, transient);
     return transient.persistent();
 }
-Store set(const MemberEntries &values, const Store &_store) {
+Store set(const FieldEntries &values, const Store &_store) {
     auto transient = _store.transient();
     set(values, transient);
     return transient.persistent();
 }
 
 // Transient modifiers
-void set(const StateMember &member, const Primitive &value, TransientStore &_store) { _store.set(member.Path, value); }
+void set(const Field::Base &field, const Primitive &value, TransientStore &_store) { _store.set(field.Path, value); }
 void set(const StoreEntries &values, TransientStore &_store) {
     for (const auto &[path, value]: values) _store.set(path, value);
 }
-void set(const MemberEntries &values, TransientStore &_store) {
-    for (const auto &[member, value]: values) _store.set(member.Path, value);
+void set(const FieldEntries &values, TransientStore &_store) {
+    for (const auto &[field, value]: values) _store.set(field.Path, value);
 }
 
 // Split the string on '#'.

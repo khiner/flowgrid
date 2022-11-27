@@ -1492,17 +1492,17 @@ extern Context c;
 */
 bool q(Action &&a, bool flush = false);
 
-using MemberEntry = std::pair<const StateMember &, Primitive>;
-using MemberEntries = vector<MemberEntry>;
+using FieldEntry = std::pair<const Field::Base &, Primitive>;
+using FieldEntries = vector<FieldEntry>;
 
 // Persistent (immutable) store setters
-Store set(const StateMember &member, const Primitive &value, const Store &_store = store);
+Store set(const Field::Base &, const Primitive &, const Store &_store = store);
 Store set(const StoreEntries &, const Store &_store = store);
-Store set(const MemberEntries &, const Store &_store = store);
+Store set(const FieldEntries &, const Store &_store = store);
 
 // Equivalent setters for a transient (mutable) store
-void set(const StateMember &, const Primitive &, TransientStore &);
+void set(const Field::Base &, const Primitive &, TransientStore &);
 void set(const StoreEntries &, TransientStore &);
-void set(const MemberEntries &, TransientStore &);
+void set(const FieldEntries &, TransientStore &);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);

@@ -773,6 +773,8 @@ struct RecursiveNode : Node {
     }
 };
 
+// Split left/right
+// todo configurable `Orientation` to switch between LR/TB orientation.
 struct BinaryNode : Node {
     BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, "", {c1, c2}) {}
 
@@ -791,6 +793,8 @@ struct BinaryNode : Node {
     virtual float HorizontalGap() const { return (C1()->H() + C2()->H()) * s.Style.FlowGrid.DiagramBinaryHorizontalGapRatio; }
 };
 
+// Arrange children left to right
+// todo configurable `Orientation` to switch between LR/TB orientation.
 struct SequentialNode : BinaryNode {
     // The components c1 and c2 must be "compatible" (c1: n->m and c2: m->q).
     SequentialNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {
@@ -892,10 +896,34 @@ Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
     );
 }
 
-// Surround the `inner` node with a rectangle, with `text` label breaking into the top left.
-// If this is a top-level node, add additional padding and draw output arrows.
-// todo delete in favor of using a setting on the decorated node, so that node hierarchy is more 1:1 with Faust tree hierarchy (without adding layers)
-// todo along with this, don't display an extra decorator around a single group
+/**
+Draw a grouping border around the provided `inner` node.
+
+# Respected layout properties
+
+Each property can be changed in `Style.FlowGrid`.
+
+* Padding (`Vec2`):
+  - All children are placed just inside this moat.
+  - _(Margins handled only by parent, `this` node never thinks about margins.)_
+
+# Render:
+
+1) Border rectangle top-left to bottom-right, with a break for a label in the top-left
+  * Unstylable fields:
+    * Y border offset, to draw top centered with label
+  * Stylable fields:
+    * Stroke width
+    * Stroke color
+2) Horizontal channel IO connection lines, at channel's vertical offset and from/to X:
+  * Input:
+     From: My left
+     To: The left of my child at index `channel` (my left + node gap + padding)
+  * Output:
+    * From: The right of my child at index `channel` (my right - node gap - padding)
+    * To: My right
+3)
+*/
 struct GroupNode : Node {
     GroupNode(Tree tree, Node *inner, string text = "", string label = "group")
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(std::move(label)) {}

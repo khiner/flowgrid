@@ -145,6 +145,8 @@ struct Base : StateMember {
     virtual bool Draw() const = 0;
 };
 
+// todo `Prop` macro to avoid repeating state member property variable names as keys
+
 struct Linkable;
 
 struct Bool : Base {
@@ -777,8 +779,12 @@ struct Style : Window {
 
         Bool DiagramDecorateFoldedNodes{this, "DiagramDecorateFoldedNodes", false};
         Float DiagramDecorateMargin{this, "DiagramDecorateMargin", 20, 0, 40};
+        Float DiagramDecoratePadding{this, "DiagramDecoratePadding", 20, 0, 40};
         Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
         Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
+
+        Float DiagramGroupMargin{this, "DiagramGroupMargin", 8, 0, 20};
+        Float DiagramGroupPadding{this, "DiagramGroupPadding", 8, 0, 20};
 
         Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
         Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};

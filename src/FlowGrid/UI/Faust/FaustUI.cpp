@@ -427,34 +427,45 @@ struct Node {
             if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
         }
 
-        if (IsFolded) {
-            if (ShouldDecorate()) device.GroupRect({{0, 0}, Size}, Text);
-            const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
-            for (const IO io: IO_All) {
-                const float offset = PointXOffset(io);
-                for (Count i = 0; i < IoCount(io); i++) {
-                    device.Line(Point(io, i), Point(io, i) + ImVec2{offset, 0} - ImVec2{io == IO_Out ? arrow_width : 0, 0});
-                    if (io == IO_Out) device.Arrow(Point(io, i) + ImVec2{offset, 0}, Orientation);
-                }
-            }
-        }
+        if (ShouldDecorate()) device.GroupRect({{0, 0}, Size}, Text);
         DoDraw(device);
+        DrawConnections(device);
         for (auto *child: Children) child->Draw(device);
 
         if (is_imgui) PopID();
 
         device.SetCursorPos(before_cursor);
     };
+
+
+    inline float W() const { return Size.x; }
+    inline float H() const { return Size.y; }
     inline operator ImRect() const { return {{0, 0}, Size}; }
+
+    inline Node *C1() const { return Children[0]; }
+    inline Node *C2() const { return Children[1]; }
+
+    inline bool IsForward() const { return Orientation == DiagramForward; }
+    inline float OrientationUnit() const { return IsForward() ? 1 : -1; }
 
     inline bool IsLr() const { return ::IsLr(Orientation); }
     inline float DirUnit() const { return IsLr() ? 1 : -1; }
-    inline bool IsForward() const { return Orientation == DiagramForward; }
-    inline float OrientationUnit() const { return IsForward() ? 1 : -1; }
-    inline float W() const { return Size.x; }
-    inline float H() const { return Size.y; }
-    inline Node *C1() const { return Children[0]; }
-    inline Node *C2() const { return Children[1]; }
+    inline float DirUnit(IO io) const { return DirUnit() * (io == IO_In ? 1.f : -1.f); }
+
+    virtual void DrawConnections(Device &device) const {
+        if (IsFolded) {
+            const float arrow_width = s.Style.FlowGrid.DiagramArrowSize.X;
+            for (const IO io: IO_All) {
+                const bool in = io == IO_In;
+                for (Count channel = 0; channel < IoCount(io); channel++) {
+                    const auto &channel_point = Point(0, io, channel);
+                    const auto &out_point = channel_point - ImVec2{Margin() * DirUnit(io), 0};
+                    device.Line(channel_point - ImVec2{Padding() * DirUnit(io), 0}, out_point);
+                    if (io == IO_Out) device.Arrow(out_point + ImVec2{arrow_width, 0}, Orientation);
+                }
+            }
+        }
+    }
 
     // Debug
     void DrawRect(Device &device) const {
@@ -502,16 +513,19 @@ struct Node {
 protected:
     virtual ImVec2 Point(IO io, Count channel) const {
         return {
-            ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()) + PointXOffset(io),
+            ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
             Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()
         };
     }
 
     virtual void DoPlaceSize(DeviceType) = 0;
-    virtual void DoPlace(const DeviceType) {}
+    virtual void DoPlace(const DeviceType type) {
+        if (C1()) C1()->Place(type, {Padding(), Padding()}, Orientation);
+    }
     virtual void DoDraw(Device &) const {}
 
-    float Margin() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
+    virtual float Margin() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : 0.f; }
+    virtual float Padding() const { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecoratePadding : 0.f; }
     ImRect GetFrameRect() const { return {Gap(), Size - Gap()}; }
 
     // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
@@ -530,7 +544,6 @@ protected:
 
 private:
     bool ShouldDecorate() const { return IsFolded && s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
-    float PointXOffset(IO io) const { return DirUnit() * (io == IO_In ? -1.f : 1.f) * Margin(); }
 };
 
 static inline ImVec2 GetScale() {
@@ -600,18 +613,14 @@ struct BlockNode : Node {
             device.SetCursorPos(before_cursor);
         }
         DrawOrientationMark(device);
-        DrawConnections(device);
     }
 
-    void DrawConnections(Device &device) const {
-        const ImVec2 d = {DirUnit() * XGap(), 0};
-        const ImVec2 arrow_d = {DirUnit() * s.Style.FlowGrid.DiagramArrowSize.X, 0};
+    void DrawConnections(Device &device) const override {
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
-            for (Count i = 0; i < IoCount(io); i++) {
-                const auto &p = Point(io, i);
-                device.Line(in ? p : p - d, in ? p + d - arrow_d : p);
-                if (in) device.Arrow(p + d, Orientation); // Input arrows
+            for (Count channel = 0; channel < IoCount(io); channel++) {
+                const auto &channel_point = Point(io, channel);
+                device.Line(channel_point, channel_point + ImVec2{XGap() * DirUnit(io), 0});
             }
         }
     }
@@ -656,7 +665,6 @@ struct InverterNode : BlockNode {
         const auto tri_c = tri_a + ImVec2{0, H()};
         device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Colors[color]);
         device.Triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Colors[color]);
-        DrawConnections(device);
     }
 };
 
@@ -873,7 +881,9 @@ struct MergeNode : BinaryNode {
     MergeNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i % IoCount(IO_In, 1)));
+        for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
+            device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i % IoCount(IO_In, 1)));
+        }
     }
 };
 
@@ -883,7 +893,9 @@ struct SplitNode : BinaryNode {
     SplitNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DoDraw(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_In, 1); i++) device.Line(Node::Point(0, IO_Out, i % IoCount(IO_Out, 0)), Node::Point(1, IO_In, i));
+        for (Count i = 0; i < IoCount(IO_In, 1); i++) {
+            device.Line(Node::Point(0, IO_Out, i % IoCount(IO_Out, 0)), Node::Point(1, IO_In, i));
+        }
     }
 };
 
@@ -928,22 +940,20 @@ struct GroupNode : Node {
     GroupNode(Tree tree, Node *inner, string text = "", string label = "group")
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(std::move(label)) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Gap() * 2; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, Gap(), Orientation); }
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + Padding() * 2; }
 
     void DoDraw(Device &device) const override {
-        const ImVec2 margin = Gap();
-        device.GroupRect({margin, Size - margin}, Label);
+        device.GroupRect({{0, 0}, Size}, Label);
         for (const IO io: IO_All) {
-            for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Node::Point(0, io, i), Point(io, i));
+            for (Count channel = 0; channel < IoCount(io); channel++) {
+                const auto &channel_point = Node::Point(0, io, channel);
+                device.Line(channel_point, {Point(io, channel).x, channel_point.y});
             }
         }
     }
 
-    ImVec2 Point(IO io, Count i) const override {
-        return Node::Point(0, io, i) + ImVec2{DirUnit() * (io == IO_In ? -1.f : 1.f) * Gap().x, 0};
-    }
+    float Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin; }
+    float Padding() const override { return s.Style.FlowGrid.DiagramGroupPadding; }
 
 private:
     const string Label;

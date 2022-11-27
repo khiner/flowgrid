@@ -241,7 +241,7 @@ void Bool::Toggle() const {
 
 bool Field::Bool::Draw() const {
     bool value = *this;
-    const bool edited = Checkbox(Name.c_str(), &value);
+    const bool edited = Checkbox(Links.empty() ? Name.c_str() : format("Link##{}", Name).c_str(), &value);
     if (edited) Toggle();
     HelpMarker();
     return edited;
@@ -520,6 +520,10 @@ void Vec2::LinkValues() const {
 }
 
 bool Vec2::Draw(ImGuiSliderFlags flags) const {
+    if (Linked) {
+        Linked->Draw();
+        SameLine();
+    }
     ImVec2 values = *this;
     const bool edited = SliderFloat2(Name.c_str(), (float *) &values, min, max, fmt, flags);
     UiContext.WidgetGestured();
@@ -1616,7 +1620,6 @@ void Style::FlowGridStyle::Draw() const {
             DiagramScaleFill.Draw();
             if (ScaleFill) ImGui::BeginDisabled();
             DiagramScale.Draw();
-            DiagramScaleLinked.Draw();
             if (ScaleFill) {
                 SameLine();
                 Text("Uncheck 'ScaleFill' to edit scale settings.");

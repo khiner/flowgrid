@@ -769,7 +769,7 @@ struct Style : Window {
         UInt DiagramFoldComplexity{
             this, "DiagramFoldComplexity?Number of boxes within a diagram before folding into a sub-diagram.\n"
                   "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20};
-        Bool DiagramScaleLinked{this, "DiagramScaleLinked?Link X/Y", true}; // Link X/Y scale sliders, forcing them to the same value.
+        Bool DiagramScaleLinked{this, "DiagramScaleLinked", true}; // Link X/Y scale sliders, forcing them to the same value.
         Bool DiagramScaleFill{this, "DiagramScaleFill?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings."};
         Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10, nullptr, &DiagramScaleLinked};
         Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
@@ -780,11 +780,15 @@ struct Style : Window {
         Bool DiagramDecorateFoldedNodes{this, "DiagramDecorateFoldedNodes", false};
         Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
         Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
-        Vec2 DiagramDecorateMargin{this, "DiagramDecorateMargin", {10, 10}, 0, 20};
-        Vec2 DiagramDecoratePadding{this, "DiagramDecoratePadding", {10, 10}, 0, 20};
+        Bool DiagramDecorateMarginLinked{this, "DiagramDecorateMarginLinked", true};
+        Vec2 DiagramDecorateMargin{this, "DiagramDecorateMargin", {10, 10}, 0, 20, nullptr, &DiagramDecorateMarginLinked};
+        Bool DiagramDecoratePaddingLinked{this, "DiagramDecoratePaddingLinked", true};
+        Vec2 DiagramDecoratePadding{this, "DiagramDecoratePadding", {10, 10}, 0, 20, nullptr, &DiagramDecoratePaddingLinked};
 
-        Vec2 DiagramGroupMargin{this, "DiagramGroupMargin", {8, 8}, 0, 20};
-        Vec2 DiagramGroupPadding{this, "DiagramGroupPadding", {8, 8}, 0, 20};
+        Bool DiagramGroupMarginLinked{this, "DiagramGroupMarginLinked", true};
+        Vec2 DiagramGroupMargin{this, "DiagramGroupMargin", {8, 8}, 0, 20, nullptr, &DiagramGroupMarginLinked};
+        Bool DiagramGroupPaddingLinked{this, "DiagramGroupPaddingLinked", true};
+        Vec2 DiagramGroupPadding{this, "DiagramGroupPadding", {8, 8}, 0, 20, nullptr, &DiagramGroupPaddingLinked};
 
         Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
         Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};

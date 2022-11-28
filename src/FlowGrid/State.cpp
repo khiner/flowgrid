@@ -545,7 +545,8 @@ void Vec2::Draw() const { Draw(ImGuiSliderFlags_None); }
 // [SECTION] Window methods
 //-----------------------------------------------------------------------------
 
-Window::Window(const StateMember *parent, const string &id, const bool visible) : UIStateMember(parent, id) {
+Window::Window(const StateMember *parent, const string &path_segment, const string &name_help, const bool visible)
+    : UIStateMember(parent, path_segment, name_help) {
     set(Visible, visible, c.CtorStore);
 }
 
@@ -623,7 +624,7 @@ void State::Draw() const {
                 DebugLog.ToggleMenuItem();
                 StackTool.ToggleMenuItem();
                 StateViewer.ToggleMenuItem();
-                PathUpdateFrequency.ToggleMenuItem();
+                StatePathUpdateFrequency.ToggleMenuItem();
                 StateMemoryEditor.ToggleMenuItem();
                 ProjectPreview.ToggleMenuItem();
                 EndMenu();
@@ -670,7 +671,7 @@ void State::Draw() const {
         Audio.Faust.Log.Dock(debug_node_id);
         StateViewer.Dock(debug_node_id);
         StateMemoryEditor.Dock(debug_node_id);
-        PathUpdateFrequency.Dock(debug_node_id);
+        StatePathUpdateFrequency.Dock(debug_node_id);
         ProjectPreview.Dock(debug_node_id);
 
         Metrics.Dock(utilities_node_id);
@@ -695,7 +696,7 @@ void State::Draw() const {
     DebugLog.DrawWindow();
     StackTool.DrawWindow();
     StateViewer.DrawWindow(ImGuiWindowFlags_MenuBar);
-    PathUpdateFrequency.DrawWindow();
+    StatePathUpdateFrequency.DrawWindow();
     StateMemoryEditor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
     ProjectPreview.DrawWindow();
 
@@ -1153,13 +1154,16 @@ void ProjectPreview::Draw() const {
 // [SECTION] Style editors
 //-----------------------------------------------------------------------------
 
-Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
+Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name_help)
+    : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.CtorStore);
 }
-Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
+Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name_help)
+    : UIStateMember(parent, path_segment, name_help) {
     ColorsAuto(c.CtorStore);
 }
-Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &id) : UIStateMember(parent, id) {
+Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help)
+    : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.CtorStore);
     DiagramColorsDark(c.CtorStore);
     DiagramLayoutFlowGrid(c.CtorStore);
@@ -1389,7 +1393,7 @@ bool Colors::Draw() const {
             }
             auto mutable_value = ColorConvertU32ToFloat4(mapped_value);
             if (is_auto) BeginDisabled();
-            const bool item_changed = ColorEdit4(path_label(Path / to_string(i)).c_str(), (float *) &mutable_value,
+            const bool item_changed = ColorEdit4(PathLabel(Path / to_string(i)).c_str(), (float *) &mutable_value,
                 alpha_flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
             UiContext.WidgetGestured();
             if (is_auto) EndDisabled();

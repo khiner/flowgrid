@@ -90,13 +90,13 @@ using std::map;
 //using std::set; todo capitalize all `set` global methods and uncomment
 
 // E.g. '/foo/bar/baz' => 'baz'
-inline string path_variable_name(const StatePath &path) { return path.filename(); }
-inline string path_label(const StatePath &path) { return SnakeCaseToSentenceCase(path_variable_name(path)); }
+inline string PathVariableName(const StatePath &path) { return path.filename(); }
+inline string PathLabel(const StatePath &path) { return SnakeCaseToSentenceCase(PathVariableName(path)); }
 
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
 // todo don't split on escaped '\?'
-static std::pair<string, string> parse_help_text(const string &str) {
+static std::pair<string, string> ParseHelpText(const string &str) {
     const auto help_split = str.find_first_of('?');
     const bool found = help_split != string::npos;
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
@@ -111,13 +111,8 @@ static const StatePath RootPath{"/"};
 struct StateMember {
     static map<ID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
 
-    // The `id` parameter is used as the path segment for this state member,
-    // and optionally can contain a name and/or an info string.
-    // Prefix a name segment with a '#', and an info segment with a '?'.
-    // E.g. "TestMember#Test-member?A state member for testing things."
-    // If no name segment is found, the name defaults to the path segment.
-    StateMember(const StateMember *parent = nullptr, const string &id = "");
-    StateMember(const StateMember *parent, const string &id, const Primitive &value);
+    StateMember(const StateMember *parent = nullptr, const string &path_segment = "", const string &name_help = "");
+    StateMember(const StateMember *parent, const string &path_segment, const string &name_help, const Primitive &value);
     virtual ~StateMember();
 
     const StateMember *Parent;
@@ -127,16 +122,23 @@ struct StateMember {
     // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:
-    // Helper to display a (?) mark which shows a tooltip when hovered.
-    // Similar to the one in `imgui_demo.cpp`.
+    // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 };
 
-// Convenience macro for compactly defining `StateMember` properties.
-// Defines a `StateMember` instance member of type `type`, with variable name `name`, constructing the state member
-// with parent `this` and name (which ID by default) `"{name}"` (string with value the same as the variable name).
-// todo use separate arg for custom ID/help string that's not parsed after the name.
-#define Prop(type, name, ...) type name{this, #name, __VA_ARGS__}
+/**
+Convenience macros for compactly defining `StateMember` properties.
+
+`Prop` defines a `StateMember` instance member of type `PropType`, with variable name `PropName`, constructing the state member with `this` as a parent,
+and store path-segment `"{PropName}"` (string with value the same as the variable name).
+
+`NamedProp` is the same as `Prop`, but the second arg for overriding the displayed name (instead of deriving from the `PropName`/path-segment), and/or a help string.
+Optionally prefix an info segment in the name string with a '?'.
+E.g. to override the name and provide a help string: "Test-member?A state member for testing things."
+Or, to use the path segment for the name but provide a help string, omit the name: "?A state member for testing things."
+ */
+#define Prop(PropType, PropName, ...) PropType PropName{this, #PropName, "", __VA_ARGS__}
+#define NamedProp(PropType, PropName, NameHelp, ...) PropType PropName{this, #PropName, NameHelp, __VA_ARGS__}
 
 struct UIStateMember : StateMember {
     using StateMember::StateMember;
@@ -154,7 +156,8 @@ struct Base : StateMember {
 struct Linkable;
 
 struct Bool : Base {
-    Bool(const StateMember *parent, const string &identifier, bool value = false) : Base(parent, identifier, value) {}
+    Bool(const StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
+        : Base(parent, path_segment, name_help, value) {}
 
     operator bool() const;
 
@@ -176,8 +179,8 @@ struct Linkable {
 };
 
 struct UInt : Base {
-    UInt(const StateMember *parent, const string &id, U32 value = 0, U32 min = 0, U32 max = 100)
-        : Base(parent, id, value), min(min), max(max) {}
+    UInt(const StateMember *parent, const string &path_segment, const string &name_help, U32 value = 0, U32 min = 0, U32 max = 100)
+        : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator U32() const;
     operator bool() const { return (bool) (U32) *this; }
@@ -190,8 +193,8 @@ struct UInt : Base {
 };
 
 struct Int : Base {
-    Int(const StateMember *parent, const string &id, int value = 0, int min = 0, int max = 100)
-        : Base(parent, id, value), min(min), max(max) {}
+    Int(const StateMember *parent, const string &path_segment, const string &name_help, int value = 0, int min = 0, int max = 100)
+        : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator int() const;
 
@@ -210,8 +213,8 @@ struct Int : Base {
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(const StateMember *parent, const string &id, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, id, value), min(min), max(max), fmt(fmt) {}
+    Float(const StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr)
+        : Base(parent, path_segment, name_help, value), min(min), max(max), fmt(fmt) {}
 
     operator float() const;
 
@@ -224,7 +227,8 @@ struct Float : Base {
 };
 
 struct String : Base {
-    String(const StateMember *parent, const string &id, const string &value = "") : Base(parent, id, value) {}
+    String(const StateMember *parent, const string &path_segment, const string &name_help, const string &value = "")
+        : Base(parent, path_segment, name_help, value) {}
 
     operator string() const;
     operator bool() const;
@@ -236,8 +240,8 @@ struct String : Base {
 };
 
 struct Enum : Base {
-    Enum(const StateMember *parent, const string &id, vector<string> names, int value = 0)
-        : Base(parent, id, value), names(std::move(names)) {}
+    Enum(const StateMember *parent, const string &path_segment, const string &name_help, vector<string> names, int value = 0)
+        : Base(parent, path_segment, name_help, value), names(std::move(names)) {}
 
     operator int() const;
 
@@ -252,7 +256,7 @@ struct Enum : Base {
 struct Flags : Base {
     struct Item {
         Item(const char *name_and_help) {
-            const auto &[name, help] = parse_help_text(name_and_help);
+            const auto &[name, help] = ParseHelpText(name_and_help);
             Name = name;
             Help = help;
         }
@@ -262,8 +266,8 @@ struct Flags : Base {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(const StateMember *parent, const string &id, vector<Item> items, int value = 0)
-        : Base(parent, id, value), items(std::move(items)) {}
+    Flags(const StateMember *parent, const string &path_segment, const string &name_help, vector<Item> items, int value = 0)
+        : Base(parent, path_segment, name_help, value), items(std::move(items)) {}
 
     operator int() const;
 
@@ -319,8 +323,8 @@ struct Colors : Vector<U32> {
     // but not using a value so it can be represented in a U32.
     static constexpr U32 AutoColor = 0X00010101;
 
-    Colors(const StateMember *parent, const string &path_segment, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
-        : Vector(parent, path_segment), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {}
+    Colors(const StateMember *parent, const string &path_segment, const string &name_help, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
+        : Vector(parent, path_segment, name_help), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {}
 
     static U32 ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
     static ImVec4 ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
@@ -393,9 +397,9 @@ static const vector<Flags::Item> TableFlagItems{
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : UIStateMember {
-    Window(const StateMember *parent, const string &id, bool visible = true);
+    Window(const StateMember *parent, const string &path_segment, const string &name_help = "", bool visible = true);
 
-    Bool Visible{this, "Visible", true};
+    Prop(Bool, Visible, true);
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(Name.c_str()); }
     void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -409,7 +413,7 @@ struct ApplicationSettings : Window {
 
     void Draw() const override;
 
-    Float GestureDurationSec{this, "GestureDurationSec", 0.5, 0, 5}; // Merge actions occurring in short succession into a single gesture
+    Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
 };
 
 struct StateViewer : Window {
@@ -417,15 +421,15 @@ struct StateViewer : Window {
     void Draw() const override;
 
     enum LabelMode { Annotated, Raw };
-    Enum LabelMode{this, "LabelMode?The raw JSON state doesn't store keys for all items.\n"
-                         "For example, the main `ui.style.colors` state is a list.\n\n"
-                         "'Annotated' mode shows (highlighted) labels for such state items.\n"
-                         "'Raw' mode shows the state exactly as it is in the raw JSON state.",
-                   {"Annotated", "Raw"}, Annotated
-    };
-    Bool AutoSelect{this, "AutoSelect#Auto-Select?When auto-select is enabled, state changes automatically open.\n"
-                          "The state viewer to the changed state node(s), closing all other state nodes.\n"
-                          "State menu items can only be opened or closed manually if auto-select is disabled.", true};
+    NamedProp(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
+                               "For example, the main `ui.style.colors` state is a list.\n\n"
+                               "'Annotated' mode shows (highlighted) labels for such state items.\n"
+                               "'Raw' mode shows the state exactly as it is in the raw JSON state.",
+        { "Annotated", "Raw" }, Annotated
+    );
+    NamedProp(Bool, AutoSelect, "Auto-Select?When auto-select is enabled, state changes automatically open.\n"
+                                "The state viewer to the changed state node(s), closing all other state nodes.\n"
+                                "State menu items can only be opened or closed manually if auto-select is disabled.", true);
 
     void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const;
 };
@@ -479,7 +483,7 @@ struct Metrics : Window {
     struct FlowGridMetrics : UIStateMember {
         using UIStateMember::UIStateMember;
         void Draw() const override;
-        Bool ShowRelativePaths{this, "ShowRelativePaths", true};
+        Prop(Bool, ShowRelativePaths, true);
     };
     struct ImGuiMetrics : UIStateMember {
         using UIStateMember::UIStateMember;
@@ -548,17 +552,19 @@ struct Audio : Window {
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
-                Flags HoverFlags{
-                    this, "HoverFlags?Hovering over a node in the graph will display the selected information",
-                    {"ShowRect?Display the hovered node's bounding rectangle",
-                     "ShowType?Display the hovered node's box type",
-                     "ShowChannels?Display the hovered node's channel points and indices",
-                     "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
+                NamedProp(Flags, HoverFlags,
+                    "?Hovering over a node in the graph will display the selected information",
+                    {
+                        "ShowRect?Display the hovered node's bounding rectangle",
+                        "ShowType?Display the hovered node's box type",
+                        "ShowChannels?Display the hovered node's channel points and indices",
+                        "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"
+                    },
                     FaustDiagramHoverFlags_None
-                };
+                );
             };
 
-            DiagramSettings Settings{this, "Settings"};
+            Prop(DiagramSettings, Settings);
         };
 
         struct FaustParams : Window {
@@ -571,34 +577,34 @@ struct Audio : Window {
             void Draw() const override;
         };
 
-        FaustEditor Editor{this, "Editor#Faust editor"};
-        FaustDiagram Diagram{this, "Diagram#Faust diagram"};
-        FaustParams Params{this, "Params#Faust params"};
-        FaustLog Log{this, "Log#Faust log"};
+        NamedProp(FaustEditor, Editor, "Faust editor");
+        NamedProp(FaustDiagram, Diagram, "Faust diagram");
+        NamedProp(FaustParams, Params, "Faust params");
+        NamedProp(FaustLog, Log, "Faust log");
 
-//        String Code{this, "Code", R"#(import("stdfaust.lib");
+//        Prop(String, Code, R"#(import("stdfaust.lib");
 //pitchshifter = vgroup("Pitch Shifter", ef.transpose(
 //    vslider("window (samples)", 1000, 50, 10000, 1),
 //    vslider("xfade (samples)", 10, 1, 10000, 1),
 //    vslider("shift (semitones)", 0, -24, +24, 0.1)
 //  )
 //);
-//process = _ : pitchshifter;)#"};
-//        String Code{this, "Code", R"#(import("stdfaust.lib");
+//process = _ : pitchshifter;)#");
+//        Prop(String, Code, R"#(import("stdfaust.lib");
 //s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
-//process = select2(s,no.noise,os.sawtooth(440));)#"};
-//        String Code{this, "Code", R"(import("stdfaust.lib");
-//process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)"};
-//        String Code{this, "Code", R"(import("stdfaust.lib");
-//process = _:fi.highpass(2,1000):_;)"};
-//        String Code{this, "Code", R"(import("stdfaust.lib");
+//process = select2(s,no.noise,os.sawtooth(440));)#");
+//        Prop(String, Code, R"(import("stdfaust.lib");
+//process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)");
+//        Prop(String, Code, R"(import("stdfaust.lib");
+//process = _:fi.highpass(2,1000):_;)");
+//        Prop(String, Code, R"(import("stdfaust.lib");
 //ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
 //q = hslider("q",5,1,30,0.1);
 //gain = hslider("gain",1,0,1,0.01);
-//process = no:noise : fi.resonlp(ctFreq,q,gain);)"};
+//process = no:noise : fi.resonlp(ctFreq,q,gain);");
 
 // Based on Faust::UITester.dsp
-        String Code{this, "Code", R"#(import("stdfaust.lib");
+        Prop(String, Code, R"#(import("stdfaust.lib");
 declare name "UI Tester";
 declare version "1.0";
 declare author "O. Guillerminet";
@@ -677,25 +683,25 @@ process = tgroup("grp 1",
     sliders,
     knobs,
     vmisc,
-    hmisc);)#"};
+    hmisc);)#");
         Prop(String, Error);
     };
 
     void UpdateProcess() const;
     const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
-    Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true};
-    Bool FaustRunning{this, "FaustRunning?Disabling skips Faust computation when computing audio output.", true};
-    Bool Muted{this, "Muted?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true};
     AudioBackend Backend = none;
-    String InDeviceId{this, "InDeviceId#In device ID"};
-    String OutDeviceId{this, "OutDeviceId#Out device ID"};
+    NamedProp(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
+    NamedProp(Bool, FaustRunning, "?Disabling skips Faust computation when computing audio output.", true);
+    NamedProp(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
+    Prop(String, InDeviceId);
+    Prop(String, OutDeviceId);
     Prop(Int, InSampleRate);
     Prop(Int, OutSampleRate);
     Prop(Enum, InFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
     Prop(Enum, OutFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
     Prop(Float, OutDeviceVolume, 1.0);
-    Bool MonitorInput{this, "MonitorInput?Enabling adds the audio input stream directly to the audio output."};
+    NamedProp(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);
 };
 
@@ -725,10 +731,10 @@ using FlowGridCol = int;
 
 struct Vec2 : UIStateMember, Linkable {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(const StateMember *parent, const string &id, const ImVec2 &value = {0, 0}, float min = 0, float max = 1,
-         const char *fmt = nullptr, Bool *link_values = nullptr)
-        : UIStateMember(parent, id), Linkable(link_values),
-          X(this, "X", value.x, min, max), Y(this, "Y", value.y, min, max),
+    Vec2(const StateMember *parent, const string &path_segment, const string &name_help,
+         const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr, Bool *link_values = nullptr)
+        : UIStateMember(parent, path_segment, name_help), Linkable(link_values),
+          X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max),
           min(min), max(max), fmt(fmt) {}
 
     operator ImVec2() const { return {X, Y}; }
@@ -749,16 +755,16 @@ struct Style : Window {
     void Draw() const override;
 
     struct FlowGridStyle : UIStateMember {
-        FlowGridStyle(const StateMember *parent, const string &id);
+        FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
         void Draw() const override;
 
         Prop(Float, FlashDurationSec, 0.6, 0, 5);
 
-        UInt DiagramFoldComplexity{
-            this, "DiagramFoldComplexity?Number of boxes within a diagram before folding into a sub-diagram.\n"
-                  "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20};
+        NamedProp(UInt, DiagramFoldComplexity,
+            "?Number of boxes within a diagram before folding into a sub-diagram.\n"
+            "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20);
+        NamedProp(Bool, DiagramScaleFill, "?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings.");
         Prop(Bool, DiagramScaleLinked, true); // Link X/Y scale sliders, forcing them to the same value.
-        Bool DiagramScaleFill{this, "DiagramScaleFill?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings."};
         Prop(Vec2, DiagramScale, { 1, 1 }, 0.1, 10, nullptr, &DiagramScaleLinked);
         Prop(Enum, DiagramDirection, { "Left", "Right" }, ImGuiDir_Right);
         Prop(Bool, DiagramRouteFrame);
@@ -797,11 +803,11 @@ struct Style : Window {
         Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Center", "Right" }, HAlign_Center);
         Prop(Enum, ParamsAlignmentVertical, { "Top", "Center", "Bottom" }, VAlign_Center);
         Prop(Flags, ParamsTableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
-        Enum ParamsWidthSizingPolicy{
-            this, "ParamsWidthSizingPolicy?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
-                  "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
-                  "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
-            {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly};
+        NamedProp(Enum, ParamsWidthSizingPolicy,
+            "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
+            "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
+            "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
+            { "StretchToFill", "StretchFlexibleOnly", "Balanced" }, ParamsWidthSizingPolicy_StretchFlexibleOnly);
 
         Prop(Colors, Colors, GetColorName);
 
@@ -837,7 +843,7 @@ struct Style : Window {
         }
     };
     struct ImGuiStyle : UIStateMember {
-        ImGuiStyle(const StateMember *parent, const string &id);
+        ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
 
         void Apply(ImGuiContext *ctx) const;
         void Draw() const override;
@@ -885,24 +891,24 @@ struct Style : Window {
         Prop(Vec2, WindowTitleAlign, { 0, 0.5 }, 0, 1, "%.2f");
         Prop(Enum, WindowMenuButtonPosition, { "Left", "Right" }, ImGuiDir_Left);
         Prop(Enum, ColorButtonPosition, { "Left", "Right" }, ImGuiDir_Right);
-        Vec2 ButtonTextAlign{this, "ButtonTextAlign?Alignment applies when a button is larger than its text content.", {0.5, 0.5}, 0, 1, "%.2f"};
-        Vec2 SelectableTextAlign{this, "SelectableTextAlign?Alignment applies when a selectable is larger than its text content.", {0, 0}, 0, 1, "%.2f"};
+        NamedProp(Vec2, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", { 0.5, 0.5 }, 0, 1, "%.2f");
+        NamedProp(Vec2, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", { 0, 0 }, 0, 1, "%.2f");
 
         // Safe area padding
-        Vec2 DisplaySafeAreaPadding{this, "DisplaySafeAreaPadding?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", {3, 3}, 0, 30, "%.0f"};
+        NamedProp(Vec2, DisplaySafeAreaPadding, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", { 3, 3 }, 0, 30, "%.0f");
 
         // Rendering
-        Bool AntiAliasedLines{this, "AntiAliasedLines#Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true};
-        Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex#Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true};
-        Bool AntiAliasedFill{this, "AntiAliasedFill#Anti-aliased fill", true};
-        Float CurveTessellationTol{this, "CurveTessellationTol#Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f"};
+        NamedProp(Bool, AntiAliasedLines, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true);
+        NamedProp(Bool, AntiAliasedLinesUseTex, "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true);
+        NamedProp(Bool, AntiAliasedFill, "Anti-aliased fill", true);
+        NamedProp(Float, CurveTessellationTol, "Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f");
         Prop(Float, CircleTessellationMaxError, 0.3, 0.1, 5, "%.2f");
         Prop(Float, Alpha, 1, 0.2, 1, "%.2f"); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Float DisabledAlpha{this, "DisabledAlpha?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f"};
+        NamedProp(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f");
 
         // Fonts
         Prop(Int, FontIndex);
-        Float FontScale{this, "FontScale?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f"}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
+        NamedProp(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f"); // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
 
         // Not editable todo delete?
         Prop(Float, TabMinWidthForCloseButton, 0);
@@ -914,7 +920,7 @@ struct Style : Window {
         Prop(Colors, Colors, ImGui::GetStyleColorName);
     };
     struct ImPlotStyle : UIStateMember {
-        ImPlotStyle(const StateMember *parent, const string &id);
+        ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
         void Apply(ImPlotContext *ctx) const;
         void Draw() const override;
 
@@ -965,13 +971,12 @@ struct Style : Window {
         Prop(Bool, UseISO8601);
         Prop(Bool, Use24HourClock);
 
-        // Not editable todo delete?
-        Prop(Int, Marker, ImPlotMarker_None);
+        Prop(Int, Marker, ImPlotMarker_None); // Not editable todo delete?
     };
 
-    ImGuiStyle ImGui{this, "ImGui?Configure style for base UI"};
-    ImPlotStyle ImPlot{this, "ImPlot?Configure style for plots"};
-    FlowGridStyle FlowGrid{this, "FlowGrid?Configure application-specific style"};
+    NamedProp(ImGuiStyle, ImGui, "?Configure style for base UI");
+    NamedProp(ImPlotStyle, ImPlot, "?Configure style for plots");
+    NamedProp(FlowGridStyle, FlowGrid, "?Configure application-specific style");
 };
 
 struct ImGuiDockNodeSettings;
@@ -1085,7 +1090,8 @@ struct FileDialogData {
 };
 
 struct FileDialog : Window {
-    FileDialog(const StateMember *parent, const string &id, const bool visible = false) : Window(parent, id, visible) {}
+    FileDialog(const StateMember *parent, const string &path_segment, const string &name_help = "", const bool visible = false)
+        : Window(parent, path_segment, name_help, visible) {}
     void set(const FileDialogData &data, TransientStore &) const;
     void Draw() const override;
 
@@ -1309,26 +1315,26 @@ struct State : UIStateMember {
         using Window::Window;
         void Draw() const override {}
 
-        Bool Running{this, format("Running?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true};
+        NamedProp(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
     };
 
-    ImGuiSettings ImGuiSettings{this, "ImGuiSettings#ImGui settings"};
-    Style Style{this, "Style"};
-    ApplicationSettings ApplicationSettings{this, "ApplicationSettings"};
-    Audio Audio{this, "Audio"};
-    UIProcess UiProcess{this, "UiProcess"};
-    FileDialog FileDialog{this, "FileDialog"};
-    Info Info{this, "Info"};
+    Prop(ImGuiSettings, ImGuiSettings);
+    Prop(Style, Style);
+    Prop(ApplicationSettings, ApplicationSettings);
+    Prop(Audio, Audio);
+    Prop(UIProcess, UiProcess);
+    Prop(FileDialog, FileDialog);
+    Prop(Info, Info);
 
-    Demo Demo{this, "Demo"};
-    Metrics Metrics{this, "Metrics"};
-    StackTool StackTool{this, "StackTool"};
-    DebugLog DebugLog{this, "DebugLog"};
+    Prop(Demo, Demo);
+    Prop(Metrics, Metrics);
+    Prop(StackTool, StackTool);
+    Prop(DebugLog, DebugLog);
 
-    StateViewer StateViewer{this, "StateViewer"};
-    StateMemoryEditor StateMemoryEditor{this, "StateMemoryEditor"};
-    StatePathUpdateFrequency PathUpdateFrequency{this, "PathUpdateFrequency#State path update frequency"};
-    ProjectPreview ProjectPreview{this, "ProjectPreview"};
+    Prop(StateViewer, StateViewer);
+    Prop(StateMemoryEditor, StateMemoryEditor);
+    Prop(StatePathUpdateFrequency, StatePathUpdateFrequency);
+    Prop(ProjectPreview, ProjectPreview);
 };
 
 namespace FlowGrid {

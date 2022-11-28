@@ -30,18 +30,8 @@ void set(const FieldEntries &values, TransientStore &_store) {
     for (const auto &[field, value]: values) _store.set(field.Path, value);
 }
 
-// Split the string on '#'.
-// If there is no '#' in the provided string, the first element will have the full input string and the second element will be an empty string.
-// todo don't split on escaped '\#'
-static std::pair<string, string> parse_name(const string &str) {
-    const auto help_split = str.find_first_of('#');
-    const bool found = help_split != string::npos;
-    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
-}
-
-StateMember::StateMember(const StateMember *parent, const string &id) : Parent(parent) {
-    const auto &[path_segment_and_name, help] = parse_help_text(id);
-    const auto &[path_segment, name] = parse_name(path_segment_and_name);
+StateMember::StateMember(const StateMember *parent, const string &path_segment, const string &name_help) : Parent(parent) {
+    const auto &[name, help] = ParseHelpText(name_help);
     PathSegment = path_segment;
     Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
     Name = name.empty() ? path_segment.empty() ? "" : SnakeCaseToSentenceCase(path_segment) : name;
@@ -50,7 +40,7 @@ StateMember::StateMember(const StateMember *parent, const string &id) : Parent(p
     WithId[Id] = this;
 }
 
-StateMember::StateMember(const StateMember *parent, const string &id, const Primitive &value) : StateMember(parent, id) {
+StateMember::StateMember(const StateMember *parent, const string &id, const string &name_help, const Primitive &value) : StateMember(parent, id, name_help) {
     c.CtorStore.set(Path, value);
 }
 

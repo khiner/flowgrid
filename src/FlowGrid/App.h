@@ -132,13 +132,13 @@ Convenience macros for compactly defining `StateMember` properties.
 `Prop` defines a `StateMember` instance member of type `PropType`, with variable name `PropName`, constructing the state member with `this` as a parent,
 and store path-segment `"{PropName}"` (string with value the same as the variable name).
 
-`NamedProp` is the same as `Prop`, but the second arg for overriding the displayed name (instead of deriving from the `PropName`/path-segment), and/or a help string.
+`Prop_` is the same as `Prop`, but the second arg for overriding the displayed name (instead of deriving from the `PropName`/path-segment), and/or a help string.
 Optionally prefix an info segment in the name string with a '?'.
 E.g. to override the name and provide a help string: "Test-member?A state member for testing things."
 Or, to use the path segment for the name but provide a help string, omit the name: "?A state member for testing things."
  */
-#define Prop(PropType, PropName, ...) PropType PropName{this, #PropName, "", __VA_ARGS__}
-#define NamedProp(PropType, PropName, NameHelp, ...) PropType PropName{this, #PropName, NameHelp, __VA_ARGS__}
+#define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, #PropName, NameHelp, __VA_ARGS__}
+#define Prop(PropType, PropName, ...) Prop_(PropType, PropName, "", __VA_ARGS__)
 
 struct UIStateMember : StateMember {
     using StateMember::StateMember;
@@ -421,15 +421,15 @@ struct StateViewer : Window {
     void Draw() const override;
 
     enum LabelMode { Annotated, Raw };
-    NamedProp(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
-                               "For example, the main `ui.style.colors` state is a list.\n\n"
-                               "'Annotated' mode shows (highlighted) labels for such state items.\n"
-                               "'Raw' mode shows the state exactly as it is in the raw JSON state.",
+    Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
+                           "For example, the main `ui.style.colors` state is a list.\n\n"
+                           "'Annotated' mode shows (highlighted) labels for such state items.\n"
+                           "'Raw' mode shows the state exactly as it is in the raw JSON state.",
         { "Annotated", "Raw" }, Annotated
     );
-    NamedProp(Bool, AutoSelect, "Auto-Select?When auto-select is enabled, state changes automatically open.\n"
-                                "The state viewer to the changed state node(s), closing all other state nodes.\n"
-                                "State menu items can only be opened or closed manually if auto-select is disabled.", true);
+    Prop_(Bool, AutoSelect, "Auto-Select?When auto-select is enabled, state changes automatically open.\n"
+                            "The state viewer to the changed state node(s), closing all other state nodes.\n"
+                            "State menu items can only be opened or closed manually if auto-select is disabled.", true);
 
     void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const;
 };
@@ -552,7 +552,7 @@ struct Audio : Window {
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
-                NamedProp(Flags, HoverFlags,
+                Prop_(Flags, HoverFlags,
                     "?Hovering over a node in the graph will display the selected information",
                     {
                         "ShowRect?Display the hovered node's bounding rectangle",
@@ -577,10 +577,10 @@ struct Audio : Window {
             void Draw() const override;
         };
 
-        NamedProp(FaustEditor, Editor, "Faust editor");
-        NamedProp(FaustDiagram, Diagram, "Faust diagram");
-        NamedProp(FaustParams, Params, "Faust params");
-        NamedProp(FaustLog, Log, "Faust log");
+        Prop_(FaustEditor, Editor, "Faust editor");
+        Prop_(FaustDiagram, Diagram, "Faust diagram");
+        Prop_(FaustParams, Params, "Faust params");
+        Prop_(FaustLog, Log, "Faust log");
 
 //        Prop(String, Code, R"#(import("stdfaust.lib");
 //pitchshifter = vgroup("Pitch Shifter", ef.transpose(
@@ -691,9 +691,9 @@ process = tgroup("grp 1",
     const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
 
     AudioBackend Backend = none;
-    NamedProp(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
-    NamedProp(Bool, FaustRunning, "?Disabling skips Faust computation when computing audio output.", true);
-    NamedProp(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
+    Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
+    Prop_(Bool, FaustRunning, "?Disabling skips Faust computation when computing audio output.", true);
+    Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
     Prop(String, InDeviceId);
     Prop(String, OutDeviceId);
     Prop(Int, InSampleRate);
@@ -701,7 +701,7 @@ process = tgroup("grp 1",
     Prop(Enum, InFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
     Prop(Enum, OutFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
     Prop(Float, OutDeviceVolume, 1.0);
-    NamedProp(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
+    Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);
 };
 
@@ -760,10 +760,10 @@ struct Style : Window {
 
         Prop(Float, FlashDurationSec, 0.6, 0, 5);
 
-        NamedProp(UInt, DiagramFoldComplexity,
+        Prop_(UInt, DiagramFoldComplexity,
             "?Number of boxes within a diagram before folding into a sub-diagram.\n"
             "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20);
-        NamedProp(Bool, DiagramScaleFill, "?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings.");
+        Prop_(Bool, DiagramScaleFill, "?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings.");
         Prop(Bool, DiagramScaleLinked, true); // Link X/Y scale sliders, forcing them to the same value.
         Prop(Vec2, DiagramScale, { 1, 1 }, 0.1, 10, nullptr, &DiagramScaleLinked);
         Prop(Enum, DiagramDirection, { "Left", "Right" }, ImGuiDir_Right);
@@ -803,7 +803,7 @@ struct Style : Window {
         Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Center", "Right" }, HAlign_Center);
         Prop(Enum, ParamsAlignmentVertical, { "Top", "Center", "Bottom" }, VAlign_Center);
         Prop(Flags, ParamsTableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
-        NamedProp(Enum, ParamsWidthSizingPolicy,
+        Prop_(Enum, ParamsWidthSizingPolicy,
             "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
             "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
             "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
@@ -891,24 +891,24 @@ struct Style : Window {
         Prop(Vec2, WindowTitleAlign, { 0, 0.5 }, 0, 1, "%.2f");
         Prop(Enum, WindowMenuButtonPosition, { "Left", "Right" }, ImGuiDir_Left);
         Prop(Enum, ColorButtonPosition, { "Left", "Right" }, ImGuiDir_Right);
-        NamedProp(Vec2, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", { 0.5, 0.5 }, 0, 1, "%.2f");
-        NamedProp(Vec2, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", { 0, 0 }, 0, 1, "%.2f");
+        Prop_(Vec2, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", { 0.5, 0.5 }, 0, 1, "%.2f");
+        Prop_(Vec2, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", { 0, 0 }, 0, 1, "%.2f");
 
         // Safe area padding
-        NamedProp(Vec2, DisplaySafeAreaPadding, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", { 3, 3 }, 0, 30, "%.0f");
+        Prop_(Vec2, DisplaySafeAreaPadding, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", { 3, 3 }, 0, 30, "%.0f");
 
         // Rendering
-        NamedProp(Bool, AntiAliasedLines, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true);
-        NamedProp(Bool, AntiAliasedLinesUseTex, "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true);
-        NamedProp(Bool, AntiAliasedFill, "Anti-aliased fill", true);
-        NamedProp(Float, CurveTessellationTol, "Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f");
+        Prop_(Bool, AntiAliasedLines, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true);
+        Prop_(Bool, AntiAliasedLinesUseTex, "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true);
+        Prop_(Bool, AntiAliasedFill, "Anti-aliased fill", true);
+        Prop_(Float, CurveTessellationTol, "Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f");
         Prop(Float, CircleTessellationMaxError, 0.3, 0.1, 5, "%.2f");
         Prop(Float, Alpha, 1, 0.2, 1, "%.2f"); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        NamedProp(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f");
+        Prop_(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f");
 
         // Fonts
         Prop(Int, FontIndex);
-        NamedProp(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f"); // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
+        Prop_(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f"); // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
 
         // Not editable todo delete?
         Prop(Float, TabMinWidthForCloseButton, 0);
@@ -974,9 +974,9 @@ struct Style : Window {
         Prop(Int, Marker, ImPlotMarker_None); // Not editable todo delete?
     };
 
-    NamedProp(ImGuiStyle, ImGui, "?Configure style for base UI");
-    NamedProp(ImPlotStyle, ImPlot, "?Configure style for plots");
-    NamedProp(FlowGridStyle, FlowGrid, "?Configure application-specific style");
+    Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
+    Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
+    Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
 };
 
 struct ImGuiDockNodeSettings;
@@ -1315,7 +1315,7 @@ struct State : UIStateMember {
         using Window::Window;
         void Draw() const override {}
 
-        NamedProp(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
+        Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
     };
 
     Prop(ImGuiSettings, ImGuiSettings);

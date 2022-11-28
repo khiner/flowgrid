@@ -132,6 +132,12 @@ protected:
     void HelpMarker(bool after = true) const;
 };
 
+// Convenience macro for compactly defining `StateMember` properties.
+// Defines a `StateMember` instance member of type `type`, with variable name `name`, constructing the state member
+// with parent `this` and name (which ID by default) `"{name}"` (string with value the same as the variable name).
+// todo use separate arg for custom ID/help string that's not parsed after the name.
+#define Prop(type, name, ...) type name{this, #name, __VA_ARGS__}
+
 struct UIStateMember : StateMember {
     using StateMember::StateMember;
     virtual void Draw() const = 0;
@@ -144,8 +150,6 @@ struct Base : StateMember {
     using StateMember::StateMember;
     virtual bool Draw() const = 0;
 };
-
-// todo `Prop` macro to avoid repeating state member property variable names as keys
 
 struct Linkable;
 
@@ -442,8 +446,8 @@ struct ProjectPreview : Window {
     using Window::Window;
     void Draw() const override;
 
-    Enum Format{this, "Format", {"StateFormat", "ActionFormat"}, 1};
-    Bool Raw{this, "Raw"};
+    Prop(Enum, Format, { "StateFormat", "ActionFormat" }, 1);
+    Prop(Bool, Raw);
 };
 
 struct Demo : Window {
@@ -463,9 +467,9 @@ struct Demo : Window {
         void Draw() const override;
     };
 
-    ImGuiDemo ImGui{this, "ImGui"};
-    ImPlotDemo ImPlot{this, "ImPlot"};
-    FileDialogDemo FileDialog{this, "FileDialog"};
+    Prop(ImGuiDemo, ImGui);
+    Prop(ImPlotDemo, ImPlot);
+    Prop(FileDialogDemo, FileDialog);
 };
 
 struct Metrics : Window {
@@ -486,9 +490,9 @@ struct Metrics : Window {
         void Draw() const override;
     };
 
-    FlowGridMetrics FlowGrid{this, "FlowGrid"};
-    ImGuiMetrics ImGui{this, "ImGui"};
-    ImPlotMetrics ImPlot{this, "ImPlot"};
+    Prop(FlowGridMetrics, FlowGrid);
+    Prop(ImGuiMetrics, ImGui);
+    Prop(ImPlotMetrics, ImPlot);
 };
 
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
@@ -674,7 +678,7 @@ process = tgroup("grp 1",
     knobs,
     vmisc,
     hmisc);)#"};
-        String Error{this, "Error"};
+        Prop(String, Error);
     };
 
     void UpdateProcess() const;
@@ -686,14 +690,13 @@ process = tgroup("grp 1",
     AudioBackend Backend = none;
     String InDeviceId{this, "InDeviceId#In device ID"};
     String OutDeviceId{this, "OutDeviceId#Out device ID"};
-    Int InSampleRate{this, "InSampleRate"};
-    Int OutSampleRate{this, "OutSampleRate"};
-    Enum InFormat{this, "InFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
-    Enum OutFormat{this, "OutFormat", {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid};
-    Float OutDeviceVolume{this, "OutDeviceVolume", 1.0};
+    Prop(Int, InSampleRate);
+    Prop(Int, OutSampleRate);
+    Prop(Enum, InFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
+    Prop(Enum, OutFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
+    Prop(Float, OutDeviceVolume, 1.0);
     Bool MonitorInput{this, "MonitorInput?Enabling adds the audio input stream directly to the audio output."};
-
-    FaustState Faust{this, "Faust"};
+    Prop(FaustState, Faust);
 };
 
 enum FlowGridCol_ {
@@ -764,56 +767,58 @@ struct Style : Window {
         FlowGridStyle(const StateMember *parent, const string &id);
         void Draw() const override;
 
-        Float FlashDurationSec{this, "FlashDurationSec", 0.6, 0, 5};
+        Prop(Float, FlashDurationSec, 0.6, 0, 5);
 
         UInt DiagramFoldComplexity{
             this, "DiagramFoldComplexity?Number of boxes within a diagram before folding into a sub-diagram.\n"
                   "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20};
-        Bool DiagramScaleLinked{this, "DiagramScaleLinked", true}; // Link X/Y scale sliders, forcing them to the same value.
+        Prop(Bool, DiagramScaleLinked, true); // Link X/Y scale sliders, forcing them to the same value.
         Bool DiagramScaleFill{this, "DiagramScaleFill?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings."};
-        Vec2 DiagramScale{this, "DiagramScale", {1, 1}, 0.1, 10, nullptr, &DiagramScaleLinked};
-        Enum DiagramDirection{this, "DiagramDirection", {"Left", "Right"}, ImGuiDir_Right};
-        Bool DiagramRouteFrame{this, "DiagramRouteFrame"};
-        Bool DiagramOrientationMark{this, "DiagramOrientationMark", true};
-        Bool DiagramSequentialConnectionZigzag{this, "DiagramSequentialConnectionZigzag", true}; // false allows for diagonal lines instead of zigzags instead of zigzags
+        Prop(Vec2, DiagramScale, { 1, 1 }, 0.1, 10, nullptr, &DiagramScaleLinked);
+        Prop(Enum, DiagramDirection, { "Left", "Right" }, ImGuiDir_Right);
+        Prop(Bool, DiagramRouteFrame);
+        Prop(Bool, DiagramOrientationMark, true);
+        Prop(Bool, DiagramSequentialConnectionZigzag, true); // false allows for diagonal lines instead of zigzags instead of zigzags
 
-        Bool DiagramDecorateFoldedNodes{this, "DiagramDecorateFoldedNodes", false};
-        Float DiagramDecorateCornerRadius{this, "DiagramDecorateCornerRadius", 0, 0, 10};
-        Float DiagramDecorateLineWidth{this, "DiagramDecorateLineWidth", 1, 0, 4};
-        Bool DiagramDecorateMarginLinked{this, "DiagramDecorateMarginLinked", true};
-        Vec2 DiagramDecorateMargin{this, "DiagramDecorateMargin", {10, 10}, 0, 20, nullptr, &DiagramDecorateMarginLinked};
-        Bool DiagramDecoratePaddingLinked{this, "DiagramDecoratePaddingLinked", true};
-        Vec2 DiagramDecoratePadding{this, "DiagramDecoratePadding", {10, 10}, 0, 20, nullptr, &DiagramDecoratePaddingLinked};
+        Prop(Bool, DiagramDecorateFoldedNodes, false);
+        Prop(Float, DiagramDecorateCornerRadius, 0, 0, 10);
+        Prop(Float, DiagramDecorateLineWidth, 1, 0, 4);
+        Prop(Bool, DiagramDecorateMarginLinked, true);
+        Prop(Vec2, DiagramDecorateMargin, { 10, 10 }, 0, 20, nullptr, &DiagramDecorateMarginLinked);
+        Prop(Bool, DiagramDecoratePaddingLinked, true);
+        Prop(Vec2, DiagramDecoratePadding, { 10, 10 }, 0, 20, nullptr, &DiagramDecoratePaddingLinked);
 
-        Bool DiagramGroupMarginLinked{this, "DiagramGroupMarginLinked", true};
-        Vec2 DiagramGroupMargin{this, "DiagramGroupMargin", {8, 8}, 0, 20, nullptr, &DiagramGroupMarginLinked};
-        Bool DiagramGroupPaddingLinked{this, "DiagramGroupPaddingLinked", true};
-        Vec2 DiagramGroupPadding{this, "DiagramGroupPadding", {8, 8}, 0, 20, nullptr, &DiagramGroupPaddingLinked};
+        Prop(Bool, DiagramGroupMarginLinked, true);
+        Prop(Vec2, DiagramGroupMargin, { 8, 8 }, 0, 20, nullptr, &DiagramGroupMarginLinked);
+        Prop(Bool, DiagramGroupPaddingLinked, true);
+        Prop(Vec2, DiagramGroupPadding, { 8, 8 }, 0, 20, nullptr, &DiagramGroupPaddingLinked);
 
-        Float DiagramOrientationMarkRadius{this, "DiagramOrientationMarkRadius", 1.5, 0.5, 3};
-        Float DiagramBoxCornerRadius{this, "DiagramBoxCornerRadius", 0, 0, 10};
-        Float DiagramBinaryHorizontalGapRatio{this, "DiagramBinaryHorizontalGapRatio", 0.25, 0, 1};
-        Float DiagramWireWidth{this, "DiagramWireWidth", 1, 0.5, 4};
-        Float DiagramWireGap{this, "DiagramWireGap", 16, 10, 20};
-        Vec2 DiagramGap{this, "DiagramGap", {8, 8}, 0, 20};
-        Vec2 DiagramArrowSize{this, "DiagramArrowSize", {3, 2}, 1, 10};
-        Float DiagramInverterRadius{this, "DiagramInverterRadius", 3, 1, 5};
+        Prop(Float, DiagramOrientationMarkRadius, 1.5, 0.5, 3);
+        Prop(Float, DiagramBoxCornerRadius, 0, 0, 10);
+        Prop(Float, DiagramBinaryHorizontalGapRatio, 0.25, 0, 1);
+        Prop(Float, DiagramWireWidth, 1, 0.5, 4);
+        Prop(Float, DiagramWireGap, 16, 10, 20);
+        Prop(Vec2, DiagramGap, { 8, 8 }, 0, 20);
+        Prop(Vec2, DiagramArrowSize, { 3, 2 }, 1, 10);
+        Prop(Float, DiagramInverterRadius, 3, 1, 5);
 
-        Bool ParamsHeaderTitles{this, "ParamsHeaderTitles", true};
-        Float ParamsMinHorizontalItemWidth{this, "ParamsMinHorizontalItemWidth", 4, 2, 8}; // In frame-height units
-        Float ParamsMaxHorizontalItemWidth{this, "ParamsMaxHorizontalItemWidth", 16, 10, 24}; // In frame-height units
-        Float ParamsMinVerticalItemHeight{this, "ParamsMinVerticalItemHeight", 4, 2, 8}; // In frame-height units
-        Float ParamsMinKnobItemSize{this, "ParamsMinKnobItemSize", 3, 2, 6}; // In frame-height units
-        Enum ParamsAlignmentHorizontal{this, "ParamsAlignmentHorizontal", {"Left", "Center", "Right"}, HAlign_Center};
-        Enum ParamsAlignmentVertical{this, "ParamsAlignmentVertical", {"Top", "Center", "Bottom"}, VAlign_Center};
-        Flags ParamsTableFlags{this, "ParamsTableFlags", TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable};
+        Prop(Bool, ParamsHeaderTitles, true);
+        // In frame-height units:
+        Prop(Float, ParamsMinHorizontalItemWidth, 4, 2, 8);
+        Prop(Float, ParamsMaxHorizontalItemWidth, 16, 10, 24);
+        Prop(Float, ParamsMinVerticalItemHeight, 4, 2, 8);
+        Prop(Float, ParamsMinKnobItemSize, 3, 2, 6);
+
+        Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Center", "Right" }, HAlign_Center);
+        Prop(Enum, ParamsAlignmentVertical, { "Top", "Center", "Bottom" }, VAlign_Center);
+        Prop(Flags, ParamsTableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
         Enum ParamsWidthSizingPolicy{
             this, "ParamsWidthSizingPolicy?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
                   "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
                   "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
             {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly};
 
-        Colors Colors{this, "Colors", GetColorName};
+        Prop(Colors, Colors, GetColorName);
 
         void ColorsDark(TransientStore &_store) const;
         void ColorsLight(TransientStore &_store) const;
@@ -864,37 +869,37 @@ struct Style : Window {
         // Double-check everything's up-to-date from time to time!
 
         // Main
-        Vec2 WindowPadding{this, "WindowPadding", {8, 8}, 0, 20, "%.0f"};
-        Vec2 FramePadding{this, "FramePadding", {4, 3}, 0, 20, "%.0f"};
-        Vec2 CellPadding{this, "CellPadding", {4, 2}, 0, 20, "%.0f"};
-        Vec2 ItemSpacing{this, "ItemSpacing", {8, 4}, 0, 20, "%.0f"};
-        Vec2 ItemInnerSpacing{this, "ItemInnerSpacing", {4, 4}, 0, 20, "%.0f"};
-        Vec2 TouchExtraPadding{this, "TouchExtraPadding", {0, 0}, 0, 10, "%.0f"};
-        Float IndentSpacing{this, "IndentSpacing", 21, 0, 30, "%.0f"};
-        Float ScrollbarSize{this, "ScrollbarSize", 14, 1, 20, "%.0f"};
-        Float GrabMinSize{this, "GrabMinSize", 12, 1, 20, "%.0f"};
+        Prop(Vec2, WindowPadding, { 8, 8 }, 0, 20, "%.0f");
+        Prop(Vec2, FramePadding, { 4, 3 }, 0, 20, "%.0f");
+        Prop(Vec2, CellPadding, { 4, 2 }, 0, 20, "%.0f");
+        Prop(Vec2, ItemSpacing, { 8, 4 }, 0, 20, "%.0f");
+        Prop(Vec2, ItemInnerSpacing, { 4, 4 }, 0, 20, "%.0f");
+        Prop(Vec2, TouchExtraPadding, { 0, 0 }, 0, 10, "%.0f");
+        Prop(Float, IndentSpacing, 21, 0, 30, "%.0f");
+        Prop(Float, ScrollbarSize, 14, 1, 20, "%.0f");
+        Prop(Float, GrabMinSize, 12, 1, 20, "%.0f");
 
         // Borders
-        Float WindowBorderSize{this, "WindowBorderSize", 1, 0, 1, "%.0f"};
-        Float ChildBorderSize{this, "ChildBorderSize", 1, 0, 1, "%.0f"};
-        Float FrameBorderSize{this, "FrameBorderSize", 0, 0, 1, "%.0f"};
-        Float PopupBorderSize{this, "PopupBorderSize", 1, 0, 1, "%.0f"};
-        Float TabBorderSize{this, "TabBorderSize", 0, 0, 1, "%.0f"};
+        Prop(Float, WindowBorderSize, 1, 0, 1, "%.0f");
+        Prop(Float, ChildBorderSize, 1, 0, 1, "%.0f");
+        Prop(Float, FrameBorderSize, 0, 0, 1, "%.0f");
+        Prop(Float, PopupBorderSize, 1, 0, 1, "%.0f");
+        Prop(Float, TabBorderSize, 0, 0, 1, "%.0f");
 
         // Rounding
-        Float WindowRounding{this, "WindowRounding", 0, 0, 12, "%.0f"};
-        Float ChildRounding{this, "ChildRounding", 0, 0, 12, "%.0f"};
-        Float FrameRounding{this, "FrameRounding", 0, 0, 12, "%.0f"};
-        Float PopupRounding{this, "PopupRounding", 0, 0, 12, "%.0f"};
-        Float ScrollbarRounding{this, "ScrollbarRounding", 9, 0, 12, "%.0f"};
-        Float GrabRounding{this, "GrabRounding", 0, 0, 12, "%.0f"};
-        Float LogSliderDeadzone{this, "LogSliderDeadzone", 4, 0, 12, "%.0f"};
-        Float TabRounding{this, "TabRounding", 4, 0, 12, "%.0f"};
+        Prop(Float, WindowRounding, 0, 0, 12, "%.0f");
+        Prop(Float, ChildRounding, 0, 0, 12, "%.0f");
+        Prop(Float, FrameRounding, 0, 0, 12, "%.0f");
+        Prop(Float, PopupRounding, 0, 0, 12, "%.0f");
+        Prop(Float, ScrollbarRounding, 9, 0, 12, "%.0f");
+        Prop(Float, GrabRounding, 0, 0, 12, "%.0f");
+        Prop(Float, LogSliderDeadzone, 4, 0, 12, "%.0f");
+        Prop(Float, TabRounding, 4, 0, 12, "%.0f");
 
         // Alignment
-        Vec2 WindowTitleAlign{this, "WindowTitleAlign", {0, 0.5}, 0, 1, "%.2f"};
-        Enum WindowMenuButtonPosition{this, "WindowMenuButtonPosition", {"Left", "Right"}, ImGuiDir_Left};
-        Enum ColorButtonPosition{this, "ColorButtonPosition", {"Left", "Right"}, ImGuiDir_Right};
+        Prop(Vec2, WindowTitleAlign, { 0, 0.5 }, 0, 1, "%.2f");
+        Prop(Enum, WindowMenuButtonPosition, { "Left", "Right" }, ImGuiDir_Left);
+        Prop(Enum, ColorButtonPosition, { "Left", "Right" }, ImGuiDir_Right);
         Vec2 ButtonTextAlign{this, "ButtonTextAlign?Alignment applies when a button is larger than its text content.", {0.5, 0.5}, 0, 1, "%.2f"};
         Vec2 SelectableTextAlign{this, "SelectableTextAlign?Alignment applies when a selectable is larger than its text content.", {0, 0}, 0, 1, "%.2f"};
 
@@ -906,22 +911,22 @@ struct Style : Window {
         Bool AntiAliasedLinesUseTex{this, "AntiAliasedLinesUseTex#Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true};
         Bool AntiAliasedFill{this, "AntiAliasedFill#Anti-aliased fill", true};
         Float CurveTessellationTol{this, "CurveTessellationTol#Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f"};
-        Float CircleTessellationMaxError{this, "CircleTessellationMaxError", 0.3, 0.1, 5, "%.2f"};
-        Float Alpha{this, "Alpha", 1, 0.2, 1, "%.2f"}; // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
+        Prop(Float, CircleTessellationMaxError, 0.3, 0.1, 5, "%.2f");
+        Prop(Float, Alpha, 1, 0.2, 1, "%.2f"); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
         Float DisabledAlpha{this, "DisabledAlpha?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f"};
 
         // Fonts
-        Int FontIndex{this, "FontIndex"};
+        Prop(Int, FontIndex);
         Float FontScale{this, "FontScale?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f"}; // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
 
         // Not editable todo delete?
-        Float TabMinWidthForCloseButton{this, "TabMinWidthForCloseButton", 0};
-        Vec2 DisplayWindowPadding{this, "DisplayWindowPadding", {19, 19}};
-        Vec2 WindowMinSize{this, "WindowMinSize", {32, 32}};
-        Float MouseCursorScale{this, "MouseCursorScale", 1};
-        Float ColumnsMinSpacing{this, "ColumnsMinSpacing", 6};
+        Prop(Float, TabMinWidthForCloseButton, 0);
+        Prop(Vec2, DisplayWindowPadding, { 19, 19 });
+        Prop(Vec2, WindowMinSize, { 32, 32 });
+        Prop(Float, MouseCursorScale, 1);
+        Prop(Float, ColumnsMinSpacing, 6);
 
-        Colors Colors{this, "Colors", ImGui::GetStyleColorName};
+        Prop(Colors, Colors, ImGui::GetStyleColorName);
     };
     struct ImPlotStyle : UIStateMember {
         ImPlotStyle(const StateMember *parent, const string &id);
@@ -939,44 +944,44 @@ struct Style : Window {
         // Double-check everything's up-to-date from time to time!
 
         // Item styling
-        Float LineWeight{this, "LineWeight", 1, 0, 5, "%.1f"};
-        Float MarkerSize{this, "MarkerSize", 4, 2, 10, "%.1f"};
-        Float MarkerWeight{this, "MarkerWeight", 1, 0, 5, "%.1f"};
-        Float FillAlpha{this, "FillAlpha", 1, 0, 1, "%.2f"};
-        Float ErrorBarSize{this, "ErrorBarSize", 5, 0, 10, "%.1f"};
-        Float ErrorBarWeight{this, "ErrorBarWeight", 1.5, 0, 5, "%.1f"};
-        Float DigitalBitHeight{this, "DigitalBitHeight", 8, 0, 20, "%.1f"};
-        Float DigitalBitGap{this, "DigitalBitGap", 4, 0, 20, "%.1f"};
+        Prop(Float, LineWeight, 1, 0, 5, "%.1f");
+        Prop(Float, MarkerSize, 4, 2, 10, "%.1f");
+        Prop(Float, MarkerWeight, 1, 0, 5, "%.1f");
+        Prop(Float, FillAlpha, 1, 0, 1, "%.2f");
+        Prop(Float, ErrorBarSize, 5, 0, 10, "%.1f");
+        Prop(Float, ErrorBarWeight, 1.5, 0, 5, "%.1f");
+        Prop(Float, DigitalBitHeight, 8, 0, 20, "%.1f");
+        Prop(Float, DigitalBitGap, 4, 0, 20, "%.1f");
 
         // Plot styling
-        Float PlotBorderSize{this, "PlotBorderSize", 1, 0, 2, "%.0f"};
-        Float MinorAlpha{this, "MinorAlpha", 0.25, 1, 0, "%.2f"};
-        Vec2 MajorTickLen{this, "MajorTickLen", {10, 10}, 0, 20, "%.0f"};
-        Vec2 MinorTickLen{this, "MinorTickLen", {5, 5}, 0, 20, "%.0f"};
-        Vec2 MajorTickSize{this, "MajorTickSize", {1, 1}, 0, 2, "%.1f"};
-        Vec2 MinorTickSize{this, "MinorTickSize", {1, 1}, 0, 2, "%.1f"};
-        Vec2 MajorGridSize{this, "MajorGridSize", {1, 1}, 0, 2, "%.1f"};
-        Vec2 MinorGridSize{this, "MinorGridSize", {1, 1}, 0, 2, "%.1f"};
-        Vec2 PlotDefaultSize{this, "PlotDefaultSize", {400, 300}, 0, 1000, "%.0f"};
-        Vec2 PlotMinSize{this, "PlotMinSize", {200, 150}, 0, 300, "%.0f"};
+        Prop(Float, PlotBorderSize, 1, 0, 2, "%.0f");
+        Prop(Float, MinorAlpha, 0.25, 1, 0, "%.2f");
+        Prop(Vec2, MajorTickLen, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2, MinorTickLen, { 5, 5 }, 0, 20, "%.0f");
+        Prop(Vec2, MajorTickSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2, MinorTickSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2, MajorGridSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2, MinorGridSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2, PlotDefaultSize, { 400, 300 }, 0, 1000, "%.0f");
+        Prop(Vec2, PlotMinSize, { 200, 150 }, 0, 300, "%.0f");
 
         // Plot padding
-        Vec2 PlotPadding{this, "PlotPadding", {10, 10}, 0, 20, "%.0f"};
-        Vec2 LabelPadding{this, "LabelPadding", {5, 5}, 0, 20, "%.0f"};
-        Vec2 LegendPadding{this, "LegendPadding", {10, 10}, 0, 20, "%.0f"};
-        Vec2 LegendInnerPadding{this, "LegendInnerPadding", {5, 5}, 0, 10, "%.0f"};
-        Vec2 LegendSpacing{this, "LegendSpacing", {5, 0}, 0, 5, "%.0f"};
-        Vec2 MousePosPadding{this, "MousePosPadding", {10, 10}, 0, 20, "%.0f"};
-        Vec2 AnnotationPadding{this, "AnnotationPadding", {2, 2}, 0, 5, "%.0f"};
-        Vec2 FitPadding{this, "FitPadding", {0, 0}, 0, 0.2, "%.2f"};
+        Prop(Vec2, PlotPadding, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2, LabelPadding, { 5, 5 }, 0, 20, "%.0f");
+        Prop(Vec2, LegendPadding, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2, LegendInnerPadding, { 5, 5 }, 0, 10, "%.0f");
+        Prop(Vec2, LegendSpacing, { 5, 0 }, 0, 5, "%.0f");
+        Prop(Vec2, MousePosPadding, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2, AnnotationPadding, { 2, 2 }, 0, 5, "%.0f");
+        Prop(Vec2, FitPadding, { 0, 0 }, 0, 0.2, "%.2f");
 
-        Colors Colors{this, "Colors", ImPlot::GetStyleColorName, true};
-        Bool UseLocalTime{this, "UseLocalTime"};
-        Bool UseISO8601{this, "UseISO8601"};
-        Bool Use24HourClock{this, "Use24HourClock"};
+        Prop(Colors, Colors, ImPlot::GetStyleColorName, true);
+        Prop(Bool, UseLocalTime);
+        Prop(Bool, UseISO8601);
+        Prop(Bool, Use24HourClock);
 
         // Not editable todo delete?
-        Int Marker{this, "Marker", ImPlotMarker_None};
+        Prop(Int, Marker, ImPlotMarker_None);
     };
 
     ImGuiStyle ImGui{this, "ImGui?Configure style for base UI"};
@@ -997,16 +1002,16 @@ struct DockNodeSettings : StateMember {
     void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<ID> NodeId{this, "NodeId"};
-    Vector<ID> ParentNodeId{this, "ParentNodeId"};
-    Vector<ID> ParentWindowId{this, "ParentWindowId"};
-    Vector<ID> SelectedTabId{this, "SelectedTabId"};
-    Vector<int> SplitAxis{this, "SplitAxis"};
-    Vector<int> Depth{this, "Depth"};
-    Vector<int> Flags{this, "Flags"};
-    Vector<U32> Pos{this, "Pos"}; // Packed ImVec2ih
-    Vector<U32> Size{this, "Size"}; // Packed ImVec2ih
-    Vector<U32> SizeRef{this, "SizeRef"}; // Packed ImVec2ih
+    Prop(Vector<ID>, NodeId);
+    Prop(Vector<ID>, ParentNodeId);
+    Prop(Vector<ID>, ParentWindowId);
+    Prop(Vector<ID>, SelectedTabId);
+    Prop(Vector<int>, SplitAxis);
+    Prop(Vector<int>, Depth);
+    Prop(Vector<int>, Flags);
+    Prop(Vector<U32>, Pos); // Packed ImVec2ih
+    Prop(Vector<U32>, Size); // Packed ImVec2ih
+    Prop(Vector<U32>, SizeRef); // Packed ImVec2ih
 };
 
 struct WindowSettings : StateMember {
@@ -1014,29 +1019,29 @@ struct WindowSettings : StateMember {
     void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<ImGuiID> ID{this, "ID"};
-    Vector<ImGuiID> ClassId{this, "ClassId"};
-    Vector<ImGuiID> ViewportId{this, "ViewportId"};
-    Vector<ImGuiID> DockId{this, "DockId"};
-    Vector<int> DockOrder{this, "DockOrder"};
-    Vector<U32> Pos{this, "Pos"}; // Packed ImVec2ih
-    Vector<U32> Size{this, "Size"}; // Packed ImVec2ih
-    Vector<U32> ViewportPos{this, "ViewportPos"}; // Packed ImVec2ih
-    Vector<bool> Collapsed{this, "Collapsed"};
+    Prop(Vector<ImGuiID>, ID);
+    Prop(Vector<ImGuiID>, ClassId);
+    Prop(Vector<ImGuiID>, ViewportId);
+    Prop(Vector<ImGuiID>, DockId);
+    Prop(Vector<int>, DockOrder);
+    Prop(Vector<U32>, Pos); // Packed ImVec2ih
+    Prop(Vector<U32>, Size); // Packed ImVec2ih
+    Prop(Vector<U32>, ViewportPos); // Packed ImVec2ih
+    Prop(Vector<bool>, Collapsed);
 };
 
 struct TableColumnSettings : StateMember {
     using StateMember::StateMember;
 
     // [table_index][column_index]
-    Vector2D<float> WidthOrWeight{this, "WidthOrWeight"};
-    Vector2D<ID> UserID{this, "UserID"};
-    Vector2D<int> Index{this, "Index"};
-    Vector2D<int> DisplayOrder{this, "DisplayOrder"};
-    Vector2D<int> SortOrder{this, "SortOrder"};
-    Vector2D<int> SortDirection{this, "SortDirection"};
-    Vector2D<bool> IsEnabled{this, "IsEnabled"}; // "Visible" in ini file
-    Vector2D<bool> IsStretch{this, "IsStretch"};
+    Prop(Vector2D<float>, WidthOrWeight);
+    Prop(Vector2D<ID>, UserID);
+    Prop(Vector2D<int>, Index);
+    Prop(Vector2D<int>, DisplayOrder);
+    Prop(Vector2D<int>, SortOrder);
+    Prop(Vector2D<int>, SortDirection);
+    Prop(Vector2D<bool>, IsEnabled); // "Visible" in ini file
+    Prop(Vector2D<bool>, IsStretch);
 };
 
 struct TableSettings : StateMember {
@@ -1044,13 +1049,13 @@ struct TableSettings : StateMember {
     void Set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
-    Vector<ImGuiID> ID{this, "ID"};
-    Vector<int> SaveFlags{this, "SaveFlags"};
-    Vector<float> RefScale{this, "RefScale"};
-    Vector<Count> ColumnsCount{this, "ColumnsCount"};
-    Vector<Count> ColumnsCountMax{this, "ColumnsCountMax"};
-    Vector<bool> WantApply{this, "WantApply"};
-    TableColumnSettings Columns{this, "Columns"};
+    Prop(Vector<ImGuiID>, ID);
+    Prop(Vector<int>, SaveFlags);
+    Prop(Vector<float>, RefScale);
+    Prop(Vector<Count>, ColumnsCount);
+    Prop(Vector<Count>, ColumnsCountMax);
+    Prop(Vector<bool>, WantApply);
+    Prop(TableColumnSettings, Columns);
 };
 
 struct ImGuiSettings : StateMember {
@@ -1061,9 +1066,9 @@ struct ImGuiSettings : StateMember {
     //  in this struct instead of the serialized .ini text format.
     void Apply(ImGuiContext *ctx) const;
 
-    DockNodeSettings Nodes{this, "Nodes"};
-    WindowSettings Windows{this, "Windows"};
-    TableSettings Tables{this, "Tables"};
+    Prop(DockNodeSettings, Nodes);
+    Prop(WindowSettings, Windows);
+    Prop(TableSettings, Tables);
 };
 
 struct Info : Window {
@@ -1099,14 +1104,13 @@ struct FileDialog : Window {
     void set(const FileDialogData &data, TransientStore &) const;
     void Draw() const override;
 
-    Bool SaveMode{this, "SaveMode"}; // The same file dialog instance is used for both saving & opening files.
-    Int MaxNumSelections{this, "MaxNumSelections", 1};
-//        ImGuiFileDialogFlags Flags;
-    Int Flags{this, "Flags", FileDialogFlags_Default};
-    String Title{this, "Title", "Choose file"};
-    String Filters{this, "Filters"};
-    String FilePath{this, "FilePath", "."};
-    String DefaultFileName{this, "DefaultFileName"};
+    Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
+    Prop(Int, MaxNumSelections, 1);
+    Prop(Int, Flags, FileDialogFlags_Default);
+    Prop(String, Title, "Choose file");
+    Prop(String, Filters);
+    Prop(String, FilePath, ".");
+    Prop(String, DefaultFileName);
 };
 struct PatchOp {
     enum Type { Add, Remove, Replace, };

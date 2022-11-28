@@ -539,14 +539,6 @@ bool Vec2::Draw(ImGuiSliderFlags flags) const {
     return edited;
 }
 
-void Vec2Int::Draw() const {
-    ImVec2ih values = *this;
-    const bool edited = SliderInt2(Name.c_str(), (int *) &values, min, max, nullptr, ImGuiSliderFlags_None);
-    UiContext.WidgetGestured();
-    if (edited) q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
-    HelpMarker();
-}
-
 void Vec2::Draw() const { Draw(ImGuiSliderFlags_None); }
 
 //-----------------------------------------------------------------------------

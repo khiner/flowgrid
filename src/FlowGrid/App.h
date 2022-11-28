@@ -743,21 +743,6 @@ struct Vec2 : UIStateMember, Linkable {
     const char *fmt;
 };
 
-struct Vec2Int : UIStateMember {
-    Vec2Int(const StateMember *parent, const string &id, const ImVec2ih &value = {0, 0}, int min = 0, int max = 1)
-        : UIStateMember(parent, id),
-          X(this, "X", value.x, min, max), Y(this, "Y", value.y, min, max),
-          min(min), max(max) {}
-
-    operator ImVec2ih() const { return {X, Y}; }
-    operator ImVec2() const { return {float(int(X)), float(int(Y))}; }
-
-    void Draw() const override;
-
-    Int X, Y;
-    int min, max;
-};
-
 struct Style : Window {
     using Window::Window;
 

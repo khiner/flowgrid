@@ -9,24 +9,24 @@
 map<ID, StateMember *> StateMember::WithId{};
 
 // Persistent modifiers
-Store set(const Field::Base &field, const Primitive &value, const Store &_store) { return _store.set(field.Path, value); }
-Store set(const StoreEntries &values, const Store &_store) {
+Store Set(const Field::Base &field, const Primitive &value, const Store &_store) { return _store.set(field.Path, value); }
+Store Set(const StoreEntries &values, const Store &_store) {
     auto transient = _store.transient();
-    set(values, transient);
+    Set(values, transient);
     return transient.persistent();
 }
-Store set(const FieldEntries &values, const Store &_store) {
+Store Set(const FieldEntries &values, const Store &_store) {
     auto transient = _store.transient();
-    set(values, transient);
+    Set(values, transient);
     return transient.persistent();
 }
 
 // Transient modifiers
-void set(const Field::Base &field, const Primitive &value, TransientStore &_store) { _store.set(field.Path, value); }
-void set(const StoreEntries &values, TransientStore &_store) {
+void Set(const Field::Base &field, const Primitive &value, TransientStore &_store) { _store.set(field.Path, value); }
+void Set(const StoreEntries &values, TransientStore &_store) {
     for (const auto &[path, value]: values) _store.set(path, value);
 }
-void set(const FieldEntries &values, TransientStore &_store) {
+void Set(const FieldEntries &values, TransientStore &_store) {
     for (const auto &[field, value]: values) _store.set(field.Path, value);
 }
 
@@ -167,7 +167,7 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
 void State::Update(const StateAction &action, TransientStore &transient) const {
     std::visit(visitor{
         [&](const set_value &a) { transient.set(a.path, a.value); },
-        [&](const set_values &a) { ::set(a.values, transient); },
+        [&](const set_values &a) { ::Set(a.values, transient); },
         [&](const toggle_value &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
         [&](const apply_patch &a) {
             const auto &patch = a.patch;
@@ -177,13 +177,13 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
                 else if (op.Op == RemoveOp) transient.erase(path);
             }
         },
-        [&](const open_file_dialog &a) { FileDialog.set(json::parse(a.dialog_json), transient); },
-        [&](const close_file_dialog &) { set(FileDialog.Visible, false, transient); },
-        [&](const show_open_project_dialog &) { FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
-        [&](const show_save_project_dialog &) { FileDialog.set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
-        [&](const show_open_faust_file_dialog &) { FileDialog.set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
-        [&](const show_save_faust_file_dialog &) { FileDialog.set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
-        [&](const show_save_faust_svg_file_dialog &) { FileDialog.set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
+        [&](const open_file_dialog &a) { FileDialog.Set(json::parse(a.dialog_json), transient); },
+        [&](const close_file_dialog &) { Set(FileDialog.Visible, false, transient); },
+        [&](const show_open_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
+        [&](const show_save_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
+        [&](const show_open_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
+        [&](const show_save_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
+        [&](const show_save_faust_svg_file_dialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
 
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
@@ -221,8 +221,8 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
                 case 1: return Style.FlowGrid.DiagramLayoutFaust(transient);
             }
         },
-        [&](const open_faust_file &a) { set(Audio.Faust.Code, FileIO::read(a.path), transient); },
-        [&](const close_application &) { set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
+        [&](const open_faust_file &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },
+        [&](const close_application &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
     }, action);
 }
 

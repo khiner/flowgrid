@@ -286,13 +286,13 @@ struct Vector : Base {
     T operator[](Count index) const;
     Count size(const Store &_store = store) const;
 
-    Store set(Count index, const T &value, const Store &_store = store) const;
-    Store set(const vector<T> &values, const Store &_store = store) const;
-    Store set(const vector<std::pair<int, T>> &, const Store &_store = store) const;
+    Store Set(Count index, const T &value, const Store &_store = store) const;
+    Store Set(const vector<T> &values, const Store &_store = store) const;
+    Store Set(const vector<std::pair<int, T>> &, const Store &_store = store) const;
 
-    void set(Count index, const T &value, TransientStore &) const;
-    void set(const vector<T> &values, TransientStore &) const;
-    void set(const vector<std::pair<int, T>> &, TransientStore &) const;
+    void Set(Count index, const T &value, TransientStore &) const;
+    void Set(const vector<T> &values, TransientStore &) const;
+    void Set(const vector<std::pair<int, T>> &, TransientStore &) const;
     void truncate(Count length, TransientStore &) const; // Delete every element after index `length - 1`.
 
     bool Draw() const override { return false; };
@@ -308,8 +308,8 @@ struct Vector2D : Base {
     T at(Count i, Count j, const Store &_store = store) const;
     Count size(const TransientStore &) const; // Number of outer vectors
 
-    Store set(Count i, Count j, const T &value, const Store &_store = store) const;
-    void set(Count i, Count j, const T &value, TransientStore &) const;
+    Store Set(Count i, Count j, const T &value, const Store &_store = store) const;
+    void Set(Count i, Count j, const T &value, TransientStore &) const;
     void truncate(Count length, TransientStore &) const; // Delete every outer vector after index `length - 1`.
     void truncate(Count i, Count length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
 
@@ -332,11 +332,11 @@ struct Colors : Vector<U32> {
     string GetName(Count index) const override { return GetColorName(int(index)); };
     bool Draw() const override;
 
-    void set(const vector<ImVec4> &values, TransientStore &transient) const {
-        Vector::set(values | transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | to<vector>, transient);
+    void Set(const vector<ImVec4> &values, TransientStore &transient) const {
+        Vector::Set(values | transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | to<vector>, transient);
     }
-    void set(const vector<std::pair<int, ImVec4>> &entries, TransientStore &transient) const {
-        Vector::set(entries | transform([](const auto &entry) { return std::pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | to<vector>, transient);
+    void Set(const vector<std::pair<int, ImVec4>> &entries, TransientStore &transient) const {
+        Vector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | to<vector>, transient);
     }
 
 private:
@@ -1050,7 +1050,7 @@ struct TableSettings : StateMember {
 
 struct ImGuiSettings : StateMember {
     using StateMember::StateMember;
-    Store set(ImGuiContext *ctx) const;
+    Store Set(ImGuiContext *ctx) const;
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     //  in this struct instead of the serialized .ini text format.
@@ -1092,7 +1092,7 @@ struct FileDialogData {
 struct FileDialog : Window {
     FileDialog(const StateMember *parent, const string &path_segment, const string &name_help = "", const bool visible = false)
         : Window(parent, path_segment, name_help, visible) {}
-    void set(const FileDialogData &data, TransientStore &) const;
+    void Set(const FileDialogData &data, TransientStore &) const;
     void Draw() const override;
 
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
@@ -1495,13 +1495,13 @@ using FieldEntry = std::pair<const Field::Base &, Primitive>;
 using FieldEntries = vector<FieldEntry>;
 
 // Persistent (immutable) store setters
-Store set(const Field::Base &, const Primitive &, const Store &_store = store);
-Store set(const StoreEntries &, const Store &_store = store);
-Store set(const FieldEntries &, const Store &_store = store);
+Store Set(const Field::Base &, const Primitive &, const Store &_store = store);
+Store Set(const StoreEntries &, const Store &_store = store);
+Store Set(const FieldEntries &, const Store &_store = store);
 
 // Equivalent setters for a transient (mutable) store
-void set(const Field::Base &, const Primitive &, TransientStore &);
-void set(const StoreEntries &, TransientStore &);
-void set(const FieldEntries &, TransientStore &);
+void Set(const Field::Base &, const Primitive &, TransientStore &);
+void Set(const StoreEntries &, TransientStore &);
+void Set(const FieldEntries &, TransientStore &);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);

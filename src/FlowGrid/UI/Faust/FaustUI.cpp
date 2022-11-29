@@ -70,10 +70,10 @@ static inline ImGuiDir GlobalDirection(DiagramOrientation orientation) {
 
 static inline bool IsLr(DiagramOrientation orientation) { return GlobalDirection(orientation) == ImGuiDir_Right; }
 
-// Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
+// Device accepts unscaled positions/sizes.
 struct Device {
-    static constexpr float DecorateLabelOffset = 14; // Not configurable, since it's a pain to deal with correctly.
-    static constexpr float DecorateLabelXPadding = 3;
+    static constexpr float RectLabelOffset = 14; // Not configurable, since it's a pain to deal with correctly.
+    static constexpr float RectLabelPaddingLeft = 3;
 
     Device(const ImVec2 &position = {0, 0}) : Position(position) {}
     virtual ~Device() = default;
@@ -83,8 +83,9 @@ struct Device {
     // All positions received and drawn relative to this device's `Position` and `CursorPosition`.
     // Drawing assumes `SetCursorPos` has been called to set the desired origin.
     virtual void Rect(const ImRect &, const RectStyle &) = 0;
-    // Outline rect with a break in the top-left (to the right of max rounding) for the label text.
-    virtual void GroupRect(const ImRect &, const string &text, const RectStyle &, const TextStyle &) = 0;
+    // Rect with a break in the top-left (to the right of max rounding) for a label.
+    virtual void LabeledRect(const ImRect &, const string &label, const RectStyle &, const TextStyle &) = 0;
+
     virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
     virtual void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) = 0;
     virtual void Arrow(const ImVec2 &pos, DiagramOrientation) = 0;
@@ -190,23 +191,23 @@ struct SVGDevice : Device {
         if (!link.empty()) Stream << "</a>";
     }
 
-    void GroupRect(const ImRect &local_rect, const string &text, const RectStyle &rect_style, const TextStyle &text_style) override {
+    void LabeledRect(const ImRect &local_rect, const string &label, const RectStyle &rect_style, const TextStyle &text_style) override {
         const auto &rect = At(local_rect);
         const auto &tl = rect.Min;
         const auto &tr = rect.GetTR();
-        const float text_x = tl.x + Scale(DecorateLabelOffset);
-        const ImVec2 &text_right = {min(text_x + TextSize(text).x + Scale(text_style.Padding.Left), tr.x), tr.y};
+        const float text_x = tl.x + Scale(RectLabelOffset);
+        const ImVec2 &text_right = {min(text_x + TextSize(label).x + Scale(text_style.Padding.Left), tr.x), tr.y};
         const float r = Scale(rect_style.CornerRadius);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
         Stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)",
-            text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - DecorateLabelOffset) + r, r, r, -r, r, // before text to top-left
+            text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - RectLabelOffset) + r, r, r, -r, r, // before text to top-left
             rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
             rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
             -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
             -(tr.x - r - text_right.x), // top-right to after text
             Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor));
         Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(text));
+            text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(label));
     }
 
     void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
@@ -279,13 +280,13 @@ struct ImGuiDevice : Device {
         if (stroke_color.Value.w != 0) DrawList->AddRect(rect.Min, rect.Max, stroke_color, corner_radius);
     }
 
-    void GroupRect(const ImRect &local_rect, const string &text, const RectStyle &rect_style, const TextStyle &text_style) override {
+    void LabeledRect(const ImRect &local_rect, const string &label, const RectStyle &rect_style, const TextStyle &text_style) override {
         const ImRect &rect = At(local_rect);
         const auto &a = rect.Min;
         const auto &b = rect.Max;
-        const auto &text_top_left = a + Scale({DecorateLabelOffset, 0});
+        const auto &text_top_left = a + Scale({RectLabelOffset, 0});
         const float r = Scale(rect_style.CornerRadius);
-        DrawList->PathLineTo(text_top_left + ImVec2{TextSize(text).x + Scale(text_style.Padding.Left), 0});
+        DrawList->PathLineTo(text_top_left + ImVec2{TextSize(label).x + Scale(text_style.Padding.Left), 0});
         if (r < 0.5f) {
             DrawList->PathLineTo({b.x, a.y});
             DrawList->PathLineTo(b);
@@ -299,7 +300,7 @@ struct ImGuiDevice : Device {
         }
         DrawList->PathLineTo(text_top_left - ImVec2{Scale(text_style.Padding.Right), 0});
         DrawList->PathStroke(rect_style.StrokeColor, ImDrawFlags_None, Scale(rect_style.StrokeWidth));
-        DrawList->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, text_style.Color, text.c_str());
+        DrawList->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, text_style.Color, label.c_str());
     }
 
     void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
@@ -329,8 +330,10 @@ struct ImGuiDevice : Device {
 
     void Text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding, scale_height, font_style] = style;
-        const auto &text_pos = p - ImVec2{padding.Right, padding.Bottom} - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? TextSize(text) / ImVec2{2, 1} : TextSize(text));
-        DrawList->AddText(At(text_pos), color, text.c_str());
+        DrawList->AddText(
+            At(p - ImVec2{padding.Right, padding.Bottom} -
+                (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? TextSize(text) / ImVec2{2, 1} : TextSize(text))),
+            color, text.c_str());
     }
 
     void Dot(const ImVec2 &p, const ImColor &fill_color) override {
@@ -921,10 +924,10 @@ struct GroupNode : Node {
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2; }
     void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding(), Orientation); }
     void DoDraw(Device &device) const override {
-        device.GroupRect(
+        device.LabeledRect(
             {Margin(), Size - Margin()}, Label,
             {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
-            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::DecorateLabelXPadding}}
+            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::RectLabelPaddingLeft}}
         );
     }
     // Y position of point is delegated to the grouped child.
@@ -959,10 +962,10 @@ struct DecorateNode : Node {
     void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding(), Orientation); }
     void DoDraw(Device &device) const override {
         if (!ShouldDecorate()) return;
-        device.GroupRect(
+        device.LabeledRect(
             {Margin(), Size - Margin() - ImVec2{s.Style.FlowGrid.DiagramArrowSize.X, 0}}, Label,
             {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
-            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::DecorateLabelXPadding}}
+            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::RectLabelPaddingLeft}}
         );
     }
 

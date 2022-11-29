@@ -21,6 +21,17 @@
 enum DeviceType { DeviceType_ImGui, DeviceType_SVG };
 enum DiagramOrientation { DiagramForward, DiagramReverse };
 
+// Uses same argument ordering as CSS.
+struct Padding {
+    Padding(const float top, const float right, const float bottom, const float left) : Top(top), Right(right), Bottom(bottom), Left(left) {}
+    Padding(const float top, const float x, const float bottom) : Padding(top, x, bottom, x) {}
+    Padding(const float y, const float x) : Padding(y, x, y, x) {}
+    Padding(const float all) : Padding(all, all, all, all) {}
+    Padding() : Padding(0, 0, 0, 0) {}
+
+    const float Top, Right, Bottom, Left;
+};
+
 struct TextStyle {
     enum Justify {
         Left,
@@ -35,9 +46,7 @@ struct TextStyle {
 
     const ImColor Color{1.f, 1.f, 1.f, 1.f};
     const Justify Justify{Middle};
-    const float PaddingLeft{0};
-    const float PaddingRight{0};
-    const float PaddingBottom{0};
+    const Padding Padding;
     const float ScaleHeight{1}; // todo remove this in favor of using a set (two for now) of predetermined font sizes
     const FontStyle FontStyle{Normal};
 };
@@ -63,7 +72,7 @@ static inline bool IsLr(DiagramOrientation orientation) { return GlobalDirection
 
 // Device accepts unscaled, un-offset positions, and takes care of scaling/offsetting internally.
 struct Device {
-    static constexpr float DecorateLabelOffset = 14; // Not configurable, since it's a pain to deal with right.
+    static constexpr float DecorateLabelOffset = 14; // Not configurable, since it's a pain to deal with correctly.
     static constexpr float DecorateLabelXPadding = 3;
 
     Device(const ImVec2 &position = {0, 0}) : Position(position) {}
@@ -74,7 +83,8 @@ struct Device {
     // All positions received and drawn relative to this device's `Position` and `CursorPosition`.
     // Drawing assumes `SetCursorPos` has been called to set the desired origin.
     virtual void Rect(const ImRect &, const RectStyle &) = 0;
-    virtual void GroupRect(const ImRect &, const string &text, const RectStyle &, const TextStyle &) = 0; // A labeled grouping
+    // Outline rect with a break in the top-left (to the right of max rounding) for the label text.
+    virtual void GroupRect(const ImRect &, const string &text, const RectStyle &, const TextStyle &) = 0;
     virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
     virtual void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) = 0;
     virtual void Arrow(const ImVec2 &pos, DiagramOrientation) = 0;
@@ -185,18 +195,16 @@ struct SVGDevice : Device {
         const auto &tl = rect.Min;
         const auto &tr = rect.GetTR();
         const float text_x = tl.x + Scale(DecorateLabelOffset);
-        const auto &text_padding = Scale({text_style.PaddingLeft, 0}); // todo XPadding style
-        const ImVec2 &text_right = {min(text_x + Scale(TextSize(text)).x + text_padding.x, tr.x), tr.y};
+        const ImVec2 &text_right = {min(text_x + TextSize(text).x + Scale(text_style.Padding.Left), tr.x), tr.y};
         const float r = Scale(rect_style.CornerRadius);
-        const float line_width = Scale(rect_style.StrokeWidth);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
         Stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)",
-            text_x - text_padding.x, tl.y, -Scale(DecorateLabelOffset) + text_padding.x + r, r, r, -r, r, // before text to top-left
-            (rect.GetHeight() - 2 * r), r, r, r, r, // top-left to bottom-left
-            (rect.GetWidth() - 2 * r), r, r, r, -r, // bottom-left to bottom-right
+            text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - DecorateLabelOffset) + r, r, r, -r, r, // before text to top-left
+            rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
+            rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
             -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
             -(tr.x - r - text_right.x), // top-right to after text
-            line_width, RgbColor(rect_style.StrokeColor));
+            Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor));
         Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
             text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(text));
     }
@@ -226,11 +234,11 @@ struct SVGDevice : Device {
     }
 
     void Text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, _, padding_right, padding_bottom, scale_height, font_style] = style;
+        const auto &[color, justify, padding, scale_height, font_style] = style;
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
-        const auto &p = At(pos - ImVec2{padding_right, padding_bottom});
+        const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
         Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
             p.x, p.y, GetFontName(), font_style_formatted, font_weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(text));
     }
@@ -276,27 +284,21 @@ struct ImGuiDevice : Device {
         const auto &a = rect.Min;
         const auto &b = rect.Max;
         const auto &text_top_left = a + Scale({DecorateLabelOffset, 0});
-
-        // Decorate a potentially rounded outline rect with a break in the top-left (to the right of max rounding) for the label text
-        const float rad = Scale(rect_style.CornerRadius);
-        const float line_width = Scale(rect_style.StrokeWidth);
-        if (line_width > 0) {
-            const auto &text_padding = Scale({text_style.PaddingLeft, 0}); // todo XPadding style
-            DrawList->PathLineTo(text_top_left + text_padding + ImVec2{TextSize(text).x, 0});
-            if (rad < 0.5f) {
-                DrawList->PathLineTo({b.x, a.y});
-                DrawList->PathLineTo(b);
-                DrawList->PathLineTo({a.x, b.y});
-                DrawList->PathLineTo(a);
-            } else {
-                DrawList->PathArcToFast({b.x - rad, a.y + rad}, rad, 9, 12);
-                DrawList->PathArcToFast({b.x - rad, b.y - rad}, rad, 0, 3);
-                DrawList->PathArcToFast({a.x + rad, b.y - rad}, rad, 3, 6);
-                DrawList->PathArcToFast({a.x + rad, a.y + rad}, rad, 6, 9);
-            }
-            DrawList->PathLineTo(text_top_left - text_padding);
-            DrawList->PathStroke(rect_style.StrokeColor, ImDrawFlags_None, line_width);
+        const float r = Scale(rect_style.CornerRadius);
+        DrawList->PathLineTo(text_top_left + ImVec2{TextSize(text).x + Scale(text_style.Padding.Left), 0});
+        if (r < 0.5f) {
+            DrawList->PathLineTo({b.x, a.y});
+            DrawList->PathLineTo(b);
+            DrawList->PathLineTo({a.x, b.y});
+            DrawList->PathLineTo(a);
+        } else {
+            DrawList->PathArcToFast({b.x - r, a.y + r}, r, 9, 12);
+            DrawList->PathArcToFast({b.x - r, b.y - r}, r, 0, 3);
+            DrawList->PathArcToFast({a.x + r, b.y - r}, r, 3, 6);
+            DrawList->PathArcToFast({a.x + r, a.y + r}, r, 6, 9);
         }
+        DrawList->PathLineTo(text_top_left - ImVec2{Scale(text_style.Padding.Right), 0});
+        DrawList->PathStroke(rect_style.StrokeColor, ImDrawFlags_None, Scale(rect_style.StrokeWidth));
         DrawList->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, text_style.Color, text.c_str());
     }
 
@@ -326,8 +328,8 @@ struct ImGuiDevice : Device {
     }
 
     void Text(const ImVec2 &p, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, _, padding_right, padding_bottom, scale_height, font_style] = style;
-        const auto &text_pos = p - ImVec2{padding_right, padding_bottom} - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? TextSize(text) / ImVec2{2, 1} : TextSize(text));
+        const auto &[color, justify, padding, scale_height, font_style] = style;
+        const auto &text_pos = p - ImVec2{padding.Right, padding.Bottom} - (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? TextSize(text) / ImVec2{2, 1} : TextSize(text));
         DrawList->AddText(At(text_pos), color, text.c_str());
     }
 
@@ -453,7 +455,7 @@ struct Node {
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
         device.Rect({{0, 0}, TextSize(type_label) + padding * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text({0, 0}, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Left, .PaddingRight=-padding, .PaddingBottom=-padding});
+        device.Text({0, 0}, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Left, .Padding=-padding});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io: IO_All) {
@@ -461,7 +463,7 @@ struct Node {
                 device.Text(
                     Point(io, channel),
                     format("{}:{}", Capitalize(to_string(io, true)), channel),
-                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .PaddingBottom=6, .ScaleHeight=1.3, .FontStyle=TextStyle::FontStyle::Bold}
+                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={6, 4}, .ScaleHeight=1.3, .FontStyle=TextStyle::FontStyle::Bold}
                 );
                 device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
             }
@@ -474,7 +476,7 @@ struct Node {
                     device.Text(
                         Point(ci, io, channel),
                         format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
-                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .PaddingRight=4, .ScaleHeight=0.9, .FontStyle=TextStyle::FontStyle::Bold}
+                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={0, 4, 0, 0}, .ScaleHeight=0.9, .FontStyle=TextStyle::FontStyle::Bold}
                     );
                     device.Circle(Point(ci, io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }
@@ -922,7 +924,7 @@ struct GroupNode : Node {
         device.GroupRect(
             {Margin(), Size - Margin()}, Label,
             {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
-            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .PaddingLeft=Device::DecorateLabelXPadding, .PaddingRight=Device::DecorateLabelXPadding}
+            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::DecorateLabelXPadding}}
         );
     }
     // Y position of point is delegated to the grouped child.
@@ -960,7 +962,7 @@ struct DecorateNode : Node {
         device.GroupRect(
             {Margin(), Size - Margin() - ImVec2{s.Style.FlowGrid.DiagramArrowSize.X, 0}}, Label,
             {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
-            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .PaddingLeft=Device::DecorateLabelXPadding, .PaddingRight=Device::DecorateLabelXPadding}
+            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::DecorateLabelXPadding}}
         );
     }
 

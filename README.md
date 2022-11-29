@@ -172,7 +172,7 @@ Here is my process for updating to the tip of all the submodule branches:
 ```sh
 $ git submodule update --remote
 $ git add .
-$ git cm -m "Bump libs"
+$ git cm -m "Update libs"
 ```
 
 #### Forked submodules

@@ -13,6 +13,7 @@
 [submodule "lib/SDL"]
 	path = lib/SDL
 	url = git@github.com:libsdl-org/SDL.git
+	branch = SDL2
 [submodule "lib/json"]
 	path = lib/json
 	url = git@github.com:nlohmann/json.git

@@ -14,6 +14,8 @@
 #include "../Widgets.h"
 #include "../../Helper/basen.h"
 
+using namespace ImGui;
+
 //-----------------------------------------------------------------------------
 // [SECTION] Diagram
 //-----------------------------------------------------------------------------
@@ -62,6 +64,15 @@ static inline ImVec2 Scale(const ImVec2 &p);
 static inline float Scale(float f);
 static inline ImVec2 GetScale();
 
+static ImVec2 TextSize(const string &text) { return CalcTextSize(text.c_str()); }
+
+// There's `RenderTextEllipsis` in `imgui_internal`, but it's way too complex and scary.
+static string Ellipsify(const string &text, const float max_width) {
+    string ellipsified = text;
+    while (TextSize(ellipsified).x > max_width) ellipsified.replace(ellipsified.end() - 4, ellipsified.end(), "...");
+    return ellipsified;
+}
+
 static inline ImGuiDir GlobalDirection(DiagramOrientation orientation) {
     const ImGuiDir dir = s.Style.FlowGrid.DiagramDirection;
     return (dir == ImGuiDir_Right && orientation == DiagramForward) || (dir == ImGuiDir_Left && orientation == DiagramReverse) ?
@@ -103,8 +114,6 @@ struct Device {
     ImVec2 CursorPosition{}; // In local coordinates, relative to `Position`
 };
 
-using namespace ImGui;
-
 // ImGui saves font name as "{Name}.{Ext}, {Size}px"
 static inline string GetFontName() {
     const string name = GetFont()->GetDebugName();
@@ -125,8 +134,6 @@ static inline string GetFontBase64() {
     }
     return base64_for_font_name.at(font_name);
 }
-
-static ImVec2 TextSize(const string &text) { return CalcTextSize(text.c_str()); }
 
 struct SVGDevice : Device {
     SVGDevice(fs::path Directory, string FileName, ImVec2 size) : Directory(std::move(Directory)), FileName(std::move(FileName)) {
@@ -285,8 +292,11 @@ struct ImGuiDevice : Device {
         const auto &a = rect.Min;
         const auto &b = rect.Max;
         const auto &text_top_left = a + Scale({RectLabelOffset, 0});
+        const auto &text_top_right = a + Scale({RectLabelOffset, 0});
         const float r = Scale(rect_style.CornerRadius);
-        DrawList->PathLineTo(text_top_left + ImVec2{TextSize(label).x + Scale(text_style.Padding.Left), 0});
+        const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - Scale(RectLabelOffset) - Scale(text_style.Padding.Left + text_style.Padding.Right));
+
+        DrawList->PathLineTo(text_top_left + ImVec2{TextSize(ellipsified_label).x + Scale(text_style.Padding.Left), 0});
         if (r < 0.5f) {
             DrawList->PathLineTo({b.x, a.y});
             DrawList->PathLineTo(b);
@@ -300,7 +310,7 @@ struct ImGuiDevice : Device {
         }
         DrawList->PathLineTo(text_top_left - ImVec2{Scale(text_style.Padding.Right), 0});
         DrawList->PathStroke(rect_style.StrokeColor, ImDrawFlags_None, Scale(rect_style.StrokeWidth));
-        DrawList->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, text_style.Color, label.c_str());
+        DrawList->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, text_style.Color, ellipsified_label.c_str());
     }
 
     void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {

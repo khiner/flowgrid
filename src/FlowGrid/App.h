@@ -86,8 +86,7 @@ using std::nullopt;
 using std::cout, std::cerr;
 using std::unique_ptr, std::make_unique;
 using std::min, std::max;
-using std::map;
-//using std::set; todo capitalize all `set` global methods and uncomment
+using std::map, std::set;
 
 // E.g. '/foo/bar/baz' => 'baz'
 inline string PathVariableName(const StatePath &path) { return path.filename(); }
@@ -164,7 +163,7 @@ struct Bool : Base {
     bool Draw() const override;
     bool DrawMenu() const;
 
-    std::set<Linkable *> Links;
+    set<Linkable *> Links;
 private:
     void Toggle() const; // Used in draw methods.
 };
@@ -1348,7 +1347,7 @@ void MenuItem(const EmptyAction &); // For actions with no data members.
 static const map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
 static const auto ProjectFormatForExtension = ExtensionForProjectFormat |
     transform([](const auto &pair) { return std::pair(pair.second, pair.first); }) | to<map>();
-static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
+static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<set>;
 static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
 static const string PreferencesFileExtension = ".flp";
 static const string FaustDspFileExtension = ".dsp";

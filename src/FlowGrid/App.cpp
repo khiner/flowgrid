@@ -478,7 +478,7 @@ std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) c
 }
 
 StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const {
-    std::set < StatePath > paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<std::set>;
+    set < StatePath > paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<set>;
     if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();

@@ -23,55 +23,9 @@ using namespace ImGui;
 enum DeviceType { DeviceType_ImGui, DeviceType_SVG };
 enum DiagramOrientation { DiagramForward, DiagramReverse };
 
-// Uses same argument ordering as CSS.
-struct Padding {
-    Padding(const float top, const float right, const float bottom, const float left) : Top(top), Right(right), Bottom(bottom), Left(left) {}
-    Padding(const float top, const float x, const float bottom) : Padding(top, x, bottom, x) {}
-    Padding(const float y, const float x) : Padding(y, x, y, x) {}
-    Padding(const float all) : Padding(all, all, all, all) {}
-    Padding() : Padding(0, 0, 0, 0) {}
-
-    const float Top, Right, Bottom, Left;
-};
-
-struct TextStyle {
-    enum Justify {
-        Left,
-        Middle,
-        Right,
-    };
-    enum FontStyle {
-        Normal,
-        Bold,
-        Italic,
-    };
-
-    const ImColor Color{1.f, 1.f, 1.f, 1.f};
-    const Justify Justify{Middle};
-    const Padding Padding;
-    const float ScaleHeight{1}; // todo remove this in favor of using a set (two for now) of predetermined font sizes
-    const FontStyle FontStyle{Normal};
-};
-
-struct RectStyle {
-    const ImColor FillColor{1.f, 1.f, 1.f, 1.f};
-    const ImColor StrokeColor{0.f, 0.f, 0.f, 0.f};
-    const float StrokeWidth{0};
-    const float CornerRadius{0};
-};
-
 static inline ImVec2 Scale(const ImVec2 &p);
 static inline float Scale(float f);
 static inline ImVec2 GetScale();
-
-static ImVec2 TextSize(const string &text) { return CalcTextSize(text.c_str()); }
-
-// There's `RenderTextEllipsis` in `imgui_internal`, but it's way too complex and scary.
-static string Ellipsify(const string &text, const float max_width) {
-    string ellipsified = text;
-    while (TextSize(ellipsified).x > max_width) ellipsified.replace(ellipsified.end() - 4, ellipsified.end(), "...");
-    return ellipsified;
-}
 
 static inline ImGuiDir GlobalDirection(DiagramOrientation orientation) {
     const ImGuiDir dir = s.Style.FlowGrid.DiagramDirection;
@@ -242,7 +196,7 @@ struct SVGDevice : Device {
     }
 
     void Text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, padding, scale_height, font_style] = style;
+        const auto &[color, justify, padding, font_style] = style;
         const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
@@ -292,7 +246,6 @@ struct ImGuiDevice : Device {
         const auto &a = rect.Min;
         const auto &b = rect.Max;
         const auto &text_top_left = a + Scale({RectLabelOffset, 0});
-        const auto &text_top_right = a + Scale({RectLabelOffset, 0});
         const float r = Scale(rect_style.CornerRadius);
         const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - Scale(RectLabelOffset) - Scale(text_style.Padding.Left + text_style.Padding.Right));
 
@@ -339,7 +292,7 @@ struct ImGuiDevice : Device {
     }
 
     void Text(const ImVec2 &p, const string &text, const TextStyle &style) override {
-        const auto &[color, justify, padding, scale_height, font_style] = style;
+        const auto &[color, justify, padding, font_style] = style;
         DrawList->AddText(
             At(p - ImVec2{padding.Right, padding.Bottom} -
                 (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? TextSize(text) / ImVec2{2, 1} : TextSize(text))),
@@ -476,7 +429,7 @@ struct Node {
                 device.Text(
                     Point(io, channel),
                     format("{}:{}", Capitalize(to_string(io, true)), channel),
-                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={6, 4}, .ScaleHeight=1.3, .FontStyle=TextStyle::FontStyle::Bold}
+                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={6, 4}, .FontStyle=TextStyle::FontStyle::Bold}
                 );
                 device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
             }
@@ -489,7 +442,7 @@ struct Node {
                     device.Text(
                         Point(ci, io, channel),
                         format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
-                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={0, 4, 0, 0}, .ScaleHeight=0.9, .FontStyle=TextStyle::FontStyle::Bold}
+                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={0, 4, 0, 0}, .FontStyle=TextStyle::FontStyle::Bold}
                     );
                     device.Circle(Point(ci, io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }

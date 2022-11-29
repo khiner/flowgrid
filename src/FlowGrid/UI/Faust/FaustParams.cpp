@@ -225,7 +225,7 @@ static float CalcItemLabelHeight(const FaustUI::Item &item) {
 void DrawUiItem(const FaustUI::Item &item, const string &label, const float suggested_height) {
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
-    const ImVec2i align = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
+    const Align align = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
     const auto type = item.type;
     const auto &children = item.items;
     const float frame_height = GetFrameHeight();

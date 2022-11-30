@@ -240,28 +240,35 @@ struct ImGuiDevice : Device {
     }
 
     void LabeledRect(const ImRect &local_rect, const string &label, const RectStyle &rect_style, const TextStyle &text_style) override {
-        const ImRect &rect = At(local_rect);
-        const auto &a = rect.Min;
-        const auto &b = rect.Max;
-        const float label_offset = Scale(max(8.f, rect_style.CornerRadius) + text_style.Padding.Left);
-        const auto &text_top_left = a + ImVec2{label_offset, 0};
+        const auto &rect = At(local_rect);
+        const auto &padding = text_style.Padding;
+        const auto &padding_left = Scale(padding.Left), &padding_right = Scale(padding.Right);
         const float r = Scale(rect_style.CornerRadius);
-        const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - label_offset - Scale(text_style.Padding.Right));
-        const auto &rect_start = text_top_left + ImVec2{TextSize(ellipsified_label).x + Scale(text_style.Padding.Left), 0};
+        const float label_offset = max(Scale(8), r) + padding_left;
+        const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - label_offset - padding_right);
 
-        DrawList->PathLineTo(rect_start);
-        if (r < 0.5f) {
+        // Clockwise, starting to right of text
+        // todo port this to svg, and use the arg to make rounded rect path go clockwise (there is one).
+        const auto &a = rect.Min, &b = rect.Max;
+        const auto &text_top_left = a + ImVec2{label_offset, 0};
+        const auto &rect_start = text_top_left + ImVec2{TextSize(ellipsified_label).x + padding_left, 0};
+        const auto &rect_end = text_top_left - ImVec2{padding_left, 0};
+        if (r < 1.5f) {
+            DrawList->PathLineTo(rect_start);
             DrawList->PathLineTo({b.x, a.y});
             DrawList->PathLineTo(b);
             DrawList->PathLineTo({a.x, b.y});
             DrawList->PathLineTo(a);
+            DrawList->PathLineTo(rect_end);
         } else {
-            if (rect_start.x < b.x - r) DrawList->PathArcToFast({b.x - r, a.y + r}, r, 9, 12);
+            if (rect_start.x < b.x - r) DrawList->PathLineTo(rect_start);
+            DrawList->PathArcToFast({b.x - r, a.y + r}, r, 9, 12);
             DrawList->PathArcToFast({b.x - r, b.y - r}, r, 0, 3);
             DrawList->PathArcToFast({a.x + r, b.y - r}, r, 3, 6);
             DrawList->PathArcToFast({a.x + r, a.y + r}, r, 6, 9);
+            if (rect_end.x > a.x + r) DrawList->PathLineTo(rect_end);
         }
-        DrawList->PathLineTo(text_top_left - ImVec2{Scale(text_style.Padding.Right), 0});
+
         DrawList->PathStroke(rect_style.StrokeColor, ImDrawFlags_None, Scale(rect_style.StrokeWidth));
         DrawList->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, text_style.Color, ellipsified_label.c_str());
     }

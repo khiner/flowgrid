@@ -3,10 +3,10 @@
 #include <fstream>
 #include <range/v3/view/concat.hpp>
 
+#include "implot_internal.h"
 #include "imgui_memory_editor.h"
 
 #include "FileDialog/FileDialogDemo.h"
-#include "UI/Widgets.h"
 
 using namespace ImGui;
 using namespace fg;
@@ -430,83 +430,6 @@ ImRect RowItemRatioRect(float ratio) {
 void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
     const auto &rect = RowItemRect();
     GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
-}
-
-//-----------------------------------------------------------------------------
-// [SECTION] Widgets
-//-----------------------------------------------------------------------------
-
-namespace FlowGrid {
-void HelpMarker(const char *help) {
-    TextDisabled("(?)");
-    if (IsItemHovered()) {
-        BeginTooltip();
-        PushTextWrapPos(GetFontSize() * 35);
-        TextUnformatted(help);
-        PopTextWrapPos();
-        EndTooltip();
-    }
-}
-
-bool InvisibleButton(const ImVec2 &size_arg, bool *out_hovered, bool *out_held) {
-    auto *window = GetCurrentWindow();
-    if (window->SkipItems) return false;
-
-    const auto id = window->GetID("");
-    const auto size = CalcItemSize(size_arg, 0.0f, 0.0f);
-    const auto &cursor = GetCursorScreenPos();
-    const ImRect rect{cursor, cursor + size};
-    if (!ItemAdd(rect, id)) return false;
-
-    return ButtonBehavior(rect, id, out_hovered, out_held, ImGuiButtonFlags_None);
-}
-
-void MenuItem(const EmptyAction &action) {
-    const string menu_label = action::GetMenuLabel(action);
-    const string shortcut = action::GetShortcut(action);
-    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, c.ActionAllowed(action))) {
-        std::visit(visitor{[](const auto &a) { q(a); }}, action);
-    }
-}
-
-bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) {
-    const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
-    const bool disabled = flags & JsonTreeNodeFlags_Disabled;
-    const ImGuiTreeNodeFlags imgui_flags = flags & JsonTreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
-
-    if (disabled) ImGui::BeginDisabled();
-    if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
-    const bool is_open = id ? ImGui::TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : ImGui::TreeNodeEx(label.c_str(), imgui_flags);
-    if (highlighted) ImGui::PopStyleColor();
-    if (disabled) ImGui::EndDisabled();
-
-    return is_open;
-}
-
-void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
-    if (value.is_null()) {
-        ImGui::TextUnformatted(label.empty() ? "(null)" : label.c_str());
-    } else if (value.is_object()) {
-        if (label.empty() || JsonTreeNode(label, node_flags, id)) {
-            for (auto it = value.begin(); it != value.end(); ++it) {
-                JsonTree(it.key(), *it, node_flags);
-            }
-            if (!label.empty()) ImGui::TreePop();
-        }
-    } else if (value.is_array()) {
-        if (label.empty() || JsonTreeNode(label, node_flags, id)) {
-            Count i = 0;
-            for (const auto &it: value) {
-                JsonTree(to_string(i), it, node_flags);
-                i++;
-            }
-            if (!label.empty()) ImGui::TreePop();
-        }
-    } else {
-        if (label.empty()) ImGui::TextUnformatted(value.dump().c_str());
-        else ImGui::Text("%s: %s", label.c_str(), value.dump().c_str());
-    }
-}
 }
 
 bool Vec2::Draw(ImGuiSliderFlags flags) const {

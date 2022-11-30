@@ -19,11 +19,13 @@
 #include <range/v3/view/map.hpp>
 
 #include "Primitive.h"
-#include "UI/UIContext.h"
+#include "UI/UI.h"
+#include "UI/Style.h"
 #include "Helper/Sample.h"
 #include "Helper/String.h"
 #include "Helper/File.h"
-#include "Helper/UI.h"
+
+#include "imgui_internal.h"
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;

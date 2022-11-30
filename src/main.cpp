@@ -1,4 +1,3 @@
-#include "FlowGrid/UI/UI.h"
 #include "FlowGrid/App.h"
 
 // Create global, mutable `UIContext` and `Context` instances.

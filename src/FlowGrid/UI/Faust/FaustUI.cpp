@@ -11,7 +11,6 @@
 #include "faust/dsp/libfaust-box.h"
 
 #include "../../App.h"
-#include "../Widgets.h"
 #include "../../Helper/basen.h"
 
 using namespace ImGui;

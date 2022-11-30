@@ -4,7 +4,6 @@
 #include "ImGuiFileDialog.h"
 
 #include "../StateJson.h"
-#include "../UI/Widgets.h"
 
 using namespace ImGui;
 

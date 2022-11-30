@@ -6,7 +6,6 @@
 #include "../../App.h"
 #include "../Knob.h"
 
-
 using namespace ImGui;
 using ItemType = FaustUI::ItemType;
 using

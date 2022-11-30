@@ -185,6 +185,7 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
         [&](const show_save_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
         [&](const show_save_faust_svg_file_dialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
 
+        // todo enum types instead of raw integers
         [&](const set_imgui_color_style &a) {
             switch (a.id) {
                 case 0: return Style.ImGui.ColorsDark(transient);

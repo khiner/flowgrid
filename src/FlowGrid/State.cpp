@@ -1538,13 +1538,13 @@ void Style::FlowGridStyle::Draw() const {
     if (BeginTabBar("")) {
         if (BeginTabItem("Faust diagram", nullptr, ImGuiTabItemFlags_NoPushId)) {
             DiagramFoldComplexity.Draw();
-            const bool scale_fill = DiagramScaleFill;
-            DiagramScaleFill.Draw();
+            const bool scale_fill = DiagramScaleFillHeight;
+            DiagramScaleFillHeight.Draw();
             if (scale_fill) ImGui::BeginDisabled();
             DiagramScale.Draw();
             if (scale_fill) {
                 SameLine();
-                Text("Uncheck 'ScaleFill' to edit scale settings.");
+                TextUnformatted(format("Uncheck '{}' to manually edit diagram scale.", DiagramScaleFillHeight.Name).c_str());
                 ImGui::EndDisabled();
             }
             DiagramDirection.Draw();

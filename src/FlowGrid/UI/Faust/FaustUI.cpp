@@ -24,7 +24,7 @@ enum DiagramOrientation { DiagramForward, DiagramReverse };
 
 static inline ImVec2 Scale(const ImVec2 &p);
 static inline float Scale(float f);
-static inline ImVec2 GetScale();
+static inline float GetScale();
 
 static inline ImGuiDir GlobalDirection(DiagramOrientation orientation) {
     const ImGuiDir dir = s.Style.FlowGrid.DiagramDirection;
@@ -91,7 +91,7 @@ struct SVGDevice : Device {
     SVGDevice(fs::path Directory, string FileName, ImVec2 size) : Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
         Stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        Stream << (s.Style.FlowGrid.DiagramScaleFill ? R"( width="100%" height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        Stream << (s.Style.FlowGrid.DiagramScaleFillHeight ? R"( height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         Stream << format(R"(
@@ -487,13 +487,13 @@ protected:
     }
 };
 
-static inline ImVec2 GetScale() {
-    if (!s.Style.FlowGrid.DiagramScaleFill || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return s.Style.FlowGrid.DiagramScale;
-    return GetWindowSize() / FocusedNodeStack.top()->Size;
+static inline float GetScale() {
+    if (!s.Style.FlowGrid.DiagramScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return s.Style.FlowGrid.DiagramScale;
+    return GetWindowHeight() / FocusedNodeStack.top()->H();
 }
 
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
-static inline float Scale(const float f) { return f * GetScale().y; }
+static inline float Scale(const float f) { return f * GetScale(); }
 
 // Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
 // If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
@@ -1307,7 +1307,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
     auto *focused = FocusedNodeStack.top();
     focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
-    if (!s.Style.FlowGrid.DiagramScaleFill) SetNextWindowContentSize(Scale(focused->Size));
+    if (!s.Style.FlowGrid.DiagramScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust diagram inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = Scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), s.Style.FlowGrid.Colors[FlowGridCol_DiagramBg]);

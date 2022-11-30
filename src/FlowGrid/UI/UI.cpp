@@ -13,39 +13,19 @@
 
 using namespace fg;
 
-/**md
-## UI methods
-
-These are the only public methods.
-
-```cpp
+/**
+Public methods:
     CreateUi();
     TickUi();
-    DestroyUi(render_context);
-```
+    DestroyUi(RenderContext);
 
-## Render context methods
+Render context methods:
+    CreateRenderContext();
+    DestroyRenderContext(RenderContext);
 
-```cpp
-    create_render_context();
-    destroy_render_context(render_context);
-```
-
-## UI context methods
-
-Superset of render context.
-
-```cpp
-    create_ui_context();
-```
-
-## Frame methods
-
-```cpp
-    prepare_frame();
-    draw_frame();
-    render_frame(render_context);
-```
+Frame methods:
+    PrepareFrame();
+    RenderFrame(RenderContext);
  */
 
 struct RenderContext {
@@ -55,7 +35,7 @@ struct RenderContext {
     ImGuiIO io;
 };
 
-RenderContext create_render_context() {
+RenderContext CreateRenderContext() {
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
@@ -84,7 +64,7 @@ RenderContext create_render_context() {
     return draw_context;
 }
 
-void destroy_render_context(const RenderContext &rc) {
+void DestroyRenderContext(const RenderContext &rc) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
@@ -95,8 +75,8 @@ void destroy_render_context(const RenderContext &rc) {
     SDL_Quit();
 }
 
-UIContext create_ui_context(const RenderContext &render_context) {
-    SDL_GL_MakeCurrent(render_context.window, render_context.gl_context);
+UIContext CreateUiContext(const RenderContext &RenderContext) {
+    SDL_GL_MakeCurrent(RenderContext.window, RenderContext.gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
@@ -113,8 +93,8 @@ UIContext create_ui_context(const RenderContext &render_context) {
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(render_context.window, render_context.gl_context);
-    ImGui_ImplOpenGL3_Init(render_context.glsl_version);
+    ImGui_ImplSDL2_InitForOpenGL(RenderContext.window, RenderContext.gl_context);
+    ImGui_ImplOpenGL3_Init(RenderContext.glsl_version);
 
     UIContext ui_context = {imgui_context, implot_context};
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
@@ -130,13 +110,13 @@ UIContext create_ui_context(const RenderContext &render_context) {
     return ui_context;
 }
 
-void prepare_frame() {
+void PrepareFrame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 }
 
-void render_frame(RenderContext &rc) {
+void RenderFrame(RenderContext &rc) {
     ImGui::Render();
     glViewport(0, 0, (int) rc.io.DisplaySize.x, (int) rc.io.DisplaySize.y);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -146,7 +126,7 @@ void render_frame(RenderContext &rc) {
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
 
-const map<string, ImGuiModFlags> mod_keys{
+const map<string, ImGuiModFlags> ModKeys{
     {"shift", ImGuiModFlags_Shift},
     {"ctrl", ImGuiModFlags_Ctrl},
     {"alt", ImGuiModFlags_Alt},
@@ -169,7 +149,7 @@ std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
     auto key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);
     ImGuiModFlags mod_flags = ImGuiModFlags_None;
     while (!tokens.empty()) {
-        mod_flags |= mod_keys.at(tokens.back());
+        mod_flags |= ModKeys.at(tokens.back());
         tokens.pop_back();
     }
 
@@ -188,13 +168,13 @@ bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
     return mod == ImGui::GetIO().KeyMods && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
 }
 
-RenderContext render_context;
+RenderContext RenderContext;
 
 UIContext CreateUi() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
 
-    render_context = create_render_context();
-    const auto &ui_context = create_ui_context(render_context);
+    RenderContext = CreateRenderContext();
+    const auto &ui_context = CreateUiContext(RenderContext);
     IGFD::InitializeDemo();
 
     return ui_context;
@@ -212,7 +192,7 @@ void TickUi() {
         ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT ||
             (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                event.window.windowID == SDL_GetWindowID(render_context.window))) {
+                event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
             q(close_application{}, true);
         }
     }
@@ -229,9 +209,9 @@ void TickUi() {
         }
     }
 
-    prepare_frame();
+    PrepareFrame();
     s.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
-    render_frame(render_context);
+    RenderFrame(RenderContext);
 
     auto &io = ImGui::GetIO();
     if (io.WantSaveIniSettings) {
@@ -249,5 +229,5 @@ void TickUi() {
 void DestroyUi() {
     IGFD::CleanupDemo();
     destroy_faust_editor();
-    destroy_render_context(render_context);
+    DestroyRenderContext(RenderContext);
 }

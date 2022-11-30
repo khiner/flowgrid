@@ -24,7 +24,6 @@ enum DiagramOrientation { DiagramForward, DiagramReverse };
 
 static inline ImVec2 Scale(const ImVec2 &p);
 static inline float Scale(float f);
-static inline float GetScale();
 
 static inline ImGuiDir GlobalDirection(DiagramOrientation orientation) {
     const ImGuiDir dir = s.Style.FlowGrid.DiagramDirection;
@@ -336,9 +335,6 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 //  - Fix saving to SVG with `DecorateFoldedNodes = false`.
 struct Node {
     inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
-    inline static ImVec2 Gap() { return s.Style.FlowGrid.DiagramGap; }
-    inline static float XGap() { return Gap().x; }
-    inline static float YGap() { return Gap().y; }
 
     Tree FaustTree;
     const vector<Node *> Children{};
@@ -398,6 +394,9 @@ struct Node {
         device.SetCursorPos(before_cursor);
     };
 
+    virtual ImVec2 Margin() const { return s.Style.FlowGrid.DiagramNodeMargin; }
+    inline float XMargin() const { return Margin().x; }
+    inline float YMargin() const { return Margin().y; }
 
     inline float W() const { return Size.x; }
     inline float H() const { return Size.y; }
@@ -470,7 +469,7 @@ protected:
     virtual void DoPlace(DeviceType) = 0;
     virtual void DoDraw(Device &) const {}
 
-    ImRect GetFrameRect() const { return {Gap(), Size - Gap()}; }
+    ImRect GetFrameRect() const { return {Margin(), Size - Margin()}; }
 
     // Draw the orientation mark in the corner on the inputs side (respecting global direction setting), like in integrated circuits.
     // Marker on top: Forward orientation. Inputs go from top to bottom.
@@ -518,7 +517,7 @@ struct BlockNode : Node {
         : Node(tree, in_count, out_count, std::move(text), {}, 1), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
-        Size = Gap() * 2 + ImVec2{
+        Size = Margin() * 2 + ImVec2{
             max(3.f * WireGap(), TextSize(Text).x),
             max(3.f, float(max(InCount, OutCount))) * WireGap(),
         };
@@ -562,7 +561,7 @@ struct BlockNode : Node {
             const float arrow_width = in ? s.Style.FlowGrid.DiagramArrowSize.X : 0.f;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(io, channel);
-                const auto &b = channel_point + ImVec2{(XGap() - arrow_width) * DirUnit(io), 0};
+                const auto &b = channel_point + ImVec2{(XMargin() - arrow_width) * DirUnit(io), 0};
                 device.Line(channel_point, b);
                 if (in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
             }
@@ -603,8 +602,8 @@ struct InverterNode : BlockNode {
 
     void DoDraw(Device &device) const override {
         const float radius = s.Style.FlowGrid.DiagramInverterRadius;
-        const ImVec2 p1 = {W() - 2 * XGap(), 1 + (H() - 1) / 2};
-        const auto tri_a = ImVec2{XGap() + (IsLr() ? 0 : p1.x), 0};
+        const ImVec2 p1 = {W() - 2 * XMargin(), 1 + (H() - 1) / 2};
+        const auto tri_a = ImVec2{XMargin() + (IsLr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : W()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
         device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Colors[Color]);
@@ -900,7 +899,7 @@ struct GroupNode : Node {
     ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, Node::Point(0, io, channel).y}; }
 
 private:
-    static ImVec2 Margin() { return s.Style.FlowGrid.DiagramGroupMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramDecorateLineWidth / 2; }
+    ImVec2 Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramDecorateLineWidth / 2; }
     static ImVec2 Padding() { return s.Style.FlowGrid.DiagramGroupPadding + s.Style.FlowGrid.DiagramDecorateLineWidth / 2; }
 
     void DrawConnections(Device &device) const override {
@@ -938,7 +937,7 @@ struct DecorateNode : Node {
 private:
     static bool ShouldDecorate() { return s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
 
-    static ImVec2 Margin() {
+    ImVec2 Margin() const override {
         if (!ShouldDecorate()) return {0, 0};
         return s.Style.FlowGrid.DiagramDecorateMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramDecorateLineWidth / 2;
     }
@@ -973,8 +972,8 @@ struct RouteNode : Node {
 
     void DoPlaceSize(const DeviceType) override {
         const float minimal = 3 * WireGap();
-        const float h = 2 * YGap() + max(minimal, float(max(InCount, OutCount)) * WireGap());
-        Size = {2 * XGap() + max(minimal, h * 0.75f), h};
+        const float h = 2 * YMargin() + max(minimal, float(max(InCount, OutCount)) * WireGap());
+        Size = {2 * XMargin() + max(minimal, h * 0.75f), h};
     }
     void DoPlace(const DeviceType) override {}
 
@@ -983,11 +982,11 @@ struct RouteNode : Node {
             device.Rect(GetFrameRect(), {.FillColor={0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
             DrawOrientationMark(device);
             // Input arrows
-            for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XGap(), 0}, Orientation);
+            for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XMargin(), 0}, Orientation);
         }
     }
     void DrawConnections(Device &device) const override {
-        const auto d = ImVec2{DirUnit() * XGap(), 0};
+        const auto d = ImVec2{DirUnit() * XMargin(), 0};
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
             for (Count i = 0; i < IoCount(io); i++) {

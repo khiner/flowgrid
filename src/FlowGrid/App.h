@@ -781,7 +781,7 @@ struct Style : Window {
         Prop(Float, DiagramBinaryHorizontalGapRatio, 0.25, 0, 1);
         Prop(Float, DiagramWireWidth, 1, 0.5, 4);
         Prop(Float, DiagramWireGap, 16, 10, 20);
-        Prop(Vec2, DiagramGap, { 8, 8 }, 0, 20);
+        Prop(Vec2, DiagramNodeMargin, { 8, 8 }, 0, 20);
         Prop(Vec2, DiagramArrowSize, { 3, 2 }, 1, 10);
         Prop(Float, DiagramInverterRadius, 3, 1, 5);
 

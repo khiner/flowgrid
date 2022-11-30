@@ -1246,8 +1246,8 @@ void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
         {DiagramWireGap, 16},
-        {DiagramGap.Y, 8},
-        {DiagramGap.Y, 8},
+        {DiagramNodeMargin.Y, 8},
+        {DiagramNodeMargin.Y, 8},
         {DiagramArrowSize.X, 3},
         {DiagramArrowSize.Y, 2},
         {DiagramInverterRadius, 3},
@@ -1272,8 +1272,8 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
         {DiagramWireGap, 16},
-        {DiagramGap.X, 8},
-        {DiagramGap.Y, 8},
+        {DiagramNodeMargin.X, 8},
+        {DiagramNodeMargin.Y, 8},
         {DiagramArrowSize.X, 3},
         {DiagramArrowSize.Y, 2},
         {DiagramInverterRadius, 3},
@@ -1572,7 +1572,7 @@ void Style::FlowGridStyle::Draw() const {
             DiagramBoxCornerRadius.Draw();
             DiagramBinaryHorizontalGapRatio.Draw();
             DiagramWireGap.Draw();
-            DiagramGap.Draw();
+            DiagramNodeMargin.Draw();
             DiagramWireWidth.Draw();
             DiagramArrowSize.Draw();
             DiagramInverterRadius.Draw();

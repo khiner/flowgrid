@@ -753,13 +753,13 @@ struct Style : Window {
         FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
         void Draw() const override;
 
-        Prop(Float, FlashDurationSec, 0.6, 0, 5);
+        Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
 
         Prop_(UInt, DiagramFoldComplexity,
             "?Number of boxes within a diagram before folding into a sub-diagram.\n"
             "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20);
         Prop_(Bool, DiagramScaleFill, "?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings.");
-        Prop(Vec2Linked, DiagramScale, { 1, 1 }, 0.1, 10);
+        Prop(Vec2Linked, DiagramScale, { 1, 1 }, 0.5, 5);
         Prop(Enum, DiagramDirection, { "Left", "Right" }, ImGuiDir_Right);
         Prop(Bool, DiagramRouteFrame);
         Prop(Bool, DiagramOrientationMark, true);

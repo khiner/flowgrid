@@ -37,7 +37,6 @@ static inline bool IsLr(DiagramOrientation orientation) { return GlobalDirection
 
 // Device accepts unscaled positions/sizes.
 struct Device {
-    static constexpr float RectLabelOffset = 14; // Not configurable, since it's a pain to deal with correctly.
     static constexpr float RectLabelPaddingLeft = 3;
 
     Device(const ImVec2 &position = {0, 0}) : Position(position) {}
@@ -48,7 +47,7 @@ struct Device {
     // All positions received and drawn relative to this device's `Position` and `CursorPosition`.
     // Drawing assumes `SetCursorPos` has been called to set the desired origin.
     virtual void Rect(const ImRect &, const RectStyle &) = 0;
-    // Rect with a break in the top-left (to the right of max rounding) for a label.
+    // Rect with a break in the top-left (to the right of rounding) for a label.
     virtual void LabeledRect(const ImRect &, const string &label, const RectStyle &, const TextStyle &) = 0;
 
     virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
@@ -156,12 +155,13 @@ struct SVGDevice : Device {
         const auto &rect = At(local_rect);
         const auto &tl = rect.Min;
         const auto &tr = rect.GetTR();
-        const float text_x = tl.x + Scale(RectLabelOffset);
-        const ImVec2 &text_right = {min(text_x + TextSize(label).x + Scale(text_style.Padding.Left), tr.x), tr.y};
+        const float label_offset = Scale(max(8.f, rect_style.CornerRadius) + text_style.Padding.Left);
+        const float text_x = tl.x + label_offset;
+        const ImVec2 &text_right = {min(text_x + TextSize(label).x, tr.x), tr.y};
         const float r = Scale(rect_style.CornerRadius);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
         Stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)",
-            text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - RectLabelOffset) + r, r, r, -r, r, // before text to top-left
+            text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - label_offset) + r, r, r, -r, r, // before text to top-left
             rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
             rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
             -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
@@ -245,18 +245,20 @@ struct ImGuiDevice : Device {
         const ImRect &rect = At(local_rect);
         const auto &a = rect.Min;
         const auto &b = rect.Max;
-        const auto &text_top_left = a + Scale({RectLabelOffset, 0});
+        const float label_offset = Scale(max(8.f, rect_style.CornerRadius) + text_style.Padding.Left);
+        const auto &text_top_left = a + ImVec2{label_offset, 0};
         const float r = Scale(rect_style.CornerRadius);
-        const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - Scale(RectLabelOffset) - Scale(text_style.Padding.Left + text_style.Padding.Right));
+        const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - label_offset - Scale(text_style.Padding.Right));
+        const auto &rect_start = text_top_left + ImVec2{TextSize(ellipsified_label).x + Scale(text_style.Padding.Left), 0};
 
-        DrawList->PathLineTo(text_top_left + ImVec2{TextSize(ellipsified_label).x + Scale(text_style.Padding.Left), 0});
+        DrawList->PathLineTo(rect_start);
         if (r < 0.5f) {
             DrawList->PathLineTo({b.x, a.y});
             DrawList->PathLineTo(b);
             DrawList->PathLineTo({a.x, b.y});
             DrawList->PathLineTo(a);
         } else {
-            DrawList->PathArcToFast({b.x - r, a.y + r}, r, 9, 12);
+            if (rect_start.x < b.x - r) DrawList->PathArcToFast({b.x - r, a.y + r}, r, 9, 12);
             DrawList->PathArcToFast({b.x - r, b.y - r}, r, 0, 3);
             DrawList->PathArcToFast({a.x + r, b.y - r}, r, 3, 6);
             DrawList->PathArcToFast({a.x + r, a.y + r}, r, 6, 9);

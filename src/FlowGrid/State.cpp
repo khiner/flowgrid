@@ -1569,10 +1569,10 @@ void Style::FlowGridStyle::Draw() const {
             DiagramGroupMargin.Draw();
             DiagramGroupPadding.Draw();
             Separator();
+            DiagramNodeMargin.Draw();
             DiagramBoxCornerRadius.Draw();
             DiagramBinaryHorizontalGapRatio.Draw();
             DiagramWireGap.Draw();
-            DiagramNodeMargin.Draw();
             DiagramWireWidth.Draw();
             DiagramArrowSize.Draw();
             DiagramInverterRadius.Draw();

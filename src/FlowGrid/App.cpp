@@ -48,6 +48,11 @@ StateMember::~StateMember() {
     WithId.erase(Id);
 }
 
+Vec2Linked::Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
+    : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
+    c.CtorStore.set(Linked.Path, linked);
+}
+
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
     for (const auto &[key, value]: v) j[json::json_pointer(key.string())] = value;

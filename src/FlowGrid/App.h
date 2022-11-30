@@ -739,6 +739,8 @@ struct Vec2 : UIStateMember {
 
 struct Vec2Linked : Vec2 {
     using Vec2::Vec2;
+    Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help,
+               const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
     void Draw() const override;
     bool Draw(ImGuiSliderFlags flags) const override;
@@ -776,12 +778,12 @@ struct Style : Window {
         Prop(Vec2Linked, DiagramGroupMargin, { 8, 8 }, 0, 20);
         Prop(Vec2Linked, DiagramGroupPadding, { 8, 8 }, 0, 20);
 
+        Prop(Vec2Linked, DiagramNodeMargin, { 8, 8 }, 0, 20);
         Prop(Float, DiagramOrientationMarkRadius, 1.5, 0.5, 3);
         Prop(Float, DiagramBoxCornerRadius, 0, 0, 10);
         Prop(Float, DiagramBinaryHorizontalGapRatio, 0.25, 0, 1);
         Prop(Float, DiagramWireWidth, 1, 0.5, 4);
         Prop(Float, DiagramWireGap, 16, 10, 20);
-        Prop(Vec2, DiagramNodeMargin, { 8, 8 }, 0, 20);
         Prop(Vec2, DiagramArrowSize, { 3, 2 }, 1, 10);
         Prop(Float, DiagramInverterRadius, 3, 1, 5);
 
@@ -852,12 +854,12 @@ struct Style : Window {
         // Double-check everything's up-to-date from time to time!
 
         // Main
-        Prop(Vec2, WindowPadding, { 8, 8 }, 0, 20, "%.0f");
-        Prop(Vec2, FramePadding, { 4, 3 }, 0, 20, "%.0f");
-        Prop(Vec2, CellPadding, { 4, 2 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, WindowPadding, { 8, 8 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, FramePadding, { 4, 3 }, 0, 20, false, "%.0f");
+        Prop(Vec2Linked, CellPadding, { 4, 2 }, 0, 20, false, "%.0f");
         Prop(Vec2, ItemSpacing, { 8, 4 }, 0, 20, "%.0f");
-        Prop(Vec2, ItemInnerSpacing, { 4, 4 }, 0, 20, "%.0f");
-        Prop(Vec2, TouchExtraPadding, { 0, 0 }, 0, 10, "%.0f");
+        Prop(Vec2Linked, ItemInnerSpacing, { 4, 4 }, 0, 20, true, "%.0f");
+        Prop(Vec2Linked, TouchExtraPadding, { 0, 0 }, 0, 10, true, "%.0f");
         Prop(Float, IndentSpacing, 21, 0, 30, "%.0f");
         Prop(Float, ScrollbarSize, 14, 1, 20, "%.0f");
         Prop(Float, GrabMinSize, 12, 1, 20, "%.0f");
@@ -883,11 +885,11 @@ struct Style : Window {
         Prop(Vec2, WindowTitleAlign, { 0, 0.5 }, 0, 1, "%.2f");
         Prop(Enum, WindowMenuButtonPosition, { "Left", "Right" }, ImGuiDir_Left);
         Prop(Enum, ColorButtonPosition, { "Left", "Right" }, ImGuiDir_Right);
-        Prop_(Vec2, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", { 0.5, 0.5 }, 0, 1, "%.2f");
-        Prop_(Vec2, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", { 0, 0 }, 0, 1, "%.2f");
+        Prop_(Vec2Linked, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", { 0.5, 0.5 }, 0, 1, "%.2f");
+        Prop_(Vec2Linked, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", { 0, 0 }, 0, 1, "%.2f");
 
         // Safe area padding
-        Prop_(Vec2, DisplaySafeAreaPadding, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", { 3, 3 }, 0, 30, "%.0f");
+        Prop_(Vec2Linked, DisplaySafeAreaPadding, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", { 3, 3 }, 0, 30, "%.0f");
 
         // Rendering
         Prop_(Bool, AntiAliasedLines, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true);
@@ -904,7 +906,7 @@ struct Style : Window {
 
         // Not editable todo delete?
         Prop(Float, TabMinWidthForCloseButton, 0);
-        Prop(Vec2, DisplayWindowPadding, { 19, 19 });
+        Prop(Vec2Linked, DisplayWindowPadding, { 19, 19 });
         Prop(Vec2, WindowMinSize, { 32, 32 });
         Prop(Float, MouseCursorScale, 1);
         Prop(Float, ColumnsMinSpacing, 6);
@@ -939,24 +941,24 @@ struct Style : Window {
         // Plot styling
         Prop(Float, PlotBorderSize, 1, 0, 2, "%.0f");
         Prop(Float, MinorAlpha, 0.25, 1, 0, "%.2f");
-        Prop(Vec2, MajorTickLen, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2, MinorTickLen, { 5, 5 }, 0, 20, "%.0f");
-        Prop(Vec2, MajorTickSize, { 1, 1 }, 0, 2, "%.1f");
-        Prop(Vec2, MinorTickSize, { 1, 1 }, 0, 2, "%.1f");
-        Prop(Vec2, MajorGridSize, { 1, 1 }, 0, 2, "%.1f");
-        Prop(Vec2, MinorGridSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2Linked, MajorTickLen, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, MinorTickLen, { 5, 5 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, MajorTickSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2Linked, MinorTickSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2Linked, MajorGridSize, { 1, 1 }, 0, 2, "%.1f");
+        Prop(Vec2Linked, MinorGridSize, { 1, 1 }, 0, 2, "%.1f");
         Prop(Vec2, PlotDefaultSize, { 400, 300 }, 0, 1000, "%.0f");
         Prop(Vec2, PlotMinSize, { 200, 150 }, 0, 300, "%.0f");
 
         // Plot padding
-        Prop(Vec2, PlotPadding, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2, LabelPadding, { 5, 5 }, 0, 20, "%.0f");
-        Prop(Vec2, LegendPadding, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2, LegendInnerPadding, { 5, 5 }, 0, 10, "%.0f");
+        Prop(Vec2Linked, PlotPadding, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, LabelPadding, { 5, 5 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, LegendPadding, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, LegendInnerPadding, { 5, 5 }, 0, 10, "%.0f");
         Prop(Vec2, LegendSpacing, { 5, 0 }, 0, 5, "%.0f");
-        Prop(Vec2, MousePosPadding, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2, AnnotationPadding, { 2, 2 }, 0, 5, "%.0f");
-        Prop(Vec2, FitPadding, { 0, 0 }, 0, 0.2, "%.2f");
+        Prop(Vec2Linked, MousePosPadding, { 10, 10 }, 0, 20, "%.0f");
+        Prop(Vec2Linked, AnnotationPadding, { 2, 2 }, 0, 5, "%.0f");
+        Prop(Vec2Linked, FitPadding, { 0, 0 }, 0, 0.2, "%.2f");
 
         Prop(Colors, Colors, ImPlot::GetStyleColorName, true);
         Prop(Bool, UseLocalTime);

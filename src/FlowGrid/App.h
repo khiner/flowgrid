@@ -152,8 +152,6 @@ struct Base : StateMember {
     virtual bool Draw() const = 0;
 };
 
-struct Linkable;
-
 struct Bool : Base {
     Bool(const StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
@@ -163,18 +161,8 @@ struct Bool : Base {
     bool Draw() const override;
     bool DrawMenu() const;
 
-    set<Linkable *> Links;
 private:
     void Toggle() const; // Used in draw methods.
-};
-
-struct Linkable {
-    Linkable(Bool *linked) : Linked(linked) { if (Linked) Linked->Links.emplace(this); }
-    ~Linkable() { if (Linked) Linked->Links.erase(this); }
-
-    virtual void LinkValues() const = 0;
-
-    Bool *Linked;
 };
 
 struct UInt : Base {
@@ -728,24 +716,32 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
-struct Vec2 : UIStateMember, Linkable {
+struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(const StateMember *parent, const string &path_segment, const string &name_help,
-         const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr, Bool *link_values = nullptr)
-        : UIStateMember(parent, path_segment, name_help), Linkable(link_values),
+         const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
+        : UIStateMember(parent, path_segment, name_help),
           X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max),
           min(min), max(max), fmt(fmt) {}
 
     operator ImVec2() const { return {X, Y}; }
 
     void Draw() const override;
-    bool Draw(ImGuiSliderFlags flags) const;
-    void LinkValues() const override;
+    virtual bool Draw(ImGuiSliderFlags flags) const;
 
     Float X, Y;
 
     float min, max; // todo don't need these anymore, derive from X/Y
     const char *fmt;
+};
+
+struct Vec2Linked : Vec2 {
+    using Vec2::Vec2;
+
+    void Draw() const override;
+    bool Draw(ImGuiSliderFlags flags) const override;
+
+    Prop(Bool, Linked, true);
 };
 
 struct Style : Window {
@@ -763,8 +759,7 @@ struct Style : Window {
             "?Number of boxes within a diagram before folding into a sub-diagram.\n"
             "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20);
         Prop_(Bool, DiagramScaleFill, "?Scale to fill the window.\nEnabling this setting deactivates other diagram scale settings.");
-        Prop(Bool, DiagramScaleLinked, true); // Link X/Y scale sliders, forcing them to the same value.
-        Prop(Vec2, DiagramScale, { 1, 1 }, 0.1, 10, nullptr, &DiagramScaleLinked);
+        Prop(Vec2Linked, DiagramScale, { 1, 1 }, 0.1, 10);
         Prop(Enum, DiagramDirection, { "Left", "Right" }, ImGuiDir_Right);
         Prop(Bool, DiagramRouteFrame);
         Prop(Bool, DiagramOrientationMark, true);
@@ -773,15 +768,11 @@ struct Style : Window {
         Prop(Bool, DiagramDecorateFoldedNodes, false);
         Prop(Float, DiagramDecorateCornerRadius, 0, 0, 10);
         Prop(Float, DiagramDecorateLineWidth, 1, 0, 4);
-        Prop(Bool, DiagramDecorateMarginLinked, true);
-        Prop(Vec2, DiagramDecorateMargin, { 10, 10 }, 0, 20, nullptr, &DiagramDecorateMarginLinked);
-        Prop(Bool, DiagramDecoratePaddingLinked, true);
-        Prop(Vec2, DiagramDecoratePadding, { 10, 10 }, 0, 20, nullptr, &DiagramDecoratePaddingLinked);
+        Prop(Vec2Linked, DiagramDecorateMargin, { 10, 10 }, 0, 20);
+        Prop(Vec2Linked, DiagramDecoratePadding, { 10, 10 }, 0, 20);
 
-        Prop(Bool, DiagramGroupMarginLinked, true);
-        Prop(Vec2, DiagramGroupMargin, { 8, 8 }, 0, 20, nullptr, &DiagramGroupMarginLinked);
-        Prop(Bool, DiagramGroupPaddingLinked, true);
-        Prop(Vec2, DiagramGroupPadding, { 8, 8 }, 0, 20, nullptr, &DiagramGroupPaddingLinked);
+        Prop(Vec2Linked, DiagramGroupMargin, { 8, 8 }, 0, 20);
+        Prop(Vec2Linked, DiagramGroupPadding, { 8, 8 }, 0, 20);
 
         Prop(Float, DiagramOrientationMarkRadius, 1.5, 0.5, 3);
         Prop(Float, DiagramBoxCornerRadius, 0, 0, 10);

@@ -233,15 +233,11 @@ void StateMember::HelpMarker(const bool after) const {
     if (!after) SameLine();
 }
 
-void Bool::Toggle() const {
-    // If I'm toggling from off to on, tell my `Links` to link their values together.
-    if (!(*this)) for (const auto &link: Links) link->LinkValues();
-    q(toggle_value{Path});
-}
+void Bool::Toggle() const { q(toggle_value{Path}); }
 
 bool Field::Bool::Draw() const {
     bool value = *this;
-    const bool edited = Checkbox(Links.empty() ? Name.c_str() : format("Link##{}", Name).c_str(), &value);
+    const bool edited = Checkbox(format("{}##{}", Name, Path.string()).c_str(), &value); // todo all fields should be rendered like this, but cache this full value.
     if (edited) Toggle();
     HelpMarker();
     return edited;
@@ -513,22 +509,29 @@ void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_fla
 }
 }
 
-void Vec2::LinkValues() const {
-    // Linking sets the max value to the min value.
-    if (X < Y) q(set_value{Y.Path, X});
-    else if (Y < X) q(set_value{X.Path, Y});
+bool Vec2::Draw(ImGuiSliderFlags flags) const {
+    ImVec2 values = *this;
+    const bool edited = SliderFloat2(Name.c_str(), (float *) &values, min, max, fmt, flags);
+    UiContext.WidgetGestured();
+    if (edited) q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
+    HelpMarker();
+    return edited;
 }
 
-bool Vec2::Draw(ImGuiSliderFlags flags) const {
-    if (Linked) {
-        Linked->Draw();
-        SameLine();
+void Vec2::Draw() const { Draw(ImGuiSliderFlags_None); }
+
+bool Vec2Linked::Draw(ImGuiSliderFlags flags) const {
+    if (Linked.Draw()) {
+        // Linking sets the max value to the min value.
+        if (X < Y) q(set_value{Y.Path, X});
+        else if (Y < X) q(set_value{X.Path, Y});
     }
+    SameLine();
     ImVec2 values = *this;
     const bool edited = SliderFloat2(Name.c_str(), (float *) &values, min, max, fmt, flags);
     UiContext.WidgetGestured();
     if (edited) {
-        if (Linked && *Linked) {
+        if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;
             q(set_values{{{X.Path, changed_value}, {Y.Path, changed_value}}});
         } else {
@@ -539,7 +542,7 @@ bool Vec2::Draw(ImGuiSliderFlags flags) const {
     return edited;
 }
 
-void Vec2::Draw() const { Draw(ImGuiSliderFlags_None); }
+void Vec2Linked::Draw() const { Draw(ImGuiSliderFlags_None); }
 
 //-----------------------------------------------------------------------------
 // [SECTION] Window methods

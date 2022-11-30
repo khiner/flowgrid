@@ -13,6 +13,6 @@ ImVec2 TextSize(const string &text) { return CalcTextSize(text.c_str()); }
 
 string Ellipsify(const string &text, const float max_width) {
     string ellipsified = text;
-    while (TextSize(ellipsified).x > max_width) ellipsified.replace(ellipsified.end() - 4, ellipsified.end(), "...");
+    while (TextSize(ellipsified).x > max_width && ellipsified.length() > 4) ellipsified.replace(ellipsified.end() - 4, ellipsified.end(), "...");
     return ellipsified;
 }

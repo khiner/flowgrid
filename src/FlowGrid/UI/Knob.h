@@ -36,7 +36,7 @@ struct ColorSet {
 
 bool
 Knob(const char *label, float *p_value, float v_min, float v_max, float speed = 0, const char *format = nullptr,
-     HAlign h_align = HAlign_Center, KnobVariant variant = KnobVariant_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);
+     HJustify h_justify = HJustify_Middle, KnobVariant variant = KnobVariant_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);
 bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed = 0, const char *format = nullptr,
-             HAlign h_align = HAlign_Center, KnobVariant variant = KnobVariant_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);
+             HJustify h_justify = HJustify_Middle, KnobVariant variant = KnobVariant_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);
 }

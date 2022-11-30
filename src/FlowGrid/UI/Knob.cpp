@@ -121,7 +121,7 @@ struct knob {
 
 template<typename DataType>
 bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float _speed, const char *format,
-              HAlign h_align, KnobVariant variant, KnobFlags flags = KnobFlags_None, int steps = 10) {
+              HJustify h_justify, KnobVariant variant, KnobFlags flags = KnobFlags_None, int steps = 10) {
     const auto speed = _speed == 0 ? (v_max - v_min) / 250.f : _speed;
     PushID(label);
     const auto width = CalcItemWidth();
@@ -131,7 +131,7 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
     // Draw title
     if (!(flags & KnobFlags_NoTitle)) {
         const float label_w = CalcTextSize(label).x;
-        SetCursorPosX(GetCursorPosX() + CalcAlignedX(h_align, label_w, width, true));
+        SetCursorPosX(GetCursorPosX() + CalcAlignedX(h_justify, label_w, width, true));
         TextUnformatted(label);
     }
 
@@ -211,11 +211,11 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
     return changed;
 }
 
-bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed, const char *format, HAlign h_align, KnobVariant variant, KnobFlags flags, int steps) {
-    return KnobBase(label, ImGuiDataType_Float, p_value, v_min, v_max, speed, format == nullptr ? "%.3f" : format, h_align, variant, flags, steps);
+bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed, const char *format, HJustify h_justify, KnobVariant variant, KnobFlags flags, int steps) {
+    return KnobBase(label, ImGuiDataType_Float, p_value, v_min, v_max, speed, format == nullptr ? "%.3f" : format, h_justify, variant, flags, steps);
 }
-bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed, const char *format, HAlign h_align, KnobVariant variant, KnobFlags flags, int steps) {
-    return KnobBase(label, ImGuiDataType_S32, p_value, v_min, v_max, speed, format == nullptr ? "%i" : format, h_align, variant, flags, steps);
+bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed, const char *format, HJustify h_justify, KnobVariant variant, KnobFlags flags, int steps) {
+    return KnobBase(label, ImGuiDataType_S32, p_value, v_min, v_max, speed, format == nullptr ? "%i" : format, h_justify, variant, flags, steps);
 }
 
 } // End namespace `Knobs`

@@ -197,7 +197,7 @@ struct SVGDevice : Device {
 
     void Text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding, font_style] = style;
-        const string anchor = justify == TextStyle::Left ? "start" : justify == TextStyle::Middle ? "middle" : "end";
+        const string anchor = justify.h == HJustify_Left ? "start" : justify.h == HJustify_Middle ? "middle" : "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
@@ -295,9 +295,11 @@ struct ImGuiDevice : Device {
 
     void Text(const ImVec2 &p, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding, font_style] = style;
+        const auto &size = TextSize(text);
         DrawList->AddText(
-            At(p - ImVec2{padding.Right, padding.Bottom} -
-                (justify == TextStyle::Left ? ImVec2{} : justify == TextStyle::Middle ? TextSize(text) / ImVec2{2, 1} : TextSize(text))),
+            At(p - ImVec2{padding.Right, padding.Bottom}) -
+                ImVec2{justify.h == HJustify_Left ? 0 : justify.h == HJustify_Middle ? size.x / 2 : size.x,
+                       justify.v == VJustify_Top ? 0 : justify.v == VJustify_Middle ? size.y / 2 : size.y,},
             color, text.c_str());
     }
 
@@ -423,7 +425,7 @@ struct Node {
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
         device.Rect({{0, 0}, TextSize(type_label) + padding * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text({0, 0}, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Left, .Padding=-padding});
+        device.Text({0, 0}, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify={HJustify_Left, VJustify_Bottom}});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io: IO_All) {
@@ -431,7 +433,7 @@ struct Node {
                 device.Text(
                     Point(io, channel),
                     format("{}:{}", Capitalize(to_string(io, true)), channel),
-                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={6, 4}, .FontStyle=TextStyle::FontStyle::Bold}
+                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify={HJustify_Right, VJustify_Middle}, .Padding={6, 4}, .FontStyle=TextStyle::FontStyle::Bold}
                 );
                 device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
             }
@@ -444,7 +446,7 @@ struct Node {
                     device.Text(
                         Point(ci, io, channel),
                         format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
-                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify=TextStyle::Justify::Right, .Padding={0, 4, 0, 0}, .FontStyle=TextStyle::FontStyle::Bold}
+                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify={HJustify_Right, VJustify_Middle}, .Padding={0, 4, 0, 0}, .FontStyle=TextStyle::FontStyle::Bold}
                     );
                     device.Circle(Point(ci, io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }
@@ -514,41 +516,41 @@ void WriteSvg(Node *node, const fs::path &path) {
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
     BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridCol_DiagramNormal, Node *inner = nullptr)
-        : Node(tree, in_count, out_count, std::move(text), {}, 1), color(color), inner(inner) {}
+        : Node(tree, in_count, out_count, std::move(text), {}, 1), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
         Size = Gap() * 2 + ImVec2{
             max(3.f * WireGap(), TextSize(Text).x),
             max(3.f, float(max(InCount, OutCount))) * WireGap(),
         };
-        if (inner && type == DeviceType_SVG) inner->PlaceSize(type);
+        if (Inner && type == DeviceType_SVG) Inner->PlaceSize(type);
     }
 
-    void DoPlace(const DeviceType type) override { if (inner && type == DeviceType_SVG) inner->Place(type); }
+    void DoPlace(const DeviceType type) override { if (Inner && type == DeviceType_SVG) Inner->Place(type); }
 
     void DoDraw(Device &device) const override {
-        U32 fill_color = s.Style.FlowGrid.Colors[color];
+        U32 fill_color = s.Style.FlowGrid.Colors[Color];
         const U32 text_color = s.Style.FlowGrid.Colors[FlowGridCol_DiagramText];
         const auto &local_rect = GetFrameRect();
+        const auto &size = local_rect.GetSize();
 
         if (device.Type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
-            if (inner && !fs::exists(svg_device.Directory / SvgFileName(inner->FaustTree))) WriteSvg(inner, svg_device.Directory);
-            const string &link = inner ? SvgFileName(FaustTree) : "";
+            if (Inner && !fs::exists(svg_device.Directory / SvgFileName(Inner->FaustTree))) WriteSvg(Inner, svg_device.Directory);
+            const string &link = Inner ? SvgFileName(FaustTree) : "";
             svg_device.Rect(local_rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.DiagramBoxCornerRadius}, link);
             svg_device.Text(Size / 2, Text, {.Color=text_color}, link);
         } else {
             const auto before_cursor = device.CursorPosition;
-            const auto &rect = device.At(local_rect);
             device.AdvanceCursor(local_rect.Min); // todo this pattern should be RIAA style
 
-            if (inner) {
+            if (Inner) {
                 bool hovered, held;
-                if (fg::InvisibleButton(rect.GetSize(), &hovered, &held)) FocusedNodeStack.push(inner);
+                if (fg::InvisibleButton(Scale(size), &hovered, &held)) FocusedNodeStack.push(Inner);
                 fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
             }
-            RenderFrame(rect.Min, rect.Max, fill_color, false, s.Style.FlowGrid.DiagramBoxCornerRadius);
-            device.Text(ImVec2{rect.GetWidth(), rect.GetHeight() + GetFontSize()} / 2, Text, {.Color=text_color});
+            RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, s.Style.FlowGrid.DiagramBoxCornerRadius);
+            device.Text(size / 2, Text, {.Color=text_color});
 
             device.SetCursorPos(before_cursor);
         }
@@ -568,8 +570,8 @@ struct BlockNode : Node {
         }
     }
 
-    const FlowGridCol color;
-    Node *inner;
+    const FlowGridCol Color;
+    Node *Inner;
 };
 
 // Simple cables (identity box) in parallel.
@@ -606,8 +608,8 @@ struct InverterNode : BlockNode {
         const auto tri_a = ImVec2{XGap() + (IsLr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : W()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
-        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Colors[color]);
-        device.Triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Colors[color]);
+        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Colors[Color]);
+        device.Triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Colors[Color]);
     }
 };
 

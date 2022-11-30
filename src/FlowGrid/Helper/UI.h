@@ -17,12 +17,21 @@ struct Padding {
     const float Top, Right, Bottom, Left;
 };
 
+enum HJustify_ { HJustify_Left, HJustify_Middle, HJustify_Right, };
+enum VJustify_ { VJustify_Top, VJustify_Middle, VJustify_Bottom, };
+using HJustify = int;
+using VJustify = int;
+
+struct Justify {
+    HJustify h;
+    VJustify v;
+};
+
 struct TextStyle {
-    enum Justify { Left, Middle, Right, };
     enum FontStyle { Normal, Bold, Italic, };
 
     const ImColor Color;
-    const Justify Justify{Middle};
+    const Justify Justify{HJustify_Middle, VJustify_Middle};
     const Padding Padding;
     const FontStyle FontStyle{Normal};
 };
@@ -32,18 +41,8 @@ struct RectStyle {
     const float StrokeWidth{0}, CornerRadius{0};
 };
 
-enum HAlign_ { HAlign_Left, HAlign_Center, HAlign_Right, };
-enum VAlign_ { VAlign_Top, VAlign_Center, VAlign_Bottom, };
-using HAlign = int;
-using VAlign = int;
-
-struct Align {
-    HAlign x;
-    VAlign y;
-};
-
-float CalcAlignedX(HAlign h_align, float inner_w, float outer_w, bool is_label = false); // todo better name than `is_label`
-float CalcAlignedY(VAlign v_align, float inner_h, float outer_h);
+float CalcAlignedX(HJustify h_justify, float inner_w, float outer_w, bool is_label = false); // todo better name than `is_label`
+float CalcAlignedY(VJustify v_justify, float inner_h, float outer_h);
 
 ImVec2 TextSize(const string &text);
 

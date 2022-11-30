@@ -790,8 +790,8 @@ struct Style : Window {
         Prop(Float, ParamsMinVerticalItemHeight, 4, 2, 8);
         Prop(Float, ParamsMinKnobItemSize, 3, 2, 6);
 
-        Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Center", "Right" }, HAlign_Center);
-        Prop(Enum, ParamsAlignmentVertical, { "Top", "Center", "Bottom" }, VAlign_Center);
+        Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Center", "Right" }, HJustify_Middle);
+        Prop(Enum, ParamsAlignmentVertical, { "Top", "Center", "Bottom" }, VJustify_Middle);
         Prop(Flags, ParamsTableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
         Prop_(Enum, ParamsWidthSizingPolicy,
             "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"

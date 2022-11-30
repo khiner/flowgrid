@@ -32,7 +32,7 @@ using ValueBarFlags = int;
 // Assumes the current cursor position is at the desired top-left of the rectangle.
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
 bool ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1,
-              const ValueBarFlags flags = ValueBarFlags_None, const HAlign h_align = HAlign_Center) {
+              const ValueBarFlags flags = ValueBarFlags_None, const HJustify h_justify = HJustify_Middle) {
     const float rect_width = CalcItemWidth();
     const ImVec2 &size = {rect_width, rect_height};
     const auto &style = GetStyle();
@@ -46,7 +46,7 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
     const auto cursor = GetCursorPos();
     if (has_title && !is_h) {
         const float label_w = CalcTextSize(label).x;
-        SetCursorPosX(cursor.x + CalcAlignedX(h_align, label_w, rect_width, true));
+        SetCursorPosX(cursor.x + CalcAlignedX(h_justify, label_w, rect_width, true));
         TextUnformatted(label);
     }
     const auto &rect_pos = GetCursorScreenPos();
@@ -70,7 +70,7 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
 
     const string value_text = format("{:.2f}", *value);
     const float value_text_w = CalcTextSize(value_text.c_str()).x;
-    const float value_text_x = CalcAlignedX(is_h ? HAlign_Center : h_align, value_text_w, rect_width);
+    const float value_text_x = CalcAlignedX(is_h ? HJustify_Middle : h_justify, value_text_w, rect_width);
     draw_list->AddText(rect_pos + ImVec2{value_text_x, (size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());
 
     if (has_title && is_h) {
@@ -103,7 +103,7 @@ static float CalcRadioChoiceWidth(const string &choice_name) {
 // `size` is the rectangle size.
 // Assumes the current cursor position is either the desired top-left of the rectangle (or the beginning of the label for a vertical bar with a title).
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
-bool RadioButtons(const char *label, float *value, const FaustUI::NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Align align = {HAlign_Center, VAlign_Center}) {
+bool RadioButtons(const char *label, float *value, const FaustUI::NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Justify justify = {HJustify_Middle, VJustify_Middle}) {
     PushID(label);
     BeginGroup();
 
@@ -112,7 +112,7 @@ bool RadioButtons(const char *label, float *value, const FaustUI::NamesAndValues
     const float item_width = CalcItemWidth();
     if (!(flags & RadioButtonsFlags_NoTitle)) {
         const float label_width = CalcTextSize(label).x;
-        ImVec2 label_pos = GetCursorScreenPos() + (is_h ? ImVec2{0, style.FramePadding.y} : ImVec2{CalcAlignedX(align.x, label_width, item_width), 0});
+        ImVec2 label_pos = GetCursorScreenPos() + (is_h ? ImVec2{0, style.FramePadding.y} : ImVec2{CalcAlignedX(justify.h, label_width, item_width), 0});
         RenderText(label_pos, label);
         Dummy({label_width, GetFrameHeight()});
     }
@@ -122,7 +122,7 @@ bool RadioButtons(const char *label, float *value, const FaustUI::NamesAndValues
         const string &choice_name = names_and_values.names[i];
         const Real choice_value = names_and_values.values[i];
         const float choice_width = CalcRadioChoiceWidth(choice_name);
-        if (!is_h) SetCursorPosX(GetCursorPosX() + CalcAlignedX(align.x, choice_width, item_width));
+        if (!is_h) SetCursorPosX(GetCursorPosX() + CalcAlignedX(justify.h, choice_width, item_width));
         else SameLine(0, style.ItemInnerSpacing.x);
 
         if (RadioButton(choice_name.c_str(), *value == choice_value)) {
@@ -225,7 +225,7 @@ static float CalcItemLabelHeight(const FaustUI::Item &item) {
 void DrawUiItem(const FaustUI::Item &item, const string &label, const float suggested_height) {
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
-    const Align align = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
+    const Justify justify = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
     const auto type = item.type;
     const auto &children = item.items;
     const float frame_height = GetFrameHeight();
@@ -279,7 +279,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                                 TableSetColumnIndex(column);
                                 const char *column_name = TableGetColumnName(column);
                                 PushID(column);
-                                const float header_x = CalcAlignedX(align.x, CalcTextSize(column_name).x, GetContentRegionAvail().x);
+                                const float header_x = CalcAlignedX(justify.h, CalcTextSize(column_name).x, GetContentRegionAvail().x);
                                 SetCursorPosX(GetCursorPosX() + max(0.f, header_x));
                                 TableHeader(column_name);
                                 PopID();
@@ -313,8 +313,8 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
 
         const auto old_cursor = GetCursorPos();
         SetCursorPos(old_cursor + ImVec2{
-            max(0.f, CalcAlignedX(align.x, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)),
-            max(0.f, CalcAlignedY(align.y, item_size.y, max(item_size.y, suggested_height)))
+            max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)),
+            max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))
         });
 
         if (type == ItemType_Button) {
@@ -331,13 +331,13 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             if (type == ItemType_HBargraph || type == ItemType_VBargraph) flags |= ValueBarFlags_ReadOnly;
             if (type == ItemType_VBargraph || type == ItemType_VSlider) flags |= ValueBarFlags_Vertical;
             if (!has_label) flags |= ValueBarFlags_NoTitle;
-            if (ValueBar(item.label.c_str(), &value, item_size.y - label_height, float(item.min), float(item.max), flags, align.x)) *item.zone = Real(value);
+            if (ValueBar(item.label.c_str(), &value, item_size.y - label_height, float(item.min), float(item.max), flags, justify.h)) *item.zone = Real(value);
         } else if (type == ItemType_Knob) {
             auto value = float(*item.zone);
             KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
             if (Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr,
-                align.x, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
+                justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
                 *item.zone = Real(value);
             }
         } else if (type == ItemType_HRadioButtons || type == ItemType_VRadioButtons) {
@@ -346,7 +346,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             RadioButtonsFlags flags = has_label ? RadioButtonsFlags_None : RadioButtonsFlags_NoTitle;
             if (type == ItemType_VRadioButtons) flags |= ValueBarFlags_Vertical;
             SetNextItemWidth(item_size.x); // Include label in item width for radio buttons (inconsistent but just makes things easier).
-            if (RadioButtons(item.label.c_str(), &value, names_and_values, flags, align)) *item.zone = Real(value);
+            if (RadioButtons(item.label.c_str(), &value, names_and_values, flags, justify)) *item.zone = Real(value);
         } else if (type == ItemType_Menu) {
             auto value = float(*item.zone);
             const auto &names_and_values = interface->names_and_values[item.zone];

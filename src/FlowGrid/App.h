@@ -781,6 +781,8 @@ struct Style : Window {
         Prop(Float, DiagramGroupLineWidth, 2, 1, 4);
 
         Prop(Vec2Linked, DiagramNodeMargin, { 8, 8 }, 0, 20);
+        Prop(Vec2Linked, DiagramNodePadding, { 8, 0 }, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
+
         Prop(Float, DiagramOrientationMarkRadius, 1.5, 0.5, 3);
         Prop(Float, DiagramBoxCornerRadius, 0, 0, 10);
         Prop(Float, DiagramBinaryHorizontalGapRatio, 0.25, 0, 1);

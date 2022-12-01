@@ -1227,6 +1227,7 @@ void Style::FlowGridStyle::DiagramColorsFaust(TransientStore &_store) const {
     }, _store);
 }
 
+// todo derive from default initialized values to avoid repetition
 void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
     Set({
         {DiagramSequentialConnectionZigzag, false},
@@ -1248,8 +1249,10 @@ void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
         {DiagramWireGap, 16},
+        {DiagramNodeMargin.X, 8},
         {DiagramNodeMargin.Y, 8},
-        {DiagramNodeMargin.Y, 8},
+        {DiagramNodePadding.X, 8},
+        {DiagramNodePadding.Y, 0},
         {DiagramArrowSize.X, 3},
         {DiagramArrowSize.Y, 2},
         {DiagramInverterRadius, 3},
@@ -1278,6 +1281,8 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
         {DiagramWireGap, 16},
         {DiagramNodeMargin.X, 8},
         {DiagramNodeMargin.Y, 8},
+        {DiagramNodePadding.X, 8},
+        {DiagramNodePadding.Y, 0},
         {DiagramArrowSize.X, 3},
         {DiagramArrowSize.Y, 2},
         {DiagramInverterRadius, 3},
@@ -1576,6 +1581,7 @@ void Style::FlowGridStyle::Draw() const {
             DiagramGroupCornerRadius.Draw();
             Separator();
             DiagramNodeMargin.Draw();
+            DiagramNodePadding.Draw();
             DiagramBoxCornerRadius.Draw();
             DiagramBinaryHorizontalGapRatio.Draw();
             DiagramWireGap.Draw();

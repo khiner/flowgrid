@@ -336,7 +336,6 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 
 // An abstract block diagram node.
 // todo next up:
-//  - Dashes
 //  - Fix saving to SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct Node {
     inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
@@ -400,6 +399,7 @@ struct Node {
     };
 
     virtual ImVec2 Margin() const { return s.Style.FlowGrid.DiagramNodeMargin; }
+    virtual ImVec2 Padding() const { return s.Style.FlowGrid.DiagramNodePadding; } // Currently only actually used for `BlockNode` text
     inline float XMargin() const { return Margin().x; }
     inline float YMargin() const { return Margin().y; }
 
@@ -523,8 +523,8 @@ struct BlockNode : Node {
 
     void DoPlaceSize(const DeviceType type) override {
         Size = Margin() * 2 + ImVec2{
-            max(3.f * WireGap(), TextSize(Text).x),
-            max(3.f, float(max(InCount, OutCount))) * WireGap(),
+            max(3.f * WireGap(), TextSize(Text).x + Padding().x * 2),
+            max(3.f * WireGap(), float(max(InCount, OutCount)) * WireGap()),
         };
         if (Inner && type == DeviceType_SVG) Inner->PlaceSize(type);
     }
@@ -905,7 +905,7 @@ struct GroupNode : Node {
 
 private:
     ImVec2 Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramGroupLineWidth / 2; }
-    static ImVec2 Padding() { return s.Style.FlowGrid.DiagramGroupPadding + s.Style.FlowGrid.DiagramGroupLineWidth / 2; }
+    ImVec2 Padding() const override { return s.Style.FlowGrid.DiagramGroupPadding + s.Style.FlowGrid.DiagramGroupLineWidth / 2; }
 
     void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding();
@@ -946,7 +946,7 @@ private:
         if (!ShouldDecorate()) return {0, 0};
         return s.Style.FlowGrid.DiagramDecorateMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramDecorateLineWidth / 2;
     }
-    static ImVec2 Padding() {
+    ImVec2 Padding() const override {
         if (!ShouldDecorate()) return {0, 0};
         return s.Style.FlowGrid.DiagramDecoratePadding + s.Style.FlowGrid.DiagramDecorateLineWidth / 2;
     }

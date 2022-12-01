@@ -244,15 +244,15 @@ struct ImGuiDevice : Device {
         const auto &padding = text_style.Padding;
         const auto &padding_left = Scale(padding.Left), &padding_right = Scale(padding.Right);
         const float r = Scale(rect_style.CornerRadius);
-        const float label_offset = max(Scale(8), r) + padding_left;
-        const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - label_offset - padding_right);
+        const float label_offset_x = max(Scale(8), r) + padding_left;
+        const auto &ellipsified_label = Ellipsify(label, rect.GetWidth() - r - label_offset_x - padding_right);
 
         // Clockwise, starting to right of text
         // todo port this to svg, and use the arg to make rounded rect path go clockwise (there is one).
-        const auto &a = rect.Min, &b = rect.Max;
-        const auto &text_top_left = a + ImVec2{label_offset, 0};
-        const auto &rect_start = text_top_left + ImVec2{TextSize(ellipsified_label).x + padding_left, 0};
-        const auto &rect_end = text_top_left - ImVec2{padding_left, 0};
+        const auto &a = rect.Min + ImVec2{0, GetFontSize() / 2}, &b = rect.Max;
+        const auto &text_top_left = rect.Min + ImVec2{label_offset_x, 0};
+        const auto &rect_start = a + ImVec2{label_offset_x, 0} + ImVec2{TextSize(ellipsified_label).x + padding_left, 0};
+        const auto &rect_end = text_top_left + ImVec2{-padding_left, GetFontSize() / 2};
         if (r < 1.5f) {
             DrawList->PathLineTo(rect_start);
             DrawList->PathLineTo({b.x, a.y});
@@ -270,7 +270,7 @@ struct ImGuiDevice : Device {
         }
 
         DrawList->PathStroke(rect_style.StrokeColor, ImDrawFlags_None, Scale(rect_style.StrokeWidth));
-        DrawList->AddText(text_top_left - ImVec2{0, GetFontSize() / 2}, text_style.Color, ellipsified_label.c_str());
+        DrawList->AddText(text_top_left, text_style.Color, ellipsified_label.c_str());
     }
 
     void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
@@ -891,24 +891,26 @@ struct GroupNode : Node {
     GroupNode(Tree tree, Node *inner, string text = "", const string &label = "")
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding(), Orientation); }
+    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
+    void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
     void DoDraw(Device &device) const override {
         device.LabeledRect(
-            {Margin(), Size - Margin()}, Label,
+            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
             {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramGroupLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramGroupCornerRadius},
             {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramText], .Padding={0, Device::RectLabelPaddingLeft}}
         );
     }
+
     // Y position of point is delegated to the grouped child.
     ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, Node::Point(0, io, channel).y}; }
 
 private:
-    ImVec2 Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramGroupLineWidth / 2; }
-    ImVec2 Padding() const override { return s.Style.FlowGrid.DiagramGroupPadding + s.Style.FlowGrid.DiagramGroupLineWidth / 2; }
+    static float LineWidth() { return s.Style.FlowGrid.DiagramGroupLineWidth; }
+    ImVec2 Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin; }
+    ImVec2 Padding() const override { return s.Style.FlowGrid.DiagramGroupPadding; }
 
     void DrawConnections(Device &device) const override {
-        const auto &offset = Margin() + Padding();
+        const auto &offset = Margin() + Padding() + LineWidth();
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
             for (Count channel = 0; channel < IoCount(io); channel++) {
@@ -928,12 +930,18 @@ struct DecorateNode : Node {
     DecorateNode(Tree tree, Node *inner, string text = "", const string &label = "")
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{s.Style.FlowGrid.DiagramArrowSize.X, 0}; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding(), Orientation); }
+    void DoPlaceSize(const DeviceType) override {
+        if (!ShouldDecorate()) Size = C1()->Size;
+        Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()};
+    }
+    void DoPlace(const DeviceType type) override {
+        if (!ShouldDecorate()) return C1()->Place(type, {0, 0}, Orientation);
+        C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation);
+    }
     void DoDraw(Device &device) const override {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
-            {Margin(), Size - Margin() - ImVec2{s.Style.FlowGrid.DiagramArrowSize.X, 0}}, Label,
+            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
             {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramDecorateStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
             {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramText], .Padding={0, Device::RectLabelPaddingLeft}}
         );
@@ -942,24 +950,18 @@ struct DecorateNode : Node {
 private:
     static bool ShouldDecorate() { return s.Style.FlowGrid.DiagramDecorateRootNode; }
 
-    ImVec2 Margin() const override {
-        if (!ShouldDecorate()) return {0, 0};
-        return s.Style.FlowGrid.DiagramDecorateMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramDecorateLineWidth / 2;
-    }
-    ImVec2 Padding() const override {
-        if (!ShouldDecorate()) return {0, 0};
-        return s.Style.FlowGrid.DiagramDecoratePadding + s.Style.FlowGrid.DiagramDecorateLineWidth / 2;
-    }
+    static float LineWidth() { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateLineWidth : 0.f; }
+    ImVec2 Margin() const override { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecorateMargin : ImVec2{0, 0}; }
+    ImVec2 Padding() const override { return ShouldDecorate() ? s.Style.FlowGrid.DiagramDecoratePadding : ImVec2{0, 0}; }
 
     void DrawConnections(Device &device) const override {
-        const auto &margin = Margin();
-        const auto &offset = margin + Padding();
+        const auto &offset = Margin() + Padding() + LineWidth();
         for (const IO io: IO_All) {
             const bool in = io == IO_In;
             const float arrow_width = in ? 0.f : s.Style.FlowGrid.DiagramArrowSize.X;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(0, io, channel);
-                const ImVec2 &a = {in ? -margin.x : (Size - offset).x - arrow_width, channel_point.y};
+                const ImVec2 &a = {in ? -offset.x : (Size - offset).x, channel_point.y};
                 const ImVec2 &b = {in ? offset.x : Size.x - arrow_width, channel_point.y};
                 if (ShouldDecorate()) device.Line(a, b);
                 if (!in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);

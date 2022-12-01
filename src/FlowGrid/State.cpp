@@ -1162,7 +1162,7 @@ void Style::FlowGridStyle::DiagramColorsDark(TransientStore &_store) const {
     Colors.Set({
         {FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
         {FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {FlowGridCol_DiagramGroupTitle, {1, 1, 1, 1}},
+        {FlowGridCol_DiagramDecorateStroke, {0.43, 0.43, 0.5, 0.5}},
         {FlowGridCol_DiagramGroupStroke, {0.43, 0.43, 0.5, 0.5}},
         {FlowGridCol_DiagramLine, {0.61, 0.61, 0.61, 1}},
         {FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
@@ -1179,7 +1179,7 @@ void Style::FlowGridStyle::DiagramColorsClassic(TransientStore &_store) const {
     Colors.Set({
         {FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
         {FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
-        {FlowGridCol_DiagramGroupTitle, {0.9, 0.9, 0.9, 1}},
+        {FlowGridCol_DiagramDecorateStroke, {0.5, 0.5, 0.5, 0.5}},
         {FlowGridCol_DiagramGroupStroke, {0.5, 0.5, 0.5, 0.5}},
         {FlowGridCol_DiagramLine, {1, 1, 1, 1}},
         {FlowGridCol_DiagramLink, {0.35, 0.4, 0.61, 0.62}},
@@ -1196,7 +1196,7 @@ void Style::FlowGridStyle::DiagramColorsLight(TransientStore &_store) const {
     Colors.Set({
         {FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
         {FlowGridCol_DiagramText, {0, 0, 0, 1}},
-        {FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramDecorateStroke, {0, 0, 0, 0.3}},
         {FlowGridCol_DiagramGroupStroke, {0, 0, 0, 0.3}},
         {FlowGridCol_DiagramLine, {0.39, 0.39, 0.39, 1}},
         {FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
@@ -1213,7 +1213,7 @@ void Style::FlowGridStyle::DiagramColorsFaust(TransientStore &_store) const {
     Colors.Set({
         {FlowGridCol_DiagramBg, {1, 1, 1, 1}},
         {FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {FlowGridCol_DiagramGroupTitle, {0, 0, 0, 1}},
+        {FlowGridCol_DiagramDecorateStroke, {0.2, 0.2, 0.2, 1}},
         {FlowGridCol_DiagramGroupStroke, {0.2, 0.2, 0.2, 1}},
         {FlowGridCol_DiagramLine, {0, 0, 0, 1}},
         {FlowGridCol_DiagramLink, {0, 0.2, 0.4, 1}},
@@ -1231,17 +1231,19 @@ void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
     Set({
         {DiagramSequentialConnectionZigzag, false},
         {DiagramOrientationMark, false},
-        {DiagramDecorateFoldedNodes, false},
-        {DiagramDecorateLineWidth, 2},
-        {DiagramDecorateCornerRadius, 5},
+        {DiagramDecorateRootNode, false},
         {DiagramDecorateMargin.X, 10},
         {DiagramDecorateMargin.Y, 10},
         {DiagramDecoratePadding.X, 10},
         {DiagramDecoratePadding.Y, 10},
+        {DiagramDecorateLineWidth, 1},
+        {DiagramDecorateCornerRadius, 0},
         {DiagramGroupMargin.X, 8},
         {DiagramGroupMargin.Y, 8},
         {DiagramGroupPadding.X, 8},
         {DiagramGroupPadding.Y, 8},
+        {DiagramGroupLineWidth, 2},
+        {DiagramGroupCornerRadius, 5},
         {DiagramBoxCornerRadius, 4},
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
@@ -1257,17 +1259,19 @@ void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
     Set({
         {DiagramSequentialConnectionZigzag, true},
         {DiagramOrientationMark, true},
-        {DiagramDecorateFoldedNodes, true},
-        {DiagramDecorateLineWidth, 1},
-        {DiagramDecorateCornerRadius, 0},
+        {DiagramDecorateRootNode, true},
         {DiagramDecorateMargin.X, 10},
         {DiagramDecorateMargin.Y, 10},
         {DiagramDecoratePadding.X, 10},
         {DiagramDecoratePadding.Y, 10},
+        {DiagramDecorateLineWidth, 1},
+        {DiagramDecorateCornerRadius, 0},
         {DiagramGroupMargin.X, 10},
         {DiagramGroupMargin.Y, 10},
         {DiagramGroupPadding.X, 10},
         {DiagramGroupPadding.Y, 10},
+        {DiagramGroupLineWidth, 1},
+        {DiagramGroupCornerRadius, 0},
         {DiagramBoxCornerRadius, 0},
         {DiagramBinaryHorizontalGapRatio, 0.25f},
         {DiagramWireWidth, 1},
@@ -1557,17 +1561,19 @@ void Style::FlowGridStyle::Draw() const {
             DiagramRouteFrame.Draw();
             DiagramSequentialConnectionZigzag.Draw();
             Separator();
-            const bool decorate_folded = DiagramDecorateFoldedNodes;
-            DiagramDecorateFoldedNodes.Draw();
+            const bool decorate_folded = DiagramDecorateRootNode;
+            DiagramDecorateRootNode.Draw();
             if (!decorate_folded) ImGui::BeginDisabled();
-            DiagramDecorateLineWidth.Draw();
-            DiagramDecorateCornerRadius.Draw();
             DiagramDecorateMargin.Draw();
             DiagramDecoratePadding.Draw();
+            DiagramDecorateLineWidth.Draw();
+            DiagramDecorateCornerRadius.Draw();
             if (!decorate_folded) ImGui::EndDisabled();
             Separator();
             DiagramGroupMargin.Draw();
             DiagramGroupPadding.Draw();
+            DiagramGroupLineWidth.Draw();
+            DiagramGroupCornerRadius.Draw();
             Separator();
             DiagramNodeMargin.Draw();
             DiagramBoxCornerRadius.Draw();

@@ -700,7 +700,7 @@ enum FlowGridCol_ {
     // Faust diagram colors
     FlowGridCol_DiagramBg, // ImGuiCol_WindowBg
     FlowGridCol_DiagramText, // ImGuiCol_Text
-    FlowGridCol_DiagramGroupTitle, // ImGuiCol_Text
+    FlowGridCol_DiagramDecorateStroke, // ImGuiCol_Border
     FlowGridCol_DiagramGroupStroke, // ImGuiCol_Border
     FlowGridCol_DiagramLine, // ImGuiCol_PlotLines
     FlowGridCol_DiagramLink, // ImGuiCol_Button
@@ -769,14 +769,16 @@ struct Style : Window {
         Prop(Bool, DiagramOrientationMark, true);
         Prop(Bool, DiagramSequentialConnectionZigzag, true); // false allows for diagonal lines instead of zigzags instead of zigzags
 
-        Prop(Bool, DiagramDecorateFoldedNodes, false);
-        Prop(Float, DiagramDecorateCornerRadius, 0, 0, 10);
-        Prop(Float, DiagramDecorateLineWidth, 1, 0, 4);
+        Prop(Bool, DiagramDecorateRootNode, false);
         Prop(Vec2Linked, DiagramDecorateMargin, { 10, 10 }, 0, 20);
         Prop(Vec2Linked, DiagramDecoratePadding, { 10, 10 }, 0, 20);
+        Prop(Float, DiagramDecorateCornerRadius, 0, 0, 10);
+        Prop(Float, DiagramDecorateLineWidth, 1, 1, 4);
 
         Prop(Vec2Linked, DiagramGroupMargin, { 8, 8 }, 0, 20);
         Prop(Vec2Linked, DiagramGroupPadding, { 8, 8 }, 0, 20);
+        Prop(Float, DiagramGroupCornerRadius, 5, 0, 10);
+        Prop(Float, DiagramGroupLineWidth, 2, 1, 4);
 
         Prop(Vec2Linked, DiagramNodeMargin, { 8, 8 }, 0, 20);
         Prop(Float, DiagramOrientationMarkRadius, 1.5, 0.5, 3);
@@ -794,8 +796,8 @@ struct Style : Window {
         Prop(Float, ParamsMinVerticalItemHeight, 4, 2, 8);
         Prop(Float, ParamsMinKnobItemSize, 3, 2, 6);
 
-        Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Center", "Right" }, HJustify_Middle);
-        Prop(Enum, ParamsAlignmentVertical, { "Top", "Center", "Bottom" }, VJustify_Middle);
+        Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Middle", "Right" }, HJustify_Middle);
+        Prop(Enum, ParamsAlignmentVertical, { "Top", "Middle", "Bottom" }, VJustify_Middle);
         Prop(Flags, ParamsTableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
         Prop_(Enum, ParamsWidthSizingPolicy,
             "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
@@ -814,14 +816,14 @@ struct Style : Window {
         void DiagramColorsLight(TransientStore &_store) const;
         void DiagramColorsFaust(TransientStore &_store) const; // Color Faust diagrams the same way Faust does when it renders to SVG.
         void DiagramLayoutFlowGrid(TransientStore &_store) const;
-        void DiagramLayoutFaust(TransientStore &_store) const; // Lay out Faust diagrams the same way Faust does when it renders to SVG.
+        void DiagramLayoutFaust(TransientStore &_store) const; // Layout Faust diagrams the same way Faust does when it renders to SVG.
 
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
                 case FlowGridCol_GestureIndicator: return "GestureIndicator";
                 case FlowGridCol_HighlightText: return "HighlightText";
                 case FlowGridCol_DiagramBg: return "DiagramBg";
-                case FlowGridCol_DiagramGroupTitle: return "DiagramGroupTitle";
+                case FlowGridCol_DiagramDecorateStroke: return "DiagramDecorateStroke";
                 case FlowGridCol_DiagramGroupStroke: return "DiagramGroupStroke";
                 case FlowGridCol_DiagramLine: return "DiagramLine";
                 case FlowGridCol_DiagramLink: return "DiagramLink";

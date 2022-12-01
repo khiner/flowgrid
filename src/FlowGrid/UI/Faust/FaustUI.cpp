@@ -336,10 +336,8 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 
 // An abstract block diagram node.
 // todo next up:
-//  - By default, no corner rounding for decorate rect
-//  - Separately customizable line thickness/color from (default-rounded) GroupNode
-//  - Separate `ShowProcessNode` (default-false, default-true for Faust diagram layout preset)
-//  - Fix saving to SVG with `DecorateFoldedNodes = false`.
+//  - Dashes
+//  - Fix saving to SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct Node {
     inline static float WireGap() { return s.Style.FlowGrid.DiagramWireGap; }
 
@@ -898,16 +896,16 @@ struct GroupNode : Node {
     void DoDraw(Device &device) const override {
         device.LabeledRect(
             {Margin(), Size - Margin()}, Label,
-            {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
-            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::RectLabelPaddingLeft}}
+            {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramGroupLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramGroupCornerRadius},
+            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramText], .Padding={0, Device::RectLabelPaddingLeft}}
         );
     }
     // Y position of point is delegated to the grouped child.
     ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, Node::Point(0, io, channel).y}; }
 
 private:
-    ImVec2 Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramDecorateLineWidth / 2; }
-    static ImVec2 Padding() { return s.Style.FlowGrid.DiagramGroupPadding + s.Style.FlowGrid.DiagramDecorateLineWidth / 2; }
+    ImVec2 Margin() const override { return s.Style.FlowGrid.DiagramGroupMargin + ImVec2{0, GetFontSize() / 2} + s.Style.FlowGrid.DiagramGroupLineWidth / 2; }
+    static ImVec2 Padding() { return s.Style.FlowGrid.DiagramGroupPadding + s.Style.FlowGrid.DiagramGroupLineWidth / 2; }
 
     void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding();
@@ -936,13 +934,13 @@ struct DecorateNode : Node {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
             {Margin(), Size - Margin() - ImVec2{s.Style.FlowGrid.DiagramArrowSize.X, 0}}, Label,
-            {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
-            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramGroupTitle], .Padding={0, Device::RectLabelPaddingLeft}}
+            {.StrokeColor=s.Style.FlowGrid.Colors[FlowGridCol_DiagramDecorateStroke], .StrokeWidth=s.Style.FlowGrid.DiagramDecorateLineWidth, .CornerRadius=s.Style.FlowGrid.DiagramDecorateCornerRadius},
+            {.Color=s.Style.FlowGrid.Colors[FlowGridCol_DiagramText], .Padding={0, Device::RectLabelPaddingLeft}}
         );
     }
 
 private:
-    static bool ShouldDecorate() { return s.Style.FlowGrid.DiagramDecorateFoldedNodes; }
+    static bool ShouldDecorate() { return s.Style.FlowGrid.DiagramDecorateRootNode; }
 
     ImVec2 Margin() const override {
         if (!ShouldDecorate()) return {0, 0};

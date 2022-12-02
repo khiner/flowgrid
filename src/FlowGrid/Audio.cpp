@@ -564,6 +564,7 @@ void Audio::UpdateProcess() const {
                 static const int optimize_level = -1;
                 DspFactory = createDSPFactoryFromBoxes("FlowGrid", FaustBox, argc, argv, "", error_msg, optimize_level);
             }
+            if (!FaustBox && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
         }
         if (DspFactory && error_msg.empty()) {
             FaustDsp = DspFactory->createDSPInstance();

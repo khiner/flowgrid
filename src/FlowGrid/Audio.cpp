@@ -382,7 +382,7 @@ void SetupAudio() {
     OutStream->write_callback = [](SoundIoOutStream *OutStream, int /*min_frames*/, int max_frames) {
         const auto channel_count = OutStream->layout.channel_count;
         const int input_sample_count = soundio_ring_buffer_fill_count(InputBuffer) / SampleSize;
-        const bool compute_faust = s.Audio.FaustRunning && FaustReady;
+        const bool faust_running = s.Audio.FaustRunning;
 
         int err;
         int remaining_frames = max_frames;
@@ -393,7 +393,7 @@ void SetupAudio() {
                 exit(1);
             }
 
-            if (compute_faust) {
+            if (faust_running && FaustReady) {
                 if (inner_frames > FaustBufferFrames) {
                     cerr << "The Faust output buffer only has " << FaustBufferFrames << " frames, which is less than the required " << inner_frames << ".\n"
                          << "(Increase `Audio.cpp::FaustBufferFrames`.)\n";
@@ -424,7 +424,7 @@ void SetupAudio() {
                     if (!s.Audio.Muted) {
                         // Monitor input directly from the ring buffer.
                         if (s.Audio.MonitorInput) out_sample += *read_ptr;
-                        if (compute_faust) {
+                        if (faust_running && FaustReady) {
                             const int outer_frame = max_frames - remaining_frames + inner_frame;
                             out_sample += FaustBuffers[IO_Out][min(channel, FaustDsp->getNumOutputs() - 1)][outer_frame];
                         }

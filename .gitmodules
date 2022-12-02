@@ -19,7 +19,7 @@
 	url = git@github.com:nlohmann/json.git
 [submodule "lib/faust"]
 	path = lib/faust
-	url = git@github.com:grame-cncm/faust.git
+	url = git@github.com:khiner/faust.git
 [submodule "lib/concurrentqueue"]
 	path = lib/concurrentqueue
 	url = git@github.com:cameron314/concurrentqueue.git

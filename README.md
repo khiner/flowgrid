@@ -1,10 +1,21 @@
 # FlowGrid
 
-_Still actively building this._
+Control things in an ImGui interface backed by a persistent (as in persistent data structures), full-undoable store.
 
-## Application goals
+_Still actively building this. Expect master to be occasionally broken._
 
 My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
+
+Things to play with:
+- Change configuration of audio read/write processes.
+- Create audio DSP with Faust.
+- Inspect the full FlowGrid application state tree (everything needed to render the UI) at any point.
+- Navigate to any point in the project's history lightning fast.
+  - See [Application architecture][#Application-architecture] for more details.
+- Other things to come! Definitely planned:
+  - MIDI
+  - USB (supporting display of any window in a Push 2 LCD display)
+  - HLSL (or another shader language, not settled on one)
 
 ## Application architecture
 
@@ -15,7 +26,8 @@ The spirit of the application architecture is similar to Lager, but much simpler
 FlowGrid uses a single [persistent map](https://sinusoid.es/immer/containers.html#map) to store the full application state.
 Every user action that affects the application state results in the following:
 * Put a snapshot of the current application state into history.
-  This is only a snapshot conceptually, as only a small amount of data needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (HAMT) data structure](https://youtu.be/imrSQ82dYns).
+  This is only a snapshot conceptually, as only a small amount of data needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (
+  ) data structure](https://youtu.be/imrSQ82dYns).
 * Generate an `Action` instance containing all the information needed to execute the logical action.
 * Pass this action to the `State::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.
 * The single canonical application store instance is overwritten with this new resultant store.

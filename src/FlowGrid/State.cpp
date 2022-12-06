@@ -510,6 +510,8 @@ void Info::Draw() const {
     }
 }
 
+void State::UIProcess::Draw() const {}
+
 static int PrevFontIndex = 0;
 static float PrevFontScale = 1.0;
 

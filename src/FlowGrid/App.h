@@ -141,6 +141,18 @@ Or, to use the path segment for the name but provide a help string, omit the nam
 #define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, #PropName, NameHelp, __VA_ARGS__}
 #define Prop(PropType, PropName, ...) Prop_(PropType, PropName, "", __VA_ARGS__)
 
+// Convenience methos for defining simple `UIStateMember`s and `Window`s:
+#define UIMember(MemberName, ...) struct MemberName : UIStateMember {\
+    using UIStateMember::UIStateMember;\
+    void Draw() const override;\
+    __VA_ARGS__\
+}
+#define WindowMember(MemberName, ...) struct MemberName : Window {\
+    using Window::Window;\
+    void Draw() const override;\
+    __VA_ARGS__\
+}
+
 struct UIStateMember : StateMember {
     using StateMember::StateMember;
     virtual void Draw() const = 0;
@@ -397,96 +409,52 @@ struct Window : UIStateMember {
     void SelectTab() const;
 };
 
-struct ApplicationSettings : Window {
-    using Window::Window;
-
-    void Draw() const override;
-
+WindowMember(ApplicationSettings,
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
-};
+);
 
-struct StateViewer : Window {
-    using Window::Window;
-    void Draw() const override;
-
+WindowMember(StateViewer,
     enum LabelMode { Annotated, Raw };
     Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
                            "For example, the main `ui.style.colors` state is a list.\n\n"
                            "'Annotated' mode shows (highlighted) labels for such state items.\n"
                            "'Raw' mode shows the state exactly as it is in the raw JSON state.",
-        { "Annotated", "Raw" }, Annotated
-    );
+        {"Annotated", "Raw"}, Annotated);
     Prop_(Bool, AutoSelect, "Auto-Select?When auto-select is enabled, state changes automatically open.\n"
                             "The state viewer to the changed state node(s), closing all other state nodes.\n"
                             "State menu items can only be opened or closed manually if auto-select is disabled.", true);
 
     void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const;
-};
+);
 
-struct StateMemoryEditor : Window {
-    using Window::Window;
-    void Draw() const override;
-};
-
-struct StatePathUpdateFrequency : Window {
-    using Window::Window;
-    void Draw() const override;
-};
+WindowMember(StateMemoryEditor);
+WindowMember(StatePathUpdateFrequency);
 
 enum ProjectFormat { StateFormat, ActionFormat };
-
-struct ProjectPreview : Window {
-    using Window::Window;
-    void Draw() const override;
-
-    Prop(Enum, Format, { "StateFormat", "ActionFormat" }, 1);
+WindowMember(ProjectPreview,
+    Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
     Prop(Bool, Raw);
-};
+);
 
-struct Demo : Window {
-    using Window::Window;
-    void Draw() const override;
-
-    struct ImGuiDemo : UIStateMember {
-        using UIStateMember::UIStateMember;
-        void Draw() const override;
-    };
-    struct ImPlotDemo : UIStateMember {
-        using UIStateMember::UIStateMember;
-        void Draw() const override;
-    };
-    struct FileDialogDemo : UIStateMember {
-        using UIStateMember::UIStateMember;
-        void Draw() const override;
-    };
+WindowMember(Demo,
+    UIMember(ImGuiDemo);
+    UIMember(ImPlotDemo);
+    UIMember(FileDialogDemo);
 
     Prop(ImGuiDemo, ImGui);
     Prop(ImPlotDemo, ImPlot);
     Prop(FileDialogDemo, FileDialog);
-};
+);
 
-struct Metrics : Window {
-    using Window::Window;
-    void Draw() const override;
-
-    struct FlowGridMetrics : UIStateMember {
-        using UIStateMember::UIStateMember;
-        void Draw() const override;
-        Prop(Bool, ShowRelativePaths, true);
-    };
-    struct ImGuiMetrics : UIStateMember {
-        using UIStateMember::UIStateMember;
-        void Draw() const override;
-    };
-    struct ImPlotMetrics : UIStateMember {
-        using UIStateMember::UIStateMember;
-        void Draw() const override;
-    };
+WindowMember(Metrics,
+    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true););
+    UIMember(ImGuiMetrics);
+    UIMember(ImPlotMetrics);
 
     Prop(FlowGridMetrics, FlowGrid);
     Prop(ImGuiMetrics, ImGui);
     Prop(ImPlotMetrics, ImPlot);
-};
+);
 
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
 
@@ -556,15 +524,8 @@ struct Audio : Window {
             Prop(DiagramSettings, Settings);
         };
 
-        struct FaustParams : Window {
-            using Window::Window;
-            void Draw() const override;
-        };
-
-        struct FaustLog : Window {
-            using Window::Window;
-            void Draw() const override;
-        };
+        WindowMember(FaustParams);
+        WindowMember(FaustLog);
 
         Prop_(FaustEditor, Editor, "Faust editor");
         Prop_(FaustDiagram, Diagram, "Faust diagram");
@@ -1096,20 +1057,9 @@ struct ImGuiSettings : StateMember {
     Prop(TableSettings, Tables);
 };
 
-struct Info : Window {
-    using Window::Window;
-    void Draw() const override;
-};
-
-struct StackTool : Window {
-    using Window::Window;
-    void Draw() const override;
-};
-
-struct DebugLog : Window {
-    using Window::Window;
-    void Draw() const override;
-};
+WindowMember(Info);
+WindowMember(StackTool);
+WindowMember(DebugLog);
 
 using ImGuiFileDialogFlags = int;
 // Copied from `ImGuiFileDialog` source with a different name to avoid redefinition. Brittle but we can avoid an include this way.
@@ -1346,12 +1296,9 @@ struct State : UIStateMember {
     void Update(const StateAction &, TransientStore &) const;
     void Apply(UIContext::Flags flags) const;
 
-    struct UIProcess : Window {
-        using Window::Window;
-        void Draw() const override {}
-
+    WindowMember(UIProcess,
         Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
-    };
+    );
 
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(Style, Style);

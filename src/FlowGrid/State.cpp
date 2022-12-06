@@ -1091,8 +1091,11 @@ Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &path_se
 Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.CtorStore);
-    DiagramColorsDark(c.CtorStore);
-    DiagramLayoutFlowGrid(c.CtorStore);
+}
+Style::FlowGridStyle::Diagram::Diagram(const StateMember *parent, const string &path_segment, const string &name_help)
+    : UIStateMember(parent, path_segment, name_help) {
+    ColorsDark(c.CtorStore);
+    LayoutFlowGrid(c.CtorStore);
 }
 
 void Style::ImGuiStyle::ColorsDark(TransientStore &_store) const {
@@ -1158,134 +1161,134 @@ void Style::FlowGridStyle::ColorsClassic(TransientStore &_store) const {
     }, _store);
 }
 
-void Style::FlowGridStyle::DiagramColorsDark(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsDark(TransientStore &_store) const {
     Colors.Set({
-        {FlowGridCol_DiagramBg, {0.06, 0.06, 0.06, 0.94}},
-        {FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {FlowGridCol_DiagramDecorateStroke, {0.43, 0.43, 0.5, 0.5}},
-        {FlowGridCol_DiagramGroupStroke, {0.43, 0.43, 0.5, 0.5}},
-        {FlowGridCol_DiagramLine, {0.61, 0.61, 0.61, 1}},
-        {FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
-        {FlowGridCol_DiagramInverter, {1, 1, 1, 1}},
-        {FlowGridCol_DiagramOrientationMark, {1, 1, 1, 1}},
+        {FlowGridDiagramCol_Bg, {0.06, 0.06, 0.06, 0.94}},
+        {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
+        {FlowGridDiagramCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
+        {FlowGridDiagramCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
+        {FlowGridDiagramCol_Line, {0.61, 0.61, 0.61, 1}},
+        {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
+        {FlowGridDiagramCol_Inverter, {1, 1, 1, 1}},
+        {FlowGridDiagramCol_OrientationMark, {1, 1, 1, 1}},
         // Box fills
-        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
     }, _store);
 }
-void Style::FlowGridStyle::DiagramColorsClassic(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsClassic(TransientStore &_store) const {
     Colors.Set({
-        {FlowGridCol_DiagramBg, {0, 0, 0, 0.85}},
-        {FlowGridCol_DiagramText, {0.9, 0.9, 0.9, 1}},
-        {FlowGridCol_DiagramDecorateStroke, {0.5, 0.5, 0.5, 0.5}},
-        {FlowGridCol_DiagramGroupStroke, {0.5, 0.5, 0.5, 0.5}},
-        {FlowGridCol_DiagramLine, {1, 1, 1, 1}},
-        {FlowGridCol_DiagramLink, {0.35, 0.4, 0.61, 0.62}},
-        {FlowGridCol_DiagramInverter, {0.9, 0.9, 0.9, 1}},
-        {FlowGridCol_DiagramOrientationMark, {0.9, 0.9, 0.9, 1}},
+        {FlowGridDiagramCol_Bg, {0, 0, 0, 0.85}},
+        {FlowGridDiagramCol_Text, {0.9, 0.9, 0.9, 1}},
+        {FlowGridDiagramCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
+        {FlowGridDiagramCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
+        {FlowGridDiagramCol_Line, {1, 1, 1, 1}},
+        {FlowGridDiagramCol_Link, {0.35, 0.4, 0.61, 0.62}},
+        {FlowGridDiagramCol_Inverter, {0.9, 0.9, 0.9, 1}},
+        {FlowGridDiagramCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
         // Box fills
-        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
     }, _store);
 }
-void Style::FlowGridStyle::DiagramColorsLight(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsLight(TransientStore &_store) const {
     Colors.Set({
-        {FlowGridCol_DiagramBg, {0.94, 0.94, 0.94, 1}},
-        {FlowGridCol_DiagramText, {0, 0, 0, 1}},
-        {FlowGridCol_DiagramDecorateStroke, {0, 0, 0, 0.3}},
-        {FlowGridCol_DiagramGroupStroke, {0, 0, 0, 0.3}},
-        {FlowGridCol_DiagramLine, {0.39, 0.39, 0.39, 1}},
-        {FlowGridCol_DiagramLink, {0.26, 0.59, 0.98, 0.4}},
-        {FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
-        {FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
+        {FlowGridDiagramCol_Bg, {0.94, 0.94, 0.94, 1}},
+        {FlowGridDiagramCol_Text, {0, 0, 0, 1}},
+        {FlowGridDiagramCol_DecorateStroke, {0, 0, 0, 0.3}},
+        {FlowGridDiagramCol_GroupStroke, {0, 0, 0, 0.3}},
+        {FlowGridDiagramCol_Line, {0.39, 0.39, 0.39, 1}},
+        {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
+        {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
+        {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
         // Box fills
-        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
     }, _store);
 }
-void Style::FlowGridStyle::DiagramColorsFaust(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsFaust(TransientStore &_store) const {
     Colors.Set({
-        {FlowGridCol_DiagramBg, {1, 1, 1, 1}},
-        {FlowGridCol_DiagramText, {1, 1, 1, 1}},
-        {FlowGridCol_DiagramDecorateStroke, {0.2, 0.2, 0.2, 1}},
-        {FlowGridCol_DiagramGroupStroke, {0.2, 0.2, 0.2, 1}},
-        {FlowGridCol_DiagramLine, {0, 0, 0, 1}},
-        {FlowGridCol_DiagramLink, {0, 0.2, 0.4, 1}},
-        {FlowGridCol_DiagramInverter, {0, 0, 0, 1}},
-        {FlowGridCol_DiagramOrientationMark, {0, 0, 0, 1}},
+        {FlowGridDiagramCol_Bg, {1, 1, 1, 1}},
+        {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
+        {FlowGridDiagramCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
+        {FlowGridDiagramCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
+        {FlowGridDiagramCol_Line, {0, 0, 0, 1}},
+        {FlowGridDiagramCol_Link, {0, 0.2, 0.4, 1}},
+        {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
+        {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
         // Box fills
-        {FlowGridCol_DiagramNormal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridCol_DiagramUi, {0.28, 0.47, 0.51, 1}},
-        {FlowGridCol_DiagramSlot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridCol_DiagramNumber, {0.96, 0.28, 0, 1}},
+        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
     }, _store);
 }
 
 // todo derive from default initialized values to avoid repetition
-void Style::FlowGridStyle::DiagramLayoutFlowGrid(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::LayoutFlowGrid(TransientStore &_store) const {
     Set({
-        {DiagramSequentialConnectionZigzag, false},
-        {DiagramOrientationMark, false},
-        {DiagramDecorateRootNode, false},
-        {DiagramDecorateMargin.X, 10},
-        {DiagramDecorateMargin.Y, 10},
-        {DiagramDecoratePadding.X, 10},
-        {DiagramDecoratePadding.Y, 10},
-        {DiagramDecorateLineWidth, 1},
-        {DiagramDecorateCornerRadius, 0},
-        {DiagramGroupMargin.X, 8},
-        {DiagramGroupMargin.Y, 8},
-        {DiagramGroupPadding.X, 8},
-        {DiagramGroupPadding.Y, 8},
-        {DiagramGroupLineWidth, 2},
-        {DiagramGroupCornerRadius, 5},
-        {DiagramBoxCornerRadius, 4},
-        {DiagramBinaryHorizontalGapRatio, 0.25f},
-        {DiagramWireWidth, 1},
-        {DiagramWireGap, 16},
-        {DiagramNodeMargin.X, 8},
-        {DiagramNodeMargin.Y, 8},
-        {DiagramNodePadding.X, 8},
-        {DiagramNodePadding.Y, 0},
-        {DiagramArrowSize.X, 3},
-        {DiagramArrowSize.Y, 2},
-        {DiagramInverterRadius, 3},
+        {SequentialConnectionZigzag, false},
+        {OrientationMark, false},
+        {DecorateRootNode, false},
+        {DecorateMargin.X, 10},
+        {DecorateMargin.Y, 10},
+        {DecoratePadding.X, 10},
+        {DecoratePadding.Y, 10},
+        {DecorateLineWidth, 1},
+        {DecorateCornerRadius, 0},
+        {GroupMargin.X, 8},
+        {GroupMargin.Y, 8},
+        {GroupPadding.X, 8},
+        {GroupPadding.Y, 8},
+        {GroupLineWidth, 2},
+        {GroupCornerRadius, 5},
+        {BoxCornerRadius, 4},
+        {BinaryHorizontalGapRatio, 0.25f},
+        {WireWidth, 1},
+        {WireGap, 16},
+        {NodeMargin.X, 8},
+        {NodeMargin.Y, 8},
+        {NodePadding.X, 8},
+        {NodePadding.Y, 0},
+        {ArrowSize.X, 3},
+        {ArrowSize.Y, 2},
+        {InverterRadius, 3},
     }, _store);
 }
-void Style::FlowGridStyle::DiagramLayoutFaust(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &_store) const {
     Set({
-        {DiagramSequentialConnectionZigzag, true},
-        {DiagramOrientationMark, true},
-        {DiagramDecorateRootNode, true},
-        {DiagramDecorateMargin.X, 10},
-        {DiagramDecorateMargin.Y, 10},
-        {DiagramDecoratePadding.X, 10},
-        {DiagramDecoratePadding.Y, 10},
-        {DiagramDecorateLineWidth, 1},
-        {DiagramDecorateCornerRadius, 0},
-        {DiagramGroupMargin.X, 10},
-        {DiagramGroupMargin.Y, 10},
-        {DiagramGroupPadding.X, 10},
-        {DiagramGroupPadding.Y, 10},
-        {DiagramGroupLineWidth, 1},
-        {DiagramGroupCornerRadius, 0},
-        {DiagramBoxCornerRadius, 0},
-        {DiagramBinaryHorizontalGapRatio, 0.25f},
-        {DiagramWireWidth, 1},
-        {DiagramWireGap, 16},
-        {DiagramNodeMargin.X, 8},
-        {DiagramNodeMargin.Y, 8},
-        {DiagramNodePadding.X, 8},
-        {DiagramNodePadding.Y, 0},
-        {DiagramArrowSize.X, 3},
-        {DiagramArrowSize.Y, 2},
-        {DiagramInverterRadius, 3},
+        {SequentialConnectionZigzag, true},
+        {OrientationMark, true},
+        {DecorateRootNode, true},
+        {DecorateMargin.X, 10},
+        {DecorateMargin.Y, 10},
+        {DecoratePadding.X, 10},
+        {DecoratePadding.Y, 10},
+        {DecorateLineWidth, 1},
+        {DecorateCornerRadius, 0},
+        {GroupMargin.X, 10},
+        {GroupMargin.Y, 10},
+        {GroupPadding.X, 10},
+        {GroupPadding.Y, 10},
+        {GroupLineWidth, 1},
+        {GroupCornerRadius, 0},
+        {BoxCornerRadius, 0},
+        {BinaryHorizontalGapRatio, 0.25f},
+        {WireWidth, 1},
+        {WireGap, 16},
+        {NodeMargin.X, 8},
+        {NodeMargin.Y, 8},
+        {NodePadding.X, 8},
+        {NodePadding.Y, 0},
+        {ArrowSize.X, 3},
+        {ArrowSize.Y, 2},
+        {InverterRadius, 3},
     }, _store);
 }
 
@@ -1537,6 +1540,53 @@ void Style::ImPlotStyle::Draw() const {
         EndTabBar();
     }
 }
+
+void Style::FlowGridStyle::Diagram::Draw() const {
+    FoldComplexity.Draw();
+    const bool scale_fill = ScaleFillHeight;
+    ScaleFillHeight.Draw();
+    if (scale_fill) ImGui::BeginDisabled();
+    Scale.Draw();
+    if (scale_fill) {
+        SameLine();
+        TextUnformatted(format("Uncheck '{}' to manually edit diagram scale.", ScaleFillHeight.Name).c_str());
+        ImGui::EndDisabled();
+    }
+    Direction.Draw();
+    OrientationMark.Draw();
+    if (OrientationMark) {
+        SameLine();
+        SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
+        OrientationMarkRadius.Draw();
+    }
+    RouteFrame.Draw();
+    SequentialConnectionZigzag.Draw();
+    Separator();
+    const bool decorate_folded = DecorateRootNode;
+    DecorateRootNode.Draw();
+    if (!decorate_folded) ImGui::BeginDisabled();
+    DecorateMargin.Draw();
+    DecoratePadding.Draw();
+    DecorateLineWidth.Draw();
+    DecorateCornerRadius.Draw();
+    if (!decorate_folded) ImGui::EndDisabled();
+    Separator();
+    GroupMargin.Draw();
+    GroupPadding.Draw();
+    GroupLineWidth.Draw();
+    GroupCornerRadius.Draw();
+    Separator();
+    NodeMargin.Draw();
+    NodePadding.Draw();
+    BoxCornerRadius.Draw();
+    BinaryHorizontalGapRatio.Draw();
+    WireGap.Draw();
+    WireWidth.Draw();
+    ArrowSize.Draw();
+    InverterRadius.Draw();
+    EndTabItem();
+}
+
 void Style::FlowGridStyle::Draw() const {
     static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
@@ -1546,49 +1596,7 @@ void Style::FlowGridStyle::Draw() const {
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Faust diagram", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            DiagramFoldComplexity.Draw();
-            const bool scale_fill = DiagramScaleFillHeight;
-            DiagramScaleFillHeight.Draw();
-            if (scale_fill) ImGui::BeginDisabled();
-            DiagramScale.Draw();
-            if (scale_fill) {
-                SameLine();
-                TextUnformatted(format("Uncheck '{}' to manually edit diagram scale.", DiagramScaleFillHeight.Name).c_str());
-                ImGui::EndDisabled();
-            }
-            DiagramDirection.Draw();
-            DiagramOrientationMark.Draw();
-            if (DiagramOrientationMark) {
-                SameLine();
-                SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
-                DiagramOrientationMarkRadius.Draw();
-            }
-            DiagramRouteFrame.Draw();
-            DiagramSequentialConnectionZigzag.Draw();
-            Separator();
-            const bool decorate_folded = DiagramDecorateRootNode;
-            DiagramDecorateRootNode.Draw();
-            if (!decorate_folded) ImGui::BeginDisabled();
-            DiagramDecorateMargin.Draw();
-            DiagramDecoratePadding.Draw();
-            DiagramDecorateLineWidth.Draw();
-            DiagramDecorateCornerRadius.Draw();
-            if (!decorate_folded) ImGui::EndDisabled();
-            Separator();
-            DiagramGroupMargin.Draw();
-            DiagramGroupPadding.Draw();
-            DiagramGroupLineWidth.Draw();
-            DiagramGroupCornerRadius.Draw();
-            Separator();
-            DiagramNodeMargin.Draw();
-            DiagramNodePadding.Draw();
-            DiagramBoxCornerRadius.Draw();
-            DiagramBinaryHorizontalGapRatio.Draw();
-            DiagramWireGap.Draw();
-            DiagramWireWidth.Draw();
-            DiagramArrowSize.Draw();
-            DiagramInverterRadius.Draw();
-            EndTabItem();
+            Diagram.Draw();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
             ParamsHeaderTitles.Draw();

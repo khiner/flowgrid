@@ -215,16 +215,16 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
         },
         [&](const set_flowgrid_diagram_color_style &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.DiagramColorsDark(transient);
-                case 1: return Style.FlowGrid.DiagramColorsLight(transient);
-                case 2: return Style.FlowGrid.DiagramColorsClassic(transient);
-                case 3: return Style.FlowGrid.DiagramColorsFaust(transient);
+                case 0: return Style.FlowGrid.Diagram.ColorsDark(transient);
+                case 1: return Style.FlowGrid.Diagram.ColorsLight(transient);
+                case 2: return Style.FlowGrid.Diagram.ColorsClassic(transient);
+                case 3: return Style.FlowGrid.Diagram.ColorsFaust(transient);
             }
         },
         [&](const set_flowgrid_diagram_layout_style &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.DiagramLayoutFlowGrid(transient);
-                case 1: return Style.FlowGrid.DiagramLayoutFaust(transient);
+                case 0: return Style.FlowGrid.Diagram.LayoutFlowGrid(transient);
+                case 1: return Style.FlowGrid.Diagram.LayoutFaust(transient);
             }
         },
         [&](const open_faust_file &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },

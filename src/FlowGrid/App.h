@@ -697,26 +697,31 @@ process = tgroup("grp 1",
 enum FlowGridCol_ {
     FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
-    // Faust diagram colors
-    FlowGridCol_DiagramBg, // ImGuiCol_WindowBg
-    FlowGridCol_DiagramText, // ImGuiCol_Text
-    FlowGridCol_DiagramDecorateStroke, // ImGuiCol_Border
-    FlowGridCol_DiagramGroupStroke, // ImGuiCol_Border
-    FlowGridCol_DiagramLine, // ImGuiCol_PlotLines
-    FlowGridCol_DiagramLink, // ImGuiCol_Button
-    FlowGridCol_DiagramInverter, // ImGuiCol_Text
-    FlowGridCol_DiagramOrientationMark, // ImGuiCol_Text
-    // Box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
-    FlowGridCol_DiagramNormal,
-    FlowGridCol_DiagramUi,
-    FlowGridCol_DiagramSlot,
-    FlowGridCol_DiagramNumber,
     // Params colors.
     FlowGridCol_ParamsBg, // ImGuiCol_FrameBg with less alpha
 
     FlowGridCol_COUNT
 };
 using FlowGridCol = int;
+
+enum FlowGridDiagramCol_ {
+    FlowGridDiagramCol_Bg, // ImGuiCol_WindowBg
+    FlowGridDiagramCol_Text, // ImGuiCol_Text
+    FlowGridDiagramCol_DecorateStroke, // ImGuiCol_Border
+    FlowGridDiagramCol_GroupStroke, // ImGuiCol_Border
+    FlowGridDiagramCol_Line, // ImGuiCol_PlotLines
+    FlowGridDiagramCol_Link, // ImGuiCol_Button
+    FlowGridDiagramCol_Inverter, // ImGuiCol_Text
+    FlowGridDiagramCol_OrientationMark, // ImGuiCol_Text
+    // Box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
+    FlowGridDiagramCol_Normal,
+    FlowGridDiagramCol_Ui,
+    FlowGridDiagramCol_Slot,
+    FlowGridDiagramCol_Number,
+
+    FlowGridDiagramCol_COUNT
+};
+using FlowGridDiagramCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
@@ -750,47 +755,77 @@ struct Vec2Linked : Vec2 {
 
 struct Style : Window {
     using Window::Window;
-
     void Draw() const override;
 
     struct FlowGridStyle : UIStateMember {
         FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
         void Draw() const override;
 
+        struct Diagram : UIStateMember {
+            Diagram(const StateMember *parent, const string &path_segment, const string &name_help = "");
+            void Draw() const override;
+
+            Prop_(UInt, FoldComplexity,
+                "?Number of boxes within a diagram before folding into a sub-diagram.\n"
+                "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20);
+            Prop_(Bool, ScaleFillHeight, "?Automatically scale to fill the full height of the diagram window, keeping the same aspect ratio.");
+            Prop(Float, Scale, 1, 0.1, 5);
+            Prop(Enum, Direction, { "Left", "Right" }, ImGuiDir_Right);
+            Prop(Bool, RouteFrame);
+            Prop(Bool, OrientationMark, true);
+            Prop(Bool, SequentialConnectionZigzag, true); // false allows for diagonal lines instead of zigzags instead of zigzags
+
+            Prop(Bool, DecorateRootNode, false);
+            Prop(Vec2Linked, DecorateMargin, { 10, 10 }, 0, 20);
+            Prop(Vec2Linked, DecoratePadding, { 10, 10 }, 0, 20);
+            Prop(Float, DecorateCornerRadius, 0, 0, 10);
+            Prop(Float, DecorateLineWidth, 1, 1, 4);
+
+            Prop(Vec2Linked, GroupMargin, { 8, 8 }, 0, 20);
+            Prop(Vec2Linked, GroupPadding, { 8, 8 }, 0, 20);
+            Prop(Float, GroupCornerRadius, 5, 0, 10);
+            Prop(Float, GroupLineWidth, 2, 1, 4);
+
+            Prop(Vec2Linked, NodeMargin, { 8, 8 }, 0, 20);
+            Prop(Vec2Linked, NodePadding, { 8, 0 }, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
+
+            Prop(Float, OrientationMarkRadius, 1.5, 0.5, 3);
+            Prop(Float, BoxCornerRadius, 0, 0, 10);
+            Prop(Float, BinaryHorizontalGapRatio, 0.25, 0, 1);
+            Prop(Float, WireWidth, 1, 0.5, 4);
+            Prop(Float, WireGap, 16, 10, 20);
+            Prop(Vec2, ArrowSize, { 3, 2 }, 1, 10);
+            Prop(Float, InverterRadius, 3, 1, 5);
+            Prop(Colors, Colors, GetColorName);
+
+            void ColorsDark(TransientStore &_store) const;
+            void ColorsClassic(TransientStore &_store) const;
+            void ColorsLight(TransientStore &_store) const;
+            void ColorsFaust(TransientStore &_store) const; // Color Faust diagrams the same way Faust does when it renders to SVG.
+
+            void LayoutFlowGrid(TransientStore &_store) const;
+            void LayoutFaust(TransientStore &_store) const; // Layout Faust diagrams the same way Faust does when it renders to SVG.
+
+            static const char *GetColorName(FlowGridDiagramCol idx) {
+                switch (idx) {
+                    case FlowGridDiagramCol_Bg: return "DiagramBg";
+                    case FlowGridDiagramCol_DecorateStroke: return "DiagramDecorateStroke";
+                    case FlowGridDiagramCol_GroupStroke: return "DiagramGroupStroke";
+                    case FlowGridDiagramCol_Line: return "DiagramLine";
+                    case FlowGridDiagramCol_Link: return "DiagramLink";
+                    case FlowGridDiagramCol_Normal: return "DiagramNormal";
+                    case FlowGridDiagramCol_Ui: return "DiagramUi";
+                    case FlowGridDiagramCol_Slot: return "DiagramSlot";
+                    case FlowGridDiagramCol_Number: return "DiagramNumber";
+                    case FlowGridDiagramCol_Inverter: return "DiagramInverter";
+                    case FlowGridDiagramCol_OrientationMark: return "DiagramOrientationMark";
+                    default: return "Unknown";
+                }
+            }
+        };
+
+        Prop(Diagram, Diagram);
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
-
-        Prop_(UInt, DiagramFoldComplexity,
-            "?Number of boxes within a diagram before folding into a sub-diagram.\n"
-            "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20);
-        Prop_(Bool, DiagramScaleFillHeight, "?Automatically scale to fill the full height of the diagram window, keeping the same aspect ratio.");
-        Prop(Float, DiagramScale, 1, 0.1, 5);
-        Prop(Enum, DiagramDirection, { "Left", "Right" }, ImGuiDir_Right);
-        Prop(Bool, DiagramRouteFrame);
-        Prop(Bool, DiagramOrientationMark, true);
-        Prop(Bool, DiagramSequentialConnectionZigzag, true); // false allows for diagonal lines instead of zigzags instead of zigzags
-
-        Prop(Bool, DiagramDecorateRootNode, false);
-        Prop(Vec2Linked, DiagramDecorateMargin, { 10, 10 }, 0, 20);
-        Prop(Vec2Linked, DiagramDecoratePadding, { 10, 10 }, 0, 20);
-        Prop(Float, DiagramDecorateCornerRadius, 0, 0, 10);
-        Prop(Float, DiagramDecorateLineWidth, 1, 1, 4);
-
-        Prop(Vec2Linked, DiagramGroupMargin, { 8, 8 }, 0, 20);
-        Prop(Vec2Linked, DiagramGroupPadding, { 8, 8 }, 0, 20);
-        Prop(Float, DiagramGroupCornerRadius, 5, 0, 10);
-        Prop(Float, DiagramGroupLineWidth, 2, 1, 4);
-
-        Prop(Vec2Linked, DiagramNodeMargin, { 8, 8 }, 0, 20);
-        Prop(Vec2Linked, DiagramNodePadding, { 8, 0 }, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
-
-        Prop(Float, DiagramOrientationMarkRadius, 1.5, 0.5, 3);
-        Prop(Float, DiagramBoxCornerRadius, 0, 0, 10);
-        Prop(Float, DiagramBinaryHorizontalGapRatio, 0.25, 0, 1);
-        Prop(Float, DiagramWireWidth, 1, 0.5, 4);
-        Prop(Float, DiagramWireGap, 16, 10, 20);
-        Prop(Vec2, DiagramArrowSize, { 3, 2 }, 1, 10);
-        Prop(Float, DiagramInverterRadius, 3, 1, 5);
-
         Prop(Bool, ParamsHeaderTitles, true);
         // In frame-height units:
         Prop(Float, ParamsMinHorizontalItemWidth, 4, 2, 8);
@@ -813,33 +848,16 @@ struct Style : Window {
         void ColorsLight(TransientStore &_store) const;
         void ColorsClassic(TransientStore &_store) const;
 
-        void DiagramColorsDark(TransientStore &_store) const;
-        void DiagramColorsClassic(TransientStore &_store) const;
-        void DiagramColorsLight(TransientStore &_store) const;
-        void DiagramColorsFaust(TransientStore &_store) const; // Color Faust diagrams the same way Faust does when it renders to SVG.
-        void DiagramLayoutFlowGrid(TransientStore &_store) const;
-        void DiagramLayoutFaust(TransientStore &_store) const; // Layout Faust diagrams the same way Faust does when it renders to SVG.
-
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
                 case FlowGridCol_GestureIndicator: return "GestureIndicator";
                 case FlowGridCol_HighlightText: return "HighlightText";
-                case FlowGridCol_DiagramBg: return "DiagramBg";
-                case FlowGridCol_DiagramDecorateStroke: return "DiagramDecorateStroke";
-                case FlowGridCol_DiagramGroupStroke: return "DiagramGroupStroke";
-                case FlowGridCol_DiagramLine: return "DiagramLine";
-                case FlowGridCol_DiagramLink: return "DiagramLink";
-                case FlowGridCol_DiagramNormal: return "DiagramNormal";
-                case FlowGridCol_DiagramUi: return "DiagramUi";
-                case FlowGridCol_DiagramSlot: return "DiagramSlot";
-                case FlowGridCol_DiagramNumber: return "DiagramNumber";
-                case FlowGridCol_DiagramInverter: return "DiagramInverter";
-                case FlowGridCol_DiagramOrientationMark: return "DiagramOrientationMark";
                 case FlowGridCol_ParamsBg: return "ParamsBg";
                 default: return "Unknown";
             }
         }
     };
+
     struct ImGuiStyle : UIStateMember {
         ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
 

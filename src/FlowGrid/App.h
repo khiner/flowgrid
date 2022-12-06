@@ -740,31 +740,38 @@ struct Style : Window {
             Prop(Float, Scale, 1, 0.1, 5);
             Prop(Enum, Direction, { "Left", "Right" }, ImGuiDir_Right);
             Prop(Bool, RouteFrame);
-            Prop(Bool, OrientationMark, true);
-            Prop(Bool, SequentialConnectionZigzag, true); // false allows for diagonal lines instead of zigzags instead of zigzags
+            Prop(Bool, SequentialConnectionZigzag, false); // `false` uses diagonal lines instead of zigzags instead of zigzags
+            Prop(Bool, OrientationMark, false);
+            Prop(Float, OrientationMarkRadius, 1.5, 0.5, 3);
 
             Prop(Bool, DecorateRootNode, false);
             Prop(Vec2Linked, DecorateMargin, { 10, 10 }, 0, 20);
             Prop(Vec2Linked, DecoratePadding, { 10, 10 }, 0, 20);
-            Prop(Float, DecorateCornerRadius, 0, 0, 10);
             Prop(Float, DecorateLineWidth, 1, 1, 4);
+            Prop(Float, DecorateCornerRadius, 0, 0, 10);
 
             Prop(Vec2Linked, GroupMargin, { 8, 8 }, 0, 20);
             Prop(Vec2Linked, GroupPadding, { 8, 8 }, 0, 20);
-            Prop(Float, GroupCornerRadius, 5, 0, 10);
             Prop(Float, GroupLineWidth, 2, 1, 4);
+            Prop(Float, GroupCornerRadius, 5, 0, 10);
 
             Prop(Vec2Linked, NodeMargin, { 8, 8 }, 0, 20);
             Prop(Vec2Linked, NodePadding, { 8, 0 }, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
 
-            Prop(Float, OrientationMarkRadius, 1.5, 0.5, 3);
-            Prop(Float, BoxCornerRadius, 0, 0, 10);
+            Prop(Float, BoxCornerRadius, 4, 0, 10);
             Prop(Float, BinaryHorizontalGapRatio, 0.25, 0, 1);
             Prop(Float, WireWidth, 1, 0.5, 4);
             Prop(Float, WireGap, 16, 10, 20);
             Prop(Vec2, ArrowSize, { 3, 2 }, 1, 10);
             Prop(Float, InverterRadius, 3, 1, 5);
             Prop(Colors, Colors, GetColorName);
+
+            const vector<std::reference_wrapper<Field::Base>> LayoutFields{
+                SequentialConnectionZigzag, OrientationMark, OrientationMarkRadius, DecorateRootNode, DecorateMargin.X, DecorateMargin.Y, DecoratePadding.X, DecoratePadding.Y, DecorateLineWidth, DecorateCornerRadius,
+                GroupMargin.X, GroupMargin.Y, GroupPadding.X, GroupPadding.Y, GroupLineWidth, GroupCornerRadius, BoxCornerRadius, BinaryHorizontalGapRatio, WireWidth, WireGap,
+                NodeMargin.X, NodeMargin.Y, NodePadding.X, NodePadding.Y, ArrowSize.X, ArrowSize.Y, InverterRadius,
+            };
+            const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const Field::Base &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
 
             void ColorsDark(TransientStore &_store) const;
             void ColorsClassic(TransientStore &_store) const;

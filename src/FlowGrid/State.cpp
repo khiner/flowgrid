@@ -1233,36 +1233,8 @@ void Style::FlowGridStyle::Diagram::ColorsFaust(TransientStore &_store) const {
     }, _store);
 }
 
-// todo derive from default initialized values to avoid repetition
 void Style::FlowGridStyle::Diagram::LayoutFlowGrid(TransientStore &_store) const {
-    Set({
-        {SequentialConnectionZigzag, false},
-        {OrientationMark, false},
-        {DecorateRootNode, false},
-        {DecorateMargin.X, 10},
-        {DecorateMargin.Y, 10},
-        {DecoratePadding.X, 10},
-        {DecoratePadding.Y, 10},
-        {DecorateLineWidth, 1},
-        {DecorateCornerRadius, 0},
-        {GroupMargin.X, 8},
-        {GroupMargin.Y, 8},
-        {GroupPadding.X, 8},
-        {GroupPadding.Y, 8},
-        {GroupLineWidth, 2},
-        {GroupCornerRadius, 5},
-        {BoxCornerRadius, 4},
-        {BinaryHorizontalGapRatio, 0.25f},
-        {WireWidth, 1},
-        {WireGap, 16},
-        {NodeMargin.X, 8},
-        {NodeMargin.Y, 8},
-        {NodePadding.X, 8},
-        {NodePadding.Y, 0},
-        {ArrowSize.X, 3},
-        {ArrowSize.Y, 2},
-        {InverterRadius, 3},
-    }, _store);
+    Set(DefaultLayoutEntries, _store);
 }
 void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &_store) const {
     Set({

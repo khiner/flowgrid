@@ -1584,9 +1584,19 @@ void Style::FlowGridStyle::Diagram::Draw() const {
     WireWidth.Draw();
     ArrowSize.Draw();
     InverterRadius.Draw();
-    EndTabItem();
 }
-
+void Style::FlowGridStyle::Params::Draw() const {
+    HeaderTitles.Draw();
+    MinHorizontalItemWidth.Draw();
+    MaxHorizontalItemWidth.Draw();
+    MinVerticalItemHeight.Draw();
+    MinKnobItemSize.Draw();
+    AlignmentHorizontal.Draw();
+    AlignmentVertical.Draw();
+    Spacing();
+    WidthSizingPolicy.Draw();
+    TableFlags.Draw();
+}
 void Style::FlowGridStyle::Draw() const {
     static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
@@ -1597,21 +1607,12 @@ void Style::FlowGridStyle::Draw() const {
     if (BeginTabBar("")) {
         if (BeginTabItem("Faust diagram", nullptr, ImGuiTabItemFlags_NoPushId)) {
             Diagram.Draw();
-        }
-        if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            ParamsHeaderTitles.Draw();
-            ParamsMinHorizontalItemWidth.Draw();
-            ParamsMaxHorizontalItemWidth.Draw();
-            ParamsMinVerticalItemHeight.Draw();
-            ParamsMinKnobItemSize.Draw();
-            ParamsAlignmentHorizontal.Draw();
-            ParamsAlignmentVertical.Draw();
-            Spacing();
-            ParamsWidthSizingPolicy.Draw();
-            ParamsTableFlags.Draw();
             EndTabItem();
         }
-
+        if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Params.Draw();
+            EndTabItem();
+        }
         Colors.Draw();
         EndTabBar();
     }

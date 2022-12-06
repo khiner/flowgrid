@@ -723,6 +723,13 @@ enum FlowGridDiagramCol_ {
 };
 using FlowGridDiagramCol = int;
 
+enum FlowGridParamsCol_ {
+    FlowGridParamsCol_Bg, // ImGuiCol_FrameBg with less alpha
+
+    FlowGridParamsCol_COUNT
+};
+using FlowGridParamsCol = int;
+
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(const StateMember *parent, const string &path_segment, const string &name_help,
@@ -823,25 +830,37 @@ struct Style : Window {
                 }
             }
         };
+        struct Params : UIStateMember {
+            using UIStateMember::UIStateMember;
+            void Draw() const override;
 
-        Prop(Diagram, Diagram);
+            Prop(Bool, HeaderTitles, true);
+            // In frame-height units:
+            Prop(Float, MinHorizontalItemWidth, 4, 2, 8);
+            Prop(Float, MaxHorizontalItemWidth, 16, 10, 24);
+            Prop(Float, MinVerticalItemHeight, 4, 2, 8);
+            Prop(Float, MinKnobItemSize, 3, 2, 6);
+
+            Prop(Enum, AlignmentHorizontal, { "Left", "Middle", "Right" }, HJustify_Middle);
+            Prop(Enum, AlignmentVertical, { "Top", "Middle", "Bottom" }, VJustify_Middle);
+            Prop(Flags, TableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
+            Prop_(Enum, WidthSizingPolicy,
+                "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
+                "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
+                "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
+                { "StretchToFill", "StretchFlexibleOnly", "Balanced" }, ParamsWidthSizingPolicy_StretchFlexibleOnly);
+
+            static const char *GetColorName(FlowGridParamsCol idx) {
+                switch (idx) {
+                    case FlowGridParamsCol_Bg: return "ParamsBg";
+                    default: return "Unknown";
+                }
+            }
+        };
+
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
-        Prop(Bool, ParamsHeaderTitles, true);
-        // In frame-height units:
-        Prop(Float, ParamsMinHorizontalItemWidth, 4, 2, 8);
-        Prop(Float, ParamsMaxHorizontalItemWidth, 16, 10, 24);
-        Prop(Float, ParamsMinVerticalItemHeight, 4, 2, 8);
-        Prop(Float, ParamsMinKnobItemSize, 3, 2, 6);
-
-        Prop(Enum, ParamsAlignmentHorizontal, { "Left", "Middle", "Right" }, HJustify_Middle);
-        Prop(Enum, ParamsAlignmentVertical, { "Top", "Middle", "Bottom" }, VJustify_Middle);
-        Prop(Flags, ParamsTableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
-        Prop_(Enum, ParamsWidthSizingPolicy,
-            "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
-            "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
-            "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
-            { "StretchToFill", "StretchFlexibleOnly", "Balanced" }, ParamsWidthSizingPolicy_StretchFlexibleOnly);
-
+        Prop(Diagram, Diagram);
+        Prop(Params, Params);
         Prop(Colors, Colors, GetColorName);
 
         void ColorsDark(TransientStore &_store) const;

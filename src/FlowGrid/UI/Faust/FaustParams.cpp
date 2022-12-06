@@ -157,7 +157,7 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
     switch (item.type) {
         case ItemType_NumEntry:
         case ItemType_HSlider:
-        case ItemType_HBargraph: return s.Style.FlowGrid.ParamsMinHorizontalItemWidth * frame_height + label_width_with_spacing;
+        case ItemType_HBargraph: return s.Style.FlowGrid.Params.MinHorizontalItemWidth * frame_height + label_width_with_spacing;
         case ItemType_HRadioButtons: {
             return label_width_with_spacing +
                 ranges::accumulate(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth), 0.f) +
@@ -173,7 +173,7 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
         case ItemType_VSlider: return max(frame_height, label_width);
         case ItemType_VRadioButtons: return max(ranges::max(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth)), label_width);
         case ItemType_Button: return raw_label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
-        case ItemType_Knob: return max(s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height, label_width);
+        case ItemType_Knob: return max(s.Style.FlowGrid.Params.MinKnobItemSize * frame_height, label_width);
         default:return GetContentRegionAvail().x;
     }
 }
@@ -182,7 +182,7 @@ static float CalcItemHeight(const FaustUI::Item &item) {
     switch (item.type) {
         case ItemType_VBargraph:
         case ItemType_VSlider:
-        case ItemType_VRadioButtons: return s.Style.FlowGrid.ParamsMinVerticalItemHeight * frame_height;
+        case ItemType_VRadioButtons: return s.Style.FlowGrid.Params.MinVerticalItemHeight * frame_height;
         case ItemType_HSlider:
         case ItemType_NumEntry:
         case ItemType_HBargraph:
@@ -190,7 +190,7 @@ static float CalcItemHeight(const FaustUI::Item &item) {
         case ItemType_CheckButton:
         case ItemType_HRadioButtons:
         case ItemType_Menu: return frame_height;
-        case ItemType_Knob: return s.Style.FlowGrid.ParamsMinKnobItemSize * frame_height + frame_height + GetStyle().ItemSpacing.y;
+        case ItemType_Knob: return s.Style.FlowGrid.Params.MinKnobItemSize * frame_height + frame_height + GetStyle().ItemSpacing.y;
         default:return 0;
     }
 }
@@ -224,7 +224,7 @@ static float CalcItemLabelHeight(const FaustUI::Item &item) {
 void DrawUiItem(const FaustUI::Item &item, const string &label, const float suggested_height) {
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
-    const Justify justify = {fg_style.ParamsAlignmentHorizontal, fg_style.ParamsAlignmentVertical};
+    const Justify justify = {fg_style.Params.AlignmentHorizontal, fg_style.Params.AlignmentVertical};
     const auto type = item.type;
     const auto &children = item.items;
     const float frame_height = GetFrameHeight();
@@ -252,7 +252,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             const bool is_h = type == ItemType_HGroup;
             float suggested_item_height = 0; // Including any label height, not including cell padding
             if (is_h) {
-                bool include_labels = !fg_style.ParamsHeaderTitles;
+                bool include_labels = !fg_style.Params.HeaderTitles;
                 suggested_item_height = ranges::max(item.items | transform([include_labels](const auto &child) {
                     return CalcItemHeight(child) + (include_labels ? CalcItemLabelHeight(child) : 0);
                 }));
@@ -260,10 +260,10 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             if (type == ItemType_None) { // Root group (treated as a vertical group but not as a table)
                 for (const auto &child: children) DrawUiItem(child, child.label, suggested_item_height);
             } else {
-                if (BeginTable(item.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImgui(fg_style.ParamsTableFlags))) {
+                if (BeginTable(item.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImgui(fg_style.Params.TableFlags))) {
                     const float row_min_height = suggested_item_height + cell_padding;
                     if (is_h) {
-                        ParamsWidthSizingPolicy policy = fg_style.ParamsWidthSizingPolicy;
+                        ParamsWidthSizingPolicy policy = fg_style.Params.WidthSizingPolicy;
                         const bool allow_fixed_width_items = policy != ParamsWidthSizingPolicy_Balanced && (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly ||
                             (policy == ParamsWidthSizingPolicy_StretchToFill && ranges::any_of(item.items, [](const auto &child) { return IsWidthExpandable(child.type); })));
                         for (const auto &child: children) {
@@ -271,7 +271,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                             if (allow_fixed_width_items && !IsWidthExpandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
                             TableSetupColumn(child.label.c_str(), flags, CalcItemWidth(child, true));
                         }
-                        if (fg_style.ParamsHeaderTitles) {
+                        if (fg_style.Params.HeaderTitles) {
                             // Custom headers (instead of `TableHeadersRow()`) to align column names.
                             TableNextRow(ImGuiTableRowFlags_Headers);
                             for (int column = 0; column < int(children.size()); column++) {
@@ -290,7 +290,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                         if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                         TableNextColumn();
                         TableSetBgColor(ImGuiTableBgTarget_RowBg0, fg_style.Colors[FlowGridCol_ParamsBg]);
-                        const string &child_label = child.type == ItemType_Button || !is_h || !fg_style.ParamsHeaderTitles ? child.label : "";
+                        const string &child_label = child.type == ItemType_Button || !is_h || !fg_style.Params.HeaderTitles ? child.label : "";
                         DrawUiItem(child, child_label, suggested_item_height);
                     }
                     EndTable();
@@ -304,7 +304,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         if (IsWidthExpandable(type) && available_x > item_size.x) {
             const float expand_delta_max = available_x - item_size.x;
             const float item_width_no_label_before = item_size_no_label.x;
-            item_size_no_label.x = min(fg_style.ParamsMaxHorizontalItemWidth * frame_height, item_size_no_label.x + expand_delta_max);
+            item_size_no_label.x = min(fg_style.Params.MaxHorizontalItemWidth * frame_height, item_size_no_label.x + expand_delta_max);
             item_size.x += item_size_no_label.x - item_width_no_label_before;
         }
         if (IsHeightExpandable(type) && suggested_height > item_size.y) item_size.y = suggested_height;

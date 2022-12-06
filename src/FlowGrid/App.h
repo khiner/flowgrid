@@ -104,7 +104,7 @@ static std::pair<string, string> ParseHelpText(const string &str) {
 }
 
 struct Preferences {
-    std::list<fs::path> RecentlyOpenedPaths;
+    std::list<fs::path> RecentlyOpenedPaths{};
 };
 
 static const StatePath RootPath{"/"};
@@ -164,6 +164,8 @@ namespace Field {
 struct Base : StateMember {
     using StateMember::StateMember;
     virtual bool Draw() const = 0;
+    Primitive Get() const;
+    Primitive GetInitial() const; // Returns the value in the constructor store.
 };
 
 struct Bool : Base {
@@ -184,7 +186,7 @@ struct UInt : Base {
         : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator U32() const;
-    operator bool() const { return (bool) (U32) *this; }
+    operator bool() const { return bool(U32(*this)); }
 
     bool operator==(int value) const { return int(*this) == value; }
 
@@ -250,7 +252,7 @@ struct Enum : Base {
     bool Draw(const vector<int> &options) const;
     bool DrawMenu() const;
 
-    vector<string> names;
+    const vector<string> names;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -275,12 +277,18 @@ struct Flags : Base {
     bool Draw() const override;
     bool DrawMenu() const;
 
-    vector<Item> items;
+    const vector<Item> items;
 };
+} // End `Field` namespace
+
+using FieldEntry = std::pair<const Field::Base &, Primitive>;
+using FieldEntries = vector<FieldEntry>;
+
+using namespace Field;
 
 template<typename T>
-struct Vector : Base {
-    using Base::Base;
+struct Vector : StateMember {
+    using StateMember::StateMember;
 
     virtual string GetName(Count index) const { return to_string(index); };
 
@@ -295,14 +303,12 @@ struct Vector : Base {
     void Set(const vector<T> &values, TransientStore &) const;
     void Set(const vector<std::pair<int, T>> &, TransientStore &) const;
     void truncate(Count length, TransientStore &) const; // Delete every element after index `length - 1`.
-
-    bool Draw() const override { return false; };
 };
 
 // Really a vector of vectors. Inner vectors need not have the same length.
 template<typename T>
-struct Vector2D : Base {
-    using Base::Base;
+struct Vector2D : StateMember {
+    using StateMember::StateMember;
 
     virtual string GetName(Count i, Count j) const { return format("{}/{}", i, j); };
 
@@ -313,8 +319,6 @@ struct Vector2D : Base {
     void Set(Count i, Count j, const T &value, TransientStore &) const;
     void truncate(Count length, TransientStore &) const; // Delete every outer vector after index `length - 1`.
     void truncate(Count i, Count length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
-
-    bool Draw() const override { return false; };
 };
 
 struct Colors : Vector<U32> {
@@ -331,7 +335,7 @@ struct Colors : Vector<U32> {
     static ImVec4 ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
     string GetName(Count index) const override { return GetColorName(int(index)); };
-    bool Draw() const override;
+    bool Draw() const;
 
     void Set(const vector<ImVec4> &values, TransientStore &transient) const {
         Vector::Set(values | transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | to<vector>, transient);
@@ -344,10 +348,6 @@ private:
     bool AllowAuto;
     const std::function<const char *(int)> GetColorName;
 };
-
-} // End `Field` namespace
-
-using namespace Field;
 
 // Subset of `ImGuiTableFlags`.
 enum TableFlags_ {
@@ -1109,8 +1109,8 @@ struct Patch {
 };
 
 struct StatePatch {
-    Patch Patch;
-    TimePoint Time;
+    Patch Patch{};
+    TimePoint Time{};
 };
 
 string to_string(const Primitive &);
@@ -1346,9 +1346,9 @@ enum Direction { Forward, Reverse };
 
 struct StoreHistory {
     struct Record {
-        TimePoint Committed;
-        Store Store; // The store as it was at `Committed` time
-        Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
+        const TimePoint Committed;
+        const Store Store; // The store as it was at `Committed` time
+        const Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
     };
     struct Plottable {
         vector<const char *> Labels;
@@ -1375,8 +1375,7 @@ struct StoreHistory {
 
     Count Index{0};
     vector<Record> Records;
-    Gesture ActiveGesture; // uncompressed, uncommitted
-
+    Gesture ActiveGesture{}; // uncompressed, uncommitted
     vector<StatePath> LatestUpdatedPaths{};
     map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
 
@@ -1472,9 +1471,6 @@ extern Context c;
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
 */
 bool q(Action &&a, bool flush = false);
-
-using FieldEntry = std::pair<const Field::Base &, Primitive>;
-using FieldEntries = vector<FieldEntry>;
 
 // Persistent (immutable) store setters
 Store Set(const Field::Base &, const Primitive &, const Store &_store = store);

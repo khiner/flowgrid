@@ -17,21 +17,23 @@ using namespace action;
 //-----------------------------------------------------------------------------
 
 namespace Field {
-Bool::operator bool() const { return std::get<bool>(store.at(Path)); }
-Int::operator int() const { return std::get<int>(store.at(Path)); }
-UInt::operator U32() const { return std::get<U32>(store.at(Path)); }
+Primitive Base::Get() const { return store.at(Path); }
+Primitive Base::GetInitial() const { return c.CtorStore.at(Path); }
+
+Bool::operator bool() const { return std::get<bool>(Get()); }
+Int::operator int() const { return std::get<int>(Get()); }
+UInt::operator U32() const { return std::get<U32>(Get()); }
 Float::operator float() const {
-    const auto &value = store.at(Path);
+    const Primitive &value = Get();
     if (std::holds_alternative<int>(value)) return float(std::get<int>(value));
     return std::get<float>(value);
 }
-
-String::operator string() const { return std::get<string>(store.at(Path)); }
+String::operator string() const { return std::get<string>(Get()); }
 bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
-
-Enum::operator int() const { return std::get<int>(store.at(Path)); }
-Flags::operator int() const { return std::get<int>(store.at(Path)); }
+Enum::operator int() const { return std::get<int>(Get()); }
+Flags::operator int() const { return std::get<int>(Get()); }
+}
 
 template<typename T>
 T Vector<T>::operator[](Count index) const { return std::get<T>(store.at(Path / to_string(index))); };
@@ -100,7 +102,6 @@ template<typename T>
 void Vector2D<T>::truncate(const Count i, const Count length, TransientStore &_store) const {
     Count j = length;
     while (_store.count(Path / to_string(i) / to_string(j))) _store.erase(Path / to_string(i) / to_string(j++));
-}
 }
 
 //-----------------------------------------------------------------------------

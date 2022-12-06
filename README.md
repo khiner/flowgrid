@@ -143,21 +143,28 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
   - Used to efficiently create and store persistent state snapshots for undo history, and to compute state diffs.
 * [json](https://github.com/nlohmann/json) for state serialization
 * [ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main action queue
-  - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
-* ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured text~~
+  - Actions are
+    _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
+* ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
+  text~~
   - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
     I'll likely be using this again at some point for generic handling of actions involving long text strings.
 
 ### C++ extensions
 
-* [range-v3](https://github.com/ericniebler/range-v3), since ranges are only partially supported in Clang 14
-* [fmt](https://github.com/fmtlib/fmt) for C++20-style string formatting
+For C++20 features only partially/experimentally supported in Clang 15:
+
+* [range-v3](https://github.com/ericniebler/range-v3)
+* [fmt](https://github.com/fmtlib/fmt)
 
 ### Debugging
 
 * [Tracy](https://github.com/wolfpld/tracy) for real-time profiling
 
 ## Development
+
+I try and keep all dependencies up to date.
+LLVM version 15.x.x is required to build.
 
 ### Tracing
 

@@ -53,7 +53,7 @@ void Vector<T>::Set(const vector<T> &values, TransientStore &_store) const {
     truncate(values.size(), _store);
 }
 template<typename T>
-Store Vector<T>::Set(const vector<std::pair<int, T>> &values, const Store &_store) const {
+Store Vector<T>::Set(const vector<pair<int, T>> &values, const Store &_store) const {
     auto transient = _store.transient();
     Set(values, transient);
     return transient.persistent();
@@ -71,7 +71,7 @@ Store Vector<T>::Set(const vector<T> &values, const Store &_store) const {
     return transient.persistent();
 }
 template<typename T>
-void Vector<T>::Set(const vector<std::pair<int, T>> &values, TransientStore &_store) const {
+void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &_store) const {
     for (const auto &[index, value]: values) _store.set(Path / to_string(index), value);
 }
 

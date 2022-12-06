@@ -1096,19 +1096,19 @@ static bool IsPureRouting(Tree t) {
 
 static Node *Tree2Node(Tree);
 
-static std::optional<std::pair<Count, string>> GetBoxPrimCountAndName(Box box) {
+static std::optional<pair<Count, string>> GetBoxPrimCountAndName(Box box) {
     prim0 p0;
-    if (isBoxPrim0(box, &p0)) return std::pair(0, prim0name(p0));
+    if (isBoxPrim0(box, &p0)) return pair(0, prim0name(p0));
     prim1 p1;
-    if (isBoxPrim1(box, &p1)) return std::pair(1, prim1name(p1));
+    if (isBoxPrim1(box, &p1)) return pair(1, prim1name(p1));
     prim2 p2;
-    if (isBoxPrim2(box, &p2)) return std::pair(2, prim2name(p2));
+    if (isBoxPrim2(box, &p2)) return pair(2, prim2name(p2));
     prim3 p3;
-    if (isBoxPrim3(box, &p3)) return std::pair(3, prim3name(p3));
+    if (isBoxPrim3(box, &p3)) return pair(3, prim3name(p3));
     prim4 p4;
-    if (isBoxPrim4(box, &p4)) return std::pair(4, prim4name(p4));
+    if (isBoxPrim4(box, &p4)) return pair(4, prim4name(p4));
     prim5 p5;
-    if (isBoxPrim5(box, &p5)) return std::pair(5, prim5name(p5));
+    if (isBoxPrim5(box, &p5)) return pair(5, prim5name(p5));
 
     return {};
 }

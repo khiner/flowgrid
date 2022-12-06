@@ -35,6 +35,13 @@ using namespace StringHelper;
 using namespace fmt;
 using namespace nlohmann;
 
+using namespace std::string_literals;
+using std::nullopt;
+using std::cout, std::cerr;
+using std::unique_ptr, std::make_unique;
+using std::min, std::max;
+using std::map, std::set, std::pair;
+
 /**
 An ID is used to uniquely identify something.
 ## Notable uses
@@ -67,7 +74,7 @@ Make sure to double check once in a blue moon that the ImGui types have not chan
 constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
 constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >> 16), S16(U32(packed) & 0xffff)}; }
 
-using StoreEntry = std::pair<StatePath, Primitive>;
+using StoreEntry = pair<StatePath, Primitive>;
 using StoreEntries = vector<StoreEntry>;
 
 struct StatePathHash {
@@ -83,13 +90,6 @@ constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x =
 constexpr bool operator==(const ImVec2ih &lhs, const ImVec2ih &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
-using namespace std::string_literals;
-using std::nullopt;
-using std::cout, std::cerr;
-using std::unique_ptr, std::make_unique;
-using std::min, std::max;
-using std::map, std::set;
-
 // E.g. '/foo/bar/baz' => 'baz'
 inline string PathVariableName(const StatePath &path) { return path.filename(); }
 inline string PathLabel(const StatePath &path) { return SnakeCaseToSentenceCase(PathVariableName(path)); }
@@ -97,7 +97,7 @@ inline string PathLabel(const StatePath &path) { return SnakeCaseToSentenceCase(
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
 // todo don't split on escaped '\?'
-static std::pair<string, string> ParseHelpText(const string &str) {
+static pair<string, string> ParseHelpText(const string &str) {
     const auto help_split = str.find_first_of('?');
     const bool found = help_split != string::npos;
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
@@ -281,7 +281,7 @@ struct Flags : Base {
 };
 } // End `Field` namespace
 
-using FieldEntry = std::pair<const Field::Base &, Primitive>;
+using FieldEntry = pair<const Field::Base &, Primitive>;
 using FieldEntries = vector<FieldEntry>;
 
 using namespace Field;
@@ -297,11 +297,11 @@ struct Vector : StateMember {
 
     Store Set(Count index, const T &value, const Store &_store = store) const;
     Store Set(const vector<T> &values, const Store &_store = store) const;
-    Store Set(const vector<std::pair<int, T>> &, const Store &_store = store) const;
+    Store Set(const vector<pair<int, T>> &, const Store &_store = store) const;
 
     void Set(Count index, const T &value, TransientStore &) const;
     void Set(const vector<T> &values, TransientStore &) const;
-    void Set(const vector<std::pair<int, T>> &, TransientStore &) const;
+    void Set(const vector<pair<int, T>> &, TransientStore &) const;
     void truncate(Count length, TransientStore &) const; // Delete every element after index `length - 1`.
 };
 
@@ -340,8 +340,8 @@ struct Colors : Vector<U32> {
     void Set(const vector<ImVec4> &values, TransientStore &transient) const {
         Vector::Set(values | transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | to<vector>, transient);
     }
-    void Set(const vector<std::pair<int, ImVec4>> &entries, TransientStore &transient) const {
-        Vector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | to<vector>, transient);
+    void Set(const vector<pair<int, ImVec4>> &entries, TransientStore &transient) const {
+        Vector::Set(entries | transform([](const auto &entry) { return pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | to<vector>, transient);
     }
 
 private:
@@ -1239,7 +1239,7 @@ using EmptyAction = std::variant<
 
 namespace action {
 
-using ActionMoment = std::pair<Action, TimePoint>;
+using ActionMoment = pair<Action, TimePoint>;
 using StateActionMoment = std::pair<StateAction, TimePoint>;
 using Gesture = vector<StateActionMoment>;
 using Gestures = vector<Gesture>;
@@ -1335,8 +1335,7 @@ void MenuItem(const EmptyAction &); // For actions with no data members.
 //-----------------------------------------------------------------------------
 
 static const map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
-static const auto ProjectFormatForExtension = ExtensionForProjectFormat |
-    transform([](const auto &pair) { return std::pair(pair.second, pair.first); }) | to<map>();
+static const auto ProjectFormatForExtension = ExtensionForProjectFormat | transform([](const auto &p) { return pair(p.second, p.first); }) | to<map>();
 static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<set>;
 static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
 static const string PreferencesFileExtension = ".flp";

@@ -18,8 +18,6 @@ using namespace action;
 
 // Currently, `Draw` is not used for anything except wrapping around `Render`.
 // Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
-// Need to think more about this & the ID system.
-// I think maybe `UIStateMember` shouldn't even be a thing anymore, and instead everything with a `Draw` fn should mirror some ImGui counterpart (e.g. Tabs/Tab).
 void UIStateMember::Draw() const {
 //    PushID(ImGuiLabel.c_str());
     Render();
@@ -440,7 +438,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 
 //-----------------------------------------------------------------------------
-// [SECTION] Window methods
+// [SECTION] Window/tabs methods
 //-----------------------------------------------------------------------------
 
 Window::Window(StateMember *parent, const string &path_segment, const string &name_help, const bool visible)
@@ -468,6 +466,20 @@ void Window::ToggleMenuItem() const {
 
 void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
+}
+
+void TabsWindow::Render() const {
+    if (BeginTabBar("")) {
+        for (const auto *child: Children) {
+            if (const auto *ui_child = reinterpret_cast<const UIStateMember *>(child)) {
+                if (ui_child != &Visible && BeginTabItem(child->ImGuiLabel.c_str())) {
+                    ui_child->Draw();
+                    EndTabItem();
+                }
+            }
+        }
+        EndTabBar();
+    }
 }
 
 void Info::Render() const {
@@ -1559,24 +1571,6 @@ void Style::FlowGridStyle::Render() const {
     }
 }
 
-void Style::Render() const {
-    if (BeginTabBar("")) {
-        if (BeginTabItem(FlowGrid.ImGuiLabel.c_str())) {
-            FlowGrid.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(ImGui.ImGuiLabel.c_str())) {
-            ImGui.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(ImPlot.ImGuiLabel.c_str())) {
-            ImPlot.Draw();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
-}
-
 //-----------------------------------------------------------------------------
 // [SECTION] Other windows
 //-----------------------------------------------------------------------------
@@ -1617,23 +1611,6 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &_store) const {
 
 void Demo::FileDialogDemo::Render() const {
     IGFD::ShowDemoWindow();
-}
-void Demo::Render() const {
-    if (BeginTabBar("")) {
-        if (BeginTabItem(ImGui.ImGuiLabel.c_str())) {
-            ImGui.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(ImPlot.ImGuiLabel.c_str())) {
-            ImPlot.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(FileDialog.ImGuiLabel.c_str())) {
-            FileDialog.Draw();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
 }
 
 void ShowGesture(const Gesture &gesture) {
@@ -1742,24 +1719,6 @@ void Metrics::FlowGridMetrics::Render() const {
 }
 void Metrics::ImGuiMetrics::Render() const { ShowMetricsWindow(); }
 void Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
-
-void Metrics::Render() const {
-    if (BeginTabBar("")) {
-        if (BeginTabItem(FlowGrid.ImGuiLabel.c_str())) {
-            FlowGrid.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(ImGui.ImGuiLabel.c_str())) {
-            ImGui.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(ImPlot.ImGuiLabel.c_str())) {
-            ImPlot.Draw();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
-}
 
 void DebugLog::Render() const {
     ShowDebugLogWindow();

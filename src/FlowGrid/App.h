@@ -409,18 +409,19 @@ ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 struct Window : StateMember {
     Window(StateMember *parent, const string &path_segment, const string &name_help = "", bool visible = true);
 
-    Prop(Bool, Visible, true);
-
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
     void Dock(ID node_id) const;
     void ToggleMenuItem() const;
-    void SelectTab() const;
-    using StateMember::StateMember;
+    void SelectTab() const; // If this window is tabbed, select it.
+
+    Prop(Bool, Visible, true);
 
 protected:
     virtual void Render() const = 0;
 };
+
+WindowMember(TabsWindow);
 
 WindowMember(ApplicationSettings,
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
@@ -447,26 +448,6 @@ enum ProjectFormat { StateFormat, ActionFormat };
 WindowMember(ProjectPreview,
     Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
     Prop(Bool, Raw);
-);
-
-WindowMember(Demo,
-    UIMember(ImGuiDemo);
-    UIMember(ImPlotDemo);
-    UIMember(FileDialogDemo);
-
-    Prop(ImGuiDemo, ImGui);
-    Prop(ImPlotDemo, ImPlot);
-    Prop(FileDialogDemo, FileDialog);
-);
-
-WindowMember(Metrics,
-    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true););
-    UIMember(ImGuiMetrics);
-    UIMember(ImPlotMetrics);
-
-    Prop(FlowGridMetrics, FlowGrid);
-    Prop(ImGuiMetrics, ImGui);
-    Prop(ImPlotMetrics, ImPlot);
 );
 
 enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
@@ -736,8 +717,32 @@ protected:
     void Render() const override;
 };
 
-struct Style : Window {
-    using Window::Window;
+struct Demo : TabsWindow {
+    using TabsWindow::TabsWindow;
+
+    UIMember(ImGuiDemo);
+    UIMember(ImPlotDemo);
+    UIMember(FileDialogDemo);
+
+    Prop(ImGuiDemo, ImGui);
+    Prop(ImPlotDemo, ImPlot);
+    Prop(FileDialogDemo, FileDialog);
+};
+
+struct Metrics : TabsWindow {
+    using TabsWindow::TabsWindow;
+
+    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true););
+    UIMember(ImGuiMetrics);
+    UIMember(ImPlotMetrics);
+
+    Prop(FlowGridMetrics, FlowGrid);
+    Prop(ImGuiMetrics, ImGui);
+    Prop(ImPlotMetrics, ImPlot);
+};
+
+struct Style : TabsWindow {
+    using TabsWindow::TabsWindow;
 
     struct FlowGridStyle : UIStateMember {
         FlowGridStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
@@ -1000,9 +1005,6 @@ struct Style : Window {
     Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
     Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
-
-protected:
-    void Render() const override;
 };
 
 struct ImGuiDockNodeSettings;

@@ -45,10 +45,6 @@ StateMember::~StateMember() {
     WithId.erase(Id);
 }
 
-Base::Base(const StateMember *parent, const string &id, const string &name_help, const Primitive &value) : StateMember(parent, id, name_help) {
-    c.CtorStore.set(Path, value);
-}
-
 Vec2Linked::Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
     c.CtorStore.set(Linked.Path, linked);

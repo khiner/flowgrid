@@ -154,7 +154,7 @@ protected:\
 
 struct UIStateMember : StateMember {
     using StateMember::StateMember;
-    void Draw() const;
+    void Draw() const; // Wraps around internal `Render` fn.
 protected:
     virtual void Render() const = 0;
 };
@@ -162,23 +162,17 @@ protected:
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
 
-// todo split up `Field::Base` (wraps around a single ImGui widget),
-//  and a `Primitive` wrapper type (provides convenient access & helpers around store leaf values/paths).
-//  Then, `Vec2` and others should be a `Field::Base`, to get the ID stack helpers.
-struct Base : StateMember {
+struct Base : UIStateMember {
     Base(const StateMember *parent, const string &path_segment, const string &name_help, const Primitive &value);
 
-    void Draw() const; // Wraps around internal `Render` fn.
     Primitive Get() const; // Returns the value in the main application state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
-
-protected:
-    virtual void Render() const = 0;
 };
 
 struct Bool : Base {
     Bool(const StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
+
     operator bool() const;
     void RenderMenu() const;
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.

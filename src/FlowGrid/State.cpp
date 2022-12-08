@@ -16,6 +16,8 @@ using namespace action;
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
+// Currently, `Draw` is not used for anything except wrapping around `Render`.
+// Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
 // Need to think more about this & the ID system.
 // I think maybe `UIStateMember` shouldn't even be a thing anymore, and instead everything with a `Draw` fn should mirror some ImGui counterpart (e.g. Tabs/Tab).
 void UIStateMember::Draw() const {
@@ -25,13 +27,11 @@ void UIStateMember::Draw() const {
 }
 
 namespace Field {
+Base::Base(const StateMember *parent, const string &id, const string &name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
+    c.CtorStore.set(Path, value);
+}
 Primitive Base::Get() const { return store.at(Path); }
 Primitive Base::GetInitial() const { return c.CtorStore.at(Path); }
-
-// Currently, this `Draw` wrapper around `Render` is not used for anything for fields.
-// Unlike in `UIStateMember::Draw`, fields don't wrap their `Render` with a push/pop-id.
-// This is because all fields render ImGui widgets, which all push the provided label to the ID stack.
-void Base::Draw() const { Render(); }
 
 Bool::operator bool() const { return std::get<bool>(Get()); }
 Int::operator int() const { return std::get<int>(Get()); }

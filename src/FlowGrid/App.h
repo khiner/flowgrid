@@ -112,13 +112,14 @@ static const StatePath RootPath{"/"};
 struct StateMember {
     static map<ID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
 
-    StateMember(const StateMember *parent = nullptr, const string &path_segment = "", const string &name_help = "");
+    StateMember(StateMember *parent = nullptr, const string &path_segment = "", const string &name_help = "");
     virtual ~StateMember();
 
     const StateMember *Parent;
     StatePath Path;
     string PathSegment, Name, Help, ImGuiLabel;
     ID Id;
+    vector<StateMember *> Children{};
 
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
@@ -163,14 +164,14 @@ protected:
 namespace Field {
 
 struct Base : UIStateMember {
-    Base(const StateMember *parent, const string &path_segment, const string &name_help, const Primitive &value);
+    Base(StateMember *parent, const string &path_segment, const string &name_help, const Primitive &value);
 
     Primitive Get() const; // Returns the value in the main application state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
 };
 
 struct Bool : Base {
-    Bool(const StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
+    Bool(StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
 
     operator bool() const;
@@ -183,7 +184,7 @@ private:
 };
 
 struct UInt : Base {
-    UInt(const StateMember *parent, const string &path_segment, const string &name_help, U32 value = 0, U32 min = 0, U32 max = 100)
+    UInt(StateMember *parent, const string &path_segment, const string &name_help, U32 value = 0, U32 min = 0, U32 max = 100)
         : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator U32() const;
@@ -197,7 +198,7 @@ protected:
 };
 
 struct Int : Base {
-    Int(const StateMember *parent, const string &path_segment, const string &name_help, int value = 0, int min = 0, int max = 100)
+    Int(StateMember *parent, const string &path_segment, const string &name_help, int value = 0, int min = 0, int max = 100)
         : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator int() const;
@@ -217,7 +218,7 @@ protected:
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(const StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None,
+    Float(StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None,
           float drag_speed = 0)
         : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
@@ -232,7 +233,7 @@ protected:
 };
 
 struct String : Base {
-    String(const StateMember *parent, const string &path_segment, const string &name_help, const string &value = "")
+    String(StateMember *parent, const string &path_segment, const string &name_help, const string &value = "")
         : Base(parent, path_segment, name_help, value) {}
 
     operator string() const;
@@ -246,7 +247,7 @@ protected:
 };
 
 struct Enum : Base {
-    Enum(const StateMember *parent, const string &path_segment, const string &name_help, vector<string> names, int value = 0)
+    Enum(StateMember *parent, const string &path_segment, const string &name_help, vector<string> names, int value = 0)
         : Base(parent, path_segment, name_help, value), Names(std::move(names)) {}
 
     operator int() const;
@@ -274,7 +275,7 @@ struct Flags : Base {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(const StateMember *parent, const string &path_segment, const string &name_help, vector<Item> items, int value = 0)
+    Flags(StateMember *parent, const string &path_segment, const string &name_help, vector<Item> items, int value = 0)
         : Base(parent, path_segment, name_help, value), Items(std::move(items)) {}
 
     operator int() const;
@@ -336,7 +337,7 @@ struct Colors : Vector<U32> {
     // but not using a value so it can be represented in a U32.
     static constexpr U32 AutoColor = 0X00010101;
 
-    Colors(const StateMember *parent, const string &path_segment, const string &name_help, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
+    Colors(StateMember *parent, const string &path_segment, const string &name_help, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
         : Vector(parent, path_segment, name_help), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {}
 
     static U32 ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
@@ -406,7 +407,7 @@ static const vector<Flags::Item> TableFlagItems{
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : StateMember {
-    Window(const StateMember *parent, const string &path_segment, const string &name_help = "", bool visible = true);
+    Window(StateMember *parent, const string &path_segment, const string &name_help = "", bool visible = true);
 
     Prop(Bool, Visible, true);
 
@@ -706,7 +707,7 @@ using FlowGridParamsCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(const StateMember *parent, const string &path_segment, const string &name_help,
+    Vec2(StateMember *parent, const string &path_segment, const string &name_help,
          const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
         : UIStateMember(parent, path_segment, name_help),
           X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max),
@@ -725,7 +726,7 @@ protected:
 
 struct Vec2Linked : Vec2 {
     using Vec2::Vec2;
-    Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help,
+    Vec2Linked(StateMember *parent, const string &path_segment, const string &name_help,
                const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
     Prop(Bool, Linked, true);
@@ -739,10 +740,10 @@ struct Style : Window {
     using Window::Window;
 
     struct FlowGridStyle : UIStateMember {
-        FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
+        FlowGridStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
 
         struct Diagram : UIStateMember {
-            Diagram(const StateMember *parent, const string &path_segment, const string &name_help = "");
+            Diagram(StateMember *parent, const string &path_segment, const string &name_help = "");
             void Render() const override;
 
             Prop_(UInt, FoldComplexity,
@@ -861,7 +862,7 @@ struct Style : Window {
     };
 
     struct ImGuiStyle : UIStateMember {
-        ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
+        ImGuiStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
 
         void Apply(ImGuiContext *ctx) const;
 
@@ -940,7 +941,7 @@ struct Style : Window {
         void Render() const override;
     };
     struct ImPlotStyle : UIStateMember {
-        ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
+        ImPlotStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
         void Apply(ImPlotContext *ctx) const;
 
         void ColorsAuto(TransientStore &_store) const;
@@ -1104,7 +1105,7 @@ struct FileDialogData {
 };
 
 struct FileDialog : Window {
-    FileDialog(const StateMember *parent, const string &path_segment, const string &name_help = "", const bool visible = false)
+    FileDialog(StateMember *parent, const string &path_segment, const string &name_help = "", const bool visible = false)
         : Window(parent, path_segment, name_help, visible) {}
     void Set(const FileDialogData &data, TransientStore &) const;
 
@@ -1291,7 +1292,7 @@ constexpr ActionID id = mp_find<Action, T>::value;
 #define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-const map<ActionID, string> ShortcutForId = {
+const map <ActionID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},

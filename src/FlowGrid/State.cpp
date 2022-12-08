@@ -27,7 +27,7 @@ void UIStateMember::Draw() const {
 }
 
 namespace Field {
-Base::Base(const StateMember *parent, const string &id, const string &name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
+Base::Base(StateMember *parent, const string &id, const string &name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
     c.InitStore.set(Path, value);
 }
 Primitive Base::Get() const { return store.at(Path); }
@@ -443,7 +443,7 @@ void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 // [SECTION] Window methods
 //-----------------------------------------------------------------------------
 
-Window::Window(const StateMember *parent, const string &path_segment, const string &name_help, const bool visible)
+Window::Window(StateMember *parent, const string &path_segment, const string &name_help, const bool visible)
     : StateMember(parent, path_segment, name_help) {
     Set(Visible, visible, c.InitStore);
 }
@@ -1052,19 +1052,19 @@ void ProjectPreview::Render() const {
 // [SECTION] Style editors
 //-----------------------------------------------------------------------------
 
-Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name_help)
+Style::ImGuiStyle::ImGuiStyle(StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
 }
-Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name_help)
+Style::ImPlotStyle::ImPlotStyle(StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsAuto(c.InitStore);
 }
-Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help)
+Style::FlowGridStyle::FlowGridStyle(StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
 }
-Style::FlowGridStyle::Diagram::Diagram(const StateMember *parent, const string &path_segment, const string &name_help)
+Style::FlowGridStyle::Diagram::Diagram(StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
     LayoutFlowGrid(c.InitStore);

@@ -30,7 +30,9 @@ void Set(const FieldEntries &values, TransientStore &_store) {
     for (const auto &[field, value]: values) _store.set(field.Path, value);
 }
 
-StateMember::StateMember(const StateMember *parent, const string &path_segment, const string &name_help) : Parent(parent) {
+StateMember::StateMember(StateMember *parent, const string &path_segment, const string &name_help) : Parent(parent) {
+    if (parent) parent->Children.emplace_back(this);
+
     const auto &[name, help] = ParseHelpText(name_help);
     PathSegment = path_segment;
     Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
@@ -45,7 +47,7 @@ StateMember::~StateMember() {
     WithId.erase(Id);
 }
 
-Vec2Linked::Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
+Vec2Linked::Vec2Linked(StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
     c.InitStore.set(Linked.Path, linked);
 }

@@ -389,7 +389,7 @@ struct Node {
             if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
         }
 
-        DoDraw(device);
+        Render(device);
         DrawConnections(device);
         for (auto *child: Children) child->Draw(device);
 
@@ -472,7 +472,7 @@ protected:
 
     virtual void DoPlaceSize(DeviceType) = 0;
     virtual void DoPlace(DeviceType) = 0;
-    virtual void DoDraw(Device &) const {}
+    virtual void Render(Device &) const {}
 
     ImRect GetFrameRect() const { return {Margin(), Size - Margin()}; }
 
@@ -531,7 +531,7 @@ struct BlockNode : Node {
 
     void DoPlace(const DeviceType type) override { if (Inner && type == DeviceType_SVG) Inner->Place(type); }
 
-    void DoDraw(Device &device) const override {
+    void Render(Device &device) const override {
         U32 fill_color = s.Style.FlowGrid.Diagram.Colors[Color];
         const U32 text_color = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Text];
         const auto &local_rect = GetFrameRect();
@@ -605,7 +605,7 @@ struct InverterNode : BlockNode {
 
     void DoPlaceSize(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
 
-    void DoDraw(Device &device) const override {
+    void Render(Device &device) const override {
         const float radius = s.Style.FlowGrid.Diagram.InverterRadius;
         const ImVec2 p1 = {W() - 2 * XMargin(), 1 + (H() - 1) / 2};
         const auto tri_a = ImVec2{XMargin() + (IsLr() ? 0 : p1.x), 0};
@@ -627,7 +627,7 @@ struct CutNode : Node {
     void DoPlace(const DeviceType) override {}
 
     // A cut is represented by a small black dot.
-    void DoDraw(Device &) const override {
+    void Render(Device &) const override {
         // device.Circle(point, WireGap() / 8);
     }
 
@@ -688,7 +688,7 @@ struct RecursiveNode : Node {
         bottom_node->Place(type, {(W() - bottom_node->W()) / 2, top_node->H()}, DiagramForward);
     }
 
-    void DoDraw(Device &device) const override {
+    void Render(Device &device) const override {
         const float dw = OrientationUnit() * WireGap();
         // Out0->In1 feedback connections
         for (Count i = 0; i < IoCount(IO_In, 1); i++) {
@@ -893,7 +893,7 @@ struct GroupNode : Node {
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
     void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
-    void DoDraw(Device &device) const override {
+    void Render(Device &device) const override {
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
             {.StrokeColor=s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_GroupStroke], .StrokeWidth=s.Style.FlowGrid.Diagram.GroupLineWidth, .CornerRadius=s.Style.FlowGrid.Diagram.GroupCornerRadius},
@@ -938,7 +938,7 @@ struct DecorateNode : Node {
         if (!ShouldDecorate()) return C1()->Place(type, {0, 0}, Orientation);
         C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation);
     }
-    void DoDraw(Device &device) const override {
+    void Render(Device &device) const override {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
@@ -984,7 +984,7 @@ struct RouteNode : Node {
     }
     void DoPlace(const DeviceType) override {}
 
-    void DoDraw(Device &device) const override {
+    void Render(Device &device) const override {
         if (s.Style.FlowGrid.Diagram.RouteFrame) {
             device.Rect(GetFrameRect(), {.FillColor={0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
             DrawOrientationMark(device);

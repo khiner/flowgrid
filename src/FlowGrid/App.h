@@ -168,21 +168,22 @@ namespace Field {
 struct Base : StateMember {
     Base(const StateMember *parent, const string &path_segment, const string &name_help, const Primitive &value);
 
-    bool Draw() const; // Returns `true` if changed during the draw. Wraps around internal `Render` fn.
+    void Draw() const; // Wraps around internal `Render` fn.
     Primitive Get() const; // Returns the value in the main application state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
 
 protected:
-    virtual bool Render() const = 0; // Returns `true` if changed during the draw.
+    virtual void Render() const = 0;
 };
 
 struct Bool : Base {
     Bool(const StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
     operator bool() const;
-    bool RenderMenu() const;
+    void RenderMenu() const;
+    bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
 protected:
-    bool Render() const override;
+    void Render() const override;
 private:
     void Toggle() const; // Used in draw methods.
 };
@@ -198,7 +199,7 @@ struct UInt : Base {
     U32 min, max;
 
 protected:
-    bool Render() const override;
+    void Render() const override;
 };
 
 struct Int : Base {
@@ -212,12 +213,12 @@ struct Int : Base {
     operator S8() const { return S8(int(*this)); }
     bool operator==(int value) const { return int(*this) == value; }
 
-    bool Render(const vector<int> &options) const;
+    void Render(const vector<int> &options) const;
 
     int min, max;
 
 protected:
-    bool Render() const override;
+    void Render() const override;
 };
 
 struct Float : Base {
@@ -233,7 +234,7 @@ struct Float : Base {
     const ImGuiSliderFlags Flags;
 
 protected:
-    bool Render() const override;
+    void Render() const override;
 };
 
 struct String : Base {
@@ -244,10 +245,10 @@ struct String : Base {
     operator bool() const;
     bool operator==(const string &) const;
 
-    bool Render(const vector<string> &options) const;
+    void Render(const vector<string> &options) const;
 
 protected:
-    bool Render() const override;
+    void Render() const override;
 };
 
 struct Enum : Base {
@@ -256,13 +257,13 @@ struct Enum : Base {
 
     operator int() const;
 
-    bool Render(const vector<int> &options) const;
-    bool RenderMenu() const;
+    void Render(const vector<int> &options) const;
+    void RenderMenu() const;
 
     const vector<string> Names;
 
 protected:
-    bool Render() const override;
+    void Render() const override;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -284,12 +285,12 @@ struct Flags : Base {
 
     operator int() const;
 
-    bool RenderMenu() const;
+    void RenderMenu() const;
 
     const vector<Item> Items;
 
 protected:
-    bool Render() const override;
+    void Render() const override;
 };
 } // End `Field` namespace
 
@@ -348,7 +349,7 @@ struct Colors : Vector<U32> {
     static ImVec4 ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
     string GetName(Count index) const override { return GetColorName(int(index)); };
-    bool Draw() const;
+    void Draw() const;
 
     void Set(const vector<ImVec4> &values, TransientStore &transient) const {
         Vector::Set(values | transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | to<vector>, transient);
@@ -418,7 +419,7 @@ struct Window : StateMember {
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
     void Dock(ID node_id) const;
-    bool ToggleMenuItem() const;
+    void ToggleMenuItem() const;
     void SelectTab() const;
     using StateMember::StateMember;
 
@@ -724,7 +725,7 @@ struct Vec2 : UIStateMember {
     const char *fmt;
 
 protected:
-    virtual bool Render(ImGuiSliderFlags flags) const;
+    virtual void Render(ImGuiSliderFlags flags) const;
     void Render() const override;
 };
 
@@ -736,7 +737,7 @@ struct Vec2Linked : Vec2 {
     Prop(Bool, Linked, true);
 
 protected:
-    bool Render(ImGuiSliderFlags flags) const override;
+    void Render(ImGuiSliderFlags flags) const override;
     void Render() const override;
 };
 

@@ -31,7 +31,7 @@ Primitive Base::GetInitial() const { return c.CtorStore.at(Path); }
 // Currently, this `Draw` wrapper around `Render` is not used for anything for fields.
 // Unlike in `UIStateMember::Draw`, fields don't wrap their `Render` with a push/pop-id.
 // This is because all fields render ImGui widgets, which all push the provided label to the ID stack.
-bool Base::Draw() const { return Render(); }
+void Base::Draw() const { Render(); }
 
 Bool::operator bool() const { return std::get<bool>(Get()); }
 Int::operator int() const { return std::get<int>(Get()); }
@@ -249,117 +249,97 @@ void StateMember::HelpMarker(const bool after) const {
 
 void Bool::Toggle() const { q(toggle_value{Path}); }
 
-bool Field::Bool::Render() const {
+void Field::Bool::Render() const {
     bool value = *this;
-    const bool edited = Checkbox(ImGuiLabel.c_str(), &value);
-    if (edited) Toggle();
+    if (Checkbox(ImGuiLabel.c_str(), &value)) Toggle();
     HelpMarker();
-    return edited;
 }
-bool Field::Bool::RenderMenu() const {
+bool Field::Bool::CheckedDraw() const {
+    bool value = *this;
+    bool toggled = Checkbox(ImGuiLabel.c_str(), &value);
+    if (toggled) Toggle();
+    HelpMarker();
+    return toggled;
+}
+void Field::Bool::RenderMenu() const {
     const bool value = *this;
     HelpMarker(false);
-    const bool edited = MenuItem(ImGuiLabel.c_str(), nullptr, value);
-    if (edited) Toggle();
-    return edited;
+    if (MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
 }
 
-bool Field::UInt::Render() const {
+void Field::UInt::Render() const {
     U32 value = *this;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
     UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
-    return edited;
 }
 
-bool Field::Int::Render() const {
+void Field::Int::Render() const {
     int value = *this;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
     UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
-    return edited;
 }
-bool Field::Int::Render(const vector<int> &options) const {
-    bool edited = false;
+void Field::Int::Render(const vector<int> &options) const {
     const int value = *this;
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option: options) {
             const bool is_selected = option == value;
-            if (Selectable(to_string(option).c_str(), is_selected)) {
-                q(set_value{Path, option});
-                edited = true;
-            }
+            if (Selectable(to_string(option).c_str(), is_selected)) q(set_value{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
     }
     HelpMarker();
-    return edited;
 }
 
-bool Field::Float::Render() const {
+void Field::Float::Render() const {
     float value = *this;
     const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
     UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
-    return edited;
 }
 
-bool Field::Enum::Render() const {
-    return Render(views::ints(0, int(Names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
+void Field::Enum::Render() const {
+    Render(views::ints(0, int(Names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
-bool Field::Enum::Render(const vector<int> &options) const {
+void Field::Enum::Render(const vector<int> &options) const {
     const int value = *this;
-    bool edited = false;
     if (BeginCombo(ImGuiLabel.c_str(), Names[value].c_str())) {
         for (int option: options) {
             const bool is_selected = option == value;
             const auto &name = Names[option];
-            if (Selectable(name.c_str(), is_selected)) {
-                q(set_value{Path, option});
-                edited = true;
-            }
+            if (Selectable(name.c_str(), is_selected)) q(set_value{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
     }
     HelpMarker();
-    return edited;
-
 }
-bool Field::Enum::RenderMenu() const {
+void Field::Enum::RenderMenu() const {
     const int value = *this;
     HelpMarker(false);
-    bool edited = false;
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
-            if (MenuItem(Names[i].c_str(), nullptr, is_selected)) {
-                q(set_value{Path, int(i)});
-                edited = true;
-            }
+            if (MenuItem(Names[i].c_str(), nullptr, is_selected)) q(set_value{Path, int(i)});
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
     }
-    return edited;
 }
 
-bool Field::Flags::Render() const {
+void Field::Flags::Render() const {
     const int value = *this;
-    bool edited = false;
     if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
         for (Count i = 0; i < Items.size(); i++) {
             const auto &item = Items[i];
             const int option_mask = 1 << i;
             bool is_selected = option_mask & value;
-            if (Checkbox(item.Name.c_str(), &is_selected)) {
-                q(set_value{Path, value ^ option_mask}); // toggle bit
-                edited = true;
-            }
+            if (Checkbox(item.Name.c_str(), &is_selected)) q(set_value{Path, value ^ option_mask}); // Toggle bit
             if (!item.Help.empty()) {
                 SameLine();
                 ::HelpMarker(item.Help.c_str());
@@ -368,12 +348,10 @@ bool Field::Flags::Render() const {
         TreePop();
     }
     HelpMarker();
-    return edited;
 }
-bool Field::Flags::RenderMenu() const {
+void Field::Flags::RenderMenu() const {
     const int value = *this;
     HelpMarker(false);
-    bool edited = false;
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Items.size(); i++) {
             const auto &item = Items[i];
@@ -383,38 +361,28 @@ bool Field::Flags::RenderMenu() const {
                 ::HelpMarker(item.Help.c_str());
                 SameLine();
             }
-            if (MenuItem(item.Name.c_str(), nullptr, is_selected)) {
-                q(set_value{Path, value ^ option_mask}); // toggle bit
-                edited = true;
-            }
+            if (MenuItem(item.Name.c_str(), nullptr, is_selected)) q(set_value{Path, value ^ option_mask}); // Toggle bit
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
     }
-    return edited;
 }
 
-bool Field::String::Render() const {
+void Field::String::Render() const {
     const string &value = *this;
     TextUnformatted(value.c_str());
-    return false;
 }
-bool Field::String::Render(const vector<string> &options) const {
+void Field::String::Render(const vector<string> &options) const {
     const string &value = *this;
-    bool edited = false;
     if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option: options) {
             const bool is_selected = option == value;
-            if (Selectable(option.c_str(), is_selected)) {
-                q(set_value{Path, option});
-                edited = true;
-            };
+            if (Selectable(option.c_str(), is_selected)) q(set_value{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
     }
     HelpMarker();
-    return edited;
 }
 
 //-----------------------------------------------------------------------------
@@ -436,23 +404,24 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
     GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
 }
 
-bool Vec2::Render(ImGuiSliderFlags flags) const {
+void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *) &values, min, max, fmt, flags);
     UiContext.WidgetGestured();
     if (edited) q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
     HelpMarker();
-    return edited;
 }
 
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
-bool Vec2Linked::Render(ImGuiSliderFlags flags) const {
-    if (Linked.Draw()) {
+void Vec2Linked::Render(ImGuiSliderFlags flags) const {
+    PushID(ImGuiLabel.c_str());
+    if (Linked.CheckedDraw()) {
         // Linking sets the max value to the min value.
         if (X < Y) q(set_value{Y.Path, X});
         else if (Y < X) q(set_value{X.Path, Y});
     }
+    PopID();
     SameLine();
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *) &values, min, max, fmt, flags);
@@ -466,7 +435,6 @@ bool Vec2Linked::Render(ImGuiSliderFlags flags) const {
         }
     }
     HelpMarker();
-    return edited;
 }
 
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
@@ -494,10 +462,8 @@ void Window::Dock(ID node_id) const {
     DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);
 }
 
-bool Window::ToggleMenuItem() const {
-    const bool edited = MenuItem(ImGuiLabel.c_str(), nullptr, Visible);
-    if (edited) q(toggle_value{Visible.Path});
-    return edited;
+void Window::ToggleMenuItem() const {
+    if (MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(toggle_value{Visible.Path});
 }
 
 void Window::SelectTab() const {
@@ -1270,8 +1236,7 @@ void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &_store) const {
     }, _store);
 }
 
-bool Colors::Draw() const {
-    bool changed = false;
+void Colors::Draw() const {
     if (BeginTabItem(ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
         static ImGuiTextFilter filter;
         filter.Draw("Filter colors", GetFontSize() * 16);
@@ -1319,7 +1284,6 @@ bool Colors::Draw() const {
             PopID();
 
             if (item_changed) q(set_value{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});
-            changed |= item_changed;
         }
         if (AllowAuto) {
             Separator();
@@ -1333,7 +1297,6 @@ bool Colors::Draw() const {
         EndChild();
         EndTabItem();
     }
-    return changed;
 }
 
 // Returns `true` if style changes.

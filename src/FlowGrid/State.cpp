@@ -28,10 +28,10 @@ void UIStateMember::Draw() const {
 
 namespace Field {
 Base::Base(const StateMember *parent, const string &id, const string &name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
-    c.CtorStore.set(Path, value);
+    c.InitStore.set(Path, value);
 }
 Primitive Base::Get() const { return store.at(Path); }
-Primitive Base::GetInitial() const { return c.CtorStore.at(Path); }
+Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
 
 Bool::operator bool() const { return std::get<bool>(Get()); }
 Int::operator int() const { return std::get<int>(Get()); }
@@ -445,7 +445,7 @@ void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 
 Window::Window(const StateMember *parent, const string &path_segment, const string &name_help, const bool visible)
     : StateMember(parent, path_segment, name_help) {
-    Set(Visible, visible, c.CtorStore);
+    Set(Visible, visible, c.InitStore);
 }
 
 void Window::Draw(ImGuiWindowFlags flags) const {
@@ -1054,20 +1054,20 @@ void ProjectPreview::Render() const {
 
 Style::ImGuiStyle::ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(c.CtorStore);
+    ColorsDark(c.InitStore);
 }
 Style::ImPlotStyle::ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsAuto(c.CtorStore);
+    ColorsAuto(c.InitStore);
 }
 Style::FlowGridStyle::FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(c.CtorStore);
+    ColorsDark(c.InitStore);
 }
 Style::FlowGridStyle::Diagram::Diagram(const StateMember *parent, const string &path_segment, const string &name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(c.CtorStore);
-    LayoutFlowGrid(c.CtorStore);
+    ColorsDark(c.InitStore);
+    LayoutFlowGrid(c.InitStore);
 }
 
 void Style::ImGuiStyle::ColorsDark(TransientStore &_store) const {

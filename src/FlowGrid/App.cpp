@@ -47,7 +47,7 @@ StateMember::~StateMember() {
 
 Vec2Linked::Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
-    c.CtorStore.set(Linked.Path, linked);
+    c.InitStore.set(Linked.Path, linked);
 }
 
 namespace nlohmann {
@@ -254,7 +254,7 @@ void SaveBoxSvg(const string &path); // Defined in FaustUI
 //-----------------------------------------------------------------------------
 
 Context::Context() {
-    CtorStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
+    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
     if (fs::exists(PreferencesPath)) {
         Preferences = json::parse(FileIO::read(PreferencesPath));
     } else {

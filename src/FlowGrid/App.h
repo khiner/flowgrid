@@ -1291,7 +1291,7 @@ constexpr ActionID id = mp_find<Action, T>::value;
 #define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-const map <ActionID, string> ShortcutForId = {
+const map<ActionID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1439,11 +1439,11 @@ struct Context {
     // _All_ store assignments happen via this method.
     Patch SetStore(const Store &new_store);
 
-    TransientStore CtorStore{}; // Used in `StateMember` constructors to initialize the store.
+    TransientStore InitStore{}; // Used in `StateMember` constructors to initialize the store.
 
 private:
     const State ApplicationState{};
-    Store ApplicationStore{CtorStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
+    Store ApplicationStore{InitStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
 
 public:
     const State &s = ApplicationState;

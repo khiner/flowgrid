@@ -235,7 +235,7 @@ void IGFD::CleanupDemo() {
 #endif
 }
 
-void FileDialog::Draw() const {
+void FileDialog::Render() const {
     if (!Visible) return Dialog->Close();
 
     static const string DialogKey = "FileDialog";

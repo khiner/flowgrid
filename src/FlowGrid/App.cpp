@@ -35,17 +35,18 @@ StateMember::StateMember(const StateMember *parent, const string &path_segment, 
     PathSegment = path_segment;
     Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
     Name = name.empty() ? path_segment.empty() ? "" : SnakeCaseToSentenceCase(path_segment) : name;
+    ImGuiLabel = Name.empty() ? "" : format("{}##{}", Name, PathSegment);
     Help = help;
-    Id = ImHashStr(Name.c_str(), 0, Parent ? Parent->Id : 0);
+    Id = ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0);
     WithId[Id] = this;
-}
-
-StateMember::StateMember(const StateMember *parent, const string &id, const string &name_help, const Primitive &value) : StateMember(parent, id, name_help) {
-    c.CtorStore.set(Path, value);
 }
 
 StateMember::~StateMember() {
     WithId.erase(Id);
+}
+
+Base::Base(const StateMember *parent, const string &id, const string &name_help, const Primitive &value) : StateMember(parent, id, name_help) {
+    c.CtorStore.set(Path, value);
 }
 
 Vec2Linked::Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)

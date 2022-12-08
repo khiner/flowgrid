@@ -331,7 +331,7 @@ void zep_init() {
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
  *     (and right navigation should move from the end)
  */
-void Audio::FaustState::FaustEditor::Draw() const {
+void Audio::FaustState::FaustEditor::Render() const {
     if (!zep_initialized) {
         // Called once after the fonts are initialized
         zep_init();
@@ -407,7 +407,7 @@ void Audio::FaustState::FaustEditor::Draw() const {
     }
 }
 
-void Audio::FaustState::FaustLog::Draw() const {
+void Audio::FaustState::FaustLog::Render() const {
     ImGui::PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
     s.Audio.Faust.Error.Draw();
     ImGui::PopStyleColor();

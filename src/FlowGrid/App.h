@@ -113,14 +113,12 @@ struct StateMember {
     static map<ID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
 
     StateMember(const StateMember *parent = nullptr, const string &path_segment = "", const string &name_help = "");
-    StateMember(const StateMember *parent, const string &path_segment, const string &name_help, const Primitive &value);
     virtual ~StateMember();
 
     const StateMember *Parent;
     StatePath Path;
-    string PathSegment, Name, Help;
+    string PathSegment, Name, Help, ImGuiLabel;
     ID Id;
-    // todo add start byte offset relative to state root, and link from state viewer json nodes to memory editor
 
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
@@ -141,42 +139,50 @@ Or, to use the path segment for the name but provide a help string, omit the nam
 #define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, #PropName, NameHelp, __VA_ARGS__}
 #define Prop(PropType, PropName, ...) Prop_(PropType, PropName, "", __VA_ARGS__)
 
-// Convenience methos for defining simple `UIStateMember`s and `Window`s:
+// Convenience methods for defining simple `UIStateMember`s and `Window`s:
 #define UIMember(MemberName, ...) struct MemberName : UIStateMember {\
     using UIStateMember::UIStateMember;\
-    void Draw() const override;\
+protected:\
+    void Render() const override;\
     __VA_ARGS__\
 }
 #define WindowMember(MemberName, ...) struct MemberName : Window {\
     using Window::Window;\
-    void Draw() const override;\
+    void Render() const override;\
     __VA_ARGS__\
 }
 
 struct UIStateMember : StateMember {
     using StateMember::StateMember;
-    virtual void Draw() const = 0;
+    void Draw() const;
+protected:
+    virtual void Render() const = 0;
 };
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
 
+// todo split up `Field::Base` (wraps around a single ImGui widget),
+//  and a `Primitive` wrapper type (provides convenient access & helpers around store leaf values/paths).
+//  Then, `Vec2` and others should be a `Field::Base`, to get the ID stack helpers.
 struct Base : StateMember {
-    using StateMember::StateMember;
-    virtual bool Draw() const = 0;
-    Primitive Get() const;
-    Primitive GetInitial() const; // Returns the value in the constructor store.
+    Base(const StateMember *parent, const string &path_segment, const string &name_help, const Primitive &value);
+
+    bool Draw() const; // Returns `true` if changed during the draw. Wraps around internal `Render` fn.
+    Primitive Get() const; // Returns the value in the main application state store.
+    Primitive GetInitial() const; // Returns the value in the initialization state store.
+
+protected:
+    virtual bool Render() const = 0; // Returns `true` if changed during the draw.
 };
 
 struct Bool : Base {
     Bool(const StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
-
     operator bool() const;
-
-    bool Draw() const override;
-    bool DrawMenu() const;
-
+    bool RenderMenu() const;
+protected:
+    bool Render() const override;
 private:
     void Toggle() const; // Used in draw methods.
 };
@@ -187,12 +193,12 @@ struct UInt : Base {
 
     operator U32() const;
     operator bool() const { return bool(U32(*this)); }
-
     bool operator==(int value) const { return int(*this) == value; }
 
-    bool Draw() const override;
-
     U32 min, max;
+
+protected:
+    bool Render() const override;
 };
 
 struct Int : Base {
@@ -200,33 +206,34 @@ struct Int : Base {
         : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator int() const;
-
     operator bool() const { return bool(int(*this)); }
     operator short() const { return short(int(*this)); }
     operator char() const { return char(int(*this)); }
     operator S8() const { return S8(int(*this)); }
-
     bool operator==(int value) const { return int(*this) == value; }
 
-    bool Draw() const override;
-    bool Draw(const vector<int> &options) const;
+    bool Render(const vector<int> &options) const;
 
     int min, max;
+
+protected:
+    bool Render() const override;
 };
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(const StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr)
-        : Base(parent, path_segment, name_help, value), min(min), max(max), fmt(fmt) {}
+    Float(const StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None,
+          float drag_speed = 0)
+        : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
     operator float() const;
 
-    bool Draw() const override;
-    bool Draw(ImGuiSliderFlags flags) const;
-    bool Draw(float v_speed, ImGuiSliderFlags flags) const;
+    const float Min, Max, DragSpeed; // If `DragSpeed` is non-zero, this is rendered as an `ImGui::DragFloat`.
+    const char *Format;
+    const ImGuiSliderFlags Flags;
 
-    float min, max;
-    const char *fmt;
+protected:
+    bool Render() const override;
 };
 
 struct String : Base {
@@ -235,24 +242,27 @@ struct String : Base {
 
     operator string() const;
     operator bool() const;
-
     bool operator==(const string &) const;
 
-    bool Draw() const override;
-    bool Draw(const vector<string> &options) const;
+    bool Render(const vector<string> &options) const;
+
+protected:
+    bool Render() const override;
 };
 
 struct Enum : Base {
     Enum(const StateMember *parent, const string &path_segment, const string &name_help, vector<string> names, int value = 0)
-        : Base(parent, path_segment, name_help, value), names(std::move(names)) {}
+        : Base(parent, path_segment, name_help, value), Names(std::move(names)) {}
 
     operator int() const;
 
-    bool Draw() const override;
-    bool Draw(const vector<int> &options) const;
-    bool DrawMenu() const;
+    bool Render(const vector<int> &options) const;
+    bool RenderMenu() const;
 
-    const vector<string> names;
+    const vector<string> Names;
+
+protected:
+    bool Render() const override;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -270,14 +280,16 @@ struct Flags : Base {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
     Flags(const StateMember *parent, const string &path_segment, const string &name_help, vector<Item> items, int value = 0)
-        : Base(parent, path_segment, name_help, value), items(std::move(items)) {}
+        : Base(parent, path_segment, name_help, value), Items(std::move(items)) {}
 
     operator int() const;
 
-    bool Draw() const override;
-    bool DrawMenu() const;
+    bool RenderMenu() const;
 
-    const vector<Item> items;
+    const vector<Item> Items;
+
+protected:
+    bool Render() const override;
 };
 } // End `Field` namespace
 
@@ -302,6 +314,7 @@ struct Vector : StateMember {
     void Set(Count index, const T &value, TransientStore &) const;
     void Set(const vector<T> &values, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
+
     void truncate(Count length, TransientStore &) const; // Delete every element after index `length - 1`.
 };
 
@@ -397,16 +410,20 @@ static const vector<Flags::Item> TableFlagItems{
 
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
-struct Window : UIStateMember {
+struct Window : StateMember {
     Window(const StateMember *parent, const string &path_segment, const string &name_help = "", bool visible = true);
 
     Prop(Bool, Visible, true);
 
-    ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(Name.c_str()); }
-    void DrawWindow(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
+    ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
+    void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
     void Dock(ID node_id) const;
     bool ToggleMenuItem() const;
     void SelectTab() const;
+    using StateMember::StateMember;
+
+protected:
+    virtual void Render() const = 0;
 };
 
 WindowMember(ApplicationSettings,
@@ -491,21 +508,19 @@ struct Audio : Window {
     static const vector<IoFormat> PrioritizedDefaultFormats;
     static const vector<int> PrioritizedDefaultSampleRates;
 
-    void Draw() const override;
-
     struct FaustState : StateMember {
         using StateMember::StateMember;
 
         struct FaustEditor : Window {
             using Window::Window;
-            void Draw() const override;
+            void Render() const override;
 
             string FileName{"default.dsp"}; // todo state member & respond to changes, or remove from state
         };
 
         struct FaustDiagram : Window {
             using Window::Window;
-            void Draw() const override;
+            void Render() const override;
 
             struct DiagramSettings : StateMember {
                 using StateMember::StateMember;
@@ -653,6 +668,9 @@ process = tgroup("grp 1",
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);
+
+protected:
+    void Render() const override;
 };
 
 enum FlowGridCol_ {
@@ -701,13 +719,13 @@ struct Vec2 : UIStateMember {
 
     operator ImVec2() const { return {X, Y}; }
 
-    void Draw() const override;
-    virtual bool Draw(ImGuiSliderFlags flags) const;
-
     Float X, Y;
-
     float min, max; // todo don't need these anymore, derive from X/Y
     const char *fmt;
+
+protected:
+    virtual bool Render(ImGuiSliderFlags flags) const;
+    void Render() const override;
 };
 
 struct Vec2Linked : Vec2 {
@@ -715,23 +733,22 @@ struct Vec2Linked : Vec2 {
     Vec2Linked(const StateMember *parent, const string &path_segment, const string &name_help,
                const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
-    void Draw() const override;
-    bool Draw(ImGuiSliderFlags flags) const override;
-
     Prop(Bool, Linked, true);
+
+protected:
+    bool Render(ImGuiSliderFlags flags) const override;
+    void Render() const override;
 };
 
 struct Style : Window {
     using Window::Window;
-    void Draw() const override;
 
     struct FlowGridStyle : UIStateMember {
         FlowGridStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
-        void Draw() const override;
 
         struct Diagram : UIStateMember {
             Diagram(const StateMember *parent, const string &path_segment, const string &name_help = "");
-            void Draw() const override;
+            void Render() const override;
 
             Prop_(UInt, FoldComplexity,
                 "?Number of boxes within a diagram before folding into a sub-diagram.\n"
@@ -800,7 +817,7 @@ struct Style : Window {
         };
         struct Params : UIStateMember {
             using UIStateMember::UIStateMember;
-            void Draw() const override;
+            void Render() const override;
 
             Prop(Bool, HeaderTitles, true);
             // In frame-height units:
@@ -835,6 +852,9 @@ struct Style : Window {
         void ColorsLight(TransientStore &_store) const;
         void ColorsClassic(TransientStore &_store) const;
 
+    protected:
+        void Render() const override;
+
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
                 case FlowGridCol_GestureIndicator: return "GestureIndicator";
@@ -849,7 +869,6 @@ struct Style : Window {
         ImGuiStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
 
         void Apply(ImGuiContext *ctx) const;
-        void Draw() const override;
 
         void ColorsDark(TransientStore &) const;
         void ColorsLight(TransientStore &) const;
@@ -904,14 +923,14 @@ struct Style : Window {
         Prop_(Bool, AntiAliasedLines, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true);
         Prop_(Bool, AntiAliasedLinesUseTex, "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true);
         Prop_(Bool, AntiAliasedFill, "Anti-aliased fill", true);
-        Prop_(Float, CurveTessellationTol, "Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f");
+        Prop_(Float, CurveTessellationTol, "Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f", ImGuiSliderFlags_None, 0.02f);
         Prop(Float, CircleTessellationMaxError, 0.3, 0.1, 5, "%.2f");
-        Prop(Float, Alpha, 1, 0.2, 1, "%.2f"); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Prop_(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f");
+        Prop(Float, Alpha, 1, 0.2, 1, "%.2f", ImGuiSliderFlags_None, 0.005); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
+        Prop_(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f", ImGuiSliderFlags_None, 0.005);
 
         // Fonts
         Prop(Int, FontIndex);
-        Prop_(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f"); // todo add flags option and use `ImGuiSliderFlags_AlwaysClamp` here
+        Prop_(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f", ImGuiSliderFlags_AlwaysClamp, 0.005f);
 
         // Not editable todo delete?
         Prop(Float, TabMinWidthForCloseButton, 0);
@@ -921,11 +940,13 @@ struct Style : Window {
         Prop(Float, ColumnsMinSpacing, 6);
 
         Prop(Colors, Colors, ImGui::GetStyleColorName);
+
+    protected:
+        void Render() const override;
     };
     struct ImPlotStyle : UIStateMember {
         ImPlotStyle(const StateMember *parent, const string &path_segment, const string &name_help = "");
         void Apply(ImPlotContext *ctx) const;
-        void Draw() const override;
 
         void ColorsAuto(TransientStore &_store) const;
         void ColorsDark(TransientStore &_store) const;
@@ -975,11 +996,17 @@ struct Style : Window {
         Prop(Bool, Use24HourClock);
 
         Prop(Int, Marker, ImPlotMarker_None); // Not editable todo delete?
+
+    protected:
+        void Render() const override;
     };
 
     Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
     Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
+
+protected:
+    void Render() const override;
 };
 
 struct ImGuiDockNodeSettings;
@@ -1085,7 +1112,6 @@ struct FileDialog : Window {
     FileDialog(const StateMember *parent, const string &path_segment, const string &name_help = "", const bool visible = false)
         : Window(parent, path_segment, name_help, visible) {}
     void Set(const FileDialogData &data, TransientStore &) const;
-    void Draw() const override;
 
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
     Prop(Int, MaxNumSelections, 1);
@@ -1094,7 +1120,11 @@ struct FileDialog : Window {
     Prop(String, Filters);
     Prop(String, FilePath, ".");
     Prop(String, DefaultFileName);
+
+protected:
+    void Render() const override;
 };
+
 struct PatchOp {
     enum Type { Add, Remove, Replace, };
 
@@ -1299,7 +1329,6 @@ using action::StateActionMoment;
 struct State : UIStateMember {
     State() : UIStateMember() {}
 
-    void Draw() const override;
     void Update(const StateAction &, TransientStore &) const;
     void Apply(UIContext::Flags flags) const;
 
@@ -1324,6 +1353,9 @@ struct State : UIStateMember {
     Prop(StateMemoryEditor, StateMemoryEditor);
     Prop(StatePathUpdateFrequency, StatePathUpdateFrequency);
     Prop(ProjectPreview, ProjectPreview);
+
+protected:
+    void Render() const override;
 };
 
 namespace FlowGrid {

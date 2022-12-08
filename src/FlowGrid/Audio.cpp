@@ -734,7 +734,7 @@ void ShowBufferPlots() {
     }
 }
 
-void Audio::Draw() const {
+void Audio::Render() const {
     Running.Draw();
     if (!SoundIoReady) {
         TextUnformatted("No audio context created yet");
@@ -746,12 +746,12 @@ void Audio::Draw() const {
     MonitorInput.Draw();
     OutDeviceVolume.Draw();
 
-    if (!DeviceIds[IO_In].empty()) InDeviceId.Draw(DeviceIds[IO_In]);
-    if (!DeviceIds[IO_Out].empty()) OutDeviceId.Draw(DeviceIds[IO_Out]);
-    if (!SupportedFormats[IO_In].empty()) InFormat.Draw(SupportedFormats[IO_In]);
-    if (!SupportedFormats[IO_Out].empty()) OutFormat.Draw(SupportedFormats[IO_Out]);
-    if (!SupportedSampleRates[IO_In].empty()) InSampleRate.Draw(SupportedSampleRates[IO_In]);
-    if (!SupportedSampleRates[IO_Out].empty()) OutSampleRate.Draw(SupportedSampleRates[IO_Out]);
+    if (!DeviceIds[IO_In].empty()) InDeviceId.Render(DeviceIds[IO_In]);
+    if (!DeviceIds[IO_Out].empty()) OutDeviceId.Render(DeviceIds[IO_Out]);
+    if (!SupportedFormats[IO_In].empty()) InFormat.Render(SupportedFormats[IO_In]);
+    if (!SupportedFormats[IO_Out].empty()) OutFormat.Render(SupportedFormats[IO_Out]);
+    if (!SupportedSampleRates[IO_In].empty()) InSampleRate.Render(SupportedSampleRates[IO_In]);
+    if (!SupportedSampleRates[IO_Out].empty()) OutSampleRate.Render(SupportedSampleRates[IO_Out]);
     NewLine();
     if (TreeNode("Devices")) {
         ShowDevices();

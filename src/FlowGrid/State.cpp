@@ -16,9 +16,22 @@ using namespace action;
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
+// Need to think more about this & the ID system.
+// I think maybe `UIStateMember` shouldn't even be a thing anymore, and instead everything with a `Draw` fn should mirror some ImGui counterpart (e.g. Tabs/Tab).
+void UIStateMember::Draw() const {
+//    PushID(ImGuiLabel.c_str());
+    Render();
+//    PopID();
+}
+
 namespace Field {
 Primitive Base::Get() const { return store.at(Path); }
 Primitive Base::GetInitial() const { return c.CtorStore.at(Path); }
+
+// Currently, this `Draw` wrapper around `Render` is not used for anything for fields.
+// Unlike in `UIStateMember::Draw`, fields don't wrap their `Render` with a push/pop-id.
+// This is because all fields render ImGui widgets, which all push the provided label to the ID stack.
+bool Base::Draw() const { return Render(); }
 
 Bool::operator bool() const { return std::get<bool>(Get()); }
 Int::operator int() const { return std::get<int>(Get()); }
@@ -236,42 +249,42 @@ void StateMember::HelpMarker(const bool after) const {
 
 void Bool::Toggle() const { q(toggle_value{Path}); }
 
-bool Field::Bool::Draw() const {
+bool Field::Bool::Render() const {
     bool value = *this;
-    const bool edited = Checkbox(format("{}##{}", Name, Path.string()).c_str(), &value); // todo all fields should be rendered like this, but cache this full value.
+    const bool edited = Checkbox(ImGuiLabel.c_str(), &value);
     if (edited) Toggle();
     HelpMarker();
     return edited;
 }
-bool Field::Bool::DrawMenu() const {
+bool Field::Bool::RenderMenu() const {
     const bool value = *this;
     HelpMarker(false);
-    const bool edited = MenuItem(Name.c_str(), nullptr, value);
+    const bool edited = MenuItem(ImGuiLabel.c_str(), nullptr, value);
     if (edited) Toggle();
     return edited;
 }
 
-bool Field::UInt::Draw() const {
+bool Field::UInt::Render() const {
     U32 value = *this;
-    const bool edited = SliderScalar(Name.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
+    const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
     UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
 }
 
-bool Field::Int::Draw() const {
+bool Field::Int::Render() const {
     int value = *this;
-    const bool edited = SliderInt(Name.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
+    const bool edited = SliderInt(ImGuiLabel.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
     UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
 }
-bool Field::Int::Draw(const vector<int> &options) const {
+bool Field::Int::Render(const vector<int> &options) const {
     bool edited = false;
     const int value = *this;
-    if (BeginCombo(Name.c_str(), to_string(value).c_str())) {
+    if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option: options) {
             const bool is_selected = option == value;
             if (Selectable(to_string(option).c_str(), is_selected)) {
@@ -286,37 +299,27 @@ bool Field::Int::Draw(const vector<int> &options) const {
     return edited;
 }
 
-bool Field::Float::Draw(ImGuiSliderFlags flags) const {
+bool Field::Float::Render() const {
     float value = *this;
-    const bool edited = SliderFloat(Name.c_str(), &value, min, max, fmt, flags);
+    const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
     UiContext.WidgetGestured();
     if (edited) q(set_value{Path, value});
     HelpMarker();
     return edited;
 }
 
-bool Field::Float::Draw(float v_speed, ImGuiSliderFlags flags) const {
-    float value = *this;
-    const bool edited = DragFloat(Name.c_str(), &value, v_speed, min, max, fmt, flags);
-    UiContext.WidgetGestured();
-    if (edited) q(set_value{Path, value});
-    HelpMarker();
-    return edited;
+bool Field::Enum::Render() const {
+    return Render(views::ints(0, int(Names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
-bool Field::Float::Draw() const { return Draw(ImGuiSliderFlags_None); }
-
-bool Field::Enum::Draw() const {
-    return Draw(views::ints(0, int(names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
-}
-bool Field::Enum::Draw(const vector<int> &choices) const {
+bool Field::Enum::Render(const vector<int> &options) const {
     const int value = *this;
     bool edited = false;
-    if (BeginCombo(Name.c_str(), names[value].c_str())) {
-        for (int choice: choices) {
-            const bool is_selected = choice == value;
-            const auto &name = names[choice];
+    if (BeginCombo(ImGuiLabel.c_str(), Names[value].c_str())) {
+        for (int option: options) {
+            const bool is_selected = option == value;
+            const auto &name = Names[option];
             if (Selectable(name.c_str(), is_selected)) {
-                q(set_value{Path, choice});
+                q(set_value{Path, option});
                 edited = true;
             }
             if (is_selected) SetItemDefaultFocus();
@@ -327,14 +330,14 @@ bool Field::Enum::Draw(const vector<int> &choices) const {
     return edited;
 
 }
-bool Field::Enum::DrawMenu() const {
+bool Field::Enum::RenderMenu() const {
     const int value = *this;
     HelpMarker(false);
     bool edited = false;
-    if (BeginMenu(Name.c_str())) {
-        for (Count i = 0; i < names.size(); i++) {
+    if (BeginMenu(ImGuiLabel.c_str())) {
+        for (Count i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
-            if (MenuItem(names[i].c_str(), nullptr, is_selected)) {
+            if (MenuItem(Names[i].c_str(), nullptr, is_selected)) {
                 q(set_value{Path, int(i)});
                 edited = true;
             }
@@ -345,12 +348,12 @@ bool Field::Enum::DrawMenu() const {
     return edited;
 }
 
-bool Field::Flags::Draw() const {
+bool Field::Flags::Render() const {
     const int value = *this;
     bool edited = false;
-    if (TreeNodeEx(Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        for (Count i = 0; i < items.size(); i++) {
-            const auto &item = items[i];
+    if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        for (Count i = 0; i < Items.size(); i++) {
+            const auto &item = Items[i];
             const int option_mask = 1 << i;
             bool is_selected = option_mask & value;
             if (Checkbox(item.Name.c_str(), &is_selected)) {
@@ -367,13 +370,13 @@ bool Field::Flags::Draw() const {
     HelpMarker();
     return edited;
 }
-bool Field::Flags::DrawMenu() const {
+bool Field::Flags::RenderMenu() const {
     const int value = *this;
     HelpMarker(false);
     bool edited = false;
-    if (BeginMenu(Name.c_str())) {
-        for (Count i = 0; i < items.size(); i++) {
-            const auto &item = items[i];
+    if (BeginMenu(ImGuiLabel.c_str())) {
+        for (Count i = 0; i < Items.size(); i++) {
+            const auto &item = Items[i];
             const int option_mask = 1 << i;
             const bool is_selected = option_mask & value;
             if (!item.Help.empty()) {
@@ -391,15 +394,15 @@ bool Field::Flags::DrawMenu() const {
     return edited;
 }
 
-bool Field::String::Draw() const {
+bool Field::String::Render() const {
     const string &value = *this;
     TextUnformatted(value.c_str());
     return false;
 }
-bool Field::String::Draw(const vector<string> &options) const {
+bool Field::String::Render(const vector<string> &options) const {
     const string &value = *this;
     bool edited = false;
-    if (BeginCombo(Name.c_str(), value.c_str())) {
+    if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option: options) {
             const bool is_selected = option == value;
             if (Selectable(option.c_str(), is_selected)) {
@@ -433,18 +436,18 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
     GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
 }
 
-bool Vec2::Draw(ImGuiSliderFlags flags) const {
+bool Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
-    const bool edited = SliderFloat2(Name.c_str(), (float *) &values, min, max, fmt, flags);
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *) &values, min, max, fmt, flags);
     UiContext.WidgetGestured();
     if (edited) q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
     HelpMarker();
     return edited;
 }
 
-void Vec2::Draw() const { Draw(ImGuiSliderFlags_None); }
+void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
-bool Vec2Linked::Draw(ImGuiSliderFlags flags) const {
+bool Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (Linked.Draw()) {
         // Linking sets the max value to the min value.
         if (X < Y) q(set_value{Y.Path, X});
@@ -452,7 +455,7 @@ bool Vec2Linked::Draw(ImGuiSliderFlags flags) const {
     }
     SameLine();
     ImVec2 values = *this;
-    const bool edited = SliderFloat2(Name.c_str(), (float *) &values, min, max, fmt, flags);
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *) &values, min, max, fmt, flags);
     UiContext.WidgetGestured();
     if (edited) {
         if (Linked) {
@@ -466,33 +469,33 @@ bool Vec2Linked::Draw(ImGuiSliderFlags flags) const {
     return edited;
 }
 
-void Vec2Linked::Draw() const { Draw(ImGuiSliderFlags_None); }
+void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 
 //-----------------------------------------------------------------------------
 // [SECTION] Window methods
 //-----------------------------------------------------------------------------
 
 Window::Window(const StateMember *parent, const string &path_segment, const string &name_help, const bool visible)
-    : UIStateMember(parent, path_segment, name_help) {
+    : StateMember(parent, path_segment, name_help) {
     Set(Visible, visible, c.CtorStore);
 }
 
-void Window::DrawWindow(ImGuiWindowFlags flags) const {
+void Window::Draw(ImGuiWindowFlags flags) const {
     if (!Visible) return;
 
     bool open = Visible;
-    if (Begin(Name.c_str(), &open, flags) && open) Draw();
+    if (Begin(ImGuiLabel.c_str(), &open, flags) && open) Render();
     End();
 
     if (Visible && !open) q(set_value{Visible.Path, false});
 }
 
 void Window::Dock(ID node_id) const {
-    DockBuilderDockWindow(Name.c_str(), node_id);
+    DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);
 }
 
 bool Window::ToggleMenuItem() const {
-    const bool edited = MenuItem(Name.c_str(), nullptr, Visible);
+    const bool edited = MenuItem(ImGuiLabel.c_str(), nullptr, Visible);
     if (edited) q(toggle_value{Visible.Path});
     return edited;
 }
@@ -501,7 +504,7 @@ void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
 
-void Info::Draw() const {
+void Info::Render() const {
     const auto hovered_id = GetHoveredID();
     if (hovered_id && StateMember::WithId.contains(hovered_id)) {
         const auto *member = StateMember::WithId.at(hovered_id);
@@ -511,12 +514,12 @@ void Info::Draw() const {
     }
 }
 
-void State::UIProcess::Draw() const {}
+void State::UIProcess::Render() const {}
 
 static int PrevFontIndex = 0;
 static float PrevFontScale = 1.0;
 
-void State::Draw() const {
+void State::Render() const {
     if (Style.ImGui.FontIndex != PrevFontIndex) {
         GetIO().FontDefault = GetIO().Fonts->Fonts[Style.ImGui.FontIndex];
         PrevFontIndex = Style.ImGui.FontIndex;
@@ -614,26 +617,26 @@ void State::Draw() const {
         Metrics.SelectTab();
     }
 
-    ApplicationSettings.DrawWindow();
-    Audio.DrawWindow();
+    ApplicationSettings.Draw();
+    Audio.Draw();
 
-    Audio.Faust.Editor.DrawWindow(ImGuiWindowFlags_MenuBar);
-    Audio.Faust.Diagram.DrawWindow(ImGuiWindowFlags_MenuBar);
-    Audio.Faust.Params.DrawWindow();
-    Audio.Faust.Log.DrawWindow();
+    Audio.Faust.Editor.Draw(ImGuiWindowFlags_MenuBar);
+    Audio.Faust.Diagram.Draw(ImGuiWindowFlags_MenuBar);
+    Audio.Faust.Params.Draw();
+    Audio.Faust.Log.Draw();
 
-    DebugLog.DrawWindow();
-    StackTool.DrawWindow();
-    StateViewer.DrawWindow(ImGuiWindowFlags_MenuBar);
-    StatePathUpdateFrequency.DrawWindow();
-    StateMemoryEditor.DrawWindow(ImGuiWindowFlags_NoScrollbar);
-    ProjectPreview.DrawWindow();
+    DebugLog.Draw();
+    StackTool.Draw();
+    StateViewer.Draw(ImGuiWindowFlags_MenuBar);
+    StatePathUpdateFrequency.Draw();
+    StateMemoryEditor.Draw(ImGuiWindowFlags_NoScrollbar);
+    ProjectPreview.Draw();
 
-    Metrics.DrawWindow();
-    Style.DrawWindow();
-    Demo.DrawWindow(ImGuiWindowFlags_MenuBar);
+    Metrics.Draw();
+    Style.Draw();
+    Demo.Draw(ImGuiWindowFlags_MenuBar);
     FileDialog.Draw();
-    Info.DrawWindow();
+    Info.Draw();
 }
 // Copy of ImGui version, which is not defined publicly
 struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
@@ -1016,11 +1019,11 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     }
 }
 
-void StateViewer::Draw() const {
+void StateViewer::Render() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            AutoSelect.DrawMenu();
-            LabelMode.DrawMenu();
+            AutoSelect.RenderMenu();
+            LabelMode.RenderMenu();
             EndMenu();
         }
         EndMenuBar();
@@ -1029,7 +1032,7 @@ void StateViewer::Draw() const {
     StateJsonTree("State", c.GetProjectJson());
 }
 
-void StateMemoryEditor::Draw() const {
+void StateMemoryEditor::Render() const {
     static MemoryEditor memory_editor;
     static bool first_render{true};
     if (first_render) {
@@ -1042,7 +1045,7 @@ void StateMemoryEditor::Draw() const {
     memory_editor.DrawContents(mem_data, sizeof(s));
 }
 
-void StatePathUpdateFrequency::Draw() const {
+void StatePathUpdateFrequency::Render() const {
     auto [labels, values] = c.History.StatePathUpdateFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
@@ -1068,7 +1071,7 @@ void StatePathUpdateFrequency::Draw() const {
     }
 }
 
-void ProjectPreview::Draw() const {
+void ProjectPreview::Render() const {
     Format.Draw();
     Raw.Draw();
 
@@ -1269,7 +1272,7 @@ void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &_store) const {
 
 bool Colors::Draw() const {
     bool changed = false;
-    if (BeginTabItem(Name.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
+    if (BeginTabItem(ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
         static ImGuiTextFilter filter;
         filter.Draw("Filter colors", GetFontSize() * 16);
 
@@ -1334,7 +1337,7 @@ bool Colors::Draw() const {
 }
 
 // Returns `true` if style changes.
-void Style::ImGuiStyle::Draw() const {
+void Style::ImGuiStyle::Render() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
 
@@ -1417,7 +1420,7 @@ void Style::ImGuiStyle::Draw() const {
             ShowFontAtlas(io.Fonts);
 
             PushItemWidth(GetFontSize() * 8);
-            FontScale.Draw(0.005f, ImGuiSliderFlags_None);
+            FontScale.Draw();
             PopItemWidth();
 
             EndTabItem();
@@ -1428,10 +1431,10 @@ void Style::ImGuiStyle::Draw() const {
             AntiAliasedLinesUseTex.Draw();
             AntiAliasedFill.Draw();
             PushItemWidth(GetFontSize() * 8);
-            CurveTessellationTol.Draw(0.02f, ImGuiSliderFlags_None);
+            CurveTessellationTol.Draw();
 
             // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            CircleTessellationMaxError.Draw(0.005f, ImGuiSliderFlags_AlwaysClamp);
+            CircleTessellationMaxError.Draw();
             if (IsItemActive()) {
                 SetNextWindowPos(GetCursorScreenPos());
                 BeginTooltip();
@@ -1460,8 +1463,8 @@ void Style::ImGuiStyle::Draw() const {
             SameLine();
             HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
 
-            Alpha.Draw(0.005, ImGuiSliderFlags_None);
-            DisabledAlpha.Draw(0.005, ImGuiSliderFlags_None);
+            Alpha.Draw();
+            DisabledAlpha.Draw();
             PopItemWidth();
 
             EndTabItem();
@@ -1471,7 +1474,7 @@ void Style::ImGuiStyle::Draw() const {
     }
 }
 
-void Style::ImPlotStyle::Draw() const {
+void Style::ImPlotStyle::Render() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) q(set_implot_color_style{style_idx});
 
@@ -1516,7 +1519,7 @@ void Style::ImPlotStyle::Draw() const {
     }
 }
 
-void Style::FlowGridStyle::Diagram::Draw() const {
+void Style::FlowGridStyle::Diagram::Render() const {
     FoldComplexity.Draw();
     const bool scale_fill = ScaleFillHeight;
     ScaleFillHeight.Draw();
@@ -1560,7 +1563,7 @@ void Style::FlowGridStyle::Diagram::Draw() const {
     ArrowSize.Draw();
     InverterRadius.Draw();
 }
-void Style::FlowGridStyle::Params::Draw() const {
+void Style::FlowGridStyle::Params::Render() const {
     HeaderTitles.Draw();
     MinHorizontalItemWidth.Draw();
     MaxHorizontalItemWidth.Draw();
@@ -1572,7 +1575,7 @@ void Style::FlowGridStyle::Params::Draw() const {
     WidthSizingPolicy.Draw();
     TableFlags.Draw();
 }
-void Style::FlowGridStyle::Draw() const {
+void Style::FlowGridStyle::Render() const {
     static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
     if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{diagram_colors_idx});
@@ -1593,17 +1596,17 @@ void Style::FlowGridStyle::Draw() const {
     }
 }
 
-void Style::Draw() const {
+void Style::Render() const {
     if (BeginTabBar("")) {
-        if (BeginTabItem(FlowGrid.Name.c_str())) {
+        if (BeginTabItem(FlowGrid.ImGuiLabel.c_str())) {
             FlowGrid.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImGui.Name.c_str())) {
+        if (BeginTabItem(ImGui.ImGuiLabel.c_str())) {
             ImGui.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImPlot.Name.c_str())) {
+        if (BeginTabItem(ImPlot.ImGuiLabel.c_str())) {
             ImPlot.Draw();
             EndTabItem();
         }
@@ -1615,7 +1618,7 @@ void Style::Draw() const {
 // [SECTION] Other windows
 //-----------------------------------------------------------------------------
 
-void ApplicationSettings::Draw() const {
+void ApplicationSettings::Render() const {
     int value = int(c.History.Index);
     if (SliderInt("History index", &value, 0, int(c.History.Size() - 1))) q(set_history_index{value});
     GestureDurationSec.Draw();
@@ -1630,10 +1633,10 @@ const vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
     IoFormat_Invalid,
 };
 
-void Demo::ImGuiDemo::Draw() const {
+void Demo::ImGuiDemo::Render() const {
     ShowDemoWindow();
 }
-void Demo::ImPlotDemo::Draw() const {
+void Demo::ImPlotDemo::Render() const {
     ImPlot::ShowDemoWindow();
 }
 void FileDialog::Set(const FileDialogData &data, TransientStore &_store) const {
@@ -1649,20 +1652,20 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &_store) const {
     }, _store);
 }
 
-void Demo::FileDialogDemo::Draw() const {
+void Demo::FileDialogDemo::Render() const {
     IGFD::ShowDemoWindow();
 }
-void Demo::Draw() const {
+void Demo::Render() const {
     if (BeginTabBar("")) {
-        if (BeginTabItem(ImGui.Name.c_str())) {
+        if (BeginTabItem(ImGui.ImGuiLabel.c_str())) {
             ImGui.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImPlot.Name.c_str())) {
+        if (BeginTabItem(ImPlot.ImGuiLabel.c_str())) {
             ImPlot.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(FileDialog.Name.c_str())) {
+        if (BeginTabItem(FileDialog.ImGuiLabel.c_str())) {
             FileDialog.Draw();
             EndTabItem();
         }
@@ -1677,7 +1680,7 @@ void ShowGesture(const Gesture &gesture) {
     }
 }
 
-void Metrics::FlowGridMetrics::Draw() const {
+void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
         const bool widget_gesturing = UiContext.IsWidgetGesturing;
@@ -1774,20 +1777,20 @@ void Metrics::FlowGridMetrics::Draw() const {
                    "Thus, it's important to keep action data small.");
     }
 }
-void Metrics::ImGuiMetrics::Draw() const { ShowMetricsWindow(); }
-void Metrics::ImPlotMetrics::Draw() const { ImPlot::ShowMetricsWindow(); }
+void Metrics::ImGuiMetrics::Render() const { ShowMetricsWindow(); }
+void Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
 
-void Metrics::Draw() const {
+void Metrics::Render() const {
     if (BeginTabBar("")) {
-        if (BeginTabItem(FlowGrid.Name.c_str())) {
+        if (BeginTabItem(FlowGrid.ImGuiLabel.c_str())) {
             FlowGrid.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImGui.Name.c_str())) {
+        if (BeginTabItem(ImGui.ImGuiLabel.c_str())) {
             ImGui.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(ImPlot.Name.c_str())) {
+        if (BeginTabItem(ImPlot.ImGuiLabel.c_str())) {
             ImPlot.Draw();
             EndTabItem();
         }
@@ -1795,9 +1798,9 @@ void Metrics::Draw() const {
     }
 }
 
-void DebugLog::Draw() const {
+void DebugLog::Render() const {
     ShowDebugLogWindow();
 }
-void StackTool::Draw() const {
+void StackTool::Render() const {
     ShowStackToolWindow();
 }

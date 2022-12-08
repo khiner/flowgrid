@@ -1274,7 +1274,7 @@ void SaveBoxSvg(const string &path) {
 
 static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
 
-void Audio::FaustState::FaustDiagram::Draw() const {
+void Audio::FaustState::FaustDiagram::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its diagram."); // todo link to window?
@@ -1287,7 +1287,7 @@ void Audio::FaustState::FaustDiagram::Draw() const {
             EndMenu();
         }
         if (BeginMenu("View")) {
-            Settings.HoverFlags.DrawMenu();
+            Settings.HoverFlags.RenderMenu();
             EndMenu();
         }
         EndMenuBar();

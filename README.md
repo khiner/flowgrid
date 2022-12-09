@@ -7,11 +7,12 @@ _Still actively building this. Expect master to be occasionally broken._
 My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
 
 Things to play with:
+
 - Change configuration of audio read/write processes.
 - Create audio DSP with Faust.
 - Inspect the full FlowGrid application state tree (everything needed to render the UI) at any point.
 - Navigate to any point in the project's history lightning fast.
-  - See [Application architecture][#Application-architecture] for more details.
+  - See [Application architecture][#application-architecture] for more details.
 - Other things to come! Definitely planned:
   - MIDI
   - USB (supporting display of any window in a Push 2 LCD display)
@@ -25,12 +26,13 @@ The spirit of the application architecture is similar to Lager, but much simpler
 
 FlowGrid uses a single [persistent map](https://sinusoid.es/immer/containers.html#map) to store the full application state.
 Every user action that affects the application state results in the following:
-* Put a snapshot of the current application state into history.
+
+- Put a snapshot of the current application state into history.
   This is only a snapshot conceptually, as only a small amount of data needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (
   ) data structure](https://youtu.be/imrSQ82dYns).
-* Generate an `Action` instance containing all the information needed to execute the logical action.
-* Pass this action to the `State::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.
-* The single canonical application store instance is overwritten with this new resultant store.
+- Generate an `Action` instance containing all the information needed to execute the logical action.
+- Pass this action to the `State::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.
+- The single canonical application store instance is overwritten with this new resultant store.
   This assignment is thread-safe.
   Due to the immutability of the canonical application store instance, readers will always see a consistent version of either the old state (before the action) or the new state (after the action).
 
@@ -53,7 +55,7 @@ FlowGrid supports three project formats.
 When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file dialog.
 Each type of FlowGrid project file is saved as plain JSON.
 
-* `.fgs`: _FlowGrid**State**_
+- `.fgs`: _FlowGrid**State**_
   - The full application state.
     An `.fgs` file contains a JSON blob with all the information needed to get back to the saved project state.
     Loading a `.fgs` project file will completely replace the application state with its own.
@@ -61,7 +63,7 @@ Each type of FlowGrid project file is saved as plain JSON.
     This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
     FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
     This approach provides a pretty strong guarantee that loading a new project will always produce the same, valid empty-project state.
-* `.fga`: _FlowGrid**Actions**_
+- `.fga`: _FlowGrid**Actions**_
   - FlowGrid can also save and load projects as a list of _action gestures_.
     This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.
     More accurately, an `.fga` file is a list _of lists_ of (action, timestamp) pairs.
@@ -85,19 +87,16 @@ $ brew install cmake pkgconfig llvm freetype
 $ brew link llvm --force
 ```
 
-#### IDE clean/build/run
+#### VSCode clean/build/run
 
-* **CLion:** I use CLion to develop this application, so that's the only IDE I can attest to working smoothly.
-  You should be able to just open the project in CLion and run the saved `FlowGrid | Debug` configuration.
-* **VSCode:** The `.vscode/launch.json` config has a single debug launch profile.
-  - I am evaluating VSCode for development since CLion has been losing syntax highlighting/autocomplete/etc. for me for very large (>1000 line) files (which this project has).
+The `.vscode/launch.json` config has a single debug launch profile.
 
 #### Manual clean/build/run
 
 Clean and build the project in a directory named `cmake-build-debug`:
 
 ```sh
-$ rm -rf cmake-build-debug # Clean 
+$ rm -rf cmake-build-debug # Clean
 $ cmake -B cmake-build-debug # Configure
 $ cmake --build cmake-build-debug --target FlowGrid -- -j 8 # Build
 ```
@@ -125,27 +124,27 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 ### Audio
 
-* [Faust](https://github.com/grame-cncm/faust) for DSP
-* [libsoundio](https://github.com/andrewrk/libsoundio) for the audio backend, and for its memory-mapped ring buffer
-* [r8brain-free-src](https://github.com/avaneev/r8brain-free-src/) for audio resampling, currently only used when monitoring an audio input stream with a sample rate different from the output stream
+- [Faust](https://github.com/grame-cncm/faust) for DSP
+- [libsoundio](https://github.com/andrewrk/libsoundio) for the audio backend, and for its memory-mapped ring buffer
+- [r8brain-free-src](https://github.com/avaneev/r8brain-free-src/) for audio resampling, currently only used when monitoring an audio input stream with a sample rate different from the output stream
 
 ### UI/UX
 
-* [ImGui](https://github.com/ocornut/imgui) for UI
-* [ImPlot](https://github.com/epezent/implot) for plotting
-* [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for file selection
-* [zep](https://github.com/Rezonality/zep) for code/text editing
-* [ImGui memory_editor](https://github.com/ocornut/imgui_club) for viewing/editing memory directly
+- [ImGui](https://github.com/ocornut/imgui) for UI
+- [ImPlot](https://github.com/epezent/implot) for plotting
+- [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for file selection
+- [zep](https://github.com/Rezonality/zep) for code/text editing
+- [ImGui memory_editor](https://github.com/ocornut/imgui_club) for viewing/editing memory directly
 
 ### Backend
 
-* [immer](https://github.com/arximboldi/immer) persistent data structures for the main application state store
+- [immer](https://github.com/arximboldi/immer) persistent data structures for the main application state store
   - Used to efficiently create and store persistent state snapshots for undo history, and to compute state diffs.
-* [json](https://github.com/nlohmann/json) for state serialization
-* [ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main action queue
+- [json](https://github.com/nlohmann/json) for state serialization
+- [ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main action queue
   - Actions are
     _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
-* ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
+- ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
   text~~
   - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
     I'll likely be using this again at some point for generic handling of actions involving long text strings.
@@ -154,12 +153,12 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 For C++20 features only partially/experimentally supported in Clang 15:
 
-* [range-v3](https://github.com/ericniebler/range-v3)
-* [fmt](https://github.com/fmtlib/fmt)
+- [range-v3](https://github.com/ericniebler/range-v3)
+- [fmt](https://github.com/fmtlib/fmt)
 
 ### Debugging
 
-* [Tracy](https://github.com/wolfpld/tracy) for real-time profiling
+- [Tracy](https://github.com/wolfpld/tracy) for real-time profiling
 
 ## Development
 
@@ -197,11 +196,12 @@ $ git cm -m "Update libs"
 #### Forked submodules
 
 The following modules are [forked by me](https://github.com/khiner?tab=repositories&q=&type=fork), along with the upstream branch the fork is based on:
-* `imgui:docking`
-* `implot:master`
-* `libsoundio:master`
-* `zep:master`
-* `imgui_club:master`
+
+- `imgui:docking`
+- `implot:master`
+- `libsoundio:master`
+- `zep:master`
+- `imgui_club:master`
 
 I keep my changes rebased on top of the original repo branches.
 Here's my process:
@@ -230,28 +230,28 @@ Here are some of my current development thoughts/goals, roughly broken up into a
 
 #### Abstract development goals
 
-* **Keep it as simple as I possibly can.**
-* Focus on making it fun to use _and create_ the application.
-* Spend more time up front getting the foundation right (simple, transparent, flexible, powerful).
-* Keep (re-)build times low.
-* At this early stage, my main application goal is to _facilitate the development of the app_.
+- **Keep it as simple as I possibly can.**
+- Focus on making it fun to use _and create_ the application.
+- Spend more time up front getting the foundation right (simple, transparent, flexible, powerful).
+- Keep (re-)build times low.
+- At this early stage, my main application goal is to _facilitate the development of the app_.
   - Invest early in things like adding debugging capabilities.
   - Make the application state and context transparent and easily modifiable.
   - Provide performance & debug metrics in real-time.
-* Let myself optimize.
+- Let myself optimize.
   In computers, fast things are good and always more fun than slow things.
-* Prioritize learning over development velocity.
+- Prioritize learning over development velocity.
   Dig into, and take ownership over, low-level concerns where appropriate.
   Feed curiosity.
   Bias towards reinventing wheels over accepting bloated/overly-complex dependencies that do too much.
 
 #### Concrete development goals
 
-* Store the source-of-truth application state in a single `struct` with global read access.
-* Perform all actions that affect the application state in one place.
-* Provide global read access to all application runtime state.
-* Make _everything_ undo/redo-able.
-* As much as possible, make the UI a pure function of the application state.
+- Store the source-of-truth application state in a single `struct` with global read access.
+- Perform all actions that affect the application state in one place.
+- Provide global read access to all application runtime state.
+- Make _everything_ undo/redo-able.
+- As much as possible, make the UI a pure function of the application state.
 
 ## License
 

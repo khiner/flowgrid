@@ -1,15 +1,14 @@
+#include <range/v3/algorithm/any_of.hpp>
 #include <range/v3/algorithm/max.hpp>
 #include <range/v3/numeric/accumulate.hpp>
-#include <range/v3/algorithm/any_of.hpp>
 
-#include "FaustUI.h"
 #include "../../App.h"
 #include "../Knob.h"
+#include "FaustUI.h"
 
 using namespace ImGui;
 using ItemType = FaustUI::ItemType;
-using
-enum FaustUI::ItemType;
+using enum FaustUI::ItemType;
 
 FaustUI *interface;
 
@@ -30,8 +29,7 @@ using ValueBarFlags = int;
 // `size` is the rectangle size.
 // Assumes the current cursor position is at the desired top-left of the rectangle.
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
-bool ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1,
-              const ValueBarFlags flags = ValueBarFlags_None, const HJustify h_justify = HJustify_Middle) {
+bool ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1, const ValueBarFlags flags = ValueBarFlags_None, const HJustify h_justify = HJustify_Middle) {
     const float rect_width = CalcItemWidth();
     const ImVec2 &size = {rect_width, rect_height};
     const auto &style = GetStyle();
@@ -165,8 +163,9 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
         }
         case ItemType_Menu: {
             return label_width_with_spacing + ranges::max(interface->names_and_values[item.zone].names | transform([](const string &choice_name) {
-                return CalcTextSize(choice_name.c_str()).x;
-            })) + GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
+                                                              return CalcTextSize(choice_name.c_str()).x;
+                                                          })) +
+                GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
         }
         case ItemType_CheckButton: return frame_height + label_width_with_spacing;
         case ItemType_VBargraph:
@@ -174,7 +173,7 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
         case ItemType_VRadioButtons: return max(ranges::max(interface->names_and_values[item.zone].names | transform(CalcRadioChoiceWidth)), label_width);
         case ItemType_Button: return raw_label_width + GetStyle().FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case ItemType_Knob: return max(s.Style.FlowGrid.Params.MinKnobItemSize * frame_height, label_width);
-        default:return GetContentRegionAvail().x;
+        default: return GetContentRegionAvail().x;
     }
 }
 static float CalcItemHeight(const FaustUI::Item &item) {
@@ -191,7 +190,7 @@ static float CalcItemHeight(const FaustUI::Item &item) {
         case ItemType_HRadioButtons:
         case ItemType_Menu: return frame_height;
         case ItemType_Knob: return s.Style.FlowGrid.Params.MinKnobItemSize * frame_height + frame_height + GetStyle().ItemSpacing.y;
-        default:return 0;
+        default: return 0;
     }
 }
 // Returns _additional_ height needed to accommodate a label for the item
@@ -240,7 +239,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             const float group_height = max(0.f, is_height_constrained ? suggested_height - label_height : 0);
             const float item_height = max(0.f, group_height - frame_height - style.ItemSpacing.y);
             BeginTabBar(item.label.c_str());
-            for (const auto &child: children) {
+            for (const auto &child : children) {
                 if (BeginTabItem(child.label.c_str())) {
                     DrawUiItem(child, "", item_height);
                     EndTabItem();
@@ -254,19 +253,18 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             if (is_h) {
                 bool include_labels = !fg_style.Params.HeaderTitles;
                 suggested_item_height = ranges::max(item.items | transform([include_labels](const auto &child) {
-                    return CalcItemHeight(child) + (include_labels ? CalcItemLabelHeight(child) : 0);
-                }));
+                                                        return CalcItemHeight(child) + (include_labels ? CalcItemLabelHeight(child) : 0);
+                                                    }));
             }
             if (type == ItemType_None) { // Root group (treated as a vertical group but not as a table)
-                for (const auto &child: children) DrawUiItem(child, child.label, suggested_item_height);
+                for (const auto &child : children) DrawUiItem(child, child.label, suggested_item_height);
             } else {
                 if (BeginTable(item.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImgui(fg_style.Params.TableFlags))) {
                     const float row_min_height = suggested_item_height + cell_padding;
                     if (is_h) {
                         ParamsWidthSizingPolicy policy = fg_style.Params.WidthSizingPolicy;
-                        const bool allow_fixed_width_items = policy != ParamsWidthSizingPolicy_Balanced && (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly ||
-                            (policy == ParamsWidthSizingPolicy_StretchToFill && ranges::any_of(item.items, [](const auto &child) { return IsWidthExpandable(child.type); })));
-                        for (const auto &child: children) {
+                        const bool allow_fixed_width_items = policy != ParamsWidthSizingPolicy_Balanced && (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly || (policy == ParamsWidthSizingPolicy_StretchToFill && ranges::any_of(item.items, [](const auto &child) { return IsWidthExpandable(child.type); })));
+                        for (const auto &child : children) {
                             ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
                             if (allow_fixed_width_items && !IsWidthExpandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
                             TableSetupColumn(child.label.c_str(), flags, CalcItemWidth(child, true));
@@ -286,7 +284,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                         }
                         TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                     }
-                    for (const auto &child: children) {
+                    for (const auto &child : children) {
                         if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                         TableNextColumn();
                         TableSetBgColor(ImGuiTableBgTarget_RowBg0, fg_style.Colors[FlowGridCol_ParamsBg]);
@@ -311,10 +309,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         SetNextItemWidth(item_size_no_label.x);
 
         const auto old_cursor = GetCursorPos();
-        SetCursorPos(old_cursor + ImVec2{
-            max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)),
-            max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))
-        });
+        SetCursorPos(old_cursor + ImVec2{max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)), max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))});
 
         if (type == ItemType_Button) {
             *item.zone = Real(Button(label.c_str()));
@@ -335,8 +330,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
             auto value = float(*item.zone);
             KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
-            if (Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr,
-                justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
+            if (Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
                 *item.zone = Real(value);
             }
         } else if (type == ItemType_HRadioButtons || type == ItemType_VRadioButtons) {
@@ -381,13 +375,13 @@ void Audio::FaustState::FaustParams::Render() const {
 
     DrawUiItem(interface->ui, "", GetContentRegionAvail().y);
 
-//    if (hovered_node) {
-//        const string label = get_ui_label(hovered_node->tree);
-//        if (!label.empty()) {
-//            const auto *widget = interface->get_widget(label);
-//            if (widget) cout << "Found widget: " << label << '\n';
-//        }
-//    }
+    //    if (hovered_node) {
+    //        const string label = get_ui_label(hovered_node->tree);
+    //        if (!label.empty()) {
+    //            const auto *widget = interface->get_widget(label);
+    //            if (widget) cout << "Found widget: " << label << '\n';
+    //        }
+    //    }
 }
 
 void OnUiChange(FaustUI *ui) {

@@ -1,10 +1,10 @@
 #include "StateJson.h"
 
-#include "blockingconcurrentqueue.h"
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/concat.hpp>
-#include <immer/algorithm.hpp>
 #include "ImGuiFileDialog.h"
+#include "blockingconcurrentqueue.h"
+#include <immer/algorithm.hpp>
+#include <range/v3/view/concat.hpp>
+#include <range/v3/view/filter.hpp>
 
 map<ID, StateMember *> StateMember::WithId{};
 
@@ -24,10 +24,10 @@ Store Set(const FieldEntries &values, const Store &_store) {
 // Transient modifiers
 void Set(const Field::Base &field, const Primitive &value, TransientStore &_store) { _store.set(field.Path, value); }
 void Set(const StoreEntries &values, TransientStore &_store) {
-    for (const auto &[path, value]: values) _store.set(path, value);
+    for (const auto &[path, value] : values) _store.set(path, value);
 }
 void Set(const FieldEntries &values, TransientStore &_store) {
-    for (const auto &[field, value]: values) _store.set(field.Path, value);
+    for (const auto &[field, value] : values) _store.set(field.Path, value);
 }
 
 StateMember::StateMember(StateMember *parent, const string &path_segment, const string &name_help) : Parent(parent) {
@@ -35,7 +35,10 @@ StateMember::StateMember(StateMember *parent, const string &path_segment, const 
 
     const auto &[name, help] = ParseHelpText(name_help);
     PathSegment = path_segment;
-    Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment : Parent ? Parent->Path : !PathSegment.empty() ? StatePath(PathSegment) : RootPath;
+    Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment :
+        Parent                            ? Parent->Path :
+        !PathSegment.empty()              ? StatePath(PathSegment) :
+                                            RootPath;
     Name = name.empty() ? path_segment.empty() ? "" : SnakeCaseToSentenceCase(path_segment) : name;
     ImGuiLabel = Name.empty() ? "" : format("{}##{}", Name, PathSegment);
     Help = help;
@@ -54,9 +57,9 @@ Vec2Linked::Vec2Linked(StateMember *parent, const string &path_segment, const st
 
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
-    for (const auto &[key, value]: v) j[json::json_pointer(key.string())] = value;
+    for (const auto &[key, value] : v) j[json::json_pointer(key.string())] = value;
 }
-}
+} // namespace nlohmann
 
 // `from_json` defined out of `nlohmann`, to be called manually.
 // This avoids getting a reference arg to a default-constructed, non-transient `Store` instance.
@@ -64,10 +67,10 @@ Store store_from_json(const json &j) {
     const auto &flattened = j.flatten();
     StoreEntries entries(flattened.size());
     int item_index = 0;
-    for (const auto &[key, value]: flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
+    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
 
     TransientStore _store;
-    for (const auto &[path, value]: entries) _store.set(path, value);
+    for (const auto &[path, value] : entries) _store.set(path, value);
     return _store.persistent();
 }
 
@@ -90,42 +93,48 @@ string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 namespace action {
 
 string GetName(const ProjectAction &action) {
-    return std::visit(visitor{
-        [&](const undo &) { return ActionName(undo); },
-        [&](const redo &) { return ActionName(redo); },
-        [&](const set_history_index &) { return ActionName(set_history_index); },
-        [&](const open_project &) { return ActionName(open_project); },
-        [&](const open_empty_project &) { return ActionName(open_empty_project); },
-        [&](const open_default_project &) { return ActionName(open_default_project); },
-        [&](const save_project &) { return ActionName(save_project); },
-        [&](const save_default_project &) { return ActionName(save_default_project); },
-        [&](const save_current_project &) { return ActionName(save_current_project); },
-        [&](const save_faust_file &) { return "Save Faust file"s; },
-        [&](const save_faust_svg_file &) { return "Save Faust SVG file"s; },
-    }, action);
+    return std::visit(
+        visitor{
+            [&](const undo &) { return ActionName(undo); },
+            [&](const redo &) { return ActionName(redo); },
+            [&](const set_history_index &) { return ActionName(set_history_index); },
+            [&](const open_project &) { return ActionName(open_project); },
+            [&](const open_empty_project &) { return ActionName(open_empty_project); },
+            [&](const open_default_project &) { return ActionName(open_default_project); },
+            [&](const save_project &) { return ActionName(save_project); },
+            [&](const save_default_project &) { return ActionName(save_default_project); },
+            [&](const save_current_project &) { return ActionName(save_current_project); },
+            [&](const save_faust_file &) { return "Save Faust file"s; },
+            [&](const save_faust_svg_file &) { return "Save Faust SVG file"s; },
+        },
+        action
+    );
 }
 
 string GetName(const StateAction &action) {
-    return std::visit(visitor{
-        [&](const open_faust_file &) { return "Open Faust file"s; },
-        [&](const show_open_faust_file_dialog &) { return "Show open Faust file dialog"s; },
-        [&](const show_save_faust_file_dialog &) { return "Show save Faust file dialog"s; },
-        [&](const show_save_faust_svg_file_dialog &) { return "Show save Faust SVG file dialog"s; },
-        [&](const set_imgui_color_style &) { return "Set ImGui color style"s; },
-        [&](const set_implot_color_style &) { return "Set ImPlot color style"s; },
-        [&](const set_flowgrid_color_style &) { return "Set FlowGrid color style"s; },
-        [&](const set_flowgrid_diagram_color_style &) { return "Set FlowGrid diagram color style"s; },
-        [&](const set_flowgrid_diagram_layout_style &) { return "Set FlowGrid diagram layout style"s; },
-        [&](const open_file_dialog &) { return ActionName(open_file_dialog); },
-        [&](const close_file_dialog &) { return ActionName(close_file_dialog); },
-        [&](const show_open_project_dialog &) { return ActionName(show_open_project_dialog); },
-        [&](const show_save_project_dialog &) { return ActionName(show_save_project_dialog); },
-        [&](const set_value &) { return ActionName(set_value); },
-        [&](const set_values &) { return ActionName(set_values); },
-        [&](const toggle_value &) { return ActionName(toggle_value); },
-        [&](const apply_patch &) { return ActionName(apply_patch); },
-        [&](const close_application &) { return ActionName(close_application); },
-    }, action);
+    return std::visit(
+        visitor{
+            [&](const open_faust_file &) { return "Open Faust file"s; },
+            [&](const show_open_faust_file_dialog &) { return "Show open Faust file dialog"s; },
+            [&](const show_save_faust_file_dialog &) { return "Show save Faust file dialog"s; },
+            [&](const show_save_faust_svg_file_dialog &) { return "Show save Faust SVG file dialog"s; },
+            [&](const set_imgui_color_style &) { return "Set ImGui color style"s; },
+            [&](const set_implot_color_style &) { return "Set ImPlot color style"s; },
+            [&](const set_flowgrid_color_style &) { return "Set FlowGrid color style"s; },
+            [&](const set_flowgrid_diagram_color_style &) { return "Set FlowGrid diagram color style"s; },
+            [&](const set_flowgrid_diagram_layout_style &) { return "Set FlowGrid diagram layout style"s; },
+            [&](const open_file_dialog &) { return ActionName(open_file_dialog); },
+            [&](const close_file_dialog &) { return ActionName(close_file_dialog); },
+            [&](const show_open_project_dialog &) { return ActionName(show_open_project_dialog); },
+            [&](const show_save_project_dialog &) { return ActionName(show_save_project_dialog); },
+            [&](const set_value &) { return ActionName(set_value); },
+            [&](const set_values &) { return ActionName(set_values); },
+            [&](const toggle_value &) { return ActionName(toggle_value); },
+            [&](const apply_patch &) { return ActionName(apply_patch); },
+            [&](const close_application &) { return ActionName(close_application); },
+        },
+        action
+    );
 }
 
 string GetShortcut(const EmptyAction &action) {
@@ -135,19 +144,22 @@ string GetShortcut(const EmptyAction &action) {
 
 string GetMenuLabel(const EmptyAction &action) {
     // An action's menu label is its name, except for a few exceptions.
-    return std::visit(visitor{
-        [&](const show_open_project_dialog &) { return "Open project"s; },
-        [&](const open_empty_project &) { return "New project"s; },
-        [&](const save_current_project &) { return "Save project"s; },
-        [&](const show_save_project_dialog &) { return "Save project as..."s; },
-        [&](const show_open_faust_file_dialog &) { return "Open DSP file"s; },
-        [&](const show_save_faust_file_dialog &) { return "Save DSP as..."s; },
-        [&](const show_save_faust_svg_file_dialog &) { return "Export SVG"s; },
-        [&](const ProjectAction &a) { return GetName(a); },
-        [&](const StateAction &a) { return GetName(a); },
-    }, action);
+    return std::visit(
+        visitor{
+            [&](const show_open_project_dialog &) { return "Open project"s; },
+            [&](const open_empty_project &) { return "New project"s; },
+            [&](const save_current_project &) { return "Save project"s; },
+            [&](const show_save_project_dialog &) { return "Save project as..."s; },
+            [&](const show_open_faust_file_dialog &) { return "Open DSP file"s; },
+            [&](const show_save_faust_file_dialog &) { return "Save DSP as..."s; },
+            [&](const show_save_faust_svg_file_dialog &) { return "Export SVG"s; },
+            [&](const ProjectAction &a) { return GetName(a); },
+            [&](const StateAction &a) { return GetName(a); },
+        },
+        action
+    );
 }
-}
+} // namespace action
 
 ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingStretchProp;
@@ -169,66 +181,69 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
 }
 
 void State::Update(const StateAction &action, TransientStore &transient) const {
-    std::visit(visitor{
-        [&](const set_value &a) { transient.set(a.path, a.value); },
-        [&](const set_values &a) { ::Set(a.values, transient); },
-        [&](const toggle_value &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
-        [&](const apply_patch &a) {
-            const auto &patch = a.patch;
-            for (const auto &[partial_path, op]: patch.Ops) {
-                const auto &path = patch.BasePath / partial_path;
-                if (op.Op == AddOp || op.Op == ReplaceOp) transient.set(path, *op.Value);
-                else if (op.Op == RemoveOp) transient.erase(path);
-            }
-        },
-        [&](const open_file_dialog &a) { FileDialog.Set(json::parse(a.dialog_json), transient); },
-        [&](const close_file_dialog &) { Set(FileDialog.Visible, false, transient); },
-        [&](const show_open_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
-        [&](const show_save_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
-        [&](const show_open_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
-        [&](const show_save_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
-        [&](const show_save_faust_svg_file_dialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
+    std::visit(
+        visitor{
+            [&](const set_value &a) { transient.set(a.path, a.value); },
+            [&](const set_values &a) { ::Set(a.values, transient); },
+            [&](const toggle_value &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
+            [&](const apply_patch &a) {
+                const auto &patch = a.patch;
+                for (const auto &[partial_path, op] : patch.Ops) {
+                    const auto &path = patch.BasePath / partial_path;
+                    if (op.Op == AddOp || op.Op == ReplaceOp) transient.set(path, *op.Value);
+                    else if (op.Op == RemoveOp) transient.erase(path);
+                }
+            },
+            [&](const open_file_dialog &a) { FileDialog.Set(json::parse(a.dialog_json), transient); },
+            [&](const close_file_dialog &) { Set(FileDialog.Visible, false, transient); },
+            [&](const show_open_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
+            [&](const show_save_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
+            [&](const show_open_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
+            [&](const show_save_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
+            [&](const show_save_faust_svg_file_dialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
 
-        // todo enum types instead of raw integers
-        [&](const set_imgui_color_style &a) {
-            switch (a.id) {
-                case 0: return Style.ImGui.ColorsDark(transient);
-                case 1: return Style.ImGui.ColorsLight(transient);
-                case 2: return Style.ImGui.ColorsClassic(transient);
-            }
+            // todo enum types instead of raw integers
+            [&](const set_imgui_color_style &a) {
+                switch (a.id) {
+                    case 0: return Style.ImGui.ColorsDark(transient);
+                    case 1: return Style.ImGui.ColorsLight(transient);
+                    case 2: return Style.ImGui.ColorsClassic(transient);
+                }
+            },
+            [&](const set_implot_color_style &a) {
+                switch (a.id) {
+                    case 0: return Style.ImPlot.ColorsAuto(transient);
+                    case 1: return Style.ImPlot.ColorsDark(transient);
+                    case 2: return Style.ImPlot.ColorsLight(transient);
+                    case 3: return Style.ImPlot.ColorsClassic(transient);
+                }
+            },
+            [&](const set_flowgrid_color_style &a) {
+                switch (a.id) {
+                    case 0: return Style.FlowGrid.ColorsDark(transient);
+                    case 1: return Style.FlowGrid.ColorsLight(transient);
+                    case 2: return Style.FlowGrid.ColorsClassic(transient);
+                }
+            },
+            [&](const set_flowgrid_diagram_color_style &a) {
+                switch (a.id) {
+                    case 0: return Style.FlowGrid.Diagram.ColorsDark(transient);
+                    case 1: return Style.FlowGrid.Diagram.ColorsLight(transient);
+                    case 2: return Style.FlowGrid.Diagram.ColorsClassic(transient);
+                    case 3: return Style.FlowGrid.Diagram.ColorsFaust(transient);
+                }
+            },
+            [&](const set_flowgrid_diagram_layout_style &a) {
+                switch (a.id) {
+                    case 0: return Style.FlowGrid.Diagram.LayoutFlowGrid(transient);
+                    case 1: return Style.FlowGrid.Diagram.LayoutFaust(transient);
+                }
+            },
+            [&](const open_faust_file &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },
+            [&](const close_application &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
         },
-        [&](const set_implot_color_style &a) {
-            switch (a.id) {
-                case 0: return Style.ImPlot.ColorsAuto(transient);
-                case 1: return Style.ImPlot.ColorsDark(transient);
-                case 2: return Style.ImPlot.ColorsLight(transient);
-                case 3: return Style.ImPlot.ColorsClassic(transient);
-            }
-        },
-        [&](const set_flowgrid_color_style &a) {
-            switch (a.id) {
-                case 0: return Style.FlowGrid.ColorsDark(transient);
-                case 1: return Style.FlowGrid.ColorsLight(transient);
-                case 2: return Style.FlowGrid.ColorsClassic(transient);
-            }
-        },
-        [&](const set_flowgrid_diagram_color_style &a) {
-            switch (a.id) {
-                case 0: return Style.FlowGrid.Diagram.ColorsDark(transient);
-                case 1: return Style.FlowGrid.Diagram.ColorsLight(transient);
-                case 2: return Style.FlowGrid.Diagram.ColorsClassic(transient);
-                case 3: return Style.FlowGrid.Diagram.ColorsFaust(transient);
-            }
-        },
-        [&](const set_flowgrid_diagram_layout_style &a) {
-            switch (a.id) {
-                case 0: return Style.FlowGrid.Diagram.LayoutFlowGrid(transient);
-                case 1: return Style.FlowGrid.Diagram.LayoutFaust(transient);
-            }
-        },
-        [&](const open_faust_file &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },
-        [&](const close_application &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
-    }, action);
+        action
+    );
 }
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath) {
@@ -244,7 +259,8 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &Base
         },
         [&](auto const &old_element, auto const &new_element) {
             ops[old_element.first.lexically_relative(BasePath)] = {ReplaceOp, new_element.second, old_element.second};
-        });
+        }
+    );
 
     return {ops, BasePath};
 }
@@ -272,7 +288,9 @@ bool Context::IsUserProjectPath(const fs::path &path) {
 }
 
 void Context::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
-void Context::SaveCurrentProject() { if (CurrentProjectPath) SaveProject(*CurrentProjectPath); }
+void Context::SaveCurrentProject() {
+    if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
+}
 
 bool Context::ClearPreferences() {
     Preferences.RecentlyOpenedPaths.clear();
@@ -304,7 +322,7 @@ Patch Context::SetStore(const Store &new_store) {
     if (patch.empty()) return {};
 
     ApplicationStore = new_store; // This is the only place `ApplicationStore` is modified.
-    for (const auto &[partial_path, _op]: patch.Ops) {
+    for (const auto &[partial_path, _op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
@@ -333,9 +351,9 @@ void Context::OpenProject(const fs::path &path) {
 
         const Gestures gestures = project["gestures"];
         auto transient = store.transient();
-        for (const auto &gesture: gestures) {
+        for (const auto &gesture : gestures) {
             const auto before_store = transient.persistent();
-            for (const auto &action_moment: gesture) {
+            for (const auto &action_moment : gesture) {
                 s.Update(action_moment.first, transient);
             }
             const auto after_store = transient.persistent();
@@ -343,7 +361,7 @@ void Context::OpenProject(const fs::path &path) {
             const auto &gesture_time = gesture.back().second;
             History.Records.push_back({gesture_time, after_store, gesture}); // todo save/load gesture commit times
             History.Index = History.Size() - 1;
-            for (const auto &[partial_path, op]: patch.Ops) History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+            for (const auto &[partial_path, op] : patch.Ops) History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
         }
         SetStore(transient.persistent());
         History.SetIndex(project["index"]);
@@ -392,42 +410,47 @@ bool Context::ActionAllowed(const ActionID id) const {
     }
 }
 bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
-bool Context::ActionAllowed(const EmptyAction &action) const { return std::visit(visitor{[&](const Action &a) { return ActionAllowed(a); }}, action); }
+bool Context::ActionAllowed(const EmptyAction &action) const {
+    return std::visit(visitor{[&](const Action &a) { return ActionAllowed(a); }}, action);
+}
 
 void Context::ApplyAction(const ProjectAction &action) {
-    std::visit(visitor{
-        // Handle actions that don't directly update state.
-        // These options don't get added to the action/gesture history, since they only have non-application side effects,
-        // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const open_project &a) { OpenProject(a.path); },
-        [&](const open_empty_project &) { OpenProject(EmptyProjectPath); },
-        [&](const open_default_project &) { OpenProject(DefaultProjectPath); },
+    std::visit(
+        visitor{
+            // Handle actions that don't directly update state.
+            // These options don't get added to the action/gesture history, since they only have non-application side effects,
+            // and we don't want them replayed when loading a saved `.fga` project.
+            [&](const open_project &a) { OpenProject(a.path); },
+            [&](const open_empty_project &) { OpenProject(EmptyProjectPath); },
+            [&](const open_default_project &) { OpenProject(DefaultProjectPath); },
 
-        [&](const save_project &a) { SaveProject(a.path); },
-        [&](const save_default_project &) { SaveProject(DefaultProjectPath); },
-        [&](const save_current_project &) { SaveCurrentProject(); },
-        [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
-        [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
+            [&](const save_project &a) { SaveProject(a.path); },
+            [&](const save_default_project &) { SaveProject(DefaultProjectPath); },
+            [&](const save_current_project &) { SaveCurrentProject(); },
+            [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
+            [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
 
-        // `History.Index`-changing actions:
-        [&](const undo &) {
-            if (History.Empty()) return;
+            // `History.Index`-changing actions:
+            [&](const undo &) {
+                if (History.Empty()) return;
 
-            // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
-            // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
-            // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
-            // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
-            // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
-            if (History.Index == History.Size() - 1) {
-                if (!History.ActiveGesture.empty()) History.FinalizeGesture();
-                History.SetIndex(History.Index - 1);
-            } else {
-                History.SetIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
-            }
+                // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
+                // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
+                // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
+                // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
+                // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
+                if (History.Index == History.Size() - 1) {
+                    if (!History.ActiveGesture.empty()) History.FinalizeGesture();
+                    History.SetIndex(History.Index - 1);
+                } else {
+                    History.SetIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
+                }
+            },
+            [&](const redo &) { History.SetIndex(History.Index + 1); },
+            [&](const set_history_index &a) { History.SetIndex(a.index); },
         },
-        [&](const redo &) { History.SetIndex(History.Index + 1); },
-        [&](const set_history_index &a) { History.SetIndex(a.index); },
-    }, action);
+        action
+    );
 }
 
 //-----------------------------------------------------------------------------
@@ -468,12 +491,12 @@ void StoreHistory::FinalizeGesture() {
     Records.push_back({Clock::now(), store, merged_gesture});
     Index = Size() - 1;
     const auto &gesture_time = merged_gesture.back().second;
-    for (const auto &[partial_path, op]: patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+    for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
 void StoreHistory::UpdateGesturePaths(const Gesture &gesture, const Patch &patch) {
     const auto &gesture_time = gesture.back().second;
-    for (const auto &[partial_path, op]: patch.Ops) GestureUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+    for (const auto &[partial_path, op] : patch.Ops) GestureUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
 std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) const {
@@ -483,22 +506,24 @@ std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) c
 }
 
 StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const {
-    set < StatePath > paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<set>;
+    set<StatePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<set>;
     if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();
     vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
     Count i = 0;
-    for (const auto &path: paths) values[i++] = CommittedUpdateTimesForPath.contains(path) ? CommittedUpdateTimesForPath.at(path).size() : 0;
+    for (const auto &path : paths) values[i++] = CommittedUpdateTimesForPath.contains(path) ? CommittedUpdateTimesForPath.at(path).size() : 0;
     // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
-    if (has_gesture) for (const auto &path: paths) values[i++] = GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).size() : 0;
+    if (has_gesture)
+        for (const auto &path : paths) values[i++] = GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).size() : 0;
 
     const auto labels = paths | transform([](const string &path) {
-        // Convert `string` to char array, removing first character of the path, which is a '/'.
-        char *label = new char[path.size()];
-        std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
-        return label;
-    }) | to<vector<const char *>>;
+                            // Convert `string` to char array, removing first character of the path, which is a '/'.
+                            char *label = new char[path.size()];
+                            std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
+                            return label;
+                        }) |
+        to<vector<const char *>>;
 
     return {labels, values};
 }
@@ -523,7 +548,7 @@ void StoreHistory::SetIndex(Count new_index) {
         const Count record_index = history_index == -1 ? Index : history_index;
         const auto &segment_patch = CreatePatch(Records[record_index].Store, Records[record_index + 1].Store);
         const auto &gesture_time = Records[record_index + 1].Gesture.back().second;
-        for (const auto &[partial_path, op]: segment_patch.Ops) {
+        for (const auto &[partial_path, op] : segment_patch.Ops) {
             const auto &path = segment_patch.BasePath / partial_path;
             if (direction == Forward) {
                 CommittedUpdateTimesForPath[path].emplace_back(gesture_time);
@@ -562,13 +587,16 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
         force_finalize_gesture |= std::holds_alternative<toggle_value>(action);
 
-        std::visit(visitor{
-            [&](const ProjectAction &a) { ApplyAction(a); },
-            [&](const StateAction &a) {
-                s.Update(a, transient);
-                state_actions.emplace_back(a, action_moment.second);
+        std::visit(
+            visitor{
+                [&](const ProjectAction &a) { ApplyAction(a); },
+                [&](const StateAction &a) {
+                    s.Update(a, transient);
+                    state_actions.emplace_back(a, action_moment.second);
+                },
             },
-        }, action);
+            action
+        );
     }
 
     const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec() <= 0);

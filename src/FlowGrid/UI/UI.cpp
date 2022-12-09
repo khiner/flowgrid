@@ -1,15 +1,15 @@
-#include <Tracy.hpp>
 #include "SDL.h"
 #include "SDL_opengl.h"
-#include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h" // TODO vulkan
+#include "imgui_impl_sdl.h"
 #include "nlohmann/json.hpp"
 #include "zep/stringutils.h"
+#include <Tracy.hpp>
 
 #include "../App.h"
 
-#include "Faust/FaustEditor.h"
 #include "../FileDialog/FileDialogDemo.h"
+#include "Faust/FaustEditor.h"
 
 using namespace fg;
 
@@ -88,9 +88,9 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    //io.FontAllowUserScaling = true;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    // io.FontAllowUserScaling = true;
+    // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(RenderContext.window, RenderContext.gl_context);
@@ -118,7 +118,7 @@ void PrepareFrame() {
 
 void RenderFrame(RenderContext &rc) {
     ImGui::Render();
-    glViewport(0, 0, (int) rc.io.DisplaySize.x, (int) rc.io.DisplaySize.y);
+    glViewport(0, 0, (int)rc.io.DisplaySize.x, (int)rc.io.DisplaySize.y);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(rc.window);
@@ -159,9 +159,10 @@ std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
 // todo Find/implement a `BidirectionalMap` and use it here.
 const auto KeyMap = action::ShortcutForId | transform([](const auto &entry) {
-    const auto &[action_id, shortcut] = entry;
-    return pair(*ParseShortcut(shortcut), action_id);
-}) | to<map>;
+                        const auto &[action_id, shortcut] = entry;
+                        return pair(*ParseShortcut(shortcut), action_id);
+                    }) |
+    to<map>;
 
 bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
     const auto &[mod, key] = key_shortcut;
@@ -192,7 +193,7 @@ void TickUi() {
         ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT ||
             (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
+             event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
             q(close_application{}, true);
         }
     }
@@ -203,7 +204,7 @@ void TickUi() {
         UiContext.ApplyFlags = UIContext::Flags_None;
     }
 
-    for (const auto &[shortcut, action_id]: KeyMap) {
+    for (const auto &[shortcut, action_id] : KeyMap) {
         if (IsShortcutPressed(shortcut) && c.ActionAllowed(action_id)) {
             q(action::Create(action_id));
         }
@@ -298,7 +299,7 @@ void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_fla
     } else if (value.is_array()) {
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             Count i = 0;
-            for (const auto &it: value) {
+            for (const auto &it : value) {
                 JsonTree(to_string(i), it, node_flags);
                 i++;
             }
@@ -309,4 +310,4 @@ void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_fla
         else ImGui::Text("%s: %s", label.c_str(), value.dump().c_str());
     }
 }
-}
+} // namespace FlowGrid

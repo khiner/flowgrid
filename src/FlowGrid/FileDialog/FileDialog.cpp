@@ -19,21 +19,18 @@ bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *h
 
 void IGFD::InitializeDemo() {
 #ifdef USE_THUMBNAILS
-    Dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void
-    {
+    Dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void {
         if (thumbnail_info && thumbnail_info->isReadyToUpload && thumbnail_info->textureFileDatas) {
             GLuint textureId = 0;
             glGenTextures(1, &textureId);
-            thumbnail_info->textureID = (void*)(size_t)textureId;
+            thumbnail_info->textureID = (void *)(size_t)textureId;
 
             glBindTexture(GL_TEXTURE_2D, textureId);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                (GLsizei)thumbnail_info->textureWidth, (GLsizei)thumbnail_info->textureHeight,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, thumbnail_info->textureFileDatas);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)thumbnail_info->textureWidth, (GLsizei)thumbnail_info->textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, thumbnail_info->textureFileDatas);
             glFinish();
             glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -44,8 +41,7 @@ void IGFD::InitializeDemo() {
             thumbnail_info->isReadyToDisplay = true;
         }
     });
-    Dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info* thumbnail_info)
-    {
+    Dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) {
         if (thumbnail_info) {
             GLuint tex_id = (GLuint)(size_t)thumbnail_info->textureID;
             glDeleteTextures(1, &tex_id);
@@ -171,13 +167,13 @@ void IGFD::ShowDemoWindow() {
 
     FilePathName = Dialog->GetFilePathName();
     static string file_path = Dialog->GetCurrentPath();
-    static string user_data = Dialog->GetUserDatas() ? string((const char *) Dialog->GetUserDatas()) : "";
+    static string user_data = Dialog->GetUserDatas() ? string((const char *)Dialog->GetUserDatas()) : "";
 
     // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
     const auto &selections = Dialog->GetSelection();
     static vector<pair<string, string>> selection = {};
     selection.clear();
-    for (const auto &sel: selections) selection.emplace_back(sel.first, sel.second);
+    for (const auto &sel : selections) selection.emplace_back(sel.first, sel.second);
 
     Separator();
 
@@ -199,7 +195,7 @@ void IGFD::ShowDemoWindow() {
                 TableHeadersRow();
 
                 ImGuiListClipper clipper;
-                clipper.Begin((int) selection.size(), GetTextLineHeightWithSpacing());
+                clipper.Begin((int)selection.size(), GetTextLineHeightWithSpacing());
                 while (clipper.Step()) {
                     for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
                         const auto &sel = selection[i];

@@ -10,4 +10,4 @@ void InitializeDemo();
 void ShowDemoWindow();
 void CleanupDemo();
 
-}
+} // namespace IGFD

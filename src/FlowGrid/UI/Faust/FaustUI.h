@@ -1,15 +1,15 @@
 #pragma once
 
-#include <vector>
+#include <iostream>
 #include <map>
 #include <stack>
 #include <string>
-#include <iostream>
+#include <vector>
 
 #include "../../Helper/Sample.h" // Must be included before any Faust includes
-#include "faust/gui/UI.h"
 #include "faust/gui/MetaDataUI.h"
 #include "faust/gui/PathBuilder.h"
+#include "faust/gui/UI.h"
 
 using std::string, std::vector, std::map;
 using Real = Sample;
@@ -82,7 +82,7 @@ public:
         groups.pop();
         if (popLabel()) {
             computeShortNames();
-            for (const auto &it: fFullPaths) index_for_shortname[fFull2Short[it]] = index_for_path[it];
+            for (const auto &it : fFullPaths) index_for_shortname[fFull2Short[it]] = index_for_path[it];
         }
     }
 

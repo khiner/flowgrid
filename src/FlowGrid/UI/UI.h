@@ -68,4 +68,4 @@ bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags = JsonTreeNodeFla
 //   * If the provided `value` is an array or object, it will show as a nested `JsonTreeNode` with `label` as its parent.
 //   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
 void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
-} // End `FlowGrid` namespace
+} // namespace FlowGrid

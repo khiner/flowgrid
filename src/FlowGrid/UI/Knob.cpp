@@ -1,7 +1,7 @@
 #include "Knob.h"
 
-#include <numbers>
 #include <imgui_internal.h>
+#include <numbers>
 
 const float PI = std::numbers::pi_v<float>;
 
@@ -55,12 +55,14 @@ ColorSet GetSecondaryColorSet() {
         colors[ImGuiCol_ButtonActive].x * 0.5f,
         colors[ImGuiCol_ButtonActive].y * 0.5f,
         colors[ImGuiCol_ButtonActive].z * 0.5f,
-        colors[ImGuiCol_ButtonActive].w);
+        colors[ImGuiCol_ButtonActive].w
+    );
     const auto &hovered = ImVec4(
         colors[ImGuiCol_ButtonHovered].x * 0.5f,
         colors[ImGuiCol_ButtonHovered].y * 0.5f,
         colors[ImGuiCol_ButtonHovered].z * 0.5f,
-        colors[ImGuiCol_ButtonHovered].w);
+        colors[ImGuiCol_ButtonHovered].w
+    );
     return {active, hovered, hovered};
 }
 
@@ -73,7 +75,8 @@ struct knob {
     knob(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float speed, float radius, const char *format, KnobFlags flags)
         : radius(radius), t(float(*p_value - v_min) / (v_max - v_min)), angle_min(PI * 0.75f), angle_max(PI * 2.25f), angle(angle_min + (angle_max - angle_min) * t) {
         const ImVec2 &radius_2d = {radius, radius};
-        center = GetCursorScreenPos() + radius_2d;;
+        center = GetCursorScreenPos() + radius_2d;
+        ;
 
         // Handle dragging
         ImGuiSliderFlags drag_flags = ImGuiSliderFlags_None;
@@ -90,7 +93,8 @@ struct knob {
             center + ImVec2{cosf(angle), sinf(angle)} * (radius_ratio * this->radius),
             size * this->radius,
             is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base),
-            12);
+            12
+        );
     }
 
     void draw_tick(float start, float end, float width, float step_angle) const {
@@ -103,7 +107,8 @@ struct knob {
             center + angle_unit * tick_end,
             center + angle_unit * tick_start,
             is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base),
-            width * radius);
+            width * radius
+        );
     }
 
     void draw_circle(float size) const {
@@ -113,15 +118,13 @@ struct knob {
 
     void draw_arc(float radius_ratio, float size, float start_angle, float end_angle, const ColorSet &color_set, int segments, int bezier_count) const {
         const auto track_size = size * this->radius * 0.5f + 0.0001f;
-        detail::draw_arc(center, radius_ratio * this->radius, start_angle, end_angle, track_size,
-            is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base), segments, bezier_count);
+        detail::draw_arc(center, radius_ratio * this->radius, start_angle, end_angle, track_size, is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base), segments, bezier_count);
     }
 };
-} // End namespace `detail`
+} // namespace detail
 
 template<typename DataType>
-bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float _speed, const char *format,
-              HJustify h_justify, KnobVariant variant, KnobFlags flags = KnobFlags_None, int steps = 10) {
+bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float _speed, const char *format, HJustify h_justify, KnobVariant variant, KnobFlags flags = KnobFlags_None, int steps = 10) {
     const auto speed = _speed == 0 ? (v_max - v_min) / 250.f : _speed;
     PushID(label);
     const auto width = CalcItemWidth();
@@ -218,4 +221,4 @@ bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed,
     return KnobBase(label, ImGuiDataType_S32, p_value, v_min, v_max, speed, format == nullptr ? "%i" : format, h_justify, variant, flags, steps);
 }
 
-} // End namespace `Knobs`
+} // namespace Knobs

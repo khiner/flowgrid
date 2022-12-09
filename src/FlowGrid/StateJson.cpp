@@ -16,21 +16,27 @@ ProjectAction CreateProjectAction(ID index, const json &j) {
 namespace nlohmann {
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
 void to_json(json &j, const StateAction &value) {
-    std::visit([&](auto &&inner_value) {
-        j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
-    }, value);
+    std::visit(
+        [&](auto &&inner_value) {
+            j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
+        },
+        value
+    );
 }
 void from_json(const json &j, StateAction &value) {
     auto id = j[0].get<ActionID>();
     value = CreateStateAction(id, j[1]);
 }
 void to_json(json &j, const ProjectAction &value) {
-    std::visit([&](auto &&inner_value) {
-        j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
-    }, value);
+    std::visit(
+        [&](auto &&inner_value) {
+            j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
+        },
+        value
+    );
 }
 void from_json(const json &j, ProjectAction &value) {
     auto id = j[0].get<ActionID>();
     value = CreateProjectAction(id, j[1]);
 }
-}
+} // namespace nlohmann

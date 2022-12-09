@@ -1,15 +1,15 @@
 #pragma once
 
-#include <string>
 #include <range/v3/core.hpp>
 #include <range/v3/view/join.hpp>
-#include <range/v3/view/transform.hpp>
 #include <range/v3/view/split.hpp>
+#include <range/v3/view/transform.hpp>
+#include <string>
 
 using std::string;
 namespace views = ranges::views;
-using views::transform;
 using ranges::to;
+using views::transform;
 
 namespace StringHelper {
 inline static string Capitalize(const string &str) {
@@ -54,4 +54,4 @@ inline static string Replace(string subject, const char search, const string &re
     }
     return subject;
 }
-} // End namespace `StringHelper`
+} // namespace StringHelper

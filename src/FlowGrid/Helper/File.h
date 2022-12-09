@@ -13,4 +13,4 @@ string read(const fs::path &path);
 bool write(const fs::path &path, const string &contents);
 bool write(const fs::path &path, const vector<std::uint8_t> &contents);
 
-}
+} // namespace FileIO

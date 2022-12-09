@@ -19,15 +19,15 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
-**/
+ **/
 
 // Implementation copied from https://github.com/azawadzki/base-n/blob/master/include/basen.hpp
 
 #pragma once
 
 #include <algorithm>
-#include <cctype>
 #include <cassert>
+#include <cctype>
 
 namespace bn {
 
@@ -73,7 +73,7 @@ inline char extract_overlapping_bits(char previous, char next, size_t start_bit,
     return (t1 | t2) & ~(0xff << bits_count);
 }
 
-}
+} // namespace
 
 struct b16_conversion_traits {
     static size_t group_length() { return 4; }
@@ -202,7 +202,7 @@ void encode(Iter1 start, Iter1 end, Iter2 out) {
     }
 }
 
-} // impl
+} // namespace impl
 
 using namespace bn::impl;
 
@@ -236,4 +236,4 @@ void decode_b64(Iter1 start, Iter1 end, Iter2 out) {
     decode<b64_conversion_traits>(start, end, out);
 }
 
-}
+} // namespace bn

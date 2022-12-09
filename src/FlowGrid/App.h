@@ -18,12 +18,12 @@
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "Primitive.h"
-#include "UI/UI.h"
-#include "UI/Style.h"
+#include "Helper/File.h"
 #include "Helper/Sample.h"
 #include "Helper/String.h"
-#include "Helper/File.h"
+#include "Primitive.h"
+#include "UI/Style.h"
+#include "UI/UI.h"
 
 #include "imgui_internal.h"
 
@@ -36,11 +36,11 @@ using namespace fmt;
 using namespace nlohmann;
 
 using namespace std::string_literals;
-using std::nullopt;
 using std::cout, std::cerr;
-using std::unique_ptr, std::make_unique;
-using std::min, std::max;
 using std::map, std::set, std::pair;
+using std::min, std::max;
+using std::nullopt;
+using std::unique_ptr, std::make_unique;
 
 /**
 An ID is used to uniquely identify something.
@@ -143,28 +143,34 @@ Or, to use the path segment for the name but provide a help string, omit the nam
 
 // Convenience methods for defining simple `UIStateMember`s and `Window`s:
 
-#define UIMember(MemberName, ...) struct MemberName : UIStateMember { \
-    using UIStateMember::UIStateMember; \
-    __VA_ARGS__; \
-protected:\
-    void Render() const override; \
-};
+#define UIMember(MemberName, ...)           \
+    struct MemberName : UIStateMember {     \
+        using UIStateMember::UIStateMember; \
+        __VA_ARGS__;                        \
+                                            \
+    protected:                              \
+        void Render() const override;       \
+    };
 
-#define WindowMember(MemberName, ...) struct MemberName : Window { \
-    using Window::Window; \
-    __VA_ARGS__; \
-protected: \
-    void Render() const override; \
-};
+#define WindowMember(MemberName, ...) \
+    struct MemberName : Window {      \
+        using Window::Window;         \
+        __VA_ARGS__;                  \
+                                      \
+    protected:                        \
+        void Render() const override; \
+    };
 
-#define Member(MemberName, ...) struct MemberName : StateMember { \
-    using StateMember::StateMember; \
-    __VA_ARGS__; \
-};
+#define Member(MemberName, ...)         \
+    struct MemberName : StateMember {   \
+        using StateMember::StateMember; \
+        __VA_ARGS__;                    \
+    };
 
-Member(UIStateMember,
+Member(
+    UIStateMember,
     void Draw() const; // Wraps around internal `Render` fn.
-    virtual void Render() const = 0;
+    virtual void Render() const = 0
 );
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
@@ -184,8 +190,10 @@ struct Bool : Base {
     operator bool() const;
     void RenderMenu() const;
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
+
 protected:
     void Render() const override;
+
 private:
     void Toggle() const; // Used in draw methods.
 };
@@ -225,8 +233,7 @@ protected:
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1,
-          const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
+    Float(StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
         : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
     operator float() const;
@@ -294,7 +301,7 @@ struct Flags : Base {
 protected:
     void Render() const override;
 };
-} // End `Field` namespace
+} // namespace Field
 
 using FieldEntry = pair<const Field::Base &, Primitive>;
 using FieldEntries = vector<FieldEntry>;
@@ -428,37 +435,56 @@ protected:
 
 WindowMember(TabsWindow);
 
-WindowMember(ApplicationSettings,
+WindowMember(
+    ApplicationSettings,
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
 );
 
-WindowMember(StateViewer,
-    enum LabelMode { Annotated, Raw };
+WindowMember(
+    StateViewer,
+    enum LabelMode{Annotated, Raw};
     Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
                            "For example, the main `ui.style.colors` state is a list.\n\n"
                            "'Annotated' mode shows (highlighted) labels for such state items.\n"
                            "'Raw' mode shows the state exactly as it is in the raw JSON state.",
-        {"Annotated", "Raw"}, Annotated);
+          {"Annotated", "Raw"}, Annotated);
     Prop_(Bool, AutoSelect, "Auto-Select?When auto-select is enabled, state changes automatically open.\n"
                             "The state viewer to the changed state node(s), closing all other state nodes.\n"
-                            "State menu items can only be opened or closed manually if auto-select is disabled.", true);
+                            "State menu items can only be opened or closed manually if auto-select is disabled.",
+          true);
 
-    void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const;
+    void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const
 );
 
 WindowMember(StateMemoryEditor);
 WindowMember(StatePathUpdateFrequency);
 
-enum ProjectFormat { StateFormat, ActionFormat };
-WindowMember(ProjectPreview,
+enum ProjectFormat {
+    StateFormat,
+    ActionFormat
+};
+WindowMember(
+    ProjectPreview,
     Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
-    Prop(Bool, Raw);
+    Prop(Bool, Raw)
 );
 
-enum AudioBackend { none, dummy, alsa, pulseaudio, jack, coreaudio, wasapi };
+enum AudioBackend {
+    none,
+    dummy,
+    alsa,
+    pulseaudio,
+    jack,
+    coreaudio,
+    wasapi
+};
 
 // Starting at `-1` allows for using `IO` types as array indices.
-enum IO_ { IO_None = -1, IO_In, IO_Out };
+enum IO_ {
+    IO_None = -1,
+    IO_In,
+    IO_Out
+};
 using IO = IO_;
 
 constexpr IO IO_All[] = {IO_In, IO_Out};
@@ -475,12 +501,10 @@ enum FaustDiagramHoverFlags_ {
 };
 using FaustDiagramHoverFlags = int;
 
-struct Audio : Window {
-    using Window::Window;
-    void Render() const override;
-
+WindowMember(
+    Audio,
     // A selection of supported formats, corresponding to `SoundIoFormat`
-    enum IoFormat_ {
+    enum IoFormat_{
         IoFormat_Invalid = 0,
         IoFormat_Float64NE,
         IoFormat_Float32NE,
@@ -493,25 +517,24 @@ struct Audio : Window {
     static const vector<int> PrioritizedDefaultSampleRates;
 
     // todo state member & respond to changes, or remove from state
-    struct FaustState : StateMember {
-        using StateMember::StateMember;
-        WindowMember(FaustEditor,
-            string FileName{"default.dsp"};
-        );
+    Member(
+        FaustState,
+        WindowMember(FaustEditor, string FileName{"default.dsp"});
 
-        WindowMember(FaustDiagram,
-            Member(DiagramSettings,
-                Prop_(Flags, HoverFlags,
-                    "?Hovering over a node in the graph will display the selected information", {
-                        "ShowRect?Display the hovered node's bounding rectangle",
-                        "ShowType?Display the hovered node's box type",
-                        "ShowChannels?Display the hovered node's channel points and indices",
-                        "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"
-                    },
+        WindowMember(
+            FaustDiagram,
+            Member(
+                DiagramSettings,
+                Prop_(
+                    Flags, HoverFlags,
+                    "?Hovering over a node in the graph will display the selected information",
+                    {"ShowRect?Display the hovered node's bounding rectangle",
+                     "ShowType?Display the hovered node's box type",
+                     "ShowChannels?Display the hovered node's channel points and indices",
+                     "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
                     FaustDiagramHoverFlags_None
                 )
             );
-
             Prop(DiagramSettings, Settings);
         );
 
@@ -523,28 +546,28 @@ struct Audio : Window {
         Prop_(FaustParams, Params, "Faust params");
         Prop_(FaustLog, Log, "Faust log");
 
-//        Prop(String, Code, R"#(import("stdfaust.lib");
-//pitchshifter = vgroup("Pitch Shifter", ef.transpose(
-//    vslider("window (samples)", 1000, 50, 10000, 1),
-//    vslider("xfade (samples)", 10, 1, 10000, 1),
-//    vslider("shift (semitones)", 0, -24, +24, 0.1)
-//  )
-//);
-//process = _ : pitchshifter;)#");
-//        Prop(String, Code, R"#(import("stdfaust.lib");
-//s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
-//process = select2(s,no.noise,os.sawtooth(440));)#");
-//        Prop(String, Code, R"(import("stdfaust.lib");
-//process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)");
-//        Prop(String, Code, R"(import("stdfaust.lib");
-//process = _:fi.highpass(2,1000):_;)");
-//        Prop(String, Code, R"(import("stdfaust.lib");
-//ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
-//q = hslider("q",5,1,30,0.1);
-//gain = hslider("gain",1,0,1,0.01);
-//process = no:noise : fi.resonlp(ctFreq,q,gain);");
+        //        Prop(String, Code, R"#(import("stdfaust.lib");
+        // pitchshifter = vgroup("Pitch Shifter", ef.transpose(
+        //    vslider("window (samples)", 1000, 50, 10000, 1),
+        //    vslider("xfade (samples)", 10, 1, 10000, 1),
+        //    vslider("shift (semitones)", 0, -24, +24, 0.1)
+        //  )
+        //);
+        // process = _ : pitchshifter;)#");
+        //        Prop(String, Code, R"#(import("stdfaust.lib");
+        // s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
+        // process = select2(s,no.noise,os.sawtooth(440));)#");
+        //        Prop(String, Code, R"(import("stdfaust.lib");
+        // process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)");
+        //        Prop(String, Code, R"(import("stdfaust.lib");
+        // process = _:fi.highpass(2,1000):_;)");
+        //        Prop(String, Code, R"(import("stdfaust.lib");
+        // ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
+        // q = hslider("q",5,1,30,0.1);
+        // gain = hslider("gain",1,0,1,0.01);
+        // process = no:noise : fi.resonlp(ctFreq,q,gain);");
 
-// Based on Faust::UITester.dsp
+        // Based on Faust::UITester.dsp
         Prop(String, Code, R"#(import("stdfaust.lib");
 declare name "UI Tester";
 declare version "1.0";
@@ -627,7 +650,7 @@ process = tgroup("grp 1",
     hmisc);)#");
 
         Prop(String, Error);
-    };
+    );
 
     void UpdateProcess() const;
     const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
@@ -640,12 +663,12 @@ process = tgroup("grp 1",
     Prop(String, OutDeviceId);
     Prop(Int, InSampleRate);
     Prop(Int, OutSampleRate);
-    Prop(Enum, InFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
-    Prop(Enum, OutFormat, { "Invalid", "Float64", "Float32", "Short32", "Short16" }, IoFormat_Invalid);
+    Prop(Enum, InFormat, {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid);
+    Prop(Enum, OutFormat, {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid);
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);
-};
+);
 
 enum FlowGridCol_ {
     FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
@@ -678,8 +701,7 @@ using FlowGridDiagramCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(StateMember *parent, const string &path_segment, const string &name_help,
-         const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
+    Vec2(StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
         : UIStateMember(parent, path_segment, name_help),
           X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max),
           min(min), max(max), fmt(fmt) {}
@@ -697,8 +719,7 @@ protected:
 
 struct Vec2Linked : Vec2 {
     using Vec2::Vec2;
-    Vec2Linked(StateMember *parent, const string &path_segment, const string &name_help,
-               const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
+    Vec2Linked(StateMember *parent, const string &path_segment, const string &name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
     Prop(Bool, Linked, true);
 
@@ -741,43 +762,70 @@ struct Style : TabsWindow {
             Diagram(StateMember *parent, const string &path_segment, const string &name_help = "");
             void Render() const override;
 
-            Prop_(UInt, FoldComplexity,
+            Prop_(
+                UInt, FoldComplexity,
                 "?Number of boxes within a diagram before folding into a sub-diagram.\n"
-                "Setting to zero disables folding altogether, for a fully-expanded diagram.", 3, 0, 20);
+                "Setting to zero disables folding altogether, for a fully-expanded diagram.",
+                3, 0, 20
+            );
             Prop_(Bool, ScaleFillHeight, "?Automatically scale to fill the full height of the diagram window, keeping the same aspect ratio.");
             Prop(Float, Scale, 1, 0.1, 5);
-            Prop(Enum, Direction, { "Left", "Right" }, ImGuiDir_Right);
+            Prop(Enum, Direction, {"Left", "Right"}, ImGuiDir_Right);
             Prop(Bool, RouteFrame);
             Prop(Bool, SequentialConnectionZigzag, false); // `false` uses diagonal lines instead of zigzags instead of zigzags
             Prop(Bool, OrientationMark, false);
             Prop(Float, OrientationMarkRadius, 1.5, 0.5, 3);
 
             Prop(Bool, DecorateRootNode, false);
-            Prop(Vec2Linked, DecorateMargin, { 10, 10 }, 0, 20);
-            Prop(Vec2Linked, DecoratePadding, { 10, 10 }, 0, 20);
+            Prop(Vec2Linked, DecorateMargin, {10, 10}, 0, 20);
+            Prop(Vec2Linked, DecoratePadding, {10, 10}, 0, 20);
             Prop(Float, DecorateLineWidth, 1, 1, 4);
             Prop(Float, DecorateCornerRadius, 0, 0, 10);
 
-            Prop(Vec2Linked, GroupMargin, { 8, 8 }, 0, 20);
-            Prop(Vec2Linked, GroupPadding, { 8, 8 }, 0, 20);
+            Prop(Vec2Linked, GroupMargin, {8, 8}, 0, 20);
+            Prop(Vec2Linked, GroupPadding, {8, 8}, 0, 20);
             Prop(Float, GroupLineWidth, 2, 1, 4);
             Prop(Float, GroupCornerRadius, 5, 0, 10);
 
-            Prop(Vec2Linked, NodeMargin, { 8, 8 }, 0, 20);
-            Prop(Vec2Linked, NodePadding, { 8, 0 }, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
+            Prop(Vec2Linked, NodeMargin, {8, 8}, 0, 20);
+            Prop(Vec2Linked, NodePadding, {8, 0}, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
 
             Prop(Float, BoxCornerRadius, 4, 0, 10);
             Prop(Float, BinaryHorizontalGapRatio, 0.25, 0, 1);
             Prop(Float, WireWidth, 1, 0.5, 4);
             Prop(Float, WireGap, 16, 10, 20);
-            Prop(Vec2, ArrowSize, { 3, 2 }, 1, 10);
+            Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
             Prop(Float, InverterRadius, 3, 1, 5);
             Prop(Colors, Colors, GetColorName);
 
             const vector<std::reference_wrapper<Field::Base>> LayoutFields{
-                SequentialConnectionZigzag, OrientationMark, OrientationMarkRadius, DecorateRootNode, DecorateMargin.X, DecorateMargin.Y, DecoratePadding.X, DecoratePadding.Y, DecorateLineWidth, DecorateCornerRadius,
-                GroupMargin.X, GroupMargin.Y, GroupPadding.X, GroupPadding.Y, GroupLineWidth, GroupCornerRadius, BoxCornerRadius, BinaryHorizontalGapRatio, WireWidth, WireGap,
-                NodeMargin.X, NodeMargin.Y, NodePadding.X, NodePadding.Y, ArrowSize.X, ArrowSize.Y, InverterRadius,
+                SequentialConnectionZigzag,
+                OrientationMark,
+                OrientationMarkRadius,
+                DecorateRootNode,
+                DecorateMargin.X,
+                DecorateMargin.Y,
+                DecoratePadding.X,
+                DecoratePadding.Y,
+                DecorateLineWidth,
+                DecorateCornerRadius,
+                GroupMargin.X,
+                GroupMargin.Y,
+                GroupPadding.X,
+                GroupPadding.Y,
+                GroupLineWidth,
+                GroupCornerRadius,
+                BoxCornerRadius,
+                BinaryHorizontalGapRatio,
+                WireWidth,
+                WireGap,
+                NodeMargin.X,
+                NodeMargin.Y,
+                NodePadding.X,
+                NodePadding.Y,
+                ArrowSize.X,
+                ArrowSize.Y,
+                InverterRadius,
             };
             const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const Field::Base &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
 
@@ -806,7 +854,8 @@ struct Style : TabsWindow {
                 }
             }
         };
-        UIMember(Params,
+        UIMember(
+            Params,
             Prop(Bool, HeaderTitles, true);
             // In frame-height units:
             Prop(Float, MinHorizontalItemWidth, 4, 2, 8);
@@ -817,11 +866,14 @@ struct Style : TabsWindow {
             Prop(Enum, AlignmentHorizontal, {"Left", "Middle", "Right"}, HJustify_Middle);
             Prop(Enum, AlignmentVertical, {"Top", "Middle", "Bottom"}, VJustify_Middle);
             Prop(Flags, TableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
-            Prop_(Enum, WidthSizingPolicy,
+            Prop_(
+                Enum, WidthSizingPolicy,
                 "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
                 "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
                 "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
-                {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly);
+                {"StretchToFill", "StretchFlexibleOnly", "Balanced"},
+                ParamsWidthSizingPolicy_StretchFlexibleOnly
+            )
         );
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
@@ -863,12 +915,12 @@ struct Style : TabsWindow {
         // Double-check everything's up-to-date from time to time!
 
         // Main
-        Prop(Vec2Linked, WindowPadding, { 8, 8 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, FramePadding, { 4, 3 }, 0, 20, false, "%.0f");
-        Prop(Vec2Linked, CellPadding, { 4, 2 }, 0, 20, false, "%.0f");
-        Prop(Vec2, ItemSpacing, { 8, 4 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, ItemInnerSpacing, { 4, 4 }, 0, 20, true, "%.0f");
-        Prop(Vec2Linked, TouchExtraPadding, { 0, 0 }, 0, 10, true, "%.0f");
+        Prop(Vec2Linked, WindowPadding, {8, 8}, 0, 20, "%.0f");
+        Prop(Vec2Linked, FramePadding, {4, 3}, 0, 20, false, "%.0f");
+        Prop(Vec2Linked, CellPadding, {4, 2}, 0, 20, false, "%.0f");
+        Prop(Vec2, ItemSpacing, {8, 4}, 0, 20, "%.0f");
+        Prop(Vec2Linked, ItemInnerSpacing, {4, 4}, 0, 20, true, "%.0f");
+        Prop(Vec2Linked, TouchExtraPadding, {0, 0}, 0, 10, true, "%.0f");
         Prop(Float, IndentSpacing, 21, 0, 30, "%.0f");
         Prop(Float, ScrollbarSize, 14, 1, 20, "%.0f");
         Prop(Float, GrabMinSize, 12, 1, 20, "%.0f");
@@ -891,14 +943,14 @@ struct Style : TabsWindow {
         Prop(Float, TabRounding, 4, 0, 12, "%.0f");
 
         // Alignment
-        Prop(Vec2, WindowTitleAlign, { 0, 0.5 }, 0, 1, "%.2f");
-        Prop(Enum, WindowMenuButtonPosition, { "Left", "Right" }, ImGuiDir_Left);
-        Prop(Enum, ColorButtonPosition, { "Left", "Right" }, ImGuiDir_Right);
-        Prop_(Vec2Linked, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", { 0.5, 0.5 }, 0, 1, "%.2f");
-        Prop_(Vec2Linked, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", { 0, 0 }, 0, 1, "%.2f");
+        Prop(Vec2, WindowTitleAlign, {0, 0.5}, 0, 1, "%.2f");
+        Prop(Enum, WindowMenuButtonPosition, {"Left", "Right"}, ImGuiDir_Left);
+        Prop(Enum, ColorButtonPosition, {"Left", "Right"}, ImGuiDir_Right);
+        Prop_(Vec2Linked, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", {0.5, 0.5}, 0, 1, "%.2f");
+        Prop_(Vec2Linked, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", {0, 0}, 0, 1, "%.2f");
 
         // Safe area padding
-        Prop_(Vec2Linked, DisplaySafeAreaPadding, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", { 3, 3 }, 0, 30, "%.0f");
+        Prop_(Vec2Linked, DisplaySafeAreaPadding, "?Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).", {3, 3}, 0, 30, "%.0f");
 
         // Rendering
         Prop_(Bool, AntiAliasedLines, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true);
@@ -915,8 +967,8 @@ struct Style : TabsWindow {
 
         // Not editable todo delete?
         Prop(Float, TabMinWidthForCloseButton, 0);
-        Prop(Vec2Linked, DisplayWindowPadding, { 19, 19 });
-        Prop(Vec2, WindowMinSize, { 32, 32 });
+        Prop(Vec2Linked, DisplayWindowPadding, {19, 19});
+        Prop(Vec2, WindowMinSize, {32, 32});
         Prop(Float, MouseCursorScale, 1);
         Prop(Float, ColumnsMinSpacing, 6);
 
@@ -953,24 +1005,24 @@ struct Style : TabsWindow {
         // Plot styling
         Prop(Float, PlotBorderSize, 1, 0, 2, "%.0f");
         Prop(Float, MinorAlpha, 0.25, 1, 0, "%.2f");
-        Prop(Vec2Linked, MajorTickLen, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, MinorTickLen, { 5, 5 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, MajorTickSize, { 1, 1 }, 0, 2, "%.1f");
-        Prop(Vec2Linked, MinorTickSize, { 1, 1 }, 0, 2, "%.1f");
-        Prop(Vec2Linked, MajorGridSize, { 1, 1 }, 0, 2, "%.1f");
-        Prop(Vec2Linked, MinorGridSize, { 1, 1 }, 0, 2, "%.1f");
-        Prop(Vec2, PlotDefaultSize, { 400, 300 }, 0, 1000, "%.0f");
-        Prop(Vec2, PlotMinSize, { 200, 150 }, 0, 300, "%.0f");
+        Prop(Vec2Linked, MajorTickLen, {10, 10}, 0, 20, "%.0f");
+        Prop(Vec2Linked, MinorTickLen, {5, 5}, 0, 20, "%.0f");
+        Prop(Vec2Linked, MajorTickSize, {1, 1}, 0, 2, "%.1f");
+        Prop(Vec2Linked, MinorTickSize, {1, 1}, 0, 2, "%.1f");
+        Prop(Vec2Linked, MajorGridSize, {1, 1}, 0, 2, "%.1f");
+        Prop(Vec2Linked, MinorGridSize, {1, 1}, 0, 2, "%.1f");
+        Prop(Vec2, PlotDefaultSize, {400, 300}, 0, 1000, "%.0f");
+        Prop(Vec2, PlotMinSize, {200, 150}, 0, 300, "%.0f");
 
         // Plot padding
-        Prop(Vec2Linked, PlotPadding, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, LabelPadding, { 5, 5 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, LegendPadding, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, LegendInnerPadding, { 5, 5 }, 0, 10, "%.0f");
-        Prop(Vec2, LegendSpacing, { 5, 0 }, 0, 5, "%.0f");
-        Prop(Vec2Linked, MousePosPadding, { 10, 10 }, 0, 20, "%.0f");
-        Prop(Vec2Linked, AnnotationPadding, { 2, 2 }, 0, 5, "%.0f");
-        Prop(Vec2Linked, FitPadding, { 0, 0 }, 0, 0.2, "%.2f");
+        Prop(Vec2Linked, PlotPadding, {10, 10}, 0, 20, "%.0f");
+        Prop(Vec2Linked, LabelPadding, {5, 5}, 0, 20, "%.0f");
+        Prop(Vec2Linked, LegendPadding, {10, 10}, 0, 20, "%.0f");
+        Prop(Vec2Linked, LegendInnerPadding, {5, 5}, 0, 10, "%.0f");
+        Prop(Vec2, LegendSpacing, {5, 0}, 0, 5, "%.0f");
+        Prop(Vec2Linked, MousePosPadding, {10, 10}, 0, 20, "%.0f");
+        Prop(Vec2Linked, AnnotationPadding, {2, 2}, 0, 5, "%.0f");
+        Prop(Vec2Linked, FitPadding, {0, 0}, 0, 0.2, "%.2f");
 
         Prop(Colors, Colors, ImPlot::GetStyleColorName, true);
         Prop(Bool, UseLocalTime);
@@ -996,7 +1048,8 @@ struct ImGuiDockNodeSettings;
 //  Use Raw/Formatted settings in state viewers to:
 //  * convert structs-of-arrays to arrays-of-structs,
 //  * unpack positions/sizes
-Member(DockNodeSettings,
+Member(
+    DockNodeSettings,
     void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1012,7 +1065,8 @@ Member(DockNodeSettings,
     Prop(Vector<U32>, SizeRef); // Packed ImVec2ih
 );
 
-Member(WindowSettings,
+Member(
+    WindowSettings,
     void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1027,8 +1081,9 @@ Member(WindowSettings,
     Prop(Vector<bool>, Collapsed);
 );
 
-Member(TableColumnSettings,
-// [table_index][column_index]
+Member(
+    TableColumnSettings,
+    // [table_index][column_index]
     Prop(Vector2D<float>, WidthOrWeight);
     Prop(Vector2D<ID>, UserID);
     Prop(Vector2D<int>, Index);
@@ -1039,7 +1094,8 @@ Member(TableColumnSettings,
     Prop(Vector2D<bool>, IsStretch);
 );
 
-Member(TableSettings,
+Member(
+    TableSettings,
     void Set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1052,7 +1108,8 @@ Member(TableSettings,
     Prop(TableColumnSettings, Columns);
 );
 
-Member(ImGuiSettings,
+Member(
+    ImGuiSettings,
     Store Set(ImGuiContext *ctx) const;
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
@@ -1099,7 +1156,11 @@ protected:
 };
 
 struct PatchOp {
-    enum Type { Add, Remove, Replace, };
+    enum Type {
+        Add,
+        Remove,
+        Replace,
+    };
 
     PatchOp::Type Op{};
     std::optional<Primitive> Value{}; // Present for add/replace
@@ -1144,59 +1205,89 @@ An `Action` is a `std::variant`, which can hold any type, and thus must be large
 
 // Utility to make a variant visitor out of lambdas, using the "overloaded pattern" described
 // [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
-template<class... Ts>
-struct visitor : Ts ... {
+template<class... Ts> struct visitor : Ts... {
     using Ts::operator()...;
 };
-template<class... Ts> visitor(Ts...)->visitor<Ts...>;
+template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
 
 // Utility to flatten two variants together into one variant.
 // From https://stackoverflow.com/a/59251342/780425
-template<typename Var1, typename Var2>
-struct variant_flat;
-template<typename ... Ts1, typename ... Ts2>
-struct variant_flat<std::variant<Ts1...>, std::variant<Ts2...>> {
+template<typename Var1, typename Var2> struct variant_flat;
+template<typename... Ts1, typename... Ts2> struct variant_flat<std::variant<Ts1...>, std::variant<Ts2...>> {
     using type = std::variant<Ts1..., Ts2...>;
 };
 
 namespace Actions {
 struct undo {};
 struct redo {};
-struct set_history_index { int index; };
+struct set_history_index {
+    int index;
+};
 
-struct open_project { string path; };
+struct open_project {
+    string path;
+};
 struct open_empty_project {};
 struct open_default_project {};
 
 struct show_open_project_dialog {};
-struct open_file_dialog { string dialog_json; }; // Storing as JSON string instead of the raw struct to reduce variant size. (Raw struct is 120 bytes.)
+struct open_file_dialog {
+    string dialog_json;
+}; // Storing as JSON string instead of the raw struct to reduce variant size. (Raw struct is 120 bytes.)
 struct close_file_dialog {};
 
-struct save_project { string path; };
+struct save_project {
+    string path;
+};
 struct save_current_project {};
 struct save_default_project {};
 struct show_save_project_dialog {};
 
 struct close_application {};
 
-struct set_value { StatePath path; Primitive value; };
-struct set_values { StoreEntries values; };
-struct toggle_value { StatePath path; };
-struct apply_patch { Patch patch; };
+struct set_value {
+    StatePath path;
+    Primitive value;
+};
+struct set_values {
+    StoreEntries values;
+};
+struct toggle_value {
+    StatePath path;
+};
+struct apply_patch {
+    Patch patch;
+};
 
-struct set_imgui_color_style { int id; };
-struct set_implot_color_style { int id; };
-struct set_flowgrid_color_style { int id; };
-struct set_flowgrid_diagram_color_style { int id; };
-struct set_flowgrid_diagram_layout_style { int id; };
+struct set_imgui_color_style {
+    int id;
+};
+struct set_implot_color_style {
+    int id;
+};
+struct set_flowgrid_color_style {
+    int id;
+};
+struct set_flowgrid_diagram_color_style {
+    int id;
+};
+struct set_flowgrid_diagram_layout_style {
+    int id;
+};
 
 struct show_open_faust_file_dialog {};
 struct show_save_faust_file_dialog {};
 struct show_save_faust_svg_file_dialog {};
-struct save_faust_file { string path; };
-struct open_faust_file { string path; };
-struct save_faust_svg_file { string path; };
-} // End `Actions` namespace
+struct save_faust_file {
+    string path;
+};
+struct open_faust_file {
+    string path;
+};
+struct save_faust_svg_file {
+    string path;
+};
+} // namespace Actions
 
 using namespace Actions;
 
@@ -1206,8 +1297,7 @@ using namespace Actions;
 using ProjectAction = std::variant<
     undo, redo, set_history_index,
     open_project, open_empty_project, open_default_project,
-    save_project, save_default_project, save_current_project, save_faust_file, save_faust_svg_file
->;
+    save_project, save_default_project, save_current_project, save_faust_file, save_faust_svg_file>;
 using StateAction = std::variant<
     open_file_dialog, close_file_dialog,
     show_open_project_dialog, show_save_project_dialog, show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
@@ -1218,8 +1308,7 @@ using StateAction = std::variant<
     set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
     set_flowgrid_diagram_layout_style,
 
-    close_application
->;
+    close_application>;
 using Action = variant_flat<ProjectAction, StateAction>::type;
 using ActionID = ID;
 
@@ -1237,8 +1326,7 @@ using EmptyAction = std::variant<
     close_application,
     show_open_faust_file_dialog,
     show_save_faust_file_dialog,
-    show_save_faust_svg_file_dialog
->;
+    show_save_faust_svg_file_dialog>;
 
 namespace action {
 
@@ -1249,8 +1337,7 @@ using Gestures = vector<Gesture>;
 
 // Default-construct an action by its variant index (which is also its `ID`).
 // Adapted from: https://stackoverflow.com/a/60567091/780425
-template<ID I = 0>
-Action Create(ID index) {
+template<ID I = 0> Action Create(ID index) {
     if constexpr (I >= std::variant_size_v<Action>) throw std::runtime_error{"Action index " + to_string(I + index) + " out of bounds"};
     else return index == 0 ? Action{std::in_place_index<I>} : Create<I + 1>(index - 1);
 }
@@ -1263,13 +1350,12 @@ Action Create(ID index) {
 // Not worried about that right now, since it should be easy enough to replace with some UUID system later.
 // Index is simplest.
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
-template<typename T>
-constexpr ActionID id = mp_find<Action, T>::value;
+template<typename T> constexpr ActionID id = mp_find<Action, T>::value;
 
 #define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-const map <ActionID, string> ShortcutForId = {
+const map<ActionID, string> ShortcutForId = {
     {id<undo>, "cmd+z"},
     {id<redo>, "shift+cmd+z"},
     {id<open_empty_project>, "cmd+n"},
@@ -1288,24 +1374,26 @@ string GetName(const StateAction &action);
 string GetShortcut(const EmptyAction &);
 string GetMenuLabel(const EmptyAction &);
 Gesture MergeGesture(const Gesture &);
-} // End `action` namespace
+} // namespace action
 
+using action::ActionMoment;
 using action::Gesture;
 using action::Gestures;
-using action::ActionMoment;
 using action::StateActionMoment;
 
 //-----------------------------------------------------------------------------
 // [SECTION] Main application `State`
 //-----------------------------------------------------------------------------
 
-UIMember(State,
+UIMember(
+    State,
     void Update(const StateAction &, TransientStore &) const;
     void Apply(UIContext::Flags flags) const;
 
-    WindowMember(UIProcess,
+    WindowMember(
+        UIProcess,
         Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
-);
+    );
 
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(Style, Style);
@@ -1348,7 +1436,10 @@ static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForP
 static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(ActionFormat));
 static const fs::path PreferencesPath = InternalPath / ("Preferences" + PreferencesFileExtension);
 
-enum Direction { Forward, Reverse };
+enum Direction {
+    Forward,
+    Reverse
+};
 
 struct StoreHistory {
     struct Record {

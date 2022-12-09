@@ -17,8 +17,16 @@ struct Padding {
     const float Top, Right, Bottom, Left;
 };
 
-enum HJustify_ { HJustify_Left, HJustify_Middle, HJustify_Right, };
-enum VJustify_ { VJustify_Top, VJustify_Middle, VJustify_Bottom, };
+enum HJustify_ {
+    HJustify_Left,
+    HJustify_Middle,
+    HJustify_Right,
+};
+enum VJustify_ {
+    VJustify_Top,
+    VJustify_Middle,
+    VJustify_Bottom,
+};
 using HJustify = int;
 using VJustify = int;
 
@@ -28,7 +36,11 @@ struct Justify {
 };
 
 struct TextStyle {
-    enum FontStyle { Normal, Bold, Italic, };
+    enum FontStyle {
+        Normal,
+        Bold,
+        Italic
+    };
 
     const ImColor Color;
     const Justify Justify{HJustify_Middle, VJustify_Middle};

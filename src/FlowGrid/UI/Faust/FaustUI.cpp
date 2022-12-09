@@ -1,5 +1,5 @@
-#include <sstream>
 #include <map>
+#include <sstream>
 #include <stack>
 
 #include <range/v3/algorithm/contains.hpp>
@@ -7,8 +7,8 @@
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
 
-#include "faust/dsp/libfaust-signal.h"
 #include "faust/dsp/libfaust-box.h"
+#include "faust/dsp/libfaust-signal.h"
 
 #include "../../App.h"
 #include "../../Helper/basen.h"
@@ -19,8 +19,14 @@ using namespace ImGui;
 // [SECTION] Diagram
 //-----------------------------------------------------------------------------
 
-enum DeviceType { DeviceType_ImGui, DeviceType_SVG };
-enum DiagramOrientation { DiagramForward, DiagramReverse };
+enum DeviceType {
+    DeviceType_ImGui,
+    DeviceType_SVG
+};
+enum DiagramOrientation {
+    DiagramForward,
+    DiagramReverse
+};
 
 static inline ImVec2 Scale(const ImVec2 &p);
 static inline float Scale(float f);
@@ -28,7 +34,8 @@ static inline float Scale(float f);
 static inline ImGuiDir GlobalDirection(DiagramOrientation orientation) {
     const ImGuiDir dir = s.Style.FlowGrid.Diagram.Direction;
     return (dir == ImGuiDir_Right && orientation == DiagramForward) || (dir == ImGuiDir_Left && orientation == DiagramReverse) ?
-           ImGuiDir_Right : ImGuiDir_Left;
+        ImGuiDir_Right :
+        ImGuiDir_Left;
 }
 
 static inline bool IsLr(DiagramOrientation orientation) { return GlobalDirection(orientation) == ImGuiDir_Right; }
@@ -100,7 +107,8 @@ struct SVGDevice : Device {
                 src:url(data:application/font-woff;charset=utf-8;base64,{}) format("woff");
                 font-weight:normal;font-style:normal;
             }}
-        </style></defs>)", GetFontName(), GetFontBase64());
+        </style></defs>)",
+                         GetFontName(), GetFontBase64());
     }
 
     ~SVGDevice() override {
@@ -114,7 +122,7 @@ struct SVGDevice : Device {
         static map<char, string> Replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
 
         auto replaced_name = name;
-        for (const auto &[ch, replacement]: Replacements) replaced_name = StringHelper::Replace(replaced_name, ch, replacement);
+        for (const auto &[ch, replacement] : Replacements) replaced_name = StringHelper::Replace(replaced_name, ch, replacement);
         return replaced_name;
     }
 
@@ -124,8 +132,7 @@ struct SVGDevice : Device {
         return CreateTriangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
     }
     static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &fill_color, const ImColor &stroke_color) {
-        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)",
-            RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
     static string RgbColor(const ImColor &color) {
         const auto &[r, g, b, a] = color.Value * 255;
@@ -138,8 +145,7 @@ struct SVGDevice : Device {
     void Rect(const ImRect &local_rect, const RectStyle &style) override {
         const auto &rect = At(local_rect);
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
-        Stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="{}" style="stroke:{};stroke-width={};fill:{};"/>)",
-            rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), corner_radius, RgbColor(stroke_color), stroke_width, RgbColor(fill_color));
+        Stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="{}" style="stroke:{};stroke-width={};fill:{};"/>)", rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), corner_radius, RgbColor(stroke_color), stroke_width, RgbColor(fill_color));
     }
 
     // Only SVG device has a rect-with-link method
@@ -158,15 +164,13 @@ struct SVGDevice : Device {
         const ImVec2 &text_right = {min(text_x + TextSize(label).x, tr.x), tr.y};
         const float r = Scale(rect_style.CornerRadius);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
-        Stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)",
-            text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - label_offset) + r, r, r, -r, r, // before text to top-left
-            rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
-            rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
-            -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
-            -(tr.x - r - text_right.x), // top-right to after text
-            Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor));
-        Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(label));
+        Stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)", text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - label_offset) + r, r, r, -r, r, // before text to top-left
+                         rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
+                         rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
+                         -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
+                         -(tr.x - r - text_right.x), // top-right to after text
+                         Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor));
+        Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)", text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(label));
     }
 
     void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
@@ -175,8 +179,7 @@ struct SVGDevice : Device {
 
     void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) override {
         const auto [x, y] = At(pos);
-        Stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)",
-            RgbColor(fill_color), RgbColor(stroke_color), x, y, radius);
+        Stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), x, y, radius);
     }
 
     void Arrow(const ImVec2 &pos, DiagramOrientation orientation) override {
@@ -189,18 +192,17 @@ struct SVGDevice : Device {
         const auto &end_scaled = At(end);
         const ImColor &color = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Line];
         const auto width = Scale(s.Style.FlowGrid.Diagram.WireWidth);
-        Stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)",
-            start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
+        Stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
     }
 
     void Text(const ImVec2 &pos, const string &text, const TextStyle &style) override {
         const auto &[color, justify, padding, font_style] = style;
-        const string anchor = justify.h == HJustify_Left ? "start" : justify.h == HJustify_Middle ? "middle" : "end";
+        const string anchor = justify.h == HJustify_Left ? "start" : justify.h == HJustify_Middle ? "middle" :
+                                                                                                    "end";
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
-        Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)",
-            p.x, p.y, GetFontName(), font_style_formatted, font_weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(text));
+        Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)", p.x, p.y, GetFontName(), font_style_formatted, font_weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(text));
     }
 
     // Only SVG device has a text-with-link method
@@ -283,12 +285,7 @@ struct ImGuiDevice : Device {
     }
 
     void Arrow(const ImVec2 &p, DiagramOrientation orientation) override {
-        RenderArrowPointingAt(DrawList,
-            At(p) + ImVec2{0, 0.5f},
-            Scale(s.Style.FlowGrid.Diagram.ArrowSize),
-            GlobalDirection(orientation),
-            s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Line]
-        );
+        RenderArrowPointingAt(DrawList, At(p) + ImVec2{0, 0.5f}, Scale(s.Style.FlowGrid.Diagram.ArrowSize), GlobalDirection(orientation), s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Line]);
     }
 
     void Line(const ImVec2 &start, const ImVec2 &end) override {
@@ -303,9 +300,14 @@ struct ImGuiDevice : Device {
         const auto &size = TextSize(text);
         DrawList->AddText(
             At(p - ImVec2{padding.Right, padding.Bottom}) -
-                ImVec2{justify.h == HJustify_Left ? 0 : justify.h == HJustify_Middle ? size.x / 2 : size.x,
-                       justify.v == VJustify_Top ? 0 : justify.v == VJustify_Middle ? size.y / 2 : size.y,},
-            color, text.c_str());
+                ImVec2{
+                    justify.h == HJustify_Left ? 0 : justify.h == HJustify_Middle ? size.x / 2 :
+                                                                                    size.x,
+                    justify.v == VJustify_Top ? 0 : justify.v == VJustify_Middle ? size.y / 2 :
+                                                                                   size.y,
+                },
+            color, text.c_str()
+        );
     }
 
     void Dot(const ImVec2 &p, const ImColor &fill_color) override {
@@ -369,7 +371,7 @@ struct Node {
         DoPlace(type);
     }
     void PlaceSize(const DeviceType type) {
-        for (auto *child: Children) child->PlaceSize(type);
+        for (auto *child : Children) child->PlaceSize(type);
         DoPlaceSize(type);
     }
     void Place(const DeviceType type) { DoPlace(type); }
@@ -384,14 +386,14 @@ struct Node {
         const bool is_imgui = device.Type() == DeviceType_ImGui;
         if (is_imgui) {
             PushID(UniqueId(FaustTree).c_str());
-//            InvisibleButton("", Scale(Size));
-//            SetItemAllowOverlap();
+            //            InvisibleButton("", Scale(Size));
+            //            SetItemAllowOverlap();
             if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
         }
 
         Render(device);
         DrawConnections(device);
-        for (auto *child: Children) child->Draw(device);
+        for (auto *child : Children) child->Draw(device);
 
         if (is_imgui) PopID();
 
@@ -421,35 +423,35 @@ struct Node {
 
     // Debug
     void DrawRect(Device &device) const {
-        device.Rect(*this, {.FillColor={0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor={0.f, 0.f, 1.f, 1.f}, .StrokeWidth=1});
+        device.Rect(*this, {.FillColor = {0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor = {0.f, 0.f, 1.f, 1.f}, .StrokeWidth = 1});
     }
     void DrawType(Device &device) const {
         const string &type = GetBoxType(FaustTree); // todo cache this at construction time if we ever use it outside the debug hover context
         const string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
-        device.Rect({{0, 0}, TextSize(type_label) + padding * 2}, {.FillColor={0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text({0, 0}, type_label, {.Color={0.f, 0.f, 1.f, 1.f}, .Justify={HJustify_Left, VJustify_Bottom}});
+        device.Rect({{0, 0}, TextSize(type_label) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
+        device.Text({0, 0}, type_label, {.Color = {0.f, 0.f, 1.f, 1.f}, .Justify = {HJustify_Left, VJustify_Bottom}});
     }
     void DrawChannelLabels(Device &device) const {
-        for (const IO io: IO_All) {
+        for (const IO io : IO_All) {
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 device.Text(
                     Point(io, channel),
                     format("{}:{}", Capitalize(to_string(io, true)), channel),
-                    {.Color={0.f, 0.f, 1.f, 1.f}, .Justify={HJustify_Right, VJustify_Middle}, .Padding={6, 4}, .FontStyle=TextStyle::FontStyle::Bold}
+                    {.Color = {0.f, 0.f, 1.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .FontStyle = TextStyle::FontStyle::Bold}
                 );
                 device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
             }
         }
     }
     void DrawChildChannelLabels(Device &device) const {
-        for (const IO io: IO_All) {
+        for (const IO io : IO_All) {
             for (Count ci = 0; ci < Children.size(); ci++) {
                 for (Count channel = 0; channel < IoCount(io, ci); channel++) {
                     device.Text(
                         Point(ci, io, channel),
                         format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
-                        {.Color={1.f, 0.f, 0.f, 1.f}, .Justify={HJustify_Right, VJustify_Middle}, .Padding={0, 4, 0, 0}, .FontStyle=TextStyle::FontStyle::Bold}
+                        {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .FontStyle = TextStyle::FontStyle::Bold}
                     );
                     device.Circle(Point(ci, io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }
@@ -459,17 +461,16 @@ struct Node {
 
     void MarkFrame() {
         DrawCountForNode[this] = 0;
-        for (auto *child: Children) child->MarkFrame();
+        for (auto *child : Children) child->MarkFrame();
     }
 
     virtual ImVec2 Point(IO io, Count channel) const {
         return {
             ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
-            Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()
-        };
+            Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()};
     }
-protected:
 
+protected:
     virtual void DoPlaceSize(DeviceType) = 0;
     virtual void DoPlace(DeviceType) = 0;
     virtual void Render(Device &) const {}
@@ -484,10 +485,7 @@ protected:
 
         const auto &rect = GetFrameRect();
         const U32 color = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_OrientationMark];
-        device.Dot(ImVec2{
-            IsLr() ? rect.Min.x : rect.Max.x,
-            IsForward() ? rect.Min.y : rect.Max.y
-        } + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
+        device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
 
@@ -507,12 +505,12 @@ static string SvgFileName(Tree tree) {
     const string &tree_name = GetTreeName(tree);
     if (tree_name == "process") return tree_name + ".svg";
 
-    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>) + format("-{}", UniqueId(tree)) + ".svg";
+    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+format("-{}", UniqueId(tree)) + ".svg";
 }
 
 void WriteSvg(Node *node, const fs::path &path) {
     SVGDevice device(path, SvgFileName(node->FaustTree), node->Size);
-    device.Rect(*node, {.FillColor=s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Bg]}); // todo this should be done in both cases
+    device.Rect(*node, {.FillColor = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Bg]}); // todo this should be done in both cases
     node->Draw(device);
 }
 
@@ -523,13 +521,15 @@ struct BlockNode : Node {
 
     void DoPlaceSize(const DeviceType type) override {
         Size = Margin() * 2 + ImVec2{
-            max(3.f * WireGap(), TextSize(Text).x + Padding().x * 2),
-            max(3.f * WireGap(), float(max(InCount, OutCount)) * WireGap()),
-        };
+                                  max(3.f * WireGap(), TextSize(Text).x + Padding().x * 2),
+                                  max(3.f * WireGap(), float(max(InCount, OutCount)) * WireGap()),
+                              };
         if (Inner && type == DeviceType_SVG) Inner->PlaceSize(type);
     }
 
-    void DoPlace(const DeviceType type) override { if (Inner && type == DeviceType_SVG) Inner->Place(type); }
+    void DoPlace(const DeviceType type) override {
+        if (Inner && type == DeviceType_SVG) Inner->Place(type);
+    }
 
     void Render(Device &device) const override {
         U32 fill_color = s.Style.FlowGrid.Diagram.Colors[Color];
@@ -541,8 +541,8 @@ struct BlockNode : Node {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (Inner && !fs::exists(svg_device.Directory / SvgFileName(Inner->FaustTree))) WriteSvg(Inner, svg_device.Directory);
             const string &link = Inner ? SvgFileName(FaustTree) : "";
-            svg_device.Rect(local_rect, {.FillColor=fill_color, .CornerRadius=s.Style.FlowGrid.Diagram.BoxCornerRadius}, link);
-            svg_device.Text(Size / 2, Text, {.Color=text_color}, link);
+            svg_device.Rect(local_rect, {.FillColor = fill_color, .CornerRadius = s.Style.FlowGrid.Diagram.BoxCornerRadius}, link);
+            svg_device.Text(Size / 2, Text, {.Color = text_color}, link);
         } else {
             const auto before_cursor = device.CursorPosition;
             device.AdvanceCursor(local_rect.Min); // todo this pattern should be RIAA style
@@ -550,10 +550,11 @@ struct BlockNode : Node {
             if (Inner) {
                 bool hovered, held;
                 if (fg::InvisibleButton(Scale(size), &hovered, &held)) FocusedNodeStack.push(Inner);
-                fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+                fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered :
+                                                                                  ImGuiCol_Button);
             }
             RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, s.Style.FlowGrid.Diagram.BoxCornerRadius);
-            device.Text(size / 2, Text, {.Color=text_color});
+            device.Text(size / 2, Text, {.Color = text_color});
 
             device.SetCursorPos(before_cursor);
         }
@@ -561,7 +562,7 @@ struct BlockNode : Node {
     }
 
     void DrawConnections(Device &device) const override {
-        for (const IO io: IO_All) {
+        for (const IO io : IO_All) {
             const bool in = io == IO_In;
             const float arrow_width = in ? s.Style.FlowGrid.Diagram.ArrowSize.X : 0.f;
             for (Count channel = 0; channel < IoCount(io); channel++) {
@@ -651,7 +652,7 @@ struct ParallelNode : Node {
     }
 
     void DrawConnections(Device &device) const override {
-        for (const IO io: IO_All) {
+        for (const IO io : IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
                 device.Line(Point(io, i), i < C1()->IoCount(io) ? Node::Point(0, io, i) : Node::Point(1, io, i - C1()->IoCount(io)));
             }
@@ -661,8 +662,8 @@ struct ParallelNode : Node {
     ImVec2 Point(IO io, Count i) const override {
         const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
         return i < C1()->IoCount(io) ?
-               Node::Point(0, io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
-               Node::Point(1, io, i - C1()->IoCount(io)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
+            Node::Point(0, io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
+            Node::Point(1, io, i - C1()->IoCount(io)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
     }
 };
 
@@ -676,8 +677,7 @@ struct RecursiveNode : Node {
     void DoPlaceSize(const DeviceType) override {
         Size = {
             max(C1()->W(), C2()->W()) + 2 * WireGap() * float(max(IoCount(IO_In, 1), IoCount(IO_Out, 1))),
-            C1()->H() + C2()->H()
-        };
+            C1()->H() + C2()->H()};
     }
 
     // The two nodes are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
@@ -771,7 +771,9 @@ struct SequentialNode : BinaryNode {
         ChannelsForDirection = {};
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
             const auto dy = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
-            ChannelsForDirection[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up : ImGuiDir_Down].emplace_back(i);
+            ChannelsForDirection[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up :
+                                                                    ImGuiDir_Down]
+                .emplace_back(i);
         }
     }
 
@@ -782,7 +784,7 @@ struct SequentialNode : BinaryNode {
             return;
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
-        for (const auto dir: views::keys(ChannelsForDirection)) {
+        for (const auto dir : views::keys(ChannelsForDirection)) {
             const auto &channels = ChannelsForDirection.at(dir);
             for (Count i = 0; i < channels.size(); i++) {
                 const auto channel = channels[i];
@@ -811,7 +813,8 @@ struct SequentialNode : BinaryNode {
         map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
             const float yd = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
-            const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down : ImGuiDir_None;
+            const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down :
+                                                             ImGuiDir_None;
             size = dir == prev_dir ? size + 1 : 1;
             prev_dir = dir;
             max_group_size[dir] = max(max_group_size[dir], size);
@@ -851,10 +854,7 @@ struct SplitNode : BinaryNode {
 Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
     const auto o = c1->OutCount;
     const auto i = c2->InCount;
-    return new SequentialNode(tree,
-        o < i ? new ParallelNode(tree, c1, new CableNode(tree, i - o)) : c1,
-        o > i ? new ParallelNode(tree, c2, new CableNode(tree, o - i)) : c2
-    );
+    return new SequentialNode(tree, o < i ? new ParallelNode(tree, c1, new CableNode(tree, i - o)) : c1, o > i ? new ParallelNode(tree, c2, new CableNode(tree, o - i)) : c2);
 }
 
 /**
@@ -896,8 +896,8 @@ struct GroupNode : Node {
     void Render(Device &device) const override {
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
-            {.StrokeColor=s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_GroupStroke], .StrokeWidth=s.Style.FlowGrid.Diagram.GroupLineWidth, .CornerRadius=s.Style.FlowGrid.Diagram.GroupCornerRadius},
-            {.Color=s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Text], .Padding={0, Device::RectLabelPaddingLeft}}
+            {.StrokeColor = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_GroupStroke], .StrokeWidth = s.Style.FlowGrid.Diagram.GroupLineWidth, .CornerRadius = s.Style.FlowGrid.Diagram.GroupCornerRadius},
+            {.Color = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
         );
     }
 
@@ -911,7 +911,7 @@ private:
 
     void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding() + LineWidth();
-        for (const IO io: IO_All) {
+        for (const IO io : IO_All) {
             const bool in = io == IO_In;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Node::Point(0, io, channel);
@@ -942,8 +942,8 @@ struct DecorateNode : Node {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
-            {.StrokeColor=s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_DecorateStroke], .StrokeWidth=s.Style.FlowGrid.Diagram.DecorateLineWidth, .CornerRadius=s.Style.FlowGrid.Diagram.DecorateCornerRadius},
-            {.Color=s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Text], .Padding={0, Device::RectLabelPaddingLeft}}
+            {.StrokeColor = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_DecorateStroke], .StrokeWidth = s.Style.FlowGrid.Diagram.DecorateLineWidth, .CornerRadius = s.Style.FlowGrid.Diagram.DecorateCornerRadius},
+            {.Color = s.Style.FlowGrid.Diagram.Colors[FlowGridDiagramCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
         );
     }
 
@@ -956,7 +956,7 @@ private:
 
     void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding() + LineWidth();
-        for (const IO io: IO_All) {
+        for (const IO io : IO_All) {
             const bool in = io == IO_In;
             const float arrow_width = in ? 0.f : s.Style.FlowGrid.Diagram.ArrowSize.X;
             for (Count channel = 0; channel < IoCount(io); channel++) {
@@ -986,7 +986,7 @@ struct RouteNode : Node {
 
     void Render(Device &device) const override {
         if (s.Style.FlowGrid.Diagram.RouteFrame) {
-            device.Rect(GetFrameRect(), {.FillColor={0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
+            device.Rect(GetFrameRect(), {.FillColor = {0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
             DrawOrientationMark(device);
             // Input arrows
             for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XMargin(), 0}, Orientation);
@@ -994,7 +994,7 @@ struct RouteNode : Node {
     }
     void DrawConnections(Device &device) const override {
         const auto d = ImVec2{DirUnit() * XMargin(), 0};
-        for (const IO io: IO_All) {
+        for (const IO io : IO_All) {
             const bool in = io == IO_In;
             for (Count i = 0; i < IoCount(io); i++) {
                 const auto &p = Point(io, i);
@@ -1143,7 +1143,9 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
 
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
-    if (is_vgroup || is_hgroup || is_tgroup) return new GroupNode(t, Tree2Node(a), "", format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" : "t", extractName(label)));
+    if (is_vgroup || is_hgroup || is_tgroup) return new GroupNode(t, Tree2Node(a), "", format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" :
+                                                                                                                                           "t",
+                                                                                              extractName(label)));
 
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
@@ -1304,7 +1306,8 @@ void Audio::FaustState::FaustDiagram::Render() const {
         // Nav menu
         const bool can_nav = FocusedNodeStack.size() > 1;
         if (!can_nav) BeginDisabled();
-        if (Button("Top")) while (FocusedNodeStack.size() > 1) FocusedNodeStack.pop();
+        if (Button("Top"))
+            while (FocusedNodeStack.size() > 1) FocusedNodeStack.pop();
         SameLine();
         if (Button("Back")) FocusedNodeStack.pop();
         if (!can_nav) EndDisabled();

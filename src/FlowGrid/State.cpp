@@ -3,8 +3,8 @@
 #include <fstream>
 #include <range/v3/view/concat.hpp>
 
-#include "implot_internal.h"
 #include "imgui_memory_editor.h"
+#include "implot_internal.h"
 
 #include "FileDialog/FileDialogDemo.h"
 
@@ -19,9 +19,9 @@ using namespace action;
 // Currently, `Draw` is not used for anything except wrapping around `Render`.
 // Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
 void UIStateMember::Draw() const {
-//    PushID(ImGuiLabel.c_str());
+    //    PushID(ImGuiLabel.c_str());
     Render();
-//    PopID();
+    //    PopID();
 }
 
 namespace Field {
@@ -44,7 +44,7 @@ bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
 Enum::operator int() const { return std::get<int>(Get()); }
 Flags::operator int() const { return std::get<int>(Get()); }
-}
+} // namespace Field
 
 template<typename T>
 T Vector<T>::operator[](Count index) const { return std::get<T>(store.at(Path / to_string(index))); };
@@ -83,7 +83,7 @@ Store Vector<T>::Set(const vector<T> &values, const Store &_store) const {
 }
 template<typename T>
 void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &_store) const {
-    for (const auto &[index, value]: values) _store.set(Path / to_string(index), value);
+    for (const auto &[index, value] : values) _store.set(Path / to_string(index), value);
 }
 
 template<typename T>
@@ -121,7 +121,7 @@ void Vector2D<T>::truncate(const Count i, const Count length, TransientStore &_s
 
 PatchOps Merge(const PatchOps &a, const PatchOps &b) {
     PatchOps merged = a;
-    for (const auto &[path, op]: b) {
+    for (const auto &[path, op] : b) {
         if (merged.contains(path)) {
             const auto &old_op = merged.at(path);
             // Strictly, two consecutive patches that both add or both remove the same key should throw an exception,
@@ -220,16 +220,19 @@ Gesture action::MergeGesture(const Gesture &gesture) {
         const auto &a = *active;
         const auto &b = gesture[i + 1];
         std::variant<StateAction, bool> merge_result = Merge(a.first, b.first);
-        std::visit(visitor{
-            [&](const bool cancel_out) {
-                if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
-                else merged_gesture.emplace_back(a); // The left-side action (`a`) can't be merged into any further - nothing more we can do for it!
-                active.reset(); // No merge in either case. Move on to try compressing the next action.
+        std::visit(
+            visitor{
+                [&](const bool cancel_out) {
+                    if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
+                    else merged_gesture.emplace_back(a); //
+                    active.reset(); // No merge in either case. Move on to try compressing the next action.
+                },
+                [&](const StateAction &merged_action) {
+                    active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
+                },
             },
-            [&](const StateAction &merged_action) {
-                active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
-            },
-        }, merge_result);
+            merge_result
+        );
     }
     if (active) merged_gesture.emplace_back(*active);
 
@@ -283,7 +286,7 @@ void Field::Int::Render() const {
 void Field::Int::Render(const vector<int> &options) const {
     const int value = *this;
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
-        for (const auto option: options) {
+        for (const auto option : options) {
             const bool is_selected = option == value;
             if (Selectable(to_string(option).c_str(), is_selected)) q(set_value{Path, option});
             if (is_selected) SetItemDefaultFocus();
@@ -307,7 +310,7 @@ void Field::Enum::Render() const {
 void Field::Enum::Render(const vector<int> &options) const {
     const int value = *this;
     if (BeginCombo(ImGuiLabel.c_str(), Names[value].c_str())) {
-        for (int option: options) {
+        for (int option : options) {
             const bool is_selected = option == value;
             const auto &name = Names[option];
             if (Selectable(name.c_str(), is_selected)) q(set_value{Path, option});
@@ -373,7 +376,7 @@ void Field::String::Render() const {
 void Field::String::Render(const vector<string> &options) const {
     const string &value = *this;
     if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
-        for (const auto &option: options) {
+        for (const auto &option : options) {
             const bool is_selected = option == value;
             if (Selectable(option.c_str(), is_selected)) q(set_value{Path, option});
             if (is_selected) SetItemDefaultFocus();
@@ -404,7 +407,7 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
 
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
-    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *) &values, min, max, fmt, flags);
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, min, max, fmt, flags);
     UiContext.WidgetGestured();
     if (edited) q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
     HelpMarker();
@@ -422,7 +425,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PopID();
     SameLine();
     ImVec2 values = *this;
-    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *) &values, min, max, fmt, flags);
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, min, max, fmt, flags);
     UiContext.WidgetGestured();
     if (edited) {
         if (Linked) {
@@ -470,7 +473,7 @@ void Window::SelectTab() const {
 
 void TabsWindow::Render() const {
     if (BeginTabBar("")) {
-        for (const auto *child: Children) {
+        for (const auto *child : Children) {
             if (const auto *ui_child = reinterpret_cast<const UIStateMember *>(child)) {
                 if (ui_child != &Visible && BeginTabItem(child->ImGuiLabel.c_str())) {
                     ui_child->Draw();
@@ -512,7 +515,7 @@ void State::Render() const {
             MenuItem(open_empty_project{});
             MenuItem(show_open_project_dialog{});
             if (BeginMenu("Open recent project", !c.Preferences.RecentlyOpenedPaths.empty())) {
-                for (const auto &recently_opened_path: c.Preferences.RecentlyOpenedPaths) {
+                for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
                     if (MenuItem(recently_opened_path.filename().c_str())) q(open_project{recently_opened_path});
                 }
                 EndMenu();
@@ -800,23 +803,23 @@ void TableSettings::Apply(ImGuiContext *) const {
                 else column->WidthRequest = width_or_weight;
                 column->AutoFitQueue = 0x00;
             }
-            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder.at(i, j)) : (ImGuiTableColumnIdx) column_n;
-            display_order_mask |= (ImU64) 1 << column->DisplayOrder;
+            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder.at(i, j)) : (ImGuiTableColumnIdx)column_n;
+            display_order_mask |= (ImU64)1 << column->DisplayOrder;
             column->IsUserEnabled = column->IsUserEnabledNextFrame = Columns.IsEnabled.at(i, j);
             column->SortOrder = ImGuiTableColumnIdx(Columns.SortOrder.at(i, j));
             column->SortDirection = Columns.SortDirection.at(i, j);
         }
 
         // Validate and fix invalid display order data
-        const ImU64 expected_display_order_mask = ColumnsCount[i] == 64 ? ~0 : ((ImU64) 1 << ImU8(ColumnsCount[i])) - 1;
+        const ImU64 expected_display_order_mask = ColumnsCount[i] == 64 ? ~0 : ((ImU64)1 << ImU8(ColumnsCount[i])) - 1;
         if (display_order_mask != expected_display_order_mask) {
             for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
-                table->Columns[column_n].DisplayOrder = (ImGuiTableColumnIdx) column_n;
+                table->Columns[column_n].DisplayOrder = (ImGuiTableColumnIdx)column_n;
             }
         }
         // Rebuild index
         for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
-            table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx) column_n;
+            table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx)column_n;
         }
     }
 }
@@ -947,10 +950,12 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
     const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
     const auto &label = LabelMode == Annotated ?
-                        (is_imgui_color ? s.Style.ImGui.Colors.GetName(array_index) :
-                         is_implot_color ? s.Style.ImPlot.Colors.GetName(array_index) :
-                         is_flowgrid_color ? s.Style.FlowGrid.Colors.GetName(array_index) :
-                         is_array_item ? leaf_name : key) : key;
+        (is_imgui_color        ? s.Style.ImGui.Colors.GetName(array_index) :
+             is_implot_color   ? s.Style.ImPlot.Colors.GetName(array_index) :
+             is_flowgrid_color ? s.Style.FlowGrid.Colors.GetName(array_index) :
+             is_array_item     ? leaf_name :
+                                 key) :
+        key;
 
     if (AutoSelect) {
         const auto &update_paths = c.History.LatestUpdatedPaths;
@@ -986,7 +991,7 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
     } else if (value.is_array()) {
         if (JsonTreeNode(label, flags)) {
             Count i = 0;
-            for (const auto &it: value) {
+            for (const auto &it : value) {
                 StateJsonTree(to_string(i), it, path / to_string(i));
                 i++;
             }
@@ -1015,7 +1020,7 @@ void StateMemoryEditor::Render() const {
     static bool first_render{true};
     if (first_render) {
         memory_editor.OptShowDataPreview = true;
-//        memory_editor.WriteFn = ...; todo write_state_bytes action
+        //        memory_editor.WriteFn = ...; todo write_state_bytes action
         first_render = false;
     }
 
@@ -1124,128 +1129,152 @@ void Style::ImPlotStyle::ColorsClassic(TransientStore &_store) const {
 }
 
 void Style::FlowGridStyle::ColorsDark(TransientStore &_store) const {
-    Colors.Set({
-        {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-        {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
-    }, _store);
+    Colors.Set(
+        {
+            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
+        },
+        _store
+    );
 }
 void Style::FlowGridStyle::ColorsLight(TransientStore &_store) const {
-    Colors.Set({
-        {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
-        {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {FlowGridCol_ParamsBg, {1, 1, 1, 1}},
-    }, _store);
+    Colors.Set(
+        {
+            {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
+            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_ParamsBg, {1, 1, 1, 1}},
+        },
+        _store
+    );
 }
 void Style::FlowGridStyle::ColorsClassic(TransientStore &_store) const {
-    Colors.Set({
-        {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-        {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        {FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
-    }, _store);
+    Colors.Set(
+        {
+            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
+        },
+        _store
+    );
 }
 
 void Style::FlowGridStyle::Diagram::ColorsDark(TransientStore &_store) const {
-    Colors.Set({
-        {FlowGridDiagramCol_Bg, {0.06, 0.06, 0.06, 0.94}},
-        {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
-        {FlowGridDiagramCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
-        {FlowGridDiagramCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
-        {FlowGridDiagramCol_Line, {0.61, 0.61, 0.61, 1}},
-        {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
-        {FlowGridDiagramCol_Inverter, {1, 1, 1, 1}},
-        {FlowGridDiagramCol_OrientationMark, {1, 1, 1, 1}},
-        // Box fills
-        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
-    }, _store);
+    Colors.Set(
+        {
+            {FlowGridDiagramCol_Bg, {0.06, 0.06, 0.06, 0.94}},
+            {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
+            {FlowGridDiagramCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridDiagramCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridDiagramCol_Line, {0.61, 0.61, 0.61, 1}},
+            {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridDiagramCol_Inverter, {1, 1, 1, 1}},
+            {FlowGridDiagramCol_OrientationMark, {1, 1, 1, 1}},
+            // Box fills
+            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        _store
+    );
 }
 void Style::FlowGridStyle::Diagram::ColorsClassic(TransientStore &_store) const {
-    Colors.Set({
-        {FlowGridDiagramCol_Bg, {0, 0, 0, 0.85}},
-        {FlowGridDiagramCol_Text, {0.9, 0.9, 0.9, 1}},
-        {FlowGridDiagramCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
-        {FlowGridDiagramCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
-        {FlowGridDiagramCol_Line, {1, 1, 1, 1}},
-        {FlowGridDiagramCol_Link, {0.35, 0.4, 0.61, 0.62}},
-        {FlowGridDiagramCol_Inverter, {0.9, 0.9, 0.9, 1}},
-        {FlowGridDiagramCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
-        // Box fills
-        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
-    }, _store);
+    Colors.Set(
+        {
+            {FlowGridDiagramCol_Bg, {0, 0, 0, 0.85}},
+            {FlowGridDiagramCol_Text, {0.9, 0.9, 0.9, 1}},
+            {FlowGridDiagramCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridDiagramCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridDiagramCol_Line, {1, 1, 1, 1}},
+            {FlowGridDiagramCol_Link, {0.35, 0.4, 0.61, 0.62}},
+            {FlowGridDiagramCol_Inverter, {0.9, 0.9, 0.9, 1}},
+            {FlowGridDiagramCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
+            // Box fills
+            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        _store
+    );
 }
 void Style::FlowGridStyle::Diagram::ColorsLight(TransientStore &_store) const {
-    Colors.Set({
-        {FlowGridDiagramCol_Bg, {0.94, 0.94, 0.94, 1}},
-        {FlowGridDiagramCol_Text, {0, 0, 0, 1}},
-        {FlowGridDiagramCol_DecorateStroke, {0, 0, 0, 0.3}},
-        {FlowGridDiagramCol_GroupStroke, {0, 0, 0, 0.3}},
-        {FlowGridDiagramCol_Line, {0.39, 0.39, 0.39, 1}},
-        {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
-        {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
-        {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
-        // Box fills
-        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
-    }, _store);
+    Colors.Set(
+        {
+            {FlowGridDiagramCol_Bg, {0.94, 0.94, 0.94, 1}},
+            {FlowGridDiagramCol_Text, {0, 0, 0, 1}},
+            {FlowGridDiagramCol_DecorateStroke, {0, 0, 0, 0.3}},
+            {FlowGridDiagramCol_GroupStroke, {0, 0, 0, 0.3}},
+            {FlowGridDiagramCol_Line, {0.39, 0.39, 0.39, 1}},
+            {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
+            // Box fills
+            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        _store
+    );
 }
 void Style::FlowGridStyle::Diagram::ColorsFaust(TransientStore &_store) const {
-    Colors.Set({
-        {FlowGridDiagramCol_Bg, {1, 1, 1, 1}},
-        {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
-        {FlowGridDiagramCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
-        {FlowGridDiagramCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
-        {FlowGridDiagramCol_Line, {0, 0, 0, 1}},
-        {FlowGridDiagramCol_Link, {0, 0.2, 0.4, 1}},
-        {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
-        {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
-        // Box fills
-        {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-        {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-        {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-        {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
-    }, _store);
+    Colors.Set(
+        {
+            {FlowGridDiagramCol_Bg, {1, 1, 1, 1}},
+            {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
+            {FlowGridDiagramCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridDiagramCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridDiagramCol_Line, {0, 0, 0, 1}},
+            {FlowGridDiagramCol_Link, {0, 0.2, 0.4, 1}},
+            {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
+            // Box fills
+            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        _store
+    );
 }
 
 void Style::FlowGridStyle::Diagram::LayoutFlowGrid(TransientStore &_store) const {
     Set(DefaultLayoutEntries, _store);
 }
 void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &_store) const {
-    Set({
-        {SequentialConnectionZigzag, true},
-        {OrientationMark, true},
-        {DecorateRootNode, true},
-        {DecorateMargin.X, 10},
-        {DecorateMargin.Y, 10},
-        {DecoratePadding.X, 10},
-        {DecoratePadding.Y, 10},
-        {DecorateLineWidth, 1},
-        {DecorateCornerRadius, 0},
-        {GroupMargin.X, 10},
-        {GroupMargin.Y, 10},
-        {GroupPadding.X, 10},
-        {GroupPadding.Y, 10},
-        {GroupLineWidth, 1},
-        {GroupCornerRadius, 0},
-        {BoxCornerRadius, 0},
-        {BinaryHorizontalGapRatio, 0.25f},
-        {WireWidth, 1},
-        {WireGap, 16},
-        {NodeMargin.X, 8},
-        {NodeMargin.Y, 8},
-        {NodePadding.X, 8},
-        {NodePadding.Y, 0},
-        {ArrowSize.X, 3},
-        {ArrowSize.Y, 2},
-        {InverterRadius, 3},
-    }, _store);
+    Set(
+        {
+            {SequentialConnectionZigzag, true},
+            {OrientationMark, true},
+            {DecorateRootNode, true},
+            {DecorateMargin.X, 10},
+            {DecorateMargin.Y, 10},
+            {DecoratePadding.X, 10},
+            {DecoratePadding.Y, 10},
+            {DecorateLineWidth, 1},
+            {DecorateCornerRadius, 0},
+            {GroupMargin.X, 10},
+            {GroupMargin.Y, 10},
+            {GroupPadding.X, 10},
+            {GroupPadding.Y, 10},
+            {GroupLineWidth, 1},
+            {GroupCornerRadius, 0},
+            {BoxCornerRadius, 0},
+            {BinaryHorizontalGapRatio, 0.25f},
+            {WireWidth, 1},
+            {WireGap, 16},
+            {NodeMargin.X, 8},
+            {NodeMargin.Y, 8},
+            {NodePadding.X, 8},
+            {NodePadding.Y, 0},
+            {ArrowSize.X, 3},
+            {ArrowSize.Y, 2},
+            {InverterRadius, 3},
+        },
+        _store
+    );
 }
 
 void Colors::Draw() const {
@@ -1286,8 +1315,7 @@ void Colors::Draw() const {
             }
             auto mutable_value = ColorConvertU32ToFloat4(mapped_value);
             if (is_auto) BeginDisabled();
-            const bool item_changed = ColorEdit4(PathLabel(Path / to_string(i)).c_str(), (float *) &mutable_value,
-                alpha_flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
+            const bool item_changed = ColorEdit4(PathLabel(Path / to_string(i)).c_str(), (float *)&mutable_value, alpha_flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
             UiContext.WidgetGestured();
             if (is_auto) EndDisabled();
 
@@ -1597,16 +1625,19 @@ void Demo::ImPlotDemo::Render() const {
     ImPlot::ShowDemoWindow();
 }
 void FileDialog::Set(const FileDialogData &data, TransientStore &_store) const {
-    ::Set({
-        {Title, data.title},
-        {Filters, data.filters},
-        {FilePath, data.file_path},
-        {DefaultFileName, data.default_file_name},
-        {SaveMode, data.save_mode},
-        {MaxNumSelections, data.max_num_selections},
-        {Flags, data.flags},
-        {Visible, true},
-    }, _store);
+    ::Set(
+        {
+            {Title, data.title},
+            {Filters, data.filters},
+            {FilePath, data.file_path},
+            {DefaultFileName, data.default_file_name},
+            {SaveMode, data.save_mode},
+            {MaxNumSelections, data.max_num_selections},
+            {Flags, data.flags},
+            {Visible, true},
+        },
+        _store
+    );
 }
 
 void Demo::FileDialogDemo::Render() const {
@@ -1660,7 +1691,7 @@ void Metrics::FlowGridMetrics::Render() const {
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing them.
                         const auto &patch = CreatePatch(History.Records[i - 1].Store, History.Records[i].Store);
-                        for (const auto &[partial_path, op]: patch.Ops) {
+                        for (const auto &[partial_path, op] : patch.Ops) {
                             const auto &path = patch.BasePath / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                                 BulletText("Op: %s", to_string(op.Op).c_str());
@@ -1697,7 +1728,7 @@ void Metrics::FlowGridMetrics::Render() const {
 
             if (!has_RecentlyOpenedPaths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
-                for (const auto &recently_opened_path: c.Preferences.RecentlyOpenedPaths) {
+                for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
                     BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();

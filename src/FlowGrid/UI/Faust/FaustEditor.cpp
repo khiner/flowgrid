@@ -2,10 +2,10 @@
 #include "../../App.h"
 
 #include "zep/editor.h"
-#include "zep/regress.h"
 #include "zep/mode_repl.h"
 #include "zep/mode_standard.h"
 #include "zep/mode_vim.h"
+#include "zep/regress.h"
 #include "zep/tab_window.h"
 
 using namespace Zep;
@@ -26,7 +26,7 @@ struct ZepFont_ImGui : ZepFont {
     NVec2f GetTextSize(const uint8_t *begin, const uint8_t *end) const override {
         // This is the code from ImGui internals; we can't call GetTextSize, because it doesn't return the correct 'advance' formula, which we
         // need as we draw one character at a time...
-        ImVec2 text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, (const char *) begin, (const char *) end, nullptr);
+        ImVec2 text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, (const char *)begin, (const char *)end, nullptr);
         if (text_size.x == 0.0) {
             // Make invalid characters a default fixed_size
             const char chDefault = 'A';
@@ -50,14 +50,14 @@ struct ZepDisplay_ImGui : ZepDisplay {
         auto imFont = dynamic_cast<ZepFont_ImGui &>(font).font;
         auto *drawList = ImGui::GetWindowDrawList();
         if (text_end == nullptr) {
-            text_end = text_begin + strlen((const char *) text_begin);
+            text_end = text_begin + strlen((const char *)text_begin);
         }
         const auto modulatedColor = GetStyleModulatedColor(col);
         if (clipRect.Width() == 0) {
-            drawList->AddText(imFont, float(font.pixelHeight), toImVec2(pos), modulatedColor, (const char *) text_begin, (const char *) text_end);
+            drawList->AddText(imFont, float(font.pixelHeight), toImVec2(pos), modulatedColor, (const char *)text_begin, (const char *)text_end);
         } else {
             drawList->PushClipRect(toImVec2(clipRect.topLeftPx), toImVec2(clipRect.bottomRightPx));
-            drawList->AddText(imFont, float(font.pixelHeight), toImVec2(pos), modulatedColor, (const char *) text_begin, (const char *) text_end);
+            drawList->AddText(imFont, float(font.pixelHeight), toImVec2(pos), modulatedColor, (const char *)text_begin, (const char *)text_end);
             drawList->PopClipRect();
         }
     }
@@ -91,7 +91,7 @@ struct ZepDisplay_ImGui : ZepDisplay {
 
     void SetClipRect(const NRectf &rc) override { clipRect = rc; }
 
-    ZepFont &GetFont(ZepTextType type) override { return *fonts[(int) type]; }
+    ZepFont &GetFont(ZepTextType type) override { return *fonts[(int)type]; }
 
     NRectf clipRect;
 };
@@ -152,7 +152,7 @@ struct ZepEditor_ImGui : ZepEditor {
         if (!buffer) return;
 
         // Check USB Keys
-        for (auto &f_key: F_KEYS) {
+        for (auto &f_key : F_KEYS) {
             if (ImGui::IsKeyPressed(f_key)) {
                 buffer->GetMode()->AddKeyPress(f_key, mod);
                 return;
@@ -196,7 +196,7 @@ struct ZepEditor_ImGui : ZepEditor {
         }
 
         if (!handled) {
-            for (ImWchar ch: io.InputQueueCharacters) {
+            for (ImWchar ch : io.InputQueueCharacters) {
                 if (ch == '\r') continue; // Ignore '\r' - sometimes ImGui generates it!
                 auto key = ImGuiKey(ch - 'a' + ImGuiKey_A);
                 buffer->GetMode()->AddKeyPress(key, mod);
@@ -242,16 +242,15 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
         }
     }
 
-
     string ReplParse(ZepBuffer &buffer, const GlyphIterator &cursorOffset, ReplParseType type) override {
         ZEP_UNUSED(cursorOffset);
         ZEP_UNUSED(type);
 
         GlyphRange range = type == ReplParseType::OuterExpression ?
-                           buffer.GetExpression(ExpressionType::Outer, cursorOffset, {'('}, {')'}) :
-                           type == ReplParseType::SubExpression ?
-                           buffer.GetExpression(ExpressionType::Inner, cursorOffset, {'('}, {')'}) :
-                           GlyphRange(buffer.Begin(), buffer.End());
+            buffer.GetExpression(ExpressionType::Outer, cursorOffset, {'('}, {')'}) :
+            type == ReplParseType::SubExpression ?
+            buffer.GetExpression(ExpressionType::Inner, cursorOffset, {'('}, {')'}) :
+            GlyphRange(buffer.Begin(), buffer.End());
 
         if (range.first >= range.second) return "<No Expression>";
 
@@ -260,27 +259,27 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
         float time = 1;
         buffer.BeginFlash(time, flashType, range);
 
-//        const auto &text = buffer.workingBuffer;
-//        auto eval = string(text.begin() + range.first.index, text.begin() + range.second.index);
-//        auto ret = chibi_repl(scheme, NULL, eval);
-//        ret = RTrim(ret);
-//
-//        editor->SetCommandText(ret);
-//        return ret;
+        //        const auto &text = buffer.workingBuffer;
+        //        auto eval = string(text.begin() + range.first.index, text.begin() + range.second.index);
+        //        auto ret = chibi_repl(scheme, NULL, eval);
+        //        ret = RTrim(ret);
+        //
+        //        editor->SetCommandText(ret);
+        //        return ret;
 
         return "";
     }
 
     string ReplParse(const string &str) override {
-//        auto ret = chibi_repl(scheme, NULL, str);
-//        ret = RTrim(ret);
-//        return ret;
+        //        auto ret = chibi_repl(scheme, NULL, str);
+        //        ret = RTrim(ret);
+        //        return ret;
         return str;
     }
 
     bool ReplIsFormComplete(const string &str, int &indent) override {
         int count = 0;
-        for (auto &ch: str) {
+        for (auto &ch : str) {
             if (ch == '(') count++;
             if (ch == ')') count--;
         }
@@ -294,7 +293,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
 
         int count2 = 0;
         indent = 1;
-        for (auto &ch: str) {
+        for (auto &ch : str) {
             if (ch == '(') count2++;
             if (ch == ')') count2--;
             if (count2 == count) break;
@@ -385,10 +384,7 @@ void Audio::FaustState::FaustEditor::Render() const {
     const auto &pos = ImGui::GetWindowPos();
     const auto &top_left = ImGui::GetWindowContentRegionMin();
     const auto &bottom_right = ImGui::GetWindowContentRegionMax();
-    zep_editor->SetDisplayRegion({
-        {top_left.x + pos.x, top_left.y + pos.y},
-        {bottom_right.x + pos.x, bottom_right.y + pos.y}
-    });
+    zep_editor->SetDisplayRegion({{top_left.x + pos.x, top_left.y + pos.y}, {bottom_right.x + pos.x, bottom_right.y + pos.y}});
 
     //    editor->RefreshRequired(); // TODO Save battery by skipping display if not required.
     zep_editor->Display();
@@ -412,7 +408,6 @@ void Audio::FaustState::FaustLog::Render() const {
     s.Audio.Faust.Error.Draw();
     ImGui::PopStyleColor();
 }
-
 
 void destroy_faust_editor() {
     zep.reset();

@@ -137,28 +137,35 @@ Optionally prefix an info segment in the name string with a '?'.
 E.g. to override the name and provide a help string: "Test-member?A state member for testing things."
 Or, to use the path segment for the name but provide a help string, omit the name: "?A state member for testing things."
  */
-#define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, #PropName, NameHelp, __VA_ARGS__}
-#define Prop(PropType, PropName, ...) Prop_(PropType, PropName, "", __VA_ARGS__)
+#define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, (#PropName), (NameHelp), __VA_ARGS__};
+
+#define Prop(PropType, PropName, ...) PropType PropName{this, (#PropName), "", __VA_ARGS__};
 
 // Convenience methods for defining simple `UIStateMember`s and `Window`s:
-#define UIMember(MemberName, ...) struct MemberName : UIStateMember {\
-    using UIStateMember::UIStateMember;\
-protected:\
-    void Render() const override;\
-    __VA_ARGS__\
-}
-#define WindowMember(MemberName, ...) struct MemberName : Window {\
-    using Window::Window;\
-    void Render() const override;\
-    __VA_ARGS__\
-}
 
-struct UIStateMember : StateMember {
-    using StateMember::StateMember;
-    void Draw() const; // Wraps around internal `Render` fn.
-protected:
-    virtual void Render() const = 0;
+#define UIMember(MemberName, ...) struct MemberName : UIStateMember { \
+    using UIStateMember::UIStateMember; \
+    __VA_ARGS__; \
+protected:\
+    void Render() const override; \
 };
+
+#define WindowMember(MemberName, ...) struct MemberName : Window { \
+    using Window::Window; \
+    __VA_ARGS__; \
+protected: \
+    void Render() const override; \
+};
+
+#define Member(MemberName, ...) struct MemberName : StateMember { \
+    using StateMember::StateMember; \
+    __VA_ARGS__; \
+};
+
+Member(UIStateMember,
+    void Draw() const; // Wraps around internal `Render` fn.
+    virtual void Render() const = 0;
+);
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
@@ -218,8 +225,8 @@ protected:
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None,
-          float drag_speed = 0)
+    Float(StateMember *parent, const string &path_segment, const string &name_help, float value = 0, float min = 0, float max = 1,
+          const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
         : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
     operator float() const;
@@ -318,8 +325,6 @@ struct Vector : StateMember {
 template<typename T>
 struct Vector2D : StateMember {
     using StateMember::StateMember;
-
-    virtual string GetName(Count i, Count j) const { return format("{}/{}", i, j); };
 
     T at(Count i, Count j, const Store &_store = store) const;
     Count size(const TransientStore &) const; // Number of outer vectors
@@ -472,6 +477,7 @@ using FaustDiagramHoverFlags = int;
 
 struct Audio : Window {
     using Window::Window;
+    void Render() const override;
 
     // A selection of supported formats, corresponding to `SoundIoFormat`
     enum IoFormat_ {
@@ -482,39 +488,32 @@ struct Audio : Window {
         IoFormat_S16NE,
     };
     using IoFormat = int;
+
     static const vector<IoFormat> PrioritizedDefaultFormats;
     static const vector<int> PrioritizedDefaultSampleRates;
 
+    // todo state member & respond to changes, or remove from state
     struct FaustState : StateMember {
         using StateMember::StateMember;
+        WindowMember(FaustEditor,
+            string FileName{"default.dsp"};
+        );
 
-        struct FaustEditor : Window {
-            using Window::Window;
-            void Render() const override;
-
-            string FileName{"default.dsp"}; // todo state member & respond to changes, or remove from state
-        };
-
-        struct FaustDiagram : Window {
-            using Window::Window;
-            void Render() const override;
-
-            struct DiagramSettings : StateMember {
-                using StateMember::StateMember;
+        WindowMember(FaustDiagram,
+            Member(DiagramSettings,
                 Prop_(Flags, HoverFlags,
-                    "?Hovering over a node in the graph will display the selected information",
-                    {
+                    "?Hovering over a node in the graph will display the selected information", {
                         "ShowRect?Display the hovered node's bounding rectangle",
                         "ShowType?Display the hovered node's box type",
                         "ShowChannels?Display the hovered node's channel points and indices",
                         "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"
                     },
                     FaustDiagramHoverFlags_None
-                );
-            };
+                )
+            );
 
             Prop(DiagramSettings, Settings);
-        };
+        );
 
         WindowMember(FaustParams);
         WindowMember(FaustLog);
@@ -626,6 +625,7 @@ process = tgroup("grp 1",
     knobs,
     vmisc,
     hmisc);)#");
+
         Prop(String, Error);
     };
 
@@ -645,9 +645,6 @@ process = tgroup("grp 1",
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);
-
-protected:
-    void Render() const override;
 };
 
 enum FlowGridCol_ {
@@ -678,13 +675,6 @@ enum FlowGridDiagramCol_ {
     FlowGridDiagramCol_COUNT
 };
 using FlowGridDiagramCol = int;
-
-enum FlowGridParamsCol_ {
-    FlowGridParamsCol_Bg, // ImGuiCol_FrameBg with less alpha
-
-    FlowGridParamsCol_COUNT
-};
-using FlowGridParamsCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
@@ -816,10 +806,7 @@ struct Style : TabsWindow {
                 }
             }
         };
-        struct Params : UIStateMember {
-            using UIStateMember::UIStateMember;
-            void Render() const override;
-
+        UIMember(Params,
             Prop(Bool, HeaderTitles, true);
             // In frame-height units:
             Prop(Float, MinHorizontalItemWidth, 4, 2, 8);
@@ -827,22 +814,15 @@ struct Style : TabsWindow {
             Prop(Float, MinVerticalItemHeight, 4, 2, 8);
             Prop(Float, MinKnobItemSize, 3, 2, 6);
 
-            Prop(Enum, AlignmentHorizontal, { "Left", "Middle", "Right" }, HJustify_Middle);
-            Prop(Enum, AlignmentVertical, { "Top", "Middle", "Bottom" }, VJustify_Middle);
+            Prop(Enum, AlignmentHorizontal, {"Left", "Middle", "Right"}, HJustify_Middle);
+            Prop(Enum, AlignmentVertical, {"Top", "Middle", "Bottom"}, VJustify_Middle);
             Prop(Flags, TableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
             Prop_(Enum, WidthSizingPolicy,
                 "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
                 "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
                 "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
-                { "StretchToFill", "StretchFlexibleOnly", "Balanced" }, ParamsWidthSizingPolicy_StretchFlexibleOnly);
-
-            static const char *GetColorName(FlowGridParamsCol idx) {
-                switch (idx) {
-                    case FlowGridParamsCol_Bg: return "ParamsBg";
-                    default: return "Unknown";
-                }
-            }
-        };
+                {"StretchToFill", "StretchFlexibleOnly", "Balanced"}, ParamsWidthSizingPolicy_StretchFlexibleOnly);
+        );
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
         Prop(Diagram, Diagram);
@@ -947,6 +927,7 @@ struct Style : TabsWindow {
     };
     struct ImPlotStyle : UIStateMember {
         ImPlotStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
+
         void Apply(ImPlotContext *ctx) const;
 
         void ColorsAuto(TransientStore &_store) const;
@@ -1015,8 +996,7 @@ struct ImGuiDockNodeSettings;
 //  Use Raw/Formatted settings in state viewers to:
 //  * convert structs-of-arrays to arrays-of-structs,
 //  * unpack positions/sizes
-struct DockNodeSettings : StateMember {
-    using StateMember::StateMember;
+Member(DockNodeSettings,
     void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1030,10 +1010,9 @@ struct DockNodeSettings : StateMember {
     Prop(Vector<U32>, Pos); // Packed ImVec2ih
     Prop(Vector<U32>, Size); // Packed ImVec2ih
     Prop(Vector<U32>, SizeRef); // Packed ImVec2ih
-};
+);
 
-struct WindowSettings : StateMember {
-    using StateMember::StateMember;
+Member(WindowSettings,
     void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1046,12 +1025,10 @@ struct WindowSettings : StateMember {
     Prop(Vector<U32>, Size); // Packed ImVec2ih
     Prop(Vector<U32>, ViewportPos); // Packed ImVec2ih
     Prop(Vector<bool>, Collapsed);
-};
+);
 
-struct TableColumnSettings : StateMember {
-    using StateMember::StateMember;
-
-    // [table_index][column_index]
+Member(TableColumnSettings,
+// [table_index][column_index]
     Prop(Vector2D<float>, WidthOrWeight);
     Prop(Vector2D<ID>, UserID);
     Prop(Vector2D<int>, Index);
@@ -1060,10 +1037,9 @@ struct TableColumnSettings : StateMember {
     Prop(Vector2D<int>, SortDirection);
     Prop(Vector2D<bool>, IsEnabled); // "Visible" in ini file
     Prop(Vector2D<bool>, IsStretch);
-};
+);
 
-struct TableSettings : StateMember {
-    using StateMember::StateMember;
+Member(TableSettings,
     void Set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1074,10 +1050,9 @@ struct TableSettings : StateMember {
     Prop(Vector<Count>, ColumnsCountMax);
     Prop(Vector<bool>, WantApply);
     Prop(TableColumnSettings, Columns);
-};
+);
 
-struct ImGuiSettings : StateMember {
-    using StateMember::StateMember;
+Member(ImGuiSettings,
     Store Set(ImGuiContext *ctx) const;
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
@@ -1087,7 +1062,7 @@ struct ImGuiSettings : StateMember {
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);
     Prop(TableSettings, Tables);
-};
+);
 
 WindowMember(Info);
 WindowMember(StackTool);
@@ -1324,15 +1299,13 @@ using action::StateActionMoment;
 // [SECTION] Main application `State`
 //-----------------------------------------------------------------------------
 
-struct State : UIStateMember {
-    State() : UIStateMember() {}
-
+UIMember(State,
     void Update(const StateAction &, TransientStore &) const;
     void Apply(UIContext::Flags flags) const;
 
     WindowMember(UIProcess,
         Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
-    );
+);
 
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(Style, Style);
@@ -1351,10 +1324,7 @@ struct State : UIStateMember {
     Prop(StateMemoryEditor, StateMemoryEditor);
     Prop(StatePathUpdateFrequency, StatePathUpdateFrequency);
     Prop(ProjectPreview, ProjectPreview);
-
-protected:
-    void Render() const override;
-};
+);
 
 namespace FlowGrid {
 void MenuItem(const EmptyAction &); // For actions with no data members.

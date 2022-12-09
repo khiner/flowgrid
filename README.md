@@ -165,6 +165,11 @@ For C++20 features only partially/experimentally supported in Clang 15:
 I try and keep all dependencies up to date.
 LLVM version 15.x.x is required to build.
 
+### Formatting
+
+FlowGrid uses `clang-format` for code formatting.
+The `Format` script runs it on every application source file in the `src` directory.
+
 ### Tracing
 
 To enable tracing, set `TRACY_ENABLE` to `ON` in the main project `CMakeLists.txt`.

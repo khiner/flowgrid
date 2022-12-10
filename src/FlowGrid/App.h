@@ -476,6 +476,8 @@ protected:
     virtual void Render() const = 0;
 };
 
+// When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.
+// The controct we're signing up for is to implement `void TabsWindow::Render() const`.
 WindowMember(TabsWindow);
 
 WindowMember(

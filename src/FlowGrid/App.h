@@ -1260,73 +1260,73 @@ template<typename... Ts1, typename... Ts2> struct variant_flat<std::variant<Ts1.
 };
 
 namespace Actions {
-struct undo {};
-struct redo {};
-struct set_history_index {
+struct Undo {};
+struct Redo {};
+struct SetHistoryIndex {
     int index;
 };
 
-struct open_project {
+struct OpenProject {
     string path;
 };
-struct open_empty_project {};
-struct open_default_project {};
+struct OpenEmptyProject {};
+struct OpenDefaultProject {};
 
-struct show_open_project_dialog {};
-struct open_file_dialog {
+struct ShowOpenProjectDialog {};
+struct OpenFileDialog {
     string dialog_json;
 }; // Storing as JSON string instead of the raw struct to reduce variant size. (Raw struct is 120 bytes.)
-struct close_file_dialog {};
+struct CloseFileDialog {};
 
-struct save_project {
+struct SaveProject {
     string path;
 };
-struct save_current_project {};
-struct save_default_project {};
-struct show_save_project_dialog {};
+struct SaveCurrentProject {};
+struct SaveDefaultProject {};
+struct ShowSaveProjectDialog {};
 
-struct close_application {};
+struct CloseApplication {};
 
-struct set_value {
+struct SetValue {
     StatePath path;
     Primitive value;
 };
-struct set_values {
+struct SetValues {
     StoreEntries values;
 };
-struct toggle_value {
+struct ToggleValue {
     StatePath path;
 };
-struct apply_patch {
+struct ApplyPatch {
     Patch patch;
 };
 
-struct set_imgui_color_style {
+struct SetImGuiColorStyle {
     int id;
 };
-struct set_implot_color_style {
+struct SetImPlotColorStyle {
     int id;
 };
-struct set_flowgrid_color_style {
+struct SetFlowGridColorStyle {
     int id;
 };
-struct set_flowgrid_diagram_color_style {
+struct SetDiagramColorStyle {
     int id;
 };
-struct set_flowgrid_diagram_layout_style {
+struct SetDiagramLayoutStyle {
     int id;
 };
 
-struct show_open_faust_file_dialog {};
-struct show_save_faust_file_dialog {};
-struct show_save_faust_svg_file_dialog {};
-struct save_faust_file {
+struct ShowOpenFaustFileDialog {};
+struct ShowSaveFaustFileDialog {};
+struct ShowSaveFaustSvgFileDialog {};
+struct SaveFaustFile {
     string path;
 };
-struct open_faust_file {
+struct OpenFaustFile {
     string path;
 };
-struct save_faust_svg_file {
+struct SaveFaustSvgFile {
     string path;
 };
 } // namespace Actions
@@ -1337,38 +1337,38 @@ using namespace Actions;
 // These don't get added to the action/gesture history, since they result in side effects that don't change values in the main state store.
 // These are not saved in a FlowGridAction (.fga) project.
 using ProjectAction = std::variant<
-    undo, redo, set_history_index,
-    open_project, open_empty_project, open_default_project,
-    save_project, save_default_project, save_current_project, save_faust_file, save_faust_svg_file>;
+    Undo, Redo, SetHistoryIndex,
+    OpenProject, OpenEmptyProject, OpenDefaultProject,
+    SaveProject, SaveDefaultProject, SaveCurrentProject, SaveFaustFile, SaveFaustSvgFile>;
 using StateAction = std::variant<
-    open_file_dialog, close_file_dialog,
-    show_open_project_dialog, show_save_project_dialog, show_open_faust_file_dialog, show_save_faust_file_dialog, show_save_faust_svg_file_dialog,
-    open_faust_file,
+    OpenFileDialog, CloseFileDialog,
+    ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog,
+    OpenFaustFile,
 
-    set_value, set_values, toggle_value, apply_patch,
+    SetValue, SetValues, ToggleValue, ApplyPatch,
 
-    set_imgui_color_style, set_implot_color_style, set_flowgrid_color_style, set_flowgrid_diagram_color_style,
-    set_flowgrid_diagram_layout_style,
+    SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetDiagramColorStyle,
+    SetDiagramLayoutStyle,
 
-    close_application>;
+    CloseApplication>;
 using Action = variant_flat<ProjectAction, StateAction>::type;
 using ActionID = ID;
 
 // All actions that don't have any member data.
 using EmptyAction = std::variant<
-    undo,
-    redo,
-    open_empty_project,
-    open_default_project,
-    show_open_project_dialog,
-    close_file_dialog,
-    save_current_project,
-    save_default_project,
-    show_save_project_dialog,
-    close_application,
-    show_open_faust_file_dialog,
-    show_save_faust_file_dialog,
-    show_save_faust_svg_file_dialog>;
+    Undo,
+    Redo,
+    OpenEmptyProject,
+    OpenDefaultProject,
+    ShowOpenProjectDialog,
+    CloseFileDialog,
+    SaveCurrentProject,
+    SaveDefaultProject,
+    ShowSaveProjectDialog,
+    CloseApplication,
+    ShowOpenFaustFileDialog,
+    ShowSaveFaustFileDialog,
+    ShowSaveFaustSvgFileDialog>;
 
 namespace action {
 
@@ -1398,13 +1398,13 @@ template<typename T> constexpr ActionID id = mp_find<Action, T>::value;
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
 const map<ActionID, string> ShortcutForId = {
-    {id<undo>, "cmd+z"},
-    {id<redo>, "shift+cmd+z"},
-    {id<open_empty_project>, "cmd+n"},
-    {id<show_open_project_dialog>, "cmd+o"},
-    {id<open_default_project>, "shift+cmd+o"},
-    {id<save_current_project>, "cmd+s"},
-    {id<show_save_project_dialog>, "shift+cmd+s"},
+    {id<Undo>, "cmd+z"},
+    {id<Redo>, "shift+cmd+z"},
+    {id<OpenEmptyProject>, "cmd+n"},
+    {id<ShowOpenProjectDialog>, "cmd+o"},
+    {id<OpenDefaultProject>, "shift+cmd+o"},
+    {id<SaveCurrentProject>, "cmd+s"},
+    {id<ShowSaveProjectDialog>, "shift+cmd+s"},
 };
 
 constexpr ActionID GetId(const Action &action) { return action.index(); }

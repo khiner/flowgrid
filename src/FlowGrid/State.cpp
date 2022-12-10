@@ -168,40 +168,40 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
     const ID b_id = GetId(b);
 
     switch (a_id) {
-        case id<open_file_dialog>:
-        case id<close_file_dialog>:
-        case id<show_open_project_dialog>:
-        case id<show_save_project_dialog>:
-        case id<close_application>:
-        case id<set_imgui_color_style>:
-        case id<set_implot_color_style>:
-        case id<set_flowgrid_color_style>:
-        case id<set_flowgrid_diagram_color_style>:
-        case id<set_flowgrid_diagram_layout_style>:
-        case id<show_open_faust_file_dialog>:
-        case id<show_save_faust_file_dialog>: {
+        case id<OpenFileDialog>:
+        case id<CloseFileDialog>:
+        case id<ShowOpenProjectDialog>:
+        case id<ShowSaveProjectDialog>:
+        case id<CloseApplication>:
+        case id<SetImGuiColorStyle>:
+        case id<SetImPlotColorStyle>:
+        case id<SetFlowGridColorStyle>:
+        case id<SetDiagramColorStyle>:
+        case id<SetDiagramLayoutStyle>:
+        case id<ShowOpenFaustFileDialog>:
+        case id<ShowSaveFaustFileDialog>: {
             if (a_id == b_id) return b;
             return false;
         }
-        case id<open_faust_file>:
-        case id<set_value>: {
-            if (a_id == b_id && std::get<set_value>(a).path == std::get<set_value>(b).path) return b;
+        case id<OpenFaustFile>:
+        case id<SetValue>: {
+            if (a_id == b_id && std::get<SetValue>(a).path == std::get<SetValue>(b).path) return b;
             return false;
         }
-        case id<set_values>: {
-            if (a_id == b_id) return set_values{views::concat(std::get<set_values>(a).values, std::get<set_values>(b).values) | to<std::vector>};
+        case id<SetValues>: {
+            if (a_id == b_id) return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<std::vector>};
             return false;
         }
-        case id<toggle_value>: return a_id == b_id && std::get<toggle_value>(a).path == std::get<toggle_value>(b).path;
-        case id<apply_patch>: {
+        case id<ToggleValue>: return a_id == b_id && std::get<ToggleValue>(a).path == std::get<ToggleValue>(b).path;
+        case id<ApplyPatch>: {
             if (a_id == b_id) {
-                const auto &_a = std::get<apply_patch>(a);
-                const auto &_b = std::get<apply_patch>(b);
+                const auto &_a = std::get<ApplyPatch>(a);
+                const auto &_b = std::get<ApplyPatch>(b);
                 // Keep patch actions affecting different base state-paths separate,
                 // since actions affecting different state bases are likely semantically different.
                 const auto &ops = Merge(_a.patch.Ops, _b.patch.Ops);
                 if (ops.empty()) return true;
-                if (_a.patch.BasePath == _b.patch.BasePath) return apply_patch{ops, _b.patch.BasePath};
+                if (_a.patch.BasePath == _b.patch.BasePath) return ApplyPatch{ops, _b.patch.BasePath};
                 return false;
             }
             return false;
@@ -248,7 +248,7 @@ void StateMember::HelpMarker(const bool after) const {
     if (!after) SameLine();
 }
 
-void Bool::Toggle() const { q(toggle_value{Path}); }
+void Bool::Toggle() const { q(ToggleValue{Path}); }
 
 void Field::Bool::Render() const {
     bool value = *this;
@@ -272,7 +272,7 @@ void Field::UInt::Render() const {
     U32 value = *this;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
     UiContext.WidgetGestured();
-    if (edited) q(set_value{Path, value});
+    if (edited) q(SetValue{Path, value});
     HelpMarker();
 }
 
@@ -280,7 +280,7 @@ void Field::Int::Render() const {
     int value = *this;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
     UiContext.WidgetGestured();
-    if (edited) q(set_value{Path, value});
+    if (edited) q(SetValue{Path, value});
     HelpMarker();
 }
 void Field::Int::Render(const vector<int> &options) const {
@@ -288,7 +288,7 @@ void Field::Int::Render(const vector<int> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(to_string(option).c_str(), is_selected)) q(set_value{Path, option});
+            if (Selectable(to_string(option).c_str(), is_selected)) q(SetValue{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -300,7 +300,7 @@ void Field::Float::Render() const {
     float value = *this;
     const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
     UiContext.WidgetGestured();
-    if (edited) q(set_value{Path, value});
+    if (edited) q(SetValue{Path, value});
     HelpMarker();
 }
 
@@ -313,7 +313,7 @@ void Field::Enum::Render(const vector<int> &options) const {
         for (int option : options) {
             const bool is_selected = option == value;
             const auto &name = Names[option];
-            if (Selectable(name.c_str(), is_selected)) q(set_value{Path, option});
+            if (Selectable(name.c_str(), is_selected)) q(SetValue{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -326,7 +326,7 @@ void Field::Enum::RenderMenu() const {
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
-            if (MenuItem(Names[i].c_str(), nullptr, is_selected)) q(set_value{Path, int(i)});
+            if (MenuItem(Names[i].c_str(), nullptr, is_selected)) q(SetValue{Path, int(i)});
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
@@ -340,7 +340,7 @@ void Field::Flags::Render() const {
             const auto &item = Items[i];
             const int option_mask = 1 << i;
             bool is_selected = option_mask & value;
-            if (Checkbox(item.Name.c_str(), &is_selected)) q(set_value{Path, value ^ option_mask}); // Toggle bit
+            if (Checkbox(item.Name.c_str(), &is_selected)) q(SetValue{Path, value ^ option_mask}); // Toggle bit
             if (!item.Help.empty()) {
                 SameLine();
                 ::HelpMarker(item.Help.c_str());
@@ -362,7 +362,7 @@ void Field::Flags::RenderMenu() const {
                 ::HelpMarker(item.Help.c_str());
                 SameLine();
             }
-            if (MenuItem(item.Name.c_str(), nullptr, is_selected)) q(set_value{Path, value ^ option_mask}); // Toggle bit
+            if (MenuItem(item.Name.c_str(), nullptr, is_selected)) q(SetValue{Path, value ^ option_mask}); // Toggle bit
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
@@ -378,7 +378,7 @@ void Field::String::Render(const vector<string> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option : options) {
             const bool is_selected = option == value;
-            if (Selectable(option.c_str(), is_selected)) q(set_value{Path, option});
+            if (Selectable(option.c_str(), is_selected)) q(SetValue{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -409,7 +409,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, min, max, fmt, flags);
     UiContext.WidgetGestured();
-    if (edited) q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
+    if (edited) q(SetValues{{{X.Path, values.x}, {Y.Path, values.y}}});
     HelpMarker();
 }
 
@@ -419,8 +419,8 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
     if (Linked.CheckedDraw()) {
         // Linking sets the max value to the min value.
-        if (X < Y) q(set_value{Y.Path, X});
-        else if (Y < X) q(set_value{X.Path, Y});
+        if (X < Y) q(SetValue{Y.Path, X});
+        else if (Y < X) q(SetValue{X.Path, Y});
     }
     PopID();
     SameLine();
@@ -430,9 +430,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (edited) {
         if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;
-            q(set_values{{{X.Path, changed_value}, {Y.Path, changed_value}}});
+            q(SetValues{{{X.Path, changed_value}, {Y.Path, changed_value}}});
         } else {
-            q(set_values{{{X.Path, values.x}, {Y.Path, values.y}}});
+            q(SetValues{{{X.Path, values.x}, {Y.Path, values.y}}});
         }
     }
     HelpMarker();
@@ -456,7 +456,7 @@ void Window::Draw(ImGuiWindowFlags flags) const {
     if (Begin(ImGuiLabel.c_str(), &open, flags) && open) Render();
     End();
 
-    if (Visible && !open) q(set_value{Visible.Path, false});
+    if (Visible && !open) q(SetValue{Visible.Path, false});
 }
 
 void Window::Dock(ID node_id) const {
@@ -464,7 +464,7 @@ void Window::Dock(ID node_id) const {
 }
 
 void Window::ToggleMenuItem() const {
-    if (MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(toggle_value{Visible.Path});
+    if (MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(ToggleValue{Visible.Path});
 }
 
 void Window::SelectTab() const {
@@ -512,24 +512,24 @@ void State::Render() const {
 
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
-            MenuItem(open_empty_project{});
-            MenuItem(show_open_project_dialog{});
+            MenuItem(OpenEmptyProject{});
+            MenuItem(ShowOpenProjectDialog{});
             if (BeginMenu("Open recent project", !c.Preferences.RecentlyOpenedPaths.empty())) {
                 for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
-                    if (MenuItem(recently_opened_path.filename().c_str())) q(open_project{recently_opened_path});
+                    if (MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
                 }
                 EndMenu();
             }
-            MenuItem(open_default_project{});
+            MenuItem(OpenDefaultProject{});
 
-            MenuItem(save_current_project{});
-            MenuItem(show_save_project_dialog{});
-            MenuItem(save_default_project{});
+            MenuItem(SaveCurrentProject{});
+            MenuItem(ShowSaveProjectDialog{});
+            MenuItem(SaveDefaultProject{});
             EndMenu();
         }
         if (BeginMenu("Edit")) {
-            MenuItem(undo{});
-            MenuItem(redo{});
+            MenuItem(Undo{});
+            MenuItem(Redo{});
             EndMenu();
         }
         if (BeginMenu("Windows")) {
@@ -1309,7 +1309,7 @@ void Colors::Draw() const {
             // todo use auto for FG colors (link to ImGui colors)
             if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) q(set_value{Path / to_string(i), is_auto ? mapped_value : AutoColor});
+                if (Button("Auto")) q(SetValue{Path / to_string(i), is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
@@ -1323,7 +1323,7 @@ void Colors::Draw() const {
             TextUnformatted(name.c_str());
             PopID();
 
-            if (item_changed) q(set_value{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});
+            if (item_changed) q(SetValue{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});
         }
         if (AllowAuto) {
             Separator();
@@ -1342,7 +1342,7 @@ void Colors::Draw() const {
 // Returns `true` if style changes.
 void Style::ImGuiStyle::Render() const {
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(set_imgui_color_style{style_idx});
+    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(SetImGuiColorStyle{style_idx});
 
     const auto &io = GetIO();
     const auto *font_current = GetFont();
@@ -1350,7 +1350,7 @@ void Style::ImGuiStyle::Render() const {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) q(set_value{FontIndex.Path, n});
+            if (Selectable(font->GetDebugName(), font == font_current)) q(SetValue{FontIndex.Path, n});
             PopID();
         }
         ImGui::EndCombo();
@@ -1359,17 +1359,17 @@ void Style::ImGuiStyle::Render() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) q(set_value{WindowBorderSize.Path, border ? 1 : 0});
+        if (Checkbox("WindowBorder", &border)) q(SetValue{WindowBorderSize.Path, border ? 1 : 0});
     }
     SameLine();
     {
         bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) q(set_value{FrameBorderSize.Path, border ? 1 : 0});
+        if (Checkbox("FrameBorder", &border)) q(SetValue{FrameBorderSize.Path, border ? 1 : 0});
     }
     SameLine();
     {
         bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) q(set_value{PopupBorderSize.Path, border ? 1 : 0});
+        if (Checkbox("PopupBorder", &border)) q(SetValue{PopupBorderSize.Path, border ? 1 : 0});
     }
 
     Separator();
@@ -1479,7 +1479,7 @@ void Style::ImGuiStyle::Render() const {
 
 void Style::ImPlotStyle::Render() const {
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) q(set_implot_color_style{style_idx});
+    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) q(SetImPlotColorStyle{style_idx});
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
@@ -1580,9 +1580,9 @@ void Style::FlowGridStyle::Params::Render() const {
 }
 void Style::FlowGridStyle::Render() const {
     static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
-    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(set_flowgrid_color_style{colors_idx});
-    if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(set_flowgrid_diagram_color_style{diagram_colors_idx});
-    if (Combo("Diagram layout", &diagram_layout_idx, "FlowGrid\0Faust\0")) q(set_flowgrid_diagram_layout_style{diagram_layout_idx});
+    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
+    if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(SetDiagramColorStyle{diagram_colors_idx});
+    if (Combo("Diagram layout", &diagram_layout_idx, "FlowGrid\0Faust\0")) q(SetDiagramLayoutStyle{diagram_layout_idx});
     FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {
@@ -1605,7 +1605,7 @@ void Style::FlowGridStyle::Render() const {
 
 void ApplicationSettings::Render() const {
     int value = int(c.History.Index);
-    if (SliderInt("History index", &value, 0, int(c.History.Size() - 1))) q(set_history_index{value});
+    if (SliderInt("History index", &value, 0, int(c.History.Size() - 1))) q(SetHistoryIndex{value});
     GestureDurationSec.Draw();
 }
 

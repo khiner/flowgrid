@@ -194,7 +194,7 @@ void TickUi() {
         if (event.type == SDL_QUIT ||
             (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
              event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
-            q(close_application{}, true);
+            q(CloseApplication{}, true);
         }
     }
 
@@ -220,7 +220,7 @@ void TickUi() {
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         Store new_store = s.ImGuiSettings.Set(UiContext.ImGui);
         const auto &patch = CreatePatch(store, new_store, s.ImGuiSettings.Path);
-        if (!patch.empty()) q(apply_patch{patch});
+        if (!patch.empty()) q(ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }
 

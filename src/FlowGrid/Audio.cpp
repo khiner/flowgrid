@@ -539,7 +539,7 @@ void Audio::UpdateProcess() const {
         if (OutStream->sample_rate != OutSampleRate) values.emplace_back(OutSampleRate.Path, OutStream->sample_rate);
         if (InStream->format != InFormat) values.emplace_back(InFormat.Path, ToAudioFormat(InStream->format));
         if (OutStream->format != OutFormat) values.emplace_back(OutFormat.Path, ToAudioFormat(OutStream->format));
-        if (!values.empty()) q(set_values{values}, true);
+        if (!values.empty()) q(SetValues{values}, true);
     }
 
     if (Faust.Code != PreviousFaustCode || OutSampleRate != PreviousFaustSampleRate) {
@@ -598,8 +598,8 @@ void Audio::UpdateProcess() const {
             }
         }
 
-        if (!error_msg.empty()) q(set_value{Faust.Error.Path, error_msg});
-        else if (Faust.Error) q(set_value{Faust.Error.Path, ""});
+        if (!error_msg.empty()) q(SetValue{Faust.Error.Path, error_msg});
+        else if (Faust.Error) q(SetValue{Faust.Error.Path, ""});
 
         OnBoxChange(FaustBox);
         OnUiChange(FaustUi.get());

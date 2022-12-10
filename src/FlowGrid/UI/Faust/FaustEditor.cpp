@@ -231,7 +231,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
                     auto *buffer = buffer_message->buffer;
                     if (zep_initialized && buffer->name == s.Audio.Faust.Editor.FileName) {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                        q(set_value{s.Audio.Faust.Code.Path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                        q(SetValue{s.Audio.Faust.Code.Path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
                     break;
                 }
@@ -341,8 +341,8 @@ void Audio::FaustState::FaustEditor::Render() const {
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            fg::MenuItem(show_open_faust_file_dialog{});
-            fg::MenuItem(show_save_faust_file_dialog{});
+            fg::MenuItem(ShowOpenFaustFileDialog{});
+            fg::MenuItem(ShowSaveFaustFileDialog{});
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Settings")) {

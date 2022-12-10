@@ -95,17 +95,17 @@ namespace action {
 string GetName(const ProjectAction &action) {
     return std::visit(
         visitor{
-            [&](const undo &) { return ActionName(undo); },
-            [&](const redo &) { return ActionName(redo); },
-            [&](const set_history_index &) { return ActionName(set_history_index); },
-            [&](const open_project &) { return ActionName(open_project); },
-            [&](const open_empty_project &) { return ActionName(open_empty_project); },
-            [&](const open_default_project &) { return ActionName(open_default_project); },
-            [&](const save_project &) { return ActionName(save_project); },
-            [&](const save_default_project &) { return ActionName(save_default_project); },
-            [&](const save_current_project &) { return ActionName(save_current_project); },
-            [&](const save_faust_file &) { return "Save Faust file"s; },
-            [&](const save_faust_svg_file &) { return "Save Faust SVG file"s; },
+            [&](const Undo &) { return ActionName(Undo); },
+            [&](const Redo &) { return ActionName(Redo); },
+            [&](const SetHistoryIndex &) { return ActionName(SetHistoryIndex); },
+            [&](const OpenProject &) { return ActionName(OpenProject); },
+            [&](const OpenEmptyProject &) { return ActionName(OpenEmptyProject); },
+            [&](const OpenDefaultProject &) { return ActionName(OpenDefaultProject); },
+            [&](const SaveProject &) { return ActionName(SaveProject); },
+            [&](const SaveDefaultProject &) { return ActionName(SaveDefaultProject); },
+            [&](const SaveCurrentProject &) { return ActionName(SaveCurrentProject); },
+            [&](const SaveFaustFile &) { return "Save Faust file"s; },
+            [&](const SaveFaustSvgFile &) { return "Save Faust SVG file"s; },
         },
         action
     );
@@ -114,24 +114,24 @@ string GetName(const ProjectAction &action) {
 string GetName(const StateAction &action) {
     return std::visit(
         visitor{
-            [&](const open_faust_file &) { return "Open Faust file"s; },
-            [&](const show_open_faust_file_dialog &) { return "Show open Faust file dialog"s; },
-            [&](const show_save_faust_file_dialog &) { return "Show save Faust file dialog"s; },
-            [&](const show_save_faust_svg_file_dialog &) { return "Show save Faust SVG file dialog"s; },
-            [&](const set_imgui_color_style &) { return "Set ImGui color style"s; },
-            [&](const set_implot_color_style &) { return "Set ImPlot color style"s; },
-            [&](const set_flowgrid_color_style &) { return "Set FlowGrid color style"s; },
-            [&](const set_flowgrid_diagram_color_style &) { return "Set FlowGrid diagram color style"s; },
-            [&](const set_flowgrid_diagram_layout_style &) { return "Set FlowGrid diagram layout style"s; },
-            [&](const open_file_dialog &) { return ActionName(open_file_dialog); },
-            [&](const close_file_dialog &) { return ActionName(close_file_dialog); },
-            [&](const show_open_project_dialog &) { return ActionName(show_open_project_dialog); },
-            [&](const show_save_project_dialog &) { return ActionName(show_save_project_dialog); },
-            [&](const set_value &) { return ActionName(set_value); },
-            [&](const set_values &) { return ActionName(set_values); },
-            [&](const toggle_value &) { return ActionName(toggle_value); },
-            [&](const apply_patch &) { return ActionName(apply_patch); },
-            [&](const close_application &) { return ActionName(close_application); },
+            [&](const OpenFaustFile &) { return "Open Faust file"s; },
+            [&](const ShowOpenFaustFileDialog &) { return "Show open Faust file dialog"s; },
+            [&](const ShowSaveFaustFileDialog &) { return "Show save Faust file dialog"s; },
+            [&](const ShowSaveFaustSvgFileDialog &) { return "Show save Faust SVG file dialog"s; },
+            [&](const SetImGuiColorStyle &) { return "Set ImGui color style"s; },
+            [&](const SetImPlotColorStyle &) { return "Set ImPlot color style"s; },
+            [&](const SetFlowGridColorStyle &) { return "Set FlowGrid color style"s; },
+            [&](const SetDiagramColorStyle &) { return "Set FlowGrid diagram color style"s; },
+            [&](const SetDiagramLayoutStyle &) { return "Set FlowGrid diagram layout style"s; },
+            [&](const OpenFileDialog &) { return ActionName(OpenFileDialog); },
+            [&](const CloseFileDialog &) { return ActionName(CloseFileDialog); },
+            [&](const ShowOpenProjectDialog &) { return ActionName(ShowOpenProjectDialog); },
+            [&](const ShowSaveProjectDialog &) { return ActionName(ShowSaveProjectDialog); },
+            [&](const SetValue &) { return ActionName(SetValue); },
+            [&](const SetValues &) { return ActionName(SetValues); },
+            [&](const ToggleValue &) { return ActionName(ToggleValue); },
+            [&](const ApplyPatch &) { return ActionName(ApplyPatch); },
+            [&](const CloseApplication &) { return ActionName(CloseApplication); },
         },
         action
     );
@@ -146,13 +146,13 @@ string GetMenuLabel(const EmptyAction &action) {
     // An action's menu label is its name, except for a few exceptions.
     return std::visit(
         visitor{
-            [&](const show_open_project_dialog &) { return "Open project"s; },
-            [&](const open_empty_project &) { return "New project"s; },
-            [&](const save_current_project &) { return "Save project"s; },
-            [&](const show_save_project_dialog &) { return "Save project as..."s; },
-            [&](const show_open_faust_file_dialog &) { return "Open DSP file"s; },
-            [&](const show_save_faust_file_dialog &) { return "Save DSP as..."s; },
-            [&](const show_save_faust_svg_file_dialog &) { return "Export SVG"s; },
+            [&](const ShowOpenProjectDialog &) { return "Open project"s; },
+            [&](const OpenEmptyProject &) { return "New project"s; },
+            [&](const SaveCurrentProject &) { return "Save project"s; },
+            [&](const ShowSaveProjectDialog &) { return "Save project as..."s; },
+            [&](const ShowOpenFaustFileDialog &) { return "Open DSP file"s; },
+            [&](const ShowSaveFaustFileDialog &) { return "Save DSP as..."s; },
+            [&](const ShowSaveFaustSvgFileDialog &) { return "Export SVG"s; },
             [&](const ProjectAction &a) { return GetName(a); },
             [&](const StateAction &a) { return GetName(a); },
         },
@@ -183,10 +183,10 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
 void State::Update(const StateAction &action, TransientStore &transient) const {
     std::visit(
         visitor{
-            [&](const set_value &a) { transient.set(a.path, a.value); },
-            [&](const set_values &a) { ::Set(a.values, transient); },
-            [&](const toggle_value &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
-            [&](const apply_patch &a) {
+            [&](const SetValue &a) { transient.set(a.path, a.value); },
+            [&](const SetValues &a) { ::Set(a.values, transient); },
+            [&](const ToggleValue &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
+            [&](const ApplyPatch &a) {
                 const auto &patch = a.patch;
                 for (const auto &[partial_path, op] : patch.Ops) {
                     const auto &path = patch.BasePath / partial_path;
@@ -194,23 +194,23 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
                     else if (op.Op == RemoveOp) transient.erase(path);
                 }
             },
-            [&](const open_file_dialog &a) { FileDialog.Set(json::parse(a.dialog_json), transient); },
-            [&](const close_file_dialog &) { Set(FileDialog.Visible, false, transient); },
-            [&](const show_open_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
-            [&](const show_save_project_dialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
-            [&](const show_open_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
-            [&](const show_save_faust_file_dialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
-            [&](const show_save_faust_svg_file_dialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
+            [&](const OpenFileDialog &a) { FileDialog.Set(json::parse(a.dialog_json), transient); },
+            [&](const CloseFileDialog &) { Set(FileDialog.Visible, false, transient); },
+            [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
+            [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
+            [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
+            [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
+            [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
 
             // todo enum types instead of raw integers
-            [&](const set_imgui_color_style &a) {
+            [&](const SetImGuiColorStyle &a) {
                 switch (a.id) {
                     case 0: return Style.ImGui.ColorsDark(transient);
                     case 1: return Style.ImGui.ColorsLight(transient);
                     case 2: return Style.ImGui.ColorsClassic(transient);
                 }
             },
-            [&](const set_implot_color_style &a) {
+            [&](const SetImPlotColorStyle &a) {
                 switch (a.id) {
                     case 0: return Style.ImPlot.ColorsAuto(transient);
                     case 1: return Style.ImPlot.ColorsDark(transient);
@@ -218,14 +218,14 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
                     case 3: return Style.ImPlot.ColorsClassic(transient);
                 }
             },
-            [&](const set_flowgrid_color_style &a) {
+            [&](const SetFlowGridColorStyle &a) {
                 switch (a.id) {
                     case 0: return Style.FlowGrid.ColorsDark(transient);
                     case 1: return Style.FlowGrid.ColorsLight(transient);
                     case 2: return Style.FlowGrid.ColorsClassic(transient);
                 }
             },
-            [&](const set_flowgrid_diagram_color_style &a) {
+            [&](const SetDiagramColorStyle &a) {
                 switch (a.id) {
                     case 0: return Style.FlowGrid.Diagram.ColorsDark(transient);
                     case 1: return Style.FlowGrid.Diagram.ColorsLight(transient);
@@ -233,14 +233,14 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
                     case 3: return Style.FlowGrid.Diagram.ColorsFaust(transient);
                 }
             },
-            [&](const set_flowgrid_diagram_layout_style &a) {
+            [&](const SetDiagramLayoutStyle &a) {
                 switch (a.id) {
                     case 0: return Style.FlowGrid.Diagram.LayoutFlowGrid(transient);
                     case 1: return Style.FlowGrid.Diagram.LayoutFaust(transient);
                 }
             },
-            [&](const open_faust_file &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },
-            [&](const close_application &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
+            [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },
+            [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
         },
         action
     );
@@ -372,7 +372,7 @@ void Context::OpenProject(const fs::path &path) {
 
 bool Context::SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
-    if (is_current_project && !ActionAllowed(action::id<save_current_project>)) return false;
+    if (is_current_project && !ActionAllowed(action::id<Actions::SaveCurrentProject>)) return false;
 
     const auto format = GetProjectFormat(path);
     if (!format) return false; // TODO log
@@ -396,16 +396,16 @@ bool Context::WritePreferences() const { return FileIO::write(PreferencesPath, j
 
 bool Context::ActionAllowed(const ActionID id) const {
     switch (id) {
-        case action::id<undo>: return History.CanUndo();
-        case action::id<redo>: return History.CanRedo();
-        case action::id<open_default_project>: return fs::exists(DefaultProjectPath);
-        case action::id<save_project>:
-        case action::id<save_default_project>: return !History.Empty();
-        case action::id<show_save_project_dialog>:
-            // If there is no current project, `save_current_project` will be transformed into a `show_save_project_dialog`.
-        case action::id<save_current_project>: return ProjectHasChanges;
-        case action::id<open_file_dialog>: return !s.FileDialog.Visible;
-        case action::id<close_file_dialog>: return s.FileDialog.Visible;
+        case action::id<Actions::Undo>: return History.CanUndo();
+        case action::id<Actions::Redo>: return History.CanRedo();
+        case action::id<Actions::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
+        case action::id<Actions::SaveProject>:
+        case action::id<Actions::SaveDefaultProject>: return !History.Empty();
+        case action::id<Actions::ShowSaveProjectDialog>:
+            // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
+        case action::id<Actions::SaveCurrentProject>: return ProjectHasChanges;
+        case action::id<Actions::OpenFileDialog>: return !s.FileDialog.Visible;
+        case action::id<Actions::CloseFileDialog>: return s.FileDialog.Visible;
         default: return true;
     }
 }
@@ -420,18 +420,18 @@ void Context::ApplyAction(const ProjectAction &action) {
             // Handle actions that don't directly update state.
             // These options don't get added to the action/gesture history, since they only have non-application side effects,
             // and we don't want them replayed when loading a saved `.fga` project.
-            [&](const open_project &a) { OpenProject(a.path); },
-            [&](const open_empty_project &) { OpenProject(EmptyProjectPath); },
-            [&](const open_default_project &) { OpenProject(DefaultProjectPath); },
+            [&](const Actions::OpenEmptyProject &) { OpenProject(EmptyProjectPath); },
+            [&](const Actions::OpenProject &a) { OpenProject(a.path); },
+            [&](const Actions::OpenDefaultProject &) { OpenProject(DefaultProjectPath); },
 
-            [&](const save_project &a) { SaveProject(a.path); },
-            [&](const save_default_project &) { SaveProject(DefaultProjectPath); },
-            [&](const save_current_project &) { SaveCurrentProject(); },
-            [&](const save_faust_file &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
-            [&](const save_faust_svg_file &a) { SaveBoxSvg(a.path); },
+            [&](const Actions::SaveProject &a) { SaveProject(a.path); },
+            [&](const Actions::SaveDefaultProject &) { SaveProject(DefaultProjectPath); },
+            [&](const Actions::SaveCurrentProject &) { SaveCurrentProject(); },
+            [&](const Actions::SaveFaustFile &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
+            [&](const Actions::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 
             // `History.Index`-changing actions:
-            [&](const undo &) {
+            [&](const Actions::Undo &) {
                 if (History.Empty()) return;
 
                 // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
@@ -446,8 +446,8 @@ void Context::ApplyAction(const ProjectAction &action) {
                     History.SetIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
                 }
             },
-            [&](const redo &) { History.SetIndex(History.Index + 1); },
-            [&](const set_history_index &a) { History.SetIndex(a.index); },
+            [&](const Actions::Redo &) { History.SetIndex(History.Index + 1); },
+            [&](const Actions::SetHistoryIndex &a) { History.SetIndex(a.index); },
         },
         action
     );
@@ -583,9 +583,9 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
-        if (std::holds_alternative<save_current_project>(action) && !CurrentProjectPath) action = show_save_project_dialog{};
+        if (std::holds_alternative<Actions::SaveCurrentProject>(action) && !CurrentProjectPath) action = Actions::ShowSaveProjectDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<toggle_value>(action);
+        force_finalize_gesture |= std::holds_alternative<ToggleValue>(action);
 
         std::visit(
             visitor{

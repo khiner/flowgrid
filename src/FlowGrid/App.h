@@ -137,9 +137,10 @@ todo These will very likely be defined in a separate language once the API settl
 Macros:
 
 All macros end in semicolons already, so there's no strict need to suffix their usage with a semicolon.
-By convention, all macro calls in FlowGrid are treated like regular function calls, appending a semicolon.
-// todo if we stick with this, add a `static_assert(true, "")` to the end of all macros
-//   https://stackoverflow.com/questions/35530850/how-to-require-a-semicolon-after-a-macro
+However, all macro calls in FlowGrid are treated like regular function calls, appending a semicolon.
+todo If we stick with this, add a `static_assert(true, "")` to the end of all macro definitions.
+https://stackoverflow.com/questions/35530850/how-to-require-a-semicolon-after-a-macro
+todo Try out replacing semicolon separators by e.g. commas.
 
 * Properties
   - `Prop` adds a new property `this`.
@@ -173,19 +174,20 @@ By convention, all macro calls in FlowGrid are treated like regular function cal
 
 **/
 
-`Prop` defines a `StateMember` instance member of type `PropType`, with variable name `PropName`, constructing the state member with `this` as a parent,
-and store path-segment `"{PropName}"` (string with value the same as the variable name).
-
-`Prop_` is the same as `Prop`, but the second arg for overriding the displayed name (instead of deriving from the `PropName`/path-segment), and/or a help string.
-Optionally prefix an info segment in the name string with a '?'.
-E.g. to override the name and provide a help string: "Test-member?A state member for testing things."
-Or, to use the path segment for the name but provide a help string, omit the name: "?A state member for testing things."
- */
+#define Prop(PropType, PropName, ...) PropType PropName{this, (#PropName), "", __VA_ARGS__};
 #define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, (#PropName), (NameHelp), __VA_ARGS__};
 
-#define Prop(PropType, PropName, ...) PropType PropName{this, (#PropName), "", __VA_ARGS__};
+#define Member(MemberName, ...)         \
+    struct MemberName : StateMember {   \
+        using StateMember::StateMember; \
+        __VA_ARGS__;                    \
+    };
 
-// Convenience methods for defining simple `UIStateMember`s and `Window`s:
+Member(
+    UIStateMember,
+    void Draw() const; // Wraps around the internal `Render` fn.
+    virtual void Render() const = 0;
+);
 
 #define UIMember(MemberName, ...)           \
     struct MemberName : UIStateMember {     \
@@ -196,6 +198,15 @@ Or, to use the path segment for the name but provide a help string, omit the nam
         void Render() const override;       \
     };
 
+#define UIMember_(MemberName, ...)                                                                 \
+    struct MemberName : UIStateMember {                                                            \
+        MemberName(StateMember *parent, const string &path_segment, const string &name_help = ""); \
+        __VA_ARGS__;                                                                               \
+                                                                                                   \
+    protected:                                                                                     \
+        void Render() const override;                                                              \
+    };
+
 #define WindowMember(MemberName, ...) \
     struct MemberName : Window {      \
         using Window::Window;         \
@@ -204,18 +215,6 @@ Or, to use the path segment for the name but provide a help string, omit the nam
     protected:                        \
         void Render() const override; \
     };
-
-#define Member(MemberName, ...)         \
-    struct MemberName : StateMember {   \
-        using StateMember::StateMember; \
-        __VA_ARGS__;                    \
-    };
-
-Member(
-    UIStateMember,
-    void Draw() const; // Wraps around internal `Render` fn.
-    virtual void Render() const = 0
-);
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
@@ -497,7 +496,7 @@ WindowMember(
                             "State menu items can only be opened or closed manually if auto-select is disabled.",
           true);
 
-    void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const
+    void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const;
 );
 
 WindowMember(StateMemoryEditor);
@@ -563,7 +562,10 @@ WindowMember(
     // todo state member & respond to changes, or remove from state
     Member(
         FaustState,
-        WindowMember(FaustEditor, string FileName{"default.dsp"});
+        WindowMember(
+            FaustEditor,
+            string FileName{"default.dsp"};
+        );
 
         WindowMember(
             FaustDiagram,
@@ -799,12 +801,11 @@ struct Metrics : TabsWindow {
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    struct FlowGridStyle : UIStateMember {
-        FlowGridStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
+    UIMember_(
+        FlowGridStyle,
 
-        struct Diagram : UIStateMember {
-            Diagram(StateMember *parent, const string &path_segment, const string &name_help = "");
-            void Render() const override;
+        UIMember_(
+            Diagram,
 
             Prop_(
                 UInt, FoldComplexity,
@@ -897,7 +898,8 @@ struct Style : TabsWindow {
                     default: return "Unknown";
                 }
             }
-        };
+        );
+
         UIMember(
             Params,
             Prop(Bool, HeaderTitles, true);
@@ -929,9 +931,6 @@ struct Style : TabsWindow {
         void ColorsLight(TransientStore &_store) const;
         void ColorsClassic(TransientStore &_store) const;
 
-    protected:
-        void Render() const override;
-
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
                 case FlowGridCol_GestureIndicator: return "GestureIndicator";
@@ -940,13 +939,12 @@ struct Style : TabsWindow {
                 default: return "Unknown";
             }
         }
-    };
+    );
 
-    struct ImGuiStyle : UIStateMember {
-        ImGuiStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
+    UIMember_(
+        ImGuiStyle,
 
         void Apply(ImGuiContext *ctx) const;
-
         void ColorsDark(TransientStore &) const;
         void ColorsLight(TransientStore &) const;
         void ColorsClassic(TransientStore &) const;
@@ -1017,15 +1015,12 @@ struct Style : TabsWindow {
         Prop(Float, ColumnsMinSpacing, 6);
 
         Prop(Colors, Colors, ImGui::GetStyleColorName);
+    );
 
-    protected:
-        void Render() const override;
-    };
-    struct ImPlotStyle : UIStateMember {
-        ImPlotStyle(StateMember *parent, const string &path_segment, const string &name_help = "");
+    UIMember_(
+        ImPlotStyle,
 
         void Apply(ImPlotContext *ctx) const;
-
         void ColorsAuto(TransientStore &_store) const;
         void ColorsDark(TransientStore &_store) const;
         void ColorsLight(TransientStore &_store) const;
@@ -1074,10 +1069,7 @@ struct Style : TabsWindow {
         Prop(Bool, Use24HourClock);
 
         Prop(Int, Marker, ImPlotMarker_None); // Not editable todo delete?
-
-    protected:
-        void Render() const override;
-    };
+    );
 
     Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
@@ -1094,6 +1086,7 @@ struct ImGuiDockNodeSettings;
 //  * unpack positions/sizes
 Member(
     DockNodeSettings,
+
     void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1111,6 +1104,7 @@ Member(
 
 Member(
     WindowSettings,
+
     void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1140,6 +1134,7 @@ Member(
 
 Member(
     TableSettings,
+
     void Set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
     void Apply(ImGuiContext *) const;
 
@@ -1154,6 +1149,7 @@ Member(
 
 Member(
     ImGuiSettings,
+
     Store Set(ImGuiContext *ctx) const;
     // Inverse of above constructor. `imgui_context.settings = this`
     // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
@@ -1183,8 +1179,8 @@ struct FileDialogData {
 };
 
 struct FileDialog : Window {
-    FileDialog(StateMember *parent, const string &path_segment, const string &name_help = "", const bool visible = false)
-        : Window(parent, path_segment, name_help, visible) {}
+    FileDialog(StateMember *parent, const string &path_segment, const string &name_help = "")
+        : Window(parent, path_segment, name_help, false) {}
     void Set(const FileDialogData &data, TransientStore &) const;
 
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.

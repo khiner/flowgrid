@@ -220,18 +220,16 @@ Gesture action::MergeGesture(const Gesture &gesture) {
         const auto &a = *active;
         const auto &b = gesture[i + 1];
         std::variant<StateAction, bool> merge_result = Merge(a.first, b.first);
-        std::visit(
-            visitor{
-                [&](const bool cancel_out) {
-                    if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
-                    else merged_gesture.emplace_back(a); //
-                    active.reset(); // No merge in either case. Move on to try compressing the next action.
-                },
-                [&](const StateAction &merged_action) {
-                    active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
-                },
+        Match(
+            merge_result,
+            [&](const bool cancel_out) {
+                if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
+                else merged_gesture.emplace_back(a); //
+                active.reset(); // No merge in either case. Move on to try compressing the next action.
             },
-            merge_result
+            [&](const StateAction &merged_action) {
+                active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
+            },
         );
     }
     if (active) merged_gesture.emplace_back(*active);

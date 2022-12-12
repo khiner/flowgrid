@@ -268,7 +268,7 @@ void MenuItem(const EmptyAction &action) {
     const string menu_label = action::GetMenuLabel(action);
     const string shortcut = action::GetShortcut(action);
     if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, c.ActionAllowed(action))) {
-        std::visit(visitor{[](const auto &a) { q(a); }}, action);
+        Match(action, [](const auto &a) { q(a); });
     }
 }
 

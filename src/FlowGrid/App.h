@@ -1252,6 +1252,9 @@ template<class... Ts> struct visitor : Ts... {
 };
 template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
 
+// E.g. Match(action, [&](const ProjectAction &a) { ... }, [&](const StateAction &a) { ... });
+#define Match(Variant, ...) std::visit(visitor{__VA_ARGS__}, Variant);
+
 // Utility to flatten two variants together into one variant.
 // From https://stackoverflow.com/a/59251342/780425
 template<typename Var1, typename Var2> struct variant_flat;

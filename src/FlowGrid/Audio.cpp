@@ -52,36 +52,36 @@ SoundIoBackend ToSoundIoBackend(const AudioBackend backend) {
     }
 }
 
-inline static Sample ReadSampleFloat64NE(const char *ptr) {
+static constexpr Sample ReadSampleFloat64NE(const char *ptr) {
     const auto value = *(double *)ptr;
     return Sample(value);
 }
-inline static Sample ReadSampleFloat32NE(const char *ptr) {
+static constexpr Sample ReadSampleFloat32NE(const char *ptr) {
     const auto value = *(float *)ptr;
     return Sample(value);
 }
-inline static Sample ReadSampleS32NE(const char *ptr) {
+static constexpr Sample ReadSampleS32NE(const char *ptr) {
     const auto value = *(int32_t *)ptr;
     return 2 * Sample(value) / (Sample(INT32_MAX) - Sample(INT32_MIN));
 }
-inline static Sample ReadSampleS16NE(const char *ptr) {
+static constexpr Sample ReadSampleS16NE(const char *ptr) {
     const auto value = *(int16_t *)ptr;
     return 2 * Sample(value) / (Sample(INT16_MAX) - Sample(INT16_MIN));
 }
 
-inline static void WriteSampleFloat64NE(char *ptr, Sample sample) {
+static constexpr void WriteSampleFloat64NE(char *ptr, Sample sample) {
     auto *buf = (double *)ptr;
     *buf = double(sample);
 }
-inline static void WriteSampleFloat32NE(char *ptr, Sample sample) {
+static constexpr void WriteSampleFloat32NE(char *ptr, Sample sample) {
     auto *buf = (float *)ptr;
     *buf = float(sample);
 }
-inline static void WriteSampleS32NE(char *ptr, Sample sample) {
+static constexpr void WriteSampleS32NE(char *ptr, Sample sample) {
     auto *buf = (int32_t *)ptr;
     *buf = int32_t(sample * (Sample(INT32_MAX) - Sample(INT32_MIN)) / 2.0);
 }
-inline static void WriteSampleS16NE(char *ptr, Sample sample) {
+static constexpr void WriteSampleS16NE(char *ptr, Sample sample) {
     auto *buf = (int16_t *)ptr;
     *buf = int16_t(sample * (Sample(INT16_MAX) - Sample(INT16_MIN)) / 2.0);
 }

@@ -12,7 +12,7 @@ using ranges::to;
 using views::transform;
 
 namespace StringHelper {
-inline static string Capitalize(const string &str) {
+static constexpr string Capitalize(const string &str) {
     if (str.empty()) return "";
 
     string copy = str;
@@ -20,7 +20,7 @@ inline static string Capitalize(const string &str) {
     return copy;
 }
 
-static string Lowercase(const string &str) {
+static constexpr string Lowercase(const string &str) {
     if (str.empty()) return "";
 
     string copy = str;
@@ -29,14 +29,14 @@ static string Lowercase(const string &str) {
 }
 
 // E.g. 'foo_bar_baz' => 'Foo bar baz'
-inline static string SnakeCaseToSentenceCase(const string &snake_case) {
+static constexpr string SnakeCaseToSentenceCase(const string &snake_case) {
     auto sentence_case = snake_case | views::split('_') | views::join(' ') | to<string>;
     return Capitalize(sentence_case);
 }
 
-constexpr inline static bool IsInteger(const string &str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }
+static constexpr bool IsInteger(const string &str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }
 
-inline static string Replace(string subject, const string &search, const string &replace) {
+static constexpr string Replace(string subject, const string &search, const string &replace) {
     size_t pos = 0;
     while ((pos = subject.find(search, pos)) != string::npos) {
         subject.replace(pos, search.length(), replace);
@@ -46,7 +46,7 @@ inline static string Replace(string subject, const string &search, const string 
 }
 
 // Same as above, but with single char search.
-inline static string Replace(string subject, const char search, const string &replace) {
+static constexpr string Replace(string subject, const char search, const string &replace) {
     size_t pos = 0;
     while ((pos = subject.find(search, pos)) != string::npos) {
         subject.replace(pos, 1, replace);

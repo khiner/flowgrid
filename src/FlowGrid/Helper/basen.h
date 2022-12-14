@@ -21,7 +21,7 @@
  * SOFTWARE.
  **/
 
-// Implementation copied from https://github.com/azawadzki/base-n/blob/master/include/basen.hpp
+// Implementation based on https://github.com/azawadzki/base-n/blob/master/include/basen.hpp
 
 #pragma once
 
@@ -31,31 +31,11 @@
 
 namespace bn {
 
-template<class Iter1, class Iter2>
-void encode_b16(Iter1 start, Iter1 end, Iter2 out);
-
-template<class Iter1, class Iter2>
-void encode_b32(Iter1 start, Iter1 end, Iter2 out);
-
-template<class Iter1, class Iter2>
-void encode_b64(Iter1 start, Iter1 end, Iter2 out);
-
-template<class Iter1, class Iter2>
-void decode_b16(Iter1 start, Iter1 end, Iter2 out);
-
-template<class Iter1, class Iter2>
-void decode_b32(Iter1 start, Iter1 end, Iter2 out);
-
-template<class Iter1, class Iter2>
-void decode_b64(Iter1 start, Iter1 end, Iter2 out);
-
-namespace impl {
-
 const char Error = -1;
 
 namespace {
 
-inline char extract_partial_bits(char value, size_t start_bit, size_t bits_count) {
+static constexpr char extract_partial_bits(char value, size_t start_bit, size_t bits_count) {
     assert(start_bit + bits_count < 8);
     // shift extracted bits to the beginning of the byte
     char t1 = value >> (8 - bits_count - start_bit);
@@ -64,7 +44,7 @@ inline char extract_partial_bits(char value, size_t start_bit, size_t bits_count
     return t2;
 }
 
-inline char extract_overlapping_bits(char previous, char next, size_t start_bit, size_t bits_count) {
+static constexpr char extract_overlapping_bits(char previous, char next, size_t start_bit, size_t bits_count) {
     assert(start_bit + bits_count < 16);
     size_t bits_count_in_previous = 8 - start_bit;
     size_t bits_count_in_next = bits_count - bits_count_in_previous;
@@ -76,15 +56,11 @@ inline char extract_overlapping_bits(char previous, char next, size_t start_bit,
 } // namespace
 
 struct b16_conversion_traits {
-    static size_t group_length() { return 4; }
+    static constexpr size_t group_length() { return 4; }
 
-    static char encode(unsigned int index) {
-        static const char *const dictionary = "0123456789ABCDEF";
-        assert(index < strlen(dictionary));
-        return dictionary[index];
-    }
+    static constexpr char encode(unsigned int index) { return "0123456789ABCDEF"[index]; }
 
-    static char decode(char c) {
+    static constexpr char decode(char c) {
         if (c >= '0' && c <= '9') return c - '0';
         if (c >= 'A' && c <= 'F') return c - 'A' + 10;
         return Error;
@@ -92,15 +68,11 @@ struct b16_conversion_traits {
 };
 
 struct b32_conversion_traits {
-    static size_t group_length() { return 5; }
+    static constexpr size_t group_length() { return 5; }
 
-    static char encode(unsigned int index) {
-        static const char *dictionary = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        assert(index < strlen(dictionary));
-        return dictionary[index];
-    }
+    static constexpr char encode(unsigned int index) { return "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[index]; }
 
-    static char decode(char c) {
+    static constexpr char decode(char c) {
         if (c >= 'A' && c <= 'Z') return c - 'A';
         if (c >= '2' && c <= '7') return c - '2' + 26;
         return Error;
@@ -108,16 +80,12 @@ struct b32_conversion_traits {
 };
 
 struct b64_conversion_traits {
-    static size_t group_length() { return 6; }
+    static constexpr size_t group_length() { return 6; }
 
-    static char encode(unsigned int index) {
-        static const char *const dictionary = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        assert(index < strlen(dictionary));
-        return dictionary[index];
-    }
+    static constexpr char encode(unsigned int index) { return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[index]; }
 
-    static char decode(char c) {
-        static const int LetterCount = 26;
+    static constexpr char decode(char c) {
+        constexpr int LetterCount = 26;
         if (c >= 'A' && c <= 'Z') return c - 'A';
         if (c >= 'a' && c <= 'z') return c - 'a' + LetterCount * 1;
         if (c >= '0' && c <= '9') return c - '0' + LetterCount * 2;
@@ -128,7 +96,7 @@ struct b64_conversion_traits {
 };
 
 template<class ConversionTraits, class Iter1, class Iter2>
-void decode(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void decode(Iter1 start, Iter1 end, Iter2 out) {
     Iter1 iter = start;
     size_t output_current_bit = 0;
     char buffer = 0;
@@ -171,7 +139,7 @@ void decode(Iter1 start, Iter1 end, Iter2 out) {
 }
 
 template<class ConversionTraits, class Iter1, class Iter2>
-void encode(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void encode(Iter1 start, Iter1 end, Iter2 out) {
     static_assert(sizeof(*start) == sizeof(char), "only char-size input supported");
 
     Iter1 iter = start;
@@ -202,37 +170,33 @@ void encode(Iter1 start, Iter1 end, Iter2 out) {
     }
 }
 
-} // namespace impl
-
-using namespace bn::impl;
-
 template<class Iter1, class Iter2>
-void encode_b16(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void encode_b16(Iter1 start, Iter1 end, Iter2 out) {
     encode<b16_conversion_traits>(start, end, out);
 }
 
 template<class Iter1, class Iter2>
-void encode_b32(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void encode_b32(Iter1 start, Iter1 end, Iter2 out) {
     encode<b32_conversion_traits>(start, end, out);
 }
 
 template<class Iter1, class Iter2>
-void encode_b64(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void encode_b64(Iter1 start, Iter1 end, Iter2 out) {
     encode<b64_conversion_traits>(start, end, out);
 }
 
 template<class Iter1, class Iter2>
-void decode_b16(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void decode_b16(Iter1 start, Iter1 end, Iter2 out) {
     decode<b16_conversion_traits>(start, end, out);
 }
 
 template<class Iter1, class Iter2>
-void decode_b32(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void decode_b32(Iter1 start, Iter1 end, Iter2 out) {
     decode<b32_conversion_traits>(start, end, out);
 }
 
 template<class Iter1, class Iter2>
-void decode_b64(Iter1 start, Iter1 end, Iter2 out) {
+constexpr void decode_b64(Iter1 start, Iter1 end, Iter2 out) {
     decode<b64_conversion_traits>(start, end, out);
 }
 

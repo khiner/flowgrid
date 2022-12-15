@@ -5,6 +5,18 @@
 
 using std::string;
 
+/**
+Redefining [ImGui's scalar data types](https://github.com/ocornut/imgui/blob/master/imgui.h#L223-L232)
+
+This is done in order to:
+  * clarify & document the actual meanings of the FlowGrid integer type aliases below, and
+  * emphasize the importance of FlowGrid integer types reflecting ImGui types.
+
+If it wasn't important to keep FlowGrid's integer types mapped 1:1 to ImGui's, we would be using
+ [C++11's fixed width integer types](https://en.cppreference.com/w/cpp/types/integer) instead.
+
+Make sure to double check once in a blue moon that the ImGui types have not changed!
+*/
 using ImS8 = signed char; // 8-bit signed integer
 using ImU8 = unsigned char; // 8-bit unsigned integer
 using ImS16 = signed short; // 16-bit signed integer

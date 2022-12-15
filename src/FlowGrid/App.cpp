@@ -55,6 +55,9 @@ Vec2Linked::Vec2Linked(StateMember *parent, const string &path_segment, const st
     c.InitStore.set(Linked.Path, linked);
 }
 
+// File dialogs are not visible by default.
+FileDialog::FileDialog(StateMember *parent, const string &path_segment, const string &name_help, bool /*visible*/) : Window(parent, path_segment, name_help, false) {}
+
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
     for (const auto &[key, value] : v) j[json::json_pointer(key.string())] = value;

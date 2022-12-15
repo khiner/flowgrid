@@ -450,12 +450,19 @@ Window::Window(StateMember *parent, const string &path_segment, const string &na
     : StateMember(parent, path_segment, name_help) {
     Set(Visible, visible, c.InitStore);
 }
+Window::Window(StateMember *parent, const string &path_segment, const string &name_help, Menu::ItemsType menu_items)
+    : StateMember(parent, path_segment, name_help), WindowMenu("", std::move(menu_items)) {
+    Set(Visible, true, c.InitStore);
+}
 
 void Window::Draw(ImGuiWindowFlags flags) const {
     if (!Visible) return;
 
     bool open = Visible;
-    if (Begin(ImGuiLabel.c_str(), &open, flags) && open) Render();
+    if (Begin(ImGuiLabel.c_str(), &open, flags) && open) {
+        WindowMenu.Draw();
+        Render();
+    }
     End();
 
     if (Visible && !open) q(SetValue{Visible.Path, false});
@@ -484,6 +491,34 @@ void TabsWindow::Render() const {
             }
         }
         EndTabBar();
+    }
+}
+
+void Menu::Render() const {
+    if (Items.empty()) return;
+
+    const bool is_menu_bar = Label.empty();
+    if (is_menu_bar ? BeginMenuBar() : BeginMenu(Label.c_str())) {
+        for (const auto &item : Items) {
+            Match(
+                item,
+                [](const Menu &menu) {
+                    menu.Draw();
+                },
+                [](const MenuDrawable &drawable) {
+                    drawable.DrawMenu();
+                },
+                [](const EmptyAction &action) {
+                    const string menu_label = action::GetMenuLabel(action);
+                    const string shortcut = action::GetShortcut(action);
+                    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, c.ActionAllowed(action))) {
+                        Match(action, [](const auto &a) { q(a); });
+                    }
+                },
+            );
+        }
+        if (is_menu_bar) EndMenuBar();
+        else EndMenu();
     }
 }
 
@@ -1005,15 +1040,6 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
 }
 
 void StateViewer::Render() const {
-    if (BeginMenuBar()) {
-        if (BeginMenu("Settings")) {
-            AutoSelect.DrawMenu();
-            LabelMode.DrawMenu();
-            EndMenu();
-        }
-        EndMenuBar();
-    }
-
     StateJsonTree("State", c.GetProjectJson());
 }
 

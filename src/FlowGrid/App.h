@@ -418,6 +418,18 @@ protected:
     virtual void RenderMenu() const = 0;
 };
 
+struct Menu : Drawable {
+    using ItemsType = vector<std::variant<const Menu, const std::reference_wrapper<MenuDrawable>, const EmptyAction>>;
+
+    Menu(const string &label = "", const ItemsType items = {}) : Label(label), Items(std::move(items)) {}
+
+    const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
+    const ItemsType Items;
+
+protected:
+    void Render() const override;
+};
+
 struct UIStateMember : StateMember,
                        Drawable {
     using StateMember::StateMember;
@@ -704,7 +716,9 @@ static const vector<Flags::Item> TableFlagItems{
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : StateMember {
-    Window(StateMember *parent, const string &path_segment, const string &name_help = "", bool visible = true);
+    using StateMember::StateMember;
+    Window(StateMember *parent, const string &path_segment, const string &name_help, bool visible);
+    Window(StateMember *parent, const string &path_segment, const string &name_help, Menu::ItemsType menu_items);
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -713,6 +727,8 @@ struct Window : StateMember {
     void SelectTab() const; // If this window is tabbed, select it.
 
     Prop(Bool, Visible, true);
+
+    const Menu WindowMenu{};
 
 protected:
     virtual void Render() const = 0;
@@ -727,9 +743,14 @@ WindowMember(
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
 );
 
-WindowMember(
-    StateViewer,
-    enum LabelMode{Annotated, Raw};
+struct StateViewer : Window {
+    StateViewer(StateMember *parent, const string &path_segment, const string &name_help)
+        : Window(parent, path_segment, name_help, {Menu("Settings", {AutoSelect, LabelMode})}) {}
+
+    enum LabelMode {
+        Annotated,
+        Raw,
+    };
     Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
                            "For example, the main `ui.style.colors` state is a list.\n\n"
                            "'Annotated' mode shows (highlighted) labels for such state items.\n"
@@ -741,7 +762,10 @@ WindowMember(
           true);
 
     void StateJsonTree(const string &key, const json &value, const StatePath &path = RootPath) const;
-);
+
+protected:
+    void Render() const override;
+};
 
 WindowMember(StateMemoryEditor);
 WindowMember(StatePathUpdateFrequency);

@@ -14,6 +14,7 @@
 #include "../../Helper/basen.h"
 
 using namespace ImGui;
+using namespace fg;
 
 //-----------------------------------------------------------------------------
 // [SECTION] Diagram
@@ -232,7 +233,7 @@ struct ImGuiDevice : Device {
 
     void SetCursorPos(const ImVec2 &scaled_cursor_pos) override {
         Device::SetCursorPos(scaled_cursor_pos);
-        ImGui::SetCursorScreenPos(At({0, 0}));
+        SetCursorScreenPos(At({0, 0}));
     }
     void Rect(const ImRect &local_rect, const RectStyle &style) override {
         const auto &rect = At(local_rect);
@@ -1285,7 +1286,7 @@ void Audio::FaustState::FaustDiagram::Render() const {
 
     if (BeginMenuBar()) {
         if (BeginMenu("File")) {
-            fg::MenuItem(ShowSaveFaustSvgFileDialog{});
+            MenuItem(ShowSaveFaustSvgFileDialog{});
             EndMenu();
         }
         if (BeginMenu("View")) {

@@ -823,7 +823,7 @@ void TableSettings::Apply(ImGuiContext *) const {
 }
 
 Store ImGuiSettings::Set(ImGuiContext *ctx) const {
-    ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
+    SaveIniSettingsToMemory(); // Populates the `Settings` context members
     auto store = AppStore.transient();
     Nodes.Set(ctx->DockContext.NodesSettings, store);
     Windows.Set(ctx->SettingsWindows, store);
@@ -1087,17 +1087,17 @@ Style::FlowGridStyle::Diagram::Diagram(StateMember *parent, const string &path_s
 
 void Style::ImGuiStyle::ColorsDark(TransientStore &store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
-    ImGui::StyleColorsDark(&dst[0]);
+    StyleColorsDark(&dst[0]);
     Colors.Set(dst, store);
 }
 void Style::ImGuiStyle::ColorsLight(TransientStore &store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
-    ImGui::StyleColorsLight(&dst[0]);
+    StyleColorsLight(&dst[0]);
     Colors.Set(dst, store);
 }
 void Style::ImGuiStyle::ColorsClassic(TransientStore &store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
-    ImGui::StyleColorsClassic(&dst[0]);
+    StyleColorsClassic(&dst[0]);
     Colors.Set(dst, store);
 }
 
@@ -1337,7 +1337,6 @@ void Colors::Draw() const {
     }
 }
 
-// Returns `true` if style changes.
 void Style::ImGuiStyle::Render() const {
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(SetImGuiColorStyle{style_idx});
@@ -1351,7 +1350,7 @@ void Style::ImGuiStyle::Render() const {
             if (Selectable(font->GetDebugName(), font == font_current)) q(SetValue{FontIndex.Path, n});
             PopID();
         }
-        ImGui::EndCombo();
+        EndCombo();
     }
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
@@ -1524,18 +1523,18 @@ void Style::FlowGridStyle::Diagram::Render() const {
     FoldComplexity.Draw();
     const bool scale_fill = ScaleFillHeight;
     ScaleFillHeight.Draw();
-    if (scale_fill) ImGui::BeginDisabled();
+    if (scale_fill) BeginDisabled();
     Scale.Draw();
     if (scale_fill) {
         SameLine();
         TextUnformatted(format("Uncheck '{}' to manually edit diagram scale.", ScaleFillHeight.Name).c_str());
-        ImGui::EndDisabled();
+        EndDisabled();
     }
     Direction.Draw();
     OrientationMark.Draw();
     if (OrientationMark) {
         SameLine();
-        SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
+        SetNextItemWidth(GetContentRegionAvail().x * 0.5f);
         OrientationMarkRadius.Draw();
     }
     RouteFrame.Draw();
@@ -1543,12 +1542,12 @@ void Style::FlowGridStyle::Diagram::Render() const {
     Separator();
     const bool decorate_folded = DecorateRootNode;
     DecorateRootNode.Draw();
-    if (!decorate_folded) ImGui::BeginDisabled();
+    if (!decorate_folded) BeginDisabled();
     DecorateMargin.Draw();
     DecoratePadding.Draw();
     DecorateLineWidth.Draw();
     DecorateCornerRadius.Draw();
-    if (!decorate_folded) ImGui::EndDisabled();
+    if (!decorate_folded) EndDisabled();
     Separator();
     GroupMargin.Draw();
     GroupPadding.Draw();

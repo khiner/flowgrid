@@ -12,6 +12,7 @@
 #include "Faust/FaustEditor.h"
 
 using namespace fg;
+using namespace ImGui;
 
 /**
 Public methods:
@@ -67,7 +68,7 @@ RenderContext CreateRenderContext() {
 void DestroyRenderContext(const RenderContext &rc) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
+    DestroyContext();
     ImPlot::DestroyContext();
 
     SDL_GL_DeleteContext(rc.gl_context);
@@ -81,10 +82,10 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
-    auto *imgui_context = ImGui::CreateContext();
+    auto *imgui_context = CreateContext();
     auto *implot_context = ImPlot::CreateContext();
 
-    auto &io = ImGui::GetIO();
+    auto &io = GetIO();
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -97,7 +98,7 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
     ImGui_ImplOpenGL3_Init(RenderContext.glsl_version);
 
     UIContext ui_context = {imgui_context, implot_context};
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
@@ -113,14 +114,14 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
 void PrepareFrame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
+    NewFrame();
 }
 
 void RenderFrame(RenderContext &rc) {
-    ImGui::Render();
+    Render();
     glViewport(0, 0, (int)rc.io.DisplaySize.x, (int)rc.io.DisplaySize.y);
     glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData());
     SDL_GL_SwapWindow(rc.window);
 }
 
@@ -166,7 +167,7 @@ const auto KeyMap = action::ShortcutForId | transform([](const auto &entry) {
 
 bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
     const auto &[mod, key] = key_shortcut;
-    return mod == ImGui::GetIO().KeyMods && ImGui::IsKeyPressed(ImGui::GetKeyIndex(key));
+    return mod == GetIO().KeyMods && IsKeyPressed(GetKeyIndex(key));
 }
 
 RenderContext RenderContext;
@@ -214,7 +215,7 @@ void TickUi() {
     s.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
     RenderFrame(RenderContext);
 
-    auto &io = ImGui::GetIO();
+    auto &io = GetIO();
     if (io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
@@ -277,24 +278,24 @@ bool JsonTreeNode(const string &label, JsonTreeNodeFlags flags, const char *id) 
     const bool disabled = flags & JsonTreeNodeFlags_Disabled;
     const ImGuiTreeNodeFlags imgui_flags = flags & JsonTreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
 
-    if (disabled) ImGui::BeginDisabled();
-    if (highlighted) ImGui::PushStyleColor(ImGuiCol_Text, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
-    const bool is_open = id ? ImGui::TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : ImGui::TreeNodeEx(label.c_str(), imgui_flags);
-    if (highlighted) ImGui::PopStyleColor();
-    if (disabled) ImGui::EndDisabled();
+    if (disabled) BeginDisabled();
+    if (highlighted) PushStyleColor(ImGuiCol_Text, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+    const bool is_open = id ? TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : TreeNodeEx(label.c_str(), imgui_flags);
+    if (highlighted) PopStyleColor();
+    if (disabled) EndDisabled();
 
     return is_open;
 }
 
 void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
     if (value.is_null()) {
-        ImGui::TextUnformatted(label.empty() ? "(null)" : label.c_str());
+        TextUnformatted(label.empty() ? "(null)" : label.c_str());
     } else if (value.is_object()) {
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 JsonTree(it.key(), *it, node_flags);
             }
-            if (!label.empty()) ImGui::TreePop();
+            if (!label.empty()) TreePop();
         }
     } else if (value.is_array()) {
         if (label.empty() || JsonTreeNode(label, node_flags, id)) {
@@ -303,11 +304,11 @@ void JsonTree(const string &label, const json &value, JsonTreeNodeFlags node_fla
                 JsonTree(to_string(i), it, node_flags);
                 i++;
             }
-            if (!label.empty()) ImGui::TreePop();
+            if (!label.empty()) TreePop();
         }
     } else {
-        if (label.empty()) ImGui::TextUnformatted(value.dump().c_str());
-        else ImGui::Text("%s: %s", label.c_str(), value.dump().c_str());
+        if (label.empty()) TextUnformatted(value.dump().c_str());
+        else Text("%s: %s", label.c_str(), value.dump().c_str());
     }
 }
 } // namespace FlowGrid

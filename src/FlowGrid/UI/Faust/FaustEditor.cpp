@@ -8,6 +8,8 @@
 #include "zep/regress.h"
 #include "zep/tab_window.h"
 
+using namespace fg;
+using namespace ImGui;
 using namespace Zep;
 
 inline NVec2f toNVec2f(const ImVec2 &im) { return {im.x, im.y}; }
@@ -15,7 +17,7 @@ inline ImVec2 toImVec2(const NVec2f &im) { return {im.x, im.y}; }
 
 struct ZepFont_ImGui : ZepFont {
     ZepFont_ImGui(ZepDisplay &display, ImFont *font, float heightRatio) : ZepFont(display), font(font) {
-        SetPixelHeight(int(font->FontSize * heightRatio * ImGui::GetIO().FontGlobalScale));
+        SetPixelHeight(int(font->FontSize * heightRatio * GetIO().FontGlobalScale));
     }
 
     void SetPixelHeight(int pixelHeight) override {
@@ -40,7 +42,7 @@ struct ZepFont_ImGui : ZepFont {
 };
 
 static ImU32 GetStyleModulatedColor(const NVec4f &color) {
-    return ToPackedABGR(NVec4f(color.x, color.y, color.z, color.w * ImGui::GetStyle().Alpha));
+    return ToPackedABGR(NVec4f(color.x, color.y, color.z, color.w * GetStyle().Alpha));
 }
 
 struct ZepDisplay_ImGui : ZepDisplay {
@@ -48,7 +50,7 @@ struct ZepDisplay_ImGui : ZepDisplay {
 
     void DrawChars(ZepFont &font, const NVec2f &pos, const NVec4f &col, const uint8_t *text_begin, const uint8_t *text_end) const override {
         auto imFont = dynamic_cast<ZepFont_ImGui &>(font).font;
-        auto *drawList = ImGui::GetWindowDrawList();
+        auto *drawList = GetWindowDrawList();
         if (text_end == nullptr) {
             text_end = text_begin + strlen((const char *)text_begin);
         }
@@ -63,7 +65,7 @@ struct ZepDisplay_ImGui : ZepDisplay {
     }
 
     void DrawLine(const NVec2f &start, const NVec2f &end, const NVec4f &color, float width) const override {
-        auto *drawList = ImGui::GetWindowDrawList();
+        auto *drawList = GetWindowDrawList();
         const auto modulatedColor = GetStyleModulatedColor(color);
 
         // Background rect for numbers
@@ -77,7 +79,7 @@ struct ZepDisplay_ImGui : ZepDisplay {
     }
 
     void DrawRectFilled(const NRectf &rc, const NVec4f &color) const override {
-        auto *drawList = ImGui::GetWindowDrawList();
+        auto *drawList = GetWindowDrawList();
         const auto modulatedColor = GetStyleModulatedColor(color);
         // Background rect for numbers
         if (clipRect.Width() == 0) {
@@ -101,7 +103,7 @@ struct ZepEditor_ImGui : ZepEditor {
         : ZepEditor(new ZepDisplay_ImGui(), root, flags, pFileSystem) {}
 
     bool sendImGuiKeyPressToBuffer(ImGuiKey key, ImGuiModFlags mod = ImGuiModFlags_None) {
-        if (ImGui::IsKeyPressed(key)) {
+        if (IsKeyPressed(key)) {
             GetActiveBuffer()->GetMode()->AddKeyPress(key, mod);
             return true;
         }
@@ -109,7 +111,7 @@ struct ZepEditor_ImGui : ZepEditor {
     }
 
     void handleMouseEventAndHideFromImGui(size_t mouseButtonIndex, ZepMouseButton zepMouseButton, bool down) {
-        auto &io = ImGui::GetIO();
+        auto &io = GetIO();
         if (down) {
             if (io.MouseClicked[mouseButtonIndex] && OnMouseDown(toNVec2f(io.MousePos), zepMouseButton)) io.MouseClicked[mouseButtonIndex] = false;
         }
@@ -117,7 +119,7 @@ struct ZepEditor_ImGui : ZepEditor {
     }
 
     void HandleInput() override {
-        auto &io = ImGui::GetIO();
+        auto &io = GetIO();
         bool handled = false;
         ImGuiModFlags mod = 0;
 
@@ -153,7 +155,7 @@ struct ZepEditor_ImGui : ZepEditor {
 
         // Check USB Keys
         for (auto &f_key : F_KEYS) {
-            if (ImGui::IsKeyPressed(f_key)) {
+            if (IsKeyPressed(f_key)) {
                 buffer->GetMode()->AddKeyPress(f_key, mod);
                 return;
             }
@@ -174,21 +176,21 @@ struct ZepEditor_ImGui : ZepEditor {
         if (sendImGuiKeyPressToBuffer(ImGuiKey_PageUp, mod)) return;
 
         if (io.KeyCtrl) {
-            if (ImGui::IsKeyPressed(ImGuiKey_1)) {
+            if (IsKeyPressed(ImGuiKey_1)) {
                 SetGlobalMode(ZepMode_Standard::StaticName());
                 handled = true;
-            } else if (ImGui::IsKeyPressed(ImGuiKey_2)) {
+            } else if (IsKeyPressed(ImGuiKey_2)) {
                 SetGlobalMode(ZepMode_Vim::StaticName());
                 handled = true;
             } else {
                 for (ImGuiKey key = ImGuiKey_A; key < ImGuiKey_Z; key = ImGuiKey(key + 1)) {
-                    if (ImGui::IsKeyPressed(key)) {
+                    if (IsKeyPressed(key)) {
                         buffer->GetMode()->AddKeyPress(key, mod);
                         handled = true;
                     }
                 }
 
-                if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
+                if (IsKeyPressed(ImGuiKey_Space)) {
                     buffer->GetMode()->AddKeyPress(ImGuiKey_Space, mod);
                     handled = true;
                 }
@@ -339,56 +341,56 @@ void Audio::FaustState::FaustEditor::Render() const {
 
     auto *buffer = zep_editor->GetActiveBuffer();
 
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-            fg::MenuItem(ShowOpenFaustFileDialog{});
-            fg::MenuItem(ShowSaveFaustFileDialog{});
-            ImGui::EndMenu();
+    if (BeginMenuBar()) {
+        if (BeginMenu("File")) {
+            MenuItem(ShowOpenFaustFileDialog{});
+            MenuItem(ShowSaveFaustFileDialog{});
+            EndMenu();
         }
-        if (ImGui::BeginMenu("Settings")) {
-            if (ImGui::BeginMenu("Editor mode")) {
+        if (BeginMenu("Settings")) {
+            if (BeginMenu("Editor mode")) {
                 bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool enabledNormal = !enabledVim;
-                if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim)) {
+                if (MenuItem("Vim", "CTRL+2", &enabledVim)) {
                     zep_editor->SetGlobalMode(ZepMode_Vim::StaticName());
-                } else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal)) {
+                } else if (MenuItem("Standard", "CTRL+1", &enabledNormal)) {
                     zep_editor->SetGlobalMode(ZepMode_Standard::StaticName());
                 }
-                ImGui::EndMenu();
+                EndMenu();
             }
-            if (ImGui::BeginMenu("Theme")) {
+            if (BeginMenu("Theme")) {
                 bool enabledDark = zep_editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
                 bool enabledLight = !enabledDark;
 
-                if (ImGui::MenuItem("Dark", "", &enabledDark)) {
+                if (MenuItem("Dark", "", &enabledDark)) {
                     zep_editor->theme->SetThemeType(ThemeType::Dark);
-                } else if (ImGui::MenuItem("Light", "", &enabledLight)) {
+                } else if (MenuItem("Light", "", &enabledLight)) {
                     zep_editor->theme->SetThemeType(ThemeType::Light);
                 }
-                ImGui::EndMenu();
+                EndMenu();
             }
-            ImGui::EndMenu();
+            EndMenu();
         }
-        if (ImGui::BeginMenu("Window")) {
+        if (BeginMenu("Window")) {
             auto *tabWindow = zep_editor->activeTabWindow;
-            if (ImGui::MenuItem("Horizontal split")) {
+            if (MenuItem("Horizontal split")) {
                 tabWindow->AddWindow(buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
-            } else if (ImGui::MenuItem("Vertical split")) {
+            } else if (MenuItem("Vertical split")) {
                 tabWindow->AddWindow(buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
             }
-            ImGui::EndMenu();
+            EndMenu();
         }
-        ImGui::EndMenuBar();
+        EndMenuBar();
     }
 
-    const auto &pos = ImGui::GetWindowPos();
-    const auto &top_left = ImGui::GetWindowContentRegionMin();
-    const auto &bottom_right = ImGui::GetWindowContentRegionMax();
+    const auto &pos = GetWindowPos();
+    const auto &top_left = GetWindowContentRegionMin();
+    const auto &bottom_right = GetWindowContentRegionMax();
     zep_editor->SetDisplayRegion({{top_left.x + pos.x, top_left.y + pos.y}, {bottom_right.x + pos.x, bottom_right.y + pos.y}});
 
     //    editor->RefreshRequired(); // TODO Save battery by skipping display if not required.
     zep_editor->Display();
-    if (ImGui::IsWindowFocused()) zep_editor->HandleInput();
+    if (IsWindowFocused()) zep_editor->HandleInput();
     else zep_editor->ResetCursorTimer();
 
     // TODO this is not the usual immediate-mode case. Only set text if the text changed.
@@ -404,9 +406,9 @@ void Audio::FaustState::FaustEditor::Render() const {
 }
 
 void Audio::FaustState::FaustLog::Render() const {
-    ImGui::PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
+    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
     s.Audio.Faust.Error.Draw();
-    ImGui::PopStyleColor();
+    PopStyleColor();
 }
 
 void destroy_faust_editor() {

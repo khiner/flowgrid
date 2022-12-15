@@ -230,7 +230,7 @@ void TickUi() {
 
 void DestroyUi() {
     IGFD::CleanupDemo();
-    destroy_faust_editor();
+    DestroyFaustEditor();
     DestroyRenderContext(RenderContext);
 }
 

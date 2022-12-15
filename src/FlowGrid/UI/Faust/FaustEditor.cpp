@@ -31,8 +31,8 @@ struct ZepFont_ImGui : ZepFont {
         ImVec2 text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, (const char *)begin, (const char *)end, nullptr);
         if (text_size.x == 0.0) {
             // Make invalid characters a default fixed_size
-            const char chDefault = 'A';
-            text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, &chDefault, (&chDefault + 1), nullptr);
+            const char default_char = 'A';
+            text_size = font->CalcTextSizeA(float(pixelHeight), FLT_MAX, FLT_MAX, &default_char, (&default_char + 1), nullptr);
         }
 
         return toNVec2f(text_size);
@@ -49,7 +49,7 @@ struct ZepDisplay_ImGui : ZepDisplay {
     ZepDisplay_ImGui() : ZepDisplay() {}
 
     void DrawChars(ZepFont &font, const NVec2f &pos, const NVec4f &col, const uint8_t *text_begin, const uint8_t *text_end) const override {
-        auto imFont = dynamic_cast<ZepFont_ImGui &>(font).font;
+        const auto &imFont = dynamic_cast<ZepFont_ImGui &>(font).font;
         auto *drawList = GetWindowDrawList();
         if (text_end == nullptr) {
             text_end = text_begin + strlen((const char *)text_begin);
@@ -198,7 +198,7 @@ struct ZepEditor_ImGui : ZepEditor {
         }
 
         if (!handled) {
-            for (ImWchar ch : io.InputQueueCharacters) {
+            for (const ImWchar ch : io.InputQueueCharacters) {
                 if (ch == '\r') continue; // Ignore '\r' - sometimes ImGui generates it!
                 auto key = ImGuiKey(ch - 'a' + ImGuiKey_A);
                 buffer->GetMode()->AddKeyPress(key, mod);
@@ -207,8 +207,7 @@ struct ZepEditor_ImGui : ZepEditor {
     }
 };
 
-bool zep_initialized = false;
-bool ignore_changes = false; // Used to ignore zep messages triggered when programmatically setting the buffer.
+bool IgnoreChanges = false; // Used to ignore zep messages triggered when programmatically setting the buffer.
 
 struct ZepWrapper : ZepComponent, IZepReplProvider {
     explicit ZepWrapper(ZepEditor_ImGui &editor) : ZepComponent(editor) {
@@ -222,16 +221,16 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
     }
 
     void Notify(const std::shared_ptr<ZepMessage> &message) override {
-        if (ignore_changes) return;
+        if (IgnoreChanges) return;
 
         if (message->messageId == Msg::Buffer) {
-            auto buffer_message = std::static_pointer_cast<BufferMessage>(message);
+            const auto buffer_message = std::static_pointer_cast<BufferMessage>(message);
             switch (buffer_message->type) {
                 case BufferMessageType::TextChanged:
                 case BufferMessageType::TextDeleted:
                 case BufferMessageType::TextAdded: {
                     auto *buffer = buffer_message->buffer;
-                    if (zep_initialized && buffer->name == s.Audio.Faust.Editor.FileName) {
+                    if (buffer->name == s.Audio.Faust.Editor.FileName) {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
                         q(SetValue{s.Audio.Faust.Code.Path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
@@ -281,7 +280,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
 
     bool ReplIsFormComplete(const string &str, int &indent) override {
         int count = 0;
-        for (auto &ch : str) {
+        for (const auto &ch : str) {
             if (ch == '(') count++;
             if (ch == ')') count--;
         }
@@ -307,22 +306,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
     std::function<void(std::shared_ptr<ZepMessage>)> callback;
 };
 
-unique_ptr<ZepWrapper> zep;
-unique_ptr<ZepEditor_ImGui> zep_editor;
-
-void zep_init() {
-    zep_editor = make_unique<ZepEditor_ImGui>(ZepPath(fs::current_path()));
-    zep = make_unique<ZepWrapper>(*zep_editor);
-
-    auto *display = zep_editor->display;
-    auto *font = UiContext.Fonts.FixedWidth;
-    display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, font, 1.0));
-    display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, font, 1.0));
-    display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, font, 1.5));
-    display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, font, 1.25));
-    display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, font, 1.125));
-    zep_editor->InitWithText(s.Audio.Faust.Editor.FileName, s.Audio.Faust.Code);
-}
+static unique_ptr<ZepWrapper> Wrapper;
 
 /*
  * TODO
@@ -333,13 +317,23 @@ void zep_init() {
  *     (and right navigation should move from the end)
  */
 void Audio::FaustState::FaustEditor::Render() const {
-    if (!zep_initialized) {
+    static unique_ptr<ZepEditor_ImGui> editor;
+    if (!editor) {
         // Called once after the fonts are initialized
-        zep_init();
-        zep_initialized = true;
+        editor = make_unique<ZepEditor_ImGui>(ZepPath(fs::current_path()));
+        Wrapper = make_unique<ZepWrapper>(*editor);
+
+        auto *display = editor->display;
+        auto *font = UiContext.Fonts.FixedWidth;
+        display->SetFont(ZepTextType::UI, std::make_shared<ZepFont_ImGui>(*display, font, 1.0));
+        display->SetFont(ZepTextType::Text, std::make_shared<ZepFont_ImGui>(*display, font, 1.0));
+        display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, font, 1.5));
+        display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, font, 1.25));
+        display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, font, 1.125));
+        editor->InitWithText(s.Audio.Faust.Editor.FileName, s.Audio.Faust.Code);
     }
 
-    auto *buffer = zep_editor->GetActiveBuffer();
+    auto *buffer = editor->GetActiveBuffer();
 
     if (BeginMenuBar()) {
         if (BeginMenu("File")) {
@@ -349,34 +343,34 @@ void Audio::FaustState::FaustEditor::Render() const {
         }
         if (BeginMenu("Settings")) {
             if (BeginMenu("Editor mode")) {
-                bool enabledVim = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
-                bool enabledNormal = !enabledVim;
-                if (MenuItem("Vim", "CTRL+2", &enabledVim)) {
-                    zep_editor->SetGlobalMode(ZepMode_Vim::StaticName());
-                } else if (MenuItem("Standard", "CTRL+1", &enabledNormal)) {
-                    zep_editor->SetGlobalMode(ZepMode_Standard::StaticName());
+                bool vim_enabled = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
+                bool normal_enabled = !vim_enabled;
+                if (MenuItem("Vim", "CTRL+2", &vim_enabled)) {
+                    editor->SetGlobalMode(ZepMode_Vim::StaticName());
+                } else if (MenuItem("Standard", "CTRL+1", &normal_enabled)) {
+                    editor->SetGlobalMode(ZepMode_Standard::StaticName());
                 }
                 EndMenu();
             }
             if (BeginMenu("Theme")) {
-                bool enabledDark = zep_editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
-                bool enabledLight = !enabledDark;
+                bool dark_enabled = editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
+                bool light_enabled = !dark_enabled;
 
-                if (MenuItem("Dark", "", &enabledDark)) {
-                    zep_editor->theme->SetThemeType(ThemeType::Dark);
-                } else if (MenuItem("Light", "", &enabledLight)) {
-                    zep_editor->theme->SetThemeType(ThemeType::Light);
+                if (MenuItem("Dark", "", &dark_enabled)) {
+                    editor->theme->SetThemeType(ThemeType::Dark);
+                } else if (MenuItem("Light", "", &light_enabled)) {
+                    editor->theme->SetThemeType(ThemeType::Light);
                 }
                 EndMenu();
             }
             EndMenu();
         }
         if (BeginMenu("Window")) {
-            auto *tabWindow = zep_editor->activeTabWindow;
+            auto *tab_window = editor->activeTabWindow;
             if (MenuItem("Horizontal split")) {
-                tabWindow->AddWindow(buffer, tabWindow->GetActiveWindow(), RegionLayoutType::VBox);
+                tab_window->AddWindow(buffer, tab_window->GetActiveWindow(), RegionLayoutType::VBox);
             } else if (MenuItem("Vertical split")) {
-                tabWindow->AddWindow(buffer, tabWindow->GetActiveWindow(), RegionLayoutType::HBox);
+                tab_window->AddWindow(buffer, tab_window->GetActiveWindow(), RegionLayoutType::HBox);
             }
             EndMenu();
         }
@@ -386,12 +380,12 @@ void Audio::FaustState::FaustEditor::Render() const {
     const auto &pos = GetWindowPos();
     const auto &top_left = GetWindowContentRegionMin();
     const auto &bottom_right = GetWindowContentRegionMax();
-    zep_editor->SetDisplayRegion({{top_left.x + pos.x, top_left.y + pos.y}, {bottom_right.x + pos.x, bottom_right.y + pos.y}});
+    editor->SetDisplayRegion({{top_left.x + pos.x, top_left.y + pos.y}, {bottom_right.x + pos.x, bottom_right.y + pos.y}});
 
     //    editor->RefreshRequired(); // TODO Save battery by skipping display if not required.
-    zep_editor->Display();
-    if (IsWindowFocused()) zep_editor->HandleInput();
-    else zep_editor->ResetCursorTimer();
+    editor->Display();
+    if (IsWindowFocused()) editor->HandleInput();
+    else editor->ResetCursorTimer();
 
     // TODO this is not the usual immediate-mode case. Only set text if the text changed.
     //  Really what I want is for an application undo/redo containing code text changes to do exactly what zep does for undo/redo internally.
@@ -399,9 +393,9 @@ void Audio::FaustState::FaustEditor::Render() const {
     //  The comparison is also slow.
     // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
     if (s.Audio.Faust.Code != buffer->workingBuffer.string().c_str()) { // NOLINT(readability-redundant-string-cstr)
-        ignore_changes = true;
-        zep_editor->GetActiveBuffer()->SetText(s.Audio.Faust.Code);
-        ignore_changes = false;
+        IgnoreChanges = true;
+        editor->GetActiveBuffer()->SetText(s.Audio.Faust.Code);
+        IgnoreChanges = false;
     }
 }
 
@@ -411,6 +405,6 @@ void Audio::FaustState::FaustLog::Render() const {
     PopStyleColor();
 }
 
-void destroy_faust_editor() {
-    zep.reset();
+void DestroyFaustEditor() {
+    if (Wrapper) Wrapper.reset();
 }

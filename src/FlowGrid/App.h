@@ -83,7 +83,7 @@ struct StatePathHash {
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
 
-extern const Store &store; // Read-only global for full, read-only canonical application state.
+extern const Store &AppStore; // Read-only global for full, read-only canonical application state.
 
 // These are needed to fully define equality comparison for `Primitive`.
 constexpr bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
@@ -358,11 +358,11 @@ struct Vector : StateMember {
     virtual string GetName(Count index) const { return to_string(index); };
 
     T operator[](Count index) const;
-    Count size(const Store &_store = store) const;
+    Count size(const Store &store = AppStore) const;
 
-    Store Set(Count index, const T &value, const Store &_store = store) const;
-    Store Set(const vector<T> &values, const Store &_store = store) const;
-    Store Set(const vector<pair<int, T>> &, const Store &_store = store) const;
+    Store Set(Count index, const T &value, const Store &store = AppStore) const;
+    Store Set(const vector<T> &values, const Store &store = AppStore) const;
+    Store Set(const vector<pair<int, T>> &, const Store &store = AppStore) const;
 
     void Set(Count index, const T &value, TransientStore &) const;
     void Set(const vector<T> &values, TransientStore &) const;
@@ -376,10 +376,10 @@ template<typename T>
 struct Vector2D : StateMember {
     using StateMember::StateMember;
 
-    T at(Count i, Count j, const Store &_store = store) const;
+    T at(Count i, Count j, const Store &store = AppStore) const;
     Count size(const TransientStore &) const; // Number of outer vectors
 
-    Store Set(Count i, Count j, const T &value, const Store &_store = store) const;
+    Store Set(Count i, Count j, const T &value, const Store &store = AppStore) const;
     void Set(Count i, Count j, const T &value, TransientStore &) const;
     void truncate(Count length, TransientStore &) const; // Delete every outer vector after index `length - 1`.
     void truncate(Count i, Count length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
@@ -876,13 +876,13 @@ struct Style : TabsWindow {
             };
             const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const Field::Base &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
 
-            void ColorsDark(TransientStore &_store) const;
-            void ColorsClassic(TransientStore &_store) const;
-            void ColorsLight(TransientStore &_store) const;
-            void ColorsFaust(TransientStore &_store) const; // Color Faust diagrams the same way Faust does when it renders to SVG.
+            void ColorsDark(TransientStore &store) const;
+            void ColorsClassic(TransientStore &store) const;
+            void ColorsLight(TransientStore &store) const;
+            void ColorsFaust(TransientStore &store) const; // Color Faust diagrams the same way Faust does when it renders to SVG.
 
-            void LayoutFlowGrid(TransientStore &_store) const;
-            void LayoutFaust(TransientStore &_store) const; // Layout Faust diagrams the same way Faust does when it renders to SVG.
+            void LayoutFlowGrid(TransientStore &store) const;
+            void LayoutFaust(TransientStore &store) const; // Layout Faust diagrams the same way Faust does when it renders to SVG.
 
             static const char *GetColorName(FlowGridDiagramCol idx) {
                 switch (idx) {
@@ -929,9 +929,9 @@ struct Style : TabsWindow {
         Prop(Params, Params);
         Prop(Colors, Colors, GetColorName);
 
-        void ColorsDark(TransientStore &_store) const;
-        void ColorsLight(TransientStore &_store) const;
-        void ColorsClassic(TransientStore &_store) const;
+        void ColorsDark(TransientStore &store) const;
+        void ColorsLight(TransientStore &store) const;
+        void ColorsClassic(TransientStore &store) const;
 
         static const char *GetColorName(FlowGridCol idx) {
             switch (idx) {
@@ -1023,10 +1023,10 @@ struct Style : TabsWindow {
         ImPlotStyle,
 
         void Apply(ImPlotContext *ctx) const;
-        void ColorsAuto(TransientStore &_store) const;
-        void ColorsDark(TransientStore &_store) const;
-        void ColorsLight(TransientStore &_store) const;
-        void ColorsClassic(TransientStore &_store) const;
+        void ColorsAuto(TransientStore &store) const;
+        void ColorsDark(TransientStore &store) const;
+        void ColorsLight(TransientStore &store) const;
+        void ColorsClassic(TransientStore &store) const;
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.
@@ -1089,7 +1089,7 @@ struct ImGuiDockNodeSettings;
 Member(
     DockNodeSettings,
 
-    void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &store) const;
+    void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &) const;
     void Apply(ImGuiContext *) const;
 
     Prop(Vector<ID>, NodeId);
@@ -1107,7 +1107,7 @@ Member(
 Member(
     WindowSettings,
 
-    void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &store) const;
+    void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &) const;
     void Apply(ImGuiContext *) const;
 
     Prop(Vector<ImGuiID>, ID);
@@ -1497,7 +1497,7 @@ struct StoreHistory {
         vector<ImU64> Values;
     };
 
-    StoreHistory(const Store &_store) : Records{{Clock::now(), _store, {}}} {}
+    StoreHistory(const Store &store) : Records{{Clock::now(), store, {}}} {}
 
     void UpdateGesturePaths(const Gesture &, const Patch &);
     Plottable StatePathUpdateFrequencyPlottable() const;
@@ -1546,7 +1546,7 @@ struct Context {
 
     // Main setter to modify the canonical application state store.
     // _All_ store assignments happen via this method.
-    Patch SetStore(const Store &new_store);
+    Patch SetStore(const Store &);
 
     TransientStore InitStore{}; // Used in `StateMember` constructors to initialize the store.
 
@@ -1556,10 +1556,10 @@ private:
 
 public:
     const State &s = ApplicationState;
-    const Store &store = ApplicationStore;
+    const Store &AppStore = ApplicationStore;
 
     Preferences Preferences;
-    StoreHistory History{store}; // One store checkpoint for every gesture.
+    StoreHistory History{AppStore}; // One store checkpoint for every gesture.
     bool ProjectHasChanges{false};
 
 private:
@@ -1615,9 +1615,9 @@ extern Context c;
 bool q(Action &&a, bool flush = false);
 
 // Persistent (immutable) store setters
-Store Set(const Field::Base &, const Primitive &, const Store &_store = store);
-Store Set(const StoreEntries &, const Store &_store = store);
-Store Set(const FieldEntries &, const Store &_store = store);
+Store Set(const Field::Base &, const Primitive &, const Store &store = AppStore);
+Store Set(const StoreEntries &, const Store &store = AppStore);
+Store Set(const FieldEntries &, const Store &store = AppStore);
 
 // Equivalent setters for a transient (mutable) store
 void Set(const Field::Base &, const Primitive &, TransientStore &);

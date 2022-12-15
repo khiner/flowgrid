@@ -28,7 +28,7 @@ namespace Field {
 Base::Base(StateMember *parent, const string &id, const string &name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
     c.InitStore.set(Path, value);
 }
-Primitive Base::Get() const { return store.at(Path); }
+Primitive Base::Get() const { return AppStore.at(Path); }
 Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
 
 Bool::operator bool() const { return std::get<bool>(Get()); }
@@ -47,72 +47,72 @@ Flags::operator int() const { return std::get<int>(Get()); }
 } // namespace Field
 
 template<typename T>
-T Vector<T>::operator[](Count index) const { return std::get<T>(store.at(Path / to_string(index))); };
+T Vector<T>::operator[](Count index) const { return std::get<T>(AppStore.at(Path / to_string(index))); };
 template<typename T>
-Count Vector<T>::size(const Store &_store) const {
+Count Vector<T>::size(const Store &store) const {
     Count i = 0;
-    while (_store.count(Path / to_string(i++))) {}
+    while (store.count(Path / to_string(i++))) {}
     return i - 1;
 }
 
 // Transient
 template<typename T>
-void Vector<T>::Set(Count index, const T &value, TransientStore &_store) const { _store.set(Path / to_string(index), value); }
+void Vector<T>::Set(Count index, const T &value, TransientStore &store) const { store.set(Path / to_string(index), value); }
 template<typename T>
-void Vector<T>::Set(const vector<T> &values, TransientStore &_store) const {
-    ::Set(views::ints(0, int(values.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), values[i]); }) | to<vector>, _store);
-    truncate(values.size(), _store);
+void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
+    ::Set(views::ints(0, int(values.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), values[i]); }) | to<vector>, store);
+    truncate(values.size(), store);
 }
 template<typename T>
-Store Vector<T>::Set(const vector<pair<int, T>> &values, const Store &_store) const {
-    auto transient = _store.transient();
+Store Vector<T>::Set(const vector<pair<int, T>> &values, const Store &store) const {
+    auto transient = store.transient();
     Set(values, transient);
     return transient.persistent();
 }
 
 // Persistent
 template<typename T>
-Store Vector<T>::Set(Count index, const T &value, const Store &_store) const { return ::Set(Path / index, value, _store); }
+Store Vector<T>::Set(Count index, const T &value, const Store &store) const { return ::Set(Path / index, value, store); }
 template<typename T>
-Store Vector<T>::Set(const vector<T> &values, const Store &_store) const {
-    if (values.empty()) return _store;
+Store Vector<T>::Set(const vector<T> &values, const Store &store) const {
+    if (values.empty()) return store;
 
-    auto transient = _store.transient();
+    auto transient = store.transient();
     Set(values, transient);
     return transient.persistent();
 }
 template<typename T>
-void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &_store) const {
-    for (const auto &[index, value] : values) _store.set(Path / to_string(index), value);
+void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
+    for (const auto &[index, value] : values) store.set(Path / to_string(index), value);
 }
 
 template<typename T>
-void Vector<T>::truncate(const Count length, TransientStore &_store) const {
+void Vector<T>::truncate(const Count length, TransientStore &store) const {
     Count i = length;
-    while (_store.count(Path / to_string(i))) _store.erase(Path / to_string(i++));
+    while (store.count(Path / to_string(i))) store.erase(Path / to_string(i++));
 }
 
 template<typename T>
-T Vector2D<T>::at(Count i, Count j, const Store &_store) const { return std::get<T>(_store.at(Path / to_string(i) / to_string(j))); };
+T Vector2D<T>::at(Count i, Count j, const Store &store) const { return std::get<T>(store.at(Path / to_string(i) / to_string(j))); };
 template<typename T>
-Count Vector2D<T>::size(const TransientStore &_store) const {
+Count Vector2D<T>::size(const TransientStore &store) const {
     Count i = 0;
-    while (_store.count(Path / i++ / 0).to_string()) {}
+    while (store.count(Path / i++ / 0).to_string()) {}
     return i - 1;
 }
 template<typename T>
-Store Vector2D<T>::Set(Count i, Count j, const T &value, const Store &_store) const { return _store.set(Path / to_string(i) / to_string(j), value); }
+Store Vector2D<T>::Set(Count i, Count j, const T &value, const Store &store) const { return store.set(Path / to_string(i) / to_string(j), value); }
 template<typename T>
-void Vector2D<T>::Set(Count i, Count j, const T &value, TransientStore &_store) const { _store.set(Path / to_string(i) / to_string(j), value); }
+void Vector2D<T>::Set(Count i, Count j, const T &value, TransientStore &store) const { store.set(Path / to_string(i) / to_string(j), value); }
 template<typename T>
-void Vector2D<T>::truncate(const Count length, TransientStore &_store) const {
+void Vector2D<T>::truncate(const Count length, TransientStore &store) const {
     Count i = length;
-    while (_store.count(Path / to_string(i) / "0")) truncate(i++, 0, _store);
+    while (store.count(Path / to_string(i) / "0")) truncate(i++, 0, store);
 }
 template<typename T>
-void Vector2D<T>::truncate(const Count i, const Count length, TransientStore &_store) const {
+void Vector2D<T>::truncate(const Count i, const Count length, TransientStore &store) const {
     Count j = length;
-    while (_store.count(Path / to_string(i) / to_string(j))) _store.erase(Path / to_string(i) / to_string(j++));
+    while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
 }
 
 //-----------------------------------------------------------------------------
@@ -631,31 +631,31 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih SizeRef;
 };
 
-void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &_store) const {
+void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &store) const {
     const Count size = dss.Size;
     for (Count i = 0; i < size; i++) {
         const auto &ds = dss[int(i)];
-        NodeId.Set(i, ds.NodeId, _store);
-        ParentNodeId.Set(i, ds.ParentNodeId, _store);
-        ParentWindowId.Set(i, ds.ParentWindowId, _store);
-        SelectedTabId.Set(i, ds.SelectedTabId, _store);
-        SplitAxis.Set(i, ds.SplitAxis, _store);
-        Depth.Set(i, ds.Depth, _store);
-        Flags.Set(i, int(ds.Flags), _store);
-        Pos.Set(i, PackImVec2ih(ds.Pos), _store);
-        Size.Set(i, PackImVec2ih(ds.Size), _store);
-        SizeRef.Set(i, PackImVec2ih(ds.SizeRef), _store);
+        NodeId.Set(i, ds.NodeId, store);
+        ParentNodeId.Set(i, ds.ParentNodeId, store);
+        ParentWindowId.Set(i, ds.ParentWindowId, store);
+        SelectedTabId.Set(i, ds.SelectedTabId, store);
+        SplitAxis.Set(i, ds.SplitAxis, store);
+        Depth.Set(i, ds.Depth, store);
+        Flags.Set(i, int(ds.Flags), store);
+        Pos.Set(i, PackImVec2ih(ds.Pos), store);
+        Size.Set(i, PackImVec2ih(ds.Size), store);
+        SizeRef.Set(i, PackImVec2ih(ds.SizeRef), store);
     }
-    NodeId.truncate(size, _store);
-    ParentNodeId.truncate(size, _store);
-    ParentWindowId.truncate(size, _store);
-    SelectedTabId.truncate(size, _store);
-    SplitAxis.truncate(size, _store);
-    Depth.truncate(size, _store);
-    Flags.truncate(size, _store);
-    Pos.truncate(size, _store);
-    Size.truncate(size, _store);
-    SizeRef.truncate(size, _store);
+    NodeId.truncate(size, store);
+    ParentNodeId.truncate(size, store);
+    ParentWindowId.truncate(size, store);
+    SelectedTabId.truncate(size, store);
+    SplitAxis.truncate(size, store);
+    Depth.truncate(size, store);
+    Flags.truncate(size, store);
+    Pos.truncate(size, store);
+    Size.truncate(size, store);
+    SizeRef.truncate(size, store);
 }
 void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
@@ -675,29 +675,29 @@ void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     }
 }
 
-void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &_store) const {
+void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &store) const {
     Count i = 0;
     for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
-        ID.Set(i, ws->ID, _store);
-        ClassId.Set(i, ws->DockId, _store);
-        ViewportId.Set(i, ws->ViewportId, _store);
-        DockId.Set(i, ws->DockId, _store);
-        DockOrder.Set(i, ws->DockOrder, _store);
-        Pos.Set(i, PackImVec2ih(ws->Pos), _store);
-        Size.Set(i, PackImVec2ih(ws->Size), _store);
-        ViewportPos.Set(i, PackImVec2ih(ws->ViewportPos), _store);
-        Collapsed.Set(i, ws->Collapsed, _store);
+        ID.Set(i, ws->ID, store);
+        ClassId.Set(i, ws->DockId, store);
+        ViewportId.Set(i, ws->ViewportId, store);
+        DockId.Set(i, ws->DockId, store);
+        DockOrder.Set(i, ws->DockOrder, store);
+        Pos.Set(i, PackImVec2ih(ws->Pos), store);
+        Size.Set(i, PackImVec2ih(ws->Size), store);
+        ViewportPos.Set(i, PackImVec2ih(ws->ViewportPos), store);
+        Collapsed.Set(i, ws->Collapsed, store);
         i++;
     }
-    ID.truncate(i, _store);
-    ClassId.truncate(i, _store);
-    ViewportId.truncate(i, _store);
-    DockId.truncate(i, _store);
-    DockOrder.truncate(i, _store);
-    Pos.truncate(i, _store);
-    Size.truncate(i, _store);
-    ViewportPos.truncate(i, _store);
-    Collapsed.truncate(i, _store);
+    ID.truncate(i, store);
+    ClassId.truncate(i, store);
+    ViewportId.truncate(i, store);
+    DockId.truncate(i, store);
+    DockOrder.truncate(i, store);
+    Pos.truncate(i, store);
+    Size.truncate(i, store);
+    ViewportPos.truncate(i, store);
+    Collapsed.truncate(i, store);
 }
 // See `imgui.cpp::ApplyWindowSettings`
 void WindowSettings::Apply(ImGuiContext *) const {
@@ -727,52 +727,52 @@ void WindowSettings::Apply(ImGuiContext *) const {
     }
 }
 
-void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &_store) const {
+void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &store) const {
     Count i = 0;
     for (auto *ts = tss.begin(); ts != nullptr; ts = tss.next_chunk(ts)) {
         auto columns_count = ts->ColumnsCount;
 
-        ID.Set(i, ts->ID, _store);
-        SaveFlags.Set(i, ts->SaveFlags, _store);
-        RefScale.Set(i, ts->RefScale, _store);
-        ColumnsCount.Set(i, columns_count, _store);
-        ColumnsCountMax.Set(i, ts->ColumnsCountMax, _store);
-        WantApply.Set(i, ts->WantApply, _store);
+        ID.Set(i, ts->ID, store);
+        SaveFlags.Set(i, ts->SaveFlags, store);
+        RefScale.Set(i, ts->RefScale, store);
+        ColumnsCount.Set(i, columns_count, store);
+        ColumnsCountMax.Set(i, ts->ColumnsCountMax, store);
+        WantApply.Set(i, ts->WantApply, store);
         for (int column_index = 0; column_index < columns_count; column_index++) {
             const auto &cs = ts->GetColumnSettings()[column_index];
-            Columns.WidthOrWeight.Set(i, column_index, cs.WidthOrWeight, _store);
-            Columns.UserID.Set(i, column_index, cs.UserID, _store);
-            Columns.Index.Set(i, column_index, cs.Index, _store);
-            Columns.DisplayOrder.Set(i, column_index, cs.DisplayOrder, _store);
-            Columns.SortOrder.Set(i, column_index, cs.SortOrder, _store);
-            Columns.SortDirection.Set(i, column_index, cs.SortDirection, _store);
-            Columns.IsEnabled.Set(i, column_index, cs.IsEnabled, _store);
-            Columns.IsStretch.Set(i, column_index, cs.IsStretch, _store);
+            Columns.WidthOrWeight.Set(i, column_index, cs.WidthOrWeight, store);
+            Columns.UserID.Set(i, column_index, cs.UserID, store);
+            Columns.Index.Set(i, column_index, cs.Index, store);
+            Columns.DisplayOrder.Set(i, column_index, cs.DisplayOrder, store);
+            Columns.SortOrder.Set(i, column_index, cs.SortOrder, store);
+            Columns.SortDirection.Set(i, column_index, cs.SortDirection, store);
+            Columns.IsEnabled.Set(i, column_index, cs.IsEnabled, store);
+            Columns.IsStretch.Set(i, column_index, cs.IsStretch, store);
         }
-        Columns.WidthOrWeight.truncate(i, columns_count, _store);
-        Columns.UserID.truncate(i, columns_count, _store);
-        Columns.Index.truncate(i, columns_count, _store);
-        Columns.DisplayOrder.truncate(i, columns_count, _store);
-        Columns.SortOrder.truncate(i, columns_count, _store);
-        Columns.SortDirection.truncate(i, columns_count, _store);
-        Columns.IsEnabled.truncate(i, columns_count, _store);
-        Columns.IsStretch.truncate(i, columns_count, _store);
+        Columns.WidthOrWeight.truncate(i, columns_count, store);
+        Columns.UserID.truncate(i, columns_count, store);
+        Columns.Index.truncate(i, columns_count, store);
+        Columns.DisplayOrder.truncate(i, columns_count, store);
+        Columns.SortOrder.truncate(i, columns_count, store);
+        Columns.SortDirection.truncate(i, columns_count, store);
+        Columns.IsEnabled.truncate(i, columns_count, store);
+        Columns.IsStretch.truncate(i, columns_count, store);
         i++;
     }
-    ID.truncate(i, _store);
-    SaveFlags.truncate(i, _store);
-    RefScale.truncate(i, _store);
-    ColumnsCount.truncate(i, _store);
-    ColumnsCountMax.truncate(i, _store);
-    WantApply.truncate(i, _store);
-    Columns.WidthOrWeight.truncate(i, _store);
-    Columns.UserID.truncate(i, _store);
-    Columns.Index.truncate(i, _store);
-    Columns.DisplayOrder.truncate(i, _store);
-    Columns.SortOrder.truncate(i, _store);
-    Columns.SortDirection.truncate(i, _store);
-    Columns.IsEnabled.truncate(i, _store);
-    Columns.IsStretch.truncate(i, _store);
+    ID.truncate(i, store);
+    SaveFlags.truncate(i, store);
+    RefScale.truncate(i, store);
+    ColumnsCount.truncate(i, store);
+    ColumnsCountMax.truncate(i, store);
+    WantApply.truncate(i, store);
+    Columns.WidthOrWeight.truncate(i, store);
+    Columns.UserID.truncate(i, store);
+    Columns.Index.truncate(i, store);
+    Columns.DisplayOrder.truncate(i, store);
+    Columns.SortOrder.truncate(i, store);
+    Columns.SortDirection.truncate(i, store);
+    Columns.IsEnabled.truncate(i, store);
+    Columns.IsStretch.truncate(i, store);
 }
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
 void TableSettings::Apply(ImGuiContext *) const {
@@ -824,12 +824,12 @@ void TableSettings::Apply(ImGuiContext *) const {
 
 Store ImGuiSettings::Set(ImGuiContext *ctx) const {
     ImGui::SaveIniSettingsToMemory(); // Populates the `Settings` context members
-    auto _store = store.transient();
-    Nodes.Set(ctx->DockContext.NodesSettings, _store);
-    Windows.Set(ctx->SettingsWindows, _store);
-    Tables.Set(ctx->SettingsTables, _store);
+    auto store = AppStore.transient();
+    Nodes.Set(ctx->DockContext.NodesSettings, store);
+    Windows.Set(ctx->SettingsWindows, store);
+    Tables.Set(ctx->SettingsTables, store);
 
-    return _store.persistent();
+    return store.persistent();
 }
 void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     DockSettingsHandler_ClearAll(ctx, nullptr);
@@ -1085,79 +1085,79 @@ Style::FlowGridStyle::Diagram::Diagram(StateMember *parent, const string &path_s
     LayoutFlowGrid(c.InitStore);
 }
 
-void Style::ImGuiStyle::ColorsDark(TransientStore &_store) const {
+void Style::ImGuiStyle::ColorsDark(TransientStore &store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsDark(&dst[0]);
-    Colors.Set(dst, _store);
+    Colors.Set(dst, store);
 }
-void Style::ImGuiStyle::ColorsLight(TransientStore &_store) const {
+void Style::ImGuiStyle::ColorsLight(TransientStore &store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsLight(&dst[0]);
-    Colors.Set(dst, _store);
+    Colors.Set(dst, store);
 }
-void Style::ImGuiStyle::ColorsClassic(TransientStore &_store) const {
+void Style::ImGuiStyle::ColorsClassic(TransientStore &store) const {
     vector<ImVec4> dst(ImGuiCol_COUNT);
     ImGui::StyleColorsClassic(&dst[0]);
-    Colors.Set(dst, _store);
+    Colors.Set(dst, store);
 }
 
-void Style::ImPlotStyle::ColorsAuto(TransientStore &_store) const {
+void Style::ImPlotStyle::ColorsAuto(TransientStore &store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsAuto(&dst[0]);
-    Colors.Set(dst, _store);
-    Set(MinorAlpha, 0.25f, _store);
+    Colors.Set(dst, store);
+    Set(MinorAlpha, 0.25f, store);
 }
-void Style::ImPlotStyle::ColorsDark(TransientStore &_store) const {
+void Style::ImPlotStyle::ColorsDark(TransientStore &store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsDark(&dst[0]);
-    Colors.Set(dst, _store);
-    Set(MinorAlpha, 0.25f, _store);
+    Colors.Set(dst, store);
+    Set(MinorAlpha, 0.25f, store);
 }
-void Style::ImPlotStyle::ColorsLight(TransientStore &_store) const {
+void Style::ImPlotStyle::ColorsLight(TransientStore &store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsLight(&dst[0]);
-    Colors.Set(dst, _store);
-    Set(MinorAlpha, 1, _store);
+    Colors.Set(dst, store);
+    Set(MinorAlpha, 1, store);
 }
-void Style::ImPlotStyle::ColorsClassic(TransientStore &_store) const {
+void Style::ImPlotStyle::ColorsClassic(TransientStore &store) const {
     vector<ImVec4> dst(ImPlotCol_COUNT);
     ImPlot::StyleColorsClassic(&dst[0]);
-    Colors.Set(dst, _store);
-    Set(MinorAlpha, 0.5f, _store);
+    Colors.Set(dst, store);
+    Set(MinorAlpha, 0.5f, store);
 }
 
-void Style::FlowGridStyle::ColorsDark(TransientStore &_store) const {
+void Style::FlowGridStyle::ColorsDark(TransientStore &store) const {
     Colors.Set(
         {
             {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
             {FlowGridCol_ParamsBg, {0.16, 0.29, 0.48, 0.1}},
         },
-        _store
+        store
     );
 }
-void Style::FlowGridStyle::ColorsLight(TransientStore &_store) const {
+void Style::FlowGridStyle::ColorsLight(TransientStore &store) const {
     Colors.Set(
         {
             {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
             {FlowGridCol_ParamsBg, {1, 1, 1, 1}},
         },
-        _store
+        store
     );
 }
-void Style::FlowGridStyle::ColorsClassic(TransientStore &_store) const {
+void Style::FlowGridStyle::ColorsClassic(TransientStore &store) const {
     Colors.Set(
         {
             {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
             {FlowGridCol_ParamsBg, {0.43, 0.43, 0.43, 0.1}},
         },
-        _store
+        store
     );
 }
 
-void Style::FlowGridStyle::Diagram::ColorsDark(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsDark(TransientStore &store) const {
     Colors.Set(
         {
             {FlowGridDiagramCol_Bg, {0.06, 0.06, 0.06, 0.94}},
@@ -1174,10 +1174,10 @@ void Style::FlowGridStyle::Diagram::ColorsDark(TransientStore &_store) const {
             {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
         },
-        _store
+        store
     );
 }
-void Style::FlowGridStyle::Diagram::ColorsClassic(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsClassic(TransientStore &store) const {
     Colors.Set(
         {
             {FlowGridDiagramCol_Bg, {0, 0, 0, 0.85}},
@@ -1194,10 +1194,10 @@ void Style::FlowGridStyle::Diagram::ColorsClassic(TransientStore &_store) const 
             {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
         },
-        _store
+        store
     );
 }
-void Style::FlowGridStyle::Diagram::ColorsLight(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsLight(TransientStore &store) const {
     Colors.Set(
         {
             {FlowGridDiagramCol_Bg, {0.94, 0.94, 0.94, 1}},
@@ -1214,10 +1214,10 @@ void Style::FlowGridStyle::Diagram::ColorsLight(TransientStore &_store) const {
             {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
         },
-        _store
+        store
     );
 }
-void Style::FlowGridStyle::Diagram::ColorsFaust(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::ColorsFaust(TransientStore &store) const {
     Colors.Set(
         {
             {FlowGridDiagramCol_Bg, {1, 1, 1, 1}},
@@ -1234,14 +1234,14 @@ void Style::FlowGridStyle::Diagram::ColorsFaust(TransientStore &_store) const {
             {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
         },
-        _store
+        store
     );
 }
 
-void Style::FlowGridStyle::Diagram::LayoutFlowGrid(TransientStore &_store) const {
-    Set(DefaultLayoutEntries, _store);
+void Style::FlowGridStyle::Diagram::LayoutFlowGrid(TransientStore &store) const {
+    Set(DefaultLayoutEntries, store);
 }
-void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &_store) const {
+void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &store) const {
     Set(
         {
             {SequentialConnectionZigzag, true},
@@ -1271,7 +1271,7 @@ void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &_store) const {
             {ArrowSize.Y, 2},
             {InverterRadius, 3},
         },
-        _store
+        store
     );
 }
 
@@ -1622,7 +1622,7 @@ void Demo::ImGuiDemo::Render() const {
 void Demo::ImPlotDemo::Render() const {
     ImPlot::ShowDemoWindow();
 }
-void FileDialog::Set(const FileDialogData &data, TransientStore &_store) const {
+void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
     ::Set(
         {
             {Title, data.title},
@@ -1634,7 +1634,7 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &_store) const {
             {Flags, data.flags},
             {Visible, true},
         },
-        _store
+        store
     );
 }
 

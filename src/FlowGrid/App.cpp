@@ -9,25 +9,25 @@
 map<ID, StateMember *> StateMember::WithId{};
 
 // Persistent modifiers
-Store Set(const Field::Base &field, const Primitive &value, const Store &_store) { return _store.set(field.Path, value); }
-Store Set(const StoreEntries &values, const Store &_store) {
-    auto transient = _store.transient();
+Store Set(const Field::Base &field, const Primitive &value, const Store &store) { return store.set(field.Path, value); }
+Store Set(const StoreEntries &values, const Store &store) {
+    auto transient = store.transient();
     Set(values, transient);
     return transient.persistent();
 }
-Store Set(const FieldEntries &values, const Store &_store) {
-    auto transient = _store.transient();
+Store Set(const FieldEntries &values, const Store &store) {
+    auto transient = store.transient();
     Set(values, transient);
     return transient.persistent();
 }
 
 // Transient modifiers
-void Set(const Field::Base &field, const Primitive &value, TransientStore &_store) { _store.set(field.Path, value); }
-void Set(const StoreEntries &values, TransientStore &_store) {
-    for (const auto &[path, value] : values) _store.set(path, value);
+void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
+void Set(const StoreEntries &values, TransientStore &store) {
+    for (const auto &[path, value] : values) store.set(path, value);
 }
-void Set(const FieldEntries &values, TransientStore &_store) {
-    for (const auto &[field, value] : values) _store.set(field.Path, value);
+void Set(const FieldEntries &values, TransientStore &store) {
+    for (const auto &[field, value] : values) store.set(field.Path, value);
 }
 
 StateMember::StateMember(StateMember *parent, const string &path_segment, const string &name_help) : Parent(parent) {
@@ -69,9 +69,9 @@ Store store_from_json(const json &j) {
     int item_index = 0;
     for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
 
-    TransientStore _store;
-    for (const auto &[path, value] : entries) _store.set(path, value);
-    return _store.persistent();
+    TransientStore store;
+    for (const auto &[path, value] : entries) store.set(path, value);
+    return store.persistent();
 }
 
 string to_string(const IO io, const bool shorten) {
@@ -179,7 +179,7 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
         action,
         [&](const SetValue &a) { transient.set(a.path, a.value); },
         [&](const SetValues &a) { ::Set(a.values, transient); },
-        [&](const ToggleValue &a) { transient.set(a.path, !std::get<bool>(store.at(a.path))); },
+        [&](const ToggleValue &a) { transient.set(a.path, !std::get<bool>(AppStore.at(a.path))); },
         [&](const ApplyPatch &a) {
             const auto &patch = a.patch;
             for (const auto &[partial_path, op] : patch.Ops) {
@@ -291,7 +291,7 @@ bool Context::ClearPreferences() {
 
 json Context::GetProjectJson(const ProjectFormat format) {
     switch (format) {
-        case StateFormat: return store;
+        case StateFormat: return AppStore;
         case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
     }
 }
@@ -309,11 +309,11 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Patch Context::SetStore(const Store &new_store) {
-    const auto &patch = CreatePatch(store, new_store);
+Patch Context::SetStore(const Store &store) {
+    const auto &patch = CreatePatch(AppStore, store);
     if (patch.empty()) return {};
 
-    ApplicationStore = new_store; // This is the only place `ApplicationStore` is modified.
+    ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
     for (const auto &[partial_path, _op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
@@ -342,7 +342,7 @@ void Context::OpenProject(const fs::path &path) {
         OpenProject(EmptyProjectPath);
 
         const Gestures gestures = project["gestures"];
-        auto transient = store.transient();
+        auto transient = AppStore.transient();
         for (const auto &gesture : gestures) {
             const auto before_store = transient.persistent();
             for (const auto &action_moment : gesture) {
@@ -474,11 +474,11 @@ void StoreHistory::FinalizeGesture() {
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;
 
-    const auto &patch = CreatePatch(store, Records[Index].Store);
+    const auto &patch = CreatePatch(AppStore, Records[Index].Store);
     if (patch.empty()) return;
 
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
-    Records.push_back({Clock::now(), store, merged_gesture});
+    Records.push_back({Clock::now(), AppStore, merged_gesture});
     Index = Size() - 1;
     const auto &gesture_time = merged_gesture.back().second;
     for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
@@ -496,7 +496,7 @@ std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) c
 }
 
 StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const {
-    set<StatePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<set>;
+    const set<StatePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<set>;
     if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();
@@ -527,7 +527,7 @@ void StoreHistory::SetIndex(Count new_index) {
     }
     if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
-    Count old_index = Index;
+    const Count old_index = Index;
     Index = new_index;
 
     c.SetStore(Records[Index].Store);
@@ -563,7 +563,7 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
     static vector<StateActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     state_actions.clear();
 
-    auto transient = store.transient();
+    auto transient = AppStore.transient();
     while (ActionQueue.try_dequeue(action_moment)) {
         // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,

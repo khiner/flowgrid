@@ -3,7 +3,7 @@
 // Create global, mutable `UIContext` and `Context` instances.
 UIContext UiContext{};
 Context c{};
-const Store &store = c.store; // Create the read-only store reference global.
+const Store &AppStore = c.AppStore; // Create the read-only store reference global.
 const State &s = c.s; // Create the read-only state reference global.
 
 int main(int, const char **) {

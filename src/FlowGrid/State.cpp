@@ -18,10 +18,14 @@ using namespace action;
 
 // Currently, `Draw` is not used for anything except wrapping around `Render`.
 // Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
-void UIStateMember::Draw() const {
+void Drawable::Draw() const {
     //    PushID(ImGuiLabel.c_str());
     Render();
     //    PopID();
+}
+
+void MenuDrawable::DrawMenu() const {
+    RenderMenu();
 }
 
 namespace Field {
@@ -1003,8 +1007,8 @@ void StateViewer::StateJsonTree(const string &key, const json &value, const Stat
 void StateViewer::Render() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Settings")) {
-            AutoSelect.RenderMenu();
-            LabelMode.RenderMenu();
+            AutoSelect.DrawMenu();
+            LabelMode.DrawMenu();
             EndMenu();
         }
         EndMenuBar();

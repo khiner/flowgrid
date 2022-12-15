@@ -183,11 +183,23 @@ todo Try out replacing semicolon separators by e.g. commas.
         __VA_ARGS__;                    \
     };
 
-Member(
-    UIStateMember,
-    void Draw() const; // Wraps around the internal `Render` fn.
+struct Drawable {
+    void Draw() const; // Wraps around the internal `Render` function.
+
+protected:
     virtual void Render() const = 0;
-);
+};
+
+struct MenuDrawable {
+    void DrawMenu() const; // Wraps around the internal `RenderMenu` function.
+
+protected:
+    virtual void RenderMenu() const = 0;
+};
+
+struct UIStateMember : StateMember, Drawable {
+    using StateMember::StateMember;
+};
 
 #define UIMember(MemberName, ...)           \
     struct MemberName : UIStateMember {     \
@@ -226,16 +238,16 @@ struct Base : UIStateMember {
     Primitive GetInitial() const; // Returns the value in the initialization state store.
 };
 
-struct Bool : Base {
+struct Bool : Base, MenuDrawable {
     Bool(StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
 
     operator bool() const;
-    void RenderMenu() const;
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
 
 protected:
     void Render() const override;
+    void RenderMenu() const override;
 
 private:
     void Toggle() const; // Used in draw methods.
@@ -303,23 +315,23 @@ protected:
     void Render() const override;
 };
 
-struct Enum : Base {
+struct Enum : Base, MenuDrawable {
     Enum(StateMember *parent, const string &path_segment, const string &name_help, vector<string> names, int value = 0)
         : Base(parent, path_segment, name_help, value), Names(std::move(names)) {}
 
     operator int() const;
 
     void Render(const vector<int> &options) const;
-    void RenderMenu() const;
 
     const vector<string> Names;
 
 protected:
     void Render() const override;
+    void RenderMenu() const override;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
-struct Flags : Base {
+struct Flags : Base, MenuDrawable {
     struct Item {
         Item(const char *name_and_help) {
             const auto &[name, help] = ParseHelpText(name_and_help);
@@ -337,12 +349,11 @@ struct Flags : Base {
 
     operator int() const;
 
-    void RenderMenu() const;
-
     const vector<Item> Items;
 
 protected:
     void Render() const override;
+    void RenderMenu() const override;
 };
 } // namespace Field
 

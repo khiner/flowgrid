@@ -1290,7 +1290,7 @@ void Audio::FaustState::FaustDiagram::Render() const {
             EndMenu();
         }
         if (BeginMenu("View")) {
-            Settings.HoverFlags.RenderMenu();
+            Settings.HoverFlags.DrawMenu();
             EndMenu();
         }
         EndMenuBar();

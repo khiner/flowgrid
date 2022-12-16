@@ -13,10 +13,9 @@ float CalcAlignedY(const VJustify v_justify, const float inner_h, const float ou
     return outer_h - inner_h;
 }
 
-ImVec2 TextSize(const string &text) { return CalcTextSize(text.c_str()); }
+ImVec2 CalcTextSize(const string &text) { return CalcTextSize(text.c_str()); }
 
-string Ellipsify(const string &text, const float max_width) {
-    string ellipsified = text;
-    while (TextSize(ellipsified).x > max_width && ellipsified.length() > 4) ellipsified.replace(ellipsified.end() - 4, ellipsified.end(), "...");
-    return ellipsified;
+string Ellipsify(string copy, const float max_width) {
+    while (CalcTextSize(copy).x > max_width && copy.length() > 4) copy.replace(copy.end() - 4, copy.end(), "...");
+    return copy;
 }

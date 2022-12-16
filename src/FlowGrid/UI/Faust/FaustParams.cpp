@@ -61,7 +61,7 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
         Dummy(size);
     } else {
         // Draw ImGui widget without value or label text.
-        const string &id = format("##{}", label);
+        const string id = format("##{}", label);
         changed = is_h ? SliderFloat(id.c_str(), value, min_value, max_value, "") : VSliderFloat(id.c_str(), size, value, min_value, max_value, "");
     }
 
@@ -89,7 +89,7 @@ enum RadioButtonsFlags_ {
 using RadioButtonsFlags = int;
 
 static float CalcRadioChoiceWidth(const string &choice_name) {
-    return CalcTextSize(choice_name.c_str()).x + GetStyle().ItemInnerSpacing.x + GetFrameHeight();
+    return CalcTextSize(choice_name).x + GetStyle().ItemInnerSpacing.x + GetFrameHeight();
 }
 
 // When `ReadOnly` is set, this is similar to `ImGui::ProgressBar`, but it has a horizontal/vertical switch,
@@ -163,7 +163,7 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
         }
         case ItemType_Menu: {
             return label_width_with_spacing + ranges::max(interface->names_and_values[item.zone].names | transform([](const string &choice_name) {
-                                                              return CalcTextSize(choice_name.c_str()).x;
+                                                              return CalcTextSize(choice_name).x;
                                                           })) +
                 GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
         }
@@ -220,18 +220,18 @@ static float CalcItemLabelHeight(const FaustUI::Item &item) {
 // (which is relevant for aligning items relative to other items in the same group).
 // Items/groups are allowed to extend beyond this height if needed to fit its contents.
 // It is expected that the cursor position will be set appropriately below the drawn contents.
-void DrawUiItem(const FaustUI::Item &item, const string &label, const float suggested_height) {
+void DrawUiItem(const FaustUI::Item &item, const char *label, const float suggested_height) {
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
     const Justify justify = {fg_style.Params.AlignmentHorizontal, fg_style.Params.AlignmentVertical};
     const auto type = item.type;
     const auto &children = item.items;
     const float frame_height = GetFrameHeight();
-    const bool has_label = !label.empty();
+    const bool has_label = strlen(label) > 0;
     const float label_height = has_label ? CalcItemLabelHeight(item) : 0;
 
     if (type == ItemType_None || type == ItemType_TGroup || type == ItemType_HGroup || type == ItemType_VGroup) {
-        if (has_label) TextUnformatted(label.c_str());
+        if (has_label) TextUnformatted(label);
 
         if (type == ItemType_TGroup) {
             const bool is_height_constrained = suggested_height != 0;
@@ -257,7 +257,7 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                                                     }));
             }
             if (type == ItemType_None) { // Root group (treated as a vertical group but not as a table)
-                for (const auto &child : children) DrawUiItem(child, child.label, suggested_item_height);
+                for (const auto &child : children) DrawUiItem(child, child.label.c_str(), suggested_item_height);
             } else {
                 if (BeginTable(item.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImgui(fg_style.Params.TableFlags))) {
                     const float row_min_height = suggested_item_height + cell_padding;
@@ -288,8 +288,8 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
                         if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                         TableNextColumn();
                         TableSetBgColor(ImGuiTableBgTarget_RowBg0, fg_style.Colors[FlowGridCol_ParamsBg]);
-                        const string &child_label = child.type == ItemType_Button || !is_h || !fg_style.Params.HeaderTitles ? child.label : "";
-                        DrawUiItem(child, child_label, suggested_item_height);
+                        const string child_label = child.type == ItemType_Button || !is_h || !fg_style.Params.HeaderTitles ? child.label : "";
+                        DrawUiItem(child, child_label.c_str(), suggested_item_height);
                     }
                     EndTable();
                 }
@@ -312,13 +312,13 @@ void DrawUiItem(const FaustUI::Item &item, const string &label, const float sugg
         SetCursorPos(old_cursor + ImVec2{max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)), max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))});
 
         if (type == ItemType_Button) {
-            *item.zone = Real(Button(label.c_str()));
+            *item.zone = Real(Button(label));
         } else if (type == ItemType_CheckButton) {
             auto value = bool(*item.zone);
-            if (Checkbox(label.c_str(), &value)) *item.zone = Real(value);
+            if (Checkbox(label, &value)) *item.zone = Real(value);
         } else if (type == ItemType_NumEntry) {
             auto value = float(*item.zone);
-            if (InputFloat(label.c_str(), &value, float(item.step))) *item.zone = Real(value);
+            if (InputFloat(label, &value, float(item.step))) *item.zone = Real(value);
         } else if (type == ItemType_HSlider || type == ItemType_VSlider || type == ItemType_HBargraph || type == ItemType_VBargraph) {
             auto value = float(*item.zone);
             ValueBarFlags flags = ValueBarFlags_None;
@@ -378,7 +378,7 @@ void Audio::FaustState::FaustParams::Render() const {
     //    if (hovered_node) {
     //        const string label = get_ui_label(hovered_node->tree);
     //        if (!label.empty()) {
-    //            const auto *widget = interface->get_widget(label);
+    //            const auto *widget = interface->GetWidget(label);
     //            if (widget) cout << "Found widget: " << label << '\n';
     //        }
     //    }

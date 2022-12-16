@@ -655,7 +655,7 @@ void ShowDevice(const SoundIoDevice &device, bool is_default) {
 void ShowDevices() {
     for (const IO io : IO_All) {
         const auto device_count = GetDeviceCount(io);
-        const string &io_label = Capitalize(to_string(io));
+        const string io_label = Capitalize(to_string(io));
         if (TreeNodeEx(format("{} devices ({})", io_label, device_count).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
             const auto default_device_index = GetDefaultDeviceIndex(io);
             for (int device_index = 0; device_index < device_count; device_index++) {

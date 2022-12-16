@@ -15,7 +15,7 @@ bool FileIO::write(const fs::path &path, const string &contents) {
     std::fstream out_file;
     out_file.open(path, std::ios::out);
     if (out_file) {
-        out_file << contents.c_str();
+        out_file << contents;
         out_file.close();
         return true;
     }

@@ -47,7 +47,7 @@ public:
     };
 
     struct Item {
-        Item(const ItemType type, const string &label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, vector<Item> items = {})
+        Item(const ItemType type, std::string_view label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, vector<Item> items = {})
             : type(type), id(label), label(label == "0x00" ? "" : label), zone(zone), min(min), max(max), init(init), step(step), tooltip(tooltip), items(std::move(items)) {}
 
         const ItemType type{ItemType_None};
@@ -134,20 +134,11 @@ public:
     void declare(Real *zone, const char *key, const char *value) override {
         MetaDataUI::declare(zone, key, value);
     }
-
-    Item *get_widget(const string &id) {
-        if (index_for_path.contains(id)) return &ui.items[index_for_path[id]];
-        if (index_for_shortname.contains(id)) return &ui.items[index_for_shortname[id]];
-        if (index_for_label.contains(id)) return &ui.items[index_for_label[id]];
-
-        return nullptr;
-    }
-
     Item ui{ItemType_None, ""};
     map<const Real *, NamesAndValues> names_and_values;
 
 private:
-    void addUiItem(const ItemType type, const string &label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
+    void addUiItem(const ItemType type, const char *label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
         activeGroup().items.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
         const int index = int(ui.items.size() - 1);
         string path = buildPath(label);
@@ -168,4 +159,4 @@ class CTree;
 typedef CTree *Box;
 void OnUiChange(FaustUI *);
 void OnBoxChange(Box);
-void SaveBoxSvg(const string &path);
+void SaveBoxSvg(std::string_view path);

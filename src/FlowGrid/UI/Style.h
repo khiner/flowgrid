@@ -56,7 +56,7 @@ struct RectStyle {
 float CalcAlignedX(HJustify h_justify, float inner_w, float outer_w, bool is_label = false); // todo better name than `is_label`
 float CalcAlignedY(VJustify v_justify, float inner_h, float outer_h);
 
-ImVec2 TextSize(const string &text);
+ImVec2 CalcTextSize(const string &text);
 
 // There's `RenderTextEllipsis` in `imgui_internal`, but it's way too complex and scary.
-string Ellipsify(const string &text, float max_width);
+string Ellipsify(string copy, float max_width);

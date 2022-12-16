@@ -24,8 +24,8 @@ void Drawable::Draw() const {
     //    PopID();
 }
 
-void MenuDrawable::DrawMenu() const {
-    RenderMenu();
+void MenuItemDrawable::DrawMenuItem() const {
+    RenderMenuItem();
 }
 
 namespace Field {
@@ -264,10 +264,10 @@ bool Field::Bool::CheckedDraw() const {
     HelpMarker();
     return toggled;
 }
-void Field::Bool::RenderMenu() const {
+void Field::Bool::RenderMenuItem() const {
     const bool value = *this;
     HelpMarker(false);
-    if (MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
+    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
 }
 
 void Field::UInt::Render() const {
@@ -322,13 +322,13 @@ void Field::Enum::Render(const vector<int> &options) const {
     }
     HelpMarker();
 }
-void Field::Enum::RenderMenu() const {
+void Field::Enum::RenderMenuItem() const {
     const int value = *this;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
-            if (MenuItem(Names[i].c_str(), nullptr, is_selected)) q(SetValue{Path, int(i)});
+            if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) q(SetValue{Path, int(i)});
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
@@ -352,7 +352,7 @@ void Field::Flags::Render() const {
     }
     HelpMarker();
 }
-void Field::Flags::RenderMenu() const {
+void Field::Flags::RenderMenuItem() const {
     const int value = *this;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
@@ -364,7 +364,7 @@ void Field::Flags::RenderMenu() const {
                 ::HelpMarker(item.Help.c_str());
                 SameLine();
             }
-            if (MenuItem(item.Name.c_str(), nullptr, is_selected)) q(SetValue{Path, value ^ option_mask}); // Toggle bit
+            if (ImGui::MenuItem(item.Name.c_str(), nullptr, is_selected)) q(SetValue{Path, value ^ option_mask}); // Toggle bit
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
@@ -473,7 +473,7 @@ void Window::Dock(ID node_id) const {
 }
 
 void Window::ToggleMenuItem() const {
-    if (MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(ToggleValue{Visible.Path});
+    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(ToggleValue{Visible.Path});
 }
 
 void Window::SelectTab() const {
@@ -505,8 +505,8 @@ void Menu::Render() const {
                 [](const Menu &menu) {
                     menu.Draw();
                 },
-                [](const MenuDrawable &drawable) {
-                    drawable.DrawMenu();
+                [](const MenuItemDrawable &drawable) {
+                    drawable.DrawMenuItem();
                 },
                 [](const EmptyAction &action) {
                     const string menu_label = action::GetMenuLabel(action);
@@ -549,24 +549,24 @@ void State::Render() const {
 
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
-            MenuItem(OpenEmptyProject{});
-            MenuItem(ShowOpenProjectDialog{});
+            ActionMenuItem(OpenEmptyProject{});
+            ActionMenuItem(ShowOpenProjectDialog{});
             if (BeginMenu("Open recent project", !c.Preferences.RecentlyOpenedPaths.empty())) {
                 for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
-                    if (MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
+                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
                 }
                 EndMenu();
             }
-            MenuItem(OpenDefaultProject{});
+            ActionMenuItem(OpenDefaultProject{});
 
-            MenuItem(SaveCurrentProject{});
-            MenuItem(ShowSaveProjectDialog{});
-            MenuItem(SaveDefaultProject{});
+            ActionMenuItem(SaveCurrentProject{});
+            ActionMenuItem(ShowSaveProjectDialog{});
+            ActionMenuItem(SaveDefaultProject{});
             EndMenu();
         }
         if (BeginMenu("Edit")) {
-            MenuItem(Undo{});
-            MenuItem(Redo{});
+            ActionMenuItem(Undo{});
+            ActionMenuItem(Redo{});
             EndMenu();
         }
         if (BeginMenu("Windows")) {

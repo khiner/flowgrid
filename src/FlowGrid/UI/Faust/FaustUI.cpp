@@ -1286,11 +1286,11 @@ void Audio::FaustState::FaustDiagram::Render() const {
 
     if (BeginMenuBar()) {
         if (BeginMenu("File")) {
-            MenuItem(ShowSaveFaustSvgFileDialog{});
+            ActionMenuItem(ShowSaveFaustSvgFileDialog{});
             EndMenu();
         }
         if (BeginMenu("View")) {
-            Settings.HoverFlags.DrawMenu();
+            Settings.HoverFlags.DrawMenuItem();
             EndMenu();
         }
         EndMenuBar();

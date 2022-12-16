@@ -411,15 +411,15 @@ protected:
     virtual void Render() const = 0;
 };
 
-struct MenuDrawable {
-    void DrawMenu() const; // Wraps around the internal `RenderMenu` function.
+struct MenuItemDrawable {
+    void DrawMenuItem() const; // Wraps around the internal `RenderMenuItem` function.
 
 protected:
-    virtual void RenderMenu() const = 0;
+    virtual void RenderMenuItem() const = 0;
 };
 
 struct Menu : Drawable {
-    using ItemsType = vector<std::variant<const Menu, const std::reference_wrapper<MenuDrawable>, const EmptyAction>>;
+    using ItemsType = vector<std::variant<const Menu, const std::reference_wrapper<MenuItemDrawable>, const EmptyAction>>;
 
     Menu(const string &label = "", const ItemsType items = {}) : Label(label), Items(std::move(items)) {}
 
@@ -481,7 +481,7 @@ struct Base : UIStateMember {
     Primitive GetInitial() const; // Returns the value in the initialization state store.
 };
 
-struct Bool : Base, MenuDrawable {
+struct Bool : Base, MenuItemDrawable {
     Bool(StateMember *parent, const string &path_segment, const string &name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
 
@@ -490,7 +490,7 @@ struct Bool : Base, MenuDrawable {
 
 protected:
     void Render() const override;
-    void RenderMenu() const override;
+    void RenderMenuItem() const override;
 
 private:
     void Toggle() const; // Used in draw methods.
@@ -558,7 +558,7 @@ protected:
     void Render() const override;
 };
 
-struct Enum : Base, MenuDrawable {
+struct Enum : Base, MenuItemDrawable {
     Enum(StateMember *parent, const string &path_segment, const string &name_help, vector<string> names, int value = 0)
         : Base(parent, path_segment, name_help, value), Names(std::move(names)) {}
 
@@ -570,11 +570,11 @@ struct Enum : Base, MenuDrawable {
 
 protected:
     void Render() const override;
-    void RenderMenu() const override;
+    void RenderMenuItem() const override;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
-struct Flags : Base, MenuDrawable {
+struct Flags : Base, MenuItemDrawable {
     struct Item {
         Item(const char *name_and_help) {
             const auto &[name, help] = ParseHelpText(name_and_help);
@@ -596,7 +596,7 @@ struct Flags : Base, MenuDrawable {
 
 protected:
     void Render() const override;
-    void RenderMenu() const override;
+    void RenderMenuItem() const override;
 };
 } // namespace Field
 
@@ -1493,7 +1493,7 @@ UIMember(
 );
 
 namespace FlowGrid {
-void MenuItem(const EmptyAction &); // For actions with no data members.
+void ActionMenuItem(const EmptyAction &); // For actions with no data members.
 }
 
 //-----------------------------------------------------------------------------

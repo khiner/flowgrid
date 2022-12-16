@@ -337,8 +337,8 @@ void Audio::FaustState::FaustEditor::Render() const {
 
     if (BeginMenuBar()) {
         if (BeginMenu("File")) {
-            MenuItem(ShowOpenFaustFileDialog{});
-            MenuItem(ShowSaveFaustFileDialog{});
+            ActionMenuItem(ShowOpenFaustFileDialog{});
+            ActionMenuItem(ShowSaveFaustFileDialog{});
             EndMenu();
         }
         if (BeginMenu("Settings")) {

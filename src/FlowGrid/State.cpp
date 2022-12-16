@@ -24,10 +24,6 @@ void Drawable::Draw() const {
     //    PopID();
 }
 
-void MenuItemDrawable::DrawMenuItem() const {
-    DrawMenuItem();
-}
-
 namespace Field {
 Base::Base(StateMember *parent, const string &id, const string &name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
     c.InitStore.set(Path, value);
@@ -264,7 +260,7 @@ bool Field::Bool::CheckedDraw() const {
     HelpMarker();
     return toggled;
 }
-void Field::Bool::RenderMenuItem() const {
+void Field::Bool::DrawMenuItem() const {
     const bool value = *this;
     HelpMarker(false);
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
@@ -322,7 +318,7 @@ void Field::Enum::Render(const vector<int> &options) const {
     }
     HelpMarker();
 }
-void Field::Enum::RenderMenuItem() const {
+void Field::Enum::DrawMenuItem() const {
     const int value = *this;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
@@ -352,7 +348,7 @@ void Field::Flags::Render() const {
     }
     HelpMarker();
 }
-void Field::Flags::RenderMenuItem() const {
+void Field::Flags::DrawMenuItem() const {
     const int value = *this;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
@@ -472,7 +468,7 @@ void Window::Dock(ID node_id) const {
     DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);
 }
 
-void Window::RenderMenuItem() const {
+void Window::DrawMenuItem() const {
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(ToggleValue{Visible.Path});
 }
 

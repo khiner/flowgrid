@@ -412,10 +412,7 @@ protected:
 };
 
 struct MenuItemDrawable {
-    void DrawMenuItem() const; // Wraps around the internal `RenderMenuItem` function.
-
-protected:
-    virtual void RenderMenuItem() const = 0;
+    virtual void DrawMenuItem() const = 0;
 };
 
 struct Menu : Drawable {
@@ -487,10 +484,10 @@ struct Bool : Base, MenuItemDrawable {
 
     operator bool() const;
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
+    void DrawMenuItem() const override;
 
 protected:
     void Render() const override;
-    void RenderMenuItem() const override;
 
 private:
     void Toggle() const; // Used in draw methods.
@@ -565,12 +562,12 @@ struct Enum : Base, MenuItemDrawable {
     operator int() const;
 
     void Render(const vector<int> &options) const;
+    void DrawMenuItem() const override;
 
     const vector<string> Names;
 
 protected:
     void Render() const override;
-    void RenderMenuItem() const override;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -592,11 +589,12 @@ struct Flags : Base, MenuItemDrawable {
 
     operator int() const;
 
+    void DrawMenuItem() const override;
+
     const vector<Item> Items;
 
 protected:
     void Render() const override;
-    void RenderMenuItem() const override;
 };
 } // namespace Field
 
@@ -722,6 +720,7 @@ struct Window : StateMember, MenuItemDrawable {
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
+    void DrawMenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
     void Dock(ID node_id) const;
     void SelectTab() const; // If this window is tabbed, select it.
 
@@ -731,7 +730,6 @@ struct Window : StateMember, MenuItemDrawable {
 
 protected:
     virtual void Render() const = 0;
-    void RenderMenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
 };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.

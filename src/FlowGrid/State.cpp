@@ -25,7 +25,7 @@ void Drawable::Draw() const {
 }
 
 void MenuItemDrawable::DrawMenuItem() const {
-    RenderMenuItem();
+    DrawMenuItem();
 }
 
 namespace Field {
@@ -472,7 +472,7 @@ void Window::Dock(ID node_id) const {
     DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);
 }
 
-void Window::ToggleMenuItem() const {
+void Window::RenderMenuItem() const {
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(ToggleValue{Visible.Path});
 }
 
@@ -571,28 +571,28 @@ void State::Render() const {
         }
         if (BeginMenu("Windows")) {
             if (BeginMenu("Debug")) {
-                DebugLog.ToggleMenuItem();
-                StackTool.ToggleMenuItem();
-                StateViewer.ToggleMenuItem();
-                StatePathUpdateFrequency.ToggleMenuItem();
-                StateMemoryEditor.ToggleMenuItem();
-                ProjectPreview.ToggleMenuItem();
+                DebugLog.DrawMenuItem();
+                StackTool.DrawMenuItem();
+                StateViewer.DrawMenuItem();
+                StatePathUpdateFrequency.DrawMenuItem();
+                StateMemoryEditor.DrawMenuItem();
+                ProjectPreview.DrawMenuItem();
                 EndMenu();
             }
             if (BeginMenu("Audio")) {
-                Audio.ToggleMenuItem();
+                Audio.DrawMenuItem();
                 if (BeginMenu("Faust")) {
-                    Audio.Faust.Editor.ToggleMenuItem();
-                    Audio.Faust.Diagram.ToggleMenuItem();
-                    Audio.Faust.Params.ToggleMenuItem();
-                    Audio.Faust.Log.ToggleMenuItem();
+                    Audio.Faust.Editor.DrawMenuItem();
+                    Audio.Faust.Diagram.DrawMenuItem();
+                    Audio.Faust.Params.DrawMenuItem();
+                    Audio.Faust.Log.DrawMenuItem();
                     EndMenu();
                 }
                 EndMenu();
             }
-            Metrics.ToggleMenuItem();
-            Style.ToggleMenuItem();
-            Demo.ToggleMenuItem();
+            Metrics.DrawMenuItem();
+            Style.DrawMenuItem();
+            Demo.DrawMenuItem();
             EndMenu();
         }
         EndMainMenuBar();

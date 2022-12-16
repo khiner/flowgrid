@@ -715,7 +715,7 @@ static const vector<Flags::Item> TableFlagItems{
 
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
-struct Window : StateMember {
+struct Window : StateMember, MenuItemDrawable {
     using StateMember::StateMember;
     Window(StateMember *parent, const string &path_segment, const string &name_help, bool visible);
     Window(StateMember *parent, const string &path_segment, const string &name_help, Menu::ItemsType menu_items);
@@ -723,7 +723,6 @@ struct Window : StateMember {
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
     void Dock(ID node_id) const;
-    void ToggleMenuItem() const;
     void SelectTab() const; // If this window is tabbed, select it.
 
     Prop(Bool, Visible, true);
@@ -732,6 +731,7 @@ struct Window : StateMember {
 
 protected:
     virtual void Render() const = 0;
+    void RenderMenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
 };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.

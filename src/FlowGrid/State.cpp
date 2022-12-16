@@ -260,7 +260,7 @@ bool Field::Bool::CheckedDraw() const {
     HelpMarker();
     return toggled;
 }
-void Field::Bool::DrawMenuItem() const {
+void Field::Bool::MenuItem() const {
     const bool value = *this;
     HelpMarker(false);
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
@@ -318,7 +318,7 @@ void Field::Enum::Render(const vector<int> &options) const {
     }
     HelpMarker();
 }
-void Field::Enum::DrawMenuItem() const {
+void Field::Enum::MenuItem() const {
     const int value = *this;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
@@ -348,7 +348,7 @@ void Field::Flags::Render() const {
     }
     HelpMarker();
 }
-void Field::Flags::DrawMenuItem() const {
+void Field::Flags::MenuItem() const {
     const int value = *this;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
@@ -468,7 +468,7 @@ void Window::Dock(ID node_id) const {
     DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);
 }
 
-void Window::DrawMenuItem() const {
+void Window::MenuItem() const {
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(ToggleValue{Visible.Path});
 }
 
@@ -502,7 +502,7 @@ void Menu::Render() const {
                     menu.Draw();
                 },
                 [](const MenuItemDrawable &drawable) {
-                    drawable.DrawMenuItem();
+                    drawable.MenuItem();
                 },
                 [](const EmptyAction &action) {
                     const string menu_label = action::GetMenuLabel(action);
@@ -567,28 +567,28 @@ void State::Render() const {
         }
         if (BeginMenu("Windows")) {
             if (BeginMenu("Debug")) {
-                DebugLog.DrawMenuItem();
-                StackTool.DrawMenuItem();
-                StateViewer.DrawMenuItem();
-                StatePathUpdateFrequency.DrawMenuItem();
-                StateMemoryEditor.DrawMenuItem();
-                ProjectPreview.DrawMenuItem();
+                DebugLog.MenuItem();
+                StackTool.MenuItem();
+                StateViewer.MenuItem();
+                StatePathUpdateFrequency.MenuItem();
+                StateMemoryEditor.MenuItem();
+                ProjectPreview.MenuItem();
                 EndMenu();
             }
             if (BeginMenu("Audio")) {
-                Audio.DrawMenuItem();
+                Audio.MenuItem();
                 if (BeginMenu("Faust")) {
-                    Audio.Faust.Editor.DrawMenuItem();
-                    Audio.Faust.Diagram.DrawMenuItem();
-                    Audio.Faust.Params.DrawMenuItem();
-                    Audio.Faust.Log.DrawMenuItem();
+                    Audio.Faust.Editor.MenuItem();
+                    Audio.Faust.Diagram.MenuItem();
+                    Audio.Faust.Params.MenuItem();
+                    Audio.Faust.Log.MenuItem();
                     EndMenu();
                 }
                 EndMenu();
             }
-            Metrics.DrawMenuItem();
-            Style.DrawMenuItem();
-            Demo.DrawMenuItem();
+            Metrics.MenuItem();
+            Style.MenuItem();
+            Demo.MenuItem();
             EndMenu();
         }
         EndMainMenuBar();

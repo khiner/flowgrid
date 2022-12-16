@@ -345,9 +345,9 @@ void Audio::FaustState::FaustEditor::Render() const {
             if (BeginMenu("Editor mode")) {
                 bool vim_enabled = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;
                 bool normal_enabled = !vim_enabled;
-                if (MenuItem("Vim", "CTRL+2", &vim_enabled)) {
+                if (ImGui::MenuItem("Vim", "CTRL+2", &vim_enabled)) {
                     editor->SetGlobalMode(ZepMode_Vim::StaticName());
-                } else if (MenuItem("Standard", "CTRL+1", &normal_enabled)) {
+                } else if (ImGui::MenuItem("Standard", "CTRL+1", &normal_enabled)) {
                     editor->SetGlobalMode(ZepMode_Standard::StaticName());
                 }
                 EndMenu();
@@ -356,9 +356,9 @@ void Audio::FaustState::FaustEditor::Render() const {
                 bool dark_enabled = editor->theme->GetThemeType() == ThemeType::Dark ? true : false;
                 bool light_enabled = !dark_enabled;
 
-                if (MenuItem("Dark", "", &dark_enabled)) {
+                if (ImGui::MenuItem("Dark", "", &dark_enabled)) {
                     editor->theme->SetThemeType(ThemeType::Dark);
-                } else if (MenuItem("Light", "", &light_enabled)) {
+                } else if (ImGui::MenuItem("Light", "", &light_enabled)) {
                     editor->theme->SetThemeType(ThemeType::Light);
                 }
                 EndMenu();
@@ -367,9 +367,9 @@ void Audio::FaustState::FaustEditor::Render() const {
         }
         if (BeginMenu("Window")) {
             auto *tab_window = editor->activeTabWindow;
-            if (MenuItem("Horizontal split")) {
+            if (ImGui::MenuItem("Horizontal split")) {
                 tab_window->AddWindow(buffer, tab_window->GetActiveWindow(), RegionLayoutType::VBox);
-            } else if (MenuItem("Vertical split")) {
+            } else if (ImGui::MenuItem("Vertical split")) {
                 tab_window->AddWindow(buffer, tab_window->GetActiveWindow(), RegionLayoutType::HBox);
             }
             EndMenu();

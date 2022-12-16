@@ -412,7 +412,7 @@ protected:
 };
 
 struct MenuItemDrawable {
-    virtual void DrawMenuItem() const = 0;
+    virtual void MenuItem() const = 0;
 };
 
 struct Menu : Drawable {
@@ -484,7 +484,7 @@ struct Bool : Base, MenuItemDrawable {
 
     operator bool() const;
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
-    void DrawMenuItem() const override;
+    void MenuItem() const override;
 
 protected:
     void Render() const override;
@@ -562,7 +562,7 @@ struct Enum : Base, MenuItemDrawable {
     operator int() const;
 
     void Render(const vector<int> &options) const;
-    void DrawMenuItem() const override;
+    void MenuItem() const override;
 
     const vector<string> Names;
 
@@ -589,7 +589,7 @@ struct Flags : Base, MenuItemDrawable {
 
     operator int() const;
 
-    void DrawMenuItem() const override;
+    void MenuItem() const override;
 
     const vector<Item> Items;
 
@@ -720,7 +720,7 @@ struct Window : StateMember, MenuItemDrawable {
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
-    void DrawMenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
+    void MenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
     void Dock(ID node_id) const;
     void SelectTab() const; // If this window is tabbed, select it.
 

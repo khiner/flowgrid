@@ -32,10 +32,8 @@ namespace fg = FlowGrid;
 
 using namespace StringHelper;
 
-using namespace fmt;
+using fmt::format, fmt::to_string;
 using namespace nlohmann;
-
-using namespace std::string_literals;
 using std::cout, std::cerr;
 using std::map, std::set, std::pair;
 using std::min, std::max;
@@ -319,7 +317,7 @@ inline string PathLabel(const StatePath &path) { return SnakeCaseToSentenceCase(
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
 // todo don't split on escaped '\?'
-static pair<std::string_view, std::string_view> ParseHelpText(std::string_view str) {
+static pair<string_view, string_view> ParseHelpText(string_view str) {
     const auto help_split = str.find_first_of('?');
     const bool found = help_split != string::npos;
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
@@ -332,7 +330,7 @@ struct Preferences {
 struct StateMember {
     static map<ID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
 
-    StateMember(StateMember *parent = nullptr, std::string_view path_segment = "", std::string_view name_help = "");
+    StateMember(StateMember *parent = nullptr, string_view path_segment = "", string_view name_help = "");
     virtual ~StateMember();
 
     const StateMember *Parent;
@@ -418,7 +416,7 @@ struct MenuItemDrawable {
 struct Menu : Drawable {
     using ItemsType = vector<std::variant<const Menu, const std::reference_wrapper<MenuItemDrawable>, const EmptyAction>>;
 
-    Menu(std::string_view label = "", const ItemsType items = {}) : Label(label), Items(std::move(items)) {}
+    Menu(string_view label = "", const ItemsType items = {}) : Label(label), Items(std::move(items)) {}
 
     const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
     const ItemsType Items;
@@ -441,13 +439,13 @@ struct UIStateMember : StateMember,
         void Render() const override;       \
     };
 
-#define UIMember_(MemberName, ...)                                                                       \
-    struct MemberName : UIStateMember {                                                                  \
-        MemberName(StateMember *parent, std::string_view path_segment, std::string_view name_help = ""); \
-        __VA_ARGS__;                                                                                     \
-                                                                                                         \
-    protected:                                                                                           \
-        void Render() const override;                                                                    \
+#define UIMember_(MemberName, ...)                                                             \
+    struct MemberName : UIStateMember {                                                        \
+        MemberName(StateMember *parent, string_view path_segment, string_view name_help = ""); \
+        __VA_ARGS__;                                                                           \
+                                                                                               \
+    protected:                                                                                 \
+        void Render() const override;                                                          \
     };
 
 #define WindowMember(MemberName, ...) \
@@ -459,27 +457,27 @@ struct UIStateMember : StateMember,
         void Render() const override; \
     };
 
-#define WindowMember_(MemberName, ...)                                                                                        \
-    struct MemberName : Window {                                                                                              \
-        MemberName(StateMember *parent, std::string_view path_segment, std::string_view name_help = "", bool visible = true); \
-        __VA_ARGS__;                                                                                                          \
-                                                                                                                              \
-    protected:                                                                                                                \
-        void Render() const override;                                                                                         \
+#define WindowMember_(MemberName, ...)                                                                              \
+    struct MemberName : Window {                                                                                    \
+        MemberName(StateMember *parent, string_view path_segment, string_view name_help = "", bool visible = true); \
+        __VA_ARGS__;                                                                                                \
+                                                                                                                    \
+    protected:                                                                                                      \
+        void Render() const override;                                                                               \
     };
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
 
 struct Base : UIStateMember {
-    Base(StateMember *parent, std::string_view path_segment, std::string_view name_help, const Primitive &value);
+    Base(StateMember *parent, string_view path_segment, string_view name_help, const Primitive &value);
 
     Primitive Get() const; // Returns the value in the main application state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
 };
 
 struct Bool : Base, MenuItemDrawable {
-    Bool(StateMember *parent, std::string_view path_segment, std::string_view name_help, bool value = false)
+    Bool(StateMember *parent, string_view path_segment, string_view name_help, bool value = false)
         : Base(parent, path_segment, name_help, value) {}
 
     operator bool() const;
@@ -494,7 +492,7 @@ private:
 };
 
 struct UInt : Base {
-    UInt(StateMember *parent, std::string_view path_segment, std::string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100)
+    UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100)
         : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator U32() const;
@@ -508,7 +506,7 @@ protected:
 };
 
 struct Int : Base {
-    Int(StateMember *parent, std::string_view path_segment, std::string_view name_help, int value = 0, int min = 0, int max = 100)
+    Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100)
         : Base(parent, path_segment, name_help, value), min(min), max(max) {}
 
     operator int() const;
@@ -528,7 +526,7 @@ protected:
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(StateMember *parent, std::string_view path_segment, std::string_view name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
+    Float(StateMember *parent, string_view path_segment, string_view name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
         : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
     operator float() const;
@@ -542,7 +540,7 @@ protected:
 };
 
 struct String : Base {
-    String(StateMember *parent, std::string_view path_segment, std::string_view name_help, std::string_view value = "")
+    String(StateMember *parent, string_view path_segment, string_view name_help, string_view value = "")
         : Base(parent, path_segment, name_help, string(value)) {}
 
     operator string() const;
@@ -556,7 +554,7 @@ protected:
 };
 
 struct Enum : Base, MenuItemDrawable {
-    Enum(StateMember *parent, std::string_view path_segment, std::string_view name_help, vector<string> names, int value = 0)
+    Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0)
         : Base(parent, path_segment, name_help, value), Names(std::move(names)) {}
 
     operator int() const;
@@ -584,7 +582,7 @@ struct Flags : Base, MenuItemDrawable {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(StateMember *parent, std::string_view path_segment, std::string_view name_help, vector<Item> items, int value = 0)
+    Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value = 0)
         : Base(parent, path_segment, name_help, value), Items(std::move(items)) {}
 
     operator int() const;
@@ -644,7 +642,7 @@ struct Colors : Vector<U32> {
     // but not using a value so it can be represented in a U32.
     static constexpr U32 AutoColor = 0X00010101;
 
-    Colors(StateMember *parent, std::string_view path_segment, std::string_view name_help, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
+    Colors(StateMember *parent, string_view path_segment, string_view name_help, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
         : Vector(parent, path_segment, name_help), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {}
 
     static U32 ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
@@ -715,8 +713,8 @@ ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
 struct Window : StateMember, MenuItemDrawable {
     using StateMember::StateMember;
-    Window(StateMember *parent, std::string_view path_segment, std::string_view name_help, bool visible);
-    Window(StateMember *parent, std::string_view path_segment, std::string_view name_help, Menu::ItemsType menu_items);
+    Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
+    Window(StateMember *parent, string_view path_segment, string_view name_help, Menu::ItemsType menu_items);
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -742,7 +740,7 @@ WindowMember(
 );
 
 struct StateViewer : Window {
-    StateViewer(StateMember *parent, std::string_view path_segment, std::string_view name_help)
+    StateViewer(StateMember *parent, string_view path_segment, string_view name_help)
         : Window(parent, path_segment, name_help, {Menu("Settings", {AutoSelect, LabelMode})}) {}
 
     enum LabelMode {
@@ -759,7 +757,7 @@ struct StateViewer : Window {
                             "State menu items can only be opened or closed manually if auto-select is disabled.",
           true);
 
-    void StateJsonTree(std::string_view key, const json &value, const StatePath &path = RootPath) const;
+    void StateJsonTree(string_view key, const json &value, const StatePath &path = RootPath) const;
 
 protected:
     void Render() const override;
@@ -1013,7 +1011,7 @@ using FlowGridDiagramCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(StateMember *parent, std::string_view path_segment, std::string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
+    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
         : UIStateMember(parent, path_segment, name_help),
           X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max),
           min(min), max(max), fmt(fmt) {}
@@ -1031,7 +1029,7 @@ protected:
 
 struct Vec2Linked : Vec2 {
     using Vec2::Vec2;
-    Vec2Linked(StateMember *parent, std::string_view path_segment, std::string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
+    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
     Prop(Bool, Linked, true);
 

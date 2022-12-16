@@ -273,7 +273,7 @@ void ActionMenuItem(const EmptyAction &action) {
     }
 }
 
-bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const char *id) {
+bool JsonTreeNode(string_view label_view, JsonTreeNodeFlags flags, const char *id) {
     const auto label = string(label_view);
     const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
     const bool disabled = flags & JsonTreeNodeFlags_Disabled;
@@ -288,7 +288,7 @@ bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const ch
     return is_open;
 }
 
-void JsonTree(std::string_view label_view, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
+void JsonTree(string_view label_view, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
     const auto label = string(label_view);
     if (value.is_null()) {
         TextUnformatted(label.empty() ? "(null)" : label.c_str());

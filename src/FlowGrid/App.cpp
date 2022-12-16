@@ -30,7 +30,7 @@ void Set(const FieldEntries &values, TransientStore &store) {
     for (const auto &[field, value] : values) store.set(field.Path, value);
 }
 
-StateMember::StateMember(StateMember *parent, std::string_view path_segment, std::string_view name_help) : Parent(parent) {
+StateMember::StateMember(StateMember *parent, string_view path_segment, string_view name_help) : Parent(parent) {
     if (parent) parent->Children.emplace_back(this);
 
     const auto &[name, help] = ParseHelpText(name_help);
@@ -50,13 +50,13 @@ StateMember::~StateMember() {
     WithId.erase(Id);
 }
 
-Vec2Linked::Vec2Linked(StateMember *parent, std::string_view path_segment, std::string_view name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
+Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
     c.InitStore.set(Linked.Path, linked);
 }
 
 // File dialogs are not visible by default.
-FileDialog::FileDialog(StateMember *parent, std::string_view path_segment, std::string_view name_help, bool /*visible*/) : Window(parent, path_segment, name_help, false) {}
+FileDialog::FileDialog(StateMember *parent, string_view path_segment, string_view name_help, bool /*visible*/) : Window(parent, path_segment, name_help, false) {}
 
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
@@ -260,7 +260,7 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &Base
     return {ops, BasePath};
 }
 
-void SaveBoxSvg(std::string_view path); // Defined in FaustUI
+void SaveBoxSvg(string_view path); // Defined in FaustUI
 
 //-----------------------------------------------------------------------------
 // [SECTION] Context

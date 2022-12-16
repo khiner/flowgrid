@@ -54,13 +54,13 @@ struct Device {
     // Drawing assumes `SetCursorPos` has been called to set the desired origin.
     virtual void Rect(const ImRect &, const RectStyle &) = 0;
     // Rect with a break in the top-left (to the right of rounding) for a label.
-    virtual void LabeledRect(const ImRect &, std::string_view label, const RectStyle &, const TextStyle &) = 0;
+    virtual void LabeledRect(const ImRect &, string_view label, const RectStyle &, const TextStyle &) = 0;
 
     virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
     virtual void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) = 0;
     virtual void Arrow(const ImVec2 &pos, DiagramOrientation) = 0;
     virtual void Line(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void Text(const ImVec2 &pos, std::string_view text, const TextStyle &) = 0;
+    virtual void Text(const ImVec2 &pos, string_view text, const TextStyle &) = 0;
     virtual void Dot(const ImVec2 &pos, const ImColor &fill_color) = 0;
 
     virtual void SetCursorPos(const ImVec2 &scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
@@ -149,13 +149,13 @@ struct SVGDevice : Device {
     }
 
     // Only SVG device has a rect-with-link method
-    void Rect(const ImRect &local_rect, const RectStyle &style, std::string_view link) {
+    void Rect(const ImRect &local_rect, const RectStyle &style, string_view link) {
         if (!link.empty()) Stream << format(R"(<a href="{}">)", XmlSanitize(string(link)));
         Rect(local_rect, style);
         if (!link.empty()) Stream << "</a>";
     }
 
-    void LabeledRect(const ImRect &local_rect, std::string_view label, const RectStyle &rect_style, const TextStyle &text_style) override {
+    void LabeledRect(const ImRect &local_rect, string_view label, const RectStyle &rect_style, const TextStyle &text_style) override {
         const auto &rect = At(local_rect);
         const auto &tl = rect.Min;
         const auto &tr = rect.GetTR();
@@ -195,7 +195,7 @@ struct SVGDevice : Device {
         Stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
     }
 
-    void Text(const ImVec2 &pos, std::string_view text, const TextStyle &style) override {
+    void Text(const ImVec2 &pos, string_view text, const TextStyle &style) override {
         const auto &[color, justify, padding, font_style] = style;
         const string anchor = justify.h == HJustify_Left ? "start" : justify.h == HJustify_Middle ? "middle" :
                                                                                                     "end";
@@ -206,7 +206,7 @@ struct SVGDevice : Device {
     }
 
     // Only SVG device has a text-with-link method
-    void Text(const ImVec2 &pos, std::string_view str, const TextStyle &style, std::string_view link) {
+    void Text(const ImVec2 &pos, string_view str, const TextStyle &style, string_view link) {
         if (!link.empty()) Stream << format(R"(<a href="{}">)", XmlSanitize(string(link)));
         Text(pos, str, style);
         if (!link.empty()) Stream << "</a>";
@@ -241,7 +241,7 @@ struct ImGuiDevice : Device {
         if (stroke_color.Value.w != 0) DrawList->AddRect(rect.Min, rect.Max, stroke_color, corner_radius);
     }
 
-    void LabeledRect(const ImRect &local_rect, std::string_view label, const RectStyle &rect_style, const TextStyle &text_style) override {
+    void LabeledRect(const ImRect &local_rect, string_view label, const RectStyle &rect_style, const TextStyle &text_style) override {
         const auto &rect = At(local_rect);
         const auto &padding = text_style.Padding;
         const auto &padding_left = Scale(padding.Left), &padding_right = Scale(padding.Right);
@@ -295,7 +295,7 @@ struct ImGuiDevice : Device {
         DrawList->AddLine(At(start) - ImVec2{0.5f, 0}, At(end) - ImVec2{0.5f, 0}, color, width);
     }
 
-    void Text(const ImVec2 &p, std::string_view text, const TextStyle &style) override {
+    void Text(const ImVec2 &p, string_view text, const TextStyle &style) override {
         const auto &[color, justify, padding, font_style] = style;
         const auto text_copy = string(text);
         const auto &size = CalcTextSize(text_copy);
@@ -889,7 +889,7 @@ Each property can be changed in `Style.FlowGrid.Diagram.(Group|Decorate){Propert
     * To: My right
 */
 struct GroupNode : Node {
-    GroupNode(Tree tree, Node *inner, string text = "", std::string_view label = "")
+    GroupNode(Tree tree, Node *inner, string text = "", string_view label = "")
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
@@ -928,7 +928,7 @@ private:
 };
 
 struct DecorateNode : Node {
-    DecorateNode(Tree tree, Node *inner, string text = "", std::string_view label = "")
+    DecorateNode(Tree tree, Node *inner, string text = "", string_view label = "")
         : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
 
     void DoPlaceSize(const DeviceType) override {
@@ -1262,7 +1262,7 @@ void OnBoxChange(Box box) {
     }
 }
 
-void SaveBoxSvg(std::string_view path) {
+void SaveBoxSvg(string_view path) {
     if (!RootNode) return;
 
     // Render SVG diagram(s)

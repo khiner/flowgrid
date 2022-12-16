@@ -47,7 +47,7 @@ public:
     };
 
     struct Item {
-        Item(const ItemType type, std::string_view label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, vector<Item> items = {})
+        Item(const ItemType type, string_view label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, vector<Item> items = {})
             : type(type), id(label), label(label == "0x00" ? "" : label), zone(zone), min(min), max(max), init(init), step(step), tooltip(tooltip), items(std::move(items)) {}
 
         const ItemType type{ItemType_None};
@@ -159,4 +159,4 @@ class CTree;
 typedef CTree *Box;
 void OnUiChange(FaustUI *);
 void OnBoxChange(Box);
-void SaveBoxSvg(std::string_view path);
+void SaveBoxSvg(string_view path);

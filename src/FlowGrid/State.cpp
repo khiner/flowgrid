@@ -25,7 +25,7 @@ void Drawable::Draw() const {
 }
 
 namespace Field {
-Base::Base(StateMember *parent, std::string_view id, std::string_view name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
+Base::Base(StateMember *parent, string_view id, string_view name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
     c.InitStore.set(Path, value);
 }
 Primitive Base::Get() const { return AppStore.at(Path); }
@@ -442,11 +442,11 @@ void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 // [SECTION] Window/tabs methods
 //-----------------------------------------------------------------------------
 
-Window::Window(StateMember *parent, std::string_view path_segment, std::string_view name_help, const bool visible)
+Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const bool visible)
     : StateMember(parent, path_segment, name_help) {
     Set(Visible, visible, c.InitStore);
 }
-Window::Window(StateMember *parent, std::string_view path_segment, std::string_view name_help, Menu::ItemsType menu_items)
+Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu::ItemsType menu_items)
     : StateMember(parent, path_segment, name_help), WindowMenu("", std::move(menu_items)) {
     Set(Visible, true, c.InitStore);
 }
@@ -974,7 +974,7 @@ void State::Apply(const UIContext::Flags flags) const {
 //-----------------------------------------------------------------------------
 
 // TODO option to indicate relative update-recency
-void StateViewer::StateJsonTree(std::string_view key, const json &value, const StatePath &path) const {
+void StateViewer::StateJsonTree(string_view key, const json &value, const StatePath &path) const {
     const string leaf_name = path == RootPath ? path.string() : path.filename().string();
     const auto &parent_path = path == RootPath ? path : path.parent_path();
     const bool is_array_item = IsInteger(leaf_name);
@@ -1093,19 +1093,19 @@ void ProjectPreview::Render() const {
 // [SECTION] Style editors
 //-----------------------------------------------------------------------------
 
-Style::ImGuiStyle::ImGuiStyle(StateMember *parent, std::string_view path_segment, std::string_view name_help)
+Style::ImGuiStyle::ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
 }
-Style::ImPlotStyle::ImPlotStyle(StateMember *parent, std::string_view path_segment, std::string_view name_help)
+Style::ImPlotStyle::ImPlotStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsAuto(c.InitStore);
 }
-Style::FlowGridStyle::FlowGridStyle(StateMember *parent, std::string_view path_segment, std::string_view name_help)
+Style::FlowGridStyle::FlowGridStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
 }
-Style::FlowGridStyle::Diagram::Diagram(StateMember *parent, std::string_view path_segment, std::string_view name_help)
+Style::FlowGridStyle::Diagram::Diagram(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
     LayoutFlowGrid(c.InitStore);

@@ -6,7 +6,8 @@
 #include <range/v3/view/transform.hpp>
 #include <string>
 
-using std::string;
+using std::string, std::string_view;
+using namespace std::string_literals;
 namespace views = ranges::views;
 using ranges::to;
 using views::transform;
@@ -27,14 +28,14 @@ static constexpr string Lowercase(string copy) {
 }
 
 // E.g. 'foo_bar_baz' => 'Foo bar baz'
-static constexpr string SnakeCaseToSentenceCase(std::string_view snake_case) {
+static constexpr string SnakeCaseToSentenceCase(string_view snake_case) {
     auto sentence_case = snake_case | views::split('_') | views::join(' ') | to<string>;
     return Capitalize(sentence_case);
 }
 
-static constexpr bool IsInteger(std::string_view str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }
+static constexpr bool IsInteger(string_view str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }
 
-static constexpr string Replace(string subject, std::string_view search, std::string_view replace) {
+static constexpr string Replace(string subject, string_view search, string_view replace) {
     size_t pos = 0;
     while ((pos = subject.find(search, pos)) != string::npos) {
         subject.replace(pos, search.length(), replace);
@@ -44,7 +45,7 @@ static constexpr string Replace(string subject, std::string_view search, std::st
 }
 
 // Same as above, but with single char search.
-static constexpr string Replace(string subject, const char search, std::string_view replace) {
+static constexpr string Replace(string subject, const char search, string_view replace) {
     size_t pos = 0;
     while ((pos = subject.find(search, pos)) != string::npos) {
         subject.replace(pos, 1, replace);

@@ -398,13 +398,6 @@ void Audio::FaustState::FaustEditor::Render() const {
         IgnoreChanges = false;
     }
 }
-
-void Audio::FaustState::FaustLog::Render() const {
-    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    s.Audio.Faust.Error.Draw();
-    PopStyleColor();
-}
-
 void DestroyFaustEditor() {
     if (Wrapper) Wrapper.reset();
 }

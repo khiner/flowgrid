@@ -827,7 +827,7 @@ WindowMember(
     static const vector<int> PrioritizedDefaultSampleRates;
 
     // todo state member & respond to changes, or remove from state
-    Member(
+    UIMember(
         FaustState,
         WindowMember_(
             FaustEditor,
@@ -859,7 +859,10 @@ WindowMember(
         );
 
         WindowMember(FaustParams);
-        WindowMember(FaustLog);
+        WindowMember(
+            FaustLog,
+            Prop(String, Error);
+        );
 
         Prop_(FaustEditor, Editor, "Faust editor");
         Prop_(FaustDiagram, Diagram, "Faust diagram");
@@ -968,8 +971,6 @@ process = tgroup("grp 1",
     knobs,
     vmisc,
     hmisc);)#");
-
-        Prop(String, Error);
     );
 
     void UpdateProcess() const;

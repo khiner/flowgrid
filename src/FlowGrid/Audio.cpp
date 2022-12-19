@@ -598,8 +598,8 @@ void Audio::UpdateProcess() const {
             }
         }
 
-        if (!error_msg.empty()) q(SetValue{Faust.Error.Path, error_msg});
-        else if (Faust.Error) q(SetValue{Faust.Error.Path, ""});
+        if (!error_msg.empty()) q(SetValue{Faust.Log.Error.Path, error_msg});
+        else if (Faust.Log.Error) q(SetValue{Faust.Log.Error.Path, ""});
 
         OnBoxChange(FaustBox);
         OnUiChange(FaustUi.get());
@@ -734,6 +734,19 @@ void ShowBufferPlots() {
     }
 }
 
+void Audio::FaustState::FaustLog::Render() const {
+    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
+    Error.Draw();
+    PopStyleColor();
+}
+
+void Audio::FaustState::Render() const {
+    Editor.Draw();
+    Diagram.Draw();
+    Params.Draw();
+    Log.Draw();
+}
+
 void Audio::Render() const {
     Running.Draw();
     if (!SoundIoReady) {
@@ -773,4 +786,6 @@ void Audio::Render() const {
         ShowBufferPlots();
         TreePop();
     }
+
+    Faust.Draw();
 }

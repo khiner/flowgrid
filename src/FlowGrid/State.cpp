@@ -627,12 +627,6 @@ void State::Render() const {
 
     ApplicationSettings.Draw();
     Audio.Draw();
-
-    Audio.Faust.Editor.Draw();
-    Audio.Faust.Diagram.Draw();
-    Audio.Faust.Params.Draw();
-    Audio.Faust.Log.Draw();
-
     DebugLog.Draw();
     StackTool.Draw();
     StateViewer.Draw();

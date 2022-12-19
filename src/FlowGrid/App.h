@@ -406,7 +406,7 @@ todo Try out replacing semicolon separators by e.g. commas.
     };
 
 struct Drawable {
-    void Draw() const; // Wraps around the internal `Render` function.
+    virtual void Draw() const; // Wraps around the internal `Render` function.
 
 protected:
     virtual void Render() const = 0;
@@ -719,13 +719,14 @@ static const vector<Flags::Item> TableFlagItems{
 
 ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 
-struct Window : StateMember, MenuItemDrawable {
+struct Window : StateMember, Drawable, MenuItemDrawable {
     using StateMember::StateMember;
     Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
+    Window(StateMember *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
     Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu);
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
-    void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
+    void Draw() const override;
     void MenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
     void Dock(ID node_id) const;
     void SelectTab() const; // If this window is tabbed, select it.
@@ -733,9 +734,7 @@ struct Window : StateMember, MenuItemDrawable {
     Prop(Bool, Visible, true);
 
     const Menu WindowMenu{{}};
-
-protected:
-    virtual void Render() const = 0;
+    const ImGuiWindowFlags WindowFlags{ImGuiWindowFlags_None};
 };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.
@@ -767,7 +766,7 @@ WindowMember_(
     void StateJsonTree(string_view key, const json &value, const StatePath &path = RootPath) const;
 );
 
-WindowMember(StateMemoryEditor);
+WindowMember_(StateMemoryEditor, ImGuiWindowFlags_NoScrollbar);
 WindowMember(StatePathUpdateFrequency);
 
 enum ProjectFormat {
@@ -830,8 +829,10 @@ WindowMember(
     // todo state member & respond to changes, or remove from state
     Member(
         FaustState,
-        WindowMember(
+        WindowMember_(
             FaustEditor,
+            ImGuiWindowFlags_MenuBar,
+
             string FileName{"default.dsp"};
         );
 
@@ -1048,7 +1049,8 @@ protected:
 };
 
 struct Demo : TabsWindow {
-    using TabsWindow::TabsWindow;
+    Demo(StateMember *parent, string_view path_segment, string_view name_help)
+        : TabsWindow(parent, path_segment, name_help, ImGuiWindowFlags_MenuBar) {}
 
     UIMember(ImGuiDemo);
     UIMember(ImPlotDemo);

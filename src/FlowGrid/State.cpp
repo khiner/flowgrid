@@ -446,14 +446,19 @@ Window::Window(StateMember *parent, string_view path_segment, string_view name_h
     : StateMember(parent, path_segment, name_help) {
     Set(Visible, visible, c.InitStore);
 }
+Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
+    : StateMember(parent, path_segment, name_help), WindowFlags(flags) {
+    Set(Visible, true, c.InitStore);
+}
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu)
     : StateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {
     Set(Visible, true, c.InitStore);
 }
 
-void Window::Draw(ImGuiWindowFlags flags) const {
+void Window::Draw() const {
     if (!Visible) return;
 
+    ImGuiWindowFlags flags = WindowFlags;
     if (!WindowMenu.Items.empty()) flags |= ImGuiWindowFlags_MenuBar;
 
     bool open = Visible;
@@ -623,7 +628,7 @@ void State::Render() const {
     ApplicationSettings.Draw();
     Audio.Draw();
 
-    Audio.Faust.Editor.Draw(ImGuiWindowFlags_MenuBar);
+    Audio.Faust.Editor.Draw();
     Audio.Faust.Diagram.Draw();
     Audio.Faust.Params.Draw();
     Audio.Faust.Log.Draw();
@@ -632,12 +637,12 @@ void State::Render() const {
     StackTool.Draw();
     StateViewer.Draw();
     StatePathUpdateFrequency.Draw();
-    StateMemoryEditor.Draw(ImGuiWindowFlags_NoScrollbar);
+    StateMemoryEditor.Draw();
     ProjectPreview.Draw();
 
     Metrics.Draw();
     Style.Draw();
-    Demo.Draw(ImGuiWindowFlags_MenuBar);
+    Demo.Draw();
     FileDialog.Draw();
     Info.Draw();
 }

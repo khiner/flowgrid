@@ -827,8 +827,12 @@ WindowMember(
             string FileName{"default.dsp"};
         );
 
-        WindowMember(
+        WindowMember_(
             FaustDiagram,
+            {Menu("File", {ShowSaveFaustSvgFileDialog{}})},
+            // {Menu("File", {ShowSaveFaustSvgFileDialog{}}), Menu("View", {Settings.HoverFlags})},
+            // {Menu("File", {ShowSaveFaustSvgFileDialog{}})},
+
             Member(
                 DiagramSettings,
                 Prop_(

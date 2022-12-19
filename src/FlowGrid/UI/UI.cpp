@@ -182,6 +182,9 @@ UIContext CreateUi() {
     return ui_context;
 }
 
+static int PrevFontIndex = 0;
+static float PrevFontScale = 1.0;
+
 // Main UI tick function
 void TickUi() {
     // Poll and handle events (inputs, window resize, etc.)
@@ -212,6 +215,15 @@ void TickUi() {
     }
 
     PrepareFrame();
+    if (s.Style.ImGui.FontIndex != PrevFontIndex) {
+        GetIO().FontDefault = GetIO().Fonts->Fonts[s.Style.ImGui.FontIndex];
+        PrevFontIndex = s.Style.ImGui.FontIndex;
+    }
+    if (PrevFontScale != s.Style.ImGui.FontScale) {
+        GetIO().FontGlobalScale = s.Style.ImGui.FontScale / Style::ImGuiStyle::FontAtlasScale;
+        PrevFontScale = s.Style.ImGui.FontScale;
+    }
+
     s.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
     RenderFrame(RenderContext);
 

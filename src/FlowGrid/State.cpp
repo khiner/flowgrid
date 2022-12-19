@@ -529,20 +529,7 @@ void Info::Render() const {
 }
 
 void State::UIProcess::Render() const {}
-
-static int PrevFontIndex = 0;
-static float PrevFontScale = 1.0;
-
 void State::Render() const {
-    if (Style.ImGui.FontIndex != PrevFontIndex) {
-        GetIO().FontDefault = GetIO().Fonts->Fonts[Style.ImGui.FontIndex];
-        PrevFontIndex = Style.ImGui.FontIndex;
-    }
-    if (PrevFontScale != Style.ImGui.FontScale) {
-        GetIO().FontGlobalScale = Style.ImGui.FontScale / Style::ImGuiStyle::FontAtlasScale;
-        PrevFontScale = Style.ImGui.FontScale;
-    }
-
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
             ActionMenuItem(OpenEmptyProject{});

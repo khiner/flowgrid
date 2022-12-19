@@ -1284,18 +1284,6 @@ void Audio::FaustState::FaustDiagram::Render() const {
         return;
     }
 
-    if (BeginMenuBar()) {
-        if (BeginMenu("File")) {
-            ActionMenuItem(ShowSaveFaustSvgFileDialog{});
-            EndMenu();
-        }
-        if (BeginMenu("View")) {
-            Settings.HoverFlags.MenuItem();
-            EndMenu();
-        }
-        EndMenuBar();
-    }
-
     if (FocusedNodeStack.empty()) return;
 
     if (s.Style.FlowGrid.Diagram.FoldComplexity != FoldComplexity) {

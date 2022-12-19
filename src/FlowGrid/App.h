@@ -132,8 +132,9 @@ template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
 
 // Utility to flatten two variants together into one variant.
 // From https://stackoverflow.com/a/59251342/780425
-template<typename Var1, typename Var2> struct variant_flat;
-template<typename... Ts1, typename... Ts2> struct variant_flat<std::variant<Ts1...>, std::variant<Ts2...>> {
+// E.g. Combine<Variant1, Variant2>
+template<typename Var1, typename Var2> struct Combine;
+template<typename... Ts1, typename... Ts2> struct Combine<std::variant<Ts1...>, std::variant<Ts2...>> {
     using type = std::variant<Ts1..., Ts2...>;
 };
 
@@ -229,7 +230,7 @@ using StateAction = std::variant<
     SetDiagramLayoutStyle,
 
     CloseApplication>;
-using Action = variant_flat<ProjectAction, StateAction>::type;
+using Action = Combine<ProjectAction, StateAction>::type;
 using ActionID = ID;
 
 // All actions that don't have any member data.
@@ -422,7 +423,9 @@ struct Menu : Drawable {
         const EmptyAction>;
     using ItemsType = vector<ItemType>;
 
-    Menu(string_view label = "", const ItemsType items = {}) : Label(label), Items(std::move(items)) {}
+    Menu(string_view label, const ItemsType &items) : Label(label), Items(items) {}
+    Menu(const ItemsType &items) : Label(""), Items(items) {}
+    Menu() : Menu((const ItemsType){}) {}
 
     const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
     const ItemsType Items;
@@ -466,7 +469,7 @@ struct UIStateMember : StateMember,
 #define WindowMember_(MemberName, VisibleOrMenuItems, ...)                                    \
     struct MemberName : Window {                                                              \
         MemberName(StateMember *parent, string_view path_segment, string_view name_help = "") \
-            : Window(parent, path_segment, name_help, VisibleOrMenuItems) {}                  \
+            : Window(parent, path_segment, name_help, (VisibleOrMenuItems)) {}                \
         __VA_ARGS__;                                                                          \
                                                                                               \
     protected:                                                                                \
@@ -731,7 +734,7 @@ struct Window : StateMember, MenuItemDrawable {
 
     Prop(Bool, Visible, true);
 
-    const Menu WindowMenu{};
+    const Menu WindowMenu;
 
 protected:
     virtual void Render() const = 0;
@@ -748,8 +751,9 @@ WindowMember(
 
 WindowMember_(
     StateViewer,
-    Menu::ItemsType{
-        Menu("Settings", {AutoSelect, LabelMode})},
+    Menu::ItemsType({
+        Menu("Settings", {AutoSelect, LabelMode}),
+    }),
     enum LabelMode{Annotated, Raw};
     Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
                            "For example, the main `ui.style.colors` state is a list.\n\n"
@@ -833,9 +837,12 @@ WindowMember(
         );
 
         WindowMember_(
-            FaustDiagram, Menu::ItemsType({Menu("File", {ShowSaveFaustSvgFileDialog{}})}),
-            // {Menu("File", {ShowSaveFaustSvgFileDialog{}}), Menu("View", {Settings.HoverFlags})},
-            // {Menu("File", {ShowSaveFaustSvgFileDialog{}})},
+            FaustDiagram,
+            // todo shouldn't need explicit type here
+            Menu::ItemsType({
+                Menu("File", {ShowSaveFaustSvgFileDialog{}}),
+                Menu("View", {Settings.HoverFlags}),
+            }),
 
             Member(
                 DiagramSettings,

@@ -416,7 +416,11 @@ struct MenuItemDrawable {
 };
 
 struct Menu : Drawable {
-    using ItemsType = vector<std::variant<const Menu, const std::reference_wrapper<MenuItemDrawable>, const EmptyAction>>;
+    using ItemType = std::variant<
+        const Menu,
+        const std::reference_wrapper<MenuItemDrawable>,
+        const EmptyAction>;
+    using ItemsType = vector<ItemType>;
 
     Menu(string_view label = "", const ItemsType items = {}) : Label(label), Items(std::move(items)) {}
 
@@ -717,7 +721,7 @@ ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 struct Window : StateMember, MenuItemDrawable {
     using StateMember::StateMember;
     Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
-    Window(StateMember *parent, string_view path_segment, string_view name_help, Menu::ItemsType menu_items);
+    Window(StateMember *parent, string_view path_segment, string_view name_help, Menu::ItemsType &&menu_items);
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -743,8 +747,9 @@ WindowMember(
 );
 
 WindowMember_(
-    StateViewer, {Menu("Settings", {AutoSelect, LabelMode})},
-
+    StateViewer,
+    Menu::ItemsType{
+        Menu("Settings", {AutoSelect, LabelMode})},
     enum LabelMode{Annotated, Raw};
     Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
                            "For example, the main `ui.style.colors` state is a list.\n\n"
@@ -828,8 +833,7 @@ WindowMember(
         );
 
         WindowMember_(
-            FaustDiagram,
-            {Menu("File", {ShowSaveFaustSvgFileDialog{}})},
+            FaustDiagram, Menu::ItemsType({Menu("File", {ShowSaveFaustSvgFileDialog{}})}),
             // {Menu("File", {ShowSaveFaustSvgFileDialog{}}), Menu("View", {Settings.HoverFlags})},
             // {Menu("File", {ShowSaveFaustSvgFileDialog{}})},
 

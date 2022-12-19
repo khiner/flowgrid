@@ -390,7 +390,7 @@ todo Try out replacing semicolon separators by e.g. commas.
   - `WindowMember` defines a drawable state type whose contents are rendered to a window.
     - `WindowMember_` is the same as `WindowMember`, but allows passing either:
       - a `bool` to override the default `true` visibility, or
-      - a `Menu::ItemsType` to define menu items for the window.
+      - a `Menu` to define the window's menu.
     - `TabsWindow` is a `WindowMember` that renders all its props as tabs. (except the `Visible` boolean member coming from `WindowMember`).
   - todo Refactor docking behavior out of `WindowMember` into a new `DockMember` type.
 
@@ -417,18 +417,16 @@ struct MenuItemDrawable {
 };
 
 struct Menu : Drawable {
-    using ItemType = std::variant<
+    using Item = std::variant<
         const Menu,
         const std::reference_wrapper<MenuItemDrawable>,
         const EmptyAction>;
-    using ItemsType = vector<ItemType>;
 
-    Menu(string_view label, const ItemsType &items) : Label(label), Items(items) {}
-    Menu(const ItemsType &items) : Label(""), Items(items) {}
-    Menu() : Menu((const ItemsType){}) {}
+    Menu(string_view label, const vector<const Item> items) : Label(label), Items(std::move(items)) {}
+    explicit Menu(const vector<const Item> items) : Menu("", std::move(items)) {}
 
     const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
-    const ItemsType Items;
+    const vector<const Item> Items;
 
 protected:
     void Render() const override;
@@ -466,10 +464,10 @@ struct UIStateMember : StateMember,
         void Render() const override; \
     };
 
-#define WindowMember_(MemberName, VisibleOrMenuItems, ...)                                    \
+#define WindowMember_(MemberName, VisibleOrMenu, ...)                                         \
     struct MemberName : Window {                                                              \
         MemberName(StateMember *parent, string_view path_segment, string_view name_help = "") \
-            : Window(parent, path_segment, name_help, (VisibleOrMenuItems)) {}                \
+            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}                     \
         __VA_ARGS__;                                                                          \
                                                                                               \
     protected:                                                                                \
@@ -724,7 +722,7 @@ ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
 struct Window : StateMember, MenuItemDrawable {
     using StateMember::StateMember;
     Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
-    Window(StateMember *parent, string_view path_segment, string_view name_help, Menu::ItemsType &&menu_items);
+    Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu);
 
     ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
     void Draw(ImGuiWindowFlags flags = ImGuiWindowFlags_None) const;
@@ -734,7 +732,7 @@ struct Window : StateMember, MenuItemDrawable {
 
     Prop(Bool, Visible, true);
 
-    const Menu WindowMenu;
+    const Menu WindowMenu{{}};
 
 protected:
     virtual void Render() const = 0;
@@ -751,8 +749,9 @@ WindowMember(
 
 WindowMember_(
     StateViewer,
-    Menu::ItemsType({
+    Menu({
         Menu("Settings", {AutoSelect, LabelMode}),
+        Menu({}), // Need multiple elements to disambiguate vector-of-variants construction from variant construction.
     }),
     enum LabelMode{Annotated, Raw};
     Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
@@ -838,8 +837,7 @@ WindowMember(
 
         WindowMember_(
             FaustDiagram,
-            // todo shouldn't need explicit type here
-            Menu::ItemsType({
+            Menu({
                 Menu("File", {ShowSaveFaustSvgFileDialog{}}),
                 Menu("View", {Settings.HoverFlags}),
             }),

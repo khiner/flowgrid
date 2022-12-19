@@ -446,8 +446,8 @@ Window::Window(StateMember *parent, string_view path_segment, string_view name_h
     : StateMember(parent, path_segment, name_help) {
     Set(Visible, visible, c.InitStore);
 }
-Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu::ItemsType &&menu_items)
-    : StateMember(parent, path_segment, name_help), WindowMenu("", menu_items) {
+Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu)
+    : StateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {
     Set(Visible, true, c.InitStore);
 }
 

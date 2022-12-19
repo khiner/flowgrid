@@ -454,6 +454,8 @@ Window::Window(StateMember *parent, string_view path_segment, string_view name_h
 void Window::Draw(ImGuiWindowFlags flags) const {
     if (!Visible) return;
 
+    if (!WindowMenu.Items.empty()) flags |= ImGuiWindowFlags_MenuBar;
+
     bool open = Visible;
     if (Begin(ImGuiLabel.c_str(), &open, flags) && open) {
         WindowMenu.Draw();
@@ -622,13 +624,13 @@ void State::Render() const {
     Audio.Draw();
 
     Audio.Faust.Editor.Draw(ImGuiWindowFlags_MenuBar);
-    Audio.Faust.Diagram.Draw(ImGuiWindowFlags_MenuBar);
+    Audio.Faust.Diagram.Draw();
     Audio.Faust.Params.Draw();
     Audio.Faust.Log.Draw();
 
     DebugLog.Draw();
     StackTool.Draw();
-    StateViewer.Draw(ImGuiWindowFlags_MenuBar);
+    StateViewer.Draw();
     StatePathUpdateFrequency.Draw();
     StateMemoryEditor.Draw(ImGuiWindowFlags_NoScrollbar);
     ProjectPreview.Draw();

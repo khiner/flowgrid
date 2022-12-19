@@ -387,7 +387,9 @@ todo Try out replacing semicolon separators by e.g. commas.
   - `UIMember` defines a drawable state type.
     - `UIMember_` is the same as `UIMember`, but adds a custom constructor implementation (with the same arguments).
   - `WindowMember` defines a drawable state type whose contents are rendered to a window.
-    - `WindowMember_` is the same as `WindowMember`, but adds a custom constructor implementation (with the same arguments).
+    - `WindowMember_` is the same as `WindowMember`, but allows passing either:
+      - a `bool` to override the default `true` visibility, or
+      - a `Menu::ItemsType` to define menu items for the window.
     - `TabsWindow` is a `WindowMember` that renders all its props as tabs. (except the `Visible` boolean member coming from `WindowMember`).
   - todo Refactor docking behavior out of `WindowMember` into a new `DockMember` type.
 
@@ -457,13 +459,14 @@ struct UIStateMember : StateMember,
         void Render() const override; \
     };
 
-#define WindowMember_(MemberName, ...)                                                                              \
-    struct MemberName : Window {                                                                                    \
-        MemberName(StateMember *parent, string_view path_segment, string_view name_help = "", bool visible = true); \
-        __VA_ARGS__;                                                                                                \
-                                                                                                                    \
-    protected:                                                                                                      \
-        void Render() const override;                                                                               \
+#define WindowMember_(MemberName, VisibleOrMenuItems, ...)                                    \
+    struct MemberName : Window {                                                              \
+        MemberName(StateMember *parent, string_view path_segment, string_view name_help = "") \
+            : Window(parent, path_segment, name_help, VisibleOrMenuItems) {}                  \
+        __VA_ARGS__;                                                                          \
+                                                                                              \
+    protected:                                                                                \
+        void Render() const override;                                                         \
     };
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
@@ -739,14 +742,10 @@ WindowMember(
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
 );
 
-struct StateViewer : Window {
-    StateViewer(StateMember *parent, string_view path_segment, string_view name_help)
-        : Window(parent, path_segment, name_help, {Menu("Settings", {AutoSelect, LabelMode})}) {}
+WindowMember_(
+    StateViewer, {Menu("Settings", {AutoSelect, LabelMode})},
 
-    enum LabelMode {
-        Annotated,
-        Raw,
-    };
+    enum LabelMode{Annotated, Raw};
     Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
                            "For example, the main `ui.style.colors` state is a list.\n\n"
                            "'Annotated' mode shows (highlighted) labels for such state items.\n"
@@ -758,10 +757,7 @@ struct StateViewer : Window {
           true);
 
     void StateJsonTree(string_view key, const json &value, const StatePath &path = RootPath) const;
-
-protected:
-    void Render() const override;
-};
+);
 
 WindowMember(StateMemoryEditor);
 WindowMember(StatePathUpdateFrequency);
@@ -1443,7 +1439,7 @@ struct FileDialogData {
 };
 
 WindowMember_(
-    FileDialog,
+    FileDialog, false, // File dialogs are not visible by default.
     void Set(const FileDialogData &data, TransientStore &) const;
 
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.

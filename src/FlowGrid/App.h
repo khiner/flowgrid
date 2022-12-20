@@ -1261,10 +1261,6 @@ UIMember(
     Prop(ProjectPreview, ProjectPreview);
 );
 
-namespace FlowGrid {
-void ActionMenuItem(const EmptyAction &); // For actions with no data members.
-}
-
 //-----------------------------------------------------------------------------
 // [SECTION] Main application `Context`
 //-----------------------------------------------------------------------------

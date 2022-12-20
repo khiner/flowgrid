@@ -277,14 +277,6 @@ bool InvisibleButton(const ImVec2 &size_arg, bool *out_hovered, bool *out_held) 
     return ButtonBehavior(rect, id, out_hovered, out_held, ImGuiButtonFlags_None);
 }
 
-void ActionMenuItem(const EmptyAction &action) {
-    const string menu_label = action::GetMenuLabel(action);
-    const string shortcut = action::GetShortcut(action);
-    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, c.ActionAllowed(action))) {
-        Match(action, [](const auto &a) { q(a); });
-    }
-}
-
 bool JsonTreeNode(string_view label_view, JsonTreeNodeFlags flags, const char *id) {
     const auto label = string(label_view);
     const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;

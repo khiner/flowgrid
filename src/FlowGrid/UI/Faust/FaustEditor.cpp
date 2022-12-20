@@ -308,6 +308,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
 
 static unique_ptr<ZepWrapper> Wrapper;
 
+static const Menu FileMenu = {"File", {ShowOpenFaustFileDialog{}, ShowSaveFaustFileDialog{}}};
 /*
  * TODO
  *   Implement `w` forward-word navigation for Vim mode
@@ -336,11 +337,7 @@ void Audio::FaustState::FaustEditor::Render() const {
     auto *buffer = editor->GetActiveBuffer();
 
     if (BeginMenuBar()) {
-        if (BeginMenu("File")) {
-            ActionMenuItem(ShowOpenFaustFileDialog{});
-            ActionMenuItem(ShowSaveFaustFileDialog{});
-            EndMenu();
-        }
+        FileMenu.Draw();
         if (BeginMenu("Settings")) {
             if (BeginMenu("Editor mode")) {
                 bool vim_enabled = strcmp(buffer->GetMode()->Name(), ZepMode_Vim::StaticName()) == 0;

@@ -264,17 +264,25 @@ void HelpMarker(const char *help) {
     }
 }
 
-bool InvisibleButton(const ImVec2 &size_arg, bool *out_hovered, bool *out_held) {
+InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id) {
     auto *window = GetCurrentWindow();
     if (window->SkipItems) return false;
 
-    const auto id = window->GetID("");
+    const auto imgui_id = window->GetID(id);
     const auto size = CalcItemSize(size_arg, 0.0f, 0.0f);
     const auto &cursor = GetCursorScreenPos();
     const ImRect rect{cursor, cursor + size};
-    if (!ItemAdd(rect, id)) return false;
+    if (!ItemAdd(rect, imgui_id)) return false;
 
-    return ButtonBehavior(rect, id, out_hovered, out_held, ImGuiButtonFlags_None);
+    InteractionFlags flags = InteractionFlags_None;
+    static bool hovered, held;
+    if (ButtonBehavior(rect, imgui_id, &hovered, &held, ImGuiButtonFlags_AllowItemOverlap)) {
+        flags |= InteractionFlags_Clicked;
+    }
+    if (hovered) flags |= InteractionFlags_Hovered;
+    if (held) flags |= InteractionFlags_Held;
+
+    return flags;
 }
 
 bool JsonTreeNode(string_view label_view, JsonTreeNodeFlags flags, const char *id) {

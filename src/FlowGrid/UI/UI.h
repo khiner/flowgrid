@@ -43,15 +43,24 @@ extern UIContext UiContext; // Created in `main.cpp`
 //-----------------------------------------------------------------------------
 
 // Adding/subtracting scalars to/from vectors is not defined with `IMGUI_DEFINE_MATH_OPERATORS`.
-static inline ImVec2 operator+(const ImVec2 &lhs, const float rhs) { return {lhs.x + rhs, lhs.y + rhs}; }
-static inline ImVec2 operator-(const ImVec2 &lhs, const float rhs) { return {lhs.x - rhs, lhs.y - rhs}; }
+static constexpr ImVec2 operator+(const ImVec2 &lhs, const float rhs) { return {lhs.x + rhs, lhs.y + rhs}; }
+static constexpr ImVec2 operator-(const ImVec2 &lhs, const float rhs) { return {lhs.x - rhs, lhs.y - rhs}; }
 // Neither is multiplying by an `ImVec4`.
-static inline ImVec4 operator*(const ImVec4 &lhs, const float rhs) { return {lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs}; }
+static constexpr ImVec4 operator*(const ImVec4 &lhs, const float rhs) { return {lhs.x * rhs, lhs.y * rhs, lhs.z * rhs, lhs.w * rhs}; }
 
 namespace FlowGrid {
 using namespace nlohmann;
 void HelpMarker(const char *help); // Like the one defined in `imgui_demo.cpp`
-bool InvisibleButton(const ImVec2 &size_arg, bool *out_hovered, bool *out_held); // Basically `ImGui::InvisibleButton`, but supporting hover/held testing.
+
+enum InteractionFlags_ {
+    InteractionFlags_None = 0,
+    InteractionFlags_Hovered = 1 << 0,
+    InteractionFlags_Held = 1 << 1,
+    InteractionFlags_Clicked = 1 << 2,
+};
+using InteractionFlags = int;
+
+InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id); // Basically `ImGui::InvisibleButton`, but supporting hover/held testing.
 
 enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None = 0,

@@ -339,7 +339,7 @@ struct Node {
     inline static float WireGap() { return s.Style.FlowGrid.Graph.WireGap; }
 
     const Tree FaustTree;
-    const string Id, Text;
+    const string Id, Text, BoxTypeLabel;
     const vector<Node *> Children{};
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
@@ -349,7 +349,8 @@ struct Node {
     GraphOrientation Orientation = GraphForward; // Set in `Place`.
 
     Node(Tree tree, Count in_count, Count out_count, string text = "", vector<Node *> children = {}, Count direct_descendents = 0)
-        : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)), Children(std::move(children)), InCount(in_count), OutCount(out_count),
+        : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
+          BoxTypeLabel(GetBoxType(FaustTree)), Children(std::move(children)), InCount(in_count), OutCount(out_count),
           Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)) {}
 
     virtual ~Node() = default;
@@ -378,19 +379,20 @@ struct Node {
         const auto before_cursor = device.CursorPosition;
         device.AdvanceCursor(Position);
 
-        const bool is_imgui = device.Type() == DeviceType_ImGui;
-        if (is_imgui) {
-            PushID(Id.c_str());
-            //            InvisibleButton("", Scale(Size));
-            //            SetItemAllowOverlap();
-            if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
+        InteractionFlags flags = InteractionFlags_None;
+        if (device.Type() == DeviceType_ImGui) {
+            const auto before_cursor_inner = device.CursorPosition;
+            const auto &local_rect = GetFrameRect();
+            device.AdvanceCursor(local_rect.Min);
+            flags |= fg::InvisibleButton(Scale(local_rect.GetSize()), Id.c_str());
+            SetItemAllowOverlap();
+            if (flags & InteractionFlags_Hovered) HoveredNode = this;
+            device.SetCursorPos(before_cursor_inner);
         }
 
-        Render(device);
+        Render(device, flags);
         DrawConnections(device);
         for (auto *child : Children) child->Draw(device);
-
-        if (is_imgui) PopID();
 
         device.SetCursorPos(before_cursor);
     };
@@ -421,11 +423,9 @@ struct Node {
         device.Rect(*this, {.FillColor = {0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor = {0.f, 0.f, 1.f, 1.f}, .StrokeWidth = 1});
     }
     void DrawType(Device &device) const {
-        const std::string type = GetBoxType(FaustTree); // todo cache this at construction time if we ever use it outside the debug hover context
-        const std::string &type_label = type.empty() ? "Unknown type" : type; // todo instead of unknown type, use inner if present
         const static float padding = 2;
-        device.Rect({{0, 0}, CalcTextSize(type_label) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text({0, 0}, type_label, {.Color = {0.f, 0.f, 1.f, 1.f}, .Justify = {HJustify_Left, VJustify_Bottom}});
+        device.Rect({{0, 0}, CalcTextSize(BoxTypeLabel) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
+        device.Text({0, 0}, BoxTypeLabel, {.Color = {0.f, 0.f, 1.f, 1.f}, .Justify = {HJustify_Left, VJustify_Bottom}});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
@@ -485,7 +485,7 @@ struct Node {
 protected:
     virtual void DoPlaceSize(DeviceType) = 0;
     virtual void DoPlace(DeviceType) = 0;
-    virtual void Render(Device &) const {}
+    virtual void Render(Device &, InteractionFlags flags = InteractionFlags_None) const {}
 
     ImRect GetFrameRect() const { return {Margin(), Size - Margin()}; }
 
@@ -526,32 +526,30 @@ struct BlockNode : Node {
         if (Inner && type == DeviceType_SVG) Inner->Place(type);
     }
 
-    void Render(Device &device) const override {
+    void Render(Device &device, InteractionFlags flags) const override {
         U32 fill_color = s.Style.FlowGrid.Graph.Colors[Color];
         const U32 text_color = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Text];
         const auto &local_rect = GetFrameRect();
         const auto &size = local_rect.GetSize();
+        const auto before_cursor = device.CursorPosition;
+        device.AdvanceCursor(local_rect.Min); // todo this pattern should be RIAA style
 
         if (device.Type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (Inner && !fs::exists(svg_device.Directory / Inner->SvgFileName())) Inner->WriteSvg(svg_device.Directory);
-            const string &link = Inner ? SvgFileName() : "";
-            svg_device.Rect(local_rect, {.FillColor = fill_color, .CornerRadius = s.Style.FlowGrid.Graph.BoxCornerRadius}, link);
-            svg_device.Text(Size / 2, Text, {.Color = text_color}, link);
+            const string link = Inner ? SvgFileName() : "";
+            svg_device.Rect({{0, 0}, size}, {.FillColor = fill_color, .CornerRadius = s.Style.FlowGrid.Graph.BoxCornerRadius}, link);
+            svg_device.Text(size / 2, Text, {.Color = text_color}, link);
         } else {
-            const auto before_cursor = device.CursorPosition;
-            device.AdvanceCursor(local_rect.Min); // todo this pattern should be RIAA style
-
             if (Inner) {
-                bool hovered, held;
-                if (fg::InvisibleButton(Scale(size), &hovered, &held)) FocusedNodeStack.push(Inner);
-                fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : (hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
+                if (flags & InteractionFlags_Clicked) FocusedNodeStack.push(Inner);
+                fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
             RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, s.Style.FlowGrid.Graph.BoxCornerRadius);
             device.Text(size / 2, Text, {.Color = text_color});
-
-            device.SetCursorPos(before_cursor);
         }
+
+        device.SetCursorPos(before_cursor);
         DrawOrientationMark(device);
     }
 
@@ -600,7 +598,7 @@ struct InverterNode : BlockNode {
 
     void DoPlaceSize(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
 
-    void Render(Device &device) const override {
+    void Render(Device &device, InteractionFlags) const override {
         const float radius = s.Style.FlowGrid.Graph.InverterRadius;
         const ImVec2 p1 = {W() - 2 * XMargin(), 1 + (H() - 1) / 2};
         const auto tri_a = ImVec2{XMargin() + (IsLr() ? 0 : p1.x), 0};
@@ -622,7 +620,7 @@ struct CutNode : Node {
     void DoPlace(const DeviceType) override {}
 
     // A cut is represented by a small black dot.
-    void Render(Device &) const override {
+    void Render(Device &, InteractionFlags) const override {
         // device.Circle(point, WireGap() / 8);
     }
 
@@ -682,7 +680,7 @@ struct RecursiveNode : Node {
         bottom_node->Place(type, {(W() - bottom_node->W()) / 2, top_node->H()}, GraphForward);
     }
 
-    void Render(Device &device) const override {
+    void Render(Device &device, InteractionFlags) const override {
         const float dw = OrientationUnit() * WireGap();
         // Out0->In1 feedback connections
         for (Count i = 0; i < IoCount(IO_In, 1); i++) {
@@ -887,7 +885,7 @@ struct GroupNode : Node {
 
     void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
     void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
-    void Render(Device &device) const override {
+    void Render(Device &device, InteractionFlags) const override {
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
             {.StrokeColor = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_GroupStroke], .StrokeWidth = s.Style.FlowGrid.Graph.GroupLineWidth, .CornerRadius = s.Style.FlowGrid.Graph.GroupCornerRadius},
@@ -932,7 +930,7 @@ struct DecorateNode : Node {
         if (!ShouldDecorate()) return C1()->Place(type, {0, 0}, Orientation);
         C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation);
     }
-    void Render(Device &device) const override {
+    void Render(Device &device, InteractionFlags) const override {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
@@ -978,7 +976,7 @@ struct RouteNode : Node {
     }
     void DoPlace(const DeviceType) override {}
 
-    void Render(Device &device) const override {
+    void Render(Device &device, InteractionFlags) const override {
         if (s.Style.FlowGrid.Graph.RouteFrame) {
             device.Rect(GetFrameRect(), {.FillColor = {0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
             DrawOrientationMark(device);
@@ -1239,7 +1237,7 @@ string GetBoxType(Box t) {
         throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
-    return "";
+    return "Unknown type";
 }
 
 static Node *CreateRootNode(Tree t) { return new DecorateNode(t, Tree2NodeInner(t)); }

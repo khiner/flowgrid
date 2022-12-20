@@ -11,7 +11,8 @@
 
 #include "App.h"
 #include "Helper/File.h"
-#include "UI/Faust/FaustUI.h"
+#include "UI/Faust/FaustParams.h"
+#include "UI/Faust/FaustGraph.h"
 
 static constexpr int SampleSize = sizeof(Sample);
 
@@ -245,7 +246,7 @@ static constexpr int FaustBufferFrames = 2048;
 static llvm_dsp_factory *DspFactory;
 static dsp *FaustDsp = nullptr;
 static Box FaustBox = nullptr;
-static unique_ptr<FaustUI> FaustUi;
+static unique_ptr<FaustParams> FaustUi;
 
 void SetupAudio() {
     // Local copies for bookkeeping in read/write callbacks, so others can safely use the global `Areas` pointers above (e.g. for charting):
@@ -578,7 +579,7 @@ void Audio::UpdateProcess() const {
             for (int i = 0; i < FaustDsp->getNumOutputs(); i++) { FaustBuffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
 
             FaustReady = true;
-            FaustUi = make_unique<FaustUI>();
+            FaustUi = make_unique<FaustParams>();
             FaustDsp->buildUserInterface(FaustUi.get());
         } else {
             FaustUi = nullptr;

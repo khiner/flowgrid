@@ -6,6 +6,8 @@
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/filter.hpp>
 
+#include "UI/Faust/FaustGraph.h"
+
 map<ID, StateMember *> StateMember::WithId{};
 
 // Persistent modifiers
@@ -256,8 +258,6 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &Base
 
     return {ops, BasePath};
 }
-
-void SaveBoxSvg(string_view path); // Defined in FaustUI
 
 //-----------------------------------------------------------------------------
 // [SECTION] Context

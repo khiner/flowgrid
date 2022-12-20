@@ -16,10 +16,6 @@
 using namespace ImGui;
 using namespace fg;
 
-//-----------------------------------------------------------------------------
-// [SECTION] Graph
-//-----------------------------------------------------------------------------
-
 enum DeviceType {
     DeviceType_ImGui,
     DeviceType_SVG

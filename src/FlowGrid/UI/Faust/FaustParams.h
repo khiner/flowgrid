@@ -18,10 +18,10 @@ using Real = Sample;
 // at different locations in the UI hierarchy) can be used to access any created widget.
 // See Faust's `APIUI` for possible extensions (response curves, gyro, ...).
 
-class FAUST_API FaustUI : public UI, public MetaDataUI, public PathBuilder {
+class FAUST_API FaustParams : public UI, public MetaDataUI, public PathBuilder {
 public:
-    FaustUI() = default;
-    ~FaustUI() override = default;
+    FaustParams() = default;
+    ~FaustParams() override = default;
 
     enum ItemType {
         ItemType_None = 0,
@@ -155,8 +155,4 @@ private:
     map<string, int> index_for_path{};
 };
 
-class CTree;
-typedef CTree *Box;
-void OnUiChange(FaustUI *);
-void OnBoxChange(Box);
-void SaveBoxSvg(string_view path);
+void OnUiChange(FaustParams *);

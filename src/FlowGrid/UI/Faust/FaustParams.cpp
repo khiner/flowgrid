@@ -4,13 +4,13 @@
 
 #include "../../App.h"
 #include "../Knob.h"
-#include "FaustUI.h"
+#include "FaustParams.h"
 
 using namespace ImGui;
-using ItemType = FaustUI::ItemType;
-using enum FaustUI::ItemType;
+using ItemType = FaustParams::ItemType;
+using enum FaustParams::ItemType;
 
-FaustUI *interface;
+FaustParams *interface;
 
 // todo flag for value text to follow the value like `ImGui::ProgressBar`
 enum ValueBarFlags_ {
@@ -100,7 +100,7 @@ static float CalcRadioChoiceWidth(const string &choice_name) {
 // `size` is the rectangle size.
 // Assumes the current cursor position is either the desired top-left of the rectangle (or the beginning of the label for a vertical bar with a title).
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
-bool RadioButtons(const char *label, float *value, const FaustUI::NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Justify justify = {HJustify_Middle, VJustify_Middle}) {
+bool RadioButtons(const char *label, float *value, const FaustParams::NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Justify justify = {HJustify_Middle, VJustify_Middle}) {
     PushID(label);
     BeginGroup();
 
@@ -144,7 +144,7 @@ static bool IsLabelSameLine(const ItemType type) {
 }
 
 // todo config to place labels above horizontal items
-static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) {
+static float CalcItemWidth(const FaustParams::Item &item, const bool include_label) {
     const bool has_label = include_label && !item.label.empty();
     const float frame_height = GetFrameHeight();
     const float inner_spacing = GetStyle().ItemInnerSpacing.x;
@@ -176,7 +176,7 @@ static float CalcItemWidth(const FaustUI::Item &item, const bool include_label) 
         default: return GetContentRegionAvail().x;
     }
 }
-static float CalcItemHeight(const FaustUI::Item &item) {
+static float CalcItemHeight(const FaustParams::Item &item) {
     const float frame_height = GetFrameHeight();
     switch (item.type) {
         case ItemType_VBargraph:
@@ -194,7 +194,7 @@ static float CalcItemHeight(const FaustUI::Item &item) {
     }
 }
 // Returns _additional_ height needed to accommodate a label for the item
-static float CalcItemLabelHeight(const FaustUI::Item &item) {
+static float CalcItemLabelHeight(const FaustParams::Item &item) {
     switch (item.type) {
         case ItemType_VBargraph:
         case ItemType_VSlider:
@@ -220,7 +220,7 @@ static float CalcItemLabelHeight(const FaustUI::Item &item) {
 // (which is relevant for aligning items relative to other items in the same group).
 // Items/groups are allowed to extend beyond this height if needed to fit its contents.
 // It is expected that the cursor position will be set appropriately below the drawn contents.
-void DrawUiItem(const FaustUI::Item &item, const char *label, const float suggested_height) {
+void DrawUiItem(const FaustParams::Item &item, const char *label, const float suggested_height) {
     const auto &style = GetStyle();
     const auto &fg_style = s.Style.FlowGrid;
     const Justify justify = {fg_style.Params.AlignmentHorizontal, fg_style.Params.AlignmentVertical};
@@ -384,6 +384,6 @@ void Audio::FaustState::FaustParams::Render() const {
     //    }
 }
 
-void OnUiChange(FaustUI *ui) {
+void OnUiChange(FaustParams *ui) {
     interface = ui;
 }

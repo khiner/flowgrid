@@ -61,8 +61,8 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
         case id<SetImGuiColorStyle>:
         case id<SetImPlotColorStyle>:
         case id<SetFlowGridColorStyle>:
-        case id<SetDiagramColorStyle>:
-        case id<SetDiagramLayoutStyle>:
+        case id<SetGraphColorStyle>:
+        case id<SetGraphLayoutStyle>:
         case id<ShowOpenFaustFileDialog>:
         case id<ShowSaveFaustFileDialog>: {
             if (a_id == b_id) return b;

@@ -32,9 +32,9 @@ using namespace StringHelper;
 using fmt::format, fmt::to_string;
 using namespace nlohmann;
 using std::cout, std::cerr;
-using std::set;
 using std::min, std::max;
 using std::nullopt, std::unique_ptr, std::make_unique;
+using std::set;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
 
@@ -540,14 +540,14 @@ constexpr int IO_Count = 2;
 
 string to_string(IO io, bool shorten = false);
 
-enum FaustDiagramHoverFlags_ {
-    FaustDiagramHoverFlags_None = 0,
-    FaustDiagramHoverFlags_ShowRect = 1 << 0,
-    FaustDiagramHoverFlags_ShowType = 1 << 1,
-    FaustDiagramHoverFlags_ShowChannels = 1 << 2,
-    FaustDiagramHoverFlags_ShowChildChannels = 1 << 3,
+enum FaustGraphHoverFlags_ {
+    FaustGraphHoverFlags_None = 0,
+    FaustGraphHoverFlags_ShowRect = 1 << 0,
+    FaustGraphHoverFlags_ShowType = 1 << 1,
+    FaustGraphHoverFlags_ShowChannels = 1 << 2,
+    FaustGraphHoverFlags_ShowChildChannels = 1 << 3,
 };
-using FaustDiagramHoverFlags = int;
+using FaustGraphHoverFlags = int;
 
 WindowMember(
     Audio,
@@ -575,14 +575,14 @@ WindowMember(
         );
 
         WindowMember_(
-            FaustDiagram,
+            FaustGraph,
             Menu({
                 Menu("File", {ShowSaveFaustSvgFileDialog{}}),
                 Menu("View", {Settings.HoverFlags}),
             }),
 
             Member(
-                DiagramSettings,
+                GraphSettings,
                 Prop_(
                     Flags, HoverFlags,
                     "?Hovering over a node in the graph will display the selected information",
@@ -590,10 +590,10 @@ WindowMember(
                      "ShowType?Display the hovered node's box type",
                      "ShowChannels?Display the hovered node's channel points and indices",
                      "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
-                    FaustDiagramHoverFlags_None
+                    FaustGraphHoverFlags_None
                 )
             );
-            Prop(DiagramSettings, Settings);
+            Prop(GraphSettings, Settings);
         );
 
         WindowMember(FaustParams);
@@ -603,7 +603,7 @@ WindowMember(
         );
 
         Prop_(FaustEditor, Editor, "Faust editor");
-        Prop_(FaustDiagram, Diagram, "Faust diagram");
+        Prop_(FaustGraph, Graph, "Faust graph");
         Prop_(FaustParams, Params, "Faust params");
         Prop_(FaustLog, Log, "Faust log");
 
@@ -739,24 +739,24 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
-enum FlowGridDiagramCol_ {
-    FlowGridDiagramCol_Bg, // ImGuiCol_WindowBg
-    FlowGridDiagramCol_Text, // ImGuiCol_Text
-    FlowGridDiagramCol_DecorateStroke, // ImGuiCol_Border
-    FlowGridDiagramCol_GroupStroke, // ImGuiCol_Border
-    FlowGridDiagramCol_Line, // ImGuiCol_PlotLines
-    FlowGridDiagramCol_Link, // ImGuiCol_Button
-    FlowGridDiagramCol_Inverter, // ImGuiCol_Text
-    FlowGridDiagramCol_OrientationMark, // ImGuiCol_Text
+enum FlowGridGraphCol_ {
+    FlowGridGraphCol_Bg, // ImGuiCol_WindowBg
+    FlowGridGraphCol_Text, // ImGuiCol_Text
+    FlowGridGraphCol_DecorateStroke, // ImGuiCol_Border
+    FlowGridGraphCol_GroupStroke, // ImGuiCol_Border
+    FlowGridGraphCol_Line, // ImGuiCol_PlotLines
+    FlowGridGraphCol_Link, // ImGuiCol_Button
+    FlowGridGraphCol_Inverter, // ImGuiCol_Text
+    FlowGridGraphCol_OrientationMark, // ImGuiCol_Text
     // Box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
-    FlowGridDiagramCol_Normal,
-    FlowGridDiagramCol_Ui,
-    FlowGridDiagramCol_Slot,
-    FlowGridDiagramCol_Number,
+    FlowGridGraphCol_Normal,
+    FlowGridGraphCol_Ui,
+    FlowGridGraphCol_Slot,
+    FlowGridGraphCol_Number,
 
-    FlowGridDiagramCol_COUNT
+    FlowGridGraphCol_COUNT
 };
-using FlowGridDiagramCol = int;
+using FlowGridGraphCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
@@ -819,15 +819,15 @@ struct Style : TabsWindow {
         FlowGridStyle,
 
         UIMember_(
-            Diagram,
+            Graph,
 
             Prop_(
                 UInt, FoldComplexity,
-                "?Number of boxes within a diagram before folding into a sub-diagram.\n"
-                "Setting to zero disables folding altogether, for a fully-expanded diagram.",
+                "?Number of boxes within a graph before folding into a sub-graph.\n"
+                "Setting to zero disables folding altogether, for a fully-expanded graph.",
                 3, 0, 20
             );
-            Prop_(Bool, ScaleFillHeight, "?Automatically scale to fill the full height of the diagram window, keeping the same aspect ratio.");
+            Prop_(Bool, ScaleFillHeight, "?Automatically scale to fill the full height of the graph window, keeping the same aspect ratio.");
             Prop(Float, Scale, 1, 0.1, 5);
             Prop(Enum, Direction, {"Left", "Right"}, ImGuiDir_Right);
             Prop(Bool, RouteFrame);
@@ -891,24 +891,24 @@ struct Style : TabsWindow {
             void ColorsDark(TransientStore &store) const;
             void ColorsClassic(TransientStore &store) const;
             void ColorsLight(TransientStore &store) const;
-            void ColorsFaust(TransientStore &store) const; // Color Faust diagrams the same way Faust does when it renders to SVG.
+            void ColorsFaust(TransientStore &store) const; // Color Faust graphs the same way Faust does when it renders to SVG.
 
             void LayoutFlowGrid(TransientStore &store) const;
-            void LayoutFaust(TransientStore &store) const; // Layout Faust diagrams the same way Faust does when it renders to SVG.
+            void LayoutFaust(TransientStore &store) const; // Layout Faust graphs the same way Faust does when it renders to SVG.
 
-            static const char *GetColorName(FlowGridDiagramCol idx) {
+            static const char *GetColorName(FlowGridGraphCol idx) {
                 switch (idx) {
-                    case FlowGridDiagramCol_Bg: return "DiagramBg";
-                    case FlowGridDiagramCol_DecorateStroke: return "DiagramDecorateStroke";
-                    case FlowGridDiagramCol_GroupStroke: return "DiagramGroupStroke";
-                    case FlowGridDiagramCol_Line: return "DiagramLine";
-                    case FlowGridDiagramCol_Link: return "DiagramLink";
-                    case FlowGridDiagramCol_Normal: return "DiagramNormal";
-                    case FlowGridDiagramCol_Ui: return "DiagramUi";
-                    case FlowGridDiagramCol_Slot: return "DiagramSlot";
-                    case FlowGridDiagramCol_Number: return "DiagramNumber";
-                    case FlowGridDiagramCol_Inverter: return "DiagramInverter";
-                    case FlowGridDiagramCol_OrientationMark: return "DiagramOrientationMark";
+                    case FlowGridGraphCol_Bg: return "GraphBg";
+                    case FlowGridGraphCol_DecorateStroke: return "GraphDecorateStroke";
+                    case FlowGridGraphCol_GroupStroke: return "GraphGroupStroke";
+                    case FlowGridGraphCol_Line: return "GraphLine";
+                    case FlowGridGraphCol_Link: return "GraphLink";
+                    case FlowGridGraphCol_Normal: return "GraphNormal";
+                    case FlowGridGraphCol_Ui: return "GraphUi";
+                    case FlowGridGraphCol_Slot: return "GraphSlot";
+                    case FlowGridGraphCol_Number: return "GraphNumber";
+                    case FlowGridGraphCol_Inverter: return "GraphInverter";
+                    case FlowGridGraphCol_OrientationMark: return "GraphOrientationMark";
                     default: return "Unknown";
                 }
             }
@@ -937,7 +937,7 @@ struct Style : TabsWindow {
         );
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
-        Prop(Diagram, Diagram);
+        Prop(Graph, Graph);
         Prop(Params, Params);
         Prop(Colors, Colors, GetColorName);
 
@@ -1226,7 +1226,7 @@ UIMember(
                 "Windows",
                 {
                     Menu("Debug", {DebugLog, StackTool, StateViewer, StatePathUpdateFrequency, StateMemoryEditor, ProjectPreview}),
-                    Menu("Audio", {Audio.Faust.Editor, Audio.Faust.Diagram, Audio.Faust.Params, Audio.Faust.Log}),
+                    Menu("Audio", {Audio.Faust.Editor, Audio.Faust.Graph, Audio.Faust.Params, Audio.Faust.Log}),
                     Metrics,
                     Style,
                     Demo,

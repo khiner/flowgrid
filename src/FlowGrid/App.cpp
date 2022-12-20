@@ -119,8 +119,8 @@ string GetName(const StateAction &action) {
         [](const SetImGuiColorStyle &) { return "Set ImGui color style"s; },
         [](const SetImPlotColorStyle &) { return "Set ImPlot color style"s; },
         [](const SetFlowGridColorStyle &) { return "Set FlowGrid color style"s; },
-        [](const SetDiagramColorStyle &) { return "Set FlowGrid diagram color style"s; },
-        [](const SetDiagramLayoutStyle &) { return "Set FlowGrid diagram layout style"s; },
+        [](const SetGraphColorStyle &) { return "Set FlowGrid graph color style"s; },
+        [](const SetGraphLayoutStyle &) { return "Set FlowGrid graph layout style"s; },
         [](const OpenFileDialog &) { return ActionName(OpenFileDialog); },
         [](const CloseFileDialog &) { return ActionName(CloseFileDialog); },
         [](const ShowOpenProjectDialog &) { return ActionName(ShowOpenProjectDialog); },
@@ -194,7 +194,7 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
         [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
         [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
         [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
-        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_diagram", true, 1}, transient); },
+        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}, transient); },
 
         // todo enum types instead of raw integers
         [&](const SetImGuiColorStyle &a) {
@@ -219,18 +219,18 @@ void State::Update(const StateAction &action, TransientStore &transient) const {
                 case 2: return Style.FlowGrid.ColorsClassic(transient);
             }
         },
-        [&](const SetDiagramColorStyle &a) {
+        [&](const SetGraphColorStyle &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.Diagram.ColorsDark(transient);
-                case 1: return Style.FlowGrid.Diagram.ColorsLight(transient);
-                case 2: return Style.FlowGrid.Diagram.ColorsClassic(transient);
-                case 3: return Style.FlowGrid.Diagram.ColorsFaust(transient);
+                case 0: return Style.FlowGrid.Graph.ColorsDark(transient);
+                case 1: return Style.FlowGrid.Graph.ColorsLight(transient);
+                case 2: return Style.FlowGrid.Graph.ColorsClassic(transient);
+                case 3: return Style.FlowGrid.Graph.ColorsFaust(transient);
             }
         },
-        [&](const SetDiagramLayoutStyle &a) {
+        [&](const SetGraphLayoutStyle &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.Diagram.LayoutFlowGrid(transient);
-                case 1: return Style.FlowGrid.Diagram.LayoutFaust(transient);
+                case 0: return Style.FlowGrid.Graph.LayoutFlowGrid(transient);
+                case 1: return Style.FlowGrid.Graph.LayoutFaust(transient);
             }
         },
         [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },

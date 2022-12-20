@@ -742,7 +742,7 @@ void Audio::FaustState::FaustLog::Render() const {
 
 void Audio::FaustState::Render() const {
     Editor.Draw();
-    Diagram.Draw();
+    Graph.Draw();
     Params.Draw();
     Log.Draw();
 }

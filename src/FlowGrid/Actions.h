@@ -149,10 +149,10 @@ struct SetImPlotColorStyle {
 struct SetFlowGridColorStyle {
     int id;
 };
-struct SetDiagramColorStyle {
+struct SetGraphColorStyle {
     int id;
 };
-struct SetDiagramLayoutStyle {
+struct SetGraphLayoutStyle {
     int id;
 };
 
@@ -186,8 +186,8 @@ using StateAction = std::variant<
 
     SetValue, SetValues, ToggleValue, ApplyPatch,
 
-    SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetDiagramColorStyle,
-    SetDiagramLayoutStyle,
+    SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle,
+    SetGraphLayoutStyle,
 
     CloseApplication>;
 using Action = Combine<ProjectAction, StateAction>::type;

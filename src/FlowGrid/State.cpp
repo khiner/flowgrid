@@ -443,7 +443,7 @@ void State::Render() const {
         Audio.Dock(settings_node_id);
 
         Audio.Faust.Editor.Dock(faust_editor_node_id);
-        Audio.Faust.Diagram.Dock(faust_tools_node_id);
+        Audio.Faust.Graph.Dock(faust_tools_node_id);
         Audio.Faust.Params.Dock(faust_tools_node_id);
 
         DebugLog.Dock(debug_node_id);
@@ -924,7 +924,7 @@ Style::FlowGridStyle::FlowGridStyle(StateMember *parent, string_view path_segmen
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
 }
-Style::FlowGridStyle::Diagram::Diagram(StateMember *parent, string_view path_segment, string_view name_help)
+Style::FlowGridStyle::Graph::Graph(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(c.InitStore);
     LayoutFlowGrid(c.InitStore);
@@ -1002,91 +1002,91 @@ void Style::FlowGridStyle::ColorsClassic(TransientStore &store) const {
     );
 }
 
-void Style::FlowGridStyle::Diagram::ColorsDark(TransientStore &store) const {
+void Style::FlowGridStyle::Graph::ColorsDark(TransientStore &store) const {
     Colors.Set(
         {
-            {FlowGridDiagramCol_Bg, {0.06, 0.06, 0.06, 0.94}},
-            {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
-            {FlowGridDiagramCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
-            {FlowGridDiagramCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
-            {FlowGridDiagramCol_Line, {0.61, 0.61, 0.61, 1}},
-            {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
-            {FlowGridDiagramCol_Inverter, {1, 1, 1, 1}},
-            {FlowGridDiagramCol_OrientationMark, {1, 1, 1, 1}},
+            {FlowGridGraphCol_Bg, {0.06, 0.06, 0.06, 0.94}},
+            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridGraphCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridGraphCol_Line, {0.61, 0.61, 0.61, 1}},
+            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridGraphCol_Inverter, {1, 1, 1, 1}},
+            {FlowGridGraphCol_OrientationMark, {1, 1, 1, 1}},
             // Box fills
-            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
         },
         store
     );
 }
-void Style::FlowGridStyle::Diagram::ColorsClassic(TransientStore &store) const {
+void Style::FlowGridStyle::Graph::ColorsClassic(TransientStore &store) const {
     Colors.Set(
         {
-            {FlowGridDiagramCol_Bg, {0, 0, 0, 0.85}},
-            {FlowGridDiagramCol_Text, {0.9, 0.9, 0.9, 1}},
-            {FlowGridDiagramCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
-            {FlowGridDiagramCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
-            {FlowGridDiagramCol_Line, {1, 1, 1, 1}},
-            {FlowGridDiagramCol_Link, {0.35, 0.4, 0.61, 0.62}},
-            {FlowGridDiagramCol_Inverter, {0.9, 0.9, 0.9, 1}},
-            {FlowGridDiagramCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
+            {FlowGridGraphCol_Bg, {0, 0, 0, 0.85}},
+            {FlowGridGraphCol_Text, {0.9, 0.9, 0.9, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridGraphCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridGraphCol_Line, {1, 1, 1, 1}},
+            {FlowGridGraphCol_Link, {0.35, 0.4, 0.61, 0.62}},
+            {FlowGridGraphCol_Inverter, {0.9, 0.9, 0.9, 1}},
+            {FlowGridGraphCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
             // Box fills
-            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
         },
         store
     );
 }
-void Style::FlowGridStyle::Diagram::ColorsLight(TransientStore &store) const {
+void Style::FlowGridStyle::Graph::ColorsLight(TransientStore &store) const {
     Colors.Set(
         {
-            {FlowGridDiagramCol_Bg, {0.94, 0.94, 0.94, 1}},
-            {FlowGridDiagramCol_Text, {0, 0, 0, 1}},
-            {FlowGridDiagramCol_DecorateStroke, {0, 0, 0, 0.3}},
-            {FlowGridDiagramCol_GroupStroke, {0, 0, 0, 0.3}},
-            {FlowGridDiagramCol_Line, {0.39, 0.39, 0.39, 1}},
-            {FlowGridDiagramCol_Link, {0.26, 0.59, 0.98, 0.4}},
-            {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
-            {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
+            {FlowGridGraphCol_Bg, {0.94, 0.94, 0.94, 1}},
+            {FlowGridGraphCol_Text, {0, 0, 0, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0, 0, 0, 0.3}},
+            {FlowGridGraphCol_GroupStroke, {0, 0, 0, 0.3}},
+            {FlowGridGraphCol_Line, {0.39, 0.39, 0.39, 1}},
+            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
             // Box fills
-            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
         },
         store
     );
 }
-void Style::FlowGridStyle::Diagram::ColorsFaust(TransientStore &store) const {
+void Style::FlowGridStyle::Graph::ColorsFaust(TransientStore &store) const {
     Colors.Set(
         {
-            {FlowGridDiagramCol_Bg, {1, 1, 1, 1}},
-            {FlowGridDiagramCol_Text, {1, 1, 1, 1}},
-            {FlowGridDiagramCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
-            {FlowGridDiagramCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
-            {FlowGridDiagramCol_Line, {0, 0, 0, 1}},
-            {FlowGridDiagramCol_Link, {0, 0.2, 0.4, 1}},
-            {FlowGridDiagramCol_Inverter, {0, 0, 0, 1}},
-            {FlowGridDiagramCol_OrientationMark, {0, 0, 0, 1}},
+            {FlowGridGraphCol_Bg, {1, 1, 1, 1}},
+            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridGraphCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridGraphCol_Line, {0, 0, 0, 1}},
+            {FlowGridGraphCol_Link, {0, 0.2, 0.4, 1}},
+            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
             // Box fills
-            {FlowGridDiagramCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridDiagramCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridDiagramCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridDiagramCol_Number, {0.96, 0.28, 0, 1}},
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
         },
         store
     );
 }
 
-void Style::FlowGridStyle::Diagram::LayoutFlowGrid(TransientStore &store) const {
+void Style::FlowGridStyle::Graph::LayoutFlowGrid(TransientStore &store) const {
     Set(DefaultLayoutEntries, store);
 }
-void Style::FlowGridStyle::Diagram::LayoutFaust(TransientStore &store) const {
+void Style::FlowGridStyle::Graph::LayoutFaust(TransientStore &store) const {
     Set(
         {
             {SequentialConnectionZigzag, true},
@@ -1364,7 +1364,7 @@ void Style::ImPlotStyle::Render() const {
     }
 }
 
-void Style::FlowGridStyle::Diagram::Render() const {
+void Style::FlowGridStyle::Graph::Render() const {
     FoldComplexity.Draw();
     const bool scale_fill = ScaleFillHeight;
     ScaleFillHeight.Draw();
@@ -1372,7 +1372,7 @@ void Style::FlowGridStyle::Diagram::Render() const {
     Scale.Draw();
     if (scale_fill) {
         SameLine();
-        TextUnformatted(format("Uncheck '{}' to manually edit diagram scale.", ScaleFillHeight.Name).c_str());
+        TextUnformatted(format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
         EndDisabled();
     }
     Direction.Draw();
@@ -1421,15 +1421,15 @@ void Style::FlowGridStyle::Params::Render() const {
     TableFlags.Draw();
 }
 void Style::FlowGridStyle::Render() const {
-    static int colors_idx = -1, diagram_colors_idx = -1, diagram_layout_idx = -1;
+    static int colors_idx = -1, graph_colors_idx = -1, graph_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
-    if (Combo("Diagram colors", &diagram_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(SetDiagramColorStyle{diagram_colors_idx});
-    if (Combo("Diagram layout", &diagram_layout_idx, "FlowGrid\0Faust\0")) q(SetDiagramLayoutStyle{diagram_layout_idx});
+    if (Combo("Graph colors", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(SetGraphColorStyle{graph_colors_idx});
+    if (Combo("Graph layout", &graph_layout_idx, "FlowGrid\0Faust\0")) q(SetGraphLayoutStyle{graph_layout_idx});
     FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {
-        if (BeginTabItem("Faust diagram", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Diagram.Draw();
+        if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Graph.Draw();
             EndTabItem();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {

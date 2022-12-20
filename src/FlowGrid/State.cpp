@@ -486,7 +486,7 @@ void Window::SelectTab() const {
 void TabsWindow::Render() const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
-            if (const auto *ui_child = reinterpret_cast<const UIStateMember *>(child)) {
+            if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
                 if (ui_child != &Visible && BeginTabItem(child->ImGuiLabel.c_str())) {
                     ui_child->Draw();
                     EndTabItem();
@@ -588,20 +588,11 @@ void State::Render() const {
         Metrics.SelectTab();
     }
 
-    ApplicationSettings.Draw();
-    Audio.Draw();
-    DebugLog.Draw();
-    StackTool.Draw();
-    StateViewer.Draw();
-    StatePathUpdateFrequency.Draw();
-    StateMemoryEditor.Draw();
-    ProjectPreview.Draw();
-
-    Metrics.Draw();
-    Style.Draw();
-    Demo.Draw();
-    FileDialog.Draw();
-    Info.Draw();
+    for (const auto *child : Children) {
+        if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
+            ui_child->Draw();
+        }
+    }
 }
 // Copy of ImGui version, which is not defined publicly
 struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)

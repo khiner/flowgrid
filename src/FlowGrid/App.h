@@ -1499,8 +1499,9 @@ UIMember(
     void Update(const StateAction &, TransientStore &) const;
     void Apply(UIContext::Flags) const;
 
-    WindowMember(
+    WindowMember_(
         UIProcess,
+        false,
         Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
     );
 

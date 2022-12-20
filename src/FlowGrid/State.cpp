@@ -378,8 +378,7 @@ void Menu::Render() const {
     if (Items.empty()) return;
 
     const bool is_menu_bar = Label.empty();
-    if (IsMain ? BeginMainMenuBar() : is_menu_bar ? BeginMenuBar() :
-                                                    BeginMenu(Label.c_str())) {
+    if (IsMain ? BeginMainMenuBar() : (is_menu_bar ? BeginMenuBar() : BeginMenu(Label.c_str()))) {
         for (const auto &item : Items) {
             Match(
                 item,

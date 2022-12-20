@@ -325,10 +325,9 @@ struct Node;
 Node *RootNode; // This graph is drawn every frame if present.
 std::stack<Node *> FocusedNodeStack;
 const Node *HoveredNode;
+static map<const Node *, Count> DrawCountForNode{};
 
 static string GetBoxType(Box t);
-
-static map<const Node *, Count> DrawCountForNode{};
 
 // Hex address (without the '0x' prefix)
 static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
@@ -547,8 +546,7 @@ struct BlockNode : Node {
             if (Inner) {
                 bool hovered, held;
                 if (fg::InvisibleButton(Scale(size), &hovered, &held)) FocusedNodeStack.push(Inner);
-                fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered :
-                                                                                  ImGuiCol_Button);
+                fill_color = GetColorU32(held ? ImGuiCol_ButtonActive : (hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
             RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, s.Style.FlowGrid.Graph.BoxCornerRadius);
             device.Text(size / 2, Text, {.Color = text_color});
@@ -1140,9 +1138,10 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
 
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
-    if (is_vgroup || is_hgroup || is_tgroup) return new GroupNode(t, Tree2Node(a), "", format("{}group({})", is_vgroup ? "v" : is_hgroup ? "h" :
-                                                                                                                                           "t",
-                                                                                              extractName(label)));
+    if (is_vgroup || is_hgroup || is_tgroup) {
+        const string prefix = is_vgroup ? "v" : (is_hgroup ? "h" : "t");
+        return new GroupNode(t, Tree2Node(a), "", format("{}group({})", prefix, extractName(label)));
+    }
 
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));

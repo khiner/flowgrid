@@ -58,8 +58,7 @@ static constexpr string PascalToSentenceCase(string_view str, const vector<strin
 
         const bool in_skip_range = skip_range_it != skip_ranges.end() && index >= (*skip_range_it).first && index < (*skip_range_it).second;
         const bool in_caps_range = caps_range_it != all_caps_ranges.end() && index >= (*caps_range_it).first && index < (*caps_range_it).second;
-        sentence_case += in_caps_range ? toupper(ch) : (index > 0 && !in_skip_range) ? tolower(ch) :
-                                                                                       ch;
+        sentence_case += in_caps_range ? toupper(ch) : ((index > 0 && !in_skip_range) ? tolower(ch) : ch);
     }
     return sentence_case;
 }

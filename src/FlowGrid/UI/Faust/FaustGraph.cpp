@@ -338,20 +338,19 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 struct Node {
     inline static float WireGap() { return s.Style.FlowGrid.Graph.WireGap; }
 
-    Tree FaustTree;
+    const Tree FaustTree;
+    const string Id, Text;
     const vector<Node *> Children{};
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
-    const string Text;
 
     ImVec2 Position; // Relative to parent. Set in `Place`.
     ImVec2 Size; // Set in `PlaceSize`.
     GraphOrientation Orientation = GraphForward; // Set in `Place`.
 
     Node(Tree tree, Count in_count, Count out_count, string text = "", vector<Node *> children = {}, Count direct_descendents = 0)
-        : FaustTree(tree), Children(std::move(children)), InCount(in_count), OutCount(out_count),
-          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)),
-          Text(!text.empty() ? std::move(text) : GetTreeName(tree)) {}
+        : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)), Children(std::move(children)), InCount(in_count), OutCount(out_count),
+          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)) {}
 
     virtual ~Node() = default;
 
@@ -381,7 +380,7 @@ struct Node {
 
         const bool is_imgui = device.Type() == DeviceType_ImGui;
         if (is_imgui) {
-            PushID(UniqueId(FaustTree).c_str());
+            PushID(Id.c_str());
             //            InvisibleButton("", Scale(Size));
             //            SetItemAllowOverlap();
             if (IsMouseHoveringRect(device.At({0, 0}), device.At(Size))) HoveredNode = this;
@@ -466,6 +465,23 @@ struct Node {
             Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()};
     }
 
+    // Get a unique, length-limited, alphanumeric file name.
+    // If this is not the (singular) process node, append its tree's hex address (without the '0x' prefix) to make the file name unique.
+    string SvgFileName() const {
+        if (!FaustTree) return "";
+
+        const string tree_name = GetTreeName(FaustTree);
+        if (tree_name == "process") return tree_name + ".svg";
+
+        return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+format("-{}", Id) + ".svg";
+    }
+
+    void WriteSvg(const fs::path &path) const {
+        SVGDevice device(path, SvgFileName(), Size);
+        device.Rect(*this, {.FillColor = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
+        Draw(device);
+    }
+
 protected:
     virtual void DoPlaceSize(DeviceType) = 0;
     virtual void DoPlace(DeviceType) = 0;
@@ -493,23 +509,6 @@ static inline float GetScale() {
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
 static inline float Scale(const float f) { return f * GetScale(); }
 
-// Transform the provided tree and id into a unique, length-limited, alphanumeric file name.
-// If the tree is not the (singular) process tree, append its hex address (without the '0x' prefix) to make the file name unique.
-static string SvgFileName(Tree tree) {
-    if (!tree) return "";
-
-    string tree_name = GetTreeName(tree);
-    if (tree_name == "process") return tree_name + ".svg";
-
-    return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+format("-{}", UniqueId(tree)) + ".svg";
-}
-
-void WriteSvg(Node *node, const fs::path &path) {
-    SVGDevice device(path, SvgFileName(node->FaustTree), node->Size);
-    device.Rect(*node, {.FillColor = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
-    node->Draw(device);
-}
-
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
     BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
@@ -535,8 +534,8 @@ struct BlockNode : Node {
 
         if (device.Type() == DeviceType_SVG) {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
-            if (Inner && !fs::exists(svg_device.Directory / SvgFileName(Inner->FaustTree))) WriteSvg(Inner, svg_device.Directory);
-            const string &link = Inner ? SvgFileName(FaustTree) : "";
+            if (Inner && !fs::exists(svg_device.Directory / Inner->SvgFileName())) Inner->WriteSvg(svg_device.Directory);
+            const string &link = Inner ? SvgFileName() : "";
             svg_device.Rect(local_rect, {.FillColor = fill_color, .CornerRadius = s.Style.FlowGrid.Graph.BoxCornerRadius}, link);
             svg_device.Text(Size / 2, Text, {.Color = text_color}, link);
         } else {
@@ -1266,7 +1265,7 @@ void SaveBoxSvg(string_view path) {
     auto *node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
     node->PlaceSize(DeviceType_SVG);
     node->Place(DeviceType_SVG);
-    WriteSvg(node, path);
+    node->WriteSvg(path);
 }
 
 void Audio::FaustState::FaustGraph::Render() const {

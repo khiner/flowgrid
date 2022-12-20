@@ -324,7 +324,6 @@ struct Node;
 
 Node *RootNode; // This graph is drawn every frame if present.
 std::stack<Node *> FocusedNodeStack;
-const Node *HoveredNode;
 static map<const Node *, Count> DrawCountForNode{};
 
 static string GetBoxType(Box t);
@@ -386,13 +385,21 @@ struct Node {
             device.AdvanceCursor(local_rect.Min);
             flags |= fg::InvisibleButton(Scale(local_rect.GetSize()), Id.c_str());
             SetItemAllowOverlap();
-            if (flags & InteractionFlags_Hovered) HoveredNode = this;
             device.SetCursorPos(before_cursor_inner);
         }
 
         Render(device, flags);
         DrawConnections(device);
         for (auto *child : Children) child->Draw(device);
+
+        if (flags & InteractionFlags_Hovered) {
+            const auto &flags = s.Audio.Faust.Graph.Settings.HoverFlags;
+            // todo get abs pos by traversing through ancestors
+            if (flags & FaustGraphHoverFlags_ShowRect) DrawRect(device);
+            if (flags & FaustGraphHoverFlags_ShowType) DrawType(device);
+            if (flags & FaustGraphHoverFlags_ShowChannels) DrawChannelLabels(device);
+            if (flags & FaustGraphHoverFlags_ShowChildChannels) DrawChildChannelLabels(device);
+        }
 
         device.SetCursorPos(before_cursor);
     };
@@ -425,7 +432,7 @@ struct Node {
     void DrawType(Device &device) const {
         const static float padding = 2;
         device.Rect({{0, 0}, CalcTextSize(BoxTypeLabel) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text({0, 0}, BoxTypeLabel, {.Color = {0.f, 0.f, 1.f, 1.f}, .Justify = {HJustify_Left, VJustify_Bottom}});
+        device.Text({padding, padding}, BoxTypeLabel, {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Left, VJustify_Top}});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
@@ -1301,17 +1308,7 @@ void Audio::FaustState::FaustGraph::Render() const {
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Bg]);
 
     ImGuiDevice device;
-    HoveredNode = nullptr;
     focused->MarkFrame();
     focused->Draw(device);
-    if (HoveredNode) {
-        const auto &flags = Settings.HoverFlags;
-        // todo get abs pos by traversing through ancestors
-        if (flags & FaustGraphHoverFlags_ShowRect) HoveredNode->DrawRect(device);
-        if (flags & FaustGraphHoverFlags_ShowType) HoveredNode->DrawType(device);
-        if (flags & FaustGraphHoverFlags_ShowChannels) HoveredNode->DrawChannelLabels(device);
-        if (flags & FaustGraphHoverFlags_ShowChildChannels) HoveredNode->DrawChildChannelLabels(device);
-    }
-
     EndChild();
 }

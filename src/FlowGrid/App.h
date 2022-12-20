@@ -1192,10 +1192,12 @@ struct FileDialogData {
     ImGuiFileDialogFlags flags = FileDialogFlags_Default;
 };
 
-WindowMember_(
-    FileDialog, false, // File dialogs are not visible by default.
+// `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
+UIMember(
+    FileDialog,
     void Set(const FileDialogData &data, TransientStore &) const;
 
+    Prop(Bool, Visible, false);
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
     Prop(Int, MaxNumSelections, 1);
     Prop(Int, Flags, FileDialogFlags_Default);

@@ -1469,6 +1469,7 @@ void Demo::ImPlotDemo::Render() const {
 void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
     ::Set(
         {
+            {Visible, true},
             {Title, data.title},
             {Filters, data.filters},
             {FilePath, data.file_path},
@@ -1476,7 +1477,6 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
             {SaveMode, data.save_mode},
             {MaxNumSelections, data.max_num_selections},
             {Flags, data.flags},
-            {Visible, true},
         },
         store
     );

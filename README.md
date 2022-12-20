@@ -1,8 +1,8 @@
 # FlowGrid
 
-Control things in an ImGui interface backed by a persistent (as in persistent data structures), full-undoable store.
+Faust in an ImGui interface backed by a persistent (as in persistent data structures), fully-undoable store.
 
-_Still actively building this. Expect master to be occasionally broken._
+_Still actively building this. Expect main to be occasionally broken._
 
 My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
 
@@ -10,7 +10,7 @@ Things to play with:
 
 - Change configuration of audio read/write processes.
 - Create audio DSP with Faust.
-- Inspect the full FlowGrid application state tree (everything needed to render the UI) at any point.
+- Inspect the full FlowGrid application state, and its full history.
 - Navigate to any point in the project's history lightning fast.
   - See [Application architecture][#application-architecture] for more details.
 - Other things to come! Definitely planned:

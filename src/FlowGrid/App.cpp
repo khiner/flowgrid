@@ -41,7 +41,7 @@ StateMember::StateMember(StateMember *parent, string_view path_segment, string_v
         Parent                            ? Parent->Path :
         !PathSegment.empty()              ? StatePath(PathSegment) :
                                             RootPath;
-    Name = name.empty() ? path_segment.empty() ? "" : SnakeCaseToSentenceCase(path_segment) : name;
+    Name = name.empty() ? path_segment.empty() ? "" : PascalToSentenceCase(path_segment) : name;
     ImGuiLabel = Name.empty() ? "" : format("{}##{}", Name, PathSegment);
     Help = help;
     Id = ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0);

@@ -1,16 +1,13 @@
 #pragma once
 
 #include <range/v3/core.hpp>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/split.hpp>
-#include <range/v3/view/transform.hpp>
 #include <string>
+#include <vector>
 
-using std::string, std::string_view;
+using std::pair, std::string, std::string_view, std::vector;
 using namespace std::string_literals;
 namespace views = ranges::views;
 using ranges::to;
-using views::transform;
 
 namespace StringHelper {
 static constexpr string Capitalize(string copy) {
@@ -27,10 +24,44 @@ static constexpr string Lowercase(string copy) {
     return copy;
 }
 
-// E.g. 'foo_bar_baz' => 'Foo bar baz'
-static constexpr string SnakeCaseToSentenceCase(string_view snake_case) {
-    auto sentence_case = snake_case | views::split('_') | views::join(' ') | to<string>;
-    return Capitalize(sentence_case);
+// Only matches first occurrence (assumes at most one match per match word).
+static constexpr vector<pair<size_t, size_t>> FindRangesMatching(string_view str, const vector<string> &match_words) {
+    vector<pair<size_t, size_t>> matching_ranges;
+    for (const auto &match_word : match_words) {
+        size_t found = str.find(match_word);
+        if (found != string::npos) matching_ranges.emplace_back(found, found + match_word.size());
+    }
+    return matching_ranges;
+}
+
+// Doesn't change contiguous capital ranges like "ID".
+// Doesn't modify the first occurrences of any words in the provided `skip_words` list.
+// Uppercases the first occurrences of all words in the provided `all_caps_words`.
+// E.g. 'FooBarFlowGridId' => 'Foo bar FlowGrid ID'
+static const vector<string> SkipWords{"FlowGrid", "ImGui", "ImPlot"};
+static const vector<string> AllCapsWords{"Id"};
+static constexpr string PascalToSentenceCase(string_view str, const vector<string> &skip_words = SkipWords, const vector<string> &all_caps_words = AllCapsWords) {
+    const auto skip_ranges = FindRangesMatching(str, skip_words);
+    const auto all_caps_ranges = FindRangesMatching(str, all_caps_words);
+
+    // Mutable vars:
+    auto skip_range_it = skip_ranges.begin();
+    auto caps_range_it = all_caps_ranges.begin();
+    string sentence_case;
+
+    for (size_t index = 0; index < str.size(); index++) {
+        if (skip_range_it != skip_ranges.end() && index > (*skip_range_it).second) skip_range_it++;
+        if (caps_range_it != all_caps_ranges.end() && index > (*caps_range_it).second) caps_range_it++;
+
+        const char ch = str[index];
+        if (isupper(ch) && islower(str[index - 1]) && (skip_range_it == skip_ranges.end() || index == (*skip_range_it).first)) sentence_case += ' ';
+
+        const bool in_skip_range = skip_range_it != skip_ranges.end() && index >= (*skip_range_it).first && index < (*skip_range_it).second;
+        const bool in_caps_range = caps_range_it != all_caps_ranges.end() && index >= (*caps_range_it).first && index < (*caps_range_it).second;
+        sentence_case += in_caps_range ? toupper(ch) : (index > 0 && !in_skip_range) ? tolower(ch) :
+                                                                                       ch;
+    }
+    return sentence_case;
 }
 
 static constexpr bool IsInteger(string_view str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }

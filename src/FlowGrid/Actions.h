@@ -7,7 +7,7 @@
 #include "Helper/Time.h"
 #include "Primitive.h"
 
-using std::map, std::pair;
+using std::map;
 
 /**
 An ID is used to uniquely identify something.
@@ -233,7 +233,7 @@ template<ID I = 0> Action Create(ID index) {
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
 template<typename T> constexpr ActionID id = mp_find<Action, T>::value;
 
-#define ActionName(action_var_name) SnakeCaseToSentenceCase(#action_var_name)
+#define ActionName(action_var_name) PascalToSentenceCase(#action_var_name)
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
 const map<ActionID, string> ShortcutForId = {

@@ -11,8 +11,8 @@
 
 #include "App.h"
 #include "Helper/File.h"
-#include "UI/Faust/FaustParams.h"
 #include "UI/Faust/FaustGraph.h"
+#include "UI/Faust/FaustParams.h"
 
 static constexpr int SampleSize = sizeof(Sample);
 

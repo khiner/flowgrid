@@ -15,7 +15,9 @@
 #include "immer/map_transient.hpp"
 #include "nlohmann/json_fwd.hpp"
 #include <range/v3/view/iota.hpp>
+#include <range/v3/view/join.hpp>
 #include <range/v3/view/map.hpp>
+#include <range/v3/view/transform.hpp>
 
 #include "Actions.h"
 #include "Helper/Sample.h"
@@ -30,6 +32,7 @@ namespace fg = FlowGrid;
 using namespace StringHelper;
 
 using fmt::format, fmt::to_string;
+using views::transform;
 using namespace nlohmann;
 using std::cout, std::cerr;
 using std::min, std::max;
@@ -50,7 +53,7 @@ constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x =
 
 // E.g. '/foo/bar/baz' => 'baz'
 inline string PathVariableName(const StatePath &path) { return path.filename(); }
-inline string PathLabel(const StatePath &path) { return SnakeCaseToSentenceCase(PathVariableName(path)); }
+inline string PathLabel(const StatePath &path) { return PascalToSentenceCase(PathVariableName(path)); }
 
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
@@ -110,14 +113,13 @@ todo Try out replacing semicolon separators by e.g. commas.
       2) `PropName` (use PascalCase) is used for:
         - The ID of the property, relative to its parent (`this` during the macro's execution).
         - The name of the instance variable added to `this` (again, defined like any other instance variable in a `StateMember`).
-        - The label displayed in the UI is derived from the prop's (PascalCase) `PropName` property-id/path-segment (the second arg).
+        - The default label displayed in the UI is a 'Sentense cased' label derived from the prop's 'PascalCase' `PropName` property-id/path-segment (the second arg).
       3) `NameHelp`
         - A string with format "Label string?Help string".
         - Optional, available with a `_` suffix.
         - Overrides the label displayed in the UI for this property.
         - Anything after a '?' is interpretted as a help string
-          - E.g. `Prop(Bool, TestAThing, "Test-a-thing?A state member for testing things")` overrides the default "TestAThing" PascaleCase label with a hyphenation.
-            - todo "Sentence case" label
+          - E.g. `Prop(Bool, TestAThing, "Test-a-thing?A state member for testing things")` overrides the default "Test a thing" label with a hyphenation.
           - Or, provide nothing before the '?' to add a help string without overriding the default `PropName`-derived label.
             - E.g. "?A state member for testing things."
 * Member types

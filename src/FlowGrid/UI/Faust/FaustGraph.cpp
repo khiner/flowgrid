@@ -1153,7 +1153,7 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, "", FlowGridGraphCol_Slot);
 
     if (isBoxSymbolic(t, a, b)) {
-        // Generate an abstraction node by placing in sequence the input slots and the body.
+        // Generate an abstraction node by placing the input slots and body in sequence.
         auto *input_slots = MakeInputSlot(a);
         Tree _a, _b;
         while (isBoxSymbolic(b, _a, _b)) {
@@ -1177,14 +1177,16 @@ static Node *Tree2NodeInner(Tree t) {
     throw std::runtime_error("ERROR in Tree2NodeInner, box expression not recognized: " + PrintTree(t));
 }
 
+static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
+
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping that bad name to remind me to clean this up, likely into a `Node` ctor.)
 static Node *Tree2Node(Tree t) {
     auto *node = Tree2NodeInner(t);
     if (GetTreeName(t).empty()) return node; // Normal case
 
-    // `GraphFoldComplexity == 0` means no folding.
-    if (s.Style.FlowGrid.Graph.FoldComplexity != 0 && node->Descendents >= Count(s.Style.FlowGrid.Graph.FoldComplexity)) {
+    // `FoldComplexity == 0` means no folding.
+    if (FoldComplexity != 0 && node->Descendents >= Count(FoldComplexity)) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
         return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, new DecorateNode(t, node));
@@ -1242,10 +1244,7 @@ string GetBoxType(Box t) {
     return "";
 }
 
-static Node *CreateRootNode(Tree t) {
-    auto *inner = Tree2NodeInner(t);
-    return new DecorateNode(t, inner);
-}
+static Node *CreateRootNode(Tree t) { return new DecorateNode(t, Tree2NodeInner(t)); }
 
 void OnBoxChange(Box box) {
     IsTreePureRouting.clear();
@@ -1271,8 +1270,6 @@ void SaveBoxSvg(string_view path) {
     WriteSvg(node, path);
 }
 
-static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
-
 void Audio::FaustState::FaustGraph::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case
@@ -1291,8 +1288,9 @@ void Audio::FaustState::FaustGraph::Render() const {
         // Nav menu
         const bool can_nav = FocusedNodeStack.size() > 1;
         if (!can_nav) BeginDisabled();
-        if (Button("Top"))
+        if (Button("Top")) {
             while (FocusedNodeStack.size() > 1) FocusedNodeStack.pop();
+        }
         SameLine();
         if (Button("Back")) FocusedNodeStack.pop();
         if (!can_nav) EndDisabled();

@@ -443,15 +443,15 @@ void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 //-----------------------------------------------------------------------------
 
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const bool visible)
-    : StateMember(parent, path_segment, name_help) {
+    : UIStateMember(parent, path_segment, name_help) {
     Set(Visible, visible, c.InitStore);
 }
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
-    : StateMember(parent, path_segment, name_help), WindowFlags(flags) {
+    : UIStateMember(parent, path_segment, name_help), WindowFlags(flags) {
     Set(Visible, true, c.InitStore);
 }
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu)
-    : StateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {
+    : UIStateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {
     Set(Visible, true, c.InitStore);
 }
 
@@ -501,7 +501,8 @@ void Menu::Render() const {
     if (Items.empty()) return;
 
     const bool is_menu_bar = Label.empty();
-    if (is_menu_bar ? BeginMenuBar() : BeginMenu(Label.c_str())) {
+    if (IsMain ? BeginMainMenuBar() : is_menu_bar ? BeginMenuBar() :
+                                                    BeginMenu(Label.c_str())) {
         for (const auto &item : Items) {
             Match(
                 item,
@@ -520,7 +521,8 @@ void Menu::Render() const {
                 },
             );
         }
-        if (is_menu_bar) EndMenuBar();
+        if (IsMain) EndMainMenuBar();
+        else if (is_menu_bar) EndMenuBar();
         else EndMenu();
     }
 }
@@ -536,57 +538,18 @@ void Info::Render() const {
 }
 
 void State::UIProcess::Render() const {}
-void State::Render() const {
-    if (BeginMainMenuBar()) {
-        if (BeginMenu("File")) {
-            ActionMenuItem(OpenEmptyProject{});
-            ActionMenuItem(ShowOpenProjectDialog{});
-            if (BeginMenu("Open recent project", !c.Preferences.RecentlyOpenedPaths.empty())) {
-                for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
-                    if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
-                }
-                EndMenu();
-            }
-            ActionMenuItem(OpenDefaultProject{});
 
-            ActionMenuItem(SaveCurrentProject{});
-            ActionMenuItem(ShowSaveProjectDialog{});
-            ActionMenuItem(SaveDefaultProject{});
-            EndMenu();
+void OpenRecentProject::MenuItem() const {
+    if (BeginMenu("Open recent project", !c.Preferences.RecentlyOpenedPaths.empty())) {
+        for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
+            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
         }
-        if (BeginMenu("Edit")) {
-            ActionMenuItem(Undo{});
-            ActionMenuItem(Redo{});
-            EndMenu();
-        }
-        if (BeginMenu("Windows")) {
-            if (BeginMenu("Debug")) {
-                DebugLog.MenuItem();
-                StackTool.MenuItem();
-                StateViewer.MenuItem();
-                StatePathUpdateFrequency.MenuItem();
-                StateMemoryEditor.MenuItem();
-                ProjectPreview.MenuItem();
-                EndMenu();
-            }
-            if (BeginMenu("Audio")) {
-                Audio.MenuItem();
-                if (BeginMenu("Faust")) {
-                    Audio.Faust.Editor.MenuItem();
-                    Audio.Faust.Diagram.MenuItem();
-                    Audio.Faust.Params.MenuItem();
-                    Audio.Faust.Log.MenuItem();
-                    EndMenu();
-                }
-                EndMenu();
-            }
-            Metrics.MenuItem();
-            Style.MenuItem();
-            Demo.MenuItem();
-            EndMenu();
-        }
-        EndMainMenuBar();
+        EndMenu();
     }
+}
+
+void State::Render() const {
+    MainMenu.Draw();
 
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);

@@ -424,16 +424,17 @@ struct Menu : Drawable {
 
     Menu(string_view label, const vector<const Item> items) : Label(label), Items(std::move(items)) {}
     explicit Menu(const vector<const Item> items) : Menu("", std::move(items)) {}
+    Menu(const vector<const Item> items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
     const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
     const vector<const Item> Items;
+    const bool IsMain{false};
 
 protected:
     void Render() const override;
 };
 
-struct UIStateMember : StateMember,
-                       Drawable {
+struct UIStateMember : StateMember, Drawable {
     using StateMember::StateMember;
 };
 
@@ -717,10 +718,10 @@ static const vector<Flags::Item> TableFlagItems{
     "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
 };
 
-ImGuiTableFlags TableFlagsToImgui(TableFlags flags);
+ImGuiTableFlags TableFlagsToImgui(TableFlags);
 
-struct Window : StateMember, Drawable, MenuItemDrawable {
-    using StateMember::StateMember;
+struct Window : UIStateMember, MenuItemDrawable {
+    using UIStateMember::UIStateMember;
     Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
     Window(StateMember *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
     Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu);
@@ -1034,7 +1035,7 @@ struct Vec2 : UIStateMember {
     const char *fmt;
 
 protected:
-    virtual void Render(ImGuiSliderFlags flags) const;
+    virtual void Render(ImGuiSliderFlags) const;
     void Render() const override;
 };
 
@@ -1045,7 +1046,7 @@ struct Vec2Linked : Vec2 {
     Prop(Bool, Linked, true);
 
 protected:
-    void Render(ImGuiSliderFlags flags) const override;
+    void Render(ImGuiSliderFlags) const override;
     void Render() const override;
 };
 
@@ -1470,11 +1471,33 @@ WindowMember_(
 //-----------------------------------------------------------------------------
 // [SECTION] Main application `State`
 //-----------------------------------------------------------------------------
+struct OpenRecentProject : MenuItemDrawable {
+    void MenuItem() const override;
+};
 
 UIMember(
     State,
+
+    OpenRecentProject open_recent_project{};
+    const Menu MainMenu{
+        {
+            Menu("File", {OpenEmptyProject{}, ShowOpenProjectDialog{}, open_recent_project, OpenDefaultProject{}, SaveCurrentProject{}, SaveDefaultProject{}}),
+            Menu("Edit", {Undo{}, Redo{}}),
+            Menu(
+                "Windows",
+                {
+                    Menu("Debug", {DebugLog, StackTool, StateViewer, StatePathUpdateFrequency, StateMemoryEditor, ProjectPreview}),
+                    Menu("Audio", {Audio.Faust.Editor, Audio.Faust.Diagram, Audio.Faust.Params, Audio.Faust.Log}),
+                    Metrics,
+                    Style,
+                    Demo,
+                }
+            ),
+        },
+        true};
+
     void Update(const StateAction &, TransientStore &) const;
-    void Apply(UIContext::Flags flags) const;
+    void Apply(UIContext::Flags) const;
 
     WindowMember(
         UIProcess,

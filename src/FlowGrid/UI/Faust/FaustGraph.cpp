@@ -566,7 +566,7 @@ struct BlockNode : Node {
                 const auto &channel_point = Point(io, channel);
                 const auto &b = channel_point + ImVec2{(XMargin() - arrow_width) * DirUnit(io), 0};
                 device.Line(channel_point, b);
-                if (in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
+                if (in) device.Arrow(b + ImVec2{arrow_width * DirUnit(io), 0}, Orientation);
             }
         }
     }

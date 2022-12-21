@@ -25,22 +25,13 @@ enum GraphOrientation {
     GraphReverse
 };
 
-static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
-
-// Cache these values every frame.
-// Caching just these three values alone has an enormous (~65%) reduction on draw time.
-// todo we really need to generalize this to avoid store map lookups.
-//   Maybe just cache a value inside every primitive & update on all changes?
-static bool ScaleFillHeight = false;
-static float GraphScale = 1; // s.Style.FlowGrid.Graph.Scale
-static ImGuiDir GraphDirection = Forward; // s.Style.FlowGrid.Graph.Direction;
-
 static inline float GetScale();
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
 static inline float Scale(const float f) { return f * GetScale(); }
 
 static inline ImGuiDir GlobalDirection(GraphOrientation orientation) {
-    return (GraphDirection == ImGuiDir_Right && orientation == GraphForward) || (GraphDirection == ImGuiDir_Left && orientation == GraphReverse) ?
+    ImGuiDir dir = s.Style.FlowGrid.Graph.Direction;
+    return (dir == ImGuiDir_Right && orientation == GraphForward) || (dir == ImGuiDir_Left && orientation == GraphReverse) ?
         ImGuiDir_Right :
         ImGuiDir_Left;
 }
@@ -104,7 +95,7 @@ struct SVGDevice : Device {
     SVGDevice(fs::path Directory, string FileName, ImVec2 size) : Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
         Stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        Stream << (ScaleFillHeight ? R"( height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        Stream << (s.Style.FlowGrid.Graph.ScaleFillHeight ? R"( height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         Stream << format(R"(
@@ -506,7 +497,7 @@ protected:
 };
 
 static inline float GetScale() {
-    if (!ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return GraphScale;
+    if (!s.Style.FlowGrid.Graph.ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return s.Style.FlowGrid.Graph.Scale;
     return GetWindowHeight() / FocusedNodeStack.top()->H();
 }
 
@@ -1143,6 +1134,8 @@ static Node *Tree2NodeInner(Tree t) {
     throw std::runtime_error("Box expression not recognized: " + PrintTree(t));
 }
 
+static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
+
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping that bad name to remind me to clean this up, likely into a `Node` ctor.)
 static Node *Tree2Node(Tree t) {
@@ -1244,9 +1237,6 @@ void Audio::FaustState::FaustGraph::Render() const {
 
     if (FocusedNodeStack.empty()) return;
 
-    ScaleFillHeight = s.Style.FlowGrid.Graph.ScaleFillHeight;
-    GraphScale = s.Style.FlowGrid.Graph.Scale;
-    GraphDirection = s.Style.FlowGrid.Graph.Direction;
     if (s.Style.FlowGrid.Graph.FoldComplexity != FoldComplexity) {
         FoldComplexity = s.Style.FlowGrid.Graph.FoldComplexity;
         OnBoxChange(RootNode->FaustTree);
@@ -1270,7 +1260,7 @@ void Audio::FaustState::FaustGraph::Render() const {
     focused->Place(DeviceType_ImGui);
     // cout << "Place: " << FormatTimeSince(start) << '\n';
 
-    if (!ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
+    if (!s.Style.FlowGrid.Graph.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = Scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Bg]);

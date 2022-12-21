@@ -218,10 +218,17 @@ struct UIStateMember : StateMember, Drawable {
 namespace Field {
 
 struct Base : UIStateMember {
-    Base(StateMember *parent, string_view path_segment, string_view name_help, const Primitive &value);
+    static map<StatePath, Base *> WithPath; // Find any field by its path.
+
+    Base(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
+    ~Base();
 
     Primitive Get() const; // Returns the value in the main application state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
+    void Update();
+
+protected:
+    Primitive Value;
 };
 
 struct Bool : Base, MenuItemDrawable {

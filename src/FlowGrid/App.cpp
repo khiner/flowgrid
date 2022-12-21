@@ -9,6 +9,7 @@
 #include "UI/Faust/FaustGraph.h"
 
 map<ID, StateMember *> StateMember::WithId{};
+map<StatePath, Field::Base *> Field::Base::WithPath{};
 
 // Persistent modifiers
 Store Set(const Field::Base &field, const Primitive &value, const Store &store) { return store.set(field.Path, value); }
@@ -54,7 +55,7 @@ StateMember::~StateMember() {
 
 Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
-    c.InitStore.set(Linked.Path, linked);
+    Set(Linked, linked, c.InitStore);
 }
 
 namespace nlohmann {
@@ -316,6 +317,8 @@ Patch Context::SetStore(const Store &store) {
     ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
     for (const auto &[partial_path, _op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
+        // todo pretty sure this only happens in the vector case, but we should implement value caching for vectors too!
+        if (Field::Base::WithPath.contains(path)) Field::Base::WithPath.at(path)->Update();
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
         if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated

@@ -24,25 +24,31 @@ void Drawable::Draw() const {
 }
 
 namespace Field {
-Base::Base(StateMember *parent, string_view id, string_view name_help, const Primitive &value) : UIStateMember(parent, id, name_help) {
-    c.InitStore.set(Path, value);
+Base::Base(StateMember *parent, string_view id, string_view name_help, Primitive value)
+    : UIStateMember(parent, id, name_help), Value(std::move(value)) {
+    WithPath[Path] = this;
+    Set(*this, Value, c.InitStore);
 }
-Primitive Base::Get() const { return AppStore.at(Path); }
-Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
+Base::~Base() {
+    WithPath.erase(Path);
+}
 
-Bool::operator bool() const { return std::get<bool>(Get()); }
-Int::operator int() const { return std::get<int>(Get()); }
-UInt::operator U32() const { return std::get<U32>(Get()); }
+Primitive Base::Get() const { return Value; }
+Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
+void Base::Update() { Value = AppStore.at(Path); }
+
+Bool::operator bool() const { return std::get<bool>(Value); }
+Int::operator int() const { return std::get<int>(Value); }
+UInt::operator U32() const { return std::get<U32>(Value); }
 Float::operator float() const {
-    const Primitive &value = Get();
-    if (std::holds_alternative<int>(value)) return float(std::get<int>(value));
-    return std::get<float>(value);
+    if (std::holds_alternative<int>(Value)) return float(std::get<int>(Value));
+    return std::get<float>(Value);
 }
-String::operator string() const { return std::get<string>(Get()); }
+String::operator string() const { return std::get<string>(Value); }
 bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
-Enum::operator int() const { return std::get<int>(Get()); }
-Flags::operator int() const { return std::get<int>(Get()); }
+Enum::operator int() const { return std::get<int>(Value); }
+Flags::operator int() const { return std::get<int>(Value); }
 } // namespace Field
 
 template<typename T>
@@ -324,13 +330,9 @@ Window::Window(StateMember *parent, string_view path_segment, string_view name_h
     Set(Visible, visible, c.InitStore);
 }
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
-    : UIStateMember(parent, path_segment, name_help), WindowFlags(flags) {
-    Set(Visible, true, c.InitStore);
-}
+    : UIStateMember(parent, path_segment, name_help), WindowFlags(flags) {}
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu)
-    : UIStateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {
-    Set(Visible, true, c.InitStore);
-}
+    : UIStateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {}
 
 void Window::Draw() const {
     if (!Visible) return;

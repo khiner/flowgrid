@@ -21,6 +21,7 @@ int main(int, const char **) {
         TickUi(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
         TickUi(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        TickUi(); // Another one seems to be needed to update selected tabs?
         c.RunQueuedActions(true);
     }
 

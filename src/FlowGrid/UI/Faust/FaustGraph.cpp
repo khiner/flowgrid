@@ -356,10 +356,6 @@ struct Node {
     inline Node *Child(Count i) const { return i == 0 ? A : (i == 1 ? B : nullptr); }
 
     Count IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
-    Count IoCount(IO io, const Count child_index) const {
-        const auto *child = Child(child_index);
-        return child ? child->IoCount(io) : 0;
-    };
 
     ImVec2 Point(Count child, IO io, Count channel) const { return Child(child)->Position + Child(child)->Point(io, channel); }
 
@@ -450,8 +446,8 @@ struct Node {
     }
     void DrawChildChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
-            for (Count ci = 0; ci < 2; ci++) {
-                for (Count channel = 0; channel < IoCount(io, ci); channel++) {
+            for (Count ci = 0; ci < (B ? 2 : (A ? 1 : 0)); ci++) {
+                for (Count channel = 0; channel < Child(ci)->IoCount(io); channel++) {
                     device.Text(
                         Point(ci, io, channel),
                         format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
@@ -679,7 +675,7 @@ struct RecursiveNode : Node {
 
     void DoPlaceSize(const DeviceType) override {
         Size = {
-            max(A->W(), B->W()) + 2 * WireGap() * float(max(IoCount(IO_In, 1), IoCount(IO_Out, 1))),
+            max(A->W(), B->W()) + 2 * WireGap() * float(max(B->IoCount(IO_In), B->IoCount(IO_Out))),
             A->H() + B->H()};
     }
 
@@ -694,7 +690,7 @@ struct RecursiveNode : Node {
     void Render(Device &device, InteractionFlags) const override {
         const float dw = OrientationUnit() * WireGap();
         // Out0->In1 feedback connections
-        for (Count i = 0; i < IoCount(IO_In, 1); i++) {
+        for (Count i = 0; i < B->IoCount(IO_In); i++) {
             const auto &in1 = Node::Point(1, IO_In, i);
             const auto &out0 = Node::Point(0, IO_Out, i);
             const auto &from = ImVec2{IsLr() ? max(in1.x, out0.x) : min(in1.x, out0.x), out0.y} + ImVec2{float(i) * dw, 0};
@@ -714,7 +710,7 @@ struct RecursiveNode : Node {
         // Input lines
         for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), Node::Point(0, IO_In, i + B->OutCount));
         // Out1->In0 feedfront connections
-        for (Count i = 0; i < IoCount(IO_Out, 1); i++) {
+        for (Count i = 0; i < B->IoCount(IO_Out); i++) {
             const auto &from = Node::Point(1, IO_Out, i);
             const auto &from_dx = from - ImVec2{dw * float(i), 0};
             const auto &to = Node::Point(0, IO_In, i);
@@ -729,7 +725,7 @@ struct RecursiveNode : Node {
 
     ImVec2 Point(IO io, Count i) const override {
         const bool lr = (io == IO_In && IsLr()) || (io == IO_Out && !IsLr());
-        return {lr ? 0 : W(), Node::Point(0, io, i + (io == IO_In ? IoCount(IO_Out, 1) : 0)).y};
+        return {lr ? 0 : W(), Node::Point(0, io, i + (io == IO_In ? B->IoCount(IO_Out) : 0)).y};
     }
 };
 
@@ -772,7 +768,7 @@ struct SequentialNode : BinaryNode {
     void DoPlace(const DeviceType type) override {
         BinaryNode::DoPlace(type);
         ChannelsForDirection = {};
-        for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
+        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
             const auto dy = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
             ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
         }
@@ -781,7 +777,7 @@ struct SequentialNode : BinaryNode {
     void DrawConnections(Device &device) const override {
         if (!s.Style.FlowGrid.Graph.SequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
-            for (Count i = 0; i < IoCount(IO_Out, 0); i++) device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i));
+            for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i));
             return;
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
@@ -807,12 +803,12 @@ struct SequentialNode : BinaryNode {
     // Compute the horizontal gap needed to draw the internal wires.
     // It depends on the largest group of connections that go in the same up/down direction.
     float HorizontalGap() const override {
-        if (IoCount(IO_Out, 0) == 0) return 0;
+        if (A->IoCount(IO_Out) == 0) return 0;
 
         ImGuiDir prev_dir = ImGuiDir_None;
         Count size = 0;
         map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
-        for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
+        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
             const float yd = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
             size = dir == prev_dir ? size + 1 : 1;
@@ -833,8 +829,8 @@ struct MergeNode : BinaryNode {
     MergeNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DrawConnections(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
-            device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i % IoCount(IO_In, 1)));
+        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+            device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i % B->IoCount(IO_In)));
         }
     }
 };
@@ -845,8 +841,8 @@ struct SplitNode : BinaryNode {
     SplitNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
 
     void DrawConnections(Device &device) const override {
-        for (Count i = 0; i < IoCount(IO_In, 1); i++) {
-            device.Line(Node::Point(0, IO_Out, i % IoCount(IO_Out, 0)), Node::Point(1, IO_In, i));
+        for (Count i = 0; i < B->IoCount(IO_In); i++) {
+            device.Line(Node::Point(0, IO_Out, i % A->IoCount(IO_Out)), Node::Point(1, IO_In, i));
         }
     }
 };

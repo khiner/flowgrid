@@ -353,8 +353,6 @@ struct Node {
 
     virtual ~Node() = default;
 
-    inline Node *Child(Count i) const { return i == 0 ? A : (i == 1 ? B : nullptr); }
-
     Count IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
 
     // IO point relative to self.
@@ -453,12 +451,12 @@ struct Node {
     }
     void DrawChildChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
-            for (Count ci = 0; ci < (B ? 2 : (A ? 1 : 0)); ci++) {
-                auto *child = Child(ci);
+            for (Count child_index = 0; child_index < (B ? 2 : (A ? 1 : 0)); child_index++) {
+                auto *child = child_index == 0 ? A : B;
                 for (Count channel = 0; channel < child->IoCount(io); channel++) {
                     device.Text(
                         child->ChildPoint(io, channel),
-                        format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
+                        format("C{}->{}:{}", child_index, Capitalize(to_string(io, true)), channel),
                         {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .FontStyle = TextStyle::FontStyle::Bold}
                     );
                     device.Circle(child->ChildPoint(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});

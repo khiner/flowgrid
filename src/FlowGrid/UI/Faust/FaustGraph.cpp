@@ -338,7 +338,7 @@ struct Node {
 
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
-    const vector<Node *> Children{};
+    Node *A{}, *B{}; // Nodes have at most two children.
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
 
@@ -346,17 +346,21 @@ struct Node {
     ImVec2 Size; // Set in `PlaceSize`.
     GraphOrientation Orientation = GraphForward; // Set in `Place`.
 
-    Node(Tree tree, Count in_count, Count out_count, string text = "", vector<Node *> children = {}, Count direct_descendents = 0)
+    Node(Tree tree, Count in_count, Count out_count, string text = "", Node *a = nullptr, Node *b = nullptr, bool is_block = false)
         : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
-          BoxTypeLabel(GetBoxType(FaustTree)), Children(std::move(children)), InCount(in_count), OutCount(out_count),
-          Descendents(direct_descendents + ::ranges::accumulate(this->Children | views::transform([](Node *child) { return child->Descendents; }), 0)) {}
+          BoxTypeLabel(GetBoxType(FaustTree)), A(a), B(b), InCount(in_count), OutCount(out_count),
+          Descendents((is_block ? 1 : 0) + (A ? A->Descendents : 0) + (B ? B->Descendents : 0)) {}
 
     virtual ~Node() = default;
 
-    inline Node *Child(Count i) const { return Children[i]; }
+    inline Node *Child(Count i) const { return i == 0 ? A : (i == 1 ? B : nullptr); }
 
     Count IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
-    Count IoCount(IO io, const Count child_index) const { return child_index < Children.size() ? Children[child_index]->IoCount(io) : 0; };
+    Count IoCount(IO io, const Count child_index) const {
+        const auto *child = Child(child_index);
+        return child ? child->IoCount(io) : 0;
+    };
+
     ImVec2 Point(Count child, IO io, Count channel) const { return Child(child)->Position + Child(child)->Point(io, channel); }
 
     void Place(const DeviceType type, const ImVec2 &position, GraphOrientation orientation) {
@@ -365,7 +369,8 @@ struct Node {
         DoPlace(type);
     }
     void PlaceSize(const DeviceType type) {
-        for (auto *child : Children) child->PlaceSize(type);
+        if (A) A->PlaceSize(type);
+        if (B) B->PlaceSize(type);
         DoPlaceSize(type);
     }
     void Place(const DeviceType type) { DoPlace(type); }
@@ -389,7 +394,8 @@ struct Node {
 
         Render(device, flags);
         DrawConnections(device);
-        for (auto *child : Children) child->Draw(device);
+        if (A) A->Draw(device);
+        if (B) B->Draw(device);
 
         if (flags & InteractionFlags_Hovered) {
             const auto &flags = s.Audio.Faust.Graph.Settings.HoverFlags;
@@ -411,9 +417,6 @@ struct Node {
     inline float W() const { return Size.x; }
     inline float H() const { return Size.y; }
     inline operator ImRect() const { return {{0, 0}, Size}; }
-
-    inline Node *C1() const { return Children[0]; }
-    inline Node *C2() const { return Children[1]; }
 
     inline bool IsForward() const { return Orientation == GraphForward; }
     inline float OrientationUnit() const { return IsForward() ? 1 : -1; }
@@ -447,7 +450,7 @@ struct Node {
     }
     void DrawChildChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
-            for (Count ci = 0; ci < Children.size(); ci++) {
+            for (Count ci = 0; ci < 2; ci++) {
                 for (Count channel = 0; channel < IoCount(io, ci); channel++) {
                     device.Text(
                         Point(ci, io, channel),
@@ -462,7 +465,8 @@ struct Node {
 
     void MarkFrame() {
         DrawCountForNode[this] = 0;
-        for (auto *child : Children) child->MarkFrame();
+        if (A) A->MarkFrame();
+        if (B) B->MarkFrame();
     }
 
     virtual ImVec2 Point(IO io, Count channel) const {
@@ -518,7 +522,7 @@ static inline float Scale(const float f) { return f * GetScale(); }
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
     BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
-        : Node(tree, in_count, out_count, std::move(text), {}, 1), Color(color), Inner(inner) {}
+        : Node(tree, in_count, out_count, std::move(text), nullptr, nullptr, true), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
         Size = Margin() * 2 +
@@ -640,51 +644,51 @@ struct CutNode : Node {
 
 struct ParallelNode : Node {
     ParallelNode(Tree tree, Node *c1, Node *c2)
-        : Node(tree, c1->InCount + c2->InCount, c1->OutCount + c2->OutCount, "", {c1, c2}) {}
+        : Node(tree, c1->InCount + c2->InCount, c1->OutCount + c2->OutCount, "", c1, c2) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = {max(C1()->W(), C2()->W()), C1()->H() + C2()->H()}; }
+    void DoPlaceSize(const DeviceType) override { Size = {max(A->W(), B->W()), A->H() + B->H()}; }
     void DoPlace(const DeviceType type) override {
-        auto *top = Children[IsForward() ? 0 : 1];
-        auto *bottom = Children[IsForward() ? 1 : 0];
-        top->Place(type, ImVec2{(W() - top->W()) / 2, 0}, Orientation);
-        bottom->Place(type, ImVec2{(W() - bottom->W()) / 2, top->H()}, Orientation);
+        auto *top = IsForward() ? A : B;
+        auto *bottom = IsForward() ? B : A;
+        top->Place(type, {(W() - top->W()) / 2, 0}, Orientation);
+        bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Orientation);
     }
 
     void DrawConnections(Device &device) const override {
         for (const IO io : IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Point(io, i), i < C1()->IoCount(io) ? Node::Point(0, io, i) : Node::Point(1, io, i - C1()->IoCount(io)));
+                device.Line(Point(io, i), i < A->IoCount(io) ? Node::Point(0, io, i) : Node::Point(1, io, i - A->IoCount(io)));
             }
         }
     }
 
     ImVec2 Point(IO io, Count i) const override {
         const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
-        return i < C1()->IoCount(io) ?
-            Node::Point(0, io, i) + ImVec2{dx * (W() - C1()->W()) / 2, 0} :
-            Node::Point(1, io, i - C1()->IoCount(io)) + ImVec2{dx * (W() - C2()->W()) / 2, 0};
+        return i < A->IoCount(io) ?
+            Node::Point(0, io, i) + ImVec2{dx * (W() - A->W()) / 2, 0} :
+            Node::Point(1, io, i - A->IoCount(io)) + ImVec2{dx * (W() - B->W()) / 2, 0};
     }
 };
 
 // Place and connect two graphs in recursive composition
 struct RecursiveNode : Node {
-    RecursiveNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount - c2->OutCount, c1->OutCount, "", {c1, c2}) {
+    RecursiveNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount - c2->OutCount, c1->OutCount, "", c1, c2) {
         assert(c1->InCount >= c2->OutCount);
         assert(c1->OutCount >= c2->InCount);
     }
 
     void DoPlaceSize(const DeviceType) override {
         Size = {
-            max(C1()->W(), C2()->W()) + 2 * WireGap() * float(max(IoCount(IO_In, 1), IoCount(IO_Out, 1))),
-            C1()->H() + C2()->H()};
+            max(A->W(), B->W()) + 2 * WireGap() * float(max(IoCount(IO_In, 1), IoCount(IO_Out, 1))),
+            A->H() + B->H()};
     }
 
     // The two nodes are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
     void DoPlace(const DeviceType type) override {
-        auto *top_node = Children[IsForward() ? 1 : 0];
-        auto *bottom_node = Children[IsForward() ? 0 : 1];
-        top_node->Place(type, {(W() - top_node->W()) / 2, 0}, GraphReverse);
-        bottom_node->Place(type, {(W() - bottom_node->W()) / 2, top_node->H()}, GraphForward);
+        auto *top = IsForward() ? B : A;
+        auto *bottom = IsForward() ? A : B;
+        top->Place(type, {(W() - top->W()) / 2, 0}, GraphReverse);
+        bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, GraphForward);
     }
 
     void Render(Device &device, InteractionFlags) const override {
@@ -708,7 +712,7 @@ struct RecursiveNode : Node {
         // Non-recursive output lines
         for (Count i = 0; i < OutCount; i++) device.Line(Node::Point(0, IO_Out, i), Point(IO_Out, i));
         // Input lines
-        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), Node::Point(0, IO_In, i + C2()->OutCount));
+        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), Node::Point(0, IO_In, i + B->OutCount));
         // Out1->In0 feedfront connections
         for (Count i = 0; i < IoCount(IO_Out, 1); i++) {
             const auto &from = Node::Point(1, IO_Out, i);
@@ -732,21 +736,21 @@ struct RecursiveNode : Node {
 // Split left/right
 // todo configurable `Orientation` to switch between LR/TB orientation.
 struct BinaryNode : Node {
-    BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, "", {c1, c2}) {}
+    BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, "", c1, c2) {}
 
     ImVec2 Point(IO io, Count i) const override { return Node::Point(io == IO_In ? 0 : 1, io, i); }
 
-    void DoPlaceSize(const DeviceType) override { Size = {C1()->W() + C2()->W() + HorizontalGap(), max(C1()->H(), C2()->H())}; }
+    void DoPlaceSize(const DeviceType) override { Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())}; }
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void DoPlace(const DeviceType type) override {
-        auto *left = Children[IsLr() ? 0 : 1];
-        auto *right = Children[IsLr() ? 1 : 0];
+        auto *left = IsLr() ? A : B;
+        auto *right = IsLr() ? B : A;
         left->Place(type, {0, max(0.f, right->H() - left->H()) / 2}, Orientation);
         right->Place(type, {left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
     }
 
-    virtual float HorizontalGap() const { return (C1()->H() + C2()->H()) * s.Style.FlowGrid.Graph.BinaryHorizontalGapRatio; }
+    virtual float HorizontalGap() const { return (A->H() + B->H()) * s.Style.FlowGrid.Graph.BinaryHorizontalGapRatio; }
 };
 
 // Arrange children left to right
@@ -758,9 +762,9 @@ struct SequentialNode : BinaryNode {
     }
 
     void DoPlaceSize(const DeviceType type) override {
-        if (C1()->Position.x == 0 && C1()->Position.y == 0 && C2()->Position.x == 0 && C2()->Position.y == 0) {
-            C1()->Place(type, {0, max(0.f, C2()->H() - C1()->H()) / 2}, GraphForward);
-            C2()->Place(type, {0, max(0.f, C1()->H() - C2()->H()) / 2}, GraphForward);
+        if (A->Position.x == 0 && A->Position.y == 0 && B->Position.x == 0 && B->Position.y == 0) {
+            A->Place(type, {0, max(0.f, B->H() - A->H()) / 2}, GraphForward);
+            B->Place(type, {0, max(0.f, A->H() - B->H()) / 2}, GraphForward);
         }
         BinaryNode::DoPlaceSize(type);
     }
@@ -885,10 +889,10 @@ Each property can be changed in `Style.FlowGrid.Graph.(Group|Decorate){PropertyN
 */
 struct GroupNode : Node {
     GroupNode(Tree tree, Node *inner, string text = "", string_view label = "")
-        : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
+        : Node(tree, inner->InCount, inner->OutCount, std::move(text), inner), Label(label.empty() ? Text : label) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
-    void DoPlace(const DeviceType type) override { C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
+    void DoPlaceSize(const DeviceType) override { Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
+    void DoPlace(const DeviceType type) override { A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
     void Render(Device &device, InteractionFlags) const override {
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
@@ -924,15 +928,15 @@ private:
 
 struct DecorateNode : Node {
     DecorateNode(Tree tree, Node *inner, string text = "", string_view label = "")
-        : Node(tree, inner->InCount, inner->OutCount, std::move(text), {inner}), Label(label.empty() ? Text : label) {}
+        : Node(tree, inner->InCount, inner->OutCount, std::move(text), inner), Label(label.empty() ? Text : label) {}
 
     void DoPlaceSize(const DeviceType) override {
-        if (!ShouldDecorate()) Size = C1()->Size;
-        Size = C1()->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()};
+        if (!ShouldDecorate()) Size = A->Size;
+        Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()};
     }
     void DoPlace(const DeviceType type) override {
-        if (!ShouldDecorate()) return C1()->Place(type, {0, 0}, Orientation);
-        C1()->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation);
+        if (!ShouldDecorate()) return A->Place(type, {0, 0}, Orientation);
+        A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation);
     }
     void Render(Device &device, InteractionFlags) const override {
         if (!ShouldDecorate()) return;

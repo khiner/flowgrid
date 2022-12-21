@@ -357,7 +357,14 @@ struct Node {
 
     Count IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
 
-    ImVec2 Point(Count child, IO io, Count channel) const { return Child(child)->Position + Child(child)->Point(io, channel); }
+    // IO point relative to self.
+    virtual ImVec2 Point(IO io, Count channel) const {
+        return {
+            ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
+            Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()};
+    }
+    // IO point relative to parent.
+    ImVec2 ChildPoint(IO io, Count channel) const { return Position + Point(io, channel); }
 
     void Place(const DeviceType type, const ImVec2 &position, GraphOrientation orientation) {
         Position = position;
@@ -447,13 +454,14 @@ struct Node {
     void DrawChildChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
             for (Count ci = 0; ci < (B ? 2 : (A ? 1 : 0)); ci++) {
-                for (Count channel = 0; channel < Child(ci)->IoCount(io); channel++) {
+                auto *child = Child(ci);
+                for (Count channel = 0; channel < child->IoCount(io); channel++) {
                     device.Text(
-                        Point(ci, io, channel),
+                        child->ChildPoint(io, channel),
                         format("C{}->{}:{}", ci, Capitalize(to_string(io, true)), channel),
                         {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .FontStyle = TextStyle::FontStyle::Bold}
                     );
-                    device.Circle(Point(ci, io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
+                    device.Circle(child->ChildPoint(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }
             }
         }
@@ -463,12 +471,6 @@ struct Node {
         DrawCountForNode[this] = 0;
         if (A) A->MarkFrame();
         if (B) B->MarkFrame();
-    }
-
-    virtual ImVec2 Point(IO io, Count channel) const {
-        return {
-            ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
-            Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()};
     }
 
     // Get a unique, length-limited, alphanumeric file name.
@@ -653,7 +655,7 @@ struct ParallelNode : Node {
     void DrawConnections(Device &device) const override {
         for (const IO io : IO_All) {
             for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Point(io, i), i < A->IoCount(io) ? Node::Point(0, io, i) : Node::Point(1, io, i - A->IoCount(io)));
+                device.Line(Point(io, i), i < A->IoCount(io) ? A->ChildPoint(io, i) : B->ChildPoint(io, i - A->IoCount(io)));
             }
         }
     }
@@ -661,8 +663,8 @@ struct ParallelNode : Node {
     ImVec2 Point(IO io, Count i) const override {
         const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
         return i < A->IoCount(io) ?
-            Node::Point(0, io, i) + ImVec2{dx * (W() - A->W()) / 2, 0} :
-            Node::Point(1, io, i - A->IoCount(io)) + ImVec2{dx * (W() - B->W()) / 2, 0};
+            A->ChildPoint(io, i) + ImVec2{dx * (W() - A->W()) / 2, 0} :
+            B->ChildPoint(io, i - A->IoCount(io)) + ImVec2{dx * (W() - B->W()) / 2, 0};
     }
 };
 
@@ -691,8 +693,8 @@ struct RecursiveNode : Node {
         const float dw = OrientationUnit() * WireGap();
         // Out0->In1 feedback connections
         for (Count i = 0; i < B->IoCount(IO_In); i++) {
-            const auto &in1 = Node::Point(1, IO_In, i);
-            const auto &out0 = Node::Point(0, IO_Out, i);
+            const auto &in1 = B->ChildPoint(IO_In, i);
+            const auto &out0 = A->ChildPoint(IO_Out, i);
             const auto &from = ImVec2{IsLr() ? max(in1.x, out0.x) : min(in1.x, out0.x), out0.y} + ImVec2{float(i) * dw, 0};
             // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
             const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
@@ -706,14 +708,14 @@ struct RecursiveNode : Node {
             device.Line(bend, in1);
         }
         // Non-recursive output lines
-        for (Count i = 0; i < OutCount; i++) device.Line(Node::Point(0, IO_Out, i), Point(IO_Out, i));
+        for (Count i = 0; i < OutCount; i++) device.Line(A->ChildPoint(IO_Out, i), Point(IO_Out, i));
         // Input lines
-        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), Node::Point(0, IO_In, i + B->OutCount));
+        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), A->ChildPoint(IO_In, i + B->OutCount));
         // Out1->In0 feedfront connections
         for (Count i = 0; i < B->IoCount(IO_Out); i++) {
-            const auto &from = Node::Point(1, IO_Out, i);
+            const auto &from = B->ChildPoint(IO_Out, i);
             const auto &from_dx = from - ImVec2{dw * float(i), 0};
-            const auto &to = Node::Point(0, IO_In, i);
+            const auto &to = A->ChildPoint(IO_In, i);
             const ImVec2 &corner1 = {to.x, from_dx.y};
             const ImVec2 &corner2 = {from_dx.x, to.y};
             const ImVec2 &bend = IsLr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
@@ -725,7 +727,7 @@ struct RecursiveNode : Node {
 
     ImVec2 Point(IO io, Count i) const override {
         const bool lr = (io == IO_In && IsLr()) || (io == IO_Out && !IsLr());
-        return {lr ? 0 : W(), Node::Point(0, io, i + (io == IO_In ? B->IoCount(IO_Out) : 0)).y};
+        return {lr ? 0 : W(), A->ChildPoint(io, i + (io == IO_In ? B->IoCount(IO_Out) : 0)).y};
     }
 };
 
@@ -734,7 +736,7 @@ struct RecursiveNode : Node {
 struct BinaryNode : Node {
     BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, "", c1, c2) {}
 
-    ImVec2 Point(IO io, Count i) const override { return Node::Point(io == IO_In ? 0 : 1, io, i); }
+    ImVec2 Point(IO io, Count i) const override { return (io == IO_In ? A : B)->ChildPoint(io, i); }
 
     void DoPlaceSize(const DeviceType) override { Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())}; }
 
@@ -769,7 +771,7 @@ struct SequentialNode : BinaryNode {
         BinaryNode::DoPlace(type);
         ChannelsForDirection = {};
         for (Count i = 0; i < A->IoCount(IO_Out); i++) {
-            const auto dy = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
+            const auto dy = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
             ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
         }
     }
@@ -777,7 +779,7 @@ struct SequentialNode : BinaryNode {
     void DrawConnections(Device &device) const override {
         if (!s.Style.FlowGrid.Graph.SequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
-            for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i));
+            for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
             return;
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
@@ -785,8 +787,8 @@ struct SequentialNode : BinaryNode {
             const auto &channels = ChannelsForDirection.at(dir);
             for (Count i = 0; i < channels.size(); i++) {
                 const auto channel = channels[i];
-                const auto from = Node::Point(0, IO_Out, channel);
-                const auto to = Node::Point(1, IO_In, channel);
+                const auto from = A->ChildPoint(IO_Out, channel);
+                const auto to = B->ChildPoint(IO_In, channel);
                 if (dir == ImGuiDir_None) {
                     device.Line(from, to); // Draw a  straight cable
                 } else {
@@ -809,7 +811,7 @@ struct SequentialNode : BinaryNode {
         Count size = 0;
         map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
         for (Count i = 0; i < A->IoCount(IO_Out); i++) {
-            const float yd = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
+            const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
             const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
             size = dir == prev_dir ? size + 1 : 1;
             prev_dir = dir;
@@ -830,7 +832,7 @@ struct MergeNode : BinaryNode {
 
     void DrawConnections(Device &device) const override {
         for (Count i = 0; i < A->IoCount(IO_Out); i++) {
-            device.Line(Node::Point(0, IO_Out, i), Node::Point(1, IO_In, i % B->IoCount(IO_In)));
+            device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i % B->IoCount(IO_In)));
         }
     }
 };
@@ -842,7 +844,7 @@ struct SplitNode : BinaryNode {
 
     void DrawConnections(Device &device) const override {
         for (Count i = 0; i < B->IoCount(IO_In); i++) {
-            device.Line(Node::Point(0, IO_Out, i % A->IoCount(IO_Out)), Node::Point(1, IO_In, i));
+            device.Line(A->ChildPoint(IO_Out, i % A->IoCount(IO_Out)), B->ChildPoint(IO_In, i));
         }
     }
 };
@@ -898,7 +900,7 @@ struct GroupNode : Node {
     }
 
     // Y position of point is delegated to the grouped child.
-    ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, Node::Point(0, io, channel).y}; }
+    ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
 
 private:
     static float LineWidth() { return s.Style.FlowGrid.Graph.GroupLineWidth; }
@@ -910,7 +912,7 @@ private:
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
             for (Count channel = 0; channel < IoCount(io); channel++) {
-                const auto &channel_point = Node::Point(0, io, channel);
+                const auto &channel_point = A->ChildPoint(io, channel);
                 device.Line(
                     {in ? 0 : (Size - offset).x, channel_point.y},
                     {in ? offset.x : Size.x, channel_point.y}
@@ -956,7 +958,7 @@ private:
             const bool in = io == IO_In;
             const float arrow_width = in ? 0.f : s.Style.FlowGrid.Graph.ArrowSize.X;
             for (Count channel = 0; channel < IoCount(io); channel++) {
-                const auto &channel_point = Point(0, io, channel);
+                const auto &channel_point = A->ChildPoint(io, channel);
                 const ImVec2 &a = {in ? -offset.x : (Size - offset).x, channel_point.y};
                 const ImVec2 &b = {in ? offset.x : Size.x - arrow_width, channel_point.y};
                 if (ShouldDecorate()) device.Line(a, b);

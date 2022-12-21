@@ -24,31 +24,43 @@ void Drawable::Draw() const {
 }
 
 namespace Field {
-Base::Base(StateMember *parent, string_view id, string_view name_help, Primitive value)
-    : UIStateMember(parent, id, name_help), Value(std::move(value)) {
+Base::Base(StateMember *parent, string_view id, string_view name_help, Primitive value) : UIStateMember(parent, id, name_help) {
     WithPath[Path] = this;
-    Set(*this, Value, c.InitStore);
+    Set(*this, value, c.InitStore);
 }
 Base::~Base() {
     WithPath.erase(Path);
 }
 
-Primitive Base::Get() const { return Value; }
+Primitive Base::Get() const { return AppStore.at(Path); }
 Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
-void Base::Update() { Value = AppStore.at(Path); }
 
-Bool::operator bool() const { return std::get<bool>(Value); }
-Int::operator int() const { return std::get<int>(Value); }
-UInt::operator U32() const { return std::get<U32>(Value); }
-Float::operator float() const {
-    if (std::holds_alternative<int>(Value)) return float(std::get<int>(Value));
-    return std::get<float>(Value);
+void Bool::Update() { Value = std::get<bool>(Get()); }
+Bool::operator bool() const { return Value; }
+
+void UInt::Update() { Value = std::get<U32>(Get()); }
+UInt::operator U32() const { return Value; }
+
+void Int::Update() { Value = std::get<int>(Get()); }
+Int::operator int() const { return Value; }
+
+void Float::Update() {
+    const Primitive PrimitiveValue = Get();
+    if (std::holds_alternative<int>(PrimitiveValue)) Value = float(std::get<int>(PrimitiveValue));
+    else Value = std::get<float>(PrimitiveValue);
 }
-String::operator string() const { return std::get<string>(Value); }
+Float::operator float() const { return Value; }
+
+void String::Update() { Value = std::get<string>(Get()); }
+String::operator string() const { return Value; }
 bool String::operator==(const string &v) const { return string(*this) == v; }
 String::operator bool() const { return !string(*this).empty(); }
-Enum::operator int() const { return std::get<int>(Value); }
-Flags::operator int() const { return std::get<int>(Value); }
+
+void Enum::Update() { Value = std::get<int>(Get()); }
+Enum::operator int() const { return Value; }
+
+void Flags::Update() { Value = std::get<int>(Get()); }
+Flags::operator int() const { return Value; }
 } // namespace Field
 
 template<typename T>

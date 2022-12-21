@@ -223,46 +223,48 @@ struct Base : UIStateMember {
     Base(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
     ~Base();
 
-    Primitive Get() const; // Returns the value in the main application state store.
+    Primitive Get() const; // Returns the value in the main state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
-    void Update();
-
-protected:
-    Primitive Value;
+    virtual void Update() = 0; // Refresh the cached value based on the main store. Should be called for all affected fields after a state change.
 };
 
 struct Bool : Base, MenuItemDrawable {
     Bool(StateMember *parent, string_view path_segment, string_view name_help, bool value = false)
-        : Base(parent, path_segment, name_help, value) {}
+        : Base(parent, path_segment, name_help, value), Value(value) {}
 
     operator bool() const;
+    void Update() override;
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
     void MenuItem() const override;
 
-protected:
-    void Render() const override;
-
 private:
+    void Render() const override;
     void Toggle() const; // Used in draw methods.
+
+    bool Value;
 };
 
 struct UInt : Base {
     UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100)
-        : Base(parent, path_segment, name_help, value), min(min), max(max) {}
+        : Base(parent, path_segment, name_help, value), min(min), max(max), Value(value) {}
 
     operator U32() const;
     operator bool() const { return bool(U32(*this)); }
     bool operator==(int value) const { return int(*this) == value; }
 
+    void Update() override;
+
     U32 min, max;
 
-protected:
+private:
     void Render() const override;
+
+    U32 Value;
 };
 
 struct Int : Base {
     Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100)
-        : Base(parent, path_segment, name_help, value), min(min), max(max) {}
+        : Base(parent, path_segment, name_help, value), min(min), max(max), Value(value) {}
 
     operator int() const;
     operator bool() const { return bool(int(*this)); }
@@ -272,55 +274,68 @@ struct Int : Base {
     bool operator==(int value) const { return int(*this) == value; }
 
     void Render(const vector<int> &options) const;
+    void Update() override;
 
     int min, max;
 
-protected:
+private:
     void Render() const override;
+
+    int Value;
 };
 
 struct Float : Base {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(StateMember *parent, string_view path_segment, string_view name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
-        : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
+        : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags), Value(value) {}
 
     operator float() const;
+
+    void Update() override;
 
     const float Min, Max, DragSpeed; // If `DragSpeed` is non-zero, this is rendered as an `ImGui::DragFloat`.
     const char *Format;
     const ImGuiSliderFlags Flags;
 
-protected:
+private:
     void Render() const override;
+
+    float Value;
 };
 
 struct String : Base {
     String(StateMember *parent, string_view path_segment, string_view name_help, string_view value = "")
-        : Base(parent, path_segment, name_help, string(value)) {}
+        : Base(parent, path_segment, name_help, string(value)), Value(value) {}
 
     operator string() const;
     operator bool() const;
     bool operator==(const string &) const;
 
     void Render(const vector<string> &options) const;
+    void Update() override;
 
-protected:
+private:
     void Render() const override;
+
+    string Value;
 };
 
 struct Enum : Base, MenuItemDrawable {
     Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0)
-        : Base(parent, path_segment, name_help, value), Names(std::move(names)) {}
+        : Base(parent, path_segment, name_help, value), Names(std::move(names)), Value(value) {}
 
     operator int() const;
 
     void Render(const vector<int> &options) const;
     void MenuItem() const override;
+    void Update() override;
 
     const vector<string> Names;
 
-protected:
+private:
     void Render() const override;
+
+    int Value;
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -338,16 +353,19 @@ struct Flags : Base, MenuItemDrawable {
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
     Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value = 0)
-        : Base(parent, path_segment, name_help, value), Items(std::move(items)) {}
+        : Base(parent, path_segment, name_help, value), Items(std::move(items)), Value(value) {}
 
     operator int() const;
 
     void MenuItem() const override;
+    void Update() override;
 
     const vector<Item> Items;
 
-protected:
+private:
     void Render() const override;
+
+    int Value;
 };
 } // namespace Field
 

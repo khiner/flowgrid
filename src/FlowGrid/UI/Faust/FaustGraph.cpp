@@ -321,7 +321,6 @@ static string GetTreeName(Tree tree) {
 
 struct Node;
 std::stack<Node *> FocusedNodeStack;
-static map<const Node *, Count> DrawCountForNode{};
 
 static string GetBoxType(Box t);
 
@@ -372,10 +371,6 @@ struct Node {
     }
     void Place(const DeviceType type) { DoPlace(type); }
     void Draw(Device &device) const {
-        DrawCountForNode[this] += 1;
-        // todo only log in release build
-        if (DrawCountForNode[this] > 1) throw std::runtime_error(format("Node drawn more than once in a single frame. Draw count: {}", DrawCountForNode[this]));
-
         const auto before_cursor = device.CursorPosition;
         device.AdvanceCursor(Position);
 
@@ -461,12 +456,6 @@ struct Node {
                 }
             }
         }
-    }
-
-    void MarkFrame() {
-        DrawCountForNode[this] = 0;
-        if (A) A->MarkFrame();
-        if (B) B->MarkFrame();
     }
 
     // Get a unique, length-limited, alphanumeric file name.
@@ -1267,15 +1256,20 @@ void Audio::FaustState::FaustGraph::Render() const {
     }
 
     auto *focused = FocusedNodeStack.top();
+    // auto start = Clock::now();
     focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
+    // cout << "Place: " << FormatTimeSince(start) << '\n';
+
     if (!s.Style.FlowGrid.Graph.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = Scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Bg]);
 
     ImGuiDevice device;
-    focused->MarkFrame();
+    // start = Clock::now();
     focused->Draw(device);
+    // cout << "Draw: " << FormatTimeSince(start) << '\n';
+
     EndChild();
 }

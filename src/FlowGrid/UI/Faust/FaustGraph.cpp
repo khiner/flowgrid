@@ -320,8 +320,6 @@ static string GetTreeName(Tree tree) {
 }
 
 struct Node;
-
-Node *RootNode; // This graph is drawn every frame if present.
 std::stack<Node *> FocusedNodeStack;
 static map<const Node *, Count> DrawCountForNode{};
 
@@ -334,8 +332,6 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 // todo next up:
 //  - Fix saving to SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct Node {
-    inline static float WireGap() { return s.Style.FlowGrid.Graph.WireGap; }
-
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
     Node *A{}, *B{}; // Nodes have at most two children.
@@ -409,6 +405,8 @@ struct Node {
 
         device.SetCursorPos(before_cursor);
     };
+
+    inline static float WireGap() { return s.Style.FlowGrid.Graph.WireGap; }
 
     virtual ImVec2 Margin() const { return s.Style.FlowGrid.Graph.NodeMargin; }
     virtual ImVec2 Padding() const { return s.Style.FlowGrid.Graph.NodePadding; } // Currently only actually used for `BlockNode` text
@@ -850,7 +848,11 @@ struct SplitNode : BinaryNode {
 Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
     const auto o = c1->OutCount;
     const auto i = c2->InCount;
-    return new SequentialNode(tree, o < i ? new ParallelNode(tree, c1, new CableNode(tree, i - o)) : c1, o > i ? new ParallelNode(tree, c2, new CableNode(tree, o - i)) : c2);
+    return new SequentialNode(
+        tree,
+        o < i ? new ParallelNode(tree, c1, new CableNode(tree, i - o)) : c1,
+        o > i ? new ParallelNode(tree, c2, new CableNode(tree, o - i)) : c2
+    );
 }
 
 /**
@@ -965,7 +967,6 @@ private:
         }
     }
 
-private:
     const string Label;
 };
 
@@ -1006,7 +1007,7 @@ struct RouteNode : Node {
         }
     }
 
-protected:
+private:
     const vector<int> Routes; // Route description: c1,d2,c2,d2,...
 };
 
@@ -1090,8 +1091,6 @@ static bool IsPureRouting(Tree t) {
     return false;
 }
 
-static Node *Tree2Node(Tree);
-
 static std::optional<pair<Count, string>> GetBoxPrimCountAndName(Box box) {
     prim0 p0;
     if (isBoxPrim0(box, &p0)) return pair(0, prim0name(p0));
@@ -1108,6 +1107,8 @@ static std::optional<pair<Count, string>> GetBoxPrimCountAndName(Box box) {
 
     return {};
 }
+
+static Node *Tree2Node(Tree);
 
 // Generate the inside node of a block graph according to its type.
 static Node *Tree2NodeInner(Tree t) {
@@ -1240,30 +1241,30 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
-static Node *CreateRootNode(Tree t) { return new DecorateNode(t, Tree2NodeInner(t)); }
+static std::optional<DecorateNode> RootNode{}; // This node is drawn every frame if present.
+static DecorateNode CreateRootNode(Tree t) { return {t, Tree2NodeInner(t)}; }
 
 void OnBoxChange(Box box) {
     IsTreePureRouting.clear();
     FocusedNodeStack = {};
     if (box) {
-        RootNode = CreateRootNode(box);
-        FocusedNodeStack.push(RootNode);
+        RootNode.emplace(CreateRootNode(box));
+        FocusedNodeStack.push(&(*RootNode));
     } else {
-        RootNode = nullptr;
+        RootNode = nullopt;
     }
 }
 
 void SaveBoxSvg(string_view path) {
     if (!RootNode) return;
 
-    // Render SVG graph(s)
     fs::remove_all(path);
     fs::create_directory(path);
 
-    auto *node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
-    node->PlaceSize(DeviceType_SVG);
-    node->Place(DeviceType_SVG);
-    node->WriteSvg(path);
+    auto node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
+    node.PlaceSize(DeviceType_SVG);
+    node.Place(DeviceType_SVG);
+    node.WriteSvg(path);
 }
 
 void Audio::FaustState::FaustGraph::Render() const {

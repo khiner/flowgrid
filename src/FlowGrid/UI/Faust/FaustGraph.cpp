@@ -742,14 +742,6 @@ struct BinaryNode : Node {
 struct SequentialNode : BinaryNode {
     using BinaryNode::BinaryNode;
 
-    void DoPlaceSize(const DeviceType type) override {
-        if (A->Position.x == 0 && A->Position.y == 0 && B->Position.x == 0 && B->Position.y == 0) {
-            A->Place(type, {0, max(0.f, B->H() - A->H()) / 2}, GraphForward);
-            B->Place(type, {0, max(0.f, A->H() - B->H()) / 2}, GraphForward);
-        }
-        BinaryNode::DoPlaceSize(type);
-    }
-
     void DrawConnections(Device &device) const override {
         assert(A->OutCount == B->InCount);
         if (!s.Style.FlowGrid.Graph.SequentialConnectionZigzag) {

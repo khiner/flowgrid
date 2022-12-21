@@ -117,7 +117,6 @@ struct SVGDevice : Device {
 
     static string XmlSanitize(string copy) {
         static map<char, string> Replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
-
         for (const auto &[ch, replacement] : Replacements) copy = StringHelper::Replace(copy, ch, replacement);
         return copy;
     }
@@ -522,10 +521,11 @@ struct BlockNode : Node {
         : Node(tree, in_count, out_count, std::move(text), {}, 1), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
-        Size = Margin() * 2 + ImVec2{
-                                  max(3.f * WireGap(), CalcTextSize(string(Text)).x + Padding().x * 2),
-                                  max(3.f * WireGap(), float(max(InCount, OutCount)) * WireGap()),
-                              };
+        Size = Margin() * 2 +
+            ImVec2{
+                max(3.f * WireGap(), CalcTextSize(string(Text)).x + Padding().x * 2),
+                max(3.f * WireGap(), float(max(InCount, OutCount)) * WireGap()),
+            };
         if (Inner && type == DeviceType_SVG) Inner->PlaceSize(type);
     }
 
@@ -770,9 +770,7 @@ struct SequentialNode : BinaryNode {
         ChannelsForDirection = {};
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
             const auto dy = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
-            ChannelsForDirection[dy == 0 ? ImGuiDir_None : dy < 0 ? ImGuiDir_Up :
-                                                                    ImGuiDir_Down]
-                .emplace_back(i);
+            ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
         }
     }
 
@@ -812,8 +810,7 @@ struct SequentialNode : BinaryNode {
         map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
         for (Count i = 0; i < IoCount(IO_Out, 0); i++) {
             const float yd = Node::Point(1, IO_In, i).y - Node::Point(0, IO_Out, i).y;
-            const auto dir = yd < 0 ? ImGuiDir_Up : yd > 0 ? ImGuiDir_Down :
-                                                             ImGuiDir_None;
+            const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
             size = dir == prev_dir ? size + 1 : 1;
             prev_dir = dir;
             max_group_size[dir] = max(max_group_size[dir], size);
@@ -974,7 +971,7 @@ private:
 
 struct RouteNode : Node {
     RouteNode(Tree tree, Count in_count, Count out_count, vector<int> routes)
-        : Node(tree, in_count, out_count), routes(std::move(routes)) {}
+        : Node(tree, in_count, out_count), Routes(std::move(routes)) {}
 
     void DoPlaceSize(const DeviceType) override {
         const float minimal = 3 * WireGap();
@@ -1000,9 +997,9 @@ struct RouteNode : Node {
                 device.Line(in ? p : p - d, in ? p + d : p);
             }
         }
-        for (Count i = 0; i < routes.size() - 1; i += 2) {
-            const Count src = routes[i];
-            const Count dst = routes[i + 1];
+        for (Count i = 0; i < Routes.size() - 1; i += 2) {
+            const Count src = Routes[i];
+            const Count dst = Routes[i + 1];
             if (src > 0 && src <= InCount && dst > 0 && dst <= OutCount) {
                 device.Line(Point(IO_In, src - 1) + d, Point(IO_Out, dst - 1) - d);
             }
@@ -1010,7 +1007,7 @@ struct RouteNode : Node {
     }
 
 protected:
-    const vector<int> routes; // Route description: c1,d2,c2,d2,...
+    const vector<int> Routes; // Route description: c1,d2,c2,d2,...
 };
 
 static bool isBoxBinary(Box box, Box &x, Box &y) {
@@ -1020,7 +1017,7 @@ static bool isBoxBinary(Box box, Box &x, Box &y) {
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify graph by using a special symbol for inverters.
 static bool isBoxInverter(Box box) {
-    static Tree inverters[6]{
+    static const Tree inverters[]{
         boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul)),
         boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul)),
         boxSeq(boxPar(boxWire(), boxReal(-1.0)), boxPrim2(sigMul)),
@@ -1116,45 +1113,21 @@ static std::optional<pair<Count, string>> GetBoxPrimCountAndName(Box box) {
 static Node *Tree2NodeInner(Tree t) {
     if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
     if (isBoxInverter(t)) return new InverterNode(t);
-
-    if (const auto prim_count_and_name = GetBoxPrimCountAndName(t)) {
-        const auto &[prim_count, name] = *prim_count_and_name;
-        return new BlockNode(t, prim_count, 1, name);
-    }
-
-    int i;
-    double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(t, 0, 1, isBoxInt(t) ? to_string(i) : to_string(r), FlowGridGraphCol_Number);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(t, 1, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
     if (isBoxWaveform(t)) return new BlockNode(t, 0, 2, "waveform{...}");
     if (isBoxWire(t)) return new CableNode(t);
     if (isBoxCut(t)) return new CutNode(t);
-
-    Tree ff;
-    if (isBoxFFun(t, ff)) return new BlockNode(t, ffarity(ff), 1, ffname(ff));
-
-    Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(t, 0, 1, tree2str(name));
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(t, 1, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
-    if (isBoxSoundfile(t, label, chan)) return new BlockNode(t, 2, 2 + tree2int(chan), GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxEnvironment(t)) return new BlockNode(t, 0, 0, "environment{...}");
+    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return new BlockNode(t, (*count_and_name).first, 1, (*count_and_name).second);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
-
-    const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
-    if (is_vgroup || is_hgroup || is_tgroup) {
-        const string prefix = is_vgroup ? "v" : (is_hgroup ? "h" : "t");
-        return new GroupNode(t, Tree2Node(a), "", format("{}group({})", prefix, extractName(label)));
-    }
-
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
     if (isBoxSplit(t, a, b)) return new SplitNode(t, Tree2Node(a), Tree2Node(b));
     if (isBoxMerge(t, a, b)) return new MergeNode(t, Tree2Node(a), Tree2Node(b));
     if (isBoxRec(t, a, b)) return new RecursiveNode(t, Tree2Node(a), Tree2Node(b));
-
-    if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, "", FlowGridGraphCol_Slot);
-
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction node by placing the input slots and body in sequence.
         auto *input_slots = MakeInputSlot(a);
@@ -1166,18 +1139,37 @@ static Node *Tree2NodeInner(Tree t) {
         auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));
         return !GetTreeName(t).empty() ? abstraction : new GroupNode(t, abstraction, "Abstraction");
     }
-    if (isBoxEnvironment(t)) return new BlockNode(t, 0, 0, "environment{...}");
+
+    int i;
+    double r;
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(t, 0, 1, isBoxInt(t) ? to_string(i) : to_string(r), FlowGridGraphCol_Number);
+    if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, "", FlowGridGraphCol_Slot);
+
+    Tree ff;
+    if (isBoxFFun(t, ff)) return new BlockNode(t, ffarity(ff), 1, ffname(ff));
+
+    Tree type, name, file;
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(t, 0, 1, tree2str(name));
+
+    Tree label, chan;
+    if (isBoxSoundfile(t, label, chan)) return new BlockNode(t, 2, 2 + tree2int(chan), GetUiDescription(t), FlowGridGraphCol_Ui);
+
+    const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
+    if (is_vgroup || is_hgroup || is_tgroup) {
+        const char prefix = is_vgroup ? 'v' : (is_hgroup ? 'h' : 't');
+        return new GroupNode(t, Tree2Node(a), "", format("{}group({})", prefix, extractName(label)));
+    }
 
     Tree route;
     if (isBoxRoute(t, a, b, route)) {
         int ins, outs;
         vector<int> routes;
-        // Build n x m cable routing
+        // Build `ins`x`outs` cable routing.
         if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isBoxInts(route, routes)) return new RouteNode(t, ins, outs, routes);
         throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
-    throw std::runtime_error("ERROR in Tree2NodeInner, box expression not recognized: " + PrintTree(t));
+    throw std::runtime_error("Box expression not recognized: " + PrintTree(t));
 }
 
 static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
@@ -1205,15 +1197,6 @@ string GetBoxType(Box t) {
     if (isBoxWaveform(t)) return "Waveform";
     if (isBoxWire(t)) return "Cable";
     if (isBoxCut(t)) return "Cut";
-
-    if (const auto prim_count_and_name = GetBoxPrimCountAndName(t)) return (*prim_count_and_name).second;
-
-    Tree ff;
-    if (isBoxFFun(t, ff)) return format("FFun:{}({})", ffname(ff), ffarity(ff));
-
-    Tree label, chan, type, name, file;
-    if (isBoxFConst(t, type, name, file)) return format("FConst:{}", tree2str(name));
-    if (isBoxFVar(t, type, name, file)) return format("FVar:{}", tree2str(name));
     if (isBoxButton(t)) return "Button";
     if (isBoxCheckbox(t)) return "Checkbox";
     if (isBoxVSlider(t)) return "VSlider";
@@ -1221,21 +1204,31 @@ string GetBoxType(Box t) {
     if (isBoxNumEntry(t)) return "NumEntry";
     if (isBoxVBargraph(t)) return "VBarGraph";
     if (isBoxHBargraph(t)) return "HBarGraph";
-    if (isBoxSoundfile(t, label, chan)) return format("Soundfile({},{})", 2, 2 + tree2int(chan));
-
-    Tree a, b;
     if (isBoxVGroup(t)) return "VGroup";
     if (isBoxHGroup(t)) return "HGroup";
     if (isBoxTGroup(t)) return "TGroup";
+    if (isBoxEnvironment(t)) return "Environment";
+    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return (*count_and_name).second;
+
+    Tree a, b;
     if (isBoxSeq(t, a, b)) return "Sequential";
     if (isBoxPar(t, a, b)) return "Parallel";
     if (isBoxSplit(t, a, b)) return "Split";
     if (isBoxMerge(t, a, b)) return "Merge";
     if (isBoxRec(t, a, b)) return "Recursive";
 
+    Tree ff;
+    if (isBoxFFun(t, ff)) return format("FFun:{}({})", ffname(ff), ffarity(ff));
+
+    Tree type, name, file;
+    if (isBoxFConst(t, type, name, file)) return format("FConst:{}", tree2str(name));
+    if (isBoxFVar(t, type, name, file)) return format("FVar:{}", tree2str(name));
+
+    Tree label, chan;
+    if (isBoxSoundfile(t, label, chan)) return format("Soundfile({},{})", 2, 2 + tree2int(chan));
+
     int i;
     if (isBoxSlot(t, &i)) return format("Slot({})", i);
-    if (isBoxEnvironment(t)) return "Environment";
 
     Tree route;
     if (isBoxRoute(t, a, b, route)) {

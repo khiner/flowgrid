@@ -581,19 +581,13 @@ struct CableNode : Node {
 
     // The width of a cable is null, so its input and output connection points are the same.
     void DoPlaceSize(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
+    void DoPlace(const DeviceType) override {}
 
-    // Place the communication points vertically spaced by `WireGap`.
-    void DoPlace(const DeviceType) override {
-        for (Count i = 0; i < InCount; i++) {
-            const float dx = WireGap() * (float(i) + 0.5f);
-            Points[i] = {0, IsLr() ? dx : H() - dx};
-        }
+    // Cable points are vertically spaced by `WireGap`.
+    ImVec2 Point(IO, Count i) const override {
+        const float dx = WireGap() * (float(i) + 0.5f);
+        return {0, IsLr() ? dx : H() - dx};
     }
-
-    ImVec2 Point(IO, Count i) const override { return Points[i]; }
-
-private:
-    vector<ImVec2> Points{InCount};
 };
 
 // An inverter is a circle followed by a triangle.
@@ -637,8 +631,7 @@ struct CutNode : Node {
 };
 
 struct ParallelNode : Node {
-    ParallelNode(Tree tree, Node *c1, Node *c2)
-        : Node(tree, c1->InCount + c2->InCount, c1->OutCount + c2->OutCount, "", c1, c2) {}
+    ParallelNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount + b->InCount, a->OutCount + b->OutCount, "", a, b) {}
 
     void DoPlaceSize(const DeviceType) override { Size = {max(A->W(), B->W()), A->H() + B->H()}; }
     void DoPlace(const DeviceType type) override {
@@ -666,9 +659,9 @@ struct ParallelNode : Node {
 
 // Place and connect two graphs in recursive composition
 struct RecursiveNode : Node {
-    RecursiveNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount - c2->OutCount, c1->OutCount, "", c1, c2) {
-        assert(c1->InCount >= c2->OutCount);
-        assert(c1->OutCount >= c2->InCount);
+    RecursiveNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount - b->OutCount, a->OutCount, "", a, b) {
+        assert(a->InCount >= b->OutCount);
+        assert(a->OutCount >= b->InCount);
     }
 
     void DoPlaceSize(const DeviceType) override {
@@ -728,12 +721,10 @@ struct RecursiveNode : Node {
 };
 
 // Split left/right
-// todo configurable `Orientation` to switch between LR/TB orientation.
 struct BinaryNode : Node {
-    BinaryNode(Tree tree, Node *c1, Node *c2) : Node(tree, c1->InCount, c2->OutCount, "", c1, c2) {}
+    BinaryNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount, b->OutCount, "", a, b) {}
 
     ImVec2 Point(IO io, Count i) const override { return (io == IO_In ? A : B)->ChildPoint(io, i); }
-
     void DoPlaceSize(const DeviceType) override { Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())}; }
 
     // Place the two components horizontally, centered, with enough space for the connections.
@@ -747,13 +738,9 @@ struct BinaryNode : Node {
     virtual float HorizontalGap() const { return (A->H() + B->H()) * s.Style.FlowGrid.Graph.BinaryHorizontalGapRatio; }
 };
 
-// Arrange children left to right
-// todo configurable `Orientation` to switch between LR/TB orientation.
+// Children must be "compatible" (a: n->m and b: m->q).
 struct SequentialNode : BinaryNode {
-    // The components c1 and c2 must be "compatible" (c1: n->m and c2: m->q).
-    SequentialNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {
-        assert(c1->OutCount == c2->InCount);
-    }
+    using BinaryNode::BinaryNode;
 
     void DoPlaceSize(const DeviceType type) override {
         if (A->Position.x == 0 && A->Position.y == 0 && B->Position.x == 0 && B->Position.y == 0) {
@@ -763,20 +750,18 @@ struct SequentialNode : BinaryNode {
         BinaryNode::DoPlaceSize(type);
     }
 
-    void DoPlace(const DeviceType type) override {
-        BinaryNode::DoPlace(type);
-        ChannelsForDirection = {};
-        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
-            const auto dy = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
-            ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
-        }
-    }
-
     void DrawConnections(Device &device) const override {
+        assert(A->OutCount == B->InCount);
         if (!s.Style.FlowGrid.Graph.SequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
             for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
             return;
+        }
+        // todo should be able to simplify now and not create this map
+        map<ImGuiDir, vector<Count>> ChannelsForDirection;
+        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+            const auto dy = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
+            ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
         }
         // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
         for (const auto dir : views::keys(ChannelsForDirection)) {
@@ -816,15 +801,12 @@ struct SequentialNode : BinaryNode {
 
         return WireGap() * float(max(max_group_size[ImGuiDir_Up], max_group_size[ImGuiDir_Down]));
     }
-
-private:
-    map<ImGuiDir, vector<Count>> ChannelsForDirection;
 };
 
 // Place and connect two graphs in merge composition.
 // The outputs of the first node are merged to the inputs of the second.
 struct MergeNode : BinaryNode {
-    MergeNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
+    using BinaryNode::BinaryNode;
 
     void DrawConnections(Device &device) const override {
         for (Count i = 0; i < A->IoCount(IO_Out); i++) {
@@ -836,7 +818,7 @@ struct MergeNode : BinaryNode {
 // Place and connect two graphs in split composition.
 // The outputs the first node are distributed to the inputs of the second.
 struct SplitNode : BinaryNode {
-    SplitNode(Tree tree, Node *c1, Node *c2) : BinaryNode(tree, c1, c2) {}
+    using BinaryNode::BinaryNode;
 
     void DrawConnections(Device &device) const override {
         for (Count i = 0; i < B->IoCount(IO_In); i++) {
@@ -845,13 +827,12 @@ struct SplitNode : BinaryNode {
     }
 };
 
-Node *MakeSequential(Tree tree, Node *c1, Node *c2) {
-    const auto o = c1->OutCount;
-    const auto i = c2->InCount;
+Node *MakeSequential(Tree tree, Node *a, Node *b) {
+    const Count o = a->OutCount, i = b->InCount;
     return new SequentialNode(
         tree,
-        o < i ? new ParallelNode(tree, c1, new CableNode(tree, i - o)) : c1,
-        o > i ? new ParallelNode(tree, c2, new CableNode(tree, o - i)) : c2
+        o < i ? new ParallelNode(tree, a, new CableNode(tree, i - o)) : a,
+        o > i ? new ParallelNode(tree, b, new CableNode(tree, o - i)) : b
     );
 }
 
@@ -1008,7 +989,7 @@ struct RouteNode : Node {
     }
 
 private:
-    const vector<int> Routes; // Route description: c1,d2,c2,d2,...
+    const vector<int> Routes; // Route description: a,d2,c2,d2,...
 };
 
 static bool isBoxBinary(Box box, Box &x, Box &y) {

@@ -1,9 +1,7 @@
-#include <map>
 #include <sstream>
 #include <stack>
 
 #include <range/v3/algorithm/contains.hpp>
-#include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
 

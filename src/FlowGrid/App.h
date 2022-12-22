@@ -250,6 +250,7 @@ struct UInt : Base {
 
     operator U32() const;
     operator bool() const { return bool(U32(*this)); }
+    operator int() const { return int(U32(*this)); }
     bool operator==(int value) const { return int(*this) == value; }
 
     void Update() override;

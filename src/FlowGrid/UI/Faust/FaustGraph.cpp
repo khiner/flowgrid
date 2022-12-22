@@ -429,8 +429,9 @@ struct Node {
     }
     void DrawType(Device &device) const {
         const static float padding = 2;
-        device.Rect({{0, 0}, CalcTextSize(BoxTypeLabel) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text({padding, padding}, BoxTypeLabel, {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Left, VJustify_Top}});
+        const auto &label = format("{}: {}", BoxTypeLabel, Descendents);
+        device.Rect({{0, 0}, CalcTextSize(label) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
+        device.Text({padding, padding}, label, {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Left, VJustify_Top}});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io : IO_All) {

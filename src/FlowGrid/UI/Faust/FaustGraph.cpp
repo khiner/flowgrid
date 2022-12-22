@@ -91,6 +91,7 @@ static inline string GetFontBase64() {
     return base64_for_font_name.at(font_name);
 }
 
+// todo: Fix rendering SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct SVGDevice : Device {
     SVGDevice(fs::path Directory, string FileName, ImVec2 size) : Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
@@ -151,6 +152,7 @@ struct SVGDevice : Device {
         if (!link.empty()) Stream << "</a>";
     }
 
+    // todo port ImGui implementation changes here, and use that one arg to make rounded rect path go clockwise (there is one).
     void LabeledRect(const ImRect &local_rect, string_view label, const RectStyle &rect_style, const TextStyle &text_style) override {
         const auto &rect = At(local_rect);
         const auto &tl = rect.Min;
@@ -193,8 +195,7 @@ struct SVGDevice : Device {
 
     void Text(const ImVec2 &pos, string_view text, const TextStyle &style) override {
         const auto &[color, justify, padding, font_style] = style;
-        const string anchor = justify.h == HJustify_Left ? "start" : justify.h == HJustify_Middle ? "middle" :
-                                                                                                    "end";
+        const string anchor = justify.h == HJustify_Left ? "start" : (justify.h == HJustify_Middle ? "middle" : "end");
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
@@ -246,7 +247,6 @@ struct ImGuiDevice : Device {
         const auto &ellipsified_label = Ellipsify(string(label), rect.GetWidth() - r - label_offset_x - padding_right);
 
         // Clockwise, starting to right of text
-        // todo port this to svg, and use the arg to make rounded rect path go clockwise (there is one).
         const auto &a = rect.Min + ImVec2{0, GetFontSize() / 2}, &b = rect.Max;
         const auto &text_top_left = rect.Min + ImVec2{label_offset_x, 0};
         const auto &rect_start = a + ImVec2{label_offset_x, 0} + ImVec2{CalcTextSize(ellipsified_label).x + padding_left, 0};
@@ -298,10 +298,8 @@ struct ImGuiDevice : Device {
         DrawList->AddText(
             At(p - ImVec2{padding.Right, padding.Bottom}) -
                 ImVec2{
-                    justify.h == HJustify_Left ? 0 : justify.h == HJustify_Middle ? size.x / 2 :
-                                                                                    size.x,
-                    justify.v == VJustify_Top ? 0 : justify.v == VJustify_Middle ? size.y / 2 :
-                                                                                   size.y,
+                    justify.h == HJustify_Left ? 0 : (justify.h == HJustify_Middle ? size.x / 2 : size.x),
+                    justify.v == VJustify_Top ? 0 : (justify.v == VJustify_Middle ? size.y / 2 : size.y),
                 },
             color, text_copy.c_str()
         );
@@ -330,8 +328,6 @@ static string GetBoxType(Box t);
 static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
 // An abstract block graph node.
-// todo next up:
-//  - Fix saving to SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct Node {
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
@@ -612,7 +608,7 @@ struct CutNode : Node {
         // device.Circle(point, WireGap() / 8);
     }
 
-    // A Cut has only one input point
+    // A Cut has only one input point.
     ImVec2 Point(IO io, Count) const override {
         assert(io == IO_In);
         return {0, (Size / 2).y};
@@ -646,7 +642,7 @@ struct ParallelNode : Node {
     }
 };
 
-// Place and connect two graphs in recursive composition
+// Place and connect two graphs in recursive composition.
 struct RecursiveNode : Node {
     RecursiveNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount - b->OutCount, a->OutCount, "", a, b) {
         assert(a->InCount >= b->OutCount);
@@ -669,11 +665,11 @@ struct RecursiveNode : Node {
 
     void Render(Device &device, InteractionFlags) const override {
         const float dw = OrientationUnit() * WireGap();
-        // Out0->In1 feedback connections
+        // out_a->in_b feedback connections
         for (Count i = 0; i < B->IoCount(IO_In); i++) {
-            const auto &in1 = B->ChildPoint(IO_In, i);
-            const auto &out0 = A->ChildPoint(IO_Out, i);
-            const auto &from = ImVec2{IsLr() ? max(in1.x, out0.x) : min(in1.x, out0.x), out0.y} + ImVec2{float(i) * dw, 0};
+            const auto &in_b = B->ChildPoint(IO_In, i);
+            const auto &out_a = A->ChildPoint(IO_Out, i);
+            const auto &from = ImVec2{IsLr() ? max(in_b.x, out_a.x) : min(in_b.x, out_a.x), out_a.y} + ImVec2{float(i) * dw, 0};
             // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
             const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
             const auto &corner2 = from + ImVec2{dw, -dw} / ImVec2{4, 2};
@@ -681,15 +677,15 @@ struct RecursiveNode : Node {
             device.Line(corner1, corner2);
             device.Line(corner2, from + ImVec2{dw / 4, 0});
             // Draw the feedback line
-            const ImVec2 &bend = {from.x, in1.y};
+            const ImVec2 &bend = {from.x, in_b.y};
             device.Line(from - ImVec2{0, dw / 2}, bend);
-            device.Line(bend, in1);
+            device.Line(bend, in_b);
         }
         // Non-recursive output lines
         for (Count i = 0; i < OutCount; i++) device.Line(A->ChildPoint(IO_Out, i), Point(IO_Out, i));
         // Input lines
         for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), A->ChildPoint(IO_In, i + B->OutCount));
-        // Out1->In0 feedfront connections
+        // out_b->in_a feedfront connections
         for (Count i = 0; i < B->IoCount(IO_Out); i++) {
             const auto &from = B->ChildPoint(IO_Out, i);
             const auto &from_dx = from - ImVec2{dw * float(i), 0};
@@ -1138,7 +1134,7 @@ static Node *Tree2NodeInner(Tree t) {
 static Count FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
 
 // This method calls itself through `Tree2NodeInner`.
-// (Keeping that bad name to remind me to clean this up, likely into a `Node` ctor.)
+// (Keeping these bad names to remind me to clean this up, likely into a `Node` ctor.)
 static Node *Tree2Node(Tree t) {
     auto *node = Tree2NodeInner(t);
     if (GetTreeName(t).empty()) return node; // Normal case

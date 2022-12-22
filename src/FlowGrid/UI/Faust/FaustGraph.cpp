@@ -23,12 +23,14 @@ enum GraphOrientation {
     GraphReverse
 };
 
+static inline auto &Style() { return s.Style.FlowGrid.Graph; }
+
 static inline float GetScale();
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
 static inline float Scale(const float f) { return f * GetScale(); }
 
 static inline ImGuiDir GlobalDirection(GraphOrientation orientation) {
-    ImGuiDir dir = s.Style.FlowGrid.Graph.Direction;
+    ImGuiDir dir = Style().Direction;
     return (dir == ImGuiDir_Right && orientation == GraphForward) || (dir == ImGuiDir_Left && orientation == GraphReverse) ?
         ImGuiDir_Right :
         ImGuiDir_Left;
@@ -93,7 +95,7 @@ struct SVGDevice : Device {
     SVGDevice(fs::path Directory, string FileName, ImVec2 size) : Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
         Stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        Stream << (s.Style.FlowGrid.Graph.ScaleFillHeight ? R"( height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        Stream << (Style().ScaleFillHeight ? R"( height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         Stream << format(R"(
@@ -177,15 +179,15 @@ struct SVGDevice : Device {
     }
 
     void Arrow(const ImVec2 &pos, GraphOrientation orientation) override {
-        Stream << ArrowPointingAt(At(pos), Scale(s.Style.FlowGrid.Graph.ArrowSize), orientation, s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Line]);
+        Stream << ArrowPointingAt(At(pos), Scale(Style().ArrowSize), orientation, Style().Colors[FlowGridGraphCol_Line]);
     }
 
     void Line(const ImVec2 &start, const ImVec2 &end) override {
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
         const auto &start_scaled = At(start);
         const auto &end_scaled = At(end);
-        const ImColor &color = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Line];
-        const auto width = Scale(s.Style.FlowGrid.Graph.WireWidth);
+        const ImColor &color = Style().Colors[FlowGridGraphCol_Line];
+        const auto width = Scale(Style().WireWidth);
         Stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
     }
 
@@ -208,7 +210,7 @@ struct SVGDevice : Device {
 
     void Dot(const ImVec2 &pos, const ImColor &fill_color) override {
         const auto &p = At(pos);
-        const float radius = Scale(s.Style.FlowGrid.Graph.OrientationMarkRadius);
+        const float radius = Scale(Style().OrientationMarkRadius);
         Stream << format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, RgbColor(fill_color));
     }
 
@@ -279,12 +281,12 @@ struct ImGuiDevice : Device {
     }
 
     void Arrow(const ImVec2 &p, GraphOrientation orientation) override {
-        RenderArrowPointingAt(DrawList, At(p) + ImVec2{0, 0.5f}, Scale(s.Style.FlowGrid.Graph.ArrowSize), GlobalDirection(orientation), s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Line]);
+        RenderArrowPointingAt(DrawList, At(p) + ImVec2{0, 0.5f}, Scale(Style().ArrowSize), GlobalDirection(orientation), Style().Colors[FlowGridGraphCol_Line]);
     }
 
     void Line(const ImVec2 &start, const ImVec2 &end) override {
-        const U32 color = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Line];
-        const float width = Scale(s.Style.FlowGrid.Graph.WireWidth);
+        const U32 color = Style().Colors[FlowGridGraphCol_Line];
+        const float width = Scale(Style().WireWidth);
         // ImGui adds {0.5, 0.5} to line points.
         DrawList->AddLine(At(start) - ImVec2{0.5f, 0}, At(end) - ImVec2{0.5f, 0}, color, width);
     }
@@ -306,7 +308,7 @@ struct ImGuiDevice : Device {
     }
 
     void Dot(const ImVec2 &p, const ImColor &fill_color) override {
-        const float radius = Scale(s.Style.FlowGrid.Graph.OrientationMarkRadius);
+        const float radius = Scale(Style().OrientationMarkRadius);
         DrawList->AddCircleFilled(At(p), radius, fill_color);
     }
 
@@ -401,10 +403,10 @@ struct Node {
         device.SetCursorPos(before_cursor);
     };
 
-    inline static float WireGap() { return s.Style.FlowGrid.Graph.WireGap; }
+    inline static float WireGap() { return Style().WireGap; }
 
-    virtual ImVec2 Margin() const { return s.Style.FlowGrid.Graph.NodeMargin; }
-    virtual ImVec2 Padding() const { return s.Style.FlowGrid.Graph.NodePadding; } // Currently only actually used for `BlockNode` text
+    virtual ImVec2 Margin() const { return Style().NodeMargin; }
+    virtual ImVec2 Padding() const { return Style().NodePadding; } // Currently only actually used for `BlockNode` text
     inline float XMargin() const { return Margin().x; }
     inline float YMargin() const { return Margin().y; }
 
@@ -471,7 +473,7 @@ struct Node {
 
     void WriteSvg(const fs::path &path) const {
         SVGDevice device(path, SvgFileName(), Size);
-        device.Rect(*this, {.FillColor = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
+        device.Rect(*this, {.FillColor = Style().Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
         Draw(device);
     }
 
@@ -486,16 +488,16 @@ protected:
     // Marker on top: Forward orientation. Inputs go from top to bottom.
     // Marker on bottom: Backward orientation. Inputs go from bottom to top.
     void DrawOrientationMark(Device &device) const {
-        if (!s.Style.FlowGrid.Graph.OrientationMark) return;
+        if (!Style().OrientationMark) return;
 
         const auto &rect = GetFrameRect();
-        const U32 color = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_OrientationMark];
+        const U32 color = Style().Colors[FlowGridGraphCol_OrientationMark];
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
 
 static inline float GetScale() {
-    if (!s.Style.FlowGrid.Graph.ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return s.Style.FlowGrid.Graph.Scale;
+    if (!Style().ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return Style().Scale;
     return GetWindowHeight() / FocusedNodeStack.top()->H();
 }
 
@@ -518,8 +520,8 @@ struct BlockNode : Node {
     }
 
     void Render(Device &device, InteractionFlags flags) const override {
-        U32 fill_color = s.Style.FlowGrid.Graph.Colors[Color];
-        const U32 text_color = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Text];
+        U32 fill_color = Style().Colors[Color];
+        const U32 text_color = Style().Colors[FlowGridGraphCol_Text];
         const auto &local_rect = GetFrameRect();
         const auto &size = local_rect.GetSize();
         const auto before_cursor = device.CursorPosition;
@@ -529,14 +531,14 @@ struct BlockNode : Node {
             auto &svg_device = dynamic_cast<SVGDevice &>(device);
             if (Inner && !fs::exists(svg_device.Directory / Inner->SvgFileName())) Inner->WriteSvg(svg_device.Directory);
             const string link = Inner ? SvgFileName() : "";
-            svg_device.Rect({{0, 0}, size}, {.FillColor = fill_color, .CornerRadius = s.Style.FlowGrid.Graph.BoxCornerRadius}, link);
+            svg_device.Rect({{0, 0}, size}, {.FillColor = fill_color, .CornerRadius = Style().BoxCornerRadius}, link);
             svg_device.Text(size / 2, Text, {.Color = text_color}, link);
         } else {
             if (Inner) {
                 if (flags & InteractionFlags_Clicked) FocusedNodeStack.push(Inner);
                 fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
-            RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, s.Style.FlowGrid.Graph.BoxCornerRadius);
+            RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, Style().BoxCornerRadius);
             device.Text(size / 2, Text, {.Color = text_color});
         }
 
@@ -547,7 +549,7 @@ struct BlockNode : Node {
     void DrawConnections(Device &device) const override {
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            const float arrow_width = in ? s.Style.FlowGrid.Graph.ArrowSize.X : 0.f;
+            const float arrow_width = in ? Style().ArrowSize.X : 0.f;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(io, channel);
                 const auto &b = channel_point + ImVec2{(XMargin() - arrow_width) * DirUnit(io), 0};
@@ -584,13 +586,13 @@ struct InverterNode : BlockNode {
     void DoPlaceSize(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
 
     void Render(Device &device, InteractionFlags) const override {
-        const float radius = s.Style.FlowGrid.Graph.InverterRadius;
+        const float radius = Style().InverterRadius;
         const ImVec2 p1 = {W() - 2 * XMargin(), 1 + (H() - 1) / 2};
         const auto tri_a = ImVec2{XMargin() + (IsLr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : W()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
-        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, s.Style.FlowGrid.Graph.Colors[Color]);
-        device.Triangle(tri_a, tri_b, tri_c, s.Style.FlowGrid.Graph.Colors[Color]);
+        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, Style().Colors[Color]);
+        device.Triangle(tri_a, tri_b, tri_c, Style().Colors[Color]);
     }
 };
 
@@ -721,7 +723,7 @@ struct BinaryNode : Node {
         right->Place(type, {left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
     }
 
-    virtual float HorizontalGap() const { return (A->H() + B->H()) * s.Style.FlowGrid.Graph.BinaryHorizontalGapRatio; }
+    virtual float HorizontalGap() const { return (A->H() + B->H()) * Style().BinaryHorizontalGapRatio; }
 };
 
 // Children must be "compatible" (a: n->m and b: m->q).
@@ -730,7 +732,7 @@ struct SequentialNode : BinaryNode {
 
     void DrawConnections(Device &device) const override {
         assert(A->OutCount == B->InCount);
-        if (!s.Style.FlowGrid.Graph.SequentialConnectionZigzag) {
+        if (!Style().SequentialConnectionZigzag) {
             // Draw a straight, potentially diagonal cable.
             for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
             return;
@@ -853,8 +855,8 @@ struct GroupNode : Node {
     void Render(Device &device, InteractionFlags) const override {
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
-            {.StrokeColor = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_GroupStroke], .StrokeWidth = s.Style.FlowGrid.Graph.GroupLineWidth, .CornerRadius = s.Style.FlowGrid.Graph.GroupCornerRadius},
-            {.Color = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
+            {.StrokeColor = Style().Colors[FlowGridGraphCol_GroupStroke], .StrokeWidth = Style().GroupLineWidth, .CornerRadius = Style().GroupCornerRadius},
+            {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
         );
     }
 
@@ -862,9 +864,9 @@ struct GroupNode : Node {
     ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
 
 private:
-    static float LineWidth() { return s.Style.FlowGrid.Graph.GroupLineWidth; }
-    ImVec2 Margin() const override { return s.Style.FlowGrid.Graph.GroupMargin; }
-    ImVec2 Padding() const override { return s.Style.FlowGrid.Graph.GroupPadding; }
+    static float LineWidth() { return Style().GroupLineWidth; }
+    ImVec2 Margin() const override { return Style().GroupMargin; }
+    ImVec2 Padding() const override { return Style().GroupPadding; }
 
     void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding() + LineWidth();
@@ -899,23 +901,23 @@ struct DecorateNode : Node {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
-            {.StrokeColor = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_DecorateStroke], .StrokeWidth = s.Style.FlowGrid.Graph.DecorateLineWidth, .CornerRadius = s.Style.FlowGrid.Graph.DecorateCornerRadius},
-            {.Color = s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
+            {.StrokeColor = Style().Colors[FlowGridGraphCol_DecorateStroke], .StrokeWidth = Style().DecorateLineWidth, .CornerRadius = Style().DecorateCornerRadius},
+            {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
         );
     }
 
 private:
-    static bool ShouldDecorate() { return s.Style.FlowGrid.Graph.DecorateRootNode; }
+    static bool ShouldDecorate() { return Style().DecorateRootNode; }
 
-    static float LineWidth() { return ShouldDecorate() ? s.Style.FlowGrid.Graph.DecorateLineWidth : 0.f; }
-    ImVec2 Margin() const override { return ShouldDecorate() ? s.Style.FlowGrid.Graph.DecorateMargin : ImVec2{0, 0}; }
-    ImVec2 Padding() const override { return ShouldDecorate() ? s.Style.FlowGrid.Graph.DecoratePadding : ImVec2{0, 0}; }
+    static float LineWidth() { return ShouldDecorate() ? Style().DecorateLineWidth : 0.f; }
+    ImVec2 Margin() const override { return ShouldDecorate() ? Style().DecorateMargin : ImVec2{0, 0}; }
+    ImVec2 Padding() const override { return ShouldDecorate() ? Style().DecoratePadding : ImVec2{0, 0}; }
 
     void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding() + LineWidth();
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            const float arrow_width = in ? 0.f : s.Style.FlowGrid.Graph.ArrowSize.X;
+            const float arrow_width = in ? 0.f : Style().ArrowSize.X;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
                 const ImVec2 &a = {in ? -offset.x : (Size - offset).x, channel_point.y};
@@ -941,7 +943,7 @@ struct RouteNode : Node {
     void DoPlace(const DeviceType) override {}
 
     void Render(Device &device, InteractionFlags) const override {
-        if (s.Style.FlowGrid.Graph.RouteFrame) {
+        if (Style().RouteFrame) {
             device.Rect(GetFrameRect(), {.FillColor = {0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
             DrawOrientationMark(device);
             // Input arrows
@@ -1235,8 +1237,8 @@ void Audio::FaustState::FaustGraph::Render() const {
 
     if (FocusedNodeStack.empty()) return;
 
-    if (s.Style.FlowGrid.Graph.FoldComplexity != FoldComplexity) {
-        FoldComplexity = s.Style.FlowGrid.Graph.FoldComplexity;
+    if (Style().FoldComplexity != FoldComplexity) {
+        FoldComplexity = Style().FoldComplexity;
         OnBoxChange(RootNode->FaustTree);
     }
 
@@ -1258,10 +1260,10 @@ void Audio::FaustState::FaustGraph::Render() const {
     focused->Place(DeviceType_ImGui);
     // cout << "Place: " << FormatTimeSince(start) << '\n';
 
-    if (!s.Style.FlowGrid.Graph.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
+    if (!Style().ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = Scale(1);
-    GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), s.Style.FlowGrid.Graph.Colors[FlowGridGraphCol_Bg]);
+    GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style().Colors[FlowGridGraphCol_Bg]);
 
     ImGuiDevice device;
     // start = Clock::now();

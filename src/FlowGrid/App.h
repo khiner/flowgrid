@@ -232,7 +232,8 @@ struct Bool : Base, MenuItemDrawable {
     Bool(StateMember *parent, string_view path_segment, string_view name_help, bool value = false)
         : Base(parent, path_segment, name_help, value), Value(value) {}
 
-    operator bool() const;
+    operator bool() const { return Value; }
+
     void Update() override;
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
     void MenuItem() const override;
@@ -248,10 +249,10 @@ struct UInt : Base {
     UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100)
         : Base(parent, path_segment, name_help, value), min(min), max(max), Value(value) {}
 
-    operator U32() const;
-    operator bool() const { return bool(U32(*this)); }
-    operator int() const { return int(U32(*this)); }
-    bool operator==(int value) const { return int(*this) == value; }
+    operator U32() const { return Value; }
+    operator bool() const { return bool(Value); }
+    operator int() const { return int(Value); }
+    bool operator==(U32 value) const { return Value == value; }
 
     void Update() override;
 
@@ -267,12 +268,12 @@ struct Int : Base {
     Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100)
         : Base(parent, path_segment, name_help, value), min(min), max(max), Value(value) {}
 
-    operator int() const;
-    operator bool() const { return bool(int(*this)); }
-    operator short() const { return short(int(*this)); }
-    operator char() const { return char(int(*this)); }
-    operator S8() const { return S8(int(*this)); }
-    bool operator==(int value) const { return int(*this) == value; }
+    operator int() const { return Value; };
+    operator bool() const { return bool(Value); }
+    operator short() const { return short(Value); }
+    operator char() const { return char(Value); }
+    operator S8() const { return S8(Value); }
+    bool operator==(int value) const { return Value == value; }
 
     void Render(const vector<int> &options) const;
     void Update() override;
@@ -290,7 +291,7 @@ struct Float : Base {
     Float(StateMember *parent, string_view path_segment, string_view name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
         : Base(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags), Value(value) {}
 
-    operator float() const;
+    operator float() const { return Value; }
 
     void Update() override;
 
@@ -308,9 +309,9 @@ struct String : Base {
     String(StateMember *parent, string_view path_segment, string_view name_help, string_view value = "")
         : Base(parent, path_segment, name_help, string(value)), Value(value) {}
 
-    operator string() const;
-    operator bool() const;
-    bool operator==(const string &) const;
+    operator string() const { return Value; }
+    operator bool() const { return !Value.empty(); }
+    bool operator==(const string &value) const { return Value == value; }
 
     void Render(const vector<string> &options) const;
     void Update() override;
@@ -325,7 +326,7 @@ struct Enum : Base, MenuItemDrawable {
     Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0)
         : Base(parent, path_segment, name_help, value), Names(std::move(names)), Value(value) {}
 
-    operator int() const;
+    operator int() const { return Value; }
 
     void Render(const vector<int> &options) const;
     void MenuItem() const override;
@@ -356,7 +357,7 @@ struct Flags : Base, MenuItemDrawable {
     Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value = 0)
         : Base(parent, path_segment, name_help, value), Items(std::move(items)), Value(value) {}
 
-    operator int() const;
+    operator int() const { return Value; }
 
     void MenuItem() const override;
     void Update() override;

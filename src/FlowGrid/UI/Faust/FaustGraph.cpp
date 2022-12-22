@@ -1135,7 +1135,7 @@ static Node *Tree2NodeInner(Tree t) {
     throw std::runtime_error("Box expression not recognized: " + PrintTree(t));
 }
 
-static int FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
+static Count FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
 
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping that bad name to remind me to clean this up, likely into a `Node` ctor.)
@@ -1144,7 +1144,7 @@ static Node *Tree2Node(Tree t) {
     if (GetTreeName(t).empty()) return node; // Normal case
 
     // `FoldComplexity == 0` means no folding.
-    if (FoldComplexity != 0 && node->Descendents >= Count(FoldComplexity)) {
+    if (FoldComplexity != 0 && node->Descendents >= FoldComplexity) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
         return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, new DecorateNode(t, node));

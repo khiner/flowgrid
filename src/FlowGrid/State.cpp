@@ -36,31 +36,16 @@ Primitive Base::Get() const { return AppStore.at(Path); }
 Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
 
 void Bool::Update() { Value = std::get<bool>(Get()); }
-Bool::operator bool() const { return Value; }
-
 void UInt::Update() { Value = std::get<U32>(Get()); }
-UInt::operator U32() const { return Value; }
-
 void Int::Update() { Value = std::get<int>(Get()); }
-Int::operator int() const { return Value; }
-
 void Float::Update() {
     const Primitive PrimitiveValue = Get();
     if (std::holds_alternative<int>(PrimitiveValue)) Value = float(std::get<int>(PrimitiveValue));
     else Value = std::get<float>(PrimitiveValue);
 }
-Float::operator float() const { return Value; }
-
 void String::Update() { Value = std::get<string>(Get()); }
-String::operator string() const { return Value; }
-bool String::operator==(const string &v) const { return string(*this) == v; }
-String::operator bool() const { return !string(*this).empty(); }
-
 void Enum::Update() { Value = std::get<int>(Get()); }
-Enum::operator int() const { return Value; }
-
 void Flags::Update() { Value = std::get<int>(Get()); }
-Flags::operator int() const { return Value; }
 } // namespace Field
 
 template<typename T>

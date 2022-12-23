@@ -617,39 +617,16 @@ struct CutNode : Node {
     }
 };
 
-struct ParallelNode : Node {
-    ParallelNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount + b->InCount, a->OutCount + b->OutCount, a, b) {}
-
-    void DoPlaceSize(const DeviceType) override { Size = {max(A->W(), B->W()), A->H() + B->H()}; }
-    void DoPlace(const DeviceType type) override {
-        auto *top = IsForward() ? A : B;
-        auto *bottom = IsForward() ? B : A;
-        top->Place(type, {(W() - top->W()) / 2, 0}, Orientation);
-        bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Orientation);
-    }
-
-    void DrawConnections(Device &device) const override {
-        for (const IO io : IO_All) {
-            for (Count i = 0; i < IoCount(io); i++) {
-                device.Line(Point(io, i), i < A->IoCount(io) ? A->ChildPoint(io, i) : B->ChildPoint(io, i - A->IoCount(io)));
-            }
-        }
-    }
-
-    ImVec2 Point(IO io, Count i) const override {
-        const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
-        return i < A->IoCount(io) ?
-            A->ChildPoint(io, i) + ImVec2{dx * (W() - A->W()) / 2, 0} :
-            B->ChildPoint(io, i - A->IoCount(io)) + ImVec2{dx * (W() - B->W()) / 2, 0};
-    }
+enum BinaryNodeType {
+    ParallelNode,
+    SequentialNode,
+    MergeNode,
+    SplitNode,
 };
 
 // Place and connect two graphs in recursive composition.
 struct RecursiveNode : Node {
-    RecursiveNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount - b->OutCount, a->OutCount, a, b) {
-        assert(a->InCount >= b->OutCount);
-        assert(a->OutCount >= b->InCount);
-    }
+    RecursiveNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount - b->OutCount, a->OutCount, a, b) {}
 
     void DoPlaceSize(const DeviceType) override {
         Size = {
@@ -666,6 +643,8 @@ struct RecursiveNode : Node {
     }
 
     void DrawConnections(Device &device) const override {
+        assert(A->InCount >= B->OutCount);
+        assert(A->OutCount >= B->InCount);
         const float dw = OrientationUnit() * WireGap();
         // out_a->in_b feedback connections
         for (Count i = 0; i < B->IoCount(IO_In); i++) {
@@ -707,29 +686,54 @@ struct RecursiveNode : Node {
     }
 };
 
-enum BinaryNodeType {
-    SequentialNode,
-    MergeNode,
-    SplitNode,
-};
-
 // Split left/right
 struct BinaryNode : Node {
-    BinaryNode(Tree tree, Node *a, Node *b, BinaryNodeType type) : Node(tree, a->InCount, b->OutCount, a, b), Type(type) {}
+    BinaryNode(Tree tree, Node *a, Node *b, BinaryNodeType type)
+        : Node(
+              tree,
+              type == ParallelNode ? a->InCount + b->InCount : a->InCount,
+              type == ParallelNode ? a->OutCount + b->OutCount : b->OutCount,
+              a, b
+          ),
+          Type(type) {}
 
-    ImVec2 Point(IO io, Count i) const override { return (io == IO_In ? A : B)->ChildPoint(io, i); }
-    void DoPlaceSize(const DeviceType) override { Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())}; }
+    ImVec2 Point(IO io, Count i) const override {
+        if (Type == ParallelNode) {
+            const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
+            return i < A->IoCount(io) ?
+                A->ChildPoint(io, i) + ImVec2{dx * (W() - A->W()) / 2, 0} :
+                B->ChildPoint(io, i - A->IoCount(io)) + ImVec2{dx * (W() - B->W()) / 2, 0};
+        }
+        return (io == IO_In ? A : B)->ChildPoint(io, i);
+    }
+    void DoPlaceSize(const DeviceType) override {
+        if (Type == ParallelNode) Size = {max(A->W(), B->W()), A->H() + B->H()};
+        else Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())};
+    }
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void DoPlace(const DeviceType type) override {
-        auto *left = IsLr() ? A : B;
-        auto *right = IsLr() ? B : A;
-        left->Place(type, {0, max(0.f, right->H() - left->H()) / 2}, Orientation);
-        right->Place(type, {left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
+        if (Type == ParallelNode) {
+            auto *top = IsForward() ? A : B;
+            auto *bottom = IsForward() ? B : A;
+            top->Place(type, {(W() - top->W()) / 2, 0}, Orientation);
+            bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Orientation);
+        } else {
+            auto *left = IsLr() ? A : B;
+            auto *right = IsLr() ? B : A;
+            left->Place(type, {0, max(0.f, right->H() - left->H()) / 2}, Orientation);
+            right->Place(type, {left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
+        }
     }
 
     void DrawConnections(Device &device) const override {
-        if (Type == SequentialNode) {
+        if (Type == ParallelNode) {
+            for (const IO io : IO_All) {
+                for (Count i = 0; i < IoCount(io); i++) {
+                    device.Line(Point(io, i), i < A->IoCount(io) ? A->ChildPoint(io, i) : B->ChildPoint(io, i - A->IoCount(io)));
+                }
+            }
+        } else if (Type == SequentialNode) {
             assert(A->OutCount == B->InCount); // Children must be "compatible" (a: n->m and b: m->q).
             if (!Style().SequentialConnectionZigzag) {
                 // Draw a straight, potentially diagonal cable.
@@ -802,8 +806,8 @@ Node *MakeSequential(Tree tree, Node *a, Node *b) {
     const Count o = a->OutCount, i = b->InCount;
     return new BinaryNode(
         tree,
-        o < i ? new ParallelNode(tree, a, new CableNode(tree, i - o)) : a,
-        o > i ? new ParallelNode(tree, b, new CableNode(tree, o - i)) : b,
+        o < i ? new BinaryNode(tree, a, new CableNode(tree, i - o), ParallelNode) : a,
+        o > i ? new BinaryNode(tree, b, new CableNode(tree, o - i), ParallelNode) : b,
         SequentialNode
     );
 }
@@ -1073,7 +1077,7 @@ static Node *Tree2NodeInner(Tree t) {
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
-    if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
+    if (isBoxPar(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), ParallelNode);
     if (isBoxSplit(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), SplitNode);
     if (isBoxMerge(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), MergeNode);
     if (isBoxRec(t, a, b)) return new RecursiveNode(t, Tree2Node(a), Tree2Node(b));
@@ -1082,7 +1086,7 @@ static Node *Tree2NodeInner(Tree t) {
         auto *input_slots = MakeInputSlot(a);
         Tree _a, _b;
         while (isBoxSymbolic(b, _a, _b)) {
-            input_slots = new ParallelNode(b, input_slots, MakeInputSlot(_a));
+            input_slots = new BinaryNode(b, input_slots, MakeInputSlot(_a), ParallelNode);
             b = _b;
         }
         auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));

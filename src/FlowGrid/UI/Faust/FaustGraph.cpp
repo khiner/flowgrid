@@ -1247,10 +1247,10 @@ void Audio::FaustState::FaustGraph::Render() const {
     }
 
     auto *focused = FocusedNodeStack.top();
-    // auto start = Clock::now();
+    auto start = Clock::now();
     focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
-    // cout << "Place: " << FormatTimeSince(start) << '\n';
+    cout << "Place: " << FormatTimeSince(start) << '\n';
 
     if (!Style().ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -1258,9 +1258,9 @@ void Audio::FaustState::FaustGraph::Render() const {
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style().Colors[FlowGridGraphCol_Bg]);
 
     ImGuiDevice device;
-    // start = Clock::now();
+    start = Clock::now();
     focused->Draw(device);
-    // cout << "Draw: " << FormatTimeSince(start) << '\n';
+    cout << "Draw: " << FormatTimeSince(start) << '\n';
 
     EndChild();
 }

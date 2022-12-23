@@ -660,16 +660,14 @@ struct BinaryNode : Node {
 
     // Place the two components horizontally, centered, with enough space for the connections.
     void DoPlace(const DeviceType type) override {
-        if (Type == ParallelNode) {
-            auto *top = IsForward() ? A : B;
-            auto *bottom = IsForward() ? B : A;
-            top->Place(type, {(W() - top->W()) / 2, 0}, Orientation);
-            bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Orientation);
-        } else if (Type == RecursiveNode) {
-            auto *top = IsForward() ? B : A;
-            auto *bottom = IsForward() ? A : B;
-            top->Place(type, {(W() - top->W()) / 2, 0}, GraphReverse);
-            bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, GraphForward);
+        if (Type == ParallelNode || Type == RecursiveNode) {
+            // For parallel, A is top and B is bottom. For recursive, this is reversed.
+            // In both cases, flip the order if this node is oriented in reverse.
+            const bool a_top = IsForward() == (Type == ParallelNode); // XNOR - result is true if either both are true or both are false.
+            auto *top =  a_top ? A : B;
+            auto *bottom = a_top ? B : A;
+            top->Place(type, {(W() - top->W()) / 2, 0}, Type == RecursiveNode ? GraphReverse : Orientation);
+            bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Type == RecursiveNode ? GraphForward : Orientation);
         } else {
             auto *left = IsLr() ? A : B;
             auto *right = IsLr() ? B : A;
@@ -767,24 +765,24 @@ struct BinaryNode : Node {
 
     float HorizontalGap() const {
         if (Type == SequentialNode) {
-            // The horizontal gap for the wires depends on the largest group of connections that go in the same up/down direction.
+            // The horizontal gap for the wires depends on the largest group of contiguous connections that go in the same up/down direction.
             if (A->IoCount(IO_Out) == 0) return 0;
 
+            // todo simplify this by only tracking two counts: max same dir count in either direction, and current same dir count ...
             ImGuiDir prev_dir = ImGuiDir_None;
-            Count size = 0;
+            Count same_dir_count = 0;
             map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
             for (Count i = 0; i < A->IoCount(IO_Out); i++) {
                 const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
                 const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
-                size = dir == prev_dir ? size + 1 : 1;
+                same_dir_count = dir == prev_dir ? same_dir_count + 1 : 1;
                 prev_dir = dir;
-                max_group_size[dir] = max(max_group_size[dir], size);
+                max_group_size[dir] = max(max_group_size[dir], same_dir_count);
             }
 
             return WireGap() * float(max(max_group_size[ImGuiDir_Up], max_group_size[ImGuiDir_Down]));
-        } else {
-            return (A->H() + B->H()) * Style().BinaryHorizontalGapRatio;
         }
+        return (A->H() + B->H()) * Style().BinaryHorizontalGapRatio;
     }
 
     BinaryNodeType Type;

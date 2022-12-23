@@ -617,82 +617,22 @@ struct CutNode : Node {
     }
 };
 
+// Parallel/Recursive nodes are split top/bottom.
+// Sequential/Merge/Split nodes are split left/right.
 enum BinaryNodeType {
     ParallelNode,
+    RecursiveNode,
     SequentialNode,
     MergeNode,
     SplitNode,
 };
 
-// Place and connect two graphs in recursive composition.
-struct RecursiveNode : Node {
-    RecursiveNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount - b->OutCount, a->OutCount, a, b) {}
-
-    void DoPlaceSize(const DeviceType) override {
-        Size = {
-            max(A->W(), B->W()) + 2 * WireGap() * float(max(B->IoCount(IO_In), B->IoCount(IO_Out))),
-            A->H() + B->H()};
-    }
-
-    // The two nodes are centered vertically, stacked on top of each other, with stacking order dependent on orientation.
-    void DoPlace(const DeviceType type) override {
-        auto *top = IsForward() ? B : A;
-        auto *bottom = IsForward() ? A : B;
-        top->Place(type, {(W() - top->W()) / 2, 0}, GraphReverse);
-        bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, GraphForward);
-    }
-
-    void DrawConnections(Device &device) const override {
-        assert(A->InCount >= B->OutCount);
-        assert(A->OutCount >= B->InCount);
-        const float dw = OrientationUnit() * WireGap();
-        // out_a->in_b feedback connections
-        for (Count i = 0; i < B->IoCount(IO_In); i++) {
-            const auto &in_b = B->ChildPoint(IO_In, i);
-            const auto &out_a = A->ChildPoint(IO_Out, i);
-            const auto &from = ImVec2{IsLr() ? max(in_b.x, out_a.x) : min(in_b.x, out_a.x), out_a.y} + ImVec2{float(i) * dw, 0};
-            // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
-            const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
-            const auto &corner2 = from + ImVec2{dw, -dw} / ImVec2{4, 2};
-            device.Line(from - ImVec2{dw / 4, 0}, corner1);
-            device.Line(corner1, corner2);
-            device.Line(corner2, from + ImVec2{dw / 4, 0});
-            // Draw the feedback line
-            const ImVec2 &bend = {from.x, in_b.y};
-            device.Line(from - ImVec2{0, dw / 2}, bend);
-            device.Line(bend, in_b);
-        }
-        // Non-recursive output lines
-        for (Count i = 0; i < OutCount; i++) device.Line(A->ChildPoint(IO_Out, i), Point(IO_Out, i));
-        // Input lines
-        for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), A->ChildPoint(IO_In, i + B->OutCount));
-        // out_b->in_a feedfront connections
-        for (Count i = 0; i < B->IoCount(IO_Out); i++) {
-            const auto &from = B->ChildPoint(IO_Out, i);
-            const auto &from_dx = from - ImVec2{dw * float(i), 0};
-            const auto &to = A->ChildPoint(IO_In, i);
-            const ImVec2 &corner1 = {to.x, from_dx.y};
-            const ImVec2 &corner2 = {from_dx.x, to.y};
-            const ImVec2 &bend = IsLr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
-            device.Line(from, from_dx);
-            device.Line(from_dx, bend);
-            device.Line(bend, to);
-        }
-    }
-
-    ImVec2 Point(IO io, Count i) const override {
-        const bool lr = (io == IO_In && IsLr()) || (io == IO_Out && !IsLr());
-        return {lr ? 0 : W(), A->ChildPoint(io, i + (io == IO_In ? B->IoCount(IO_Out) : 0)).y};
-    }
-};
-
-// Split left/right
 struct BinaryNode : Node {
     BinaryNode(Tree tree, Node *a, Node *b, BinaryNodeType type)
         : Node(
               tree,
-              type == ParallelNode ? a->InCount + b->InCount : a->InCount,
-              type == ParallelNode ? a->OutCount + b->OutCount : b->OutCount,
+              type == ParallelNode ? a->InCount + b->InCount : (type == RecursiveNode ? a->InCount - b->OutCount : a->InCount),
+              type == ParallelNode ? a->OutCount + b->OutCount : (type == RecursiveNode ? a->OutCount : b->OutCount),
               a, b
           ),
           Type(type) {}
@@ -704,10 +644,17 @@ struct BinaryNode : Node {
                 A->ChildPoint(io, i) + ImVec2{dx * (W() - A->W()) / 2, 0} :
                 B->ChildPoint(io, i - A->IoCount(io)) + ImVec2{dx * (W() - B->W()) / 2, 0};
         }
+        if (Type == RecursiveNode) {
+            const bool lr = (io == IO_In && IsLr()) || (io == IO_Out && !IsLr());
+            return {lr ? 0 : W(), A->ChildPoint(io, i + (io == IO_In ? B->IoCount(IO_Out) : 0)).y};
+        }
         return (io == IO_In ? A : B)->ChildPoint(io, i);
     }
     void DoPlaceSize(const DeviceType) override {
         if (Type == ParallelNode) Size = {max(A->W(), B->W()), A->H() + B->H()};
+        else if (Type == RecursiveNode) Size = {
+                                            max(A->W(), B->W()) + 2 * WireGap() * float(max(B->IoCount(IO_In), B->IoCount(IO_Out))),
+                                            A->H() + B->H()};
         else Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())};
     }
 
@@ -718,6 +665,11 @@ struct BinaryNode : Node {
             auto *bottom = IsForward() ? B : A;
             top->Place(type, {(W() - top->W()) / 2, 0}, Orientation);
             bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Orientation);
+        } else if (Type == RecursiveNode) {
+            auto *top = IsForward() ? B : A;
+            auto *bottom = IsForward() ? A : B;
+            top->Place(type, {(W() - top->W()) / 2, 0}, GraphReverse);
+            bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, GraphForward);
         } else {
             auto *left = IsLr() ? A : B;
             auto *right = IsLr() ? B : A;
@@ -732,6 +684,42 @@ struct BinaryNode : Node {
                 for (Count i = 0; i < IoCount(io); i++) {
                     device.Line(Point(io, i), i < A->IoCount(io) ? A->ChildPoint(io, i) : B->ChildPoint(io, i - A->IoCount(io)));
                 }
+            }
+        } else if (Type == RecursiveNode) {
+            assert(A->InCount >= B->OutCount);
+            assert(A->OutCount >= B->InCount);
+            const float dw = OrientationUnit() * WireGap();
+            // out_a->in_b feedback connections
+            for (Count i = 0; i < B->IoCount(IO_In); i++) {
+                const auto &in_b = B->ChildPoint(IO_In, i);
+                const auto &out_a = A->ChildPoint(IO_Out, i);
+                const auto &from = ImVec2{IsLr() ? max(in_b.x, out_a.x) : min(in_b.x, out_a.x), out_a.y} + ImVec2{float(i) * dw, 0};
+                // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
+                const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
+                const auto &corner2 = from + ImVec2{dw, -dw} / ImVec2{4, 2};
+                device.Line(from - ImVec2{dw / 4, 0}, corner1);
+                device.Line(corner1, corner2);
+                device.Line(corner2, from + ImVec2{dw / 4, 0});
+                // Draw the feedback line
+                const ImVec2 &bend = {from.x, in_b.y};
+                device.Line(from - ImVec2{0, dw / 2}, bend);
+                device.Line(bend, in_b);
+            }
+            // Non-recursive output lines
+            for (Count i = 0; i < OutCount; i++) device.Line(A->ChildPoint(IO_Out, i), Point(IO_Out, i));
+            // Input lines
+            for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), A->ChildPoint(IO_In, i + B->OutCount));
+            // out_b->in_a feedfront connections
+            for (Count i = 0; i < B->IoCount(IO_Out); i++) {
+                const auto &from = B->ChildPoint(IO_Out, i);
+                const auto &from_dx = from - ImVec2{dw * float(i), 0};
+                const auto &to = A->ChildPoint(IO_In, i);
+                const ImVec2 &corner1 = {to.x, from_dx.y};
+                const ImVec2 &corner2 = {from_dx.x, to.y};
+                const ImVec2 &bend = IsLr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
+                device.Line(from, from_dx);
+                device.Line(from_dx, bend);
+                device.Line(bend, to);
             }
         } else if (Type == SequentialNode) {
             assert(A->OutCount == B->InCount); // Children must be "compatible" (a: n->m and b: m->q).
@@ -1080,7 +1068,7 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxPar(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), ParallelNode);
     if (isBoxSplit(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), SplitNode);
     if (isBoxMerge(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), MergeNode);
-    if (isBoxRec(t, a, b)) return new RecursiveNode(t, Tree2Node(a), Tree2Node(b));
+    if (isBoxRec(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), RecursiveNode);
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction node by placing the input slots and body in sequence.
         auto *input_slots = MakeInputSlot(a);

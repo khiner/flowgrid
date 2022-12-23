@@ -800,6 +800,11 @@ Node *MakeSequential(Tree tree, Node *a, Node *b) {
     );
 }
 
+enum NodeType {
+    NodeType_Group,
+    NodeType_Decorate,
+};
+
 /**
 Both `GroupNode` and `DecorateNode` render a grouping border around the provided `inner` node.
 
@@ -831,47 +836,10 @@ Each property can be changed in `Style.FlowGrid.Graph.(Group|Decorate){PropertyN
     * To: My right
 */
 struct GroupNode : Node {
-    GroupNode(Tree tree, Node *inner, string text = "")
-        : Node(tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)) {}
-
-    void DoPlaceSize(const DeviceType) override { Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
-    void DoPlace(const DeviceType type) override { A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
-    void Render(Device &device, InteractionFlags) const override {
-        device.LabeledRect(
-            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Text,
-            {.StrokeColor = Style().Colors[FlowGridGraphCol_GroupStroke], .StrokeWidth = Style().GroupLineWidth, .CornerRadius = Style().GroupCornerRadius},
-            {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
-        );
-    }
-
-    // Y position of point is delegated to the grouped child.
-    ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
-
-private:
-    static float LineWidth() { return Style().GroupLineWidth; }
-    ImVec2 Margin() const override { return Style().GroupMargin; }
-    ImVec2 Padding() const override { return Style().GroupPadding; }
-
-    void DrawConnections(Device &device) const override {
-        const auto &offset = Margin() + Padding() + LineWidth();
-        for (const IO io : IO_All) {
-            const bool in = io == IO_In;
-            for (Count channel = 0; channel < IoCount(io); channel++) {
-                const auto &channel_point = A->ChildPoint(io, channel);
-                device.Line(
-                    {in ? 0 : (Size - offset).x, channel_point.y},
-                    {in ? offset.x : Size.x, channel_point.y}
-                );
-            }
-        }
-    }
-};
-
-struct DecorateNode : Node {
-    DecorateNode(Tree tree, Node *inner) : Node(tree, inner->InCount, inner->OutCount, inner) {}
+    GroupNode(NodeType type, Tree tree, Node *inner, string text = "")
+        : Node(tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
 
     void DoPlaceSize(const DeviceType) override {
-        if (!ShouldDecorate()) Size = A->Size;
         Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()};
     }
     void DoPlace(const DeviceType type) override {
@@ -882,29 +850,37 @@ struct DecorateNode : Node {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
             {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Text,
-            {.StrokeColor = Style().Colors[FlowGridGraphCol_DecorateStroke], .StrokeWidth = Style().DecorateLineWidth, .CornerRadius = Style().DecorateCornerRadius},
+            {
+                .StrokeColor = Style().Colors[Type == NodeType_Group ? FlowGridGraphCol_GroupStroke : FlowGridGraphCol_DecorateStroke],
+                .StrokeWidth = Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth,
+                .CornerRadius = Type == NodeType_Group ? Style().GroupCornerRadius : Style().DecorateCornerRadius,
+            },
             {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
         );
     }
 
-private:
-    static inline bool ShouldDecorate() { return Style().DecorateRootNode; }
+    // Y position of point is delegated to the grouped child.
+    ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
 
-    static float LineWidth() { return ShouldDecorate() ? Style().DecorateLineWidth : 0.f; }
-    ImVec2 Margin() const override { return ShouldDecorate() ? Style().DecorateMargin : ImVec2{0, 0}; }
-    ImVec2 Padding() const override { return ShouldDecorate() ? Style().DecoratePadding : ImVec2{0, 0}; }
+    NodeType Type;
+
+private:
+    inline bool ShouldDecorate() const { return Type == NodeType_Group || Style().DecorateRootNode; }
+    inline float LineWidth() const { return !ShouldDecorate() ? 0.f : (Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth); }
+    ImVec2 Margin() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupMargin : Style().DecorateMargin); }
+    ImVec2 Padding() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupPadding : Style().DecoratePadding); }
 
     void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding() + LineWidth();
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            const float arrow_width = in ? 0.f : Style().ArrowSize.X;
+            const float arrow_width = Type == NodeType_Group || in ? 0.f : Style().ArrowSize.X;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
                 const ImVec2 &a = {in ? -offset.x : (Size - offset).x, channel_point.y};
                 const ImVec2 &b = {in ? offset.x : Size.x - arrow_width, channel_point.y};
                 if (ShouldDecorate()) device.Line(a, b);
-                if (!in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
+                if (Type == NodeType_Decorate && !in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
             }
         }
     }
@@ -1078,7 +1054,7 @@ static Node *Tree2NodeInner(Tree t) {
             b = _b;
         }
         auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));
-        return !GetTreeName(t).empty() ? abstraction : new GroupNode(t, abstraction, "Abstraction");
+        return !GetTreeName(t).empty() ? abstraction : new GroupNode(NodeType_Group, t, abstraction, "Abstraction");
     }
 
     int i;
@@ -1098,7 +1074,7 @@ static Node *Tree2NodeInner(Tree t) {
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
     if (is_vgroup || is_hgroup || is_tgroup) {
         const char prefix = is_vgroup ? 'v' : (is_hgroup ? 'h' : 't');
-        return new GroupNode(t, Tree2Node(a), format("{}group({})", prefix, extractName(label)));
+        return new GroupNode(NodeType_Group, t, Tree2Node(a), format("{}group({})", prefix, extractName(label)));
     }
 
     Tree route;
@@ -1125,9 +1101,9 @@ static Node *Tree2Node(Tree t) {
     if (FoldComplexity != 0 && node->Descendents >= FoldComplexity) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, new DecorateNode(t, node));
+        return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, new GroupNode(NodeType_Decorate, t, node));
     }
-    return IsPureRouting(t) ? node : new GroupNode(t, node);
+    return IsPureRouting(t) ? node : new GroupNode(NodeType_Group, t, node);
 }
 
 string GetBoxType(Box t) {
@@ -1181,8 +1157,8 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
-static std::optional<DecorateNode> RootNode{}; // This node is drawn every frame if present.
-static DecorateNode CreateRootNode(Tree t) { return {t, Tree2NodeInner(t)}; }
+static std::optional<GroupNode> RootNode{}; // This node is drawn every frame if present.
+static GroupNode CreateRootNode(Tree t) { return {NodeType_Decorate, t, Tree2NodeInner(t)}; }
 
 void OnBoxChange(Box box) {
     IsTreePureRouting.clear();

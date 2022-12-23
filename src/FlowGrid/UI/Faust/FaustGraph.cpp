@@ -339,10 +339,12 @@ struct Node {
     ImVec2 Size; // Set in `PlaceSize`.
     GraphOrientation Orientation = GraphForward; // Set in `Place`.
 
-    Node(Tree tree, Count in_count, Count out_count, string text = "", Node *a = nullptr, Node *b = nullptr, bool is_block = false)
+    Node(Tree tree, Count in_count, Count out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
         : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
           BoxTypeLabel(GetBoxType(FaustTree)), A(a), B(b), InCount(in_count), OutCount(out_count),
-          Descendents((is_block ? 1 : 0) + (A ? A->Descendents : 0) + (B ? B->Descendents : 0)) {}
+          Descendents((is_block ? 1 : 0) + (A ? A->Descendents : 0) + (B ? B->Descendents : 0)) {
+        // cout << tree2str(tree) << '\n';
+    }
 
     virtual ~Node() = default;
 
@@ -501,7 +503,7 @@ static inline float GetScale() {
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
     BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
-        : Node(tree, in_count, out_count, std::move(text), nullptr, nullptr, true), Color(color), Inner(inner) {}
+        : Node(tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
         Size = Margin() * 2 +
@@ -616,7 +618,7 @@ struct CutNode : Node {
 };
 
 struct ParallelNode : Node {
-    ParallelNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount + b->InCount, a->OutCount + b->OutCount, "", a, b) {}
+    ParallelNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount + b->InCount, a->OutCount + b->OutCount, a, b) {}
 
     void DoPlaceSize(const DeviceType) override { Size = {max(A->W(), B->W()), A->H() + B->H()}; }
     void DoPlace(const DeviceType type) override {
@@ -644,7 +646,7 @@ struct ParallelNode : Node {
 
 // Place and connect two graphs in recursive composition.
 struct RecursiveNode : Node {
-    RecursiveNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount - b->OutCount, a->OutCount, "", a, b) {
+    RecursiveNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount - b->OutCount, a->OutCount, a, b) {
         assert(a->InCount >= b->OutCount);
         assert(a->OutCount >= b->InCount);
     }
@@ -663,7 +665,7 @@ struct RecursiveNode : Node {
         bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, GraphForward);
     }
 
-    void Render(Device &device, InteractionFlags) const override {
+    void DrawConnections(Device &device) const override {
         const float dw = OrientationUnit() * WireGap();
         // out_a->in_b feedback connections
         for (Count i = 0; i < B->IoCount(IO_In); i++) {
@@ -705,9 +707,15 @@ struct RecursiveNode : Node {
     }
 };
 
+enum BinaryNodeType {
+    SequentialNode,
+    MergeNode,
+    SplitNode,
+};
+
 // Split left/right
 struct BinaryNode : Node {
-    BinaryNode(Tree tree, Node *a, Node *b) : Node(tree, a->InCount, b->OutCount, "", a, b) {}
+    BinaryNode(Tree tree, Node *a, Node *b, BinaryNodeType type) : Node(tree, a->InCount, b->OutCount, a, b), Type(type) {}
 
     ImVec2 Point(IO io, Count i) const override { return (io == IO_In ? A : B)->ChildPoint(io, i); }
     void DoPlaceSize(const DeviceType) override { Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())}; }
@@ -720,96 +728,83 @@ struct BinaryNode : Node {
         right->Place(type, {left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
     }
 
-    virtual float HorizontalGap() const { return (A->H() + B->H()) * Style().BinaryHorizontalGapRatio; }
-};
-
-// Children must be "compatible" (a: n->m and b: m->q).
-struct SequentialNode : BinaryNode {
-    using BinaryNode::BinaryNode;
-
     void DrawConnections(Device &device) const override {
-        assert(A->OutCount == B->InCount);
-        if (!Style().SequentialConnectionZigzag) {
-            // Draw a straight, potentially diagonal cable.
-            for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
-            return;
-        }
-        // todo should be able to simplify now and not create this map
-        map<ImGuiDir, vector<Count>> ChannelsForDirection;
-        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
-            const auto dy = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
-            ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
-        }
-        // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
-        for (const auto dir : views::keys(ChannelsForDirection)) {
-            const auto &channels = ChannelsForDirection.at(dir);
-            for (Count i = 0; i < channels.size(); i++) {
-                const auto channel = channels[i];
-                const auto from = A->ChildPoint(IO_Out, channel);
-                const auto to = B->ChildPoint(IO_In, channel);
-                if (dir == ImGuiDir_None) {
-                    device.Line(from, to); // Draw a  straight cable
-                } else {
-                    const Count x_position = IsForward() ? i : channels.size() - i - 1;
-                    const float bend_x = from.x + float(x_position) * DirUnit() * WireGap();
-                    device.Line(from, {bend_x, from.y});
-                    device.Line({bend_x, from.y}, {bend_x, to.y});
-                    device.Line({bend_x, to.y}, to);
+        if (Type == SequentialNode) {
+            assert(A->OutCount == B->InCount); // Children must be "compatible" (a: n->m and b: m->q).
+            if (!Style().SequentialConnectionZigzag) {
+                // Draw a straight, potentially diagonal cable.
+                for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
+                return;
+            }
+            // todo should be able to simplify now and not create this map
+            map<ImGuiDir, vector<Count>> ChannelsForDirection;
+            for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+                const auto dy = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
+                ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
+            }
+            // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
+            for (const auto dir : views::keys(ChannelsForDirection)) {
+                const auto &channels = ChannelsForDirection.at(dir);
+                for (Count i = 0; i < channels.size(); i++) {
+                    const auto channel = channels[i];
+                    const auto from = A->ChildPoint(IO_Out, channel);
+                    const auto to = B->ChildPoint(IO_In, channel);
+                    if (dir == ImGuiDir_None) {
+                        device.Line(from, to); // Draw a  straight cable
+                    } else {
+                        const Count x_position = IsForward() ? i : channels.size() - i - 1;
+                        const float bend_x = from.x + float(x_position) * DirUnit() * WireGap();
+                        device.Line(from, {bend_x, from.y});
+                        device.Line({bend_x, from.y}, {bend_x, to.y});
+                        device.Line({bend_x, to.y}, to);
+                    }
                 }
+            }
+        } else if (Type == MergeNode) {
+            // The outputs of the first node are merged to the inputs of the second.
+            for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+                device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i % B->IoCount(IO_In)));
+            }
+        } else if (Type == SplitNode) {
+            // The outputs the first node are distributed to the inputs of the second.
+            for (Count i = 0; i < B->IoCount(IO_In); i++) {
+                device.Line(A->ChildPoint(IO_Out, i % A->IoCount(IO_Out)), B->ChildPoint(IO_In, i));
             }
         }
     }
 
-    // Compute the horizontal gap needed to draw the internal wires.
-    // It depends on the largest group of connections that go in the same up/down direction.
-    float HorizontalGap() const override {
-        if (A->IoCount(IO_Out) == 0) return 0;
+    float HorizontalGap() const {
+        if (Type == SequentialNode) {
+            // The horizontal gap for the wires depends on the largest group of connections that go in the same up/down direction.
+            if (A->IoCount(IO_Out) == 0) return 0;
 
-        ImGuiDir prev_dir = ImGuiDir_None;
-        Count size = 0;
-        map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
-        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
-            const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
-            const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
-            size = dir == prev_dir ? size + 1 : 1;
-            prev_dir = dir;
-            max_group_size[dir] = max(max_group_size[dir], size);
-        }
+            ImGuiDir prev_dir = ImGuiDir_None;
+            Count size = 0;
+            map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
+            for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+                const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
+                const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
+                size = dir == prev_dir ? size + 1 : 1;
+                prev_dir = dir;
+                max_group_size[dir] = max(max_group_size[dir], size);
+            }
 
-        return WireGap() * float(max(max_group_size[ImGuiDir_Up], max_group_size[ImGuiDir_Down]));
-    }
-};
-
-// Place and connect two graphs in merge composition.
-// The outputs of the first node are merged to the inputs of the second.
-struct MergeNode : BinaryNode {
-    using BinaryNode::BinaryNode;
-
-    void DrawConnections(Device &device) const override {
-        for (Count i = 0; i < A->IoCount(IO_Out); i++) {
-            device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i % B->IoCount(IO_In)));
+            return WireGap() * float(max(max_group_size[ImGuiDir_Up], max_group_size[ImGuiDir_Down]));
+        } else {
+            return (A->H() + B->H()) * Style().BinaryHorizontalGapRatio;
         }
     }
-};
 
-// Place and connect two graphs in split composition.
-// The outputs the first node are distributed to the inputs of the second.
-struct SplitNode : BinaryNode {
-    using BinaryNode::BinaryNode;
-
-    void DrawConnections(Device &device) const override {
-        for (Count i = 0; i < B->IoCount(IO_In); i++) {
-            device.Line(A->ChildPoint(IO_Out, i % A->IoCount(IO_Out)), B->ChildPoint(IO_In, i));
-        }
-    }
+    BinaryNodeType Type;
 };
 
 Node *MakeSequential(Tree tree, Node *a, Node *b) {
     const Count o = a->OutCount, i = b->InCount;
-    return new SequentialNode(
+    return new BinaryNode(
         tree,
         o < i ? new ParallelNode(tree, a, new CableNode(tree, i - o)) : a,
-        o > i ? new ParallelNode(tree, b, new CableNode(tree, o - i)) : b
+        o > i ? new ParallelNode(tree, b, new CableNode(tree, o - i)) : b,
+        SequentialNode
     );
 }
 
@@ -845,7 +840,7 @@ Each property can be changed in `Style.FlowGrid.Graph.(Group|Decorate){PropertyN
 */
 struct GroupNode : Node {
     GroupNode(Tree tree, Node *inner, string text = "")
-        : Node(tree, inner->InCount, inner->OutCount, std::move(text), inner) {}
+        : Node(tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)) {}
 
     void DoPlaceSize(const DeviceType) override { Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
     void DoPlace(const DeviceType type) override { A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
@@ -881,7 +876,7 @@ private:
 };
 
 struct DecorateNode : Node {
-    DecorateNode(Tree tree, Node *inner) : Node(tree, inner->InCount, inner->OutCount, "", inner) {}
+    DecorateNode(Tree tree, Node *inner) : Node(tree, inner->InCount, inner->OutCount, inner) {}
 
     void DoPlaceSize(const DeviceType) override {
         if (!ShouldDecorate()) Size = A->Size;
@@ -901,7 +896,7 @@ struct DecorateNode : Node {
     }
 
 private:
-    static bool ShouldDecorate() { return Style().DecorateRootNode; }
+    static inline bool ShouldDecorate() { return Style().DecorateRootNode; }
 
     static float LineWidth() { return ShouldDecorate() ? Style().DecorateLineWidth : 0.f; }
     ImVec2 Margin() const override { return ShouldDecorate() ? Style().DecorateMargin : ImVec2{0, 0}; }
@@ -1079,8 +1074,8 @@ static Node *Tree2NodeInner(Tree t) {
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
     if (isBoxPar(t, a, b)) return new ParallelNode(t, Tree2Node(a), Tree2Node(b));
-    if (isBoxSplit(t, a, b)) return new SplitNode(t, Tree2Node(a), Tree2Node(b));
-    if (isBoxMerge(t, a, b)) return new MergeNode(t, Tree2Node(a), Tree2Node(b));
+    if (isBoxSplit(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), SplitNode);
+    if (isBoxMerge(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), MergeNode);
     if (isBoxRec(t, a, b)) return new RecursiveNode(t, Tree2Node(a), Tree2Node(b));
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction node by placing the input slots and body in sequence.

@@ -844,14 +844,14 @@ Each property can be changed in `Style.FlowGrid.Graph.(Group|Decorate){PropertyN
     * To: My right
 */
 struct GroupNode : Node {
-    GroupNode(Tree tree, Node *inner, string text = "", string_view label = "")
-        : Node(tree, inner->InCount, inner->OutCount, std::move(text), inner), Label(label.empty() ? Text : label) {}
+    GroupNode(Tree tree, Node *inner, string text = "")
+        : Node(tree, inner->InCount, inner->OutCount, std::move(text), inner) {}
 
     void DoPlaceSize(const DeviceType) override { Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()}; }
     void DoPlace(const DeviceType type) override { A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation); }
     void Render(Device &device, InteractionFlags) const override {
         device.LabeledRect(
-            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
+            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Text,
             {.StrokeColor = Style().Colors[FlowGridGraphCol_GroupStroke], .StrokeWidth = Style().GroupLineWidth, .CornerRadius = Style().GroupCornerRadius},
             {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
         );
@@ -878,13 +878,10 @@ private:
             }
         }
     }
-
-    const string Label;
 };
 
 struct DecorateNode : Node {
-    DecorateNode(Tree tree, Node *inner, string text = "", string_view label = "")
-        : Node(tree, inner->InCount, inner->OutCount, std::move(text), inner), Label(label.empty() ? Text : label) {}
+    DecorateNode(Tree tree, Node *inner) : Node(tree, inner->InCount, inner->OutCount, "", inner) {}
 
     void DoPlaceSize(const DeviceType) override {
         if (!ShouldDecorate()) Size = A->Size;
@@ -897,7 +894,7 @@ struct DecorateNode : Node {
     void Render(Device &device, InteractionFlags) const override {
         if (!ShouldDecorate()) return;
         device.LabeledRect(
-            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Label,
+            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Text,
             {.StrokeColor = Style().Colors[FlowGridGraphCol_DecorateStroke], .StrokeWidth = Style().DecorateLineWidth, .CornerRadius = Style().DecorateCornerRadius},
             {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
         );
@@ -924,8 +921,6 @@ private:
             }
         }
     }
-
-    const string Label;
 };
 
 struct RouteNode : Node {
@@ -1116,7 +1111,7 @@ static Node *Tree2NodeInner(Tree t) {
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
     if (is_vgroup || is_hgroup || is_tgroup) {
         const char prefix = is_vgroup ? 'v' : (is_hgroup ? 'h' : 't');
-        return new GroupNode(t, Tree2Node(a), "", format("{}group({})", prefix, extractName(label)));
+        return new GroupNode(t, Tree2Node(a), format("{}group({})", prefix, extractName(label)));
     }
 
     Tree route;

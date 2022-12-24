@@ -319,9 +319,6 @@ static string GetTreeName(Tree tree) {
     return getDefNameProperty(tree, name) ? tree2str(name) : "";
 }
 
-struct Node;
-std::stack<Node *> FocusedNodeStack;
-
 static string GetBoxType(Box t);
 
 // Hex address (without the '0x' prefix)
@@ -494,6 +491,8 @@ protected:
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
+
+std::stack<Node *> FocusedNodeStack;
 
 static inline float GetScale() {
     if (!Style().ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return Style().Scale;

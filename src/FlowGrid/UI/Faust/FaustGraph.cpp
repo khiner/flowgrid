@@ -328,18 +328,18 @@ static string UniqueId(const void *instance) { return format("{:x}", reinterpret
 struct Node {
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
-    Node *A{}, *B{}; // Nodes have at most two children.
     const Count InCount, OutCount;
     const Count Descendents = 0; // The number of boxes within this node (recursively).
+    Node *A{}, *B{}; // Nodes have at most two children.
 
-    ImVec2 Position; // Relative to parent. Set in `Place`.
     ImVec2 Size; // Set in `PlaceSize`.
+    ImVec2 Position; // Relative to parent. Set in `Place`.
     GraphOrientation Orientation = GraphForward; // Set in `Place`.
 
     Node(Tree tree, Count in_count, Count out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
         : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
-          BoxTypeLabel(GetBoxType(FaustTree)), A(a), B(b), InCount(in_count), OutCount(out_count),
-          Descendents((is_block ? 1 : 0) + (A ? A->Descendents : 0) + (B ? B->Descendents : 0)) {
+          BoxTypeLabel(GetBoxType(FaustTree)), InCount(in_count), OutCount(out_count),
+          Descendents((is_block ? 1 : 0) + (a ? a->Descendents : 0) + (b ? b->Descendents : 0)), A(a), B(b) {
         // cout << tree2str(tree) << '\n';
     }
 
@@ -382,7 +382,6 @@ struct Node {
         }
 
         Render(device, flags);
-        DrawConnections(device);
         if (A) A->Draw(device);
         if (B) B->Draw(device);
 
@@ -415,8 +414,6 @@ struct Node {
     inline bool IsLr() const { return ::IsLr(Orientation); }
     inline float DirUnit() const { return IsLr() ? 1 : -1; }
     inline float DirUnit(IO io) const { return DirUnit() * (io == IO_In ? 1.f : -1.f); }
-
-    virtual void DrawConnections(Device &) const {}
 
     // Debug
     void DrawRect(Device &device) const {
@@ -476,7 +473,7 @@ struct Node {
 protected:
     virtual void DoPlaceSize(DeviceType) = 0;
     virtual void DoPlace(DeviceType) = 0;
-    virtual void Render(Device &, InteractionFlags flags = InteractionFlags_None) const {}
+    virtual void Render(Device &, InteractionFlags flags = InteractionFlags_None) const = 0;
 
     ImRect GetFrameRect() const { return {Margin(), Size - Margin()}; }
 
@@ -542,9 +539,7 @@ struct BlockNode : Node {
 
         device.SetCursorPos(before_cursor);
         DrawOrientationMark(device);
-    }
 
-    void DrawConnections(Device &device) const override {
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
             const float arrow_width = in ? Style().ArrowSize.X : 0.f;
@@ -568,6 +563,7 @@ struct CableNode : Node {
     // The width of a cable is null, so its input and output connection points are the same.
     void DoPlaceSize(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
     void DoPlace(const DeviceType) override {}
+    void Render(Device &, InteractionFlags) const override {}
 
     // Cable points are vertically spaced by `WireGap`.
     ImVec2 Point(IO, Count i) const override {
@@ -663,7 +659,7 @@ struct BinaryNode : Node {
             // For parallel, A is top and B is bottom. For recursive, this is reversed.
             // In both cases, flip the order if this node is oriented in reverse.
             const bool a_top = IsForward() == (Type == ParallelNode); // XNOR - result is true if either both are true or both are false.
-            auto *top =  a_top ? A : B;
+            auto *top = a_top ? A : B;
             auto *bottom = a_top ? B : A;
             top->Place(type, {(W() - top->W()) / 2, 0}, Type == RecursiveNode ? GraphReverse : Orientation);
             bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Type == RecursiveNode ? GraphForward : Orientation);
@@ -675,7 +671,7 @@ struct BinaryNode : Node {
         }
     }
 
-    void DrawConnections(Device &device) const override {
+    void Render(Device &device, InteractionFlags) const override {
         if (Type == ParallelNode) {
             for (const IO io : IO_All) {
                 for (Count i = 0; i < IoCount(io); i++) {
@@ -844,30 +840,18 @@ struct GroupNode : Node {
         A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation);
     }
     void Render(Device &device, InteractionFlags) const override {
-        if (!ShouldDecorate()) return;
-        device.LabeledRect(
-            {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Text,
-            {
-                .StrokeColor = Style().Colors[Type == NodeType_Group ? FlowGridGraphCol_GroupStroke : FlowGridGraphCol_DecorateStroke],
-                .StrokeWidth = Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth,
-                .CornerRadius = Type == NodeType_Group ? Style().GroupCornerRadius : Style().DecorateCornerRadius,
-            },
-            {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
-        );
-    }
+        if (ShouldDecorate()) {
+            device.LabeledRect(
+                {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Text,
+                {
+                    .StrokeColor = Style().Colors[Type == NodeType_Group ? FlowGridGraphCol_GroupStroke : FlowGridGraphCol_DecorateStroke],
+                    .StrokeWidth = Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth,
+                    .CornerRadius = Type == NodeType_Group ? Style().GroupCornerRadius : Style().DecorateCornerRadius,
+                },
+                {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
+            );
+        }
 
-    // Y position of point is delegated to the grouped child.
-    ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
-
-    NodeType Type;
-
-private:
-    inline bool ShouldDecorate() const { return Type == NodeType_Group || Style().DecorateRootNode; }
-    inline float LineWidth() const { return !ShouldDecorate() ? 0.f : (Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth); }
-    ImVec2 Margin() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupMargin : Style().DecorateMargin); }
-    ImVec2 Padding() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupPadding : Style().DecoratePadding); }
-
-    void DrawConnections(Device &device) const override {
         const auto &offset = Margin() + Padding() + LineWidth();
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
@@ -881,6 +865,17 @@ private:
             }
         }
     }
+
+    // Y position of point is delegated to the grouped child.
+    ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
+
+    NodeType Type;
+
+private:
+    inline bool ShouldDecorate() const { return Type == NodeType_Group || Style().DecorateRootNode; }
+    inline float LineWidth() const { return !ShouldDecorate() ? 0.f : (Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth); }
+    ImVec2 Margin() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupMargin : Style().DecorateMargin); }
+    ImVec2 Padding() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupPadding : Style().DecoratePadding); }
 };
 
 struct RouteNode : Node {
@@ -901,8 +896,7 @@ struct RouteNode : Node {
             // Input arrows
             for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XMargin(), 0}, Orientation);
         }
-    }
-    void DrawConnections(Device &device) const override {
+
         const auto d = ImVec2{DirUnit() * XMargin(), 0};
         for (const IO io : IO_All) {
             const bool in = io == IO_In;

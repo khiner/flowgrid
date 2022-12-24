@@ -320,6 +320,7 @@ static string GetTreeName(Tree tree) {
 }
 
 struct Node;
+vector<Node *> Nodes;
 std::stack<Node *> FocusedNodeStack;
 
 static string GetBoxType(Box t);
@@ -1091,7 +1092,7 @@ static Count FoldComplexity = 0; // Cache the most recently seen value and recom
 
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping these bad names to remind me to clean this up, likely into a `Node` ctor.)
-static Node *Tree2Node(Tree t) {
+static Node *Tree2NodeNode(Tree t) {
     auto *node = Tree2NodeInner(t);
     if (GetTreeName(t).empty()) return node; // Normal case
 
@@ -1099,9 +1100,17 @@ static Node *Tree2Node(Tree t) {
     if (FoldComplexity != 0 && node->Descendents >= FoldComplexity) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, new GroupNode(NodeType_Decorate, t, node));
+        auto *group_node = new GroupNode(NodeType_Decorate, t, node);
+        Nodes.push_back(group_node);
+        return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, group_node);
     }
     return IsPureRouting(t) ? node : new GroupNode(NodeType_Group, t, node);
+}
+
+static Node *Tree2Node(Tree t) {
+    auto *node = Tree2NodeNode(t);
+    Nodes.push_back(node);
+    return Nodes.back();
 }
 
 string GetBoxType(Box t) {

@@ -319,10 +319,6 @@ static string GetTreeName(Tree tree) {
     return getDefNameProperty(tree, name) ? tree2str(name) : "";
 }
 
-struct Node;
-vector<Node *> Nodes;
-std::stack<Node *> FocusedNodeStack;
-
 static string GetBoxType(Box t);
 
 // Hex address (without the '0x' prefix)
@@ -478,8 +474,8 @@ struct Node {
     }
 
 protected:
-    virtual void DoPlaceSize(DeviceType) = 0;
-    virtual void DoPlace(DeviceType) = 0;
+    virtual void DoPlaceSize(DeviceType) {};
+    virtual void DoPlace(DeviceType) {};
     virtual void Render(Device &, InteractionFlags flags = InteractionFlags_None) const {}
 
     ImRect GetFrameRect() const { return {Margin(), Size - Margin()}; }
@@ -495,6 +491,9 @@ protected:
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
+
+std::stack<Node *> FocusedNodeStack;
+static Node *CreateNode(Node);
 
 static inline float GetScale() {
     if (!Style().ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return Style().Scale;
@@ -789,14 +788,14 @@ struct BinaryNode : Node {
     BinaryNodeType Type;
 };
 
-Node *MakeSequential(Tree tree, Node *a, Node *b) {
+BinaryNode MakeSequential(Tree tree, Node *a, Node *b) {
     const Count o = a->OutCount, i = b->InCount;
-    return new BinaryNode(
+    return {
         tree,
-        o < i ? new BinaryNode(tree, a, new CableNode(tree, i - o), ParallelNode) : a,
-        o > i ? new BinaryNode(tree, b, new CableNode(tree, o - i), ParallelNode) : b,
+        o < i ? CreateNode(BinaryNode(tree, a, CreateNode(CableNode(tree, i - o)), ParallelNode)) : a,
+        o > i ? CreateNode(BinaryNode(tree, b, CreateNode(CableNode(tree, o - i)), ParallelNode)) : b,
         SequentialNode
-    );
+    };
 }
 
 enum NodeType {
@@ -968,7 +967,7 @@ static string GetUiDescription(Box box) {
 }
 
 // Generate a 1->0 block node for an input slot.
-static Node *MakeInputSlot(Tree tree) { return new BlockNode(tree, 1, 0, "", FlowGridGraphCol_Slot); }
+static BlockNode MakeInputSlot(Tree tree) { return {tree, 1, 0, "", FlowGridGraphCol_Slot}; }
 
 // Collect the leaf numbers `tree` into vector `v`.
 // Return `true` if `tree` is a number or a parallel tree of numbers.
@@ -1026,54 +1025,55 @@ static std::optional<pair<Count, string>> GetBoxPrimCountAndName(Box box) {
 static Node *Tree2Node(Tree);
 
 // Generate the inside node of a block graph according to its type.
-static Node *Tree2NodeInner(Tree t) {
-    if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
-    if (isBoxInverter(t)) return new InverterNode(t);
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(t, 1, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
-    if (isBoxWaveform(t)) return new BlockNode(t, 0, 2, "waveform{...}");
-    if (isBoxWire(t)) return new CableNode(t);
-    if (isBoxCut(t)) return new CutNode(t);
-    if (isBoxEnvironment(t)) return new BlockNode(t, 0, 0, "environment{...}");
-    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return new BlockNode(t, (*count_and_name).first, 1, (*count_and_name).second);
+static Node Tree2NodeInner(Tree t) {
+    if (getUserData(t) != nullptr) return BlockNode(t, xtendedArity(t), 1, xtendedName(t));
+    if (isBoxInverter(t)) return InverterNode(t);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return BlockNode(t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return BlockNode(t, 1, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxWaveform(t)) return BlockNode(t, 0, 2, "waveform{...}");
+    if (isBoxWire(t)) return CableNode(t);
+    if (isBoxCut(t)) return CutNode(t);
+    if (isBoxEnvironment(t)) return BlockNode(t, 0, 0, "environment{...}");
+    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return BlockNode(t, (*count_and_name).first, 1, (*count_and_name).second);
 
     Tree a, b;
-    if (isBoxMetadata(t, a, b)) return Tree2Node(a);
+    // if (isBoxMetadata(t, a, b)) return Tree2Node(a);
     if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
-    if (isBoxPar(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), ParallelNode);
-    if (isBoxSplit(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), SplitNode);
-    if (isBoxMerge(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), MergeNode);
-    if (isBoxRec(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), RecursiveNode);
+    if (isBoxPar(t, a, b)) return BinaryNode(t, Tree2Node(a), Tree2Node(b), ParallelNode);
+    if (isBoxSplit(t, a, b)) return BinaryNode(t, Tree2Node(a), Tree2Node(b), SplitNode);
+    if (isBoxMerge(t, a, b)) return BinaryNode(t, Tree2Node(a), Tree2Node(b), MergeNode);
+    if (isBoxRec(t, a, b)) return BinaryNode(t, Tree2Node(a), Tree2Node(b), RecursiveNode);
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction node by placing the input slots and body in sequence.
-        auto *input_slots = MakeInputSlot(a);
+        auto *input_slots = CreateNode(MakeInputSlot(a));
         Tree _a, _b;
         while (isBoxSymbolic(b, _a, _b)) {
-            input_slots = new BinaryNode(b, input_slots, MakeInputSlot(_a), ParallelNode);
+            input_slots = CreateNode(BinaryNode(b, input_slots, CreateNode(MakeInputSlot(_a)), ParallelNode));
             b = _b;
         }
-        auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));
-        return !GetTreeName(t).empty() ? abstraction : new GroupNode(NodeType_Group, t, abstraction, "Abstraction");
+        auto abstraction = MakeSequential(b, input_slots, Tree2Node(b));
+        if (!GetTreeName(t).empty()) return abstraction;
+        return GroupNode(NodeType_Group, t, CreateNode(abstraction), "Abstraction");
     }
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(t, 0, 1, isBoxInt(t) ? to_string(i) : to_string(r), FlowGridGraphCol_Number);
-    if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, "", FlowGridGraphCol_Slot);
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return BlockNode(t, 0, 1, isBoxInt(t) ? to_string(i) : to_string(r), FlowGridGraphCol_Number);
+    if (isBoxSlot(t, &i)) return BlockNode(t, 0, 1, "", FlowGridGraphCol_Slot);
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return new BlockNode(t, ffarity(ff), 1, ffname(ff));
+    if (isBoxFFun(t, ff)) return BlockNode(t, ffarity(ff), 1, ffname(ff));
 
     Tree type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(t, 0, 1, tree2str(name));
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return BlockNode(t, 0, 1, tree2str(name));
 
     Tree label, chan;
-    if (isBoxSoundfile(t, label, chan)) return new BlockNode(t, 2, 2 + tree2int(chan), GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxSoundfile(t, label, chan)) return BlockNode(t, 2, 2 + tree2int(chan), GetUiDescription(t), FlowGridGraphCol_Ui);
 
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
     if (is_vgroup || is_hgroup || is_tgroup) {
         const char prefix = is_vgroup ? 'v' : (is_hgroup ? 'h' : 't');
-        return new GroupNode(NodeType_Group, t, Tree2Node(a), format("{}group({})", prefix, extractName(label)));
+        return GroupNode(NodeType_Group, t, Tree2Node(a), format("{}group({})", prefix, extractName(label)));
     }
 
     Tree route;
@@ -1081,7 +1081,7 @@ static Node *Tree2NodeInner(Tree t) {
         int ins, outs;
         vector<int> routes;
         // Build `ins`x`outs` cable routing.
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isBoxInts(route, routes)) return new RouteNode(t, ins, outs, routes);
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isBoxInts(route, routes)) return RouteNode(t, ins, outs, routes);
         throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
@@ -1090,27 +1090,30 @@ static Node *Tree2NodeInner(Tree t) {
 
 static Count FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
 
+vector<Node> Nodes;
+static Node *CreateNode(Node node) {
+    Nodes.emplace_back(std::move(node));
+    return &Nodes.back();
+}
+
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping these bad names to remind me to clean this up, likely into a `Node` ctor.)
-static Node *Tree2NodeNode(Tree t) {
-    auto *node = Tree2NodeInner(t);
+static Node Tree2NodeNode(Tree t) {
+    auto node = Tree2NodeInner(t);
     if (GetTreeName(t).empty()) return node; // Normal case
 
     // `FoldComplexity == 0` means no folding.
-    if (FoldComplexity != 0 && node->Descendents >= FoldComplexity) {
+    if (FoldComplexity != 0 && node.Descendents >= FoldComplexity) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        auto *group_node = new GroupNode(NodeType_Decorate, t, node);
-        Nodes.push_back(group_node);
-        return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, group_node);
+        auto *group_node = CreateNode(GroupNode(NodeType_Decorate, t, CreateNode(node)));
+        return BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, group_node);
     }
-    return IsPureRouting(t) ? node : new GroupNode(NodeType_Group, t, node);
+    return IsPureRouting(t) ? node : GroupNode(NodeType_Group, t, CreateNode(node));
 }
 
 static Node *Tree2Node(Tree t) {
-    auto *node = Tree2NodeNode(t);
-    Nodes.push_back(node);
-    return Nodes.back();
+    return CreateNode(Tree2NodeNode(t));
 }
 
 string GetBoxType(Box t) {
@@ -1164,17 +1167,18 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
-static std::optional<GroupNode> RootNode{}; // This node is drawn every frame if present.
-static GroupNode CreateRootNode(Tree t) { return {NodeType_Decorate, t, Tree2NodeInner(t)}; }
+static Node *RootNode{}; // This node is drawn every frame if present.
+static Node *CreateRootNode(Tree t) { return CreateNode(GroupNode(NodeType_Decorate, t, CreateNode(Tree2NodeInner(t)))); }
 
 void OnBoxChange(Box box) {
     IsTreePureRouting.clear();
+    Nodes.clear();
     FocusedNodeStack = {};
     if (box) {
-        RootNode.emplace(CreateRootNode(box));
-        FocusedNodeStack.push(&(*RootNode));
+        RootNode = CreateRootNode(box);
+        FocusedNodeStack.push(RootNode);
     } else {
-        RootNode = nullopt;
+        RootNode = nullptr;
     }
 }
 
@@ -1184,10 +1188,10 @@ void SaveBoxSvg(string_view path) {
     fs::remove_all(path);
     fs::create_directory(path);
 
-    auto node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
-    node.PlaceSize(DeviceType_SVG);
-    node.Place(DeviceType_SVG);
-    node.WriteSvg(path);
+    auto *node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
+    node->PlaceSize(DeviceType_SVG);
+    node->Place(DeviceType_SVG);
+    node->WriteSvg(path);
 }
 
 void Audio::FaustState::FaustGraph::Render() const {

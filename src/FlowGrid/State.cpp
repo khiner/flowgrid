@@ -6,6 +6,7 @@
 #include "implot_internal.h"
 
 #include "FileDialog/FileDialogDemo.h"
+#include "UI/Faust/FaustGraph.h"
 
 using namespace ImGui;
 using namespace fg;
@@ -404,12 +405,17 @@ void Menu::Render() const {
 
 void Info::Render() const {
     const auto hovered_id = GetHoveredID();
-    if (hovered_id && StateMember::WithId.contains(hovered_id)) {
+    if (!hovered_id) return;
+
+    PushTextWrapPos(0);
+    if (StateMember::WithId.contains(hovered_id)) {
         const auto *member = StateMember::WithId.at(hovered_id);
         const string help = member->Help.empty() ? format("No info available for {}.", member->Name) : member->Help;
-        PushTextWrapPos(0);
         TextUnformatted(help.c_str());
+    } else if (Box box = GetHoveredBox(hovered_id)) {
+        TextUnformatted(GetTreeInfo(box).c_str());
     }
+    PopTextWrapPos();
 }
 
 void State::UIProcess::Render() const {}

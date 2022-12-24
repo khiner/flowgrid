@@ -321,11 +321,17 @@ static string GetTreeName(Tree tree) {
 
 static string GetBoxType(Box t);
 
+string GetTreeInfo(Tree tree) {
+    return GetBoxType(tree);
+}
+
 // Hex address (without the '0x' prefix)
 static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
 // An abstract block graph node.
 struct Node {
+    static map<ID, const Node *> WithId;
+
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
     const Count InCount, OutCount;
@@ -344,6 +350,13 @@ struct Node {
     }
 
     virtual ~Node() = default;
+
+    void AddId(ID parent_id) const {
+        const auto imgui_id = ImHashStr(Id.c_str(), 0, parent_id);
+        WithId[imgui_id] = this;
+        if (A) A->AddId(imgui_id);
+        if (B) B->AddId(imgui_id);
+    }
 
     Count IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
 
@@ -368,15 +381,17 @@ struct Node {
     }
     void Place(const DeviceType type) { DoPlace(type); }
     void Draw(Device &device) const {
+        const bool is_imgui = device.Type() == DeviceType_ImGui;
         const auto before_cursor = device.CursorPosition;
         device.AdvanceCursor(Position);
+        if (is_imgui) PushID(Id.c_str());
 
         InteractionFlags flags = InteractionFlags_None;
-        if (device.Type() == DeviceType_ImGui) {
+        if (is_imgui) {
             const auto before_cursor_inner = device.CursorPosition;
             const auto &local_rect = GetFrameRect();
             device.AdvanceCursor(local_rect.Min);
-            flags |= fg::InvisibleButton(Scale(local_rect.GetSize()), Id.c_str());
+            flags |= fg::InvisibleButton(Scale(local_rect.GetSize()), "");
             SetItemAllowOverlap();
             device.SetCursorPos(before_cursor_inner);
         }
@@ -394,6 +409,7 @@ struct Node {
             if (flags & FaustGraphHoverFlags_ShowChildChannels) DrawChildChannelLabels(device);
         }
 
+        if (is_imgui) PopID();
         device.SetCursorPos(before_cursor);
     };
 
@@ -489,6 +505,7 @@ protected:
     }
 };
 
+map<ID, const Node *> Node::WithId{};
 std::stack<Node *> FocusedNodeStack;
 
 static inline float GetScale() {
@@ -1157,6 +1174,7 @@ void OnBoxChange(Box box) {
     if (box) {
         RootNode.emplace(CreateRootNode(box));
         FocusedNodeStack.push(&(*RootNode));
+        Node::WithId.clear();
     } else {
         RootNode = nullopt;
     }
@@ -1172,6 +1190,11 @@ void SaveBoxSvg(string_view path) {
     node.PlaceSize(DeviceType_SVG);
     node.Place(DeviceType_SVG);
     node.WriteSvg(path);
+}
+
+Box GetHoveredBox(ID imgui_id) {
+    const Node *node = Node::WithId[imgui_id];
+    return node ? node->FaustTree : nullptr;
 }
 
 void Audio::FaustState::FaustGraph::Render() const {
@@ -1201,20 +1224,21 @@ void Audio::FaustState::FaustGraph::Render() const {
     }
 
     auto *focused = FocusedNodeStack.top();
-    auto start = Clock::now();
+    // auto start = Clock::now();
     focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
-    cout << "Place: " << FormatTimeSince(start) << '\n';
+    // cout << "Place: " << FormatTimeSince(start) << '\n';
 
     if (!Style().ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    if (Node::WithId.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
     GetCurrentWindow()->FontWindowScale = Scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style().Colors[FlowGridGraphCol_Bg]);
 
     ImGuiDevice device;
-    start = Clock::now();
+    // start = Clock::now();
     focused->Draw(device);
-    cout << "Draw: " << FormatTimeSince(start) << '\n';
+    // cout << "Draw: " << FormatTimeSince(start) << '\n';
 
     EndChild();
 }

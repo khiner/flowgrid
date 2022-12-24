@@ -1125,65 +1125,63 @@ void Style::FlowGridStyle::Graph::LayoutFaust(TransientStore &store) const {
 }
 
 void Colors::Draw() const {
-    if (BeginTabItem(ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
-        static ImGuiTextFilter filter;
-        filter.Draw("Filter colors", GetFontSize() * 16);
+    static ImGuiTextFilter filter;
+    filter.Draw("Filter colors", GetFontSize() * 16);
 
-        static ImGuiColorEditFlags alpha_flags = 0;
-        if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) alpha_flags = ImGuiColorEditFlags_None;
-        SameLine();
-        if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) alpha_flags = ImGuiColorEditFlags_AlphaPreview;
-        SameLine();
-        if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
-        SameLine();
-        ::HelpMarker("In the color list:\n"
-                     "Left-click on color square to open color picker.\n"
-                     "Right-click to open edit options menu.");
+    static ImGuiColorEditFlags alpha_flags = 0;
+    if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) alpha_flags = ImGuiColorEditFlags_None;
+    SameLine();
+    if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) alpha_flags = ImGuiColorEditFlags_AlphaPreview;
+    SameLine();
+    if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
+    SameLine();
+    ::HelpMarker("In the color list:\n"
+                 "Left-click on color square to open color picker.\n"
+                 "Right-click to open edit options menu.");
 
-        BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
-        PushItemWidth(-160);
+    BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
+    PushItemWidth(-160);
 
-        const auto &style = GetStyle();
-        for (Count i = 0; i < size(); i++) {
-            const U32 value = (*this)[i];
-            const bool is_auto = AllowAuto && value == AutoColor;
-            const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : value;
+    const auto &style = GetStyle();
+    for (Count i = 0; i < size(); i++) {
+        const U32 value = (*this)[i];
+        const bool is_auto = AllowAuto && value == AutoColor;
+        const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : value;
 
-            const string &name = GetName(i);
-            if (!filter.PassFilter(name.c_str())) continue;
+        const string &name = GetName(i);
+        if (!filter.PassFilter(name.c_str())) continue;
 
-            PushID(int(i));
-            // todo use auto for FG colors (link to ImGui colors)
-            if (AllowAuto) {
-                if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) q(SetValue{Path / to_string(i), is_auto ? mapped_value : AutoColor});
-                if (!is_auto) PopStyleVar();
-                SameLine();
-            }
-            auto mutable_value = ColorConvertU32ToFloat4(mapped_value);
-            if (is_auto) BeginDisabled();
-            const bool item_changed = ColorEdit4(PathLabel(Path / to_string(i)).c_str(), (float *)&mutable_value, alpha_flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-            UiContext.WidgetGestured();
-            if (is_auto) EndDisabled();
-
-            SameLine(0, style.ItemInnerSpacing.x);
-            TextUnformatted(name.c_str());
-            PopID();
-
-            if (item_changed) q(SetValue{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});
-        }
+        PushID(int(i));
+        // todo use auto for FG colors (link to ImGui colors)
         if (AllowAuto) {
-            Separator();
-            PushTextWrapPos(0);
-            Text("Colors that are set to Auto will be automatically deduced from your ImGui style or the current ImPlot colormap.\n"
-                 "If you want to style individual plot items, use Push/PopStyleColor around its function.");
-            PopTextWrapPos();
+            if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
+            if (Button("Auto")) q(SetValue{Path / to_string(i), is_auto ? mapped_value : AutoColor});
+            if (!is_auto) PopStyleVar();
+            SameLine();
         }
+        auto mutable_value = ColorConvertU32ToFloat4(mapped_value);
+        if (is_auto) BeginDisabled();
+        const bool item_changed = ColorEdit4(PathLabel(Path / to_string(i)).c_str(), (float *)&mutable_value, alpha_flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
+        UiContext.WidgetGestured();
+        if (is_auto) EndDisabled();
 
-        PopItemWidth();
-        EndChild();
-        EndTabItem();
+        SameLine(0, style.ItemInnerSpacing.x);
+        TextUnformatted(name.c_str());
+        PopID();
+
+        if (item_changed) q(SetValue{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});
     }
+    if (AllowAuto) {
+        Separator();
+        PushTextWrapPos(0);
+        Text("Colors that are set to Auto will be automatically deduced from your ImGui style or the current ImPlot colormap.\n"
+             "If you want to style individual plot items, use Push/PopStyleColor around its function.");
+        PopTextWrapPos();
+    }
+
+    PopItemWidth();
+    EndChild();
+    EndTabItem();
 }
 
 void Style::ImGuiStyle::Render() const {
@@ -1221,7 +1219,7 @@ void Style::ImGuiStyle::Render() const {
     Separator();
 
     if (BeginTabBar("", ImGuiTabBarFlags_None)) {
-        if (BeginTabItem("Sizes", nullptr, ImGuiTabItemFlags_NoPushId)) {
+        if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
             Text("Main");
             WindowPadding.Draw();
             FramePadding.Draw();
@@ -1262,9 +1260,9 @@ void Style::ImGuiStyle::Render() const {
 
             EndTabItem();
         }
-
-        Colors.Draw();
-
+        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Colors.Draw();
+        }
         if (BeginTabItem("Fonts")) {
             ShowFontAtlas(io.Fonts);
 
@@ -1274,7 +1272,6 @@ void Style::ImGuiStyle::Render() const {
 
             EndTabItem();
         }
-
         if (BeginTabItem("Rendering", nullptr, ImGuiTabItemFlags_NoPushId)) {
             AntiAliasedLines.Draw();
             AntiAliasedLinesUseTex.Draw();
@@ -1363,7 +1360,9 @@ void Style::ImPlotStyle::Render() const {
 
             EndTabItem();
         }
-        Colors.Draw();
+        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Colors.Draw();
+        }
         EndTabBar();
     }
 }
@@ -1440,7 +1439,9 @@ void Style::FlowGridStyle::Render() const {
             Params.Draw();
             EndTabItem();
         }
-        Colors.Draw();
+        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Colors.Draw();
+        }
         EndTabBar();
     }
 }

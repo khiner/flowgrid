@@ -284,11 +284,12 @@ struct ImGuiDevice : Device {
         RenderArrowPointingAt(DrawList, At(p) + ImVec2{0, 0.5f}, Scale(Style().ArrowSize), GlobalDirection(orientation), Style().Colors[FlowGridGraphCol_Line]);
     }
 
+    // Basically `DrawList->AddLine(...)`, but avoiding extra vec2 math to cancel out the +0.5x ImGui adds to line points.
     void Line(const ImVec2 &start, const ImVec2 &end) override {
-        const U32 color = Style().Colors[FlowGridGraphCol_Line];
-        const float width = Scale(Style().WireWidth);
-        // ImGui adds {0.5, 0.5} to line points.
-        DrawList->AddLine(At(start) - ImVec2{0.5f, 0}, At(end) - ImVec2{0.5f, 0}, color, width);
+        static const auto offset = ImVec2{0.f, 0.5f};
+        DrawList->PathLineTo(At(start) + offset);
+        DrawList->PathLineTo(At(end) + offset);
+        DrawList->PathStroke(Style().Colors[FlowGridGraphCol_Line], 0, Scale(Style().WireWidth));
     }
 
     void Text(const ImVec2 &p, string_view text, const TextStyle &style) override {

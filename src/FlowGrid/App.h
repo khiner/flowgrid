@@ -73,16 +73,18 @@ struct StateMember {
 
     StateMember(StateMember *parent = nullptr, string_view path_segment = "", string_view name_help = "");
     virtual ~StateMember();
+    const StateMember *Child(Count i) const { return Children[i]; }
 
     const StateMember *Parent;
     StatePath Path;
     string PathSegment, Name, Help, ImGuiLabel;
     ID Id;
-    vector<StateMember *> Children{};
 
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
+
+    vector<StateMember *> Children{};
 };
 
 /**
@@ -418,9 +420,9 @@ struct Colors : StateMember {
     static constexpr U32 AutoColor = 0X00010101;
 
     Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
-        : StateMember(parent, path_segment, name_help), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {
+        : StateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
         for (Count i = 0; i < size; i++) {
-            new UInt(this, to_string(i), "", 0);
+            new UInt(this, to_string(i), get_color_name(i), 0); // Adds to `Children` as a side-effect.
         }
     }
     ~Colors() {
@@ -435,7 +437,6 @@ struct Colors : StateMember {
 
     Count Size() const { return Children.size(); }
     U32 operator[](Count) const;
-    string GetName(Count i) const { return GetColorName(int(i)); };
     void Draw() const;
 
     void Set(const vector<ImVec4> &, TransientStore &) const;
@@ -445,7 +446,6 @@ private:
     inline const UInt *At(Count) const;
 
     bool AllowAuto;
-    const std::function<const char *(int)> GetColorName;
 };
 
 // Subset of `ImGuiTableFlags`.

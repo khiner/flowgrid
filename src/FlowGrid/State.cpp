@@ -806,9 +806,9 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
     const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
     const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
     const string label = LabelMode == Annotated ?
-        (is_imgui_color        ? s.Style.ImGui.Colors.GetName(array_index) :
-             is_implot_color   ? s.Style.ImPlot.Colors.GetName(array_index) :
-             is_flowgrid_color ? s.Style.FlowGrid.Colors.GetName(array_index) :
+        (is_imgui_color        ? s.Style.ImGui.Colors.Child(array_index)->Name :
+             is_implot_color   ? s.Style.ImPlot.Colors.Child(array_index)->Name :
+             is_flowgrid_color ? s.Style.FlowGrid.Colors.Child(array_index)->Name :
              is_array_item     ? leaf_name :
                                  string(key)) :
         string(key);
@@ -1157,12 +1157,12 @@ void Colors::Draw() const {
 
     const auto &style = GetStyle();
     for (Count i = 0; i < Size(); i++) {
-        const U32 value = (*this)[i];
+        const UInt *child = At(i);
+        const U32 value = *child;
         const bool is_auto = AllowAuto && value == AutoColor;
         const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : value;
 
-        const string &name = GetName(i);
-        if (!filter.PassFilter(name.c_str())) continue;
+        if (!filter.PassFilter(child->Name.c_str())) continue;
 
         PushID(int(i));
         // todo use auto for FG colors (link to ImGui colors)
@@ -1179,7 +1179,7 @@ void Colors::Draw() const {
         if (is_auto) EndDisabled();
 
         SameLine(0, style.ItemInnerSpacing.x);
-        TextUnformatted(name.c_str());
+        TextUnformatted(child->Name.c_str());
         PopID();
 
         if (item_changed) q(SetValue{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});

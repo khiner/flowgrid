@@ -252,6 +252,7 @@ struct UInt : Base {
     operator U32() const { return Value; }
     operator bool() const { return bool(Value); }
     operator int() const { return int(Value); }
+    operator ImColor() const { return Value; }
     bool operator==(U32 value) const { return Value == value; }
 
     void Update() override;
@@ -382,14 +383,14 @@ struct Vector : StateMember {
 
     virtual string GetName(Count index) const { return to_string(index); };
 
-    T operator[](Count index) const;
+    T operator[](Count) const;
     Count size(const Store &store = AppStore) const;
 
-    Store Set(Count index, const T &value, const Store &store = AppStore) const;
+    Store Set(Count i, const T &value, const Store &store = AppStore) const;
     Store Set(const vector<T> &values, const Store &store = AppStore) const;
     Store Set(const vector<pair<int, T>> &, const Store &store = AppStore) const;
 
-    void Set(Count index, const T &value, TransientStore &) const;
+    void Set(Count i, const T &value, TransientStore &) const;
     void Set(const vector<T> &values, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
 
@@ -410,30 +411,39 @@ struct Vector2D : StateMember {
     void truncate(Count i, Count length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
 };
 
-struct Colors : Vector<U32> {
+struct Colors : StateMember {
     // An arbitrary transparent color is used to mark colors as "auto".
     // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
-    // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67),
-    // but not using a value so it can be represented in a U32.
+    // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
     static constexpr U32 AutoColor = 0X00010101;
 
-    Colors(StateMember *parent, string_view path_segment, string_view name_help, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
-        : Vector(parent, path_segment, name_help), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {}
+    Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
+        : StateMember(parent, path_segment, name_help), AllowAuto(allow_auto), GetColorName(std::move(get_color_name)) {
+        for (Count i = 0; i < size; i++) {
+            new UInt(this, to_string(i), "", 0);
+        }
+    }
+    ~Colors() {
+        const Count size = Size();
+        for (int i = size - 1; i >= 0; i--) {
+            delete Children[i];
+        }
+    }
 
     static U32 ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
     static ImVec4 ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
-    string GetName(Count index) const override { return GetColorName(int(index)); };
+    Count Size() const { return Children.size(); }
+    U32 operator[](Count) const;
+    string GetName(Count i) const { return GetColorName(int(i)); };
     void Draw() const;
 
-    void Set(const vector<ImVec4> &values, TransientStore &transient) const {
-        Vector::Set(values | transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | to<vector>, transient);
-    }
-    void Set(const vector<pair<int, ImVec4>> &entries, TransientStore &transient) const {
-        Vector::Set(entries | transform([](const auto &entry) { return pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | to<vector>, transient);
-    }
+    void Set(const vector<ImVec4> &, TransientStore &) const;
+    void Set(const vector<pair<int, ImVec4>> &, TransientStore &) const;
 
 private:
+    inline const UInt *At(Count) const;
+
     bool AllowAuto;
     const std::function<const char *(int)> GetColorName;
 };
@@ -884,7 +894,7 @@ struct Style : TabsWindow {
             Prop(Float, WireGap, 16, 10, 20);
             Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
             Prop(Float, InverterRadius, 3, 1, 5);
-            Prop(Colors, Colors, GetColorName);
+            Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
             const vector<std::reference_wrapper<Field::Base>> LayoutFields{
                 SequentialConnectionZigzag,
@@ -968,7 +978,7 @@ struct Style : TabsWindow {
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
         Prop(Graph, Graph);
         Prop(Params, Params);
-        Prop(Colors, Colors, GetColorName);
+        Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 
         void ColorsDark(TransientStore &store) const;
         void ColorsLight(TransientStore &store) const;
@@ -1057,7 +1067,7 @@ struct Style : TabsWindow {
         Prop(Float, MouseCursorScale, 1);
         Prop(Float, ColumnsMinSpacing, 6);
 
-        Prop(Colors, Colors, ImGui::GetStyleColorName);
+        Prop(Colors, Colors, ImGuiCol_COUNT, ImGui::GetStyleColorName);
     );
 
     UIMember_(
@@ -1106,7 +1116,7 @@ struct Style : TabsWindow {
         Prop(Vec2Linked, AnnotationPadding, {2, 2}, 0, 5, "%.0f");
         Prop(Vec2Linked, FitPadding, {0, 0}, 0, 0.2, "%.2f");
 
-        Prop(Colors, Colors, ImPlot::GetStyleColorName, true);
+        Prop(Colors, Colors, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true);
         Prop(Bool, UseLocalTime);
         Prop(Bool, UseISO8601);
         Prop(Bool, Use24HourClock);

@@ -50,7 +50,7 @@ void Flags::Update() { Value = std::get<int>(Get()); }
 } // namespace Field
 
 template<typename T>
-T Vector<T>::operator[](Count index) const { return std::get<T>(AppStore.at(Path / to_string(index))); };
+T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(Path / to_string(i))); };
 template<typename T>
 Count Vector<T>::size(const Store &store) const {
     Count i = 0;
@@ -60,7 +60,7 @@ Count Vector<T>::size(const Store &store) const {
 
 // Transient
 template<typename T>
-void Vector<T>::Set(Count index, const T &value, TransientStore &store) const { store.set(Path / to_string(index), value); }
+void Vector<T>::Set(Count i, const T &value, TransientStore &store) const { store.set(Path / to_string(i), value); }
 template<typename T>
 void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
     ::Set(views::ints(0, int(values.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), values[i]); }) | to<vector>, store);
@@ -75,7 +75,7 @@ Store Vector<T>::Set(const vector<pair<int, T>> &values, const Store &store) con
 
 // Persistent
 template<typename T>
-Store Vector<T>::Set(Count index, const T &value, const Store &store) const { return ::Set(Path / index, value, store); }
+Store Vector<T>::Set(Count i, const T &value, const Store &store) const { return ::Set(Path / i, value, store); }
 template<typename T>
 Store Vector<T>::Set(const vector<T> &values, const Store &store) const {
     if (values.empty()) return store;
@@ -86,7 +86,7 @@ Store Vector<T>::Set(const vector<T> &values, const Store &store) const {
 }
 template<typename T>
 void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
-    for (const auto &[index, value] : values) store.set(Path / to_string(index), value);
+    for (const auto &[i, value] : values) store.set(Path / to_string(i), value);
 }
 
 template<typename T>
@@ -1124,6 +1124,19 @@ void Style::FlowGridStyle::Graph::LayoutFaust(TransientStore &store) const {
     );
 }
 
+const UInt *Colors::At(Count i) const { return dynamic_cast<const UInt *>(Children[i]); }
+U32 Colors::operator[](Count i) const { return *At(i); };
+void Colors::Set(const vector<ImVec4> &values, TransientStore &transient) const {
+    for (Count i = 0; i < values.size(); i++) {
+        ::Set(*At(i), ConvertFloat4ToU32(values[i]), transient);
+    }
+}
+void Colors::Set(const vector<pair<int, ImVec4>> &entries, TransientStore &transient) const {
+    for (const auto &[i, v] : entries) {
+        ::Set(*At(i), ConvertFloat4ToU32(v), transient);
+    }
+}
+
 void Colors::Draw() const {
     static ImGuiTextFilter filter;
     filter.Draw("Filter colors", GetFontSize() * 16);
@@ -1143,7 +1156,7 @@ void Colors::Draw() const {
     PushItemWidth(-160);
 
     const auto &style = GetStyle();
-    for (Count i = 0; i < size(); i++) {
+    for (Count i = 0; i < Size(); i++) {
         const U32 value = (*this)[i];
         const bool is_auto = AllowAuto && value == AutoColor;
         const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : value;

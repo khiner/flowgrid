@@ -70,71 +70,58 @@ void Flags::Update() { Value = std::get<int>(Get()); }
 
 template<typename T>
 T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(Path / to_string(i))); };
+
 template<typename T>
-Count Vector<T>::size(const Store &store) const {
+Count Vector<T>::Size(const Store &store) const {
     Count i = 0;
     while (store.count(Path / to_string(i++))) {}
     return i - 1;
 }
 
-// Transient
-template<typename T>
-void Vector<T>::Set(Count i, const T &value, TransientStore &store) const { store.set(Path / to_string(i), value); }
 template<typename T>
 void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
-    ::Set(views::ints(0, int(values.size())) | transform([&](const int i) { return StoreEntry(Path / to_string(i), values[i]); }) | to<vector>, store);
-    truncate(values.size(), store);
-}
-template<typename T>
-Store Vector<T>::Set(const vector<pair<int, T>> &values, const Store &store) const {
-    auto transient = store.transient();
-    Set(values, transient);
-    return transient.persistent();
+    Count i = 0;
+    while (i < values.size()) {
+        store.set(Path / to_string(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
+        i++;
+    }
+
+    while (store.count(Path / to_string(i))) store.erase(Path / to_string(i++));
 }
 
-// Persistent
-template<typename T>
-Store Vector<T>::Set(Count i, const T &value, const Store &store) const { return ::Set(Path / i, value, store); }
-template<typename T>
-Store Vector<T>::Set(const vector<T> &values, const Store &store) const {
-    if (values.empty()) return store;
-
-    auto transient = store.transient();
-    Set(values, transient);
-    return transient.persistent();
-}
 template<typename T>
 void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
     for (const auto &[i, value] : values) store.set(Path / to_string(i), value);
 }
 
 template<typename T>
-void Vector<T>::truncate(const Count length, TransientStore &store) const {
-    Count i = length;
-    while (store.count(Path / to_string(i))) store.erase(Path / to_string(i++));
-}
+T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(Path / to_string(i) / to_string(j))); };
 
 template<typename T>
-T Vector2D<T>::at(Count i, Count j, const Store &store) const { return std::get<T>(store.at(Path / to_string(i) / to_string(j))); };
-template<typename T>
-Count Vector2D<T>::size(const TransientStore &store) const {
+Count Vector2D<T>::Size(const TransientStore &store) const {
     Count i = 0;
     while (store.count(Path / i++ / 0).to_string()) {}
     return i - 1;
 }
+
 template<typename T>
-Store Vector2D<T>::Set(Count i, Count j, const T &value, const Store &store) const { return store.set(Path / to_string(i) / to_string(j), value); }
-template<typename T>
-void Vector2D<T>::Set(Count i, Count j, const T &value, TransientStore &store) const { store.set(Path / to_string(i) / to_string(j), value); }
-template<typename T>
-void Vector2D<T>::truncate(const Count length, TransientStore &store) const {
-    Count i = length;
-    while (store.count(Path / to_string(i) / "0")) truncate(i++, 0, store);
-}
-template<typename T>
-void Vector2D<T>::truncate(const Count i, const Count length, TransientStore &store) const {
-    Count j = length;
-    while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
+void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {
+    Count i = 0;
+    while (i < values.size()) {
+        Count j = 0;
+        while (j < values[i].size()) {
+            store.set(Path / to_string(i) / to_string(j), T(values[i][j]));
+            j++;
+        }
+        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
+        i++;
+    }
+
+    while (store.count(Path / to_string(i) / "0")) {
+        Count j = 0;
+        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
+        i++;
+    }
 }
 
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
@@ -522,33 +509,37 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
 
 void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &store) const {
     const Count size = dss.Size;
+    vector<ID> node_id(size), parent_node_id(size), parent_window_id(size), selected_tab_id(size);
+    vector<int> split_axis(size), depth(size), flags(size);
+    vector<U32> pos(size), sz(size), sz_ref(size);
     for (Count i = 0; i < size; i++) {
         const auto &ds = dss[int(i)];
-        NodeId.Set(i, ds.NodeId, store);
-        ParentNodeId.Set(i, ds.ParentNodeId, store);
-        ParentWindowId.Set(i, ds.ParentWindowId, store);
-        SelectedTabId.Set(i, ds.SelectedTabId, store);
-        SplitAxis.Set(i, ds.SplitAxis, store);
-        Depth.Set(i, ds.Depth, store);
-        Flags.Set(i, int(ds.Flags), store);
-        Pos.Set(i, PackImVec2ih(ds.Pos), store);
-        Size.Set(i, PackImVec2ih(ds.Size), store);
-        SizeRef.Set(i, PackImVec2ih(ds.SizeRef), store);
+        node_id[i] = ds.NodeId;
+        parent_node_id[i] = ds.ParentNodeId;
+        parent_window_id[i] = ds.ParentWindowId;
+        selected_tab_id[i] = ds.SelectedTabId;
+        split_axis[i] = ds.SplitAxis;
+        depth[i] = ds.Depth;
+        flags[i] = ds.Flags;
+        pos[i] = PackImVec2ih(ds.Pos);
+        sz[i] = PackImVec2ih(ds.Size);
+        sz_ref[i] = PackImVec2ih(ds.SizeRef);
     }
-    NodeId.truncate(size, store);
-    ParentNodeId.truncate(size, store);
-    ParentWindowId.truncate(size, store);
-    SelectedTabId.truncate(size, store);
-    SplitAxis.truncate(size, store);
-    Depth.truncate(size, store);
-    Flags.truncate(size, store);
-    Pos.truncate(size, store);
-    Size.truncate(size, store);
-    SizeRef.truncate(size, store);
+    NodeId.Set(node_id, store);
+    ParentNodeId.Set(parent_node_id, store);
+    ParentWindowId.Set(parent_window_id, store);
+    SelectedTabId.Set(selected_tab_id, store);
+    SplitAxis.Set(split_axis, store);
+    Depth.Set(depth, store);
+    Flags.Set(flags, store);
+    Pos.Set(pos, store);
+    Size.Set(sz, store);
+    SizeRef.Set(sz_ref, store);
 }
 void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
-    for (Count i = 0; i < NodeId.size(); i++) {
+    const auto size = NodeId.Size();
+    for (Count i = 0; i < size; i++) {
         ctx->DockContext.NodesSettings.push_back({
             NodeId[i],
             ParentNodeId[i],
@@ -565,34 +556,38 @@ void DockNodeSettings::Apply(ImGuiContext *ctx) const {
 }
 
 void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &store) const {
-    Count i = 0;
+    vector<ID> id, class_id, viewport_id, dock_id;
+    vector<int> dock_order;
+    vector<U32> pos, sz, viewport_pos;
+    vector<bool> collapsed;
     for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
-        ID.Set(i, ws->ID, store);
-        ClassId.Set(i, ws->DockId, store);
-        ViewportId.Set(i, ws->ViewportId, store);
-        DockId.Set(i, ws->DockId, store);
-        DockOrder.Set(i, ws->DockOrder, store);
-        Pos.Set(i, PackImVec2ih(ws->Pos), store);
-        Size.Set(i, PackImVec2ih(ws->Size), store);
-        ViewportPos.Set(i, PackImVec2ih(ws->ViewportPos), store);
-        Collapsed.Set(i, ws->Collapsed, store);
-        i++;
+        id.push_back(ws->ID);
+        class_id.push_back(ws->ClassId);
+        viewport_id.push_back(ws->ViewportId);
+        dock_id.push_back(ws->DockId);
+        dock_order.push_back(ws->DockOrder);
+        pos.push_back(PackImVec2ih(ws->Pos));
+        sz.push_back(PackImVec2ih(ws->Size));
+        viewport_pos.push_back(PackImVec2ih(ws->ViewportPos));
+        collapsed.push_back(ws->Collapsed);
     }
-    ID.truncate(i, store);
-    ClassId.truncate(i, store);
-    ViewportId.truncate(i, store);
-    DockId.truncate(i, store);
-    DockOrder.truncate(i, store);
-    Pos.truncate(i, store);
-    Size.truncate(i, store);
-    ViewportPos.truncate(i, store);
-    Collapsed.truncate(i, store);
+    Id.Set(id, store);
+    ClassId.Set(class_id, store);
+    ViewportId.Set(viewport_id, store);
+    DockId.Set(dock_id, store);
+    DockOrder.Set(dock_order, store);
+    Pos.Set(pos, store);
+    Size.Set(sz, store);
+    ViewportPos.Set(viewport_pos, store);
+    Collapsed.Set(collapsed, store);
 }
+
 // See `imgui.cpp::ApplyWindowSettings`
 void WindowSettings::Apply(ImGuiContext *) const {
     const auto *main_viewport = GetMainViewport();
-    for (Count i = 0; i < ID.size(); i++) {
-        const auto id = ID[i];
+    const auto size = Id.Size();
+    for (Count i = 0; i < size; i++) {
+        const auto id = Id[i];
         auto *window = FindWindowByID(id);
         if (!window) {
             cout << "Unable to apply settings for window with ID " << format("{:#08X}", id) << ": Window not found.\n";
@@ -617,55 +612,73 @@ void WindowSettings::Apply(ImGuiContext *) const {
 }
 
 void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &store) const {
-    Count i = 0;
-    for (auto *ts = tss.begin(); ts != nullptr; ts = tss.next_chunk(ts)) {
-        auto columns_count = ts->ColumnsCount;
+    // Table settings
+    vector<ImGuiID> id;
+    vector<int> save_flags;
+    vector<float> ref_scale;
+    vector<Count> columns_counts, columns_count_max;
+    vector<bool> want_apply;
 
-        ID.Set(i, ts->ID, store);
-        SaveFlags.Set(i, ts->SaveFlags, store);
-        RefScale.Set(i, ts->RefScale, store);
-        ColumnsCount.Set(i, columns_count, store);
-        ColumnsCountMax.Set(i, ts->ColumnsCountMax, store);
-        WantApply.Set(i, ts->WantApply, store);
+    // Column settings
+    vector<vector<float>> width_or_weight;
+    vector<vector<::ID>> user_id;
+    vector<vector<int>> index, display_order, sort_order, sort_direction;
+    vector<vector<bool>> is_enabled, is_stretch;
+
+    for (auto *ts_it = tss.begin(); ts_it != nullptr; ts_it = tss.next_chunk(ts_it)) {
+        auto &ts = *ts_it;
+        const auto columns_count = ts.ColumnsCount;
+
+        id.push_back(ts.ID);
+        save_flags.push_back(ts.SaveFlags);
+        ref_scale.push_back(ts.RefScale);
+        columns_counts.push_back(columns_count);
+        columns_count_max.push_back(ts.ColumnsCountMax);
+        want_apply.push_back(ts.WantApply);
+
+        width_or_weight.push_back(vector<float>(columns_count));
+        user_id.push_back(vector<::ID>(columns_count));
+        index.push_back(vector<int>(columns_count));
+        display_order.push_back(vector<int>(columns_count));
+        sort_order.push_back(vector<int>(columns_count));
+        sort_direction.push_back(vector<int>(columns_count));
+        is_enabled.push_back(vector<bool>(columns_count));
+        is_stretch.push_back(vector<bool>(columns_count));
+
         for (int column_index = 0; column_index < columns_count; column_index++) {
-            const auto &cs = ts->GetColumnSettings()[column_index];
-            Columns.WidthOrWeight.Set(i, column_index, cs.WidthOrWeight, store);
-            Columns.UserID.Set(i, column_index, cs.UserID, store);
-            Columns.Index.Set(i, column_index, cs.Index, store);
-            Columns.DisplayOrder.Set(i, column_index, cs.DisplayOrder, store);
-            Columns.SortOrder.Set(i, column_index, cs.SortOrder, store);
-            Columns.SortDirection.Set(i, column_index, cs.SortDirection, store);
-            Columns.IsEnabled.Set(i, column_index, cs.IsEnabled, store);
-            Columns.IsStretch.Set(i, column_index, cs.IsStretch, store);
+            const auto &cs = ts.GetColumnSettings()[column_index];
+            width_or_weight.back()[column_index] = cs.WidthOrWeight;
+            user_id.back()[column_index] = cs.UserID;
+            index.back()[column_index] = cs.Index;
+            display_order.back()[column_index] = cs.DisplayOrder;
+            sort_order.back()[column_index] = cs.SortOrder;
+            sort_direction.back()[column_index] = cs.SortDirection;
+            is_enabled.back()[column_index] = cs.IsEnabled;
+            is_stretch.back()[column_index] = cs.IsStretch;
         }
-        Columns.WidthOrWeight.truncate(i, columns_count, store);
-        Columns.UserID.truncate(i, columns_count, store);
-        Columns.Index.truncate(i, columns_count, store);
-        Columns.DisplayOrder.truncate(i, columns_count, store);
-        Columns.SortOrder.truncate(i, columns_count, store);
-        Columns.SortDirection.truncate(i, columns_count, store);
-        Columns.IsEnabled.truncate(i, columns_count, store);
-        Columns.IsStretch.truncate(i, columns_count, store);
-        i++;
     }
-    ID.truncate(i, store);
-    SaveFlags.truncate(i, store);
-    RefScale.truncate(i, store);
-    ColumnsCount.truncate(i, store);
-    ColumnsCountMax.truncate(i, store);
-    WantApply.truncate(i, store);
-    Columns.WidthOrWeight.truncate(i, store);
-    Columns.UserID.truncate(i, store);
-    Columns.Index.truncate(i, store);
-    Columns.DisplayOrder.truncate(i, store);
-    Columns.SortOrder.truncate(i, store);
-    Columns.SortDirection.truncate(i, store);
-    Columns.IsEnabled.truncate(i, store);
-    Columns.IsStretch.truncate(i, store);
+
+    ID.Set(id, store);
+    SaveFlags.Set(save_flags, store);
+    RefScale.Set(ref_scale, store);
+    ColumnsCount.Set(columns_counts, store);
+    ColumnsCountMax.Set(columns_count_max, store);
+    WantApply.Set(want_apply, store);
+
+    Columns.WidthOrWeight.Set(width_or_weight, store);
+    Columns.UserID.Set(user_id, store);
+    Columns.Index.Set(index, store);
+    Columns.DisplayOrder.Set(display_order, store);
+    Columns.SortOrder.Set(sort_order, store);
+    Columns.SortDirection.Set(sort_direction, store);
+    Columns.IsEnabled.Set(is_enabled, store);
+    Columns.IsStretch.Set(is_stretch, store);
 }
+
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
 void TableSettings::Apply(ImGuiContext *) const {
-    for (Count i = 0; i < ID.size(); i++) {
+    const auto size = ID.Size();
+    for (Count i = 0; i < size; i++) {
         const auto id = ID[i];
         const auto table = TableFindByID(id);
         if (!table) {
@@ -680,21 +693,21 @@ void TableSettings::Apply(ImGuiContext *) const {
         // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
         ImU64 display_order_mask = 0;
         for (Count j = 0; j < ColumnsCount[i]; j++) {
-            int column_n = Columns.Index.at(i, j);
+            int column_n = Columns.Index.At(i, j);
             if (column_n < 0 || column_n >= table->ColumnsCount) continue;
 
             ImGuiTableColumn *column = &table->Columns[column_n];
             if (ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Resizable) {
-                float width_or_weight = Columns.WidthOrWeight.at(i, j);
-                if (Columns.IsStretch.at(i, j)) column->StretchWeight = width_or_weight;
+                float width_or_weight = Columns.WidthOrWeight.At(i, j);
+                if (Columns.IsStretch.At(i, j)) column->StretchWeight = width_or_weight;
                 else column->WidthRequest = width_or_weight;
                 column->AutoFitQueue = 0x00;
             }
-            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder.at(i, j)) : (ImGuiTableColumnIdx)column_n;
+            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder.At(i, j)) : (ImGuiTableColumnIdx)column_n;
             display_order_mask |= (ImU64)1 << column->DisplayOrder;
-            column->IsUserEnabled = column->IsUserEnabledNextFrame = Columns.IsEnabled.at(i, j);
-            column->SortOrder = ImGuiTableColumnIdx(Columns.SortOrder.at(i, j));
-            column->SortDirection = Columns.SortDirection.at(i, j);
+            column->IsUserEnabled = column->IsUserEnabledNextFrame = Columns.IsEnabled.At(i, j);
+            column->SortOrder = ImGuiTableColumnIdx(Columns.SortOrder.At(i, j));
+            column->SortDirection = Columns.SortDirection.At(i, j);
         }
 
         // Validate and fix invalid display order data

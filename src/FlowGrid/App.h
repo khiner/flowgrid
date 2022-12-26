@@ -387,17 +387,10 @@ struct Vector : StateMember {
     virtual string GetName(Count index) const { return to_string(index); };
 
     T operator[](Count) const;
-    Count size(const Store &store = AppStore) const;
+    Count Size(const Store &store = AppStore) const;
 
-    Store Set(Count i, const T &value, const Store &store = AppStore) const;
-    Store Set(const vector<T> &values, const Store &store = AppStore) const;
-    Store Set(const vector<pair<int, T>> &, const Store &store = AppStore) const;
-
-    void Set(Count i, const T &value, TransientStore &) const;
     void Set(const vector<T> &values, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
-
-    void truncate(Count length, TransientStore &) const; // Delete every element after index `length - 1`.
 };
 
 // Really a vector of vectors. Inner vectors need not have the same length.
@@ -405,13 +398,10 @@ template<typename T>
 struct Vector2D : StateMember {
     using StateMember::StateMember;
 
-    T at(Count i, Count j, const Store &store = AppStore) const;
-    Count size(const TransientStore &) const; // Number of outer vectors
+    T At(Count i, Count j, const Store &store = AppStore) const;
+    Count Size(const TransientStore &) const; // Number of outer vectors
 
-    Store Set(Count i, Count j, const T &value, const Store &store = AppStore) const;
-    void Set(Count i, Count j, const T &value, TransientStore &) const;
-    void truncate(Count length, TransientStore &) const; // Delete every outer vector after index `length - 1`.
-    void truncate(Count i, Count length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
+    void Set(const vector<vector<T>> &values, TransientStore &) const;
 };
 
 struct Colors : UIStateMember {
@@ -1164,10 +1154,10 @@ Member(
     void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &) const;
     void Apply(ImGuiContext *) const;
 
-    Prop(Vector<ImGuiID>, ID);
-    Prop(Vector<ImGuiID>, ClassId);
-    Prop(Vector<ImGuiID>, ViewportId);
-    Prop(Vector<ImGuiID>, DockId);
+    Prop(Vector<ID>, Id);
+    Prop(Vector<ID>, ClassId);
+    Prop(Vector<ID>, ViewportId);
+    Prop(Vector<ID>, DockId);
     Prop(Vector<int>, DockOrder);
     Prop(Vector<U32>, Pos); // Packed ImVec2ih
     Prop(Vector<U32>, Size); // Packed ImVec2ih

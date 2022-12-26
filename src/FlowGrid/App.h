@@ -257,6 +257,7 @@ struct UInt : Base {
     operator ImColor() const { return Value; }
     bool operator==(U32 value) const { return Value == value; }
 
+    void ColorEdit4(ImGuiColorEditFlags = ImGuiColorEditFlags_None, bool allow_auto = false) const;
     void Update() override;
 
     U32 min, max;
@@ -413,16 +414,16 @@ struct Vector2D : StateMember {
     void truncate(Count i, Count length, TransientStore &) const; // Delete every element after index `length - 1` in inner vector `i`.
 };
 
-struct Colors : StateMember {
+struct Colors : UIStateMember {
     // An arbitrary transparent color is used to mark colors as "auto".
     // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
     // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
     static constexpr U32 AutoColor = 0X00010101;
 
     Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
-        : StateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
+        : UIStateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
         for (Count i = 0; i < size; i++) {
-            new UInt(this, to_string(i), get_color_name(i), 0); // Adds to `Children` as a side-effect.
+            new UInt(this, to_string(i), get_color_name(i)); // Adds to `Children` as a side-effect.
         }
     }
     ~Colors() {
@@ -437,10 +438,12 @@ struct Colors : StateMember {
 
     Count Size() const { return Children.size(); }
     U32 operator[](Count) const;
-    void Draw() const;
 
     void Set(const vector<ImVec4> &, TransientStore &) const;
     void Set(const vector<pair<int, ImVec4>> &, TransientStore &) const;
+
+protected:
+    void Render() const override;
 
 private:
     inline const UInt *At(Count) const;

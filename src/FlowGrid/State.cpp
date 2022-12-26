@@ -13,6 +13,25 @@ using namespace fg;
 using namespace action;
 
 //-----------------------------------------------------------------------------
+// [SECTION] Draw helpers
+//-----------------------------------------------------------------------------
+
+ImRect RowItemRect() {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
+}
+
+ImRect RowItemRatioRect(float ratio) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
+}
+
+void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
+    const auto &rect = RowItemRect();
+    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
+}
+
+//-----------------------------------------------------------------------------
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
@@ -130,40 +149,71 @@ void StateMember::HelpMarker(const bool after) const {
 void Bool::Toggle() const { q(ToggleValue{Path}); }
 
 void Field::Bool::Render() const {
-    bool value = *this;
+    bool value = Value;
     if (Checkbox(ImGuiLabel.c_str(), &value)) Toggle();
     HelpMarker();
 }
 bool Field::Bool::CheckedDraw() const {
-    bool value = *this;
+    bool value = Value;
     bool toggled = Checkbox(ImGuiLabel.c_str(), &value);
     if (toggled) Toggle();
     HelpMarker();
     return toggled;
 }
 void Field::Bool::MenuItem() const {
-    const bool value = *this;
+    const bool value = Value;
     HelpMarker(false);
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
 }
 
 void Field::UInt::Render() const {
-    U32 value = *this;
+    U32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
     UiContext.WidgetGestured();
     if (edited) q(SetValue{Path, value});
     HelpMarker();
 }
 
+void Field::UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
+    const Count i = std::stoi(PathSegment); // Assuming color is a member of a vector here.
+    const bool is_auto = allow_auto && Value == Colors::AutoColor;
+    const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : Value;
+
+    PushID(ImGuiLabel.c_str());
+    InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
+    SetItemAllowOverlap();
+
+    // todo use auto for FG colors (link to ImGui colors)
+    if (allow_auto) {
+        if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
+        if (Button("Auto")) q(SetValue{Path, is_auto ? mapped_value : Colors::AutoColor});
+        if (!is_auto) PopStyleVar();
+        SameLine();
+    }
+
+    auto value = ColorConvertU32ToFloat4(mapped_value);
+    if (is_auto) BeginDisabled();
+    const bool changed = ImGui::ColorEdit4("", (float *)&value, flags | ImGuiColorEditFlags_AlphaBar | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
+    UiContext.WidgetGestured();
+    if (is_auto) EndDisabled();
+
+    SameLine(0, GetStyle().ItemInnerSpacing.x);
+    TextUnformatted(Name.c_str());
+
+    PopID();
+
+    if (changed) q(SetValue{Path, ColorConvertFloat4ToU32(value)});
+}
+
 void Field::Int::Render() const {
-    int value = *this;
+    int value = Value;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
     UiContext.WidgetGestured();
     if (edited) q(SetValue{Path, value});
     HelpMarker();
 }
 void Field::Int::Render(const vector<int> &options) const {
-    const int value = *this;
+    const int value = Value;
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
@@ -176,7 +226,7 @@ void Field::Int::Render(const vector<int> &options) const {
 }
 
 void Field::Float::Render() const {
-    float value = *this;
+    float value = Value;
     const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
     UiContext.WidgetGestured();
     if (edited) q(SetValue{Path, value});
@@ -187,7 +237,7 @@ void Field::Enum::Render() const {
     Render(views::ints(0, int(Names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
 void Field::Enum::Render(const vector<int> &options) const {
-    const int value = *this;
+    const int value = Value;
     if (BeginCombo(ImGuiLabel.c_str(), Names[value].c_str())) {
         for (int option : options) {
             const bool is_selected = option == value;
@@ -200,7 +250,7 @@ void Field::Enum::Render(const vector<int> &options) const {
     HelpMarker();
 }
 void Field::Enum::MenuItem() const {
-    const int value = *this;
+    const int value = Value;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Names.size(); i++) {
@@ -213,7 +263,7 @@ void Field::Enum::MenuItem() const {
 }
 
 void Field::Flags::Render() const {
-    const int value = *this;
+    const int value = Value;
     if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
         for (Count i = 0; i < Items.size(); i++) {
             const auto &item = Items[i];
@@ -230,7 +280,7 @@ void Field::Flags::Render() const {
     HelpMarker();
 }
 void Field::Flags::MenuItem() const {
-    const int value = *this;
+    const int value = Value;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Items.size(); i++) {
@@ -249,7 +299,7 @@ void Field::Flags::MenuItem() const {
 }
 
 void Field::String::Render() const {
-    const string value = *this;
+    const string value = Value;
     TextUnformatted(value.c_str());
 }
 void Field::String::Render(const vector<string> &options) const {
@@ -263,25 +313,6 @@ void Field::String::Render(const vector<string> &options) const {
         EndCombo();
     }
     HelpMarker();
-}
-
-//-----------------------------------------------------------------------------
-// [SECTION] Helpers
-//-----------------------------------------------------------------------------
-
-ImRect RowItemRect() {
-    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
-}
-
-ImRect RowItemRatioRect(float ratio) {
-    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
-}
-
-void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
-    const auto &rect = RowItemRect();
-    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
 }
 
 void Vec2::Render(ImGuiSliderFlags flags) const {
@@ -1137,16 +1168,16 @@ void Colors::Set(const vector<pair<int, ImVec4>> &entries, TransientStore &trans
     }
 }
 
-void Colors::Draw() const {
+void Colors::Render() const {
     static ImGuiTextFilter filter;
     filter.Draw("Filter colors", GetFontSize() * 16);
 
-    static ImGuiColorEditFlags alpha_flags = 0;
-    if (RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) alpha_flags = ImGuiColorEditFlags_None;
+    static ImGuiColorEditFlags flags = 0;
+    if (RadioButton("Opaque", flags == ImGuiColorEditFlags_None)) flags = ImGuiColorEditFlags_None;
     SameLine();
-    if (RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) alpha_flags = ImGuiColorEditFlags_AlphaPreview;
+    if (RadioButton("Alpha", flags == ImGuiColorEditFlags_AlphaPreview)) flags = ImGuiColorEditFlags_AlphaPreview;
     SameLine();
-    if (RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf;
+    if (RadioButton("Both", flags == ImGuiColorEditFlags_AlphaPreviewHalf)) flags = ImGuiColorEditFlags_AlphaPreviewHalf;
     SameLine();
     ::HelpMarker("In the color list:\n"
                  "Left-click on color square to open color picker.\n"
@@ -1155,34 +1186,11 @@ void Colors::Draw() const {
     BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
     PushItemWidth(-160);
 
-    const auto &style = GetStyle();
-    for (Count i = 0; i < Size(); i++) {
-        const UInt *child = At(i);
-        const U32 value = *child;
-        const bool is_auto = AllowAuto && value == AutoColor;
-        const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : value;
-
-        if (!filter.PassFilter(child->Name.c_str())) continue;
-
-        PushID(int(i));
-        // todo use auto for FG colors (link to ImGui colors)
-        if (AllowAuto) {
-            if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-            if (Button("Auto")) q(SetValue{Path / to_string(i), is_auto ? mapped_value : AutoColor});
-            if (!is_auto) PopStyleVar();
-            SameLine();
+    for (const auto *child : Children) {
+        const auto *child_color = dynamic_cast<const UInt *>(child);
+        if (filter.PassFilter(child->Name.c_str())) {
+            child_color->ColorEdit4(flags, AllowAuto);
         }
-        auto mutable_value = ColorConvertU32ToFloat4(mapped_value);
-        if (is_auto) BeginDisabled();
-        const bool item_changed = ColorEdit4(PathLabel(Path / to_string(i)).c_str(), (float *)&mutable_value, alpha_flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-        UiContext.WidgetGestured();
-        if (is_auto) EndDisabled();
-
-        SameLine(0, style.ItemInnerSpacing.x);
-        TextUnformatted(child->Name.c_str());
-        PopID();
-
-        if (item_changed) q(SetValue{Path / to_string(i), ColorConvertFloat4ToU32(mutable_value)});
     }
     if (AllowAuto) {
         Separator();

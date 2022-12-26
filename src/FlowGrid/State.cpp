@@ -68,17 +68,17 @@ void Enum::Update() { Value = std::get<int>(Get()); }
 void Flags::Update() { Value = std::get<int>(Get()); }
 } // namespace Field
 
-template<typename T>
+template<IsPrimitive T>
 T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(Path / to_string(i))); };
 
-template<typename T>
+template<IsPrimitive T>
 Count Vector<T>::Size(const Store &store) const {
     Count i = 0;
     while (store.count(Path / to_string(i++))) {}
     return i - 1;
 }
 
-template<typename T>
+template<IsPrimitive T>
 void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
     Count i = 0;
     while (i < values.size()) {
@@ -89,22 +89,22 @@ void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
     while (store.count(Path / to_string(i))) store.erase(Path / to_string(i++));
 }
 
-template<typename T>
+template<IsPrimitive T>
 void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
     for (const auto &[i, value] : values) store.set(Path / to_string(i), value);
 }
 
-template<typename T>
+template<IsPrimitive T>
 T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(Path / to_string(i) / to_string(j))); };
 
-template<typename T>
+template<IsPrimitive T>
 Count Vector2D<T>::Size(const TransientStore &store) const {
     Count i = 0;
     while (store.count(Path / i++ / 0).to_string()) {}
     return i - 1;
 }
 
-template<typename T>
+template<IsPrimitive T>
 void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {
     Count i = 0;
     while (i < values.size()) {

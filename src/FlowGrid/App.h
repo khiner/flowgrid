@@ -380,7 +380,7 @@ using namespace Field;
 using FieldEntry = pair<const Base &, Primitive>;
 using FieldEntries = vector<FieldEntry>;
 
-template<typename T>
+template<IsPrimitive T>
 struct Vector : StateMember {
     using StateMember::StateMember;
 
@@ -394,7 +394,7 @@ struct Vector : StateMember {
 };
 
 // Really a vector of vectors. Inner vectors need not have the same length.
-template<typename T>
+template<IsPrimitive T>
 struct Vector2D : StateMember {
     using StateMember::StateMember;
 

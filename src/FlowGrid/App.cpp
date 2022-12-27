@@ -11,18 +11,6 @@
 map<ID, StateMember *> StateMember::WithId{};
 map<StatePath, Base *> Base::WithPath{};
 
-// Persistent modifiers
-Store Set(const Base &field, const Primitive &value, const Store &store) { return store.set(field.Path, value); }
-Store Set(const StoreEntries &values, const Store &store) {
-    auto transient = store.transient();
-    Set(values, transient);
-    return transient.persistent();
-}
-Store Set(const FieldEntries &values, const Store &store) {
-    auto transient = store.transient();
-    Set(values, transient);
-    return transient.persistent();
-}
 
 // Transient modifiers
 void Set(const Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }

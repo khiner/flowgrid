@@ -1432,12 +1432,7 @@ extern Context c;
 */
 bool q(Action &&a, bool flush = false);
 
-// Persistent (immutable) store setters
-Store Set(const Base &, const Primitive &, const Store &store = AppStore);
-Store Set(const StoreEntries &, const Store &store = AppStore);
-Store Set(const FieldEntries &, const Store &store = AppStore);
-
-// Equivalent setters for a transient (mutable) store
+// Store setters
 void Set(const Base &, const Primitive &, TransientStore &);
 void Set(const StoreEntries &, TransientStore &);
 void Set(const FieldEntries &, TransientStore &);

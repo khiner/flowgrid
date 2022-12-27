@@ -716,16 +716,16 @@ void TableSettings::Apply(ImGuiContext *) const {
 
 Store ImGuiSettings::Set(ImGuiContext *ctx) const {
     SaveIniSettingsToMemory(); // Populates the `Settings` context members
+
     auto store = AppStore.transient();
     Nodes.Set(ctx->DockContext.NodesSettings, store);
     Windows.Set(ctx->SettingsWindows, store);
     Tables.Set(ctx->SettingsTables, store);
-
     return store.persistent();
 }
+
 void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     DockSettingsHandler_ClearAll(ctx, nullptr);
-
     Windows.Apply(ctx);
     Tables.Apply(ctx);
     Nodes.Apply(ctx);

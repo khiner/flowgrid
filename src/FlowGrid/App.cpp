@@ -164,67 +164,67 @@ ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
     return imgui_flags;
 }
 
-void State::Update(const StateAction &action, TransientStore &transient) const {
+void State::Update(const StateAction &action, TransientStore &store) const {
     Match(
         action,
-        [&transient](const SetValue &a) { transient.set(a.path, a.value); },
-        [&transient](const SetValues &a) { ::Set(a.values, transient); },
-        [&transient](const ToggleValue &a) { transient.set(a.path, !std::get<bool>(AppStore.at(a.path))); },
-        [&transient](const ApplyPatch &a) {
+        [&store](const SetValue &a) { store.set(a.path, a.value); },
+        [&store](const SetValues &a) { ::Set(a.values, store); },
+        [&store](const ToggleValue &a) { store.set(a.path, !std::get<bool>(AppStore.at(a.path))); },
+        [&store](const ApplyPatch &a) {
             const auto &patch = a.patch;
             for (const auto &[partial_path, op] : patch.Ops) {
                 const auto &path = patch.BasePath / partial_path;
-                if (op.Op == AddOp || op.Op == ReplaceOp) transient.set(path, *op.Value);
-                else if (op.Op == RemoveOp) transient.erase(path);
+                if (op.Op == AddOp || op.Op == ReplaceOp) store.set(path, *op.Value);
+                else if (op.Op == RemoveOp) store.erase(path);
             }
         },
-        [&](const OpenFileDialog &a) { FileDialog.Set(json::parse(a.dialog_json), transient); },
-        [&](const CloseFileDialog &) { Set(FileDialog.Visible, false, transient); },
-        [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, transient); },
-        [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, transient); },
-        [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, transient); },
-        [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, transient); },
-        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}, transient); },
+        [&](const OpenFileDialog &a) { FileDialog.Set(json::parse(a.dialog_json), store); },
+        [&](const CloseFileDialog &) { Set(FileDialog.Visible, false, store); },
+        [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, store); },
+        [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, store); },
+        [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, store); },
+        [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, store); },
+        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}, store); },
 
         // todo enum types instead of raw integers
         [&](const SetImGuiColorStyle &a) {
             switch (a.id) {
-                case 0: return Style.ImGui.ColorsDark(transient);
-                case 1: return Style.ImGui.ColorsLight(transient);
-                case 2: return Style.ImGui.ColorsClassic(transient);
+                case 0: return Style.ImGui.ColorsDark(store);
+                case 1: return Style.ImGui.ColorsLight(store);
+                case 2: return Style.ImGui.ColorsClassic(store);
             }
         },
         [&](const SetImPlotColorStyle &a) {
             switch (a.id) {
-                case 0: return Style.ImPlot.ColorsAuto(transient);
-                case 1: return Style.ImPlot.ColorsDark(transient);
-                case 2: return Style.ImPlot.ColorsLight(transient);
-                case 3: return Style.ImPlot.ColorsClassic(transient);
+                case 0: return Style.ImPlot.ColorsAuto(store);
+                case 1: return Style.ImPlot.ColorsDark(store);
+                case 2: return Style.ImPlot.ColorsLight(store);
+                case 3: return Style.ImPlot.ColorsClassic(store);
             }
         },
         [&](const SetFlowGridColorStyle &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.ColorsDark(transient);
-                case 1: return Style.FlowGrid.ColorsLight(transient);
-                case 2: return Style.FlowGrid.ColorsClassic(transient);
+                case 0: return Style.FlowGrid.ColorsDark(store);
+                case 1: return Style.FlowGrid.ColorsLight(store);
+                case 2: return Style.FlowGrid.ColorsClassic(store);
             }
         },
         [&](const SetGraphColorStyle &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.Graph.ColorsDark(transient);
-                case 1: return Style.FlowGrid.Graph.ColorsLight(transient);
-                case 2: return Style.FlowGrid.Graph.ColorsClassic(transient);
-                case 3: return Style.FlowGrid.Graph.ColorsFaust(transient);
+                case 0: return Style.FlowGrid.Graph.ColorsDark(store);
+                case 1: return Style.FlowGrid.Graph.ColorsLight(store);
+                case 2: return Style.FlowGrid.Graph.ColorsClassic(store);
+                case 3: return Style.FlowGrid.Graph.ColorsFaust(store);
             }
         },
         [&](const SetGraphLayoutStyle &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.Graph.LayoutFlowGrid(transient);
-                case 1: return Style.FlowGrid.Graph.LayoutFaust(transient);
+                case 0: return Style.FlowGrid.Graph.LayoutFlowGrid(store);
+                case 1: return Style.FlowGrid.Graph.LayoutFaust(store);
             }
         },
-        [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), transient); },
-        [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, transient); },
+        [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), store); },
+        [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, store); },
     );
 }
 

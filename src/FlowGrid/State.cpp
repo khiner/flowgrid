@@ -35,14 +35,6 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
 // [SECTION] Fields
 //-----------------------------------------------------------------------------
 
-// Currently, `Draw` is not used for anything except wrapping around `Render`.
-// Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
-void Drawable::Draw() const {
-    //    PushID(ImGuiLabel.c_str());
-    Render();
-    //    PopID();
-}
-
 namespace Field {
 Base::Base(StateMember *parent, string_view id, string_view name_help, Primitive value) : UIStateMember(parent, id, name_help) {
     WithPath[Path] = this;
@@ -54,72 +46,6 @@ Base::~Base() {
 
 Primitive Base::Get() const { return AppStore.at(Path); }
 Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
-} // namespace Field
-
-template<IsPrimitive T>
-T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(Path / to_string(i))); };
-
-template<IsPrimitive T>
-Count Vector<T>::Size(const Store &store) const {
-    Count i = 0;
-    while (store.count(Path / to_string(i++))) {}
-    return i - 1;
-}
-
-template<IsPrimitive T>
-void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
-    Count i = 0;
-    while (i < values.size()) {
-        store.set(Path / to_string(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
-        i++;
-    }
-
-    while (store.count(Path / to_string(i))) store.erase(Path / to_string(i++));
-}
-
-template<IsPrimitive T>
-void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
-    for (const auto &[i, value] : values) store.set(Path / to_string(i), value);
-}
-
-template<IsPrimitive T>
-T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(Path / to_string(i) / to_string(j))); };
-
-template<IsPrimitive T>
-Count Vector2D<T>::Size(const TransientStore &store) const {
-    Count i = 0;
-    while (store.count(Path / i++ / 0).to_string()) {}
-    return i - 1;
-}
-
-template<IsPrimitive T>
-void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {
-    Count i = 0;
-    while (i < values.size()) {
-        Count j = 0;
-        while (j < values[i].size()) {
-            store.set(Path / to_string(i) / to_string(j), T(values[i][j]));
-            j++;
-        }
-        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
-        i++;
-    }
-
-    while (store.count(Path / to_string(i) / "0")) {
-        Count j = 0;
-        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
-        i++;
-    }
-}
-
-// Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
-void StateMember::HelpMarker(const bool after) const {
-    if (Help.empty()) return;
-
-    if (after) SameLine();
-    ::HelpMarker(Help.c_str());
-    if (!after) SameLine();
-}
 
 void Bool::Toggle() const { q(ToggleValue{Path}); }
 
@@ -290,6 +216,64 @@ void String::Render(const vector<string> &options) const {
     HelpMarker();
 }
 
+} // namespace Field
+
+template<IsPrimitive T>
+T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(Path / to_string(i))); };
+
+template<IsPrimitive T>
+Count Vector<T>::Size(const Store &store) const {
+    Count i = 0;
+    while (store.count(Path / to_string(i++))) {}
+    return i - 1;
+}
+
+template<IsPrimitive T>
+void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
+    Count i = 0;
+    while (i < values.size()) {
+        store.set(Path / to_string(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
+        i++;
+    }
+
+    while (store.count(Path / to_string(i))) store.erase(Path / to_string(i++));
+}
+
+template<IsPrimitive T>
+void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
+    for (const auto &[i, value] : values) store.set(Path / to_string(i), value);
+}
+
+template<IsPrimitive T>
+T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(Path / to_string(i) / to_string(j))); };
+
+template<IsPrimitive T>
+Count Vector2D<T>::Size(const TransientStore &store) const {
+    Count i = 0;
+    while (store.count(Path / i++ / 0).to_string()) {}
+    return i - 1;
+}
+
+template<IsPrimitive T>
+void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {
+    Count i = 0;
+    while (i < values.size()) {
+        Count j = 0;
+        while (j < values[i].size()) {
+            store.set(Path / to_string(i) / to_string(j), T(values[i][j]));
+            j++;
+        }
+        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
+        i++;
+    }
+
+    while (store.count(Path / to_string(i) / "0")) {
+        Count j = 0;
+        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
+        i++;
+    }
+}
+
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
@@ -324,6 +308,24 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
 }
 
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
+
+// Currently, `Draw` is not used for anything except wrapping around `Render`.
+// Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
+void Drawable::Draw() const {
+    //    PushID(ImGuiLabel.c_str());
+    Render();
+    //    PopID();
+}
+
+// Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
+void StateMember::HelpMarker(const bool after) const {
+    if (Help.empty()) return;
+
+    if (after) SameLine();
+    ::HelpMarker(Help.c_str());
+    if (!after) SameLine();
+}
+
 
 //-----------------------------------------------------------------------------
 // [SECTION] Window/tabs methods
@@ -481,6 +483,7 @@ void State::Render() const {
         }
     }
 }
+
 // Copy of ImGui version, which is not defined publicly
 struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ID NodeId;

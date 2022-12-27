@@ -33,21 +33,19 @@ void Set(const FieldEntries &values, TransientStore &store) {
     for (const auto &[field, value] : values) store.set(field.Path, value);
 }
 
-StateMember::StateMember(StateMember *parent, string_view path_segment, string_view name_help) : Parent(parent) {
+StateMember::StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help)
+    : Parent(parent),
+      PathSegment(path_segment),
+      Path(Parent && !PathSegment.empty() ? Parent->Path / PathSegment : (Parent ? Parent->Path : (!PathSegment.empty() ? StatePath(PathSegment) : RootPath))),
+      Name(name_help.first.empty() ? PathSegment.empty() ? "" : PascalToSentenceCase(PathSegment) : name_help.first),
+      Help(name_help.second),
+      ImGuiLabel(Name.empty() ? "" : format("{}##{}", Name, PathSegment)),
+      Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0)) {
     if (parent) parent->Children.emplace_back(this);
-
-    const auto &[name, help] = ParseHelpText(name_help);
-    PathSegment = path_segment;
-    Path = Parent && !PathSegment.empty() ? Parent->Path / PathSegment :
-        Parent                            ? Parent->Path :
-        !PathSegment.empty()              ? StatePath(PathSegment) :
-                                            RootPath;
-    Name = name.empty() ? path_segment.empty() ? "" : PascalToSentenceCase(path_segment) : name;
-    ImGuiLabel = Name.empty() ? "" : format("{}##{}", Name, PathSegment);
-    Help = help;
-    Id = ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0);
     WithId[Id] = this;
 }
+
+StateMember::StateMember(StateMember *parent, string_view path_segment, string_view name_help) : StateMember(parent, path_segment, ParseHelpText(name_help)) {}
 
 StateMember::~StateMember() {
     WithId.erase(Id);

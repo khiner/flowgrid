@@ -72,13 +72,16 @@ struct StateMember {
     static map<ID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
 
     StateMember(StateMember *parent = nullptr, string_view path_segment = "", string_view name_help = "");
+    StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help);
+
     virtual ~StateMember();
     const StateMember *Child(Count i) const { return Children[i]; }
 
     const StateMember *Parent;
-    StatePath Path;
-    string PathSegment, Name, Help, ImGuiLabel;
-    ID Id;
+    const string PathSegment;
+    const StatePath Path;
+    const string Name, Help, ImGuiLabel;
+    const ID Id;
 
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.

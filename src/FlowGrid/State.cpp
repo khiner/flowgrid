@@ -1306,8 +1306,7 @@ void Style::ImGuiStyle::Render() const {
                 ImDrawList *draw_list = GetWindowDrawList();
                 const float min_widget_width = CalcTextSize("N: MMM\nR: MMM").x;
                 for (int n = 0; n < 8; n++) {
-                    const float RAD_MIN = 5;
-                    const float RAD_MAX = 70;
+                    const float RAD_MIN = 5, RAD_MAX = 70;
                     const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * float(n) / 7.0f;
 
                     BeginGroup();

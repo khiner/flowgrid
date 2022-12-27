@@ -1404,22 +1404,19 @@ Declare read-only accessors for:
 
 The state & context instances are initialized and instantiated in `main.cpp`.
 
-`state`/`s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
-It provides a full nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
-Basically, it has everything about the state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
-- Immutable assignment operators, which return a modified copy of the value resulting from applying the assignment.
-  Note that this is only _conceptually_ a copy, since it's a persistent data structure.
-  Typical modifications require very little data to be copied to store its value before the modification.
-  See [CppCon 2017: Phil Nash “The Holy Grail! A Hash Array Mapped Trie for C++”](https://youtu.be/imrSQ82dYns) for details on how this is done.
-  HAMTs are heavily used in the implementation of Closure.
-  Big thanks to my friend Justin Smith for suggesting using HAMTs for an efficient application state tree - they're fantastic for it!
-- Values act like the member of `Primitive` they hold.
+`s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
+It provides a complete nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
+Basically, it contains all data for each state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
+(Actually, each primitive leaf value is cached on its respective `Field`, but this is a technicality - the `Store` is conceptually the source of truth.)
+
+`s` has an immutable assignment operator, which return a modified copy of the `Store` value resulting from applying the assignment to the provided `Store`.
+(Note that this is only _conceptually_ a copy - see [Application Architecture](https://github.com/khiner/flowgrid#application-architecture) for more details.)
 
 Usage example:
 
 ```cpp
 // Get the canonical application audio state:
-const Audio &audio = s.Audio; // Or just access the (read-only) `state` members directly
+const Audio &audio = s.Audio;
 
 // Get the currently active gesture (collection of actions) from the global application context:
  const Gesture &ActiveGesture = c.ActiveGesture;

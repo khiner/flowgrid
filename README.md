@@ -28,7 +28,7 @@ FlowGrid uses a single [persistent map](https://sinusoid.es/immer/containers.htm
 Every user action that affects the application state results in the following:
 
 - Put a snapshot of the current application state into history.
-  This is only a snapshot conceptually, as only a small amount of data needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (
+  This is only a snapshot conceptually, as only a small amount of data actually needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (
   ) data structure](https://youtu.be/imrSQ82dYns).
 - Generate an `Action` instance containing all the information needed to execute the logical action.
 - Pass this action to the `State::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.

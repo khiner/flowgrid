@@ -372,8 +372,6 @@ template<IsPrimitive T>
 struct Vector : StateMember {
     using StateMember::StateMember;
 
-    virtual string GetName(Count index) const { return to_string(index); };
-
     T operator[](Count) const;
     Count Size(const Store &store = AppStore) const;
 
@@ -381,7 +379,7 @@ struct Vector : StateMember {
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
 };
 
-// Really a vector of vectors. Inner vectors need not have the same length.
+// Vector of vectors. Inner vectors need not have the same length.
 template<IsPrimitive T>
 struct Vector2D : StateMember {
     using StateMember::StateMember;

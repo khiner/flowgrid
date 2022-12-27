@@ -49,5 +49,5 @@ template<typename T, typename... ALL_T>
 struct IsVariantMember<T, std::variant<ALL_T...>>
     : public std::disjunction<std::is_same<T, ALL_T>...> {};
 
-template <typename T>
+template<typename T>
 concept IsPrimitive = IsVariantMember<T, Primitive>::value;

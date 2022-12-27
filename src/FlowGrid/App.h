@@ -976,6 +976,8 @@ struct Style : TabsWindow {
     UIMember_(
         ImGuiStyle,
 
+        static vector<ImVec4> ColorPresetBuffer;
+
         void Apply(ImGuiContext *ctx) const;
         void ColorsDark(TransientStore &) const;
         void ColorsLight(TransientStore &) const;
@@ -1051,6 +1053,8 @@ struct Style : TabsWindow {
 
     UIMember_(
         ImPlotStyle,
+
+        static vector<ImVec4> ColorPresetBuffer;
 
         void Apply(ImPlotContext *ctx) const;
         void ColorsAuto(TransientStore &store) const;

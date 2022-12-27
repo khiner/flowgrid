@@ -326,7 +326,6 @@ void StateMember::HelpMarker(const bool after) const {
     if (!after) SameLine();
 }
 
-
 //-----------------------------------------------------------------------------
 // [SECTION] Window/tabs methods
 //-----------------------------------------------------------------------------
@@ -970,43 +969,36 @@ Style::FlowGridStyle::Graph::Graph(StateMember *parent, string_view path_segment
 }
 
 void Style::ImGuiStyle::ColorsDark(TransientStore &store) const {
-    vector<ImVec4> dst(ImGuiCol_COUNT);
-    StyleColorsDark(&dst[0]);
-    Colors.Set(dst, store);
+    ImGui::StyleColorsDark(&ColorPresetBuffer[0]);
+    Colors.Set(ColorPresetBuffer, store);
 }
 void Style::ImGuiStyle::ColorsLight(TransientStore &store) const {
-    vector<ImVec4> dst(ImGuiCol_COUNT);
-    StyleColorsLight(&dst[0]);
-    Colors.Set(dst, store);
+    ImGui::StyleColorsLight(&ColorPresetBuffer[0]);
+    Colors.Set(ColorPresetBuffer, store);
 }
 void Style::ImGuiStyle::ColorsClassic(TransientStore &store) const {
-    vector<ImVec4> dst(ImGuiCol_COUNT);
-    StyleColorsClassic(&dst[0]);
-    Colors.Set(dst, store);
+    ImGui::StyleColorsClassic(&ColorPresetBuffer[0]);
+    Colors.Set(ColorPresetBuffer, store);
 }
 
 void Style::ImPlotStyle::ColorsAuto(TransientStore &store) const {
-    vector<ImVec4> dst(ImPlotCol_COUNT);
-    ImPlot::StyleColorsAuto(&dst[0]);
-    Colors.Set(dst, store);
+    ImPlot::StyleColorsAuto(&ColorPresetBuffer[0]);
+    Colors.Set(ColorPresetBuffer, store);
     Set(MinorAlpha, 0.25f, store);
 }
 void Style::ImPlotStyle::ColorsDark(TransientStore &store) const {
-    vector<ImVec4> dst(ImPlotCol_COUNT);
-    ImPlot::StyleColorsDark(&dst[0]);
-    Colors.Set(dst, store);
+    ImPlot::StyleColorsDark(&ColorPresetBuffer[0]);
+    Colors.Set(ColorPresetBuffer, store);
     Set(MinorAlpha, 0.25f, store);
 }
 void Style::ImPlotStyle::ColorsLight(TransientStore &store) const {
-    vector<ImVec4> dst(ImPlotCol_COUNT);
-    ImPlot::StyleColorsLight(&dst[0]);
-    Colors.Set(dst, store);
+    ImPlot::StyleColorsLight(&ColorPresetBuffer[0]);
+    Colors.Set(ColorPresetBuffer, store);
     Set(MinorAlpha, 1, store);
 }
 void Style::ImPlotStyle::ColorsClassic(TransientStore &store) const {
-    vector<ImVec4> dst(ImPlotCol_COUNT);
-    ImPlot::StyleColorsClassic(&dst[0]);
-    Colors.Set(dst, store);
+    ImPlot::StyleColorsClassic(&ColorPresetBuffer[0]);
+    Colors.Set(ColorPresetBuffer, store);
     Set(MinorAlpha, 0.5f, store);
 }
 

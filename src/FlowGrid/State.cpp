@@ -54,18 +54,6 @@ Base::~Base() {
 
 Primitive Base::Get() const { return AppStore.at(Path); }
 Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
-
-void Bool::Update() { Value = std::get<bool>(Get()); }
-void UInt::Update() { Value = std::get<U32>(Get()); }
-void Int::Update() { Value = std::get<int>(Get()); }
-void Float::Update() {
-    const Primitive PrimitiveValue = Get();
-    if (std::holds_alternative<int>(PrimitiveValue)) Value = float(std::get<int>(PrimitiveValue));
-    else Value = std::get<float>(PrimitiveValue);
-}
-void String::Update() { Value = std::get<string>(Get()); }
-void Enum::Update() { Value = std::get<int>(Get()); }
-void Flags::Update() { Value = std::get<int>(Get()); }
 } // namespace Field
 
 template<IsPrimitive T>
@@ -155,7 +143,7 @@ void Bool::MenuItem() const {
 
 void UInt::Render() const {
     U32 value = Value;
-    const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
+    const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &Min, &Max, "%d");
     UiContext.WidgetGestured();
     if (edited) q(SetValue{Path, value});
     HelpMarker();
@@ -194,7 +182,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
 
 void Int::Render() const {
     int value = Value;
-    const bool edited = SliderInt(ImGuiLabel.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
+    const bool edited = SliderInt(ImGuiLabel.c_str(), &value, Min, Max, "%d", ImGuiSliderFlags_None);
     UiContext.WidgetGestured();
     if (edited) q(SetValue{Path, value});
     HelpMarker();

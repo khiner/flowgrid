@@ -9,7 +9,7 @@ const State &s = c.s; // Create the read-only state reference global.
 int main(int, const char **) {
     // This is bad.
     // It's here to make sure that any changes to `c.InitStore` _after_ field construction are reflected in the cached field value.
-    for (auto *field : views::values(Field::Base::WithPath)) field->Update();
+    for (auto *field : views::values(Base::WithPath)) field->Update();
 
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 

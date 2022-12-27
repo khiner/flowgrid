@@ -375,10 +375,10 @@ private:
 };
 } // namespace Field
 
-using FieldEntry = pair<const Field::Base &, Primitive>;
-using FieldEntries = vector<FieldEntry>;
-
 using namespace Field;
+
+using FieldEntry = pair<const Base &, Primitive>;
+using FieldEntries = vector<FieldEntry>;
 
 template<typename T>
 struct Vector : StateMember {
@@ -889,7 +889,7 @@ struct Style : TabsWindow {
             Prop(Float, InverterRadius, 3, 1, 5);
             Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
-            const vector<std::reference_wrapper<Field::Base>> LayoutFields{
+            const vector<std::reference_wrapper<Base>> LayoutFields{
                 SequentialConnectionZigzag,
                 OrientationMark,
                 OrientationMarkRadius,
@@ -918,7 +918,7 @@ struct Style : TabsWindow {
                 ArrowSize.Y,
                 InverterRadius,
             };
-            const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const Field::Base &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
+            const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const Base &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
 
             void ColorsDark(TransientStore &store) const;
             void ColorsClassic(TransientStore &store) const;
@@ -1447,12 +1447,12 @@ extern Context c;
 bool q(Action &&a, bool flush = false);
 
 // Persistent (immutable) store setters
-Store Set(const Field::Base &, const Primitive &, const Store &store = AppStore);
+Store Set(const Base &, const Primitive &, const Store &store = AppStore);
 Store Set(const StoreEntries &, const Store &store = AppStore);
 Store Set(const FieldEntries &, const Store &store = AppStore);
 
 // Equivalent setters for a transient (mutable) store
-void Set(const Field::Base &, const Primitive &, TransientStore &);
+void Set(const Base &, const Primitive &, TransientStore &);
 void Set(const StoreEntries &, TransientStore &);
 void Set(const FieldEntries &, TransientStore &);
 

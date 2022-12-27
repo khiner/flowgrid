@@ -9,10 +9,10 @@
 #include "UI/Faust/FaustGraph.h"
 
 map<ID, StateMember *> StateMember::WithId{};
-map<StatePath, Field::Base *> Field::Base::WithPath{};
+map<StatePath, Base *> Base::WithPath{};
 
 // Persistent modifiers
-Store Set(const Field::Base &field, const Primitive &value, const Store &store) { return store.set(field.Path, value); }
+Store Set(const Base &field, const Primitive &value, const Store &store) { return store.set(field.Path, value); }
 Store Set(const StoreEntries &values, const Store &store) {
     auto transient = store.transient();
     Set(values, transient);
@@ -25,7 +25,7 @@ Store Set(const FieldEntries &values, const Store &store) {
 }
 
 // Transient modifiers
-void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
+void Set(const Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
 void Set(const StoreEntries &values, TransientStore &store) {
     for (const auto &[path, value] : values) store.set(path, value);
 }
@@ -318,7 +318,7 @@ Patch Context::SetStore(const Store &store) {
     for (const auto &[partial_path, _op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
         // todo pretty sure this only happens in the vector case, but we should implement value caching for vectors too!
-        if (Field::Base::WithPath.contains(path)) Field::Base::WithPath.at(path)->Update();
+        if (Base::WithPath.contains(path)) Base::WithPath.at(path)->Update();
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
         if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated

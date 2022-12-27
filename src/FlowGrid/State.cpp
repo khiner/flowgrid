@@ -135,25 +135,25 @@ void StateMember::HelpMarker(const bool after) const {
 
 void Bool::Toggle() const { q(ToggleValue{Path}); }
 
-void Field::Bool::Render() const {
+void Bool::Render() const {
     bool value = Value;
     if (Checkbox(ImGuiLabel.c_str(), &value)) Toggle();
     HelpMarker();
 }
-bool Field::Bool::CheckedDraw() const {
+bool Bool::CheckedDraw() const {
     bool value = Value;
     bool toggled = Checkbox(ImGuiLabel.c_str(), &value);
     if (toggled) Toggle();
     HelpMarker();
     return toggled;
 }
-void Field::Bool::MenuItem() const {
+void Bool::MenuItem() const {
     const bool value = Value;
     HelpMarker(false);
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
 }
 
-void Field::UInt::Render() const {
+void UInt::Render() const {
     U32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &min, &max, "%d");
     UiContext.WidgetGestured();
@@ -161,7 +161,7 @@ void Field::UInt::Render() const {
     HelpMarker();
 }
 
-void Field::UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
+void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     const Count i = std::stoi(PathSegment); // Assuming color is a member of a vector here.
     const bool is_auto = allow_auto && Value == Colors::AutoColor;
     const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : Value;
@@ -192,14 +192,14 @@ void Field::UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     if (changed) q(SetValue{Path, ColorConvertFloat4ToU32(value)});
 }
 
-void Field::Int::Render() const {
+void Int::Render() const {
     int value = Value;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, min, max, "%d", ImGuiSliderFlags_None);
     UiContext.WidgetGestured();
     if (edited) q(SetValue{Path, value});
     HelpMarker();
 }
-void Field::Int::Render(const vector<int> &options) const {
+void Int::Render(const vector<int> &options) const {
     const int value = Value;
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
@@ -212,7 +212,7 @@ void Field::Int::Render(const vector<int> &options) const {
     HelpMarker();
 }
 
-void Field::Float::Render() const {
+void Float::Render() const {
     float value = Value;
     const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
     UiContext.WidgetGestured();
@@ -220,10 +220,10 @@ void Field::Float::Render() const {
     HelpMarker();
 }
 
-void Field::Enum::Render() const {
+void Enum::Render() const {
     Render(views::ints(0, int(Names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
-void Field::Enum::Render(const vector<int> &options) const {
+void Enum::Render(const vector<int> &options) const {
     const int value = Value;
     if (BeginCombo(ImGuiLabel.c_str(), Names[value].c_str())) {
         for (int option : options) {
@@ -236,7 +236,7 @@ void Field::Enum::Render(const vector<int> &options) const {
     }
     HelpMarker();
 }
-void Field::Enum::MenuItem() const {
+void Enum::MenuItem() const {
     const int value = Value;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
@@ -249,7 +249,7 @@ void Field::Enum::MenuItem() const {
     }
 }
 
-void Field::Flags::Render() const {
+void Flags::Render() const {
     const int value = Value;
     if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
         for (Count i = 0; i < Items.size(); i++) {
@@ -266,7 +266,7 @@ void Field::Flags::Render() const {
     }
     HelpMarker();
 }
-void Field::Flags::MenuItem() const {
+void Flags::MenuItem() const {
     const int value = Value;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
@@ -285,11 +285,11 @@ void Field::Flags::MenuItem() const {
     }
 }
 
-void Field::String::Render() const {
+void String::Render() const {
     const string value = Value;
     TextUnformatted(value.c_str());
 }
-void Field::String::Render(const vector<string> &options) const {
+void String::Render(const vector<string> &options) const {
     const string value = *this;
     if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option : options) {

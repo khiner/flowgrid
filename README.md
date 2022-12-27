@@ -168,7 +168,15 @@ LLVM version 15.x.x is required to build.
 ### Formatting
 
 FlowGrid uses `clang-format` for code formatting.
-The `Format` script runs it on every application source file in the `src` directory.
+
+Use the provided [pre-commit hook](.githooks/pre-commit) to automatically format staged files for each commit.
+**Please enable this hook before contributing** by running:
+
+```sh
+git config --local core.hooksPath .githooks/
+```
+
+In addition, the `Format` script formats every source Cxx file.
 
 ### Tracing
 

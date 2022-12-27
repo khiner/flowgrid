@@ -1,0 +1,8 @@
+for FILE in $(git diff --cached --name-only)
+do
+    if [[ "$FILE" =~ \.(cpp|hpp|c|cc|cxx|h|hh)$ ]]
+    then
+        clang-format -i $FILE
+        git add $FILE
+    fi
+done

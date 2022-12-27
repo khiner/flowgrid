@@ -304,7 +304,7 @@ void String::Render(const vector<string> &options) const {
 
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
-    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, min, max, fmt, flags);
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
     UiContext.WidgetGestured();
     if (edited) q(SetValues{{{X.Path, values.x}, {Y.Path, values.y}}});
     HelpMarker();
@@ -322,7 +322,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PopID();
     SameLine();
     ImVec2 values = *this;
-    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, min, max, fmt, flags);
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
     UiContext.WidgetGestured();
     if (edited) {
         if (Linked) {

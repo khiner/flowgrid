@@ -389,7 +389,7 @@ struct Vector : StateMember {
     T operator[](Count) const;
     Count Size(const Store &store = AppStore) const;
 
-    void Set(const vector<T> &values, TransientStore &) const;
+    void Set(const vector<T> &, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
 };
 
@@ -401,7 +401,7 @@ struct Vector2D : StateMember {
     T At(Count i, Count j, const Store &store = AppStore) const;
     Count Size(const TransientStore &) const; // Number of outer vectors
 
-    void Set(const vector<vector<T>> &values, TransientStore &) const;
+    void Set(const vector<vector<T>> &, TransientStore &) const;
 };
 
 struct Colors : UIStateMember {
@@ -794,14 +794,12 @@ struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
         : UIStateMember(parent, path_segment, name_help),
-          X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max),
-          min(min), max(max), fmt(fmt) {}
+          X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max), Format(fmt) {}
 
     operator ImVec2() const { return {X, Y}; }
 
     Float X, Y;
-    float min, max; // todo don't need these anymore, derive from X/Y
-    const char *fmt;
+    const char *Format;
 
 protected:
     virtual void Render(ImGuiSliderFlags) const;

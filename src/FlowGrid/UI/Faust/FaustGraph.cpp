@@ -12,7 +12,6 @@
 #include "../../Helper/basen.h"
 
 using namespace ImGui;
-using namespace fg;
 
 enum DeviceType {
     DeviceType_ImGui,

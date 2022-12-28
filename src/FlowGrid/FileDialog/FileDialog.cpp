@@ -55,7 +55,7 @@ void IGFD::InitializeDemo() {
     icons_config.DstFont = GetDefaultFont();
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
-    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * Style::ImGuiStyle::FontAtlasScale, &icons_config, IconRanges);
+    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * fg::Style::ImGuiStyle::FontAtlasScale, &icons_config, IconRanges);
 
     // Singleton access
     Dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex

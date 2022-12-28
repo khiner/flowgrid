@@ -828,6 +828,8 @@ struct Metrics : TabsWindow {
     Prop(ImPlotMetrics, ImPlot);
 };
 
+// Namespace needed because MiniAudio imports `CoreAudio.h`, which imports `CoreAudioTypes->MacTypes`, which has a `Style` type without a namespace.
+namespace FlowGrid {
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
 
@@ -1109,6 +1111,7 @@ struct Style : TabsWindow {
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
     Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
 };
+} // namespace FlowGrid
 
 struct ImGuiDockNodeSettings;
 
@@ -1265,7 +1268,7 @@ UIMember(
     );
 
     Prop(ImGuiSettings, ImGuiSettings);
-    Prop(Style, Style);
+    Prop(fg::Style, Style);
     Prop(ApplicationSettings, ApplicationSettings);
     Prop(Audio, Audio);
     Prop(UIProcess, UiProcess);

@@ -10,8 +10,8 @@
 
 map<ID, StateMember *> StateMember::WithId{};
 map<StatePath, Base *> Base::WithPath{};
-vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
-vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
+vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
+vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
 // Transient modifiers
 void Set(const Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }

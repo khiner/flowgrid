@@ -1472,15 +1472,6 @@ void ApplicationSettings::Render() const {
     GestureDurationSec.Draw();
 }
 
-const vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
-const vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
-    IoFormat_Float64NE,
-    IoFormat_Float32NE,
-    IoFormat_S32NE,
-    IoFormat_S16NE,
-    IoFormat_Invalid,
-};
-
 void Demo::ImGuiDemo::Render() const {
     ShowDemoWindow();
 }
@@ -1619,4 +1610,17 @@ void DebugLog::Render() const {
 }
 void StackTool::Render() const {
     ShowStackToolWindow();
+}
+
+void FaustState::FaustLog::Render() const {
+    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
+    Error.Draw();
+    PopStyleColor();
+}
+
+void FaustState::Render() const {
+    Editor.Draw();
+    Graph.Draw();
+    Params.Draw();
+    Log.Draw();
 }

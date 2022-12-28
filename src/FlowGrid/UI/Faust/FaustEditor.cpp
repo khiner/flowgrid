@@ -317,7 +317,7 @@ static const Menu FileMenu = {"File", {ShowOpenFaustFileDialog{}, ShowSaveFaustF
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
  *     (and right navigation should move from the end)
  */
-void Audio::FaustState::FaustEditor::Render() const {
+void FaustState::FaustEditor::Render() const {
     static unique_ptr<ZepEditor_ImGui> editor;
     if (!editor) {
         // Called once after the fonts are initialized

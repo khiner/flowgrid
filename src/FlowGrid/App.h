@@ -567,87 +567,72 @@ enum FaustGraphHoverFlags_ {
 };
 using FaustGraphHoverFlags = int;
 
-WindowMember(
-    Audio,
-    // A selection of supported formats, corresponding to `SoundIoFormat`
-    enum IoFormat_{
-        IoFormat_Invalid = 0,
-        IoFormat_Float64NE,
-        IoFormat_Float32NE,
-        IoFormat_S32NE,
-        IoFormat_S16NE,
-    };
-    using IoFormat = int;
+UIMember(
+    FaustState,
+    WindowMember_(
+        FaustEditor,
+        ImGuiWindowFlags_MenuBar,
 
-    static const vector<IoFormat> PrioritizedDefaultFormats;
-    static const vector<int> PrioritizedDefaultSampleRates;
+        // todo state member & respond to changes, or remove from state
+        string FileName{"default.dsp"};
+    );
 
-    // todo state member & respond to changes, or remove from state
-    UIMember(
-        FaustState,
-        WindowMember_(
-            FaustEditor,
-            ImGuiWindowFlags_MenuBar,
+    WindowMember_(
+        FaustGraph,
+        Menu({
+            Menu("File", {ShowSaveFaustSvgFileDialog{}}),
+            Menu("View", {Settings.HoverFlags}),
+        }),
 
-            string FileName{"default.dsp"};
+        Member(
+            GraphSettings,
+            Prop_(
+                Flags, HoverFlags,
+                "?Hovering over a node in the graph will display the selected information",
+                {"ShowRect?Display the hovered node's bounding rectangle",
+                 "ShowType?Display the hovered node's box type",
+                 "ShowChannels?Display the hovered node's channel points and indices",
+                 "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
+                FaustGraphHoverFlags_None
+            )
         );
+        Prop(GraphSettings, Settings);
+    );
 
-        WindowMember_(
-            FaustGraph,
-            Menu({
-                Menu("File", {ShowSaveFaustSvgFileDialog{}}),
-                Menu("View", {Settings.HoverFlags}),
-            }),
+    WindowMember(FaustParams);
+    WindowMember(
+        FaustLog,
+        Prop(String, Error);
+    );
 
-            Member(
-                GraphSettings,
-                Prop_(
-                    Flags, HoverFlags,
-                    "?Hovering over a node in the graph will display the selected information",
-                    {"ShowRect?Display the hovered node's bounding rectangle",
-                     "ShowType?Display the hovered node's box type",
-                     "ShowChannels?Display the hovered node's channel points and indices",
-                     "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
-                    FaustGraphHoverFlags_None
-                )
-            );
-            Prop(GraphSettings, Settings);
-        );
+    Prop_(FaustEditor, Editor, "Faust editor");
+    Prop_(FaustGraph, Graph, "Faust graph");
+    Prop_(FaustParams, Params, "Faust params");
+    Prop_(FaustLog, Log, "Faust log");
 
-        WindowMember(FaustParams);
-        WindowMember(
-            FaustLog,
-            Prop(String, Error);
-        );
+    //        Prop(String, Code, R"#(import("stdfaust.lib");
+    // pitchshifter = vgroup("Pitch Shifter", ef.transpose(
+    //    vslider("window (samples)", 1000, 50, 10000, 1),
+    //    vslider("xfade (samples)", 10, 1, 10000, 1),
+    //    vslider("shift (semitones)", 0, -24, +24, 0.1)
+    //  )
+    //);
+    // process = _ : pitchshifter;)#");
+    //        Prop(String, Code, R"#(import("stdfaust.lib");
+    // s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
+    // process = select2(s,no.noise,os.sawtooth(440));)#");
+    //    Prop(String, Code, R"(import("stdfaust.lib");
+    // process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)");
+    //        Prop(String, Code, R"(import("stdfaust.lib");
+    // process = _:fi.highpass(2,1000):_;)");
+    //        Prop(String, Code, R"(import("stdfaust.lib");
+    // ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
+    // q = hslider("q",5,1,30,0.1);
+    // gain = hslider("gain",1,0,1,0.01);
+    // process = no:noise : fi.resonlp(ctFreq,q,gain);");
 
-        Prop_(FaustEditor, Editor, "Faust editor");
-        Prop_(FaustGraph, Graph, "Faust graph");
-        Prop_(FaustParams, Params, "Faust params");
-        Prop_(FaustLog, Log, "Faust log");
-
-        //        Prop(String, Code, R"#(import("stdfaust.lib");
-        // pitchshifter = vgroup("Pitch Shifter", ef.transpose(
-        //    vslider("window (samples)", 1000, 50, 10000, 1),
-        //    vslider("xfade (samples)", 10, 1, 10000, 1),
-        //    vslider("shift (semitones)", 0, -24, +24, 0.1)
-        //  )
-        //);
-        // process = _ : pitchshifter;)#");
-        //        Prop(String, Code, R"#(import("stdfaust.lib");
-        // s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
-        // process = select2(s,no.noise,os.sawtooth(440));)#");
-        //    Prop(String, Code, R"(import("stdfaust.lib");
-        // process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)");
-        //        Prop(String, Code, R"(import("stdfaust.lib");
-        // process = _:fi.highpass(2,1000):_;)");
-        //        Prop(String, Code, R"(import("stdfaust.lib");
-        // ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
-        // q = hslider("q",5,1,30,0.1);
-        // gain = hslider("gain",1,0,1,0.01);
-        // process = no:noise : fi.resonlp(ctFreq,q,gain);");
-
-        // Based on Faust::UITester.dsp
-        Prop(String, Code, R"#(import("stdfaust.lib");
+    // Based on Faust::UITester.dsp
+    Prop(String, Code, R"#(import("stdfaust.lib");
 declare name "UI Tester";
 declare version "1.0";
 declare author "O. Guillerminet";
@@ -727,7 +712,22 @@ process = tgroup("grp 1",
     knobs,
     vmisc,
     hmisc);)#");
-    );
+);
+
+WindowMember(
+    Audio,
+    // A selection of supported formats, corresponding to `SoundIoFormat`
+    enum IoFormat_{
+        IoFormat_Invalid = 0,
+        IoFormat_Float64NE,
+        IoFormat_Float32NE,
+        IoFormat_S32NE,
+        IoFormat_S16NE,
+    };
+    using IoFormat = int;
+
+    static const vector<IoFormat> PrioritizedDefaultFormats;
+    static const vector<int> PrioritizedDefaultSampleRates;
 
     void UpdateProcess() const;
     const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }

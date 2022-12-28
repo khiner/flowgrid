@@ -14,6 +14,15 @@
 #include "UI/Faust/FaustGraph.h"
 #include "UI/Faust/FaustParams.h"
 
+const vector<int> Audio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
+const vector<Audio::IoFormat> Audio::PrioritizedDefaultFormats = {
+    IoFormat_Float64NE,
+    IoFormat_Float32NE,
+    IoFormat_S32NE,
+    IoFormat_S16NE,
+    IoFormat_Invalid,
+};
+
 static constexpr int SampleSize = sizeof(Sample);
 
 SoundIoFormat ToSoundIoFormat(const Audio::IoFormat format) {
@@ -733,19 +742,6 @@ void ShowBufferPlots() {
             TreePop();
         }
     }
-}
-
-void Audio::FaustState::FaustLog::Render() const {
-    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    Error.Draw();
-    PopStyleColor();
-}
-
-void Audio::FaustState::Render() const {
-    Editor.Draw();
-    Graph.Draw();
-    Params.Draw();
-    Log.Draw();
 }
 
 void Audio::Render() const {

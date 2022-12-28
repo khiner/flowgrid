@@ -1197,7 +1197,7 @@ Box GetHoveredBox(ID imgui_id) {
     return node ? node->FaustTree : nullptr;
 }
 
-void Audio::FaustState::FaustGraph::Render() const {
+void FaustState::FaustGraph::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?

@@ -751,9 +751,8 @@ WindowMember(
 WindowMember(
     MiniAudio,
     // A selection of supported formats, corresponding to `SoundIoFormat`
-    // todo display using `ma_get_format_name(format)`
     enum IoFormat_{
-        IoFormat_Invalid = 0,
+        IoFormat_Native = 0,
         IoFormat_U8,
         IoFormat_S16,
         IoFormat_S24,
@@ -779,8 +778,8 @@ WindowMember(
     Prop(String, OutDeviceName);
     Prop(Int, InSampleRate);
     Prop(Int, OutSampleRate);
-    Prop(Enum, InFormat, {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid);
-    Prop(Enum, OutFormat, {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid);
+    Prop(Enum, InFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native); // todo display using `ma_get_format_name(format)`, using a new `Enum` optional ctor arg `GetName(int)`
+    Prop(Enum, OutFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native);
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);

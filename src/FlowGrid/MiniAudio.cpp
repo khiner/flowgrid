@@ -21,13 +21,13 @@ const vector<MiniAudio::IoFormat> MiniAudio::PrioritizedDefaultFormats = {
     IoFormat_F32,
     IoFormat_S32,
     IoFormat_S16,
-    IoFormat_Invalid,
+    IoFormat_Native,
 };
 
 namespace MiniAudioN {
 ma_format ToMiniAudioFormat(const MiniAudio::IoFormat format) {
     switch (format) {
-        case MiniAudio::IoFormat_Invalid: return ma_format_unknown;
+        case MiniAudio::IoFormat_Native: return ma_format_unknown;
         case MiniAudio::IoFormat_F32: return ma_format_f32;
         case MiniAudio::IoFormat_S32: return ma_format_s32;
         case MiniAudio::IoFormat_S24: return ma_format_s24;
@@ -38,13 +38,13 @@ ma_format ToMiniAudioFormat(const MiniAudio::IoFormat format) {
 }
 MiniAudio::IoFormat ToAudioFormat(const ma_format format) {
     switch (format) {
-        case ma_format_unknown: return MiniAudio::IoFormat_Invalid;
+        case ma_format_unknown: return MiniAudio::IoFormat_Native;
         case ma_format_f32: return MiniAudio::IoFormat_F32;
         case ma_format_s32: return MiniAudio::IoFormat_S32;
         case ma_format_s24: return MiniAudio::IoFormat_S24;
         case ma_format_s16: return MiniAudio::IoFormat_S16;
         case ma_format_u8: return MiniAudio::IoFormat_U8;
-        default: return MiniAudio::IoFormat_Invalid;
+        default: return MiniAudio::IoFormat_Native;
     }
 }
 
@@ -67,7 +67,7 @@ static int PreviousFaustSampleRate = 0;
 static string PreviousFaustCode;
 static string PreviousInDeviceName, PreviousOutDeviceName;
 static int PreviousInSampleRate, PreviousOutSampleRate;
-static int PreviousInFormat, PreviousOutFormat;
+static MiniAudio::IoFormat PreviousInFormat, PreviousOutFormat;
 static float PreviousOutDeviceVolume;
 
 } // namespace MiniAudioN
@@ -75,11 +75,12 @@ static float PreviousOutDeviceVolume;
 using namespace MiniAudioN;
 
 void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
-    MA_ASSERT(device->capture.format == device->playback.format);
-    MA_ASSERT(device->capture.channels == device->playback.channels);
-
-    /* In this example the format and channel count are the same for both input and output which means we can just memcpy(). */
-    MA_COPY_MEMORY(output, input, frame_count * ma_get_bytes_per_frame(device->capture.format, device->capture.channels));
+    if (device->capture.channels == device->playback.channels) {
+        // If the formats are the same for both input and output, `ma_convert_pcm` just does a `memcpy`.
+        ma_convert_pcm_frames_format(output, device->playback.format, input, device->capture.format, frame_count, device->capture.channels, ma_dither_mode_none);
+    } else {
+        // const auto result = ma_data_converter_process_pcm_frames(&converter, input, &frame_count, output, &frame_count);
+    }
 }
 
 // Context
@@ -88,6 +89,7 @@ static bool AudioContextInitialized = false;
 static vector<ma_device_info *> DeviceInfos[IO_Count];
 // Derived from above (todo combine)
 static vector<string> DeviceNames[IO_Count];
+static vector<MiniAudio::IoFormat> DeviceFormats[IO_Count];
 
 // Current device
 static ma_device_config DeviceConfig;
@@ -109,6 +111,7 @@ static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
 void MiniAudio::Init() const {
     for (const IO io : IO_All) {
         DeviceNames[io].clear();
+        DeviceFormats[io].clear();
     }
 
     auto result = ma_context_init(NULL, 0, NULL, &AudioContext);
@@ -134,18 +137,29 @@ void MiniAudio::InitDevice() const {
 
     DeviceConfig = ma_device_config_init(ma_device_type_duplex);
     DeviceConfig.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
-    DeviceConfig.capture.format = ma_format_s16;
+    DeviceConfig.capture.format = ToMiniAudioFormat(InFormat);
     DeviceConfig.capture.channels = 2;
     DeviceConfig.capture.shareMode = ma_share_mode_shared;
     DeviceConfig.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
-    DeviceConfig.playback.format = ma_format_s16;
+    DeviceConfig.playback.format = ToMiniAudioFormat(OutFormat);
     DeviceConfig.playback.channels = 2;
     DeviceConfig.dataCallback = DataCallback;
 
     auto result = ma_device_init(NULL, &DeviceConfig, &Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio device: {}", result));
 
-    ma_context_get_device_info(Device.pContext, Device.type, nullptr, &DeviceInfo);
+    result = ma_context_get_device_info(Device.pContext, Device.type, nullptr, &DeviceInfo);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio device info: {}", result));
+
+    for (const IO io : IO_All) {
+        for (const auto format : MiniAudio::PrioritizedDefaultFormats) {
+            DeviceFormats[io].emplace_back(format); // miniaudio supports automatic conversion to/from any format. Use ma_format_unknown for native format.
+            // todo don't show an additional 'native' option. Instead, highlight/mark the native formats on the current device.
+            //   Aldo, don't clear/re-fill `DeviceFormats`. Just render all of them no matter what and mark the native ones.
+        }
+        if (DeviceFormats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", Capitalize(to_string(io))));
+    }
+
     result = ma_device_start(&Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
 }
@@ -179,6 +193,7 @@ void MiniAudio::UpdateProcess() const {
         PreviousInFormat = InFormat;
         PreviousOutFormat = OutFormat;
         // Reset to make any audio config changes take effect.
+        // todo no need to completely reset in many cases (like just format changes). Just reset the data_converter.
         TeardownDevice();
         InitDevice();
     }
@@ -281,11 +296,13 @@ void MiniAudio::Render() const {
 
     if (!DeviceNames[IO_In].empty()) InDeviceName.Render(DeviceNames[IO_In]);
     if (!DeviceNames[IO_Out].empty()) OutDeviceName.Render(DeviceNames[IO_Out]);
-    // if (!SupportedFormats[IO_In].empty()) InFormat.Render(SupportedFormats[IO_In]);
-    // if (!SupportedFormats[IO_Out].empty()) OutFormat.Render(SupportedFormats[IO_Out]);
+    if (!DeviceFormats[IO_In].empty()) InFormat.Render(DeviceFormats[IO_In]);
+    if (!DeviceFormats[IO_Out].empty()) OutFormat.Render(DeviceFormats[IO_Out]);
+
     // if (!SupportedSampleRates[IO_In].empty()) InSampleRate.Render(SupportedSampleRates[IO_In]);
     // if (!SupportedSampleRates[IO_Out].empty()) OutSampleRate.Render(SupportedSampleRates[IO_Out]);
     // NewLine();
+    // todo search for /* Log device information. */ in miniaudio.h for device info example
     // if (TreeNode("Devices")) {
     //     ShowDevices();
     //     TreePop();

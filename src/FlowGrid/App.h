@@ -747,6 +747,39 @@ WindowMember(
     Prop(FaustState, Faust);
 );
 
+WindowMember(
+    MiniAudio,
+    // A selection of supported formats, corresponding to `SoundIoFormat`
+    enum IoFormat_{
+        IoFormat_Invalid = 0,
+        IoFormat_Float64NE,
+        IoFormat_Float32NE,
+        IoFormat_S32NE,
+        IoFormat_S16NE,
+    };
+    using IoFormat = int;
+
+    static const vector<IoFormat> PrioritizedDefaultFormats;
+    static const vector<int> PrioritizedDefaultSampleRates;
+
+    void UpdateProcess() const;
+    const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
+
+    AudioBackend Backend = none;
+    Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
+    Prop_(Bool, FaustRunning, "?Disabling skips Faust computation when computing audio output.", true);
+    Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
+    Prop(String, InDeviceId);
+    Prop(String, OutDeviceId);
+    Prop(Int, InSampleRate);
+    Prop(Int, OutSampleRate);
+    Prop(Enum, InFormat, {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid);
+    Prop(Enum, OutFormat, {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid);
+    Prop(Float, OutDeviceVolume, 1.0);
+    Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
+    Prop(FaustState, Faust);
+);
+
 enum FlowGridCol_ {
     FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered

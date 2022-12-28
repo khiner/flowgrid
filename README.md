@@ -125,7 +125,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 ### Audio
 
 - [Faust](https://github.com/grame-cncm/faust) for DSP
-- [libsoundio](https://github.com/andrewrk/libsoundio) for the audio backend, and for its memory-mapped ring buffer
+- [miniaudio](https://github.com/mackron/miniaudio) for the audio backend
 - [r8brain-free-src](https://github.com/avaneev/r8brain-free-src/) for audio resampling, currently only used when monitoring an audio input stream with a sample rate different from the output stream
 
 ### UI/UX
@@ -212,7 +212,6 @@ The following modules are [forked by me](https://github.com/khiner?tab=repositor
 
 - `imgui:docking`
 - `implot:master`
-- `libsoundio:master`
 - `zep:master`
 - `imgui_club:master`
 

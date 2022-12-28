@@ -52,3 +52,6 @@
 [submodule "lib/immer"]
 	path = lib/immer
 	url = git@github.com:arximboldi/immer.git
+[submodule "lib/miniaudio"]
+	path = lib/miniaudio
+	url = git@github.com:mackron/miniaudio.git

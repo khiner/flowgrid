@@ -20,6 +20,7 @@ file(
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 include_directories(
+    lib/miniaudio
     lib/faust/architecture
     lib/zep/include
     lib/ImGuiFileDialog

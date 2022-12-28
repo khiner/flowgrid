@@ -750,16 +750,18 @@ WindowMember(
 WindowMember(
     MiniAudio,
     // A selection of supported formats, corresponding to `SoundIoFormat`
+    // todo display using `ma_get_format_name(format)`
     enum IoFormat_{
         IoFormat_Invalid = 0,
-        IoFormat_Float64NE,
-        IoFormat_Float32NE,
-        IoFormat_S32NE,
-        IoFormat_S16NE,
+        IoFormat_U8,
+        IoFormat_S16,
+        IoFormat_S24,
+        IoFormat_S32,
+        IoFormat_F32,
     };
     using IoFormat = int;
 
-    static const vector<IoFormat> PrioritizedDefaultFormats;
+    static const vector<IoFormat> PrioritizedDefaultFormats; // todo use `ma_get_format_priority_index`
     static const vector<int> PrioritizedDefaultSampleRates;
 
     void UpdateProcess() const;
@@ -1303,7 +1305,7 @@ UIMember(
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(fg::Style, Style);
     Prop(ApplicationSettings, ApplicationSettings);
-    Prop(Audio, Audio);
+    Prop(MiniAudio, Audio);
     Prop(UIProcess, UiProcess);
     Prop(FileDialog, FileDialog);
     Prop(Info, Info);

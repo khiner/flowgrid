@@ -62,10 +62,10 @@ static llvm_dsp_factory *DspFactory;
 static dsp *FaustDsp = nullptr;
 static Box FaustBox = nullptr;
 static unique_ptr<FaustParams> FaustUi;
+static int PreviousFaustSampleRate = 0;
 
 static string PreviousFaustCode;
-static int PreviousFaustSampleRate = 0;
-static int PreviousInDeviceId, PreviousOutDeviceId;
+static string PreviousInDeviceName, PreviousOutDeviceName;
 static int PreviousInSampleRate, PreviousOutSampleRate;
 static int PreviousInFormat, PreviousOutFormat;
 static float PreviousOutDeviceVolume;
@@ -74,64 +74,113 @@ static float PreviousOutDeviceVolume;
 
 using namespace MiniAudioN;
 
-void data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount) {
-    MA_ASSERT(pDevice->capture.format == pDevice->playback.format);
-    MA_ASSERT(pDevice->capture.channels == pDevice->playback.channels);
+void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
+    MA_ASSERT(device->capture.format == device->playback.format);
+    MA_ASSERT(device->capture.channels == device->playback.channels);
 
     /* In this example the format and channel count are the same for both input and output which means we can just memcpy(). */
-    MA_COPY_MEMORY(pOutput, pInput, frameCount * ma_get_bytes_per_frame(pDevice->capture.format, pDevice->capture.channels));
+    MA_COPY_MEMORY(output, input, frame_count * ma_get_bytes_per_frame(device->capture.format, device->capture.channels));
 }
 
+// Context
+static ma_context AudioContext;
+static bool AudioContextInitialized = false;
+static vector<ma_device_info *> DeviceInfos[IO_Count];
+// Derived from above (todo combine)
+static vector<string> DeviceNames[IO_Count];
+
+// Current device
 static ma_device_config DeviceConfig;
 static ma_device Device;
-static ma_device_id DeviceId;
 static ma_device_info DeviceInfo;
 
-static inline bool IsAudioReady() {
+static inline bool IsDeviceStarted() {
     return ma_device_is_started(&Device);
 }
 
-static ma_result SetupAudio() {
+static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
+    const auto &infos = DeviceInfos[io];
+    for (const ma_device_info *info : infos) {
+        if (info->name == device_name) return &(info->id);
+    }
+    return nullptr;
+}
+
+void MiniAudio::Init() const {
+    for (const IO io : IO_All) {
+        DeviceNames[io].clear();
+    }
+
+    auto result = ma_context_init(NULL, 0, NULL, &AudioContext);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio context: {}", result));
+
+    static ma_uint32 PlaybackDeviceCount, CaptureDeviceCount;
+    static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
+    result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio devices: {}", result));
+
+    for (ma_uint32 i = 0; i < CaptureDeviceCount; i++) {
+        DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
+        DeviceNames[IO_In].push_back(CaptureDeviceInfos[i].name);
+    }
+    for (ma_uint32 i = 0; i < PlaybackDeviceCount; i++) {
+        DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
+        DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
+    }
+}
+
+void MiniAudio::InitDevice() const {
+    if (!AudioContextInitialized) Init(); // todo explicit re-scan action
+
     DeviceConfig = ma_device_config_init(ma_device_type_duplex);
-    DeviceConfig.capture.pDeviceID = NULL;
+    DeviceConfig.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
     DeviceConfig.capture.format = ma_format_s16;
     DeviceConfig.capture.channels = 2;
     DeviceConfig.capture.shareMode = ma_share_mode_shared;
-    DeviceConfig.playback.pDeviceID = NULL;
+    DeviceConfig.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
     DeviceConfig.playback.format = ma_format_s16;
     DeviceConfig.playback.channels = 2;
-    DeviceConfig.dataCallback = data_callback;
-    auto result = ma_device_init(NULL, &DeviceConfig, &Device);
-    if (result != MA_SUCCESS) return result;
+    DeviceConfig.dataCallback = DataCallback;
 
-    ma_context_get_device_info(Device.pContext, Device.type, &DeviceId, &DeviceInfo);
-    return ma_device_start(&Device);
+    auto result = ma_device_init(NULL, &DeviceConfig, &Device);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio device: {}", result));
+
+    ma_context_get_device_info(Device.pContext, Device.type, nullptr, &DeviceInfo);
+    result = ma_device_start(&Device);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
 }
 
-static void TeardownAudio() {
+void MiniAudio::TeardownDevice() const {
     ma_device_uninit(&Device);
 }
 
+// todo still need to call this on app shutdown.
+void MiniAudio::Teardown() const {
+    const auto result = ma_context_uninit(&AudioContext);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error shutting down audio context: {}", result));
+    AudioContextInitialized = false;
+}
+
 void MiniAudio::UpdateProcess() const {
-    if (Running && !IsAudioReady()) {
-        SetupAudio();
-    } else if (!Running && IsAudioReady()) {
-        TeardownAudio();
+    if (Running && !IsDeviceStarted()) {
+        InitDevice();
+    } else if (!Running && IsDeviceStarted()) {
+        TeardownDevice();
     } else if (
-        IsAudioReady() &&
-        (PreviousInDeviceId != InDeviceId || PreviousOutDeviceId != OutDeviceId ||
+        IsDeviceStarted() &&
+        (PreviousInDeviceName != InDeviceName || PreviousOutDeviceName != OutDeviceName ||
          PreviousInSampleRate != InSampleRate || PreviousOutSampleRate != OutSampleRate ||
          PreviousInFormat != InFormat || PreviousOutFormat != OutFormat)
     ) {
-        PreviousInDeviceId = InDeviceId;
-        PreviousOutDeviceId = OutDeviceId;
+        PreviousInDeviceName = string(InDeviceName);
+        PreviousOutDeviceName = string(OutDeviceName);
         PreviousInSampleRate = InSampleRate;
         PreviousOutSampleRate = OutSampleRate;
         PreviousInFormat = InFormat;
         PreviousOutFormat = OutFormat;
         // Reset to make any audio config changes take effect.
-        // TeardownAudio();
-        // SetupAudio();
+        TeardownDevice();
+        InitDevice();
     }
 
     static bool first_run = true;
@@ -210,7 +259,7 @@ void MiniAudio::UpdateProcess() const {
         OnUiChange(FaustUi.get());
     }
 
-    if (IsAudioReady() && PreviousOutDeviceVolume != OutDeviceVolume) ma_device_set_master_volume(&Device, OutDeviceVolume);
+    if (IsDeviceStarted() && PreviousOutDeviceVolume != OutDeviceVolume) ma_device_set_master_volume(&Device, OutDeviceVolume);
 }
 
 using namespace ImGui;
@@ -220,8 +269,8 @@ namespace MiniAudioN {
 
 void MiniAudio::Render() const {
     Running.Draw();
-    if (!IsAudioReady()) {
-        TextUnformatted("No audio context created yet");
+    if (!IsDeviceStarted()) {
+        TextUnformatted("No audio device started yet");
         return;
     }
 
@@ -230,8 +279,8 @@ void MiniAudio::Render() const {
     MonitorInput.Draw();
     OutDeviceVolume.Draw();
 
-    // if (!DeviceIds[IO_In].empty()) InDeviceId.Render(DeviceIds[IO_In]);
-    // if (!DeviceIds[IO_Out].empty()) OutDeviceId.Render(DeviceIds[IO_Out]);
+    if (!DeviceNames[IO_In].empty()) InDeviceName.Render(DeviceNames[IO_In]);
+    if (!DeviceNames[IO_Out].empty()) OutDeviceName.Render(DeviceNames[IO_Out]);
     // if (!SupportedFormats[IO_In].empty()) InFormat.Render(SupportedFormats[IO_In]);
     // if (!SupportedFormats[IO_Out].empty()) OutFormat.Render(SupportedFormats[IO_Out]);
     // if (!SupportedSampleRates[IO_In].empty()) InSampleRate.Render(SupportedSampleRates[IO_In]);

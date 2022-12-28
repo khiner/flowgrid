@@ -282,20 +282,20 @@ void SetupAudio() {
         for (int i = 0; i < device_count; i++) DeviceIds[io].emplace_back(GetDevice(io, i)->id);
 
         int device_index = default_device_index;
-        if (s.Audio.GetDeviceId(io)) {
-            bool found = false;
-            for (int i = 0; i < device_count; i++) {
-                auto *device = GetDevice(io, i);
-                if (s.Audio.GetDeviceId(io) == device->id) {
-                    device_index = i;
-                    found = true;
-                    soundio_device_unref(device);
-                    break;
-                }
-                soundio_device_unref(device);
-            }
-            if (!found) throw std::runtime_error(format("Invalid audio {} device id: ", to_string(io)) + string(s.Audio.GetDeviceId(io)));
-        }
+        // if (s.Audio.GetDeviceId(io)) {
+        //     bool found = false;
+        //     for (int i = 0; i < device_count; i++) {
+        //         auto *device = GetDevice(io, i);
+        //         if (s.Audio.GetDeviceId(io) == device->id) {
+        //             device_index = i;
+        //             found = true;
+        //             soundio_device_unref(device);
+        //             break;
+        //         }
+        //         soundio_device_unref(device);
+        //     }
+        //     if (!found) throw std::runtime_error(format("Invalid audio {} device id: ", to_string(io)) + string(s.Audio.GetDeviceId(io)));
+        // }
 
         auto *device = GetDevice(io, device_index);
         if (!device) throw std::runtime_error(format("Could not get audio {} device: out of memory", to_string(io)));

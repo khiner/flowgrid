@@ -317,6 +317,7 @@ struct String : TypedBase<string> {
         : TypedBase(parent, path_segment, name_help, string(value)) {}
 
     operator bool() const { return !Value.empty(); }
+    operator string_view() const { return Value; }
 
     void Render(const vector<string> &options) const;
 
@@ -765,14 +766,17 @@ WindowMember(
     static const vector<int> PrioritizedDefaultSampleRates;
 
     void UpdateProcess() const;
-    const String &GetDeviceId(IO io) const { return io == IO_In ? InDeviceId : OutDeviceId; }
+    void Init() const; // todo private
+    void InitDevice() const; // todo private
+    void TeardownDevice() const; // todo private
+    void Teardown() const; // todo private
 
     AudioBackend Backend = none;
     Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
     Prop_(Bool, FaustRunning, "?Disabling skips Faust computation when computing audio output.", true);
     Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
-    Prop(String, InDeviceId);
-    Prop(String, OutDeviceId);
+    Prop(String, InDeviceName);
+    Prop(String, OutDeviceName);
     Prop(Int, InSampleRate);
     Prop(Int, OutSampleRate);
     Prop(Enum, InFormat, {"Invalid", "Float64", "Float32", "Short32", "Short16"}, IoFormat_Invalid);
@@ -780,6 +784,7 @@ WindowMember(
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);
+
 );
 
 enum FlowGridCol_ {

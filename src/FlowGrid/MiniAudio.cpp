@@ -228,17 +228,18 @@ void MiniAudio::UpdateProcess() const {
         InitDevice();
     }
 
+    // Initialize state values to reflect the initial device configuration
     static bool first_run = true;
     if (first_run) {
         first_run = false;
 
-        static StoreEntries values;
-        // if (Device.capture.Id != InDeviceId) values.emplace_back(InDeviceId.Path, Device.capture.Id);
-        // if (Device.playback.Id != OutDeviceId) values.emplace_back(OutDeviceId.Path, Device.playback.Id);
-        // if (Device.capture.format != InFormat) values.emplace_back(InFormat.Path, ToAudioFormat(Device.capture.Id));
-        // if (Device.playback.format != OutFormat) values.emplace_back(OutFormat.Path, ToAudioFormat(Device.playback.Id));
-        // if (Device.sample_rate != SampleRate) values.emplace_back(SampleRate.Path, Device.sample_rate);
-        // if (!values.empty()) q(SetValues{values}, true);
+        static StoreEntries initial_settings;
+        if (Device.capture.name != InDeviceName) initial_settings.emplace_back(InDeviceName.Path, Device.capture.name);
+        if (Device.playback.name != OutDeviceName) initial_settings.emplace_back(OutDeviceName.Path, Device.playback.name);
+        if (Device.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, ToAudioFormat(Device.capture.format));
+        if (Device.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, ToAudioFormat(Device.playback.format));
+        if (Device.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, Device.sampleRate);
+        if (!initial_settings.empty()) q(SetValues{initial_settings}, true);
     }
 
     if (Faust.Code != PreviousFaustCode || SampleRate != PreviousFaustSampleRate) {

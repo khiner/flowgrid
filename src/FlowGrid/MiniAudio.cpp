@@ -16,6 +16,8 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
+// todo support loopback mode? (think of use cases)
+
 const vector<int> MiniAudio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
 const vector<MiniAudio::IoFormat> MiniAudio::PrioritizedDefaultFormats = {
     IoFormat_F32,
@@ -62,11 +64,11 @@ static llvm_dsp_factory *DspFactory;
 static dsp *FaustDsp = nullptr;
 static Box FaustBox = nullptr;
 static unique_ptr<FaustParams> FaustUi;
-static int PreviousFaustSampleRate = 0;
+static U32 PreviousFaustSampleRate = 0;
 
 static string PreviousFaustCode;
 static string PreviousInDeviceName, PreviousOutDeviceName;
-static int PreviousInSampleRate, PreviousOutSampleRate;
+static U32 PreviousInSampleRate, PreviousOutSampleRate;
 static MiniAudio::IoFormat PreviousInFormat, PreviousOutFormat;
 static float PreviousOutDeviceVolume;
 
@@ -90,6 +92,7 @@ static vector<ma_device_info *> DeviceInfos[IO_Count];
 // Derived from above (todo combine)
 static vector<string> DeviceNames[IO_Count];
 static vector<MiniAudio::IoFormat> DeviceFormats[IO_Count];
+static vector<ma_uint32> DeviceSampleRates[IO_Count];
 
 // Current device
 static ma_device_config DeviceConfig;
@@ -144,6 +147,7 @@ void MiniAudio::InitDevice() const {
     DeviceConfig.playback.format = ToMiniAudioFormat(OutFormat);
     DeviceConfig.playback.channels = 2;
     DeviceConfig.dataCallback = DataCallback;
+    DeviceConfig.sampleRate = 0;
 
     auto result = ma_device_init(NULL, &DeviceConfig, &Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio device: {}", result));
@@ -282,6 +286,81 @@ using namespace ImGui;
 namespace MiniAudioN {
 } // namespace MiniAudioN
 
+static void DrawDevice(ma_device *device) {
+    assert(device->type == ma_device_type_duplex || device->type == ma_device_type_loopback);
+
+    Text("[%s]", ma_get_backend_name(device->pContext->backend));
+
+    static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
+    ma_device_get_name(device, device->type == ma_device_type_loopback ? ma_device_type_playback : ma_device_type_capture, name, sizeof(name), NULL);
+    if (TreeNode(name, "%s (%s)", name, "Capture")) {
+        Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
+        Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
+        Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
+        Text("Buffer Size: %d*%d (%d)\n", device->capture.internalPeriodSizeInFrames, device->capture.internalPeriods, (device->capture.internalPeriodSizeInFrames * device->capture.internalPeriods));
+        if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen, "Conversion")) {
+            Text("Pre Format Conversion: %s\n", device->capture.converter.hasPreFormatConversion ? "YES" : "NO");
+            Text("Post Format Conversion: %s\n", device->capture.converter.hasPostFormatConversion ? "YES" : "NO");
+            Text("Channel Routing: %s\n", device->capture.converter.hasChannelConverter ? "YES" : "NO");
+            Text("Resampling: %s\n", device->capture.converter.hasResampler ? "YES" : "NO");
+            Text("Passthrough: %s\n", device->capture.converter.isPassthrough ? "YES" : "NO");
+            {
+                char channel_map[1024];
+                ma_channel_map_to_string(device->capture.internalChannelMap, device->capture.internalChannels, channel_map, sizeof(channel_map));
+                Text("Channel Map In: {%s}\n", channel_map);
+
+                ma_channel_map_to_string(device->capture.channelMap, device->capture.channels, channel_map, sizeof(channel_map));
+                Text("Channel Map Out: {%s}\n", channel_map);
+            }
+            TreePop();
+        }
+        TreePop();
+    }
+
+    if (device->type == ma_device_type_loopback) return;
+
+    ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), NULL);
+    if (TreeNode(name, "%s (%s)", name, "Playback")) {
+        Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
+        Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
+        Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
+        Text("Buffer Size: %d*%d (%d)", device->playback.internalPeriodSizeInFrames, device->playback.internalPeriods, (device->playback.internalPeriodSizeInFrames * device->playback.internalPeriods));
+        if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen, "Conversion")) {
+            Text("Pre Format Conversion:  %s", device->playback.converter.hasPreFormatConversion ? "YES" : "NO");
+            Text("Post Format Conversion: %s", device->playback.converter.hasPostFormatConversion ? "YES" : "NO");
+            Text("Channel Routing: %s", device->playback.converter.hasChannelConverter ? "YES" : "NO");
+            Text("Resampling: %s", device->playback.converter.hasResampler ? "YES" : "NO");
+            Text("Passthrough: %s", device->playback.converter.isPassthrough ? "YES" : "NO");
+            {
+                char channel_map[1024];
+                ma_channel_map_to_string(device->playback.channelMap, device->playback.channels, channel_map, sizeof(channel_map));
+                Text("Channel Map In: {%s}", channel_map);
+
+                ma_channel_map_to_string(device->playback.internalChannelMap, device->playback.internalChannels, channel_map, sizeof(channel_map));
+                Text("Channel Map Out: {%s}", channel_map);
+            }
+            TreePop();
+        }
+        TreePop();
+    }
+}
+
+// void DrawDevices() {
+//     for (const IO io : IO_All) {
+//         const Count device_count = GetDeviceCount(io);
+//         if (TreeNodeEx(format("{} devices ({})", Capitalize(to_string(io)), device_count).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+//             for (Count device_index = 0; device_index < device_count; device_index++) {
+//                 auto *device = GetDevice(io, device_index);
+//                 ShowDevice(*device);
+//             }
+//             TreePop();
+//         }
+//     }
+// }
+void DrawDevices() {
+    DrawDevice(&Device);
+}
+
 void MiniAudio::Render() const {
     Running.Draw();
     if (!IsDeviceStarted()) {
@@ -294,23 +373,19 @@ void MiniAudio::Render() const {
     MonitorInput.Draw();
     OutDeviceVolume.Draw();
 
-    if (!DeviceNames[IO_In].empty()) InDeviceName.Render(DeviceNames[IO_In]);
-    if (!DeviceNames[IO_Out].empty()) OutDeviceName.Render(DeviceNames[IO_Out]);
-    if (!DeviceFormats[IO_In].empty()) InFormat.Render(DeviceFormats[IO_In]);
-    if (!DeviceFormats[IO_Out].empty()) OutFormat.Render(DeviceFormats[IO_Out]);
+    for (const IO io : IO_All) {
+        NewLine();
+        TextUnformatted(Capitalize(to_string(io)).c_str());
+        (io == IO_In ? InDeviceName : OutDeviceName).Render(DeviceNames[io]);
+        (io == IO_In ? InFormat : OutFormat).Render(DeviceFormats[io]);
+        (io == IO_In ? InSampleRate : OutSampleRate).Render(DeviceSampleRates[io]);
+    }
 
-    // if (!SupportedSampleRates[IO_In].empty()) InSampleRate.Render(SupportedSampleRates[IO_In]);
-    // if (!SupportedSampleRates[IO_Out].empty()) OutSampleRate.Render(SupportedSampleRates[IO_Out]);
-    // NewLine();
-    // todo search for /* Log device information. */ in miniaudio.h for device info example
-    // if (TreeNode("Devices")) {
-    //     ShowDevices();
-    //     TreePop();
-    // }
-    // if (TreeNode("Streams")) {
-    //     ShowStreams();
-    //     TreePop();
-    // }
+    NewLine();
+    if (TreeNode("Devices")) {
+        DrawDevices();
+        TreePop();
+    }
     // const auto backend_count = soundio_backend_count(soundio);
     // if (TreeNodeEx("Backends", ImGuiTreeNodeFlags_None, "Available backends (%d)", backend_count)) {
     //     for (int i = 0; i < backend_count; i++) {

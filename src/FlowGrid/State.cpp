@@ -74,6 +74,20 @@ void UInt::Render() const {
     if (edited) q(SetValue{Path, value});
     HelpMarker();
 }
+void UInt::Render(const vector<U32> &options) const {
+    if (options.empty()) return;
+
+    const U32 value = Value;
+    if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
+        for (const auto option : options) {
+            const bool is_selected = option == value;
+            if (Selectable(to_string(option).c_str(), is_selected)) q(SetValue{Path, option});
+            if (is_selected) SetItemDefaultFocus();
+        }
+        EndCombo();
+    }
+    HelpMarker();
+}
 
 void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     const Count i = std::stoi(PathSegment); // Assuming color is a member of a vector here.
@@ -114,6 +128,8 @@ void Int::Render() const {
     HelpMarker();
 }
 void Int::Render(const vector<int> &options) const {
+    if (options.empty()) return;
+
     const int value = Value;
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
@@ -138,6 +154,8 @@ void Enum::Render() const {
     Render(views::ints(0, int(Names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
 }
 void Enum::Render(const vector<int> &options) const {
+    if (options.empty()) return;
+
     const int value = Value;
     if (BeginCombo(ImGuiLabel.c_str(), Names[value].c_str())) {
         for (int option : options) {
@@ -204,6 +222,8 @@ void String::Render() const {
     TextUnformatted(value.c_str());
 }
 void String::Render(const vector<string> &options) const {
+    if (options.empty()) return;
+
     const string value = *this;
     if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option : options) {

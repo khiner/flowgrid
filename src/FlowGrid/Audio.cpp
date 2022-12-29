@@ -194,7 +194,7 @@ static void CreateStream(const IO io) {
 
     auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
     // If the project has a saved sample rate, give it the highest priority.
-    const Int &saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
+    const UInt &saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
     if (saved_sample_rate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), saved_sample_rate);
 
     // Could just check `SupportedSampleRates`, but this `supports_sample_rate` function handles devices supporting ranges.
@@ -532,7 +532,7 @@ void Audio::UpdateProcess() const {
         RetryingSetupAudio();
     } else if (!Running && soundio) {
         TeardownAudio();
-    } else if (SoundIoReady && (InStream->device->id != InDeviceId || OutStream->device->id != OutDeviceId || InStream->sample_rate != s.Audio.InSampleRate || OutStream->sample_rate != OutSampleRate || InStream->format != ToSoundIoFormat(InFormat) || OutStream->format != ToSoundIoFormat(OutFormat))) {
+    } else if (SoundIoReady && (InStream->device->id != InDeviceId || OutStream->device->id != OutDeviceId || InStream->sample_rate != int(InSampleRate) || OutStream->sample_rate != int(OutSampleRate) || InStream->format != ToSoundIoFormat(InFormat) || OutStream->format != ToSoundIoFormat(OutFormat))) {
         // Reset to make any audio config changes take effect.
         TeardownAudio();
         RetryingSetupAudio();

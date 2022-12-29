@@ -267,6 +267,7 @@ struct UInt : TypedBase<U32> {
     operator int() const { return Value; }
     operator ImColor() const { return Value; }
 
+    void Render(const vector<U32> &options) const;
     void ColorEdit4(ImGuiColorEditFlags = ImGuiColorEditFlags_None, bool allow_auto = false) const;
 
     const U32 Min, Max;
@@ -776,8 +777,8 @@ WindowMember(
     Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
     Prop(String, InDeviceName);
     Prop(String, OutDeviceName);
-    Prop(Int, InSampleRate);
-    Prop(Int, OutSampleRate);
+    Prop(UInt, InSampleRate);
+    Prop(UInt, OutSampleRate);
     Prop(Enum, InFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native); // todo display using `ma_get_format_name(format)`, using a new `Enum` optional ctor arg `GetName(int)`
     Prop(Enum, OutFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native);
     Prop(Float, OutDeviceVolume, 1.0);

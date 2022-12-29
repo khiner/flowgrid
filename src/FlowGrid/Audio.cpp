@@ -194,7 +194,7 @@ static void CreateStream(const IO io) {
 
     auto prioritized_sample_rates = Audio::PrioritizedDefaultSampleRates;
     // If the project has a saved sample rate, give it the highest priority.
-    const UInt &saved_sample_rate = io == IO_In ? s.Audio.InSampleRate : s.Audio.OutSampleRate;
+    const UInt &saved_sample_rate = io == IO_In ? s.Audio.SampleRate : s.Audio.SampleRate;
     if (saved_sample_rate) prioritized_sample_rates.insert(prioritized_sample_rates.begin(), saved_sample_rate);
 
     // Could just check `SupportedSampleRates`, but this `supports_sample_rate` function handles devices supporting ranges.

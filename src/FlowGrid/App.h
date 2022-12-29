@@ -777,10 +777,9 @@ WindowMember(
     Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
     Prop(String, InDeviceName);
     Prop(String, OutDeviceName);
-    Prop(UInt, InSampleRate);
-    Prop(UInt, OutSampleRate);
     Prop(Enum, InFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native); // todo display using `ma_get_format_name(format)`, using a new `Enum` optional ctor arg `GetName(int)`
     Prop(Enum, OutFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native);
+    Prop(UInt, SampleRate);
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);

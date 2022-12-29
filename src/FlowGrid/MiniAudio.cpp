@@ -22,11 +22,12 @@ const vector<int> MiniAudio::PrioritizedDefaultSampleRates = {48000, 44100, 9600
 const vector<MiniAudio::IoFormat> MiniAudio::PrioritizedDefaultFormats = {
     IoFormat_F32,
     IoFormat_S32,
+    IoFormat_S24,
     IoFormat_S16,
+    IoFormat_U8,
     IoFormat_Native,
 };
 
-namespace MiniAudioN {
 ma_format ToMiniAudioFormat(const MiniAudio::IoFormat format) {
     switch (format) {
         case MiniAudio::IoFormat_Native: return ma_format_unknown;
@@ -68,13 +69,9 @@ static U32 PreviousFaustSampleRate = 0;
 
 static string PreviousFaustCode;
 static string PreviousInDeviceName, PreviousOutDeviceName;
-static U32 PreviousInSampleRate, PreviousOutSampleRate;
 static MiniAudio::IoFormat PreviousInFormat, PreviousOutFormat;
+static U32 PreviousSampleRate;
 static float PreviousOutDeviceVolume;
-
-} // namespace MiniAudioN
-
-using namespace MiniAudioN;
 
 void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
     if (device->capture.channels == device->playback.channels) {
@@ -89,10 +86,13 @@ void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 
 static ma_context AudioContext;
 static bool AudioContextInitialized = false;
 static vector<ma_device_info *> DeviceInfos[IO_Count];
+// static ma_resampler_config ResamplerConfig;
+// static ma_resampler Resampler;
+
 // Derived from above (todo combine)
 static vector<string> DeviceNames[IO_Count];
 static vector<MiniAudio::IoFormat> DeviceFormats[IO_Count];
-static vector<ma_uint32> DeviceSampleRates[IO_Count];
+static vector<ma_uint32> DeviceSampleRates; // Sample rates shared between
 
 // Current device
 static ma_device_config DeviceConfig;
@@ -113,9 +113,11 @@ static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
 
 void MiniAudio::Init() const {
     for (const IO io : IO_All) {
+        DeviceInfos[io].clear();
         DeviceNames[io].clear();
         DeviceFormats[io].clear();
     }
+    DeviceSampleRates.clear();
 
     auto result = ma_context_init(NULL, 0, NULL, &AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio context: {}", result));
@@ -133,7 +135,35 @@ void MiniAudio::Init() const {
         DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
         DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
     }
+
+    for (const IO io : IO_All) {
+        for (const auto format : MiniAudio::PrioritizedDefaultFormats) {
+            // DeviceInfo.nativeDataFormats
+            DeviceFormats[io].emplace_back(format); // miniaudio supports automatic conversion to/from any format. Use ma_format_unknown for native format.
+            // todo don't show an additional 'native' option. Instead, highlight/mark the native formats on the current device.
+            //   Aldo, don't clear/re-fill `DeviceFormats`. Just render all of them no matter what and mark the native ones.
+        }
+    }
+    for (const auto sample_rate : g_maStandardSampleRatePriorities) {
+        DeviceSampleRates.emplace_back(sample_rate);
+    }
 }
+
+// todo implement for r8brain resampler
+// todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
+//   Can I still use duplex mode in this case?
+// static ma_resampling_backend_vtable ResamplerVTable = {
+//     ma_resampling_backend_get_heap_size__linear,
+//     ma_resampling_backend_init__linear,
+//     ma_resampling_backend_uninit__linear,
+//     ma_resampling_backend_process__linear,
+//     ma_resampling_backend_set_rate__linear,
+//     ma_resampling_backend_get_input_latency__linear,
+//     ma_resampling_backend_get_output_latency__linear,
+//     ma_resampling_backend_get_required_input_frame_count__linear,
+//     ma_resampling_backend_get_expected_output_frame_count__linear,
+//     ma_resampling_backend_reset__linear,
+// };
 
 void MiniAudio::InitDevice() const {
     if (!AudioContextInitialized) Init(); // todo explicit re-scan action
@@ -147,7 +177,12 @@ void MiniAudio::InitDevice() const {
     DeviceConfig.playback.format = ToMiniAudioFormat(OutFormat);
     DeviceConfig.playback.channels = 2;
     DeviceConfig.dataCallback = DataCallback;
-    DeviceConfig.sampleRate = 0;
+    DeviceConfig.sampleRate = SampleRate;
+
+    // ResamplerConfig = ma_resampler_config_init(ma_format_f32, 2, 0, 0, ma_resample_algorithm_custom);
+    // auto result = ma_resampler_init(&ResamplerConfig, nullptr, &Resampler);
+    // if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing resampler: {}", result));
+    // ResamplerConfig.pBackendVTable = &ResamplerVTable;
 
     auto result = ma_device_init(NULL, &DeviceConfig, &Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio device: {}", result));
@@ -155,21 +190,13 @@ void MiniAudio::InitDevice() const {
     result = ma_context_get_device_info(Device.pContext, Device.type, nullptr, &DeviceInfo);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio device info: {}", result));
 
-    for (const IO io : IO_All) {
-        for (const auto format : MiniAudio::PrioritizedDefaultFormats) {
-            DeviceFormats[io].emplace_back(format); // miniaudio supports automatic conversion to/from any format. Use ma_format_unknown for native format.
-            // todo don't show an additional 'native' option. Instead, highlight/mark the native formats on the current device.
-            //   Aldo, don't clear/re-fill `DeviceFormats`. Just render all of them no matter what and mark the native ones.
-        }
-        if (DeviceFormats[io].empty()) throw std::runtime_error(format("Audio {} device does not support any FG-supported formats", Capitalize(to_string(io))));
-    }
-
     result = ma_device_start(&Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
 }
 
 void MiniAudio::TeardownDevice() const {
     ma_device_uninit(&Device);
+    // ma_resampler_uninit(&Resampler, nullptr);
 }
 
 // todo still need to call this on app shutdown.
@@ -187,15 +214,14 @@ void MiniAudio::UpdateProcess() const {
     } else if (
         IsDeviceStarted() &&
         (PreviousInDeviceName != InDeviceName || PreviousOutDeviceName != OutDeviceName ||
-         PreviousInSampleRate != InSampleRate || PreviousOutSampleRate != OutSampleRate ||
-         PreviousInFormat != InFormat || PreviousOutFormat != OutFormat)
+         PreviousInFormat != InFormat || PreviousOutFormat != OutFormat ||
+         PreviousSampleRate != SampleRate)
     ) {
         PreviousInDeviceName = string(InDeviceName);
         PreviousOutDeviceName = string(OutDeviceName);
-        PreviousInSampleRate = InSampleRate;
-        PreviousOutSampleRate = OutSampleRate;
         PreviousInFormat = InFormat;
         PreviousOutFormat = OutFormat;
+        PreviousSampleRate = SampleRate;
         // Reset to make any audio config changes take effect.
         // todo no need to completely reset in many cases (like just format changes). Just reset the data_converter.
         TeardownDevice();
@@ -207,22 +233,21 @@ void MiniAudio::UpdateProcess() const {
         first_run = false;
 
         static StoreEntries values;
-        // if (InStream->device->id != InDeviceId) values.emplace_back(InDeviceId.Path, InStream->device->id);
-        // if (OutStream->device->id != OutDeviceId) values.emplace_back(OutDeviceId.Path, OutStream->device->id);
-        // if (InStream->sample_rate != InSampleRate) values.emplace_back(InSampleRate.Path, InStream->sample_rate);
-        // if (OutStream->sample_rate != OutSampleRate) values.emplace_back(OutSampleRate.Path, OutStream->sample_rate);
-        // if (InStream->format != InFormat) values.emplace_back(InFormat.Path, ToAudioFormat(InStream->format));
-        // if (OutStream->format != OutFormat) values.emplace_back(OutFormat.Path, ToAudioFormat(OutStream->format));
+        // if (Device.capture.Id != InDeviceId) values.emplace_back(InDeviceId.Path, Device.capture.Id);
+        // if (Device.playback.Id != OutDeviceId) values.emplace_back(OutDeviceId.Path, Device.playback.Id);
+        // if (Device.capture.format != InFormat) values.emplace_back(InFormat.Path, ToAudioFormat(Device.capture.Id));
+        // if (Device.playback.format != OutFormat) values.emplace_back(OutFormat.Path, ToAudioFormat(Device.playback.Id));
+        // if (Device.sample_rate != SampleRate) values.emplace_back(SampleRate.Path, Device.sample_rate);
         // if (!values.empty()) q(SetValues{values}, true);
     }
 
-    if (Faust.Code != PreviousFaustCode || OutSampleRate != PreviousFaustSampleRate) {
+    if (Faust.Code != PreviousFaustCode || SampleRate != PreviousFaustSampleRate) {
         PreviousFaustCode = string(Faust.Code);
-        PreviousFaustSampleRate = OutSampleRate;
+        PreviousFaustSampleRate = SampleRate;
 
         string error_msg;
         destroyLibContext();
-        if (Faust.Code && OutSampleRate) {
+        if (Faust.Code && SampleRate) {
             createLibContext();
 
             int argc = 0;
@@ -241,7 +266,7 @@ void MiniAudio::UpdateProcess() const {
         }
         if (DspFactory && error_msg.empty()) {
             FaustDsp = DspFactory->createDSPInstance();
-            FaustDsp->init(OutSampleRate);
+            FaustDsp->init(SampleRate);
 
             // Init `FaustBuffers`
             for (const IO io : IO_All) {
@@ -282,9 +307,6 @@ void MiniAudio::UpdateProcess() const {
 }
 
 using namespace ImGui;
-
-namespace MiniAudioN {
-} // namespace MiniAudioN
 
 static void DrawDevice(ma_device *device) {
     assert(device->type == ma_device_type_duplex || device->type == ma_device_type_loopback);
@@ -372,13 +394,13 @@ void MiniAudio::Render() const {
     Muted.Draw();
     MonitorInput.Draw();
     OutDeviceVolume.Draw();
+    SampleRate.Render(DeviceSampleRates);
 
     for (const IO io : IO_All) {
         NewLine();
         TextUnformatted(Capitalize(to_string(io)).c_str());
         (io == IO_In ? InDeviceName : OutDeviceName).Render(DeviceNames[io]);
         (io == IO_In ? InFormat : OutFormat).Render(DeviceFormats[io]);
-        (io == IO_In ? InSampleRate : OutSampleRate).Render(DeviceSampleRates[io]);
     }
 
     NewLine();

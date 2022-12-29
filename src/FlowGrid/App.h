@@ -262,6 +262,8 @@ private:
 struct UInt : TypedBase<U32> {
     UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100)
         : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
+    UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0)
+        : TypedBase(parent, path_segment, name_help, value), Min(0), Max(100), GetName(std::move(get_name)) {}
 
     operator bool() const { return Value; }
     operator int() const { return Value; }
@@ -274,6 +276,9 @@ struct UInt : TypedBase<U32> {
 
 private:
     void Render() const override;
+    string ValueName(const U32 value) const { return GetName ? (*GetName)(value) : to_string(value); }
+
+    const std::optional<std::function<const string(U32)>> GetName{};
 };
 
 struct Int : TypedBase<int> {
@@ -328,7 +333,7 @@ private:
 
 struct Enum : TypedBase<int>, MenuItemDrawable {
     Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0)
-        : TypedBase(parent, path_segment, name_help, value), Names(std::move(names)), GetName({}) {}
+        : TypedBase(parent, path_segment, name_help, value), Names(std::move(names)) {}
     Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0)
         : TypedBase(parent, path_segment, name_help, value), Names({}), GetName(std::move(get_name)) {}
 
@@ -336,11 +341,12 @@ struct Enum : TypedBase<int>, MenuItemDrawable {
     void MenuItem() const override;
 
     const vector<string> Names;
-    const std::optional<std::function<const string(int)>> GetName;
 
 private:
     void Render() const override;
-    string OptionName(int option) const { return GetName ? (*GetName)(option) : Names[option]; }
+    string OptionName(const int option) const { return GetName ? (*GetName)(option) : Names[option]; }
+
+    const std::optional<std::function<const string(int)>> GetName{};
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -766,8 +772,10 @@ WindowMember(
     };
     using IoFormat = int;
 
-    static const vector<IoFormat> PrioritizedDefaultFormats;
-    static const string GetFormatName(int prioritized_format_index);
+    static const vector<IoFormat> PrioritizedFormats;
+    static const vector<U32> PrioritizedSampleRates;
+    static const string GetFormatName(IoFormat);
+    static const string GetSampleRateName(U32);
 
     void UpdateProcess() const;
     AudioBackend Backend = none;
@@ -776,9 +784,9 @@ WindowMember(
     Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
     Prop(String, InDeviceName);
     Prop(String, OutDeviceName);
-    Prop(Enum, InFormat, GetFormatName, IoFormat_Native);
-    Prop(Enum, OutFormat, GetFormatName, IoFormat_Native);
-    Prop(UInt, SampleRate);
+    Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
+    Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
+    Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", GetSampleRateName);
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);

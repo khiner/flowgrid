@@ -78,10 +78,10 @@ void UInt::Render(const vector<U32> &options) const {
     if (options.empty()) return;
 
     const U32 value = Value;
-    if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
+    if (BeginCombo(ImGuiLabel.c_str(), ValueName(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(to_string(option).c_str(), is_selected)) q(SetValue{Path, option});
+            if (Selectable(ValueName(option).c_str(), is_selected)) q(SetValue{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -437,7 +437,7 @@ void Info::Render() const {
     PushTextWrapPos(0);
     if (StateMember::WithId.contains(hovered_id)) {
         const auto *member = StateMember::WithId.at(hovered_id);
-        const string help = member->Help.empty() ? format("No info available for {}.", member->Name) : member->Help;
+        const string help = member->Help.empty() ? format("No info available for \"{}\".", member->Name) : member->Help;
         TextUnformatted(help.c_str());
     } else if (Box box = GetHoveredBox(hovered_id)) {
         TextUnformatted(GetTreeInfo(box).c_str());

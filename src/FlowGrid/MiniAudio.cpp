@@ -18,12 +18,11 @@
 
 // todo support loopback mode? (think of use cases)
 
-const vector<int> MiniAudio::PrioritizedDefaultSampleRates = {48000, 44100, 96000};
 const vector<MiniAudio::IoFormat> MiniAudio::PrioritizedDefaultFormats = {
     IoFormat_F32,
     IoFormat_S32,
-    IoFormat_S24,
     IoFormat_S16,
+    IoFormat_S24,
     IoFormat_U8,
     IoFormat_Native,
 };
@@ -33,8 +32,8 @@ ma_format ToMiniAudioFormat(const MiniAudio::IoFormat format) {
         case MiniAudio::IoFormat_Native: return ma_format_unknown;
         case MiniAudio::IoFormat_F32: return ma_format_f32;
         case MiniAudio::IoFormat_S32: return ma_format_s32;
-        case MiniAudio::IoFormat_S24: return ma_format_s24;
         case MiniAudio::IoFormat_S16: return ma_format_s16;
+        case MiniAudio::IoFormat_S24: return ma_format_s24;
         case MiniAudio::IoFormat_U8: return ma_format_u8;
         default: return ma_format_unknown;
     }
@@ -44,14 +43,16 @@ MiniAudio::IoFormat ToAudioFormat(const ma_format format) {
         case ma_format_unknown: return MiniAudio::IoFormat_Native;
         case ma_format_f32: return MiniAudio::IoFormat_F32;
         case ma_format_s32: return MiniAudio::IoFormat_S32;
-        case ma_format_s24: return MiniAudio::IoFormat_S24;
         case ma_format_s16: return MiniAudio::IoFormat_S16;
+        case ma_format_s24: return MiniAudio::IoFormat_S24;
         case ma_format_u8: return MiniAudio::IoFormat_U8;
         default: return MiniAudio::IoFormat_Native;
     }
 }
 
-// Faust vars
+const string MiniAudio::GetFormatName(int format_index) {
+    return ma_get_format_name(ToMiniAudioFormat(format_index));
+}
 
 // Used to initialize the static Faust buffer.
 // This is the highest `max_frames` value I've seen coming into the output audio callback, using a sample rate of 96kHz
@@ -59,6 +60,7 @@ MiniAudio::IoFormat ToAudioFormat(const ma_format format) {
 // If it needs bumping up, bump away!
 static constexpr int FaustBufferFrames = 2048;
 
+// Faust vars:
 static bool FaustReady = false;
 static Sample **FaustBuffers[IO_Count];
 static llvm_dsp_factory *DspFactory;
@@ -67,6 +69,7 @@ static Box FaustBox = nullptr;
 static unique_ptr<FaustParams> FaustUi;
 static U32 PreviousFaustSampleRate = 0;
 
+// State value cache vars:
 static string PreviousFaustCode;
 static string PreviousInDeviceName, PreviousOutDeviceName;
 static MiniAudio::IoFormat PreviousInFormat, PreviousOutFormat;
@@ -316,7 +319,7 @@ static void DrawDevice(ma_device *device) {
 
     static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
     ma_device_get_name(device, device->type == ma_device_type_loopback ? ma_device_type_playback : ma_device_type_capture, name, sizeof(name), NULL);
-    if (TreeNode(name, "%s (%s)", name, "Capture")) {
+    if (TreeNode(format("{} ({})", name, "Capture").c_str())) {
         Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
         Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
         Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
@@ -343,7 +346,7 @@ static void DrawDevice(ma_device *device) {
     if (device->type == ma_device_type_loopback) return;
 
     ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), NULL);
-    if (TreeNode(name, "%s (%s)", name, "Playback")) {
+    if (TreeNode(format("{} ({})", name, "Playback").c_str())) {
         Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
         Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
         Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);

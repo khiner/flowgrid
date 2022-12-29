@@ -151,16 +151,16 @@ void Float::Render() const {
 }
 
 void Enum::Render() const {
-    Render(views::ints(0, int(Names.size())) | to<vector<int>>); // todo if I stick with this pattern, cache.
+    Render(views::ints(0, int(Names.size())) | to<vector>); // todo if I stick with this pattern, cache.
 }
 void Enum::Render(const vector<int> &options) const {
     if (options.empty()) return;
 
     const int value = Value;
-    if (BeginCombo(ImGuiLabel.c_str(), Names[value].c_str())) {
+    if (BeginCombo(ImGuiLabel.c_str(), OptionName(value).c_str())) {
         for (int option : options) {
             const bool is_selected = option == value;
-            const auto &name = Names[option];
+            const auto &name = OptionName(option);
             if (Selectable(name.c_str(), is_selected)) q(SetValue{Path, option});
             if (is_selected) SetItemDefaultFocus();
         }

@@ -328,15 +328,19 @@ private:
 
 struct Enum : TypedBase<int>, MenuItemDrawable {
     Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0)
-        : TypedBase(parent, path_segment, name_help, value), Names(std::move(names)) {}
+        : TypedBase(parent, path_segment, name_help, value), Names(std::move(names)), GetName({}) {}
+    Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0)
+        : TypedBase(parent, path_segment, name_help, value), Names({}), GetName(std::move(get_name)) {}
 
     void Render(const vector<int> &options) const;
     void MenuItem() const override;
 
     const vector<string> Names;
+    const std::optional<std::function<const string(int)>> GetName;
 
 private:
     void Render() const override;
+    string OptionName(int option) const { return GetName ? (*GetName)(option) : Names[option]; }
 };
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
@@ -762,28 +766,29 @@ WindowMember(
     };
     using IoFormat = int;
 
-    static const vector<IoFormat> PrioritizedDefaultFormats; // todo use `ma_get_format_priority_index`
-    static const vector<int> PrioritizedDefaultSampleRates;
+    static const vector<IoFormat> PrioritizedDefaultFormats;
+    static const string GetFormatName(int prioritized_format_index);
 
     void UpdateProcess() const;
-    void Init() const; // todo private
-    void InitDevice() const; // todo private
-    void TeardownDevice() const; // todo private
-    void Teardown() const; // todo private
-
     AudioBackend Backend = none;
     Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
     Prop_(Bool, FaustRunning, "?Disabling skips Faust computation when computing audio output.", true);
     Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
     Prop(String, InDeviceName);
     Prop(String, OutDeviceName);
-    Prop(Enum, InFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native); // todo display using `ma_get_format_name(format)`, using a new `Enum` optional ctor arg `GetName(int)`
-    Prop(Enum, OutFormat, {"Native", "U8", "S16", "S24", "S32", "F32"}, IoFormat_Native);
+    Prop(Enum, InFormat, GetFormatName, IoFormat_Native);
+    Prop(Enum, OutFormat, GetFormatName, IoFormat_Native);
     Prop(UInt, SampleRate);
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
     Prop(FaustState, Faust);
-
+    // clang-format off
+private:
+    // clang-format on
+    void Init() const;
+    void InitDevice() const;
+    void TeardownDevice() const;
+    void Teardown() const;
 );
 
 enum FlowGridCol_ {

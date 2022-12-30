@@ -56,12 +56,10 @@ Audio::IoFormat ToAudioFormat(const ma_format format) {
 static dsp *FaustDsp = nullptr;
 
 void FaustNodeProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
-    // const float *frames_in = bus_frames_in[0]; // Input bus 0
-    // float *frames_out = bus_frames_out[0]; // Output bus 0
     // ma_pcm_rb_init_ex()
     // ma_deinterleave_pcm_frames()
     float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
-    if (FaustDsp->getNumOutputs() > 0) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
+    FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
     for (Count bus = 0; bus < 1; bus++) {
         for (Count i = 0; i < *frame_count_out; i++) {
             if (s.Audio.MonitorInput) bus_frames_out[bus][i] += bus_frames_in[bus][i];
@@ -89,7 +87,7 @@ static unique_ptr<FaustParams> FaustUi;
 static ma_node_graph_config NodeGraphConfig;
 static ma_data_source_node InputNode;
 static ma_data_source_node_config InputNodeConfig;
-static ma_node_vtable FaustNodeVTable;
+static ma_node_vtable FaustNodeVTable = {FaustNodeProcess, nullptr, 1, 1, 0};
 static ma_node_config FaustNodeConfig;
 static ma_node_base FaustNode;
 
@@ -293,7 +291,7 @@ void Audio::UpdateProcess() const {
 
         string error_msg;
         destroyLibContext();
-        if (FaustRunning && Faust.Code && SampleRate != U32(0)) {
+        if (FaustRunning && Faust.Code && U32(SampleRate)) {
             createLibContext();
 
             int argc = 0;
@@ -313,30 +311,34 @@ void Audio::UpdateProcess() const {
 
         if (FaustRunning && DspFactory && error_msg.empty()) {
             FaustDsp = DspFactory->createDSPInstance();
-            FaustDsp->init(SampleRate);
+            if (!FaustDsp) error_msg = "Could not create Faust DSP.";
+            else {
+                FaustDsp->init(SampleRate);
 
-            // Attach Faust node to the graph endpoint.
-            FaustNodeConfig = ma_node_config_init();
-            FaustNodeVTable = {FaustNodeProcess, nullptr, 1, 1, 0};
-            FaustNodeConfig.vtable = &FaustNodeVTable;
-            FaustNodeConfig.pInputChannels = (U32[]){1}; // One input bus, with one channel.
-            FaustNodeConfig.pOutputChannels = (U32[]){1}; // One output bus, with ont channel
+                if (FaustDsp->getNumOutputs() > 0 || FaustDsp->getNumInputs() > 0) {
+                    // Attach Faust node to the graph endpoint.
+                    FaustNodeConfig = ma_node_config_init();
+                    FaustNodeConfig.vtable = &FaustNodeVTable;
+                    FaustNodeConfig.pInputChannels = (U32[]){U32(FaustDsp->getNumInputs())}; // One input bus, with N channels.
+                    FaustNodeConfig.pOutputChannels = (U32[]){U32(FaustDsp->getNumOutputs())}; // One output bus, with M channels.
 
-            int result = ma_node_init(&NodeGraph, &FaustNodeConfig, nullptr, &FaustNode);
-            if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
+                    int result = ma_node_init(&NodeGraph, &FaustNodeConfig, nullptr, &FaustNode);
+                    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
 
-            ma_node_attach_output_bus(&FaustNode, 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
-            ma_node_attach_output_bus(&InputNode, 0, &FaustNode, 0);
+                    ma_node_attach_output_bus(&FaustNode, 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
+                    ma_node_attach_output_bus(&InputNode, 0, &FaustNode, 0);
+                }
 
-            FaustUi = make_unique<FaustParams>();
-            FaustDsp->buildUserInterface(FaustUi.get());
+                FaustUi = make_unique<FaustParams>();
+                FaustDsp->buildUserInterface(FaustUi.get());
+            }
         } else {
             FaustBox = nullptr;
             FaustUi = nullptr;
-
             if (FaustDsp) {
-                ma_node_uninit(&FaustNode, nullptr);
-
+                if (FaustDsp->getNumOutputs() > 0 || FaustDsp->getNumInputs() > 0) {
+                    ma_node_uninit(&FaustNode, nullptr);
+                }
                 delete FaustDsp;
                 FaustDsp = nullptr;
                 deleteDSPFactory(DspFactory);

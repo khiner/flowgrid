@@ -18,35 +18,35 @@
 
 // todo support loopback mode? (think of use cases)
 
-const vector<MiniAudio::IoFormat> MiniAudio::PrioritizedFormats = {
+const vector<Audio::IoFormat> Audio::PrioritizedFormats = {
     IoFormat_F32,
     IoFormat_S32,
     IoFormat_S16,
     IoFormat_S24,
     IoFormat_U8,
 };
-const vector<U32> MiniAudio::PrioritizedSampleRates = {std::begin(g_maStandardSampleRatePriorities), std::end(g_maStandardSampleRatePriorities)};
+const vector<U32> Audio::PrioritizedSampleRates = {std::begin(g_maStandardSampleRatePriorities), std::end(g_maStandardSampleRatePriorities)};
 
-ma_format ToMiniAudioFormat(const MiniAudio::IoFormat format) {
+ma_format ToAudioFormat(const Audio::IoFormat format) {
     switch (format) {
-        case MiniAudio::IoFormat_Native: return ma_format_unknown;
-        case MiniAudio::IoFormat_F32: return ma_format_f32;
-        case MiniAudio::IoFormat_S32: return ma_format_s32;
-        case MiniAudio::IoFormat_S16: return ma_format_s16;
-        case MiniAudio::IoFormat_S24: return ma_format_s24;
-        case MiniAudio::IoFormat_U8: return ma_format_u8;
+        case Audio::IoFormat_Native: return ma_format_unknown;
+        case Audio::IoFormat_F32: return ma_format_f32;
+        case Audio::IoFormat_S32: return ma_format_s32;
+        case Audio::IoFormat_S16: return ma_format_s16;
+        case Audio::IoFormat_S24: return ma_format_s24;
+        case Audio::IoFormat_U8: return ma_format_u8;
         default: return ma_format_unknown;
     }
 }
-MiniAudio::IoFormat ToAudioFormat(const ma_format format) {
+Audio::IoFormat ToAudioFormat(const ma_format format) {
     switch (format) {
-        case ma_format_unknown: return MiniAudio::IoFormat_Native;
-        case ma_format_f32: return MiniAudio::IoFormat_F32;
-        case ma_format_s32: return MiniAudio::IoFormat_S32;
-        case ma_format_s16: return MiniAudio::IoFormat_S16;
-        case ma_format_s24: return MiniAudio::IoFormat_S24;
-        case ma_format_u8: return MiniAudio::IoFormat_U8;
-        default: return MiniAudio::IoFormat_Native;
+        case ma_format_unknown: return Audio::IoFormat_Native;
+        case ma_format_f32: return Audio::IoFormat_F32;
+        case ma_format_s32: return Audio::IoFormat_S32;
+        case ma_format_s16: return Audio::IoFormat_S16;
+        case ma_format_s24: return Audio::IoFormat_S24;
+        case ma_format_u8: return Audio::IoFormat_U8;
+        default: return Audio::IoFormat_Native;
     }
 }
 
@@ -60,7 +60,7 @@ static unique_ptr<FaustParams> FaustUi;
 // State value cache vars:
 static string PreviousFaustCode;
 static string PreviousInDeviceName, PreviousOutDeviceName;
-static MiniAudio::IoFormat PreviousInFormat, PreviousOutFormat;
+static Audio::IoFormat PreviousInFormat, PreviousOutFormat;
 static U32 PreviousSampleRate;
 
 static ma_node_graph NodeGraph;
@@ -115,7 +115,7 @@ static vector<string> DeviceNames[IO_Count];
 // static ma_resampler_config ResamplerConfig;
 // static ma_resampler Resampler;
 
-static vector<MiniAudio::IoFormat> NativeFormats;
+static vector<Audio::IoFormat> NativeFormats;
 static vector<U32> NativeSampleRates;
 
 // Current device
@@ -132,16 +132,16 @@ static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
     return nullptr;
 }
 
-const string MiniAudio::GetFormatName(const MiniAudio::IoFormat format) {
+const string Audio::GetFormatName(const Audio::IoFormat format) {
     const bool is_native = std::find(NativeFormats.begin(), NativeFormats.end(), format) != NativeFormats.end();
-    return ::format("{}{}", ma_get_format_name(ToMiniAudioFormat(format)), is_native ? "*" : "");
+    return ::format("{}{}", ma_get_format_name(ToAudioFormat(format)), is_native ? "*" : "");
 }
-const string MiniAudio::GetSampleRateName(const U32 sample_rate) {
+const string Audio::GetSampleRateName(const U32 sample_rate) {
     const bool is_native = std::find(NativeSampleRates.begin(), NativeSampleRates.end(), sample_rate) != NativeSampleRates.end();
     return format("{}{}", to_string(sample_rate), is_native ? "*" : "");
 }
 
-void MiniAudio::Init() const {
+void Audio::Init() const {
     for (const IO io : IO_All) {
         DeviceInfos[io].clear();
         DeviceNames[io].clear();
@@ -188,7 +188,7 @@ void MiniAudio::Init() const {
 //     ma_resampling_backend_reset__linear,
 // };
 
-void MiniAudio::InitDevice() const {
+void Audio::InitDevice() const {
     if (!AudioContextInitialized) Init(); // todo explicit re-scan action
 
     // MA graph nodes require f32 format for in/out.
@@ -199,12 +199,12 @@ void MiniAudio::InitDevice() const {
     DeviceConfig = ma_device_config_init(ma_device_type_duplex);
     DeviceConfig.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
     DeviceConfig.capture.format = ma_format_f32;
-    // DeviceConfig.capture.format = ToMiniAudioFormat(InFormat);
+    // DeviceConfig.capture.format = ToAudioFormat(InFormat);
     DeviceConfig.capture.channels = 1; // Temporary (2)
     DeviceConfig.capture.shareMode = ma_share_mode_shared;
     DeviceConfig.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
     DeviceConfig.playback.format = ma_format_f32;
-    // DeviceConfig.playback.format = ToMiniAudioFormat(OutFormat);
+    // DeviceConfig.playback.format = ToAudioFormat(OutFormat);
     DeviceConfig.playback.channels = 1; // Temporary (2)
     DeviceConfig.dataCallback = DataCallback;
     DeviceConfig.sampleRate = SampleRate;
@@ -257,7 +257,7 @@ void MiniAudio::InitDevice() const {
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
 }
 
-void MiniAudio::TeardownDevice() const {
+void Audio::TeardownDevice() const {
     ma_data_source_node_uninit(&InputNode, nullptr);
     ma_node_uninit(&FaustNode, nullptr);
 
@@ -267,13 +267,13 @@ void MiniAudio::TeardownDevice() const {
 }
 
 // todo still need to call this on app shutdown.
-void MiniAudio::Teardown() const {
+void Audio::Teardown() const {
     const int result = ma_context_uninit(&AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error shutting down audio context: {}", result));
     AudioContextInitialized = false;
 }
 
-void MiniAudio::UpdateProcess() const {
+void Audio::UpdateProcess() const {
     const bool device_started = IsDeviceStarted();
     const bool sample_rate_changed = PreviousSampleRate != SampleRate;
     if (Running && !device_started) {
@@ -473,7 +473,7 @@ void DrawDevices() {
 //     }
 // }
 
-void MiniAudio::Render() const {
+void Audio::Render() const {
     Running.Draw();
     if (!IsDeviceStarted()) {
         TextUnformatted("No audio device started yet");

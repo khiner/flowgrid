@@ -1,6 +1,6 @@
 #pragma once
 
-using Sample = double;
+using Sample = float;
 #ifndef FAUSTFLOAT
-#define FAUSTFLOAT double
+#define FAUSTFLOAT Sample
 #endif

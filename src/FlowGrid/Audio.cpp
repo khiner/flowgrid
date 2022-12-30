@@ -375,20 +375,20 @@ void SetupAudio() {
             auto *read_ptr = (Sample *)soundio_ring_buffer_read_ptr(InputBufferDirect);
             // todo handle multichannel input
             Sample *resampled_buffer; // Owned by resampler
-            int resampled_frames = Resampler->process(read_ptr, available_resample_read_frames, resampled_buffer);
-            if (resampled_frames > available_write_frames) {
-                cerr << format("Resampled input ring buffer overflow: Available:{}, Need:{}", available_resample_write_frames, resampled_frames);
-                exit(1);
-            }
+            // int resampled_frames = Resampler->process(read_ptr, available_resample_read_frames, resampled_buffer);
+            // if (resampled_frames > available_write_frames) {
+            //     cerr << format("Resampled input ring buffer overflow: Available:{}, Need:{}", available_resample_write_frames, resampled_frames);
+            //     exit(1);
+            // }
             const int resample_input_bytes = available_resample_read_frames * SampleSize * InStream->layout.channel_count;
             soundio_ring_buffer_advance_read_ptr(InputBufferDirect, resample_input_bytes);
 
-            if (resampled_frames > 0) {
-                const int output_bytes = resampled_frames * SampleSize * channel_count;
-                auto *write_ptr = (Sample *)soundio_ring_buffer_write_ptr(InputBuffer);
-                memcpy(write_ptr, resampled_buffer, output_bytes);
-                soundio_ring_buffer_advance_write_ptr(InputBuffer, output_bytes);
-            }
+            // if (resampled_frames > 0) {
+            //     const int output_bytes = resampled_frames * SampleSize * channel_count;
+            //     auto *write_ptr = (Sample *)soundio_ring_buffer_write_ptr(InputBuffer);
+            //     memcpy(write_ptr, resampled_buffer, output_bytes);
+            //     soundio_ring_buffer_advance_write_ptr(InputBuffer, output_bytes);
+            // }
         }
     };
 
@@ -420,7 +420,7 @@ void SetupAudio() {
                     for (int i = 0; i < FaustDsp->getNumInputs(); i++) FaustBuffers[IO_In][i] = read_ptr;
                 }
 
-                if (FaustReady) FaustDsp->compute(inner_frames, FaustBuffers[IO_In], FaustBuffers[IO_Out]);
+                // if (FaustReady) FaustDsp->compute(inner_frames, FaustBuffers[IO_In], FaustBuffers[IO_Out]);
             }
 
             LastWriteFrameCount = inner_frames;

@@ -50,36 +50,62 @@ MiniAudio::IoFormat ToAudioFormat(const ma_format format) {
     }
 }
 
-// Used to initialize the static Faust buffer.
-// This is the highest `max_frames` value I've seen coming into the output audio callback, using a sample rate of 96kHz
-// AND switching between different sample rates, which seems to make for high peak frames at the transition.
-// If it needs bumping up, bump away!
-static constexpr int FaustBufferFrames = 2048;
-
 // Faust vars:
 static bool FaustReady = false;
-static Sample **FaustBuffers[IO_Count];
 static llvm_dsp_factory *DspFactory;
 static dsp *FaustDsp = nullptr;
 static Box FaustBox = nullptr;
 static unique_ptr<FaustParams> FaustUi;
-static U32 PreviousFaustSampleRate = 0;
 
 // State value cache vars:
 static string PreviousFaustCode;
 static string PreviousInDeviceName, PreviousOutDeviceName;
 static MiniAudio::IoFormat PreviousInFormat, PreviousOutFormat;
 static U32 PreviousSampleRate;
-static float PreviousOutDeviceVolume;
+
+static ma_node_graph NodeGraph;
+static ma_node_graph_config NodeGraphConfig;
+
+static ma_audio_buffer_ref InputBuffer; /* The underlying data source of the input node. */
+static ma_data_source_node InputNode; /* A data source node containing the input data we'll be sending through to the faust, into the first bus. */
+static ma_data_source_node_config InputNodeConfig;
+
+// #include "CDSPResampler.h"
+// See https://github.com/avaneev/r8brain-free-src/issues/12 for resampling latency calculation
+// static unique_ptr<r8b::CDSPResampler24> Resampler;
+// int resampled_frames = Resampler->process(read_ptr, available_resample_read_frames, resampled_buffer);
+// Set up resampler if needed.
+// if (InStream->sample_rate != OutStream->sample_rate) {
+// Resampler = make_unique<r8b::CDSPResampler24>(InStream->sample_rate, OutStream->sample_rate, 1024); // todo can we get max frame size here?
+// }
+
+void FaustNodeProcess(ma_node *node, const float **bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
+    // const float *frames_in = bus_frames_in[0]; // Input bus 0
+    // float *frames_out = bus_frames_out[0]; // Output bus 0
+
+    if (FaustDsp && FaustReady && s.Audio.FaustRunning) {
+        // todo base faust node bus count on numinputs/numoutputs
+        if (FaustDsp->getNumInputs() == 1 && FaustDsp->getNumOutputs() == 1) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
+    }
+    for (Count bus = 0; bus < 1; bus++) {
+        for (Count i = 0; i < *frame_count_out; i++) {
+            if (s.Audio.MonitorInput) bus_frames_out[bus][i] += bus_frames_in[bus][i];
+        }
+    }
+
+    (void)node; // unused
+    (void)frame_count_in; // unused
+}
 
 void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
-    if (device->capture.channels == device->playback.channels) {
-        // If the formats are the same for both input and output, `ma_convert_pcm` just does a `memcpy`.
-        ma_convert_pcm_frames_format(output, device->playback.format, input, device->capture.format, frame_count, device->capture.channels, ma_dither_mode_none);
-    } else {
-        // const auto result = ma_data_converter_process_pcm_frames(&converter, input, &frame_count, output, &frame_count);
-    }
+    ma_audio_buffer_ref_set_data(&InputBuffer, input, frame_count);
+    ma_node_graph_read_pcm_frames(&NodeGraph, output, frame_count, nullptr);
+    (void)device; // unused
 }
+
+static ma_node_vtable FaustNodeVTable = {FaustNodeProcess, nullptr, 1, 1, 0};
+static ma_node_config FaustNodeConfig;
+static ma_node_base FaustNode;
 
 // Context
 static ma_context AudioContext;
@@ -121,10 +147,10 @@ void MiniAudio::Init() const {
         DeviceNames[io].clear();
     }
 
-    auto result = ma_context_init(NULL, 0, NULL, &AudioContext);
+    int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio context: {}", result));
 
-    static ma_uint32 PlaybackDeviceCount, CaptureDeviceCount;
+    static Count PlaybackDeviceCount, CaptureDeviceCount;
     static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
     result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio devices: {}", result));
@@ -165,14 +191,21 @@ void MiniAudio::Init() const {
 void MiniAudio::InitDevice() const {
     if (!AudioContextInitialized) Init(); // todo explicit re-scan action
 
+    // MA graph nodes require f32 format for in/out.
+    // We could keep IO formats configurable, and add two decoders to/from f32, but MA already does this
+    // conversion from native formats (if needed) since we specify f32 format in the device config, so it
+    // would just be needlessly wasting cycles/memory (memory since an extra input buffer would be needed).
+    // todo option to change dither mode, only present when used
     DeviceConfig = ma_device_config_init(ma_device_type_duplex);
     DeviceConfig.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
-    DeviceConfig.capture.format = ToMiniAudioFormat(InFormat);
-    DeviceConfig.capture.channels = 2;
+    DeviceConfig.capture.format = ma_format_f32;
+    // DeviceConfig.capture.format = ToMiniAudioFormat(InFormat);
+    DeviceConfig.capture.channels = 1; // Temporary (2)
     DeviceConfig.capture.shareMode = ma_share_mode_shared;
     DeviceConfig.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
-    DeviceConfig.playback.format = ToMiniAudioFormat(OutFormat);
-    DeviceConfig.playback.channels = 2;
+    DeviceConfig.playback.format = ma_format_f32;
+    // DeviceConfig.playback.format = ToMiniAudioFormat(OutFormat);
+    DeviceConfig.playback.channels = 1; // Temporary (2)
     DeviceConfig.dataCallback = DataCallback;
     DeviceConfig.sampleRate = SampleRate;
 
@@ -181,38 +214,77 @@ void MiniAudio::InitDevice() const {
     // if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing resampler: {}", result));
     // ResamplerConfig.pBackendVTable = &ResamplerVTable;
 
-    auto result = ma_device_init(NULL, &DeviceConfig, &Device);
+    int result = ma_device_init(nullptr, &DeviceConfig, &Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio device: {}", result));
 
     result = ma_context_get_device_info(Device.pContext, Device.type, nullptr, &DeviceInfo);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio device info: {}", result));
+
+    NodeGraphConfig = ma_node_graph_config_init(Device.capture.channels);
+
+    result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize node graph: {}", result));
+
+    /* Faust attached straight to the graph endpoint. */
+    FaustNodeConfig = ma_node_config_init();
+    FaustNodeConfig.vtable = &FaustNodeVTable;
+    // todo support stereo faust processing (requires deinterleaving)
+    U32 FaustInputChannels[1] = {
+        1,
+    }; // One input bus, with one channel.
+    U32 FaustOutputChannels[1] = {
+        1,
+    }; // One output bus, with ont channel
+    FaustNodeConfig.pInputChannels = FaustInputChannels;
+    FaustNodeConfig.pOutputChannels = FaustOutputChannels;
+
+    result = ma_node_init(&NodeGraph, &FaustNodeConfig, nullptr, &FaustNode);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
+
+    ma_node_attach_output_bus(&FaustNode, 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
+
+    /* Input attached to input bus 0 of the Faust node. */
+    result = ma_audio_buffer_ref_init(Device.capture.format, Device.capture.channels, nullptr, 0, &InputBuffer);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input audio buffer: ", result));
+
+    InputNodeConfig = ma_data_source_node_config_init(&InputBuffer);
+    result = ma_data_source_node_init(&NodeGraph, &InputNodeConfig, nullptr, &InputNode);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input node: ", result));
+
+    ma_node_attach_output_bus(&InputNode, 0, &FaustNode, 0);
 
     result = ma_device_start(&Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
 }
 
 void MiniAudio::TeardownDevice() const {
+    ma_data_source_node_uninit(&InputNode, nullptr);
+    ma_node_uninit(&FaustNode, nullptr);
+
+    ma_node_graph_uninit(&NodeGraph, nullptr);
     ma_device_uninit(&Device);
     // ma_resampler_uninit(&Resampler, nullptr);
 }
 
 // todo still need to call this on app shutdown.
 void MiniAudio::Teardown() const {
-    const auto result = ma_context_uninit(&AudioContext);
+    const int result = ma_context_uninit(&AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error shutting down audio context: {}", result));
     AudioContextInitialized = false;
 }
 
 void MiniAudio::UpdateProcess() const {
-    if (Running && !IsDeviceStarted()) {
+    const bool device_started = IsDeviceStarted();
+    const bool sample_rate_changed = PreviousSampleRate != SampleRate;
+    if (Running && !device_started) {
         InitDevice();
-    } else if (!Running && IsDeviceStarted()) {
+    } else if (!Running && device_started) {
         TeardownDevice();
     } else if (
-        IsDeviceStarted() &&
+        device_started &&
         (PreviousInDeviceName != InDeviceName || PreviousOutDeviceName != OutDeviceName ||
          PreviousInFormat != InFormat || PreviousOutFormat != OutFormat ||
-         PreviousSampleRate != SampleRate)
+         sample_rate_changed)
     ) {
         PreviousInDeviceName = string(InDeviceName);
         PreviousOutDeviceName = string(OutDeviceName);
@@ -239,20 +311,24 @@ void MiniAudio::UpdateProcess() const {
         if (!initial_settings.empty()) q(SetValues{initial_settings}, true);
     }
 
-    if (Faust.Code != PreviousFaustCode || SampleRate != PreviousFaustSampleRate) {
+    if (device_started) {
+        ma_device_set_master_volume(&Device, OutDeviceVolume);
+        ma_node_set_output_bus_volume(&FaustNode, 0, FaustVolume);
+    }
+
+    if (Faust.Code != PreviousFaustCode || sample_rate_changed) {
         PreviousFaustCode = string(Faust.Code);
-        PreviousFaustSampleRate = SampleRate;
 
         string error_msg;
         destroyLibContext();
-        if (Faust.Code && SampleRate) {
+        if (Faust.Code && SampleRate != U32(0)) {
             createLibContext();
 
             int argc = 0;
             const char **argv = new const char *[8];
             argv[argc++] = "-I";
             argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-            argv[argc++] = "-double";
+            if (sizeof(Sample) == sizeof(double)) argv[argc++] = "-double";
 
             int num_inputs, num_outputs;
             FaustBox = DSPToBoxes("FlowGrid", Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
@@ -265,14 +341,6 @@ void MiniAudio::UpdateProcess() const {
         if (DspFactory && error_msg.empty()) {
             FaustDsp = DspFactory->createDSPInstance();
             FaustDsp->init(SampleRate);
-
-            // Init `FaustBuffers`
-            for (const IO io : IO_All) {
-                const int channels = io == IO_In ? FaustDsp->getNumInputs() : FaustDsp->getNumOutputs();
-                if (channels > 0) FaustBuffers[io] = new Sample *[channels];
-            }
-            for (int i = 0; i < FaustDsp->getNumOutputs(); i++) { FaustBuffers[IO_Out][i] = new Sample[FaustBufferFrames]; }
-
             FaustReady = true;
             FaustUi = make_unique<FaustParams>();
             FaustDsp->buildUserInterface(FaustUi.get());
@@ -281,12 +349,6 @@ void MiniAudio::UpdateProcess() const {
             FaustReady = false;
 
             if (FaustDsp) {
-                // Destroy `FaustBuffers`
-                for (int i = 0; i < FaustDsp->getNumOutputs(); i++) { delete[] FaustBuffers[IO_Out][i]; }
-                for (const IO io : IO_All) {
-                    delete[] FaustBuffers[io];
-                    FaustBuffers[io] = nullptr;
-                }
                 delete FaustDsp;
                 FaustDsp = nullptr;
                 deleteDSPFactory(DspFactory);
@@ -300,8 +362,6 @@ void MiniAudio::UpdateProcess() const {
         OnBoxChange(FaustBox);
         OnUiChange(FaustUi.get());
     }
-
-    if (IsDeviceStarted() && PreviousOutDeviceVolume != OutDeviceVolume) ma_device_set_master_volume(&Device, OutDeviceVolume);
 }
 
 using namespace ImGui;
@@ -312,7 +372,7 @@ static void DrawDevice(ma_device *device) {
     Text("[%s]", ma_get_backend_name(device->pContext->backend));
 
     static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
-    ma_device_get_name(device, device->type == ma_device_type_loopback ? ma_device_type_playback : ma_device_type_capture, name, sizeof(name), NULL);
+    ma_device_get_name(device, device->type == ma_device_type_loopback ? ma_device_type_playback : ma_device_type_capture, name, sizeof(name), nullptr);
     if (TreeNode(format("{} ({})", name, "Capture").c_str())) {
         Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
         Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
@@ -339,7 +399,7 @@ static void DrawDevice(ma_device *device) {
 
     if (device->type == ma_device_type_loopback) return;
 
-    ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), NULL);
+    ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), nullptr);
     if (TreeNode(format("{} ({})", name, "Playback").c_str())) {
         Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
         Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
@@ -377,9 +437,41 @@ static void DrawDevice(ma_device *device) {
 //         }
 //     }
 // }
+
 void DrawDevices() {
     DrawDevice(&Device);
 }
+
+// void ShowBufferPlots() {
+//     for (IO io : IO_All) {
+//         const bool is_in = io == IO_In;
+//         if (TreeNode(Capitalize(to_string(io)).c_str())) {
+//             const auto *area = is_in ? Areas[IO_In] : Areas[IO_Out];
+//             if (!area) continue;
+
+//             const auto *device = is_in ? InStream->device : OutStream->device;
+//             const auto &layout = is_in ? InStream->layout : OutStream->layout;
+//             const auto frame_count = is_in ? LastReadFrameCount : LastWriteFrameCount;
+//             if (ImPlot::BeginPlot(device->name, {-1, 160})) {
+//                 ImPlot::SetupAxes("Sample index", "Value");
+//                 ImPlot::SetupAxisLimits(ImAxis_X1, 0, frame_count, ImGuiCond_Always);
+//                 ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1, ImGuiCond_Always);
+//                 for (int channel_index = 0; channel_index < layout.channel_count; channel_index++) {
+//                     const auto &channel = layout.channels[channel_index];
+//                     const char *channel_name = soundio_get_channel_name(channel);
+//                     // todo Adapt the pointer casting to the sample format.
+//                     //  Also, this works but very scary and I can't even justify why this seems to work so well,
+//                     //  since the area pointer position gets updated in the separate read/write callbacks.
+//                     //  Hrm.. are the start points of each channel area static after initializing the stream?
+//                     //  If so, could just set those once on stream init and use them here!
+//                     ImPlot::PlotLine(channel_name, (Sample *)area[channel_index].ptr, frame_count);
+//                 }
+//                 ImPlot::EndPlot();
+//             }
+//             TreePop();
+//         }
+//     }
+// }
 
 void MiniAudio::Render() const {
     Running.Draw();
@@ -388,17 +480,18 @@ void MiniAudio::Render() const {
         return;
     }
 
-    FaustRunning.Draw();
+    FaustRunning.Draw(); // todo destroy/create faust context based on this
     Muted.Draw();
     MonitorInput.Draw();
     OutDeviceVolume.Draw();
+    FaustVolume.Draw();
     SampleRate.Render(PrioritizedSampleRates);
 
     for (const IO io : IO_All) {
         NewLine();
         TextUnformatted(Capitalize(to_string(io)).c_str());
         (io == IO_In ? InDeviceName : OutDeviceName).Render(DeviceNames[io]);
-        (io == IO_In ? InFormat : OutFormat).Render(PrioritizedFormats);
+        // (io == IO_In ? InFormat : OutFormat).Render(PrioritizedFormats); // See above - always using f32 format.
     }
 
     NewLine();
@@ -406,6 +499,7 @@ void MiniAudio::Render() const {
         DrawDevices();
         TreePop();
     }
+
     // const auto backend_count = soundio_backend_count(soundio);
     // if (TreeNodeEx("Backends", ImGuiTreeNodeFlags_None, "Available backends (%d)", backend_count)) {
     //     for (int i = 0; i < backend_count; i++) {

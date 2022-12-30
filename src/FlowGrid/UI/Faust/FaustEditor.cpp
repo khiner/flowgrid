@@ -262,7 +262,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
 
         //        const auto &text = buffer.workingBuffer;
         //        auto eval = string(text.begin() + range.first.index, text.begin() + range.second.index);
-        //        auto ret = chibi_repl(scheme, NULL, eval);
+        //        auto ret = chibi_repl(scheme, nullptr, eval);
         //        ret = RTrim(ret);
         //
         //        editor->SetCommandText(ret);
@@ -272,7 +272,7 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
     }
 
     string ReplParse(const string &str) override {
-        //        auto ret = chibi_repl(scheme, NULL, str);
+        //        auto ret = chibi_repl(scheme, nullptr, str);
         //        ret = RTrim(ret);
         //        return ret;
         return str;

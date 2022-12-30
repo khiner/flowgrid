@@ -60,7 +60,7 @@ public:
     };
     struct NamesAndValues {
         vector<string> names{};
-        vector<Real> values{};
+        vector<double> values{};
     };
 
     void openHorizontalBox(const char *label) override {

@@ -44,26 +44,6 @@ Audio::IoFormat ToAudioFormat(const ma_format format) {
     }
 }
 
-// Faust vars:
-static bool FaustReady = false;
-static llvm_dsp_factory *DspFactory;
-static dsp *FaustDsp = nullptr;
-static Box FaustBox = nullptr;
-static unique_ptr<FaustParams> FaustUi;
-
-// State value cache vars:
-static string PreviousFaustCode;
-static string PreviousInDeviceName, PreviousOutDeviceName;
-static Audio::IoFormat PreviousInFormat, PreviousOutFormat;
-static U32 PreviousSampleRate;
-
-static ma_node_graph NodeGraph;
-static ma_node_graph_config NodeGraphConfig;
-
-static ma_audio_buffer_ref InputBuffer; /* The underlying data source of the input node. */
-static ma_data_source_node InputNode; /* A data source node containing the input data we'll be sending through to the faust, into the first bus. */
-static ma_data_source_node_config InputNodeConfig;
-
 // #include "CDSPResampler.h"
 // See https://github.com/avaneev/r8brain-free-src/issues/12 for resampling latency calculation
 // static unique_ptr<r8b::CDSPResampler24> Resampler;
@@ -73,15 +53,15 @@ static ma_data_source_node_config InputNodeConfig;
 // Resampler = make_unique<r8b::CDSPResampler24>(InStream->sample_rate, OutStream->sample_rate, 1024); // todo can we get max frame size here?
 // }
 
+static dsp *FaustDsp = nullptr;
+
 void FaustNodeProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
     // const float *frames_in = bus_frames_in[0]; // Input bus 0
     // float *frames_out = bus_frames_out[0]; // Output bus 0
-
+    // ma_pcm_rb_init_ex()
+    // ma_deinterleave_pcm_frames()
     float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
-    if (FaustDsp && FaustReady && s.Audio.FaustRunning) {
-        // todo base faust node bus count on numinputs/numoutputs
-        if (FaustDsp->getNumInputs() == 1 && FaustDsp->getNumOutputs() == 1) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
-    }
+    if (FaustDsp->getNumOutputs() > 0) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
     for (Count bus = 0; bus < 1; bus++) {
         for (Count i = 0; i < *frame_count_out; i++) {
             if (s.Audio.MonitorInput) bus_frames_out[bus][i] += bus_frames_in[bus][i];
@@ -92,13 +72,24 @@ void FaustNodeProcess(ma_node *node, const float **const_bus_frames_in, ma_uint3
     (void)frame_count_in; // unused
 }
 
+static ma_node_graph NodeGraph;
+static ma_audio_buffer_ref InputBuffer;
+
 void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
     ma_audio_buffer_ref_set_data(&InputBuffer, input, frame_count);
     ma_node_graph_read_pcm_frames(&NodeGraph, output, frame_count, nullptr);
     (void)device; // unused
 }
 
-static ma_node_vtable FaustNodeVTable = {FaustNodeProcess, nullptr, 1, 1, 0};
+// Faust vars:
+static llvm_dsp_factory *DspFactory;
+static Box FaustBox = nullptr;
+static unique_ptr<FaustParams> FaustUi;
+
+static ma_node_graph_config NodeGraphConfig;
+static ma_data_source_node InputNode;
+static ma_data_source_node_config InputNodeConfig;
+static ma_node_vtable FaustNodeVTable;
 static ma_node_config FaustNodeConfig;
 static ma_node_base FaustNode;
 
@@ -117,6 +108,13 @@ static vector<U32> NativeSampleRates;
 static ma_device_config DeviceConfig;
 static ma_device Device;
 static ma_device_info DeviceInfo;
+
+// State value cache vars:
+static string PreviousFaustCode;
+static string PreviousInDeviceName, PreviousOutDeviceName;
+static Audio::IoFormat PreviousInFormat, PreviousOutFormat;
+static U32 PreviousSampleRate;
+static bool PreviousFaustRunning;
 
 static inline bool IsDeviceStarted() { return ma_device_is_started(&Device); }
 
@@ -220,25 +218,7 @@ void Audio::InitDevice() const {
     result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize node graph: {}", result));
 
-    /* Faust attached straight to the graph endpoint. */
-    FaustNodeConfig = ma_node_config_init();
-    FaustNodeConfig.vtable = &FaustNodeVTable;
-    // todo support stereo faust processing (requires deinterleaving)
-    U32 FaustInputChannels[1] = {
-        1,
-    }; // One input bus, with one channel.
-    U32 FaustOutputChannels[1] = {
-        1,
-    }; // One output bus, with ont channel
-    FaustNodeConfig.pInputChannels = FaustInputChannels;
-    FaustNodeConfig.pOutputChannels = FaustOutputChannels;
-
-    result = ma_node_init(&NodeGraph, &FaustNodeConfig, nullptr, &FaustNode);
-    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
-
-    ma_node_attach_output_bus(&FaustNode, 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
-
-    /* Input attached to input bus 0 of the Faust node. */
+    // Attach input node to bus 0 of the Faust node.
     result = ma_audio_buffer_ref_init(Device.capture.format, Device.capture.channels, nullptr, 0, &InputBuffer);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input audio buffer: ", result));
 
@@ -246,16 +226,12 @@ void Audio::InitDevice() const {
     result = ma_data_source_node_init(&NodeGraph, &InputNodeConfig, nullptr, &InputNode);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input node: ", result));
 
-    ma_node_attach_output_bus(&InputNode, 0, &FaustNode, 0);
-
     result = ma_device_start(&Device);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
 }
 
 void Audio::TeardownDevice() const {
     ma_data_source_node_uninit(&InputNode, nullptr);
-    ma_node_uninit(&FaustNode, nullptr);
-
     ma_node_graph_uninit(&NodeGraph, nullptr);
     ma_device_uninit(&Device);
     // ma_resampler_uninit(&Resampler, nullptr);
@@ -311,12 +287,13 @@ void Audio::UpdateProcess() const {
         ma_node_set_output_bus_volume(&FaustNode, 0, FaustVolume);
     }
 
-    if (Faust.Code != PreviousFaustCode || sample_rate_changed) {
+    if (FaustRunning != PreviousFaustRunning || Faust.Code != PreviousFaustCode || sample_rate_changed) {
+        PreviousFaustRunning = FaustRunning;
         PreviousFaustCode = string(Faust.Code);
 
         string error_msg;
         destroyLibContext();
-        if (Faust.Code && SampleRate != U32(0)) {
+        if (FaustRunning && Faust.Code && SampleRate != U32(0)) {
             createLibContext();
 
             int argc = 0;
@@ -333,17 +310,33 @@ void Audio::UpdateProcess() const {
             }
             if (!FaustBox && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
         }
-        if (DspFactory && error_msg.empty()) {
+
+        if (FaustRunning && DspFactory && error_msg.empty()) {
             FaustDsp = DspFactory->createDSPInstance();
             FaustDsp->init(SampleRate);
-            FaustReady = true;
+
+            // Attach Faust node to the graph endpoint.
+            FaustNodeConfig = ma_node_config_init();
+            FaustNodeVTable = {FaustNodeProcess, nullptr, 1, 1, 0};
+            FaustNodeConfig.vtable = &FaustNodeVTable;
+            FaustNodeConfig.pInputChannels = (U32[]){1}; // One input bus, with one channel.
+            FaustNodeConfig.pOutputChannels = (U32[]){1}; // One output bus, with ont channel
+
+            int result = ma_node_init(&NodeGraph, &FaustNodeConfig, nullptr, &FaustNode);
+            if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
+
+            ma_node_attach_output_bus(&FaustNode, 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
+            ma_node_attach_output_bus(&InputNode, 0, &FaustNode, 0);
+
             FaustUi = make_unique<FaustParams>();
             FaustDsp->buildUserInterface(FaustUi.get());
         } else {
+            FaustBox = nullptr;
             FaustUi = nullptr;
-            FaustReady = false;
 
             if (FaustDsp) {
+                ma_node_uninit(&FaustNode, nullptr);
+
                 delete FaustDsp;
                 FaustDsp = nullptr;
                 deleteDSPFactory(DspFactory);

@@ -1,8 +1,3 @@
-#=================== libsoundio ===================
-
-add_subdirectory(libsoundio)
-target_include_directories(libsoundio_shared PUBLIC libsoundio)
-
 #=================== SDL2 ===================
 
 cmake_policy(SET CMP0077 NEW)

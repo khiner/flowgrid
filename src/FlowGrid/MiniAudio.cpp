@@ -1,10 +1,4 @@
-// Adapted from:
-// * https://github.com/andrewrk/libsoundio/blob/master/example/sio_sine.c and
-// * https://github.com/andrewrk/libsoundio/blob/master/example/sio_microphone.c
-
-#include <thread> // For sleep fn
-
-#include "CDSPResampler.h"
+// #include "CDSPResampler.h"
 #include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 

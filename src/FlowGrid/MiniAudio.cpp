@@ -73,10 +73,11 @@ static ma_data_source_node_config InputNodeConfig;
 // Resampler = make_unique<r8b::CDSPResampler24>(InStream->sample_rate, OutStream->sample_rate, 1024); // todo can we get max frame size here?
 // }
 
-void FaustNodeProcess(ma_node *node, const float **bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
+void FaustNodeProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
     // const float *frames_in = bus_frames_in[0]; // Input bus 0
     // float *frames_out = bus_frames_out[0]; // Output bus 0
 
+    float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
     if (FaustDsp && FaustReady && s.Audio.FaustRunning) {
         // todo base faust node bus count on numinputs/numoutputs
         if (FaustDsp->getNumInputs() == 1 && FaustDsp->getNumOutputs() == 1) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);

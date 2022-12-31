@@ -243,6 +243,7 @@ void Audio::Teardown() const {
 }
 
 void Audio::UpdateProcess() const {
+    const auto &Faust = s.Faust;
     const bool device_started = IsDeviceStarted();
     const bool sample_rate_changed = PreviousSampleRate != SampleRate;
     if (Running && !device_started) {
@@ -502,6 +503,4 @@ void Audio::Render() const {
     //     ShowBufferPlots();
     //     TreePop();
     // }
-
-    Faust.Draw();
 }

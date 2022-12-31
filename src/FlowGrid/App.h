@@ -570,7 +570,7 @@ enum FaustGraphHoverFlags_ {
 using FaustGraphHoverFlags = int;
 
 UIMember(
-    FaustState,
+    Faust,
     WindowMember_(
         FaustEditor,
         ImGuiWindowFlags_MenuBar,
@@ -746,10 +746,11 @@ WindowMember(
     Prop(Float, FaustVolume, 1.0);
     Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
-    Prop(FaustState, Faust);
+
     // clang-format off
 private:
     // clang-format on
+
     void Init() const;
     void InitDevice() const;
     void TeardownDevice() const;
@@ -1258,7 +1259,8 @@ UIMember(
                 "Windows",
                 {
                     Menu("Debug", {DebugLog, StackTool, StateViewer, StatePathUpdateFrequency, StateMemoryEditor, ProjectPreview}),
-                    Menu("Audio", {Audio.Faust.Editor, Audio.Faust.Graph, Audio.Faust.Params, Audio.Faust.Log}),
+                    Menu("Faust", {Faust.Editor, Faust.Graph, Faust.Params, Faust.Log}),
+                    Audio,
                     Metrics,
                     Style,
                     Demo,
@@ -1280,6 +1282,7 @@ UIMember(
     Prop(fg::Style, Style);
     Prop(ApplicationSettings, ApplicationSettings);
     Prop(Audio, Audio);
+    Prop(Faust, Faust);
     Prop(UIProcess, UiProcess);
     Prop(FileDialog, FileDialog);
     Prop(Info, Info);

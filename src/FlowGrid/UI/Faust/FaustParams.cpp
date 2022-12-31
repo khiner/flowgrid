@@ -366,7 +366,7 @@ void DrawUiItem(const FaustParams::Item &item, const char *label, const float su
     }
 }
 
-void FaustState::FaustParams::Render() const {
+void Faust::FaustParams::Render() const {
     if (!interface) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?

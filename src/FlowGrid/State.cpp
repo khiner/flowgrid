@@ -473,13 +473,13 @@ void State::Render() const {
         ApplicationSettings.Dock(settings_node_id);
         Audio.Dock(settings_node_id);
 
-        Audio.Faust.Editor.Dock(faust_editor_node_id);
-        Audio.Faust.Graph.Dock(faust_tools_node_id);
-        Audio.Faust.Params.Dock(faust_tools_node_id);
+        Faust.Editor.Dock(faust_editor_node_id);
+        Faust.Graph.Dock(faust_tools_node_id);
+        Faust.Params.Dock(faust_tools_node_id);
 
         DebugLog.Dock(debug_node_id);
         StackTool.Dock(debug_node_id);
-        Audio.Faust.Log.Dock(debug_node_id);
+        Faust.Log.Dock(debug_node_id);
         StateViewer.Dock(debug_node_id);
         StateMemoryEditor.Dock(debug_node_id);
         StatePathUpdateFrequency.Dock(debug_node_id);
@@ -1632,13 +1632,13 @@ void StackTool::Render() const {
     ShowStackToolWindow();
 }
 
-void FaustState::FaustLog::Render() const {
+void Faust::FaustLog::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
     Error.Draw();
     PopStyleColor();
 }
 
-void FaustState::Render() const {
+void Faust::Render() const {
     Editor.Draw();
     Graph.Draw();
     Params.Draw();

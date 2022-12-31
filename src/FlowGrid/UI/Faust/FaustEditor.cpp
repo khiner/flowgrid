@@ -230,9 +230,9 @@ struct ZepWrapper : ZepComponent, IZepReplProvider {
                 case BufferMessageType::TextDeleted:
                 case BufferMessageType::TextAdded: {
                     auto *buffer = buffer_message->buffer;
-                    if (buffer->name == s.Audio.Faust.Editor.FileName) {
+                    if (buffer->name == s.Faust.Editor.FileName) {
                         // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-                        q(SetValue{s.Audio.Faust.Code.Path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
+                        q(SetValue{s.Faust.Code.Path, buffer->workingBuffer.string().c_str()}); // NOLINT(readability-redundant-string-cstr)
                     }
                     break;
                 }
@@ -317,7 +317,7 @@ static const Menu FileMenu = {"File", {ShowOpenFaustFileDialog{}, ShowSaveFaustF
  *   Standard mode select-all left navigation moves cursor from the end of the selection, but should move from beginning
  *     (and right navigation should move from the end)
  */
-void FaustState::FaustEditor::Render() const {
+void Faust::FaustEditor::Render() const {
     static unique_ptr<ZepEditor_ImGui> editor;
     if (!editor) {
         // Called once after the fonts are initialized
@@ -331,7 +331,7 @@ void FaustState::FaustEditor::Render() const {
         display->SetFont(ZepTextType::Heading1, std::make_shared<ZepFont_ImGui>(*display, font, 1.5));
         display->SetFont(ZepTextType::Heading2, std::make_shared<ZepFont_ImGui>(*display, font, 1.25));
         display->SetFont(ZepTextType::Heading3, std::make_shared<ZepFont_ImGui>(*display, font, 1.125));
-        editor->InitWithText(s.Audio.Faust.Editor.FileName, s.Audio.Faust.Code);
+        editor->InitWithText(s.Faust.Editor.FileName, s.Faust.Code);
     }
 
     auto *buffer = editor->GetActiveBuffer();
@@ -389,9 +389,9 @@ void FaustState::FaustEditor::Render() const {
     //  XXX This currently always redundantly re-sets the buffer when the change comes from the editor.
     //  The comparison is also slow.
     // Redundant `c_str()` call removes an extra null char that seems to be at the end of the buffer string
-    if (s.Audio.Faust.Code != buffer->workingBuffer.string().c_str()) { // NOLINT(readability-redundant-string-cstr)
+    if (s.Faust.Code != buffer->workingBuffer.string().c_str()) { // NOLINT(readability-redundant-string-cstr)
         IgnoreChanges = true;
-        editor->GetActiveBuffer()->SetText(s.Audio.Faust.Code);
+        editor->GetActiveBuffer()->SetText(s.Faust.Code);
         IgnoreChanges = false;
     }
 }

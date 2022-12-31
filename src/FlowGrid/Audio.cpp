@@ -112,7 +112,7 @@ static string PreviousFaustCode;
 static string PreviousInDeviceName, PreviousOutDeviceName;
 static Audio::IoFormat PreviousInFormat, PreviousOutFormat;
 static U32 PreviousSampleRate;
-static bool PreviousFaustRunning;
+static bool PreviousFaustOn;
 
 static inline bool IsDeviceStarted() { return ma_device_is_started(&Device); }
 
@@ -282,17 +282,17 @@ void Audio::UpdateProcess() const {
     }
 
     if (device_started) {
-        ma_device_set_master_volume(&Device, OutDeviceVolume);
-        ma_node_set_output_bus_volume(&FaustNode, 0, FaustVolume);
+        ma_device_set_master_volume(&Device, Graph.Volume);
+        ma_node_set_output_bus_volume(&FaustNode, 0, Graph.Faust.Volume);
     }
 
-    if (FaustRunning != PreviousFaustRunning || Faust.Code != PreviousFaustCode || sample_rate_changed) {
-        PreviousFaustRunning = FaustRunning;
+    if (Graph.Faust.On != PreviousFaustOn || Faust.Code != PreviousFaustCode || sample_rate_changed) {
+        PreviousFaustOn = Graph.Faust.On;
         PreviousFaustCode = string(Faust.Code);
 
         string error_msg;
         destroyLibContext();
-        if (FaustRunning && Faust.Code && U32(SampleRate)) {
+        if (Graph.Faust.On && Faust.Code && U32(SampleRate)) {
             createLibContext();
 
             int argc = 0;
@@ -310,7 +310,7 @@ void Audio::UpdateProcess() const {
             if (!FaustBox && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
         }
 
-        if (FaustRunning && DspFactory && error_msg.empty()) {
+        if (Graph.Faust.On && DspFactory && error_msg.empty()) {
             FaustDsp = DspFactory->createDSPInstance();
             if (!FaustDsp) error_msg = "Could not create Faust DSP.";
             else {
@@ -471,11 +471,9 @@ void Audio::Render() const {
         return;
     }
 
-    FaustRunning.Draw(); // todo destroy/create faust context based on this
     Muted.Draw();
+    Graph.Draw();
     MonitorInput.Draw();
-    OutDeviceVolume.Draw();
-    FaustVolume.Draw();
     SampleRate.Render(PrioritizedSampleRates);
 
     for (const IO io : IO_All) {
@@ -503,4 +501,29 @@ void Audio::Render() const {
     //     ShowBufferPlots();
     //     TreePop();
     // }
+}
+
+Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
+    : UIStateMember(parent, path_segment, name_help) {
+    Set(On, on, c.InitStore);
+}
+
+void Audio::Graph::Render() const {
+    Volume.Draw();
+    if (TreeNode(Name.c_str())) {
+        for (const auto *child : Children) {
+            if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
+                ui_child->Draw();
+            }
+        }
+        TreePop();
+    }
+}
+
+void Audio::Graph::Node::Render() const {
+    if (TreeNode(Name.c_str())) {
+        On.Draw();
+        Volume.Draw();
+        TreePop();
+    }
 }

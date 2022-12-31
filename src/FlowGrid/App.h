@@ -716,10 +716,11 @@ UIMember(
     //     hmisc);)#");
 );
 
-WindowMember(
-    Audio,
+struct Audio : Window {
+    using Window::Window;
+
     // A selection of supported formats, corresponding to `SoundIoFormat`
-    enum IoFormat_{
+    enum IoFormat_ {
         IoFormat_Native = 0,
         IoFormat_U8,
         IoFormat_S16,
@@ -735,27 +736,46 @@ WindowMember(
     static const string GetSampleRateName(U32);
 
     void UpdateProcess() const;
+
+    // Corresponds to `ma_node_graph`.
+    UIMember(
+        Graph,
+
+        // Corresponds to `ma_node_base`.
+        struct Node
+        : UIStateMember {
+            Node(StateMember * parent, string_view path_segment, string_view name_help = "", bool on = true);
+
+            Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.", true);
+            Prop(Float, Volume, 1.0);
+
+        protected:
+            void Render() const override;
+        };
+
+        Prop(Node, Faust); //
+        Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
+    );
+
+    Prop(Graph, Graph);
     Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
-    Prop_(Bool, FaustRunning, "?Disabling skips Faust computation when computing audio output.", true);
     Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
     Prop(String, InDeviceName);
     Prop(String, OutDeviceName);
     Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
     Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
     Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", GetSampleRateName);
-    Prop(Float, FaustVolume, 1.0);
-    Prop(Float, OutDeviceVolume, 1.0);
     Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
 
-    // clang-format off
-private:
-    // clang-format on
+protected:
+    void Render() const override;
 
+private:
     void Init() const;
     void InitDevice() const;
     void TeardownDevice() const;
     void Teardown() const;
-);
+};
 
 enum FlowGridCol_ {
     FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`

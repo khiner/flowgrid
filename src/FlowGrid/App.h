@@ -738,24 +738,33 @@ struct Audio : Window {
     void UpdateProcess() const;
 
     // Corresponds to `ma_node_graph`.
-    UIMember(
-        Graph,
+    struct Graph : UIStateMember {
+        using UIStateMember::UIStateMember;
 
         // Corresponds to `ma_node_base`.
-        struct Node
-        : UIStateMember {
-            Node(StateMember * parent, string_view path_segment, string_view name_help = "", bool on = true);
+        struct Node : UIStateMember {
+            Node(StateMember *parent, string_view path_segment, string_view name_help = "", bool on = true);
 
             Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.", true);
             Prop(Float, Volume, 1.0);
+
+            void Update() const; // Update MA node based on current settings (e.g. volume).
+            void Uninit() const; // Remove MA node.
 
         protected:
             void Render() const override;
         };
 
-        Prop(Node, Faust); //
+        void Update() const; // Update MA nodes & connections based on current settings.
+        void Uninit() const;
+
         Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
-    );
+        Prop(Node, Faust); //
+        Prop(Node, Input); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer. todo configurable data source
+
+    protected:
+        void Render() const override;
+    };
 
     Prop(Graph, Graph);
     Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
@@ -765,7 +774,6 @@ struct Audio : Window {
     Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
     Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
     Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", GetSampleRateName);
-    Prop_(Bool, MonitorInput, "?Enabling adds the audio input stream directly to the audio output.");
 
 protected:
     void Render() const override;
@@ -773,8 +781,8 @@ protected:
 private:
     void Init() const;
     void InitDevice() const;
-    void TeardownDevice() const;
-    void Teardown() const;
+    void UninitDevice() const;
+    void Uninit() const;
 };
 
 enum FlowGridCol_ {

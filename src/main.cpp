@@ -14,7 +14,7 @@ int main(int, const char **) {
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
     UiContext = CreateUi(); // Initialize UI
-    s.Audio.UpdateProcess(); // Start audio process
+    s.Audio.Init(); // Start audio process
 
     {
         // Relying on these imperatively-run side effects up front is not great.

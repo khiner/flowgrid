@@ -224,7 +224,7 @@ void State::Update(const StateAction &action, TransientStore &store) const {
             }
         },
         [&](const OpenFaustFile &a) { Set(Faust.Code, FileIO::read(a.path), store); },
-        [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Running, false}}, store); },
+        [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
     );
 }
 
@@ -312,7 +312,7 @@ Patch Context::SetStore(const Store &store) {
         else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiStyle;
         else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
     }
-    s.Audio.UpdateProcess();
+    s.Audio.Update();
     History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;
 

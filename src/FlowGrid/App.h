@@ -730,12 +730,31 @@ struct Audio : Window {
     };
     using IoFormat = int;
 
-    static const vector<IoFormat> PrioritizedFormats;
-    static const vector<U32> PrioritizedSampleRates;
-    static const string GetFormatName(IoFormat);
-    static const string GetSampleRateName(U32);
+    // Corresponds to `ma_device`.
+    struct Device : UIStateMember {
+        using UIStateMember::UIStateMember;
 
-    void UpdateProcess() const;
+        static const vector<IoFormat> PrioritizedFormats;
+        static const vector<U32> PrioritizedSampleRates;
+        static const string GetFormatName(IoFormat);
+        static const string GetSampleRateName(U32);
+
+        void Init() const;
+        void Update() const; // Update device based on current settings.
+        void Uninit() const;
+
+        bool IsStarted() const;
+
+        Prop_(Bool, On, "?When the audio device is turned off, the audio graph is destroyed and no audio processing takes place.", true);
+        Prop(String, InDeviceName);
+        Prop(String, OutDeviceName);
+        Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
+        Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
+        Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", GetSampleRateName);
+
+    protected:
+        void Render() const override;
+    };
 
     // Corresponds to `ma_node_graph`.
     struct Graph : UIStateMember {
@@ -758,6 +777,7 @@ struct Audio : Window {
         void Update() const; // Update MA nodes & connections based on current settings.
         void Uninit() const;
 
+        Prop_(Bool, Muted, "?Enabling sets all audio sent to the output device to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
         Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
         Prop(Node, Faust); //
         Prop(Node, InputSource); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer. todo configurable data source
@@ -766,23 +786,15 @@ struct Audio : Window {
         void Render() const override;
     };
 
+    void Init() const;
+    void Update() const;
+    void Uninit() const;
+
+    Prop(Device, Device);
     Prop(Graph, Graph);
-    Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
-    Prop_(Bool, Muted, "?Enabling sets all audio output to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
-    Prop(String, InDeviceName);
-    Prop(String, OutDeviceName);
-    Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
-    Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
-    Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", GetSampleRateName);
 
 protected:
     void Render() const override;
-
-private:
-    void Init() const;
-    void InitDevice() const;
-    void UninitDevice() const;
-    void Uninit() const;
 };
 
 enum FlowGridCol_ {

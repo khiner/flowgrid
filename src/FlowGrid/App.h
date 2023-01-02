@@ -760,7 +760,7 @@ struct Audio : Window {
 
         Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
         Prop(Node, Faust); //
-        Prop(Node, Input); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer. todo configurable data source
+        Prop(Node, InputSource); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer. todo configurable data source
 
     protected:
         void Render() const override;

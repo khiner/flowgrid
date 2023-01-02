@@ -268,7 +268,7 @@ void Audio::UpdateProcess() const {
     if (device_started) {
         ma_device_set_master_volume(&Device, Graph.Volume); // todo move to `Update`
         Graph.Faust.Update();
-        Graph.Input.Update();
+        Graph.InputSource.Update();
     }
 
     const auto &FaustCode = s.Faust.Code;
@@ -487,14 +487,14 @@ struct FaustData {
     ma_node_vtable Vtable{};
 };
 
-struct InputData {
+struct InputSourceData {
     ma_data_source_node Node{};
     ma_data_source_node_config Config{};
 };
 
 // Instances
 static FaustData Faust;
-static InputData Input;
+static InputSourceData InputSource;
 } // namespace NodeData
 
 namespace nd = NodeData;
@@ -512,41 +512,40 @@ void Audio::Graph::Update() const {
             int result = ma_node_init(&NodeGraph, &nd::Faust.Config, nullptr, nd::ForId[Faust.Id]);
             if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
         }
-    } else if (nd::ForId.contains(Faust.Id)) {
-        ma_node_uninit(nd::ForId[Faust.Id], nullptr);
-        nd::ForId.erase(Faust.Id);
+    } else {
+        Faust.Uninit();
     }
 
-    if (Input.On) {
-        if (!nd::ForId.contains(Input.Id)) {
-            nd::Input.Config = ma_data_source_node_config_init(&InputBuffer);
-            nd::ForId[Input.Id] = &nd::Input.Node;
+    if (InputSource.On) {
+        if (!nd::ForId.contains(InputSource.Id)) {
+            nd::InputSource.Config = ma_data_source_node_config_init(&InputBuffer);
+            nd::ForId[InputSource.Id] = &nd::InputSource.Node;
 
-            int result = ma_data_source_node_init(&NodeGraph, &nd::Input.Config, nullptr, (ma_data_source_node *)nd::ForId[Input.Id]);
+            int result = ma_data_source_node_init(&NodeGraph, &nd::InputSource.Config, nullptr, (ma_data_source_node *)nd::ForId[InputSource.Id]);
             if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
         }
-    } else if (nd::ForId.contains(Input.Id)) {
-        ma_node_uninit(nd::ForId[Input.Id], nullptr);
-        nd::ForId.erase(Input.Id);
+    } else {
+        InputSource.Uninit();
     }
 
+    // Setting up busses is idempotent.
     if (nd::ForId.contains(Faust.Id)) {
         // Attach faust node to graph endpoint.
         ma_node_attach_output_bus(nd::ForId[Faust.Id], 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
-        if (nd::ForId.contains(Input.Id)) {
+        if (nd::ForId.contains(InputSource.Id)) {
             // Attach input node to bus 0 of the Faust node.
-            ma_node_attach_output_bus(nd::ForId[Input.Id], 0, nd::ForId[Faust.Id], 0);
+            ma_node_attach_output_bus(nd::ForId[InputSource.Id], 0, nd::ForId[Faust.Id], 0);
         }
     }
     // Attach input node directly to graph endpoint.
-    // if (nd::ForId.contains(Input.Id)) {
+    // if (nd::ForId.contains(InputSource.Id)) {
     //     ma_node_attach_output_bus(nd::ForId[Input.Id], 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
     // }
 }
 
 void Audio::Graph::Uninit() const {
     Faust.Uninit();
-    Input.Uninit();
+    InputSource.Uninit();
     ma_node_graph_uninit(&NodeGraph, nullptr);
 }
 
@@ -558,6 +557,7 @@ void Audio::Graph::Node::Update() const {
 void Audio::Graph::Node::Uninit() const {
     if (!nd::ForId.contains(Id)) return;
     ma_node_uninit(nd::ForId[Id], nullptr);
+    nd::ForId.erase(Id);
 }
 
 void Audio::Graph::Render() const {

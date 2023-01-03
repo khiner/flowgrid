@@ -494,6 +494,19 @@ void Audio::Device::Uninit() const {
     // ma_resampler_uninit(&Resampler, nullptr);
 }
 
+Audio::Graph::Graph(StateMember *parent, string_view path_segment, string_view name_help)
+    : UIStateMember(parent, path_segment, name_help) {
+    vector<vector<bool>> connections = {};
+    for (Count i = 0; i < Nodes.Children.size(); i++) {
+        vector<bool> connections_row;
+        for (Count j = 0; j < Nodes.Children.size(); j++) {
+            connections_row.push_back(false);
+        }
+        connections.push_back(connections_row);
+    }
+    Connections.Set(connections, c.InitStore);
+}
+
 void Audio::Graph::Update() const {
     Nodes.Update();
 }
@@ -502,10 +515,13 @@ void Audio::Graph::Uninit() const {
     ma_node_graph_uninit(&NodeGraph, nullptr);
 }
 void Audio::Graph::Render() const {
-    for (const auto *child : Children) {
-        if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
-            ui_child->Draw();
-        }
+    if (TreeNodeEx(Nodes.ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        Nodes.Draw();
+        TreePop();
+    }
+    if (TreeNodeEx("Connections", ImGuiTreeNodeFlags_DefaultOpen)) {
+        RenderConnections();
+        TreePop();
     }
 }
 
@@ -543,13 +559,24 @@ void Audio::Graph::Nodes::Update() const {
         }
     }
     // Setting up busses is idempotent.
-    if (nd::ForId.contains(Faust.Id)) {
-        // Attach faust node to graph endpoint.
-        ma_node_attach_output_bus(nd::ForId[Faust.Id], 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
-        if (nd::ForId.contains(InputSource.Id)) {
-            // Attach input node to bus 0 of the Faust node.
-            ma_node_attach_output_bus(nd::ForId[InputSource.Id], 0, nd::ForId[Faust.Id], 0);
+    const auto *graph = dynamic_cast<const Graph *>(Parent);
+    for (Count i = 0; i < Children.size(); i++) {
+        const auto *output_node = dynamic_cast<const Node *>(Children[i]);
+        if (nd::ForId.contains(output_node->Id)) {
+            for (Count j = 0; j < Children.size(); j++) {
+                const auto *input_node = dynamic_cast<const Node *>(Children[j]);
+                if (nd::ForId.contains(input_node->Id)) {
+                    if (graph->Connections.At(i, j)) {
+                        ma_node_attach_output_bus(nd::ForId[input_node->Id], 0, nd::ForId[output_node->Id], 0);
+                    }
+                }
+            }
         }
+    }
+    // Attach faust node to graph endpoint.
+    // todo include graph output(s) in connections
+    if (nd::ForId.contains(Faust.Id)) {
+        ma_node_attach_output_bus(nd::ForId[Faust.Id], 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
     }
 }
 void Audio::Graph::Nodes::Uninit() const {
@@ -560,16 +587,13 @@ void Audio::Graph::Nodes::Uninit() const {
     }
 }
 void Audio::Graph::Nodes::Render() const {
-    if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        for (const auto *child : Children) {
-            if (const auto *node = dynamic_cast<const Node *>(child)) {
-                if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                    node->Draw();
-                    TreePop();
-                }
+    for (const auto *child : Children) {
+        if (const auto *node = dynamic_cast<const Node *>(child)) {
+            if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                node->Draw();
+                TreePop();
             }
         }
-        TreePop();
     }
 }
 

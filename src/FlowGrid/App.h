@@ -78,6 +78,7 @@ struct StateMember {
     const StateMember *Child(Count i) const { return Children[i]; }
 
     const StateMember *Parent;
+    vector<StateMember *> Children{};
     const string PathSegment;
     const StatePath Path;
     const string Name, Help, ImGuiLabel;
@@ -86,8 +87,6 @@ struct StateMember {
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
-
-    vector<StateMember *> Children{};
 };
 
 /**
@@ -762,7 +761,7 @@ struct Audio : TabsWindow {
 
     // Corresponds to `ma_node_graph`.
     struct Graph : UIStateMember {
-        using UIStateMember::UIStateMember;
+        Graph(StateMember *parent, string_view path_segment, string_view name_help = "");
 
         // Corresponds to `ma_node_base`.
         struct Node : UIStateMember {

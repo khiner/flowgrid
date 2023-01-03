@@ -1658,36 +1658,37 @@ void Faust::Render() const {
     Log.Draw();
 }
 
-// Labels for the input and output channels
-vector<const string> InputLabels, OutputLabels;
-
 void Audio::Graph::RenderConnections() const {
-    const Count input_count = Connections.Size(), output_count = Connections.Size(0);
+    const Count input_count = Nodes.Children.size(), output_count = Nodes.Children.size();
     if (input_count == 0 && output_count == 0) return;
 
     const float cell_size = GetContentRegionAvail().x / (input_count + 1);
 
+    const auto cursor = GetCursorScreenPos();
     BeginGroup();
     {
         // Draw the input channel labels.
         for (Count i = 0; i < input_count; i++) {
+            const auto *input_node = Nodes.Children[i];
             PushID(i);
             // SetCursorPos({cell_size * (i + 1) - cell_size / 2 - GetTextLineHeight() / 2, 0});
-            ImPlot::AddTextVertical(GetWindowDrawList(), {cell_size * (i + 1) - cell_size / 2, GetTextLineHeight() / 2}, GetColorU32(ImGuiCol_Text), InputLabels[i].c_str());
+            ImPlot::AddTextVertical(GetWindowDrawList(), cursor + ImVec2{cell_size * (i + 1) - cell_size / 2, GetTextLineHeight() / 2}, GetColorU32(ImGuiCol_Text), input_node->Name.c_str());
             PopID();
         }
 
         // Draw the output channel labels and mixer cells.
         for (Count j = 0; j < output_count; j++) {
+            const auto *output_node = Nodes.Children[j];
             BeginGroup();
             {
-                TextUnformatted(OutputLabels[j].c_str());
+                TextUnformatted(output_node->Name.c_str());
                 for (Count i = 0; i < input_count; i++) {
                     PushID(i * output_count + j);
-                    SetCursorPos({cell_size * i, GetTextLineHeight()});
-                    InvisibleButton("Cell", {cell_size, cell_size});
-                    if (IsItemActive()) q(SetValue{Connections.Path / to_string(i) / to_string(j), !Connections.At(i, j)});
-                    if (Connections.At(i, j)) RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(ImGuiCol_Button));
+                    SetCursorPos(cursor + ImVec2{cell_size * i, GetTextLineHeight()});
+                    InteractionFlags flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
+                    if (flags & InteractionFlags_Clicked) q(SetValue{Connections.Path / to_string(i) / to_string(j), !Connections.At(i, j)});
+                    // if (Connections.At(i, j)) RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(ImGuiCol_Button));
+                    RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(Connections.At(i, j) ? ImGuiCol_Button : ImGuiCol_FrameBg));
                     PopID();
                 }
             }

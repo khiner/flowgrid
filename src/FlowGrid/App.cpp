@@ -128,8 +128,8 @@ string GetShortcut(const EmptyAction &action) {
     return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
 }
 
+// An action's menu label is its name, except for a few exceptions.
 string GetMenuLabel(const EmptyAction &action) {
-    // An action's menu label is its name, except for a few exceptions.
     return Match(
         action,
         [](const ShowOpenProjectDialog &) { return "Open project"s; },

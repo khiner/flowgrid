@@ -746,6 +746,8 @@ struct Audio : Window {
         bool IsStarted() const;
 
         Prop_(Bool, On, "?When the audio device is turned off, the audio graph is destroyed and no audio processing takes place.", true);
+        Prop_(Bool, Muted, "?Completely mute audio output device. All audio computation will still be performed, so this setting does not affect CPU load.", true);
+        Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
         Prop(String, InDeviceName);
         Prop(String, OutDeviceName);
         Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
@@ -774,13 +776,26 @@ struct Audio : Window {
             void Render() const override;
         };
 
-        void Update() const; // Update MA nodes & connections based on current settings.
+        struct Nodes : UIStateMember {
+            using UIStateMember::UIStateMember;
+
+            Prop(Node, Faust);
+            // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
+            // todo configurable data source
+            Prop(Node, InputSource);
+
+            void Update() const;
+            void Uninit() const;
+
+        protected:
+            void Render() const override;
+        };
+
+        void Update() const;
         void Uninit() const;
 
-        Prop_(Bool, Muted, "?Enabling sets all audio sent to the output device to zero.\nAll audio computation will still be performed, so this setting does not affect CPU load.", true);
-        Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
-        Prop(Node, Faust); //
-        Prop(Node, InputSource); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer. todo configurable data source
+        Prop(Nodes, Nodes);
+        Prop(Vector2D<bool>, Connections);
 
     protected:
         void Render() const override;

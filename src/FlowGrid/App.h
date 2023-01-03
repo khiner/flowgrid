@@ -397,6 +397,8 @@ struct Vector2D : StateMember {
     using StateMember::StateMember;
 
     T At(Count i, Count j, const Store &store = AppStore) const;
+    Count Size(const Store &store = AppStore) const; // Number of outer vectors
+    Count Size(Count i, const Store &store = AppStore) const; // Size of inner vector at index `i`
     Count Size(const TransientStore &) const; // Number of outer vectors
 
     void Set(const vector<vector<T>> &, TransientStore &) const;
@@ -799,6 +801,7 @@ struct Audio : Window {
 
     protected:
         void Render() const override;
+        void RenderConnections() const;
     };
 
     void Init() const;

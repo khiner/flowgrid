@@ -270,8 +270,22 @@ T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<
 template<IsPrimitive T>
 Count Vector2D<T>::Size(const TransientStore &store) const {
     Count i = 0;
-    while (store.count(Path / i++ / 0).to_string()) {}
+    while (store.count(Path / to_string(i++) / to_string(0))) {}
     return i - 1;
+}
+
+template<IsPrimitive T>
+Count Vector2D<T>::Size(const Store &store) const {
+    Count i = 0;
+    while (store.count(Path / to_string(i++) / to_string(0))) {}
+    return i - 1;
+}
+
+template<IsPrimitive T>
+Count Vector2D<T>::Size(const Count i, const Store &store) const {
+    Count j = 0;
+    while (store.count(Path / to_string(i) / to_string(j++))) {}
+    return j - 1;
 }
 
 template<IsPrimitive T>
@@ -1643,4 +1657,43 @@ void Faust::Render() const {
     Graph.Draw();
     Params.Draw();
     Log.Draw();
+}
+
+// Labels for the input and output channels
+vector<const string> InputLabels, OutputLabels;
+
+void Audio::Graph::RenderConnections() const {
+    const Count input_count = Connections.Size(), output_count = Connections.Size(0);
+    if (input_count == 0 && output_count == 0) return;
+
+    const float cell_size = GetContentRegionAvail().x / (input_count + 1);
+
+    BeginGroup();
+    {
+        // Draw the input channel labels.
+        for (Count i = 0; i < input_count; i++) {
+            PushID(i);
+            // SetCursorPos({cell_size * (i + 1) - cell_size / 2 - GetTextLineHeight() / 2, 0});
+            ImPlot::AddTextVertical(GetWindowDrawList(), {cell_size * (i + 1) - cell_size / 2, GetTextLineHeight() / 2}, GetColorU32(ImGuiCol_Text), InputLabels[i].c_str());
+            PopID();
+        }
+
+        // Draw the output channel labels and mixer cells.
+        for (Count j = 0; j < output_count; j++) {
+            BeginGroup();
+            {
+                TextUnformatted(OutputLabels[j].c_str());
+                for (Count i = 0; i < input_count; i++) {
+                    PushID(i * output_count + j);
+                    SetCursorPos({cell_size * i, GetTextLineHeight()});
+                    InvisibleButton("Cell", {cell_size, cell_size});
+                    if (IsItemActive()) q(SetValue{Connections.Path / to_string(i) / to_string(j), !Connections.At(i, j)});
+                    if (Connections.At(i, j)) RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(ImGuiCol_Button));
+                    PopID();
+                }
+            }
+            EndGroup();
+        }
+    }
+    EndGroup();
 }

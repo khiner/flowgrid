@@ -718,8 +718,8 @@ UIMember(
     //     hmisc);)#");
 );
 
-struct Audio : Window {
-    using Window::Window;
+struct Audio : TabsWindow {
+    using TabsWindow::TabsWindow;
 
     // A selection of supported formats, corresponding to `SoundIoFormat`
     enum IoFormat_ {
@@ -781,10 +781,10 @@ struct Audio : Window {
         struct Nodes : UIStateMember {
             using UIStateMember::UIStateMember;
 
-            Prop(Node, Faust);
             // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
             // todo configurable data source
             Prop(Node, InputSource);
+            Prop(Node, Faust);
 
             void Update() const;
             void Uninit() const;
@@ -810,9 +810,6 @@ struct Audio : Window {
 
     Prop(Device, Device);
     Prop(Graph, Graph);
-
-protected:
-    void Render() const override;
 };
 
 enum FlowGridCol_ {

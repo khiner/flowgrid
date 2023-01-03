@@ -14,6 +14,9 @@
 
 #include "implot_internal.h"
 
+// todo implement for r8brain resampler
+// todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
+//   Can I still use duplex mode in this case?
 // #include "CDSPResampler.h"
 // See https://github.com/avaneev/r8brain-free-src/issues/12 for resampling latency calculation
 // static unique_ptr<r8b::CDSPResampler24> Resampler;
@@ -22,6 +25,18 @@
 // if (InStream->sample_rate != OutStream->sample_rate) {
 // Resampler = make_unique<r8b::CDSPResampler24>(InStream->sample_rate, OutStream->sample_rate, 1024); // todo can we get max frame size here?
 // }
+// static ma_resampling_backend_vtable ResamplerVTable = {
+//     ma_resampling_backend_get_heap_size__linear,
+//     ma_resampling_backend_init__linear,
+//     ma_resampling_backend_uninit__linear,
+//     ma_resampling_backend_process__linear,
+//     ma_resampling_backend_set_rate__linear,
+//     ma_resampling_backend_get_input_latency__linear,
+//     ma_resampling_backend_get_output_latency__linear,
+//     ma_resampling_backend_get_required_input_frame_count__linear,
+//     ma_resampling_backend_get_expected_output_frame_count__linear,
+//     ma_resampling_backend_reset__linear,
+// };
 
 static dsp *FaustDsp = nullptr;
 
@@ -98,22 +113,6 @@ void Audio::Init() const {
     Update();
 }
 
-// todo implement for r8brain resampler
-// todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
-//   Can I still use duplex mode in this case?
-// static ma_resampling_backend_vtable ResamplerVTable = {
-//     ma_resampling_backend_get_heap_size__linear,
-//     ma_resampling_backend_init__linear,
-//     ma_resampling_backend_uninit__linear,
-//     ma_resampling_backend_process__linear,
-//     ma_resampling_backend_set_rate__linear,
-//     ma_resampling_backend_get_input_latency__linear,
-//     ma_resampling_backend_get_output_latency__linear,
-//     ma_resampling_backend_get_required_input_frame_count__linear,
-//     ma_resampling_backend_get_expected_output_frame_count__linear,
-//     ma_resampling_backend_reset__linear,
-// };
-
 // todo still need to call this on app shutdown.
 void Audio::Uninit() const {
     Graph.Uninit();
@@ -168,11 +167,6 @@ void Audio::Uninit() const {
 //         }
 //     }
 // }
-
-Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
-    : UIStateMember(parent, path_segment, name_help) {
-    Set(On, on, c.InitStore);
-}
 
 namespace NodeData {
 std::unordered_map<ID, ma_node *> ForId; // Node data for its owning StateMember's ID.
@@ -266,10 +260,6 @@ void Audio::Update() const {
     }
 }
 
-void Audio::Graph::Update() const {
-    Nodes.Update();
-}
-
 // todo support loopback mode? (think of use cases)
 const vector<Audio::IoFormat> Audio::Device::PrioritizedFormats = {
     IoFormat_F32,
@@ -346,7 +336,6 @@ void Audio::Device::Init() const {
     result = ma_context_get_device_info(MaDevice.pContext, MaDevice.type, nullptr, &DeviceInfo);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio device info: {}", result));
 
-    // todo continue decoupling graph init/uninit/config into `Graph::Update`
     NodeGraphConfig = ma_node_graph_config_init(MaDevice.capture.channels);
 
     result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
@@ -408,10 +397,81 @@ void Audio::Device::Update() const {
 
 using namespace ImGui;
 
-void Audio::Render() const {
-    Device.Draw();
-    Graph.Draw();
-    // DrawDevices();
+void Audio::Device::Render() const {
+    On.Draw();
+    if (!IsStarted()) {
+        TextUnformatted("No audio device started yet");
+        return;
+    }
+    Muted.Draw();
+    SameLine();
+    Volume.Draw();
+    SampleRate.Render(PrioritizedSampleRates);
+    for (const IO io : IO_All) {
+        TextUnformatted(Capitalize(to_string(io)).c_str());
+        (io == IO_In ? InDeviceName : OutDeviceName).Render(DeviceNames[io]);
+        // (io == IO_In ? InFormat : OutFormat).Render(PrioritizedFormats); // See above - always using f32 format.
+    }
+    if (TreeNode("Info")) {
+        auto *device = &MaDevice;
+        assert(device->type == ma_device_type_duplex || device->type == ma_device_type_loopback);
+
+        Text("[%s]", ma_get_backend_name(device->pContext->backend));
+
+        static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
+        ma_device_get_name(device, device->type == ma_device_type_loopback ? ma_device_type_playback : ma_device_type_capture, name, sizeof(name), nullptr);
+        if (TreeNode(format("{} ({})", name, "Capture").c_str())) {
+            Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
+            Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
+            Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
+            Text("Buffer Size: %d*%d (%d)\n", device->capture.internalPeriodSizeInFrames, device->capture.internalPeriods, (device->capture.internalPeriodSizeInFrames * device->capture.internalPeriods));
+            if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
+                Text("Pre Format Conversion: %s\n", device->capture.converter.hasPreFormatConversion ? "YES" : "NO");
+                Text("Post Format Conversion: %s\n", device->capture.converter.hasPostFormatConversion ? "YES" : "NO");
+                Text("Channel Routing: %s\n", device->capture.converter.hasChannelConverter ? "YES" : "NO");
+                Text("Resampling: %s\n", device->capture.converter.hasResampler ? "YES" : "NO");
+                Text("Passthrough: %s\n", device->capture.converter.isPassthrough ? "YES" : "NO");
+                {
+                    char channel_map[1024];
+                    ma_channel_map_to_string(device->capture.internalChannelMap, device->capture.internalChannels, channel_map, sizeof(channel_map));
+                    Text("Channel Map In: {%s}\n", channel_map);
+
+                    ma_channel_map_to_string(device->capture.channelMap, device->capture.channels, channel_map, sizeof(channel_map));
+                    Text("Channel Map Out: {%s}\n", channel_map);
+                }
+                TreePop();
+            }
+            TreePop();
+        }
+
+        if (device->type == ma_device_type_loopback) return;
+
+        ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), nullptr);
+        if (TreeNode(format("{} ({})", name, "Playback").c_str())) {
+            Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
+            Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
+            Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
+            Text("Buffer Size: %d*%d (%d)", device->playback.internalPeriodSizeInFrames, device->playback.internalPeriods, (device->playback.internalPeriodSizeInFrames * device->playback.internalPeriods));
+            if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
+                Text("Pre Format Conversion:  %s", device->playback.converter.hasPreFormatConversion ? "YES" : "NO");
+                Text("Post Format Conversion: %s", device->playback.converter.hasPostFormatConversion ? "YES" : "NO");
+                Text("Channel Routing: %s", device->playback.converter.hasChannelConverter ? "YES" : "NO");
+                Text("Resampling: %s", device->playback.converter.hasResampler ? "YES" : "NO");
+                Text("Passthrough: %s", device->playback.converter.isPassthrough ? "YES" : "NO");
+                {
+                    char channel_map[1024];
+                    ma_channel_map_to_string(device->playback.channelMap, device->playback.channels, channel_map, sizeof(channel_map));
+                    Text("Channel Map In: {%s}", channel_map);
+
+                    ma_channel_map_to_string(device->playback.internalChannelMap, device->playback.internalChannels, channel_map, sizeof(channel_map));
+                    Text("Channel Map Out: {%s}", channel_map);
+                }
+                TreePop();
+            }
+            TreePop();
+        }
+        TreePop();
+    }
 
     // const auto backend_count = soundio_backend_count(soundio);
     // if (TreeNodeEx("Backends", ImGuiTreeNodeFlags_None, "Available backends (%d)", backend_count)) {
@@ -427,87 +487,6 @@ void Audio::Render() const {
     // }
 }
 
-void Audio::Device::Render() const {
-    if (TreeNode(ImGuiLabel.c_str())) {
-        On.Draw();
-        if (!IsStarted()) {
-            TextUnformatted("No audio device started yet");
-            TreePop();
-            return;
-        }
-        Muted.Draw();
-        SameLine();
-        Volume.Draw();
-        SampleRate.Render(PrioritizedSampleRates);
-        for (const IO io : IO_All) {
-            TextUnformatted(Capitalize(to_string(io)).c_str());
-            (io == IO_In ? InDeviceName : OutDeviceName).Render(DeviceNames[io]);
-            // (io == IO_In ? InFormat : OutFormat).Render(PrioritizedFormats); // See above - always using f32 format.
-        }
-        if (TreeNode("Info")) {
-            auto *device = &MaDevice;
-            assert(device->type == ma_device_type_duplex || device->type == ma_device_type_loopback);
-
-            Text("[%s]", ma_get_backend_name(device->pContext->backend));
-
-            static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
-            ma_device_get_name(device, device->type == ma_device_type_loopback ? ma_device_type_playback : ma_device_type_capture, name, sizeof(name), nullptr);
-            if (TreeNode(format("{} ({})", name, "Capture").c_str())) {
-                Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
-                Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
-                Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
-                Text("Buffer Size: %d*%d (%d)\n", device->capture.internalPeriodSizeInFrames, device->capture.internalPeriods, (device->capture.internalPeriodSizeInFrames * device->capture.internalPeriods));
-                if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen, "Conversion")) {
-                    Text("Pre Format Conversion: %s\n", device->capture.converter.hasPreFormatConversion ? "YES" : "NO");
-                    Text("Post Format Conversion: %s\n", device->capture.converter.hasPostFormatConversion ? "YES" : "NO");
-                    Text("Channel Routing: %s\n", device->capture.converter.hasChannelConverter ? "YES" : "NO");
-                    Text("Resampling: %s\n", device->capture.converter.hasResampler ? "YES" : "NO");
-                    Text("Passthrough: %s\n", device->capture.converter.isPassthrough ? "YES" : "NO");
-                    {
-                        char channel_map[1024];
-                        ma_channel_map_to_string(device->capture.internalChannelMap, device->capture.internalChannels, channel_map, sizeof(channel_map));
-                        Text("Channel Map In: {%s}\n", channel_map);
-
-                        ma_channel_map_to_string(device->capture.channelMap, device->capture.channels, channel_map, sizeof(channel_map));
-                        Text("Channel Map Out: {%s}\n", channel_map);
-                    }
-                    TreePop();
-                }
-                TreePop();
-            }
-
-            if (device->type == ma_device_type_loopback) return;
-
-            ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), nullptr);
-            if (TreeNode(format("{} ({})", name, "Playback").c_str())) {
-                Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
-                Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
-                Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
-                Text("Buffer Size: %d*%d (%d)", device->playback.internalPeriodSizeInFrames, device->playback.internalPeriods, (device->playback.internalPeriodSizeInFrames * device->playback.internalPeriods));
-                if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen, "Conversion")) {
-                    Text("Pre Format Conversion:  %s", device->playback.converter.hasPreFormatConversion ? "YES" : "NO");
-                    Text("Post Format Conversion: %s", device->playback.converter.hasPostFormatConversion ? "YES" : "NO");
-                    Text("Channel Routing: %s", device->playback.converter.hasChannelConverter ? "YES" : "NO");
-                    Text("Resampling: %s", device->playback.converter.hasResampler ? "YES" : "NO");
-                    Text("Passthrough: %s", device->playback.converter.isPassthrough ? "YES" : "NO");
-                    {
-                        char channel_map[1024];
-                        ma_channel_map_to_string(device->playback.channelMap, device->playback.channels, channel_map, sizeof(channel_map));
-                        Text("Channel Map In: {%s}", channel_map);
-
-                        ma_channel_map_to_string(device->playback.internalChannelMap, device->playback.internalChannels, channel_map, sizeof(channel_map));
-                        Text("Channel Map Out: {%s}", channel_map);
-                    }
-                    TreePop();
-                }
-                TreePop();
-            }
-            TreePop();
-        }
-        TreePop();
-    }
-}
-
 bool Audio::Device::IsStarted() const { return ma_device_is_started(&MaDevice); }
 
 void Audio::Device::Uninit() const {
@@ -515,19 +494,18 @@ void Audio::Device::Uninit() const {
     // ma_resampler_uninit(&Resampler, nullptr);
 }
 
+void Audio::Graph::Update() const {
+    Nodes.Update();
+}
 void Audio::Graph::Uninit() const {
     Nodes.Uninit();
     ma_node_graph_uninit(&NodeGraph, nullptr);
 }
-
 void Audio::Graph::Render() const {
-    if (TreeNode(Name.c_str())) {
-        for (const auto *child : Children) {
-            if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
-                ui_child->Draw();
-            }
+    for (const auto *child : Children) {
+        if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
+            ui_child->Draw();
         }
-        TreePop();
     }
 }
 
@@ -573,12 +551,7 @@ void Audio::Graph::Nodes::Update() const {
             ma_node_attach_output_bus(nd::ForId[InputSource.Id], 0, nd::ForId[Faust.Id], 0);
         }
     }
-    // Attach input node directly to graph endpoint.
-    // if (nd::ForId.contains(InputSource.Id)) {
-    //     ma_node_attach_output_bus(nd::ForId[Input.Id], 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
-    // }
 }
-
 void Audio::Graph::Nodes::Uninit() const {
     for (const auto *child : Children) {
         if (const auto *node = dynamic_cast<const Node *>(child)) {
@@ -586,18 +559,24 @@ void Audio::Graph::Nodes::Uninit() const {
         }
     }
 }
-
 void Audio::Graph::Nodes::Render() const {
-    if (TreeNode(Name.c_str())) {
+    if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
         for (const auto *child : Children) {
-            if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
-                ui_child->Draw();
+            if (const auto *node = dynamic_cast<const Node *>(child)) {
+                if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                    node->Draw();
+                    TreePop();
+                }
             }
         }
         TreePop();
     }
 }
 
+Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
+    : UIStateMember(parent, path_segment, name_help) {
+    Set(On, on, c.InitStore);
+}
 void Audio::Graph::Node::Update() const {
     if (!nd::ForId.contains(Id)) return;
     ma_node_set_output_bus_volume(nd::ForId[Id], 0, Volume);
@@ -607,13 +586,9 @@ void Audio::Graph::Node::Uninit() const {
     ma_node_uninit(nd::ForId[Id], nullptr);
     nd::ForId.erase(Id);
 }
-
 void Audio::Graph::Node::Render() const {
-    if (TreeNode(ImGuiLabel.c_str())) {
-        On.Draw();
-        Volume.Draw();
-        TreePop();
-    }
+    On.Draw();
+    Volume.Draw();
 }
 
 // todo Graph::RenderConnections defined in `State.cpp` because of dependency resolution order weirdness.

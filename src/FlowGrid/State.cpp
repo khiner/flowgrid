@@ -1662,21 +1662,20 @@ void Audio::Graph::RenderConnections() const {
     const Count input_count = Nodes.Children.size(), output_count = Nodes.Children.size();
     if (input_count == 0 && output_count == 0) return;
 
-    static const float LabelWidth = 5 * GetTextLineHeight(); // todo style
     const float cell_size = GetTextLineHeight();
-    SetCursorPos(GetCursorPos() + ImVec2{LabelWidth, LabelWidth});
-    const auto cursor = GetCursorScreenPos();
+    const float max_label_w = 5 * cell_size; // todo style
+    const auto grid_top_left = GetCursorScreenPos() + ImVec2{max_label_w, max_label_w};
 
     BeginGroup();
     // Draw the input channel labels.
     for (Count i = 0; i < input_count; i++) {
         const auto *input_node = Nodes.Children[i];
         const char *label = input_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), LabelWidth);
+        const string ellipsified_label = Ellipsify(string(label), max_label_w);
 
-        SetCursorScreenPos(cursor + ImVec2{cell_size * i, -LabelWidth});
-        const InteractionFlags label_interaction_flags = fg::InvisibleButton({cell_size, LabelWidth}, input_node->ImGuiLabel.c_str());
-        ImPlot::AddTextVertical(GetWindowDrawList(), cursor + ImVec2{cell_size * i, 0}, GetColorU32(ImGuiCol_Text), ellipsified_label.c_str());
+        SetCursorScreenPos(grid_top_left + ImVec2{cell_size * i, -max_label_w});
+        const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, input_node->ImGuiLabel.c_str());
+        ImPlot::AddTextVertical(GetWindowDrawList(), grid_top_left + ImVec2{cell_size * i, 0}, GetColorU32(ImGuiCol_Text), ellipsified_label.c_str());
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
     }
@@ -1685,18 +1684,20 @@ void Audio::Graph::RenderConnections() const {
     for (Count j = 0; j < output_count; j++) {
         const auto *output_node = Nodes.Children[j];
         const char *label = output_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), LabelWidth);
+        const string ellipsified_label = Ellipsify(string(label), max_label_w);
 
-        SetCursorScreenPos(cursor + ImVec2{-LabelWidth, j * cell_size});
-        const InteractionFlags label_interaction_flags = fg::InvisibleButton({LabelWidth, cell_size}, output_node->ImGuiLabel.c_str());
+        SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, j * cell_size});
+        const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, output_node->ImGuiLabel.c_str());
+        const float label_w = CalcTextSize(ellipsified_label.c_str()).x;
+        SetCursorPosX(GetCursorPosX() + max_label_w - label_w); // Right-align label.
         TextUnformatted(ellipsified_label.c_str());
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
 
         for (Count i = 0; i < input_count; i++) {
             PushID(j * output_count + i);
-            SetCursorScreenPos(cursor + ImVec2{cell_size * i, cell_size * j});
-            InteractionFlags flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
+            SetCursorScreenPos(grid_top_left + ImVec2{cell_size * i, cell_size * j});
+            const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(i, j), !Connections.At(i, j)});
 
             const auto fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections.At(i, j) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg)));

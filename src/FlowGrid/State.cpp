@@ -1662,7 +1662,7 @@ void Audio::Graph::RenderConnections() const {
     const Count input_count = Nodes.Children.size(), output_count = Nodes.Children.size();
     if (input_count == 0 && output_count == 0) return;
 
-    static const float LabelWidth = 5 * GetTextLineHeight();
+    static const float LabelWidth = 5 * GetTextLineHeight(); // todo style
     const float cell_size = GetTextLineHeight();
     SetCursorPos(GetCursorPos() + ImVec2{LabelWidth, LabelWidth});
     const auto cursor = GetCursorScreenPos();
@@ -1671,18 +1671,28 @@ void Audio::Graph::RenderConnections() const {
     // Draw the input channel labels.
     for (Count i = 0; i < input_count; i++) {
         const auto *input_node = Nodes.Children[i];
-        PushID(i);
-        // SetCursorPos({cell_size * (i + 1) - cell_size / 2 - cell_size / 2, 0});
-        ImPlot::AddTextVertical(GetWindowDrawList(), cursor + ImVec2{cell_size * i, 0}, GetColorU32(ImGuiCol_Text), input_node->Name.c_str());
-        PopID();
+        const char *label = input_node->Name.c_str();
+        const string ellipsified_label = Ellipsify(string(label), LabelWidth);
+
+        SetCursorScreenPos(cursor + ImVec2{cell_size * i, -LabelWidth});
+        const InteractionFlags label_interaction_flags = fg::InvisibleButton({cell_size, LabelWidth}, input_node->ImGuiLabel.c_str());
+        ImPlot::AddTextVertical(GetWindowDrawList(), cursor + ImVec2{cell_size * i, 0}, GetColorU32(ImGuiCol_Text), ellipsified_label.c_str());
+        const bool text_clipped = ellipsified_label.find("...") != string::npos;
+        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
     }
 
     // Draw the output channel labels and mixer cells.
     for (Count j = 0; j < output_count; j++) {
         const auto *output_node = Nodes.Children[j];
         const char *label = output_node->Name.c_str();
-        // const float value_text_x = CalcAlignedX(is_h ? HJustify_Middle : h_justify, value_text_w, rect_width);
-        RenderTextClipped(cursor + ImVec2{-LabelWidth, j * cell_size}, cursor + ImVec2{0, (j + 1) * cell_size}, label, nullptr, nullptr, {0, 0}, nullptr);
+        const string ellipsified_label = Ellipsify(string(label), LabelWidth);
+
+        SetCursorScreenPos(cursor + ImVec2{-LabelWidth, j * cell_size});
+        const InteractionFlags label_interaction_flags = fg::InvisibleButton({LabelWidth, cell_size}, output_node->ImGuiLabel.c_str());
+        TextUnformatted(ellipsified_label.c_str());
+        const bool text_clipped = ellipsified_label.find("...") != string::npos;
+        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
+
         for (Count i = 0; i < input_count; i++) {
             PushID(j * output_count + i);
             SetCursorScreenPos(cursor + ImVec2{cell_size * i, cell_size * j});

@@ -1416,6 +1416,12 @@ void Style::ImPlotStyle::Render() const {
     }
 }
 
+void Style::FlowGridStyle::Matrix::Render() const {
+    CellSize.Draw();
+    CellGap.Draw();
+    LabelSize.Draw();
+}
+
 void Style::FlowGridStyle::Graph::Render() const {
     FoldComplexity.Draw();
     const bool scale_fill = ScaleFillHeight;
@@ -1460,6 +1466,7 @@ void Style::FlowGridStyle::Graph::Render() const {
     ArrowSize.Draw();
     InverterRadius.Draw();
 }
+
 void Style::FlowGridStyle::Params::Render() const {
     HeaderTitles.Draw();
     MinHorizontalItemWidth.Draw();
@@ -1472,6 +1479,7 @@ void Style::FlowGridStyle::Params::Render() const {
     WidthSizingPolicy.Draw();
     TableFlags.Draw();
 }
+
 void Style::FlowGridStyle::Render() const {
     static int colors_idx = -1, graph_colors_idx = -1, graph_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
@@ -1480,6 +1488,10 @@ void Style::FlowGridStyle::Render() const {
     FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {
+        if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Matrix.Draw();
+            EndTabItem();
+        }
         if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
             Graph.Draw();
             EndTabItem();
@@ -1662,11 +1674,11 @@ void Audio::Graph::RenderConnections() const {
     const Count input_count = Nodes.Children.size(), output_count = Nodes.Children.size();
     if (input_count == 0 && output_count == 0) return;
 
-    const float cell_size = 1 * GetTextLineHeight(); // todo style (multiple of line height)
-    const static float cell_gap = 10; // Gap between cells. todo style
-    const float max_label_text_w = 6 * GetTextLineHeight(); // Does not include padding. todo style (multiple of line height)
+    const float cell_size = s.Style.FlowGrid.Matrix.CellSize * GetTextLineHeight();
+    const float cell_gap = s.Style.FlowGrid.Matrix.CellGap;
+    const float label_size = s.Style.FlowGrid.Matrix.LabelSize * GetTextLineHeight(); // Does not include padding.
     const float label_padding = GetStyle().ItemInnerSpacing.x;
-    const float max_label_w = max_label_text_w + 2 * label_padding;
+    const float max_label_w = label_size + 2 * label_padding;
     const ImVec2 grid_top_left = GetCursorScreenPos() + max_label_w;
 
     BeginGroup();
@@ -1674,7 +1686,7 @@ void Audio::Graph::RenderConnections() const {
     for (Count i = 0; i < input_count; i++) {
         const auto *input_node = Nodes.Children[i];
         const char *label = input_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), max_label_text_w);
+        const string ellipsified_label = Ellipsify(string(label), label_size);
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * i, -max_label_w});
         const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, input_node->ImGuiLabel.c_str());
@@ -1691,7 +1703,7 @@ void Audio::Graph::RenderConnections() const {
     for (Count j = 0; j < output_count; j++) {
         const auto *output_node = Nodes.Children[j];
         const char *label = output_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), max_label_text_w);
+        const string ellipsified_label = Ellipsify(string(label), label_size);
 
         SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * j});
         const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, output_node->ImGuiLabel.c_str());

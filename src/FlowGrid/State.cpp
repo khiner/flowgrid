@@ -1662,37 +1662,36 @@ void Audio::Graph::RenderConnections() const {
     const Count input_count = Nodes.Children.size(), output_count = Nodes.Children.size();
     if (input_count == 0 && output_count == 0) return;
 
-    const float cell_size = GetContentRegionAvail().x / (input_count + 1);
-
+    static const float LabelWidth = 5 * GetTextLineHeight();
+    const float cell_size = GetTextLineHeight();
+    SetCursorPos(GetCursorPos() + ImVec2{LabelWidth, LabelWidth});
     const auto cursor = GetCursorScreenPos();
-    BeginGroup();
-    {
-        // Draw the input channel labels.
-        for (Count i = 0; i < input_count; i++) {
-            const auto *input_node = Nodes.Children[i];
-            PushID(i);
-            // SetCursorPos({cell_size * (i + 1) - cell_size / 2 - GetTextLineHeight() / 2, 0});
-            ImPlot::AddTextVertical(GetWindowDrawList(), cursor + ImVec2{cell_size * (i + 1) - cell_size / 2, GetTextLineHeight() / 2}, GetColorU32(ImGuiCol_Text), input_node->Name.c_str());
-            PopID();
-        }
 
-        // Draw the output channel labels and mixer cells.
-        for (Count j = 0; j < output_count; j++) {
-            const auto *output_node = Nodes.Children[j];
-            BeginGroup();
-            {
-                TextUnformatted(output_node->Name.c_str());
-                for (Count i = 0; i < input_count; i++) {
-                    PushID(i * output_count + j);
-                    SetCursorPos(cursor + ImVec2{cell_size * i, GetTextLineHeight()});
-                    InteractionFlags flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-                    if (flags & InteractionFlags_Clicked) q(SetValue{Connections.Path / to_string(i) / to_string(j), !Connections.At(i, j)});
-                    // if (Connections.At(i, j)) RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(ImGuiCol_Button));
-                    RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(Connections.At(i, j) ? ImGuiCol_Button : ImGuiCol_FrameBg));
-                    PopID();
-                }
-            }
-            EndGroup();
+    BeginGroup();
+    // Draw the input channel labels.
+    for (Count i = 0; i < input_count; i++) {
+        const auto *input_node = Nodes.Children[i];
+        PushID(i);
+        // SetCursorPos({cell_size * (i + 1) - cell_size / 2 - cell_size / 2, 0});
+        ImPlot::AddTextVertical(GetWindowDrawList(), cursor + ImVec2{cell_size * i, 0}, GetColorU32(ImGuiCol_Text), input_node->Name.c_str());
+        PopID();
+    }
+
+    // Draw the output channel labels and mixer cells.
+    for (Count j = 0; j < output_count; j++) {
+        const auto *output_node = Nodes.Children[j];
+        const char *label = output_node->Name.c_str();
+        // const float value_text_x = CalcAlignedX(is_h ? HJustify_Middle : h_justify, value_text_w, rect_width);
+        RenderTextClipped(cursor + ImVec2{-LabelWidth, j * cell_size}, cursor + ImVec2{0, (j + 1) * cell_size}, label, nullptr, nullptr, {0, 0}, nullptr);
+        for (Count i = 0; i < input_count; i++) {
+            PushID(j * output_count + i);
+            SetCursorScreenPos(cursor + ImVec2{cell_size * i, cell_size * j});
+            InteractionFlags flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
+            if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(i, j), !Connections.At(i, j)});
+
+            const auto fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections.At(i, j) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg)));
+            RenderFrame(GetItemRectMin(), GetItemRectMax(), fill_color);
+            PopID();
         }
     }
     EndGroup();

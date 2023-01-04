@@ -396,6 +396,7 @@ struct Vector2D : StateMember {
     using StateMember::StateMember;
 
     T At(Count i, Count j, const Store &store = AppStore) const;
+    inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
     Count Size(const Store &store = AppStore) const; // Number of outer vectors
     Count Size(Count i, const Store &store = AppStore) const; // Size of inner vector at index `i`
     Count Size(const TransientStore &) const; // Number of outer vectors

@@ -265,7 +265,7 @@ void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) c
 }
 
 template<IsPrimitive T>
-T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(Path / to_string(i) / to_string(j))); };
+T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(PathAt(i, j))); };
 
 template<IsPrimitive T>
 Count Vector2D<T>::Size(const TransientStore &store) const {
@@ -284,7 +284,7 @@ Count Vector2D<T>::Size(const Store &store) const {
 template<IsPrimitive T>
 Count Vector2D<T>::Size(const Count i, const Store &store) const {
     Count j = 0;
-    while (store.count(Path / to_string(i) / to_string(j++))) {}
+    while (store.count(PathAt(i, j++))) {}
     return j - 1;
 }
 
@@ -294,16 +294,16 @@ void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) co
     while (i < values.size()) {
         Count j = 0;
         while (j < values[i].size()) {
-            store.set(Path / to_string(i) / to_string(j), T(values[i][j]));
+            store.set(PathAt(i, j), T(values[i][j]));
             j++;
         }
-        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
+        while (store.count(PathAt(i, j))) store.erase(PathAt(i, j++));
         i++;
     }
 
-    while (store.count(Path / to_string(i) / "0")) {
+    while (store.count(PathAt(i, 0))) {
         Count j = 0;
-        while (store.count(Path / to_string(i) / to_string(j))) store.erase(Path / to_string(i) / to_string(j++));
+        while (store.count(PathAt(i, j))) store.erase(PathAt(i, j++));
         i++;
     }
 }

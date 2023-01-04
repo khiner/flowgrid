@@ -1700,12 +1700,12 @@ void Audio::Graph::RenderConnections() const {
     }
 
     // Draw the output channel labels and mixer cells.
-    for (Count j = 0; j < output_count; j++) {
-        const auto *output_node = Nodes.Children[j];
+    for (Count i = 0; i < output_count; i++) {
+        const auto *output_node = Nodes.Children[i];
         const char *label = output_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
 
-        SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * j});
+        SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * i});
         const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, output_node->ImGuiLabel.c_str());
         const float label_w = CalcTextSize(ellipsified_label.c_str()).x;
         SetCursorPos(GetCursorPos() + ImVec2{max_label_w - label_w - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
@@ -1713,9 +1713,9 @@ void Audio::Graph::RenderConnections() const {
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
 
-        for (Count i = 0; i < input_count; i++) {
-            PushID(j * output_count + i);
-            SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * i, (cell_size + cell_gap) * j});
+        for (Count j = 0; j < input_count; j++) {
+            PushID(i * output_count + j);
+            SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * j, (cell_size + cell_gap) * i});
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(i, j), !Connections.At(i, j)});
 

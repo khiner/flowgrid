@@ -785,6 +785,7 @@ struct Audio : TabsWindow {
             // todo configurable data source
             Prop(Node, InputSource);
             Prop(Node, Faust);
+            Prop(Node, Output);
 
             void Update() const;
             void Uninit() const;

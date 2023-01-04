@@ -172,20 +172,20 @@ namespace NodeData {
 std::unordered_map<ID, ma_node *> ForId; // Node data for its owning StateMember's ID.
 
 // Internal MA node data for each node type.
+// Output node is already allocated by the MA graph, so we don't need to track internal data for it.
+struct InputSourceData {
+    ma_data_source_node Node{};
+    ma_data_source_node_config Config{};
+};
 struct FaustData {
     ma_node_base Node{};
     ma_node_config Config{};
     ma_node_vtable Vtable{};
 };
 
-struct InputSourceData {
-    ma_data_source_node Node{};
-    ma_data_source_node_config Config{};
-};
-
 // Instances
-static FaustData Faust;
 static InputSourceData InputSource;
+static FaustData Faust;
 } // namespace NodeData
 
 namespace nd = NodeData;
@@ -497,10 +497,13 @@ void Audio::Device::Uninit() const {
 Audio::Graph::Graph(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
     vector<vector<bool>> connections = {};
-    for (Count i = 0; i < Nodes.Children.size(); i++) {
+    for (const auto *output_node : Nodes.Children) {
         vector<bool> connections_row;
-        for (Count j = 0; j < Nodes.Children.size(); j++) {
-            connections_row.push_back(false);
+        for (const auto *input_node : Nodes.Children) {
+            const bool default_connected =
+                (input_node == &Nodes.InputSource && output_node == &Nodes.Faust) ||
+                (input_node == &Nodes.Faust && output_node == &Nodes.Output);
+            connections_row.push_back(default_connected);
         }
         connections.push_back(connections_row);
     }
@@ -529,6 +532,19 @@ void Audio::Graph::Render() const {
 }
 
 void Audio::Graph::Nodes::Update() const {
+    nd::ForId[Output.Id] = ma_node_graph_get_endpoint(&NodeGraph); // Output is present whenever the graph is running. todo Graph is a Node
+
+    if (InputSource.On) {
+        if (!nd::ForId.contains(InputSource.Id)) {
+            nd::InputSource.Config = ma_data_source_node_config_init(&InputBuffer);
+            nd::ForId[InputSource.Id] = &nd::InputSource.Node;
+
+            int result = ma_data_source_node_init(&NodeGraph, &nd::InputSource.Config, nullptr, (ma_data_source_node *)nd::ForId[InputSource.Id]);
+            if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
+        }
+    } else {
+        InputSource.Uninit();
+    }
     if (Faust.On && FaustDsp && (FaustDsp->getNumOutputs() > 0 || FaustDsp->getNumInputs() > 0)) {
         if (!nd::ForId.contains(Faust.Id)) {
             nd::Faust.Config = ma_node_config_init();
@@ -545,17 +561,6 @@ void Audio::Graph::Nodes::Update() const {
         Faust.Uninit();
     }
 
-    if (InputSource.On) {
-        if (!nd::ForId.contains(InputSource.Id)) {
-            nd::InputSource.Config = ma_data_source_node_config_init(&InputBuffer);
-            nd::ForId[InputSource.Id] = &nd::InputSource.Node;
-
-            int result = ma_data_source_node_init(&NodeGraph, &nd::InputSource.Config, nullptr, (ma_data_source_node *)nd::ForId[InputSource.Id]);
-            if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
-        }
-    } else {
-        InputSource.Uninit();
-    }
     for (const auto *child : Children) {
         if (const auto *node = dynamic_cast<const Node *>(child)) {
             node->Update();
@@ -566,20 +571,14 @@ void Audio::Graph::Nodes::Update() const {
     for (Count i = 0; i < Children.size(); i++) {
         const auto *output_node = dynamic_cast<const Node *>(Children[i]);
         if (nd::ForId.contains(output_node->Id)) {
+            ma_node_detach_output_bus(nd::ForId[output_node->Id], 0); // No way to just detach one connection.
             for (Count j = 0; j < Children.size(); j++) {
                 const auto *input_node = dynamic_cast<const Node *>(Children[j]);
-                if (nd::ForId.contains(input_node->Id)) {
-                    if (graph->Connections.At(i, j)) {
-                        ma_node_attach_output_bus(nd::ForId[input_node->Id], 0, nd::ForId[output_node->Id], 0);
-                    }
+                if (nd::ForId.contains(input_node->Id) && graph->Connections.At(i, j)) {
+                    ma_node_attach_output_bus(nd::ForId[input_node->Id], 0, nd::ForId[output_node->Id], 0);
                 }
             }
         }
-    }
-    // Attach faust node to graph endpoint.
-    // todo include graph output(s) in connections
-    if (nd::ForId.contains(Faust.Id)) {
-        ma_node_attach_output_bus(nd::ForId[Faust.Id], 0, ma_node_graph_get_endpoint(&NodeGraph), 0);
     }
 }
 void Audio::Graph::Nodes::Uninit() const {

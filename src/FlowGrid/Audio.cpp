@@ -515,13 +515,16 @@ void Audio::Graph::Uninit() const {
     ma_node_graph_uninit(&NodeGraph, nullptr);
 }
 void Audio::Graph::Render() const {
-    if (TreeNodeEx(Nodes.ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        Nodes.Draw();
-        TreePop();
-    }
-    if (TreeNodeEx("Connections", ImGuiTreeNodeFlags_DefaultOpen)) {
-        RenderConnections();
-        TreePop();
+    if (BeginTabBar("")) {
+        if (BeginTabItem(Nodes.ImGuiLabel.c_str())) {
+            Nodes.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("Connections")) {
+            RenderConnections();
+            EndTabItem();
+        }
+        EndTabBar();
     }
 }
 

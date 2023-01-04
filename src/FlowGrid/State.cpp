@@ -1719,8 +1719,8 @@ void Audio::Graph::RenderConnections() const {
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(i, j), !Connections.At(i, j)});
 
-            const auto fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections.At(i, j) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg)));
-            RenderFrame(GetItemRectMin(), GetItemRectMax(), fill_color);
+            const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections.At(i, j) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
+            RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));
             PopID();
         }
     }

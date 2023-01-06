@@ -505,8 +505,9 @@ void State::Render() const {
         Info.Dock(sidebar_node_id);
     } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
-        DebugLog.SelectTab(); // not visible by default anymore
+        Audio.SelectTab();
         Metrics.SelectTab();
+        DebugLog.SelectTab(); // not visible by default anymore
     }
 
     for (const auto *child : Children) {

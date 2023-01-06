@@ -133,6 +133,10 @@ struct SetValue {
 struct SetValues {
     StoreEntries values;
 };
+struct SetVector {
+    StatePath path;
+    vector<Primitive> value;
+};
 struct ToggleValue {
     StatePath path;
 };
@@ -184,7 +188,7 @@ using StateAction = std::variant<
     ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog,
     OpenFaustFile,
 
-    SetValue, SetValues, ToggleValue, ApplyPatch,
+    SetValue, SetValues, SetVector, ToggleValue, ApplyPatch,
 
     SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle,
     SetGraphLayoutStyle,

@@ -21,6 +21,15 @@ void Set(const StoreEntries &values, TransientStore &store) {
 void Set(const FieldEntries &values, TransientStore &store) {
     for (const auto &[field, value] : values) store.set(field.Path, value);
 }
+void Set(const StatePath &path, const vector<Primitive> &values, TransientStore &store) {
+    Count i = 0;
+    while (i < values.size()) {
+        store.set(path / to_string(i), values[i]);
+        i++;
+    }
+
+    while (store.count(path / to_string(i))) store.erase(path / to_string(i++));
+}
 
 StateMember::StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help)
     : Parent(parent),
@@ -109,14 +118,15 @@ string GetName(const StateAction &action) {
         [](const SetImGuiColorStyle &) { return "Set ImGui color style"s; },
         [](const SetImPlotColorStyle &) { return "Set ImPlot color style"s; },
         [](const SetFlowGridColorStyle &) { return "Set FlowGrid color style"s; },
-        [](const SetGraphColorStyle &) { return "Set FlowGrid graph color style"s; },
-        [](const SetGraphLayoutStyle &) { return "Set FlowGrid graph layout style"s; },
+        [](const SetGraphColorStyle &) { return ActionName(SetGraphColorStyle); },
+        [](const SetGraphLayoutStyle &) { return ActionName(SetGraphLayoutStyle); },
         [](const OpenFileDialog &) { return ActionName(OpenFileDialog); },
         [](const CloseFileDialog &) { return ActionName(CloseFileDialog); },
         [](const ShowOpenProjectDialog &) { return ActionName(ShowOpenProjectDialog); },
         [](const ShowSaveProjectDialog &) { return ActionName(ShowSaveProjectDialog); },
         [](const SetValue &) { return ActionName(SetValue); },
         [](const SetValues &) { return ActionName(SetValues); },
+        [](const SetVector &) { return ActionName(SetVector); },
         [](const ToggleValue &) { return ActionName(ToggleValue); },
         [](const ApplyPatch &) { return ActionName(ApplyPatch); },
         [](const CloseApplication &) { return ActionName(CloseApplication); },
@@ -169,6 +179,7 @@ void State::Update(const StateAction &action, TransientStore &store) const {
         action,
         [&store](const SetValue &a) { store.set(a.path, a.value); },
         [&store](const SetValues &a) { ::Set(a.values, store); },
+        [&store](const SetVector &a) { ::Set(a.path, a.value, store); },
         [&store](const ToggleValue &a) { store.set(a.path, !std::get<bool>(AppStore.at(a.path))); },
         [&store](const ApplyPatch &a) {
             const auto &patch = a.patch;

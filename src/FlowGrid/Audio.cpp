@@ -173,7 +173,7 @@ std::unordered_map<ID, ma_node *> ForId; // Node data for its owning StateMember
 
 // Internal MA node data for each node type.
 // Output node is already allocated by the MA graph, so we don't need to track internal data for it.
-struct InputSourceData {
+struct InputData {
     ma_data_source_node Node{};
     ma_data_source_node_config Config{};
 };
@@ -184,7 +184,7 @@ struct FaustData {
 };
 
 // Instances
-static InputSourceData InputSource;
+static InputData Input;
 static FaustData Faust;
 } // namespace NodeData
 
@@ -501,7 +501,7 @@ Audio::Graph::Graph(StateMember *parent, string_view path_segment, string_view n
         vector<bool> connections_row;
         for (const auto *input_node : Nodes.Children) {
             const bool default_connected =
-                (input_node == &Nodes.InputSource && output_node == &Nodes.Faust) ||
+                (input_node == &Nodes.Input && output_node == &Nodes.Faust) ||
                 (input_node == &Nodes.Faust && output_node == &Nodes.Output);
             connections_row.push_back(default_connected);
         }
@@ -534,16 +534,16 @@ void Audio::Graph::Render() const {
 void Audio::Graph::Nodes::Update() const {
     nd::ForId[Output.Id] = ma_node_graph_get_endpoint(&NodeGraph); // Output is present whenever the graph is running. todo Graph is a Node
 
-    if (InputSource.On) {
-        if (!nd::ForId.contains(InputSource.Id)) {
-            nd::InputSource.Config = ma_data_source_node_config_init(&InputBuffer);
-            nd::ForId[InputSource.Id] = &nd::InputSource.Node;
+    if (Input.On) {
+        if (!nd::ForId.contains(Input.Id)) {
+            nd::Input.Config = ma_data_source_node_config_init(&InputBuffer);
+            nd::ForId[Input.Id] = &nd::Input.Node;
 
-            int result = ma_data_source_node_init(&NodeGraph, &nd::InputSource.Config, nullptr, (ma_data_source_node *)nd::ForId[InputSource.Id]);
+            int result = ma_data_source_node_init(&NodeGraph, &nd::Input.Config, nullptr, (ma_data_source_node *)nd::ForId[Input.Id]);
             if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
         }
     } else {
-        InputSource.Uninit();
+        Input.Uninit();
     }
     if (Faust.On && FaustDsp && (FaustDsp->getNumOutputs() > 0 || FaustDsp->getNumInputs() > 0)) {
         if (!nd::ForId.contains(Faust.Id)) {
@@ -566,6 +566,7 @@ void Audio::Graph::Nodes::Update() const {
             node->Update();
         }
     }
+
     // Setting up busses is idempotent.
     const auto *graph = dynamic_cast<const Graph *>(Parent);
     for (Count i = 0; i < Children.size(); i++) {

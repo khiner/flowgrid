@@ -123,6 +123,7 @@ JsonType(OpenFileDialog, dialog_json);
 JsonType(SaveProject, path);
 JsonType(SetValue, path, value);
 JsonType(SetValues, values);
+JsonType(SetVector, path, value);
 JsonType(ToggleValue, path);
 JsonType(ApplyPatch, patch);
 JsonType(SetImGuiColorStyle, id);

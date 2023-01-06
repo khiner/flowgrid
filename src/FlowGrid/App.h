@@ -69,7 +69,7 @@ struct Preferences {
 };
 
 struct StateMember {
-    static map<ID, StateMember *> WithId; // Allows for access of any state member by ImGui ID
+    static map<ID, StateMember *> WithId; // Access any state member by its ID.
 
     StateMember(StateMember *parent = nullptr, string_view path_segment = "", string_view name_help = "");
     StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help);
@@ -783,7 +783,7 @@ struct Audio : TabsWindow {
 
             // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
             // todo configurable data source
-            Prop(Node, InputSource);
+            Prop(Node, Input);
             Prop(Node, Faust);
             Prop(Node, Output);
 
@@ -1345,8 +1345,8 @@ UIMember(
 
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(fg::Style, Style);
-    Prop(ApplicationSettings, ApplicationSettings);
     Prop(Audio, Audio);
+    Prop(ApplicationSettings, ApplicationSettings);
     Prop(Faust, Faust);
     Prop(UIProcess, UiProcess);
     Prop(FileDialog, FileDialog);
@@ -1515,5 +1515,6 @@ bool q(Action &&a, bool flush = false);
 void Set(const Base &, const Primitive &, TransientStore &);
 void Set(const StoreEntries &, TransientStore &);
 void Set(const FieldEntries &, TransientStore &);
+void Set(const StatePath &, const vector<Primitive> &, TransientStore &);
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);

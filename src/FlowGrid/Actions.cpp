@@ -51,6 +51,7 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
 std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b) {
     const ID a_id = GetId(a);
     const ID b_id = GetId(b);
+    const bool same_type = a_id == b_id;
 
     switch (a_id) {
         case id<OpenFileDialog>:
@@ -65,21 +66,25 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
         case id<SetGraphLayoutStyle>:
         case id<ShowOpenFaustFileDialog>:
         case id<ShowSaveFaustFileDialog>: {
-            if (a_id == b_id) return b;
+            if (same_type) return b;
             return false;
         }
         case id<OpenFaustFile>:
         case id<SetValue>: {
-            if (a_id == b_id && std::get<SetValue>(a).path == std::get<SetValue>(b).path) return b;
+            if (same_type && std::get<SetValue>(a).path == std::get<SetValue>(b).path) return b;
             return false;
         }
         case id<SetValues>: {
-            if (a_id == b_id) return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<std::vector>};
+            if (same_type) return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<vector>};
             return false;
         }
-        case id<ToggleValue>: return a_id == b_id && std::get<ToggleValue>(a).path == std::get<ToggleValue>(b).path;
+        case id<SetVector>: {
+            if (same_type && std::get<SetVector>(a).path == std::get<SetVector>(a).path) return b;
+            return false;
+        }
+        case id<ToggleValue>: return same_type && std::get<ToggleValue>(a).path == std::get<ToggleValue>(b).path;
         case id<ApplyPatch>: {
-            if (a_id == b_id) {
+            if (same_type) {
                 const auto &_a = std::get<ApplyPatch>(a);
                 const auto &_b = std::get<ApplyPatch>(b);
                 // Keep patch actions affecting different base state-paths separate,

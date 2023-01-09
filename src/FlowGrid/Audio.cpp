@@ -575,7 +575,7 @@ void Audio::Graph::Nodes::Update() const {
             ma_node_detach_output_bus(nd::ForId[output_node->Id], 0); // No way to just detach one connection.
             for (Count j = 0; j < Children.size(); j++) {
                 const auto *input_node = dynamic_cast<const Node *>(Children[j]);
-                if (nd::ForId.contains(input_node->Id) && graph->Connections.At(i, j)) {
+                if (nd::ForId.contains(input_node->Id) && graph->Connections(i, j)) {
                     ma_node_attach_output_bus(nd::ForId[input_node->Id], 0, nd::ForId[output_node->Id], 0);
                 }
             }

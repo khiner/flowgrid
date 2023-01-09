@@ -395,13 +395,29 @@ template<IsPrimitive T>
 struct Vector2D : StateMember {
     using StateMember::StateMember;
 
-    T At(Count i, Count j, const Store &store = AppStore) const;
+    T At(Count i, Count j, const Store &) const;
+    inline T operator()(Count i, Count j) const { return At(i, j, AppStore); }
     inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
     Count Size(const Store &store = AppStore) const; // Number of outer vectors
     Count Size(Count i, const Store &store = AppStore) const; // Size of inner vector at index `i`
     Count Size(const TransientStore &) const; // Number of outer vectors
 
     void Set(const vector<vector<T>> &, TransientStore &) const;
+};
+
+template<IsPrimitive T>
+struct Matrix : StateMember {
+    Matrix(StateMember *parent, string_view path_segment, string_view name_help, Count row_count, Count col_count)
+        : StateMember(parent, path_segment, name_help), RowCount(row_count), ColCount(col_count), Data(RowCount * ColCount) {}
+
+    T operator()(const Count i, const Count j) { return Data[i * ColCount + j]; }
+
+    inline Count Rows() const { return RowCount; }
+    inline Count Cols() const { return ColCount; }
+
+private:
+    Count RowCount, ColCount;
+    vector<T> Data;
 };
 
 struct Colors : UIStateMember {

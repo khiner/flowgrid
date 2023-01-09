@@ -717,21 +717,21 @@ void TableSettings::Apply(ImGuiContext *) const {
         // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
         ImU64 display_order_mask = 0;
         for (Count j = 0; j < ColumnsCount[i]; j++) {
-            int column_n = Columns.Index.At(i, j);
+            int column_n = Columns.Index(i, j);
             if (column_n < 0 || column_n >= table->ColumnsCount) continue;
 
             ImGuiTableColumn *column = &table->Columns[column_n];
             if (ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Resizable) {
-                float width_or_weight = Columns.WidthOrWeight.At(i, j);
-                if (Columns.IsStretch.At(i, j)) column->StretchWeight = width_or_weight;
+                float width_or_weight = Columns.WidthOrWeight(i, j);
+                if (Columns.IsStretch(i, j)) column->StretchWeight = width_or_weight;
                 else column->WidthRequest = width_or_weight;
                 column->AutoFitQueue = 0x00;
             }
-            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder.At(i, j)) : (ImGuiTableColumnIdx)column_n;
+            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder(i, j)) : (ImGuiTableColumnIdx)column_n;
             display_order_mask |= (ImU64)1 << column->DisplayOrder;
-            column->IsUserEnabled = column->IsUserEnabledNextFrame = Columns.IsEnabled.At(i, j);
-            column->SortOrder = ImGuiTableColumnIdx(Columns.SortOrder.At(i, j));
-            column->SortDirection = Columns.SortDirection.At(i, j);
+            column->IsUserEnabled = column->IsUserEnabledNextFrame = Columns.IsEnabled(i, j);
+            column->SortOrder = ImGuiTableColumnIdx(Columns.SortOrder(i, j));
+            column->SortDirection = Columns.SortDirection(i, j);
         }
 
         // Validate and fix invalid display order data
@@ -1718,9 +1718,9 @@ void Audio::Graph::RenderConnections() const {
             PushID(i * output_count + j);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * j, (cell_size + cell_gap) * i});
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(i, j), !Connections.At(i, j)});
+            if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(i, j), !Connections(i, j)});
 
-            const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections.At(i, j) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
+            const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(i, j) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));
             PopID();
         }

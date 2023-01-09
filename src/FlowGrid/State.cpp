@@ -239,29 +239,32 @@ void String::Render(const vector<string> &options) const {
 } // namespace Field
 
 template<IsPrimitive T>
-T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(Path / to_string(i))); };
+T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(PathAt(i))); };
 
 template<IsPrimitive T>
 Count Vector<T>::Size(const Store &store) const {
     Count i = 0;
-    while (store.count(Path / to_string(i++))) {}
-    return i - 1;
+    while (store.count(PathAt(i))) { i++; }
+    return i;
 }
 
 template<IsPrimitive T>
 void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
     Count i = 0;
     while (i < values.size()) {
-        store.set(Path / to_string(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
+        store.set(PathAt(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
         i++;
     }
 
-    while (store.count(Path / to_string(i))) store.erase(Path / to_string(i++));
+    while (store.count(PathAt(i))) {
+        store.erase(PathAt(i));
+        i++;
+    }
 }
 
 template<IsPrimitive T>
 void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
-    for (const auto &[i, value] : values) store.set(Path / to_string(i), value);
+    for (const auto &[i, value] : values) store.set(PathAt(i), value);
 }
 
 template<IsPrimitive T>
@@ -270,22 +273,22 @@ T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<
 template<IsPrimitive T>
 Count Vector2D<T>::Size(const TransientStore &store) const {
     Count i = 0;
-    while (store.count(Path / to_string(i++) / to_string(0))) {}
-    return i - 1;
+    while (store.count(PathAt(i, 0))) { i++; }
+    return i;
 }
 
 template<IsPrimitive T>
 Count Vector2D<T>::Size(const Store &store) const {
     Count i = 0;
-    while (store.count(Path / to_string(i++) / to_string(0))) {}
-    return i - 1;
+    while (store.count(PathAt(i, 0))) { i++; }
+    return i;
 }
 
 template<IsPrimitive T>
 Count Vector2D<T>::Size(const Count i, const Store &store) const {
     Count j = 0;
-    while (store.count(PathAt(i, j++))) {}
-    return j - 1;
+    while (store.count(PathAt(i, j))) { j++; }
+    return j;
 }
 
 template<IsPrimitive T>

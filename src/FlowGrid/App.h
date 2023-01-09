@@ -384,6 +384,7 @@ struct Vector : StateMember {
     using StateMember::StateMember;
 
     T operator[](Count) const;
+    inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
     Count Size(const Store &store = AppStore) const;
 
     void Set(const vector<T> &, TransientStore &) const;

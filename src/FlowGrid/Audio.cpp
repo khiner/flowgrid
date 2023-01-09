@@ -495,22 +495,27 @@ void Audio::Device::Uninit() const {
 }
 
 Audio::Graph::Graph(StateMember *parent, string_view path_segment, string_view name_help)
-    : UIStateMember(parent, path_segment, name_help) {
-    vector<vector<bool>> connections = {};
-    for (const auto *output_node : Nodes.Children) {
-        vector<bool> connections_row;
-        for (const auto *input_node : Nodes.Children) {
-            const bool default_connected =
-                (input_node == &Nodes.Input && output_node == &Nodes.Faust) ||
-                (input_node == &Nodes.Faust && output_node == &Nodes.Output);
-            connections_row.push_back(default_connected);
-        }
-        connections.push_back(connections_row);
-    }
-    Connections.Set(connections, c.InitStore);
+    : UIStateMember(parent, path_segment, name_help) {}
+
+void Audio::Graph::Init() const {
 }
 
 void Audio::Graph::Update() const {
+    // Initialize state values to reflect the initial device configuration
+    static bool first_run = true;
+    if (first_run) {
+        first_run = false;
+        static vector<Primitive> connections{};
+        for (const auto *output_node : Nodes.Children) {
+            for (const auto *input_node : Nodes.Children) {
+                const bool default_connected =
+                    (input_node == &Nodes.Input && output_node == &Nodes.Faust) ||
+                    (input_node == &Nodes.Faust && output_node == &Nodes.Output);
+                connections.push_back(default_connected);
+            }
+        }
+        q(SetMatrix{Connections.Path, connections, Count(Nodes.Children.size())}, true);
+    }
     Nodes.Update();
 }
 void Audio::Graph::Uninit() const {

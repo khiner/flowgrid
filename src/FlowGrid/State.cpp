@@ -300,9 +300,6 @@ Count UntypedVector2D::Size(const Count i) const {
 }
 
 template<IsPrimitive T>
-T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(PathAt(i, j))); };
-
-template<IsPrimitive T>
 void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {
     Count i = 0;
     while (i < values.size()) {

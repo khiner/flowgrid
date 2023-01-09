@@ -33,6 +33,26 @@ void Set(const StatePath &path, const vector<Primitive> &values, TransientStore 
 
     while (store.count(path / to_string(i))) store.erase(path / to_string(i++));
 }
+void Set(const StatePath &path, const vector<Primitive> &data, const Count row_count, TransientStore &store) {
+    assert(data.size() % row_count == 0);
+    const Count col_count = data.size() / row_count;
+    Count i = 0;
+    while (i < row_count) {
+        Count j = 0;
+        while (j < col_count) {
+            store.set(path / to_string(i) / to_string(j), data[i * col_count + j]);
+            j++;
+        }
+        while (store.count(path / to_string(i) / to_string(j))) store.erase(path / to_string(i) / to_string(j++));
+        i++;
+    }
+
+    while (store.count(path / to_string(i) / to_string(0))) {
+        Count j = 0;
+        while (store.count(path / to_string(i) / to_string(j))) store.erase(path / to_string(i) / to_string(j++));
+        i++;
+    }
+}
 
 StateMember::StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help)
     : Parent(parent),
@@ -130,6 +150,7 @@ string GetName(const StateAction &action) {
         [](const SetValue &) { return ActionName(SetValue); },
         [](const SetValues &) { return ActionName(SetValues); },
         [](const SetVector &) { return ActionName(SetVector); },
+        [](const SetMatrix &) { return ActionName(SetMatrix); },
         [](const ToggleValue &) { return ActionName(ToggleValue); },
         [](const ApplyPatch &) { return ActionName(ApplyPatch); },
         [](const CloseApplication &) { return ActionName(CloseApplication); },
@@ -183,6 +204,7 @@ void State::Update(const StateAction &action, TransientStore &store) const {
         [&store](const SetValue &a) { store.set(a.path, a.value); },
         [&store](const SetValues &a) { ::Set(a.values, store); },
         [&store](const SetVector &a) { ::Set(a.path, a.value, store); },
+        [&store](const SetMatrix &a) { ::Set(a.path, a.data, a.row_count, store); },
         [&store](const ToggleValue &a) { store.set(a.path, !std::get<bool>(AppStore.at(a.path))); },
         [&store](const ApplyPatch &a) {
             const auto &patch = a.patch;

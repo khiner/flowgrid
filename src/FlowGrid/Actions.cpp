@@ -82,6 +82,10 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
             if (same_type && std::get<SetVector>(a).path == std::get<SetVector>(a).path) return b;
             return false;
         }
+        case id<SetMatrix>: {
+            if (same_type && std::get<SetMatrix>(a).path == std::get<SetMatrix>(a).path) return b;
+            return false;
+        }
         case id<ToggleValue>: return same_type && std::get<ToggleValue>(a).path == std::get<ToggleValue>(b).path;
         case id<ApplyPatch>: {
             if (same_type) {

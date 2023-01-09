@@ -124,6 +124,7 @@ JsonType(SaveProject, path);
 JsonType(SetValue, path, value);
 JsonType(SetValues, values);
 JsonType(SetVector, path, value);
+JsonType(SetMatrix, path, data, row_count);
 JsonType(ToggleValue, path);
 JsonType(ApplyPatch, patch);
 JsonType(SetImGuiColorStyle, id);

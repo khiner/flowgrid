@@ -137,6 +137,11 @@ struct SetVector {
     StatePath path;
     vector<Primitive> value;
 };
+struct SetMatrix {
+    StatePath path;
+    vector<Primitive> data;
+    Count row_count; // Column count derived from `data.size() / row_count`.
+};
 struct ToggleValue {
     StatePath path;
 };
@@ -188,7 +193,7 @@ using StateAction = std::variant<
     ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog,
     OpenFaustFile,
 
-    SetValue, SetValues, SetVector, ToggleValue, ApplyPatch,
+    SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch,
 
     SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle,
     SetGraphLayoutStyle,

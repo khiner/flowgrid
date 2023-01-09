@@ -428,8 +428,7 @@ template<IsPrimitive T>
 struct Vector2D : UntypedVector2D {
     using UntypedVector2D::UntypedVector2D;
 
-    T At(Count i, Count j, const Store &) const;
-    inline T operator()(Count i, Count j) const { return At(i, j, AppStore); }
+    inline T operator()(Count i, Count j) const { return Value[i][j]; }
     void Set(const vector<vector<T>> &, TransientStore &) const;
 
     void Update() override;
@@ -843,6 +842,7 @@ struct Audio : TabsWindow {
             void Render() const override;
         };
 
+        void Init() const;
         void Update() const;
         void Uninit() const;
 
@@ -1565,5 +1565,6 @@ void Set(const Base &, const Primitive &, TransientStore &);
 void Set(const StoreEntries &, TransientStore &);
 void Set(const FieldEntries &, TransientStore &);
 void Set(const StatePath &, const vector<Primitive> &, TransientStore &);
+void Set(const StatePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);

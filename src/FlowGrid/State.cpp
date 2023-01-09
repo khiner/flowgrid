@@ -245,12 +245,6 @@ UntypedVector::~UntypedVector() {
     WithPath.erase(Path);
 }
 
-Count UntypedVector::Size() const {
-    Count i = 0;
-    while (AppStore.count(PathAt(i))) { i++; }
-    return i;
-}
-
 template<IsPrimitive T>
 void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
     Count i = 0;
@@ -272,8 +266,14 @@ void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) c
 
 template<IsPrimitive T>
 void Vector<T>::Update() {
-    Value.resize(Size());
-    for (Count i = 0; i < Value.size(); i++) Value[i] = std::get<T>(AppStore.at(PathAt(i)));
+    Count i = 0;
+    while (AppStore.count(PathAt(i))) {
+        const T value = std::get<T>(AppStore.at(PathAt(i)));
+        if (Value.size() == i) Value.push_back(value);
+        else Value[i] = value;
+        i++;
+    }
+    Value.resize(i);
 }
 
 UntypedVector2D::UntypedVector2D(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help) {
@@ -281,22 +281,6 @@ UntypedVector2D::UntypedVector2D(StateMember *parent, string_view id, string_vie
 }
 UntypedVector2D::~UntypedVector2D() {
     WithPath.erase(Path);
-}
-
-Count UntypedVector2D::Size(const TransientStore &store) const {
-    Count i = 0;
-    while (store.count(PathAt(i, 0))) { i++; }
-    return i;
-}
-Count UntypedVector2D::Size() const {
-    Count i = 0;
-    while (AppStore.count(PathAt(i, 0))) { i++; }
-    return i;
-}
-Count UntypedVector2D::Size(const Count i) const {
-    Count j = 0;
-    while (AppStore.count(PathAt(i, j))) { j++; }
-    return j;
 }
 
 template<IsPrimitive T>
@@ -321,13 +305,20 @@ void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) co
 
 template<IsPrimitive T>
 void Vector2D<T>::Update() {
-    Value.resize(Size());
-    for (Count i = 0; i < Value.size(); i++) Value[i].resize(Size(i));
-    for (Count i = 0; i < Value.size(); i++) {
-        for (Count j = 0; j < Value[i].size(); j++) {
-            Value[i][j] = std::get<T>(AppStore.at(PathAt(i, j)));
+    Count i = 0;
+    while (AppStore.count(PathAt(i, 0))) {
+        if (Value.size() == i) Value.push_back({});
+        Count j = 0;
+        while (AppStore.count(PathAt(i, j))) {
+            const T value = std::get<T>(AppStore.at(PathAt(i, j)));
+            if (Value[i].size() == j) Value[i].push_back(value);
+            else Value[i][j] = value;
+            j++;
         }
+        Value[i].resize(j);
+        i++;
     }
+    Value.resize(i);
 }
 
 void Vec2::Render(ImGuiSliderFlags flags) const {

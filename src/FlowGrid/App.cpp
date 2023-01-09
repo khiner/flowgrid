@@ -344,10 +344,10 @@ Patch Context::SetStore(const Store &store) {
     modified_2d_vectors.clear();
     for (const auto &[partial_path, _op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
-        // todo pretty sure this only happens in the vector case, but we should implement value caching for vectors too!
         if (Base::WithPath.contains(path)) Base::WithPath.at(path)->Update();
         else if (UntypedVector::WithPath.contains(UntypedVector::RootPath(path))) modified_vectors.emplace(UntypedVector::WithPath.at(UntypedVector::RootPath(path)));
         else if (UntypedVector2D::WithPath.contains(UntypedVector2D::RootPath(path))) modified_2d_vectors.emplace(UntypedVector2D::WithPath.at(UntypedVector2D::RootPath(path)));
+        else throw std::runtime_error(format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
 
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.

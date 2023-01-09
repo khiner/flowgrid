@@ -388,8 +388,7 @@ struct UntypedVector : StateMember {
     static inline StatePath RootPath(const StatePath &path) { return path.parent_path(); }
     inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
 
-    Count Size() const;
-
+    virtual Count Size() const = 0;
     virtual void Update() = 0;
 };
 
@@ -397,6 +396,7 @@ template<IsPrimitive T>
 struct Vector : UntypedVector {
     using UntypedVector::UntypedVector;
 
+    inline Count Size() const override { return Value.size(); }
     inline T operator[](const Count i) const { return Value[i]; }
     void Set(const vector<T> &, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
@@ -408,7 +408,7 @@ private:
 };
 
 struct UntypedVector2D : StateMember {
-    static map<StatePath, UntypedVector2D *> WithPath; // Find any vector by its path.
+    static map<StatePath, UntypedVector2D *> WithPath; // Find any 2D vector by its path.
 
     UntypedVector2D(StateMember *parent, string_view path_segment, string_view name_help);
     ~UntypedVector2D();
@@ -416,9 +416,8 @@ struct UntypedVector2D : StateMember {
     static inline StatePath RootPath(const StatePath &path) { return path.parent_path().parent_path(); }
     inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
 
-    Count Size() const; // Number of outer vectors
-    Count Size(Count i) const; // Size of inner vector at index `i`
-    Count Size(const TransientStore &) const; // Number of outer vectors
+    virtual Count Size() const = 0; // Number of outer vectors
+    virtual Count Size(Count i) const = 0; // Size of inner vector at index `i`
 
     virtual void Update() = 0;
 };
@@ -427,6 +426,9 @@ struct UntypedVector2D : StateMember {
 template<IsPrimitive T>
 struct Vector2D : UntypedVector2D {
     using UntypedVector2D::UntypedVector2D;
+
+    inline Count Size() const override { return Value.size(); };
+    inline Count Size(Count i) const override { return Value[i].size(); };
 
     inline T operator()(Count i, Count j) const { return Value[i][j]; }
     void Set(const vector<vector<T>> &, TransientStore &) const;
@@ -810,7 +812,7 @@ struct Audio : TabsWindow {
 
     // Corresponds to `ma_node_graph`.
     struct Graph : UIStateMember {
-        Graph(StateMember *parent, string_view path_segment, string_view name_help = "");
+        using UIStateMember::UIStateMember;
 
         // Corresponds to `ma_node_base`.
         struct Node : UIStateMember {

@@ -494,9 +494,6 @@ void Audio::Device::Uninit() const {
     // ma_resampler_uninit(&Resampler, nullptr);
 }
 
-Audio::Graph::Graph(StateMember *parent, string_view path_segment, string_view name_help)
-    : UIStateMember(parent, path_segment, name_help) {}
-
 void Audio::Graph::Init() const {
 }
 

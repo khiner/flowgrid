@@ -385,7 +385,7 @@ struct Vector : StateMember {
 
     T operator[](Count) const;
     inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
-    Count Size(const Store &store = AppStore) const;
+    Count Size() const;
 
     void Set(const vector<T> &, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
@@ -399,8 +399,8 @@ struct Vector2D : StateMember {
     T At(Count i, Count j, const Store &) const;
     inline T operator()(Count i, Count j) const { return At(i, j, AppStore); }
     inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
-    Count Size(const Store &store = AppStore) const; // Number of outer vectors
-    Count Size(Count i, const Store &store = AppStore) const; // Size of inner vector at index `i`
+    Count Size() const; // Number of outer vectors
+    Count Size(Count i) const; // Size of inner vector at index `i`
     Count Size(const TransientStore &) const; // Number of outer vectors
 
     void Set(const vector<vector<T>> &, TransientStore &) const;

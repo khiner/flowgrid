@@ -242,9 +242,9 @@ template<IsPrimitive T>
 T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(PathAt(i))); };
 
 template<IsPrimitive T>
-Count Vector<T>::Size(const Store &store) const {
+Count Vector<T>::Size() const {
     Count i = 0;
-    while (store.count(PathAt(i))) { i++; }
+    while (AppStore.count(PathAt(i))) { i++; }
     return i;
 }
 
@@ -278,16 +278,16 @@ Count Vector2D<T>::Size(const TransientStore &store) const {
 }
 
 template<IsPrimitive T>
-Count Vector2D<T>::Size(const Store &store) const {
+Count Vector2D<T>::Size() const {
     Count i = 0;
-    while (store.count(PathAt(i, 0))) { i++; }
+    while (AppStore.count(PathAt(i, 0))) { i++; }
     return i;
 }
 
 template<IsPrimitive T>
-Count Vector2D<T>::Size(const Count i, const Store &store) const {
+Count Vector2D<T>::Size(const Count i) const {
     Count j = 0;
-    while (store.count(PathAt(i, j))) { j++; }
+    while (AppStore.count(PathAt(i, j))) { j++; }
     return j;
 }
 

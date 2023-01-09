@@ -238,11 +238,15 @@ void String::Render(const vector<string> &options) const {
 
 } // namespace Field
 
-template<IsPrimitive T>
-T Vector<T>::operator[](Count i) const { return std::get<T>(AppStore.at(PathAt(i))); };
+UntypedVector::UntypedVector(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help) {
+    WithPath[Path] = this;
+}
 
-template<IsPrimitive T>
-Count Vector<T>::Size() const {
+UntypedVector::~UntypedVector() {
+    WithPath.erase(Path);
+}
+
+Count UntypedVector::Size() const {
     Count i = 0;
     while (AppStore.count(PathAt(i))) { i++; }
     return i;
@@ -268,7 +272,10 @@ void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) c
 }
 
 template<IsPrimitive T>
-T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(PathAt(i, j))); };
+void Vector<T>::Update() {
+    Value.resize(Size());
+    for (Count i = 0; i < Value.size(); i++) Value[i] = std::get<T>(AppStore.at(PathAt(i)));
+}
 
 template<IsPrimitive T>
 Count Vector2D<T>::Size(const TransientStore &store) const {
@@ -290,6 +297,9 @@ Count Vector2D<T>::Size(const Count i) const {
     while (AppStore.count(PathAt(i, j))) { j++; }
     return j;
 }
+
+template<IsPrimitive T>
+T Vector2D<T>::At(Count i, Count j, const Store &store) const { return std::get<T>(store.at(PathAt(i, j))); };
 
 template<IsPrimitive T>
 void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {

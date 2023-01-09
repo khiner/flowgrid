@@ -379,16 +379,32 @@ using namespace Field;
 using FieldEntry = pair<const Base &, Primitive>;
 using FieldEntries = vector<FieldEntry>;
 
-template<IsPrimitive T>
-struct Vector : StateMember {
-    using StateMember::StateMember;
+struct UntypedVector : StateMember {
+    static map<StatePath, UntypedVector *> WithPath; // Find any vector by its path.
 
-    T operator[](Count) const;
+    UntypedVector(StateMember *parent, string_view path_segment, string_view name_help);
+    ~UntypedVector();
+
+    static inline StatePath RootPath(const StatePath &path) { return path.parent_path(); }
     inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
+
     Count Size() const;
 
+    virtual void Update() = 0;
+};
+
+template<IsPrimitive T>
+struct Vector : UntypedVector {
+    using UntypedVector::UntypedVector;
+
+    inline T operator[](const Count i) const { return Value[i]; }
     void Set(const vector<T> &, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
+
+    void Update() override;
+
+private:
+    vector<T> Value;
 };
 
 // Vector of vectors. Inner vectors need not have the same length.

@@ -10,6 +10,7 @@
 
 map<ID, StateMember *> StateMember::WithId{};
 map<StatePath, Base *> Base::WithPath{};
+map<StatePath, UntypedVector *> UntypedVector::WithPath{};
 vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
@@ -313,16 +314,22 @@ Patch Context::SetStore(const Store &store) {
     if (patch.empty()) return {};
 
     ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
+    static set<UntypedVector *> modified_vectors;
+    modified_vectors.clear();
     for (const auto &[partial_path, _op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
         // todo pretty sure this only happens in the vector case, but we should implement value caching for vectors too!
         if (Base::WithPath.contains(path)) Base::WithPath.at(path)->Update();
+        else if (UntypedVector::WithPath.contains(UntypedVector::RootPath(path))) modified_vectors.emplace(UntypedVector::WithPath.at(UntypedVector::RootPath(path)));
+
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
         if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
         else if (path.string().rfind(s.Style.ImGui.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiStyle;
         else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
     }
+    for (auto *modified_vector : modified_vectors) modified_vector->Update();
+
     s.Audio.Update();
     History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;

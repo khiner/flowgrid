@@ -407,19 +407,35 @@ private:
     vector<T> Value;
 };
 
-// Vector of vectors. Inner vectors need not have the same length.
-template<IsPrimitive T>
-struct Vector2D : StateMember {
-    using StateMember::StateMember;
+struct UntypedVector2D : StateMember {
+    static map<StatePath, UntypedVector2D *> WithPath; // Find any vector by its path.
 
-    T At(Count i, Count j, const Store &) const;
-    inline T operator()(Count i, Count j) const { return At(i, j, AppStore); }
+    UntypedVector2D(StateMember *parent, string_view path_segment, string_view name_help);
+    ~UntypedVector2D();
+
+    static inline StatePath RootPath(const StatePath &path) { return path.parent_path().parent_path(); }
     inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
+
     Count Size() const; // Number of outer vectors
     Count Size(Count i) const; // Size of inner vector at index `i`
     Count Size(const TransientStore &) const; // Number of outer vectors
 
+    virtual void Update() = 0;
+};
+
+// Vector of vectors. Inner vectors need not have the same length.
+template<IsPrimitive T>
+struct Vector2D : UntypedVector2D {
+    using UntypedVector2D::UntypedVector2D;
+
+    T At(Count i, Count j, const Store &) const;
+    inline T operator()(Count i, Count j) const { return At(i, j, AppStore); }
     void Set(const vector<vector<T>> &, TransientStore &) const;
+
+    void Update() override;
+
+private:
+    vector<vector<T>> Value;
 };
 
 template<IsPrimitive T>

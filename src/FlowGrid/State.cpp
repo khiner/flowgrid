@@ -241,7 +241,6 @@ void String::Render(const vector<string> &options) const {
 UntypedVector::UntypedVector(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help) {
     WithPath[Path] = this;
 }
-
 UntypedVector::~UntypedVector() {
     WithPath.erase(Path);
 }
@@ -277,22 +276,24 @@ void Vector<T>::Update() {
     for (Count i = 0; i < Value.size(); i++) Value[i] = std::get<T>(AppStore.at(PathAt(i)));
 }
 
-template<IsPrimitive T>
-Count Vector2D<T>::Size(const TransientStore &store) const {
+UntypedVector2D::UntypedVector2D(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help) {
+    WithPath[Path] = this;
+}
+UntypedVector2D::~UntypedVector2D() {
+    WithPath.erase(Path);
+}
+
+Count UntypedVector2D::Size(const TransientStore &store) const {
     Count i = 0;
     while (store.count(PathAt(i, 0))) { i++; }
     return i;
 }
-
-template<IsPrimitive T>
-Count Vector2D<T>::Size() const {
+Count UntypedVector2D::Size() const {
     Count i = 0;
     while (AppStore.count(PathAt(i, 0))) { i++; }
     return i;
 }
-
-template<IsPrimitive T>
-Count Vector2D<T>::Size(const Count i) const {
+Count UntypedVector2D::Size(const Count i) const {
     Count j = 0;
     while (AppStore.count(PathAt(i, j))) { j++; }
     return j;
@@ -318,6 +319,17 @@ void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) co
         Count j = 0;
         while (store.count(PathAt(i, j))) store.erase(PathAt(i, j++));
         i++;
+    }
+}
+
+template<IsPrimitive T>
+void Vector2D<T>::Update() {
+    Value.resize(Size());
+    for (Count i = 0; i < Value.size(); i++) Value[i].resize(Size(i));
+    for (Count i = 0; i < Value.size(); i++) {
+        for (Count j = 0; j < Value[i].size(); j++) {
+            Value[i][j] = std::get<T>(AppStore.at(PathAt(i, j)));
+        }
     }
 }
 

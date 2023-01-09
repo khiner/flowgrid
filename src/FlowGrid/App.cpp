@@ -11,6 +11,8 @@
 map<ID, StateMember *> StateMember::WithId{};
 map<StatePath, Base *> Base::WithPath{};
 map<StatePath, UntypedVector *> UntypedVector::WithPath{};
+map<StatePath, UntypedVector2D *> UntypedVector2D::WithPath{};
+
 vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
@@ -315,12 +317,15 @@ Patch Context::SetStore(const Store &store) {
 
     ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
     static set<UntypedVector *> modified_vectors;
+    static set<UntypedVector2D *> modified_2d_vectors;
     modified_vectors.clear();
+    modified_2d_vectors.clear();
     for (const auto &[partial_path, _op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
         // todo pretty sure this only happens in the vector case, but we should implement value caching for vectors too!
         if (Base::WithPath.contains(path)) Base::WithPath.at(path)->Update();
         else if (UntypedVector::WithPath.contains(UntypedVector::RootPath(path))) modified_vectors.emplace(UntypedVector::WithPath.at(UntypedVector::RootPath(path)));
+        else if (UntypedVector2D::WithPath.contains(UntypedVector2D::RootPath(path))) modified_2d_vectors.emplace(UntypedVector2D::WithPath.at(UntypedVector2D::RootPath(path)));
 
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
@@ -329,6 +334,7 @@ Patch Context::SetStore(const Store &store) {
         else if (path.string().rfind(s.Style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
     }
     for (auto *modified_vector : modified_vectors) modified_vector->Update();
+    for (auto *modified_2d_vector : modified_2d_vectors) modified_2d_vector->Update();
 
     s.Audio.Update();
     History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;

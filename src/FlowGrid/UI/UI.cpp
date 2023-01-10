@@ -233,7 +233,7 @@ void TickUi() {
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         Store new_store = s.ImGuiSettings.Set(UiContext.ImGui);
         const auto &patch = CreatePatch(AppStore, new_store, s.ImGuiSettings.Path);
-        if (!patch.empty()) q(ApplyPatch{patch});
+        if (!patch.Empty()) q(ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }
 

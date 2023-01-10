@@ -877,9 +877,9 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
         string(key);
 
     if (AutoSelect) {
-        const auto &update_paths = c.History.LatestUpdatedPaths;
+        const auto &updated_paths = c.History.LatestUpdatedPaths;
         const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
-        const bool was_recently_updated = std::find_if(update_paths.begin(), update_paths.end(), is_ancestor_path) != update_paths.end();
+        const bool was_recently_updated = std::find_if(updated_paths.begin(), updated_paths.end(), is_ancestor_path) != updated_paths.end();
         SetNextItemOpen(was_recently_updated);
     }
 

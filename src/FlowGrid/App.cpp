@@ -333,13 +333,15 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 
 Patch Context::SetStore(const Store &store) {
     const auto &patch = CreatePatch(AppStore, store);
-    if (patch.empty()) return {};
+    if (patch.Empty()) return {};
 
     ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
+    History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
+    ProjectHasChanges = true;
+
     static set<Updatable *> modified_fields;
     modified_fields.clear();
-    for (const auto &[partial_path, _op] : patch.Ops) {
-        const auto &path = patch.BasePath / partial_path;
+    for (const auto &path : History.LatestUpdatedPaths) {
         if (Updatable::WithPath.contains(path)) modified_fields.emplace(Updatable::WithPath.at(path));
         else if (Updatable::WithPath.contains(UntypedVector::RootPath(path))) modified_fields.emplace(Updatable::WithPath.at(UntypedVector::RootPath(path)));
         else if (Updatable::WithPath.contains(UntypedVector2D::RootPath(path))) modified_fields.emplace(Updatable::WithPath.at(UntypedVector2D::RootPath(path)));
@@ -354,9 +356,6 @@ Patch Context::SetStore(const Store &store) {
     for (auto *modified_field : modified_fields) modified_field->Update();
 
     s.Audio.Update();
-    History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
-    ProjectHasChanges = true;
-
     return patch;
 }
 
@@ -506,7 +505,7 @@ void StoreHistory::FinalizeGesture() {
     if (merged_gesture.empty()) return;
 
     const auto &patch = CreatePatch(AppStore, Records[Index].Store);
-    if (patch.empty()) return;
+    if (patch.Empty()) return;
 
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
     Records.push_back({Clock::now(), AppStore, merged_gesture});

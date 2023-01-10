@@ -57,7 +57,7 @@ struct Patch {
     PatchOps Ops;
     StatePath BasePath{RootPath};
 
-    bool empty() const noexcept { return Ops.empty(); }
+    bool Empty() const noexcept { return Ops.empty(); }
 };
 
 struct StatePatch {

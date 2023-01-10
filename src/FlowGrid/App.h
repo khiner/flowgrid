@@ -8,6 +8,7 @@
  */
 #include <iostream>
 #include <list>
+#include <map>
 #include <queue>
 #include <set>
 
@@ -35,9 +36,9 @@ using fmt::format, fmt::to_string;
 using views::transform;
 using namespace nlohmann;
 using std::cout, std::cerr;
+using std::map, std::set;
 using std::min, std::max;
 using std::nullopt, std::unique_ptr, std::make_unique;
-using std::set;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
 
@@ -69,7 +70,7 @@ struct Preferences {
 };
 
 struct StateMember {
-    static map<ID, StateMember *> WithId; // Access any state member by its ID.
+    static unordered_map<ID, StateMember *> WithId; // Access any state member by its ID.
 
     StateMember(StateMember *parent = nullptr, string_view path_segment = "", string_view name_help = "");
     StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help);
@@ -155,6 +156,20 @@ protected:
     virtual void Render() const = 0;
 };
 
+struct Updatable {
+    static unordered_map<StatePath, Updatable *, StatePathHash> WithPath; // Find any field by its path.
+
+    Updatable(const StatePath &path) : UpdatablePath(path) {
+        WithPath[UpdatablePath] = this;
+    }
+    ~Updatable() {
+        WithPath.erase(UpdatablePath);
+    }
+    virtual void Update() = 0;
+
+    const StatePath UpdatablePath;
+};
+
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;
 };
@@ -221,15 +236,11 @@ struct UIStateMember : StateMember, Drawable {
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
 
-struct Base : UIStateMember {
-    static map<StatePath, Base *> WithPath; // Find any field by its path.
-
+struct Base : UIStateMember, Updatable {
     Base(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
-    ~Base();
 
     Primitive Get() const; // Returns the value in the main state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
-    virtual void Update() = 0;
 };
 
 template<IsPrimitive T>
@@ -379,17 +390,13 @@ using namespace Field;
 using FieldEntry = pair<const Base &, Primitive>;
 using FieldEntries = vector<FieldEntry>;
 
-struct UntypedVector : StateMember {
-    static map<StatePath, UntypedVector *> WithPath; // Find any vector by its path.
-
-    UntypedVector(StateMember *parent, string_view path_segment, string_view name_help);
-    ~UntypedVector();
+struct UntypedVector : StateMember, Updatable {
+    UntypedVector(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help), Updatable(Path) {}
 
     static inline StatePath RootPath(const StatePath &path) { return path.parent_path(); }
     inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
 
     virtual Count Size() const = 0;
-    virtual void Update() = 0;
 };
 
 template<IsPrimitive T>
@@ -407,19 +414,14 @@ private:
     vector<T> Value;
 };
 
-struct UntypedVector2D : StateMember {
-    static map<StatePath, UntypedVector2D *> WithPath; // Find any 2D vector by its path.
-
-    UntypedVector2D(StateMember *parent, string_view path_segment, string_view name_help);
-    ~UntypedVector2D();
+struct UntypedVector2D : StateMember, Updatable {
+    UntypedVector2D(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help), Updatable(Path) {}
 
     static inline StatePath RootPath(const StatePath &path) { return path.parent_path().parent_path(); }
     inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
 
     virtual Count Size() const = 0; // Number of outer vectors
     virtual Count Size(Count i) const = 0; // Size of inner vector at index `i`
-
-    virtual void Update() = 0;
 };
 
 // Vector of vectors. Inner vectors need not have the same length.
@@ -1418,7 +1420,7 @@ UIMember(
 // [SECTION] Main application `Context`
 //-----------------------------------------------------------------------------
 
-static const map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
+static const unordered_map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
 static const auto ProjectFormatForExtension = ExtensionForProjectFormat | transform([](const auto &p) { return pair(p.second, p.first); }) | to<map>();
 static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<set>;
 static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
@@ -1470,10 +1472,10 @@ struct StoreHistory {
     vector<Record> Records;
     Gesture ActiveGesture{}; // uncompressed, uncommitted
     vector<StatePath> LatestUpdatedPaths{};
-    map<StatePath, vector<TimePoint>> CommittedUpdateTimesForPath{};
+    unordered_map<StatePath, vector<TimePoint>, StatePathHash> CommittedUpdateTimesForPath{};
 
 private:
-    map<StatePath, vector<TimePoint>> GestureUpdateTimesForPath{};
+    unordered_map<StatePath, vector<TimePoint>, StatePathHash> GestureUpdateTimesForPath{};
 };
 
 struct Context {

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/Time.h"
 #include "Primitive.h"
 
-using std::map;
+using std::unordered_map;
 
 /**
 An ID is used to uniquely identify something.
@@ -47,7 +47,7 @@ struct PatchOp {
     std::optional<Primitive> Old{}; // Present for remove/replace
 };
 
-using PatchOps = map<StatePath, PatchOp>;
+using PatchOps = unordered_map<StatePath, PatchOp, StatePathHash>;
 
 static constexpr auto AddOp = PatchOp::Type::Add;
 static constexpr auto RemoveOp = PatchOp::Type::Remove;
@@ -245,7 +245,7 @@ template<typename T> constexpr ActionID id = mp_find<Action, T>::value;
 #define ActionName(action_var_name) PascalToSentenceCase(#action_var_name)
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-const map<ActionID, string> ShortcutForId = {
+const unordered_map<ActionID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},
     {id<Redo>, "shift+cmd+z"},
     {id<OpenEmptyProject>, "cmd+n"},

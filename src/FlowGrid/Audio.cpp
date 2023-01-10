@@ -1,5 +1,3 @@
-#include <unordered_map>
-
 // #include "CDSPResampler.h"
 #include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
@@ -169,7 +167,7 @@ void Audio::Uninit() const {
 // }
 
 namespace NodeData {
-std::unordered_map<ID, ma_node *> ForId; // Node data for its owning StateMember's ID.
+unordered_map<ID, ma_node *> ForId; // Node data for its owning StateMember's ID.
 
 // Internal MA node data for each node type.
 // Output node is already allocated by the MA graph, so we don't need to track internal data for it.

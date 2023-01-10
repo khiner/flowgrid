@@ -36,12 +36,8 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
 //-----------------------------------------------------------------------------
 
 namespace Field {
-Base::Base(StateMember *parent, string_view id, string_view name_help, Primitive value) : UIStateMember(parent, id, name_help) {
-    WithPath[Path] = this;
+Base::Base(StateMember *parent, string_view id, string_view name_help, Primitive value) : UIStateMember(parent, id, name_help), Updatable(Path) {
     Set(*this, value, c.InitStore);
-}
-Base::~Base() {
-    WithPath.erase(Path);
 }
 
 Primitive Base::Get() const { return AppStore.at(Path); }
@@ -238,13 +234,6 @@ void String::Render(const vector<string> &options) const {
 
 } // namespace Field
 
-UntypedVector::UntypedVector(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help) {
-    WithPath[Path] = this;
-}
-UntypedVector::~UntypedVector() {
-    WithPath.erase(Path);
-}
-
 template<IsPrimitive T>
 void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
     Count i = 0;
@@ -274,13 +263,6 @@ void Vector<T>::Update() {
         i++;
     }
     Value.resize(i);
-}
-
-UntypedVector2D::UntypedVector2D(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help) {
-    WithPath[Path] = this;
-}
-UntypedVector2D::~UntypedVector2D() {
-    WithPath.erase(Path);
 }
 
 template<IsPrimitive T>

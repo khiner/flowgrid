@@ -7,10 +7,8 @@ const Store &AppStore = c.AppStore; // Create the read-only store reference glob
 const State &s = c.s; // Create the read-only state reference global.
 
 int main(int, const char **) {
-    // It's here to make sure that any changes to `c.InitStore` _after_ field construction are reflected in the cached field value.
-    for (auto *field : views::values(Base::WithPath)) field->Update();
-    for (auto *field : views::values(UntypedVector::WithPath)) field->Update();
-    for (auto *field : views::values(UntypedVector2D::WithPath)) field->Update();
+    // Ensure all store values set during initialization are reflected in cached field/collection values.
+    for (auto *field : views::values(Updatable::WithPath)) field->Update();
 
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 

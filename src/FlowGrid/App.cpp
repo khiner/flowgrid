@@ -9,7 +9,7 @@
 #include "UI/Faust/FaustGraph.h"
 
 unordered_map<ID, StateMember *> StateMember::WithId{};
-unordered_map<StatePath, Updatable *, StatePathHash> Updatable::WithPath{};
+unordered_map<StatePath, Base *, StatePathHash> Base::WithPath{};
 
 vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
@@ -339,13 +339,16 @@ Patch Context::SetStore(const Store &store) {
     History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;
 
-    static set<Updatable *> modified_fields;
+    static set<Base *> modified_fields;
     modified_fields.clear();
     for (const auto &path : History.LatestUpdatedPaths) {
-        if (Updatable::WithPath.contains(path)) modified_fields.emplace(Updatable::WithPath.at(path));
-        else if (Updatable::WithPath.contains(UntypedVector::RootPath(path))) modified_fields.emplace(Updatable::WithPath.at(UntypedVector::RootPath(path)));
-        else if (Updatable::WithPath.contains(UntypedVector2D::RootPath(path))) modified_fields.emplace(Updatable::WithPath.at(UntypedVector2D::RootPath(path)));
-        else throw std::runtime_error(format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
+        // Find all updated fields, including container fields.
+        auto modified_field = Base::WithPath.find(path);
+        if (modified_field == Base::WithPath.end()) modified_field = Base::WithPath.find(path.parent_path());
+        if (modified_field == Base::WithPath.end()) modified_field = Base::WithPath.find(path.parent_path().parent_path());
+        if (modified_field == Base::WithPath.end()) throw std::runtime_error(format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
+
+        modified_fields.emplace(modified_field->second);
 
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.

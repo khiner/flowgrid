@@ -156,20 +156,6 @@ protected:
     virtual void Render() const = 0;
 };
 
-struct Updatable {
-    static unordered_map<StatePath, Updatable *, StatePathHash> WithPath; // Find any field by its path.
-
-    Updatable(const StatePath &path) : UpdatablePath(path) {
-        WithPath[UpdatablePath] = this;
-    }
-    ~Updatable() {
-        WithPath.erase(UpdatablePath);
-    }
-    virtual void Update() = 0;
-
-    const StatePath UpdatablePath;
-};
-
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;
 };
@@ -236,17 +222,33 @@ struct UIStateMember : StateMember, Drawable {
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
 
-struct Base : UIStateMember, Updatable {
-    Base(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
+struct Base : UIStateMember {
+    static unordered_map<StatePath, Base *, StatePathHash> WithPath; // Find any field by its path.
+
+    Base(StateMember *parent, string_view path_segment, string_view name_help) : UIStateMember(parent, path_segment, name_help) {
+        WithPath[Path] = this;
+    }
+    ~Base() {
+        WithPath.erase(Path);
+    }
+
+    virtual void Update() = 0;
+
+protected:
+    void Render() const override {}
+};
+
+struct PrimitiveBase : Base {
+    PrimitiveBase(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
     Primitive GetInitial() const; // Returns the value in the initialization state store.
 };
 
 template<IsPrimitive T>
-struct TypedBase : Base {
+struct TypedBase : PrimitiveBase {
     TypedBase(StateMember *parent, string_view path_segment, string_view name_help, T value = {})
-        : Base(parent, path_segment, name_help, value), Value(value) {}
+        : PrimitiveBase(parent, path_segment, name_help, value), Value(value) {}
 
     operator T() const { return Value; }
     bool operator==(const T &value) const { return Value == value; }
@@ -390,20 +392,12 @@ using namespace Field;
 using FieldEntry = pair<const Base &, Primitive>;
 using FieldEntries = vector<FieldEntry>;
 
-struct UntypedVector : StateMember, Updatable {
-    UntypedVector(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help), Updatable(Path) {}
-
-    static inline StatePath RootPath(const StatePath &path) { return path.parent_path(); }
-    inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
-
-    virtual Count Size() const = 0;
-};
-
 template<IsPrimitive T>
-struct Vector : UntypedVector {
-    using UntypedVector::UntypedVector;
+struct Vector : Base {
+    using Base::Base;
 
-    inline Count Size() const override { return Value.size(); }
+    inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
+    inline Count Size() const { return Value.size(); }
     inline T operator[](const Count i) const { return Value[i]; }
     void Set(const vector<T> &, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
@@ -414,23 +408,14 @@ private:
     vector<T> Value;
 };
 
-struct UntypedVector2D : StateMember, Updatable {
-    UntypedVector2D(StateMember *parent, string_view id, string_view name_help) : StateMember(parent, id, name_help), Updatable(Path) {}
-
-    static inline StatePath RootPath(const StatePath &path) { return path.parent_path().parent_path(); }
-    inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
-
-    virtual Count Size() const = 0; // Number of outer vectors
-    virtual Count Size(Count i) const = 0; // Size of inner vector at index `i`
-};
-
 // Vector of vectors. Inner vectors need not have the same length.
 template<IsPrimitive T>
-struct Vector2D : UntypedVector2D {
-    using UntypedVector2D::UntypedVector2D;
+struct Vector2D : Base {
+    using Base::Base;
 
-    inline Count Size() const override { return Value.size(); };
-    inline Count Size(Count i) const override { return Value[i].size(); };
+    inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
+    inline Count Size() const { return Value.size(); }; // Number of outer vectors
+    inline Count Size(Count i) const { return Value[i].size(); }; // Size of inner vector at index `i`
 
     inline T operator()(Count i, Count j) const { return Value[i][j]; }
     void Set(const vector<vector<T>> &, TransientStore &) const;
@@ -1002,7 +987,7 @@ struct Style : TabsWindow {
             Prop(Float, InverterRadius, 3, 1, 5);
             Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
-            const vector<std::reference_wrapper<Base>> LayoutFields{
+            const vector<std::reference_wrapper<PrimitiveBase>> LayoutFields{
                 SequentialConnectionZigzag,
                 OrientationMark,
                 OrientationMarkRadius,
@@ -1031,7 +1016,7 @@ struct Style : TabsWindow {
                 ArrowSize.Y,
                 InverterRadius,
             };
-            const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const Base &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
+            const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const PrimitiveBase &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
 
             void ColorsDark(TransientStore &store) const;
             void ColorsClassic(TransientStore &store) const;

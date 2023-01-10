@@ -36,12 +36,12 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
 //-----------------------------------------------------------------------------
 
 namespace Field {
-Base::Base(StateMember *parent, string_view id, string_view name_help, Primitive value) : UIStateMember(parent, id, name_help), Updatable(Path) {
+PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value) : Base(parent, id, name_help) {
     Set(*this, value, c.InitStore);
 }
 
-Primitive Base::Get() const { return AppStore.at(Path); }
-Primitive Base::GetInitial() const { return c.InitStore.at(Path); }
+Primitive PrimitiveBase::Get() const { return AppStore.at(Path); }
+Primitive PrimitiveBase::GetInitial() const { return c.InitStore.at(Path); }
 
 void Bool::Toggle() const { q(ToggleValue{Path}); }
 

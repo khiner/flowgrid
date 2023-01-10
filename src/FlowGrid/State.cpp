@@ -303,6 +303,22 @@ void Vector2D<T>::Update() {
     Value.resize(i);
 }
 
+template<IsPrimitive T>
+void Matrix<T>::Update() {
+    Count row_count = 0, col_count = 0;
+    while (AppStore.count(PathAt(row_count, 0))) { row_count++; }
+    while (AppStore.count(PathAt(row_count - 1, col_count))) { col_count++; }
+    RowCount = row_count;
+    ColCount = col_count;
+    Data.resize(RowCount * ColCount);
+
+    for (Count row = 0; row < RowCount; row++) {
+        for (Count col = 0; col < ColCount; col++) {
+            Data[row * ColCount + col] = std::get<T>(AppStore.at(PathAt(row, col)));
+        }
+    }
+}
+
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);

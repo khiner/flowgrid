@@ -427,14 +427,15 @@ private:
 };
 
 template<IsPrimitive T>
-struct Matrix : StateMember {
-    Matrix(StateMember *parent, string_view path_segment, string_view name_help, Count row_count, Count col_count)
-        : StateMember(parent, path_segment, name_help), RowCount(row_count), ColCount(col_count), Data(RowCount * ColCount) {}
+struct Matrix : Base {
+    using Base::Base;
 
-    T operator()(const Count i, const Count j) { return Data[i * ColCount + j]; }
-
+    inline StatePath PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
     inline Count Rows() const { return RowCount; }
     inline Count Cols() const { return ColCount; }
+    inline T operator()(const Count row, const Count col) const { return Data[row * ColCount + col]; }
+
+    void Update() override;
 
 private:
     Count RowCount, ColCount;
@@ -836,7 +837,7 @@ struct Audio : TabsWindow {
         void Uninit() const;
 
         Prop(Nodes, Nodes);
-        Prop(Vector2D<bool>, Connections);
+        Prop(Matrix<bool>, Connections);
 
     protected:
         void Render() const override;

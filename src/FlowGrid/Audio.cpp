@@ -75,50 +75,52 @@ static Box FaustBox = nullptr;
 static unique_ptr<FaustParams> FaustUi;
 
 static ma_context AudioContext;
+static ma_device MaDevice;
 // static ma_resampler_config ResamplerConfig;
 // static ma_resampler Resampler;
 
-static bool AudioContextInitialized = false;
+// State value cache vars:
+static string PreviousFaustCode;
+static string PreviousInDeviceName, PreviousOutDeviceName;
+static Audio::IoFormat PreviousInFormat, PreviousOutFormat;
+static U32 PreviousSampleRate;
 
 // todo explicit re-scan action.
 void Audio::Init() const {
-    if (!AudioContextInitialized) {
-        for (const IO io : IO_All) {
-            DeviceInfos[io].clear();
-            DeviceNames[io].clear();
-        }
-
-        int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
-        if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio context: {}", result));
-
-        static Count PlaybackDeviceCount, CaptureDeviceCount;
-        static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
-        result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
-        if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio devices: {}", result));
-
-        for (Count i = 0; i < CaptureDeviceCount; i++) {
-            DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
-            DeviceNames[IO_In].push_back(CaptureDeviceInfos[i].name);
-        }
-        for (Count i = 0; i < PlaybackDeviceCount; i++) {
-            DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
-            DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
-        }
-
-        AudioContextInitialized = true;
+    for (const IO io : IO_All) {
+        DeviceInfos[io].clear();
+        DeviceNames[io].clear();
     }
 
-    Update();
+    int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error initializing audio context: {}", result));
+
+    static Count PlaybackDeviceCount, CaptureDeviceCount;
+    static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
+    result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio devices: {}", result));
+
+    for (Count i = 0; i < CaptureDeviceCount; i++) {
+        DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
+        DeviceNames[IO_In].push_back(CaptureDeviceInfos[i].name);
+    }
+    for (Count i = 0; i < PlaybackDeviceCount; i++) {
+        DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
+        DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
+    }
+
+    Device.Init();
+    Graph.Init();
 }
 
 // todo still need to call this on app shutdown.
 void Audio::Uninit() const {
+    ma_device_stop(&MaDevice);
     Graph.Uninit();
     Device.Uninit();
 
     const int result = ma_context_uninit(&AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error shutting down audio context: {}", result));
-    AudioContextInitialized = false;
 }
 
 // todo draw debug info for all devices, not just current
@@ -188,19 +190,33 @@ static FaustData Faust;
 
 namespace nd = NodeData;
 
-// State value cache vars:
-static string PreviousFaustCode;
-static string PreviousInDeviceName, PreviousOutDeviceName;
-static Audio::IoFormat PreviousInFormat, PreviousOutFormat;
-static U32 PreviousSampleRate;
-
 // Current device
 static ma_device_config DeviceConfig;
-static ma_device MaDevice;
 static ma_device_info DeviceInfo;
 
 void Audio::Update() const {
     const bool sample_rate_changed = PreviousSampleRate != Device.SampleRate;
+    if (Device.On && !Device.IsStarted()) {
+        Init();
+    } else if (!Device.On && Device.IsStarted()) {
+        Uninit();
+    } else if (
+        Device.IsStarted() &&
+        (PreviousInDeviceName != Device.InDeviceName || PreviousOutDeviceName != Device.OutDeviceName ||
+         PreviousInFormat != Device.InFormat || PreviousOutFormat != Device.OutFormat ||
+         PreviousSampleRate != Device.SampleRate)
+    ) {
+        PreviousInDeviceName = string(Device.InDeviceName);
+        PreviousOutDeviceName = string(Device.OutDeviceName);
+        PreviousInFormat = Device.InFormat;
+        PreviousOutFormat = Device.OutFormat;
+        PreviousSampleRate = Device.SampleRate;
+        // Reset to make any audio config changes take effect.
+        // todo no need to completely reset in many cases (like just format changes). Just reset the data_converter.
+        Uninit();
+        Init();
+    }
+
     Device.Update();
 
     const auto &FaustCode = s.Faust.Code;
@@ -253,9 +269,8 @@ void Audio::Update() const {
         OnBoxChange(FaustBox);
         OnUiChange(FaustUi.get());
     }
-    if (Device.IsStarted()) {
-        Graph.Update();
-    }
+
+    if (Device.IsStarted()) Graph.Update();
 }
 
 // todo support loopback mode? (think of use cases)
@@ -351,46 +366,18 @@ void Audio::Device::Init() const {
         NativeFormats.emplace_back(native_format.format);
         NativeSampleRates.emplace_back(native_format.sampleRate);
     }
+
+    StoreEntries initial_settings;
+    if (MaDevice.capture.name != InDeviceName) initial_settings.emplace_back(InDeviceName.Path, MaDevice.capture.name);
+    if (MaDevice.playback.name != OutDeviceName) initial_settings.emplace_back(OutDeviceName.Path, MaDevice.playback.name);
+    if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, ToAudioFormat(MaDevice.capture.format));
+    if (MaDevice.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, ToAudioFormat(MaDevice.playback.format));
+    if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
+    if (!initial_settings.empty()) q(SetValues{initial_settings}, true);
 }
 
 void Audio::Device::Update() const {
-    if (On && !IsStarted()) {
-        Init();
-    } else if (!On && IsStarted()) {
-        Uninit();
-    } else if (
-        IsStarted() &&
-        (PreviousInDeviceName != InDeviceName || PreviousOutDeviceName != OutDeviceName ||
-         PreviousInFormat != InFormat || PreviousOutFormat != OutFormat ||
-         PreviousSampleRate != SampleRate)
-    ) {
-        PreviousInDeviceName = string(InDeviceName);
-        PreviousOutDeviceName = string(OutDeviceName);
-        PreviousInFormat = InFormat;
-        PreviousOutFormat = OutFormat;
-        PreviousSampleRate = SampleRate;
-        // Reset to make any audio config changes take effect.
-        // todo no need to completely reset in many cases (like just format changes). Just reset the data_converter.
-        Uninit();
-        Init();
-    }
-
-    // Initialize state values to reflect the initial device configuration
-    static bool first_run = true;
-    if (first_run) {
-        first_run = false;
-
-        static StoreEntries initial_settings;
-        if (MaDevice.capture.name != InDeviceName) initial_settings.emplace_back(InDeviceName.Path, MaDevice.capture.name);
-        if (MaDevice.playback.name != OutDeviceName) initial_settings.emplace_back(OutDeviceName.Path, MaDevice.playback.name);
-        if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, ToAudioFormat(MaDevice.capture.format));
-        if (MaDevice.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, ToAudioFormat(MaDevice.playback.format));
-        if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
-        if (!initial_settings.empty()) q(SetValues{initial_settings}, true);
-    }
-    if (IsStarted()) {
-        ma_device_set_master_volume(&MaDevice, Volume);
-    }
+    if (IsStarted()) ma_device_set_master_volume(&MaDevice, Volume);
 }
 
 using namespace ImGui;
@@ -485,37 +472,32 @@ void Audio::Device::Render() const {
     // }
 }
 
-bool Audio::Device::IsStarted() const { return ma_device_is_started(&MaDevice); }
-
 void Audio::Device::Uninit() const {
     ma_device_uninit(&MaDevice);
     // ma_resampler_uninit(&Resampler, nullptr);
 }
 
+bool Audio::Device::IsStarted() const { return ma_device_is_started(&MaDevice); }
+
 void Audio::Graph::Init() const {
+    vector<Primitive> connections{};
+    for (const auto *output_node : Nodes.Children) {
+        for (const auto *input_node : Nodes.Children) {
+            const bool default_connected =
+                (input_node == &Nodes.Input && output_node == &Nodes.Faust) ||
+                (input_node == &Nodes.Faust && output_node == &Nodes.Output);
+            connections.push_back(default_connected);
+        }
+    }
+    q(SetMatrix{Connections.Path, connections, Count(Nodes.Children.size())}, true);
 }
 
 void Audio::Graph::Update() const {
-    // Initialize state values to reflect the initial device configuration
-    static bool first_run = true;
-    if (first_run) {
-        first_run = false;
-        static vector<Primitive> connections{};
-        for (const auto *output_node : Nodes.Children) {
-            for (const auto *input_node : Nodes.Children) {
-                const bool default_connected =
-                    (input_node == &Nodes.Input && output_node == &Nodes.Faust) ||
-                    (input_node == &Nodes.Faust && output_node == &Nodes.Output);
-                connections.push_back(default_connected);
-            }
-        }
-        q(SetMatrix{Connections.Path, connections, Count(Nodes.Children.size())}, true);
-    }
     Nodes.Update();
 }
 void Audio::Graph::Uninit() const {
     Nodes.Uninit();
-    ma_node_graph_uninit(&NodeGraph, nullptr);
+    // ma_node_graph_uninit(&NodeGraph, nullptr); // Graph endpoint is already uninitialized in `Nodes.Uninit`.
 }
 void Audio::Graph::Render() const {
     if (BeginTabBar("")) {
@@ -610,7 +592,8 @@ void Audio::Graph::Node::Update() const {
 }
 void Audio::Graph::Node::Uninit() const {
     if (!nd::ForId.contains(Id)) return;
-    ma_node_uninit(nd::ForId[Id], nullptr);
+    if (this == &s.Audio.Graph.Nodes.Input) ma_data_source_node_uninit((ma_data_source_node *)nd::ForId[Id], nullptr);
+    else ma_node_uninit(nd::ForId[Id], nullptr);
     nd::ForId.erase(Id);
 }
 void Audio::Graph::Node::Render() const {

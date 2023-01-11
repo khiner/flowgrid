@@ -204,7 +204,7 @@ void Audio::Update() const {
         Device.IsStarted() &&
         (PreviousInDeviceName != Device.InDeviceName || PreviousOutDeviceName != Device.OutDeviceName ||
          PreviousInFormat != Device.InFormat || PreviousOutFormat != Device.OutFormat ||
-         PreviousSampleRate != Device.SampleRate)
+         sample_rate_changed)
     ) {
         PreviousInDeviceName = string(Device.InDeviceName);
         PreviousOutDeviceName = string(Device.OutDeviceName);
@@ -219,13 +219,14 @@ void Audio::Update() const {
 
     Device.Update();
 
+    // todo this is a mess. Should be its own thing and use the Init/Uninit pattern.
     const auto &FaustCode = s.Faust.Code;
-    if (FaustCode != PreviousFaustCode || sample_rate_changed) {
+    if ((!Device.On && FaustDsp) || FaustCode != PreviousFaustCode || sample_rate_changed) {
         PreviousFaustCode = string(FaustCode);
 
         string error_msg;
-        destroyLibContext();
-        if (FaustCode && U32(Device.SampleRate)) {
+        if (!DspFactory && Device.On && FaustCode && U32(Device.SampleRate)) {
+            destroyLibContext();
             createLibContext();
 
             int argc = 0;
@@ -243,7 +244,7 @@ void Audio::Update() const {
             if (!FaustBox && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
         }
 
-        if (DspFactory && error_msg.empty()) {
+        if (Device.On && DspFactory && error_msg.empty()) {
             FaustDsp = DspFactory->createDSPInstance();
             if (!FaustDsp) error_msg = "Could not create Faust DSP.";
             else {
@@ -252,6 +253,7 @@ void Audio::Update() const {
                 FaustDsp->buildUserInterface(FaustUi.get());
             }
         } else {
+            destroyLibContext();
             FaustBox = nullptr;
             FaustUi = nullptr;
             if (FaustDsp) {

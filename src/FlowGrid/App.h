@@ -609,8 +609,9 @@ enum FaustGraphHoverFlags_ {
 };
 using FaustGraphHoverFlags = int;
 
-UIMember(
-    Faust,
+struct Faust : UIStateMember {
+    using UIStateMember::UIStateMember;
+
     WindowMember_(
         FaustEditor,
         ImGuiWindowFlags_MenuBar,
@@ -754,7 +755,10 @@ UIMember(
     //     knobs,
     //     vmisc,
     //     hmisc);)#");
-);
+
+protected:
+    void Render() const override;
+};
 
 struct Audio : TabsWindow {
     using TabsWindow::TabsWindow;
@@ -783,6 +787,8 @@ struct Audio : TabsWindow {
         void Update() const; // Update device based on current settings.
         void Uninit() const;
 
+        void Start() const;
+        void Stop() const;
         bool IsStarted() const;
 
         Prop_(Bool, On, "?When the audio device is turned off, the audio graph is destroyed and no audio processing takes place.", true);
@@ -803,30 +809,48 @@ struct Audio : TabsWindow {
         using UIStateMember::UIStateMember;
 
         // Corresponds to `ma_node_base`.
+        // This base `Node` can either be specialized or instantiated on its own.
         struct Node : UIStateMember {
             Node(StateMember *parent, string_view path_segment, string_view name_help = "", bool on = true);
+
+            void Init() const; // Add MA node.
+            void Update() const; // Update MA node based on current settings (e.g. volume).
+            void Uninit() const; // Remove MA node.
 
             Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.", true);
             Prop(Float, Volume, 1.0);
 
-            void Update() const; // Update MA node based on current settings (e.g. volume).
-            void Uninit() const; // Remove MA node.
-
         protected:
             void Render() const override;
+            virtual void DoInit() const;
+            virtual void DoUninit() const;
+            virtual bool NeedsRestart() const { return false; }; // Return `true` if node needs re-initialization due to changed state.
+        };
+
+        struct InputNode : Node {
+            using Node::Node;
+            void DoInit() const override;
+            void DoUninit() const override;
+        };
+
+        struct FaustNode : Node {
+            using Node::Node;
+            void DoInit() const override;
+            bool NeedsRestart() const override;
         };
 
         struct Nodes : UIStateMember {
             using UIStateMember::UIStateMember;
 
-            // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
-            // todo configurable data source
-            Prop(Node, Input);
-            Prop(Node, Faust);
-            Prop(Node, Output);
-
+            void Init() const;
             void Update() const;
             void Uninit() const;
+
+            // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
+            // todo configurable data source
+            Prop(InputNode, Input);
+            Prop(FaustNode, Faust);
+            Prop(Node, Output);
 
         protected:
             void Render() const override;
@@ -844,12 +868,16 @@ struct Audio : TabsWindow {
         void RenderConnections() const;
     };
 
-    void Init() const;
     void Update() const;
-    void Uninit() const;
+    bool NeedsRestart() const;
 
     Prop(Device, Device);
     Prop(Graph, Graph);
+
+protected:
+    void Render() const override;
+    void Init() const;
+    void Uninit() const;
 };
 
 enum FlowGridCol_ {

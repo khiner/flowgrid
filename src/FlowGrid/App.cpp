@@ -358,7 +358,6 @@ Patch Context::SetStore(const Store &store) {
     }
     for (auto *modified_field : modified_fields) modified_field->Update();
 
-    s.Audio.Update();
     return patch;
 }
 

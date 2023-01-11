@@ -36,32 +36,9 @@
 //     ma_resampling_backend_reset__linear,
 // };
 
-static dsp *FaustDsp = nullptr;
-
-void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
-    // ma_pcm_rb_init_ex()
-    // ma_deinterleave_pcm_frames()
-    float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
-    if (FaustDsp) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
-
-    (void)node; // unused
-    (void)frame_count_in; // unused
-}
-
-static ma_node_graph NodeGraph;
-static ma_node_graph_config NodeGraphConfig;
-static ma_audio_buffer_ref InputBuffer;
-
-void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
-    ma_audio_buffer_ref_set_data(&InputBuffer, input, frame_count);
-    ma_node_graph_read_pcm_frames(&NodeGraph, output, frame_count, nullptr);
-    (void)device; // unused
-}
-
-// Context
+static ma_context AudioContext;
 static vector<ma_device_info *> DeviceInfos[IO_Count];
 static vector<string> DeviceNames[IO_Count];
-
 static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
     for (const ma_device_info *info : DeviceInfos[io]) {
         if (info->name == device_name) return &(info->id);
@@ -69,21 +46,8 @@ static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
     return nullptr;
 }
 
-// Faust vars:
-static llvm_dsp_factory *DspFactory;
-static Box FaustBox = nullptr;
-static unique_ptr<FaustParams> FaustUi;
-
-static ma_context AudioContext;
-static ma_device MaDevice;
 // static ma_resampler_config ResamplerConfig;
 // static ma_resampler Resampler;
-
-// State value cache vars:
-static string PreviousFaustCode;
-static string PreviousInDeviceName, PreviousOutDeviceName;
-static Audio::IoFormat PreviousInFormat, PreviousOutFormat;
-static U32 PreviousSampleRate;
 
 // todo explicit re-scan action.
 void Audio::Init() const {
@@ -111,11 +75,13 @@ void Audio::Init() const {
 
     Device.Init();
     Graph.Init();
+    Device.Start();
+
+    NeedsRestart(); // xxx Updates cached values as side effect.
 }
 
-// todo still need to call this on app shutdown.
 void Audio::Uninit() const {
-    ma_device_stop(&MaDevice);
+    Device.Stop();
     Graph.Uninit();
     Device.Uninit();
 
@@ -168,111 +134,126 @@ void Audio::Uninit() const {
 //     }
 // }
 
-namespace NodeData {
-unordered_map<ID, ma_node *> ForId; // Node data for its owning StateMember's ID.
+void Audio::Render() const {
+    Update();
+    TabsWindow::Render();
+}
 
-// Internal MA node data for each node type.
-// Output node is already allocated by the MA graph, so we don't need to track internal data for it.
-struct InputData {
-    ma_data_source_node Node{};
-    ma_data_source_node_config Config{};
-};
-struct FaustData {
-    ma_node_base Node{};
-    ma_node_config Config{};
-    ma_node_vtable Vtable{};
-};
+static dsp *FaustDsp = nullptr;
+static Box FaustBox;
+static llvm_dsp_factory *DspFactory;
+static unique_ptr<FaustParams> FaustUi;
+static string error_msg;
 
-// Instances
-static InputData Input;
-static FaustData Faust;
-} // namespace NodeData
+static void InitFaust() {
+    createLibContext();
 
-namespace nd = NodeData;
+    int argc = 0;
+    const char **argv = new const char *[8];
+    argv[argc++] = "-I";
+    argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
+    if (sizeof(Sample) == sizeof(double)) argv[argc++] = "-double";
 
-// Current device
-static ma_device_config DeviceConfig;
-static ma_device_info DeviceInfo;
+    int num_inputs, num_outputs;
+
+    FaustBox = DSPToBoxes("FlowGrid", s.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+    if (FaustBox && error_msg.empty()) {
+        static const int optimize_level = -1;
+        DspFactory = createDSPFactoryFromBoxes("FlowGrid", FaustBox, argc, argv, "", error_msg, optimize_level);
+    }
+    if (!FaustBox && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
+
+    if (DspFactory && error_msg.empty()) {
+        FaustDsp = DspFactory->createDSPInstance();
+        if (!FaustDsp) error_msg = "Could not create Faust DSP.";
+        else {
+            FaustDsp->init(s.Audio.Device.SampleRate);
+            FaustUi = make_unique<FaustParams>();
+            FaustDsp->buildUserInterface(FaustUi.get());
+        }
+    }
+
+    const auto &FaustLog = s.Faust.Log;
+    if (!error_msg.empty()) q(SetValue{FaustLog.Error.Path, error_msg});
+    else if (FaustLog.Error) q(SetValue{FaustLog.Error.Path, ""});
+
+    OnBoxChange(FaustBox);
+    OnUiChange(FaustUi.get());
+}
+static void UninitFaust() {
+    OnBoxChange(nullptr);
+    OnUiChange(nullptr);
+
+    FaustUi = nullptr;
+    FaustBox = nullptr;
+    if (FaustDsp) {
+        delete FaustDsp;
+        FaustDsp = nullptr;
+        deleteDSPFactory(DspFactory);
+        DspFactory = nullptr;
+    }
+
+    destroyLibContext();
+}
+
+static bool FaustNeedsRestart() {
+    static string PreviousFaustCode = s.Faust.Code;
+    static U32 PreviousSampleRate = s.Audio.Device.SampleRate;
+
+    const bool needs_restart = s.Faust.Code != PreviousFaustCode || s.Audio.Device.SampleRate != PreviousSampleRate;
+
+    PreviousFaustCode = s.Faust.Code;
+    PreviousSampleRate = s.Audio.Device.SampleRate;
+
+    return needs_restart;
+}
 
 void Audio::Update() const {
-    const bool sample_rate_changed = PreviousSampleRate != Device.SampleRate;
-    if (Device.On && !Device.IsStarted()) {
+    const bool is_initialized = Device.IsStarted();
+    const bool needs_restart = NeedsRestart() && is_initialized; // Don't inline! Must run during every update.
+    if (Device.On && !is_initialized) {
         Init();
-    } else if (!Device.On && Device.IsStarted()) {
+    } else if (!Device.On && is_initialized) {
         Uninit();
-    } else if (
-        Device.IsStarted() &&
-        (PreviousInDeviceName != Device.InDeviceName || PreviousOutDeviceName != Device.OutDeviceName ||
-         PreviousInFormat != Device.InFormat || PreviousOutFormat != Device.OutFormat ||
-         sample_rate_changed)
-    ) {
-        PreviousInDeviceName = string(Device.InDeviceName);
-        PreviousOutDeviceName = string(Device.OutDeviceName);
-        PreviousInFormat = Device.InFormat;
-        PreviousOutFormat = Device.OutFormat;
-        PreviousSampleRate = Device.SampleRate;
-        // Reset to make any audio config changes take effect.
-        // todo no need to completely reset in many cases (like just format changes). Just reset the data_converter.
+    } else if (needs_restart) {
+        // todo no need to completely reset in many cases (like when only format has changed) - just modify as needed in `Device::Update`.
         Uninit();
         Init();
     }
 
     Device.Update();
 
-    // todo this is a mess. Should be its own thing and use the Init/Uninit pattern.
-    const auto &FaustCode = s.Faust.Code;
-    if ((!Device.On && FaustDsp) || FaustCode != PreviousFaustCode || sample_rate_changed) {
-        PreviousFaustCode = string(FaustCode);
-
-        string error_msg;
-        if (!DspFactory && Device.On && FaustCode && U32(Device.SampleRate)) {
-            destroyLibContext();
-            createLibContext();
-
-            int argc = 0;
-            const char **argv = new const char *[8];
-            argv[argc++] = "-I";
-            argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-            if (sizeof(Sample) == sizeof(double)) argv[argc++] = "-double";
-
-            int num_inputs, num_outputs;
-            FaustBox = DSPToBoxes("FlowGrid", FaustCode, argc, argv, &num_inputs, &num_outputs, error_msg);
-            if (FaustBox && error_msg.empty()) {
-                static const int optimize_level = -1;
-                DspFactory = createDSPFactoryFromBoxes("FlowGrid", FaustBox, argc, argv, "", error_msg, optimize_level);
-            }
-            if (!FaustBox && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
-        }
-
-        if (Device.On && DspFactory && error_msg.empty()) {
-            FaustDsp = DspFactory->createDSPInstance();
-            if (!FaustDsp) error_msg = "Could not create Faust DSP.";
-            else {
-                FaustDsp->init(Device.SampleRate);
-                FaustUi = make_unique<FaustParams>();
-                FaustDsp->buildUserInterface(FaustUi.get());
-            }
-        } else {
-            destroyLibContext();
-            FaustBox = nullptr;
-            FaustUi = nullptr;
-            if (FaustDsp) {
-                delete FaustDsp;
-                FaustDsp = nullptr;
-                deleteDSPFactory(DspFactory);
-                DspFactory = nullptr;
-            }
-        }
-
-        const auto &FaustLog = s.Faust.Log;
-        if (!error_msg.empty()) q(SetValue{FaustLog.Error.Path, error_msg});
-        else if (FaustLog.Error) q(SetValue{FaustLog.Error.Path, ""});
-
-        OnBoxChange(FaustBox);
-        OnUiChange(FaustUi.get());
+    const bool is_faust_initialized = s.Faust.Code && !s.Faust.Log.Error;
+    const bool faust_needs_restart = FaustNeedsRestart() && is_faust_initialized; // Don't inline! Must run during every update.
+    if (!FaustDsp && is_faust_initialized) {
+        InitFaust();
+    } else if (FaustDsp && !is_faust_initialized) {
+        UninitFaust();
+    } else if (faust_needs_restart) {
+        UninitFaust();
+        InitFaust();
     }
-
     if (Device.IsStarted()) Graph.Update();
+}
+
+bool Audio::NeedsRestart() const {
+    static string PreviousInDeviceName = Device.InDeviceName, PreviousOutDeviceName = Device.OutDeviceName;
+    static Audio::IoFormat PreviousInFormat = Device.InFormat, PreviousOutFormat = Device.OutFormat;
+    static U32 PreviousSampleRate = Device.SampleRate;
+
+    const bool needs_restart =
+        PreviousInDeviceName != Device.InDeviceName ||
+        PreviousOutDeviceName != Device.OutDeviceName ||
+        PreviousInFormat != Device.InFormat || PreviousOutFormat != Device.OutFormat ||
+        PreviousSampleRate != Device.SampleRate;
+
+    PreviousInDeviceName = Device.InDeviceName;
+    PreviousOutDeviceName = Device.OutDeviceName;
+    PreviousInFormat = Device.InFormat;
+    PreviousOutFormat = Device.OutFormat;
+    PreviousSampleRate = Device.SampleRate;
+
+    return needs_restart;
 }
 
 // todo support loopback mode? (think of use cases)
@@ -320,6 +301,21 @@ const string Audio::Device::GetSampleRateName(const U32 sample_rate) {
     return format("{}{}", to_string(sample_rate), is_native ? "*" : "");
 }
 
+// Current device
+static ma_device MaDevice;
+static ma_device_config DeviceConfig;
+static ma_device_info DeviceInfo;
+
+static ma_node_graph NodeGraph;
+static ma_node_graph_config NodeGraphConfig;
+static ma_audio_buffer_ref InputBuffer;
+
+void DataCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
+    ma_audio_buffer_ref_set_data(&InputBuffer, input, frame_count);
+    ma_node_graph_read_pcm_frames(&NodeGraph, output, frame_count, nullptr);
+    (void)device; // unused
+}
+
 void Audio::Device::Init() const {
     DeviceConfig = ma_device_config_init(ma_device_type_duplex);
     DeviceConfig.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
@@ -350,17 +346,6 @@ void Audio::Device::Init() const {
 
     result = ma_context_get_device_info(MaDevice.pContext, MaDevice.type, nullptr, &DeviceInfo);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Error getting audio device info: {}", result));
-
-    NodeGraphConfig = ma_node_graph_config_init(MaDevice.capture.channels);
-
-    result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
-    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize node graph: {}", result));
-
-    result = ma_audio_buffer_ref_init(MaDevice.capture.format, MaDevice.capture.channels, nullptr, 0, &InputBuffer);
-    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input audio buffer: ", result));
-
-    result = ma_device_start(&MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
 
     // todo need to clarify that the cross-product of these formats & sample rates are supported natively, and not just each config jointly
     for (Count i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
@@ -479,9 +464,25 @@ void Audio::Device::Uninit() const {
     // ma_resampler_uninit(&Resampler, nullptr);
 }
 
+void Audio::Device::Start() const {
+    const int result = ma_device_start(&MaDevice);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error starting audio device: {}", result));
+}
+void Audio::Device::Stop() const {
+    const int result = ma_device_stop(&MaDevice);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Error stopping audio device: {}", result));
+}
 bool Audio::Device::IsStarted() const { return ma_device_is_started(&MaDevice); }
 
 void Audio::Graph::Init() const {
+    NodeGraphConfig = ma_node_graph_config_init(MaDevice.capture.channels);
+    int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize node graph: {}", result));
+
+    result = ma_audio_buffer_ref_init(MaDevice.capture.format, MaDevice.capture.channels, nullptr, 0, &InputBuffer);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input audio buffer: ", result));
+
+    Nodes.Init();
     vector<Primitive> connections{};
     for (const auto *output_node : Nodes.Children) {
         for (const auto *input_node : Nodes.Children) {
@@ -515,40 +516,34 @@ void Audio::Graph::Render() const {
     }
 }
 
+namespace NodeData {
+unordered_map<ID, ma_node *> ForId; // Node data for its owning StateMember's ID.
+
+// Internal MA node data for each node type.
+// Output node is already allocated by the MA graph, so we don't need to track internal data for it.
+struct InputData {
+    ma_data_source_node Node{};
+    ma_data_source_node_config Config{};
+};
+struct FaustData {
+    ma_node_base Node{};
+    ma_node_config Config{};
+    ma_node_vtable Vtable{};
+};
+
+// Instances
+static InputData Input;
+static FaustData Faust;
+} // namespace NodeData
+
+namespace nd = NodeData;
+
 void Audio::Graph::Nodes::Update() const {
     nd::ForId[Output.Id] = ma_node_graph_get_endpoint(&NodeGraph); // Output is present whenever the graph is running. todo Graph is a Node
 
-    if (Input.On) {
-        if (!nd::ForId.contains(Input.Id)) {
-            nd::Input.Config = ma_data_source_node_config_init(&InputBuffer);
-            nd::ForId[Input.Id] = &nd::Input.Node;
-
-            int result = ma_data_source_node_init(&NodeGraph, &nd::Input.Config, nullptr, (ma_data_source_node *)nd::ForId[Input.Id]);
-            if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
-        }
-    } else {
-        Input.Uninit();
-    }
-    if (Faust.On && FaustDsp && (FaustDsp->getNumOutputs() > 0 || FaustDsp->getNumInputs() > 0)) {
-        if (!nd::ForId.contains(Faust.Id)) {
-            nd::Faust.Config = ma_node_config_init();
-            nd::Faust.Vtable = {FaustProcess, nullptr, 1, 1, 0};
-            nd::Faust.Config.vtable = &nd::Faust.Vtable;
-            nd::Faust.Config.pInputChannels = (U32[]){U32(FaustDsp->getNumInputs())}; // One input bus, with N channels.
-            nd::Faust.Config.pOutputChannels = (U32[]){U32(FaustDsp->getNumOutputs())}; // One output bus, with M channels.
-            nd::ForId[Faust.Id] = &nd::Faust.Node;
-
-            int result = ma_node_init(&NodeGraph, &nd::Faust.Config, nullptr, nd::ForId[Faust.Id]);
-            if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
-        }
-    } else {
-        Faust.Uninit();
-    }
-
     for (const auto *child : Children) {
-        if (const auto *node = dynamic_cast<const Node *>(child)) {
-            node->Update();
-        }
+        const auto *node = dynamic_cast<const Node *>(child);
+        node->Update();
     }
 
     // Setting up busses is idempotent.
@@ -566,20 +561,26 @@ void Audio::Graph::Nodes::Update() const {
         }
     }
 }
+
+void Audio::Graph::Nodes::Init() const {
+    for (const auto *child : Children) {
+        const auto *node = dynamic_cast<const Node *>(child);
+        node->Init();
+    }
+}
+
 void Audio::Graph::Nodes::Uninit() const {
     for (const auto *child : Children) {
-        if (const auto *node = dynamic_cast<const Node *>(child)) {
-            node->Uninit();
-        }
+        const auto *node = dynamic_cast<const Node *>(child);
+        node->Uninit();
     }
 }
 void Audio::Graph::Nodes::Render() const {
     for (const auto *child : Children) {
-        if (const auto *node = dynamic_cast<const Node *>(child)) {
-            if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                node->Draw();
-                TreePop();
-            }
+        const auto *node = dynamic_cast<const Node *>(child);
+        if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            node->Draw();
+            TreePop();
         }
     }
 }
@@ -588,19 +589,83 @@ Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_v
     : UIStateMember(parent, path_segment, name_help) {
     Set(On, on, c.InitStore);
 }
+
+void Audio::Graph::Node::Init() const {
+    DoInit();
+    NeedsRestart(); // xxx Updates cached values as side effect.
+}
+void Audio::Graph::Node::DoInit() const {
+}
 void Audio::Graph::Node::Update() const {
-    if (!nd::ForId.contains(Id)) return;
-    ma_node_set_output_bus_volume(nd::ForId[Id], 0, Volume);
+    const bool is_initialized = nd::ForId.contains(Id);
+    const bool needs_restart = NeedsRestart() && is_initialized; // Don't inline! Must run during every update.
+    if (On && !is_initialized) {
+        Init();
+    } else if (!On && is_initialized) {
+        Uninit();
+    } else if (needs_restart) {
+        Uninit();
+        Init();
+    }
+    if (On) ma_node_set_output_bus_volume(nd::ForId[Id], 0, Volume);
 }
 void Audio::Graph::Node::Uninit() const {
     if (!nd::ForId.contains(Id)) return;
-    if (this == &s.Audio.Graph.Nodes.Input) ma_data_source_node_uninit((ma_data_source_node *)nd::ForId[Id], nullptr);
-    else ma_node_uninit(nd::ForId[Id], nullptr);
+
+    DoUninit();
     nd::ForId.erase(Id);
+}
+void Audio::Graph::Node::DoUninit() const {
+    ma_node_uninit(nd::ForId[Id], nullptr);
 }
 void Audio::Graph::Node::Render() const {
     On.Draw();
     Volume.Draw();
 }
 
+void Audio::Graph::InputNode::DoInit() const {
+    nd::Input.Config = ma_data_source_node_config_init(&InputBuffer);
+    nd::ForId[Id] = &nd::Input.Node;
+
+    int result = ma_data_source_node_init(&NodeGraph, &nd::Input.Config, nullptr, (ma_data_source_node *)nd::ForId[Id]);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
+}
+void Audio::Graph::InputNode::DoUninit() const {
+    ma_data_source_node_uninit((ma_data_source_node *)nd::ForId[Id], nullptr);
+}
+
+void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
+    // ma_pcm_rb_init_ex()
+    // ma_deinterleave_pcm_frames()
+    float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
+    if (FaustDsp) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
+
+    (void)node; // unused
+    (void)frame_count_in; // unused
+}
+
+void Audio::Graph::FaustNode::DoInit() const {
+    if (FaustDsp && FaustDsp->getNumInputs() > 0 && FaustDsp->getNumOutputs() > 0) {
+        nd::Faust.Config = ma_node_config_init();
+        nd::Faust.Vtable = {FaustProcess, nullptr, 1, 1, 0};
+        nd::Faust.Config.vtable = &nd::Faust.Vtable;
+        nd::Faust.Config.pInputChannels = (U32[]){U32(FaustDsp->getNumInputs())}; // One input bus, with N channels.
+        nd::Faust.Config.pOutputChannels = (U32[]){U32(FaustDsp->getNumOutputs())}; // One output bus, with M channels.
+        nd::ForId[Id] = &nd::Faust.Node;
+
+        const int result = ma_node_init(&NodeGraph, &nd::Faust.Config, nullptr, nd::ForId[Id]);
+        if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
+    }
+}
+bool Audio::Graph::FaustNode::NeedsRestart() const {
+    static string PreviousFaustCode = s.Faust.Code;
+    static U32 PreviousSampleRate = s.Audio.Device.SampleRate;
+
+    const bool needs_restart = s.Faust.Code != PreviousFaustCode || s.Audio.Device.SampleRate != PreviousSampleRate;
+
+    PreviousFaustCode = s.Faust.Code;
+    PreviousSampleRate = s.Audio.Device.SampleRate;
+
+    return needs_restart;
+}
 // todo Graph::RenderConnections defined in `State.cpp` because of dependency resolution order weirdness.

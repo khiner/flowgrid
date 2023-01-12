@@ -488,26 +488,21 @@ void Audio::Graph::Render() const {
     }
 }
 
-static unordered_map<ID, ma_node *> NodeForId; // Node base data for its owning StateMember's ID.
-
 void Audio::Graph::Nodes::Update() const {
-    NodeForId[Output.Id] = ma_node_graph_get_endpoint(&NodeGraph); // Output is present whenever the graph is running. todo Graph is a Node
+    Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
 
-    for (const auto *child : Children) {
-        const auto *node = dynamic_cast<const Node *>(child);
-        node->Update();
-    }
+    for (const auto *child : Children) dynamic_cast<const Node *>(child)->Update();
 
     // Setting up busses is idempotent.
     const auto *graph = dynamic_cast<const Graph *>(Parent);
     for (Count i = 0; i < Children.size(); i++) {
-        const auto *output_node = dynamic_cast<const Node *>(Children[i]);
-        if (NodeForId.contains(output_node->Id)) {
-            ma_node_detach_output_bus(NodeForId[output_node->Id], 0); // No way to just detach one connection.
+        if (auto *output_node = dynamic_cast<const Node *>(Children[i])->Get()) {
+            ma_node_detach_output_bus(output_node, 0); // No way to just detach one connection.
             for (Count j = 0; j < Children.size(); j++) {
-                const auto *input_node = dynamic_cast<const Node *>(Children[j]);
-                if (NodeForId.contains(input_node->Id) && graph->Connections(i, j)) {
-                    ma_node_attach_output_bus(NodeForId[input_node->Id], 0, NodeForId[output_node->Id], 0);
+                if (auto *input_node = dynamic_cast<const Node *>(Children[j])->Get()) {
+                    if (graph->Connections(i, j)) {
+                        ma_node_attach_output_bus(input_node, 0, output_node, 0);
+                    }
                 }
             }
         }
@@ -515,17 +510,11 @@ void Audio::Graph::Nodes::Update() const {
 }
 
 void Audio::Graph::Nodes::Init() const {
-    for (const auto *child : Children) {
-        const auto *node = dynamic_cast<const Node *>(child);
-        node->Init();
-    }
+    for (const auto *child : Children) dynamic_cast<const Node *>(child)->Init();
 }
 
 void Audio::Graph::Nodes::Uninit() const {
-    for (const auto *child : Children) {
-        const auto *node = dynamic_cast<const Node *>(child);
-        node->Uninit();
-    }
+    for (const auto *child : Children) dynamic_cast<const Node *>(child)->Uninit();
 }
 void Audio::Graph::Nodes::Render() const {
     for (const auto *child : Children) {
@@ -537,9 +526,17 @@ void Audio::Graph::Nodes::Render() const {
     }
 }
 
+unordered_map<ID, void *> Audio::Graph::Node::DataFor;
+
 Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateMember(parent, path_segment, name_help) {
-    Set(On, on, c.InitStore);
+    ::Set(On, on, c.InitStore);
+}
+
+void *Audio::Graph::Node::Get() const { return DataFor.contains(Id) ? DataFor.at(Id) : nullptr; }
+void Audio::Graph::Node::Set(ma_node *data) const {
+    if (data == nullptr) DataFor.erase(Id);
+    else DataFor[Id] = data;
 }
 
 void Audio::Graph::Node::Init() const {
@@ -549,7 +546,7 @@ void Audio::Graph::Node::Init() const {
 void Audio::Graph::Node::DoInit() const {
 }
 void Audio::Graph::Node::Update() const {
-    const bool is_initialized = NodeForId.contains(Id);
+    const bool is_initialized = Get() != nullptr;
     const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
     if (On && !is_initialized) {
         Init();
@@ -559,16 +556,16 @@ void Audio::Graph::Node::Update() const {
         Uninit();
         Init();
     }
-    if (On) ma_node_set_output_bus_volume(NodeForId[Id], 0, Volume);
+    if (On) ma_node_set_output_bus_volume(Get(), 0, Volume);
 }
 void Audio::Graph::Node::Uninit() const {
-    if (!NodeForId.contains(Id)) return;
+    if (!Get()) return;
 
     DoUninit();
-    NodeForId.erase(Id);
+    Set(nullptr);
 }
 void Audio::Graph::Node::DoUninit() const {
-    ma_node_uninit(NodeForId[Id], nullptr);
+    ma_node_uninit(Get(), nullptr);
 }
 void Audio::Graph::Node::Render() const {
     On.Draw();
@@ -585,10 +582,10 @@ void Audio::Graph::InputNode::DoInit() const {
     int result = ma_data_source_node_init(&NodeGraph, &Config, nullptr, &Node);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
 
-    NodeForId[Id] = &Node;
+    Set(&Node);
 }
 void Audio::Graph::InputNode::DoUninit() const {
-    ma_data_source_node_uninit((ma_data_source_node *)NodeForId[Id], nullptr);
+    ma_data_source_node_uninit((ma_data_source_node *)Get(), nullptr);
 }
 
 void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
@@ -617,7 +614,7 @@ void Audio::Graph::FaustNode::DoInit() const {
         const int result = ma_node_init(&NodeGraph, &Config, nullptr, &Node);
         if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
 
-        NodeForId[Id] = &Node;
+        Set(&Node);
     }
 }
 bool Audio::Graph::FaustNode::NeedsRestart() const {

@@ -797,9 +797,13 @@ struct Audio : TabsWindow {
         using UIStateMember::UIStateMember;
 
         // Corresponds to `ma_node_base`.
+        // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
         // This base `Node` can either be specialized or instantiated on its own.
         struct Node : UIStateMember {
             Node(StateMember *parent, string_view path_segment, string_view name_help = "", bool on = true);
+
+            void Set(void *) const; // Set MA node.
+            void *Get() const; // Get MA node.
 
             void Init() const; // Add MA node.
             void Update() const; // Update MA node based on current settings (e.g. volume).
@@ -813,6 +817,9 @@ struct Audio : TabsWindow {
             virtual void DoInit() const;
             virtual void DoUninit() const;
             virtual bool NeedsRestart() const { return false; }; // Return `true` if node needs re-initialization due to changed state.
+
+        private:
+            static unordered_map<ID, void *> DataFor; // MA node for owning Node's ID.
         };
 
         struct InputNode : Node {

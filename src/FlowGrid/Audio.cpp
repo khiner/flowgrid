@@ -139,10 +139,11 @@ void Audio::Render() const {
     TabsWindow::Render();
 }
 
-static dsp *FaustDsp = nullptr;
-static unique_ptr<FaustParams> FaustUi;
+namespace FaustContext {
+static dsp *Dsp = nullptr;
+static unique_ptr<FaustParams> Ui;
 
-static void InitFaust() {
+static void Init() {
     createLibContext();
 
     int argc = 0;
@@ -153,21 +154,22 @@ static void InitFaust() {
 
     static int num_inputs, num_outputs;
     static string error_msg;
-    static llvm_dsp_factory *DspFactory;
-    const Box FaustBox = DSPToBoxes("FlowGrid", s.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
-    if (FaustBox && error_msg.empty()) {
-        static const int optimize_level = -1;
-        DspFactory = createDSPFactoryFromBoxes("FlowGrid", FaustBox, argc, argv, "", error_msg, optimize_level);
-    }
-    if (!FaustBox && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
+    const Box box = DSPToBoxes("FlowGrid", s.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
 
-    if (DspFactory && error_msg.empty()) {
-        FaustDsp = DspFactory->createDSPInstance();
-        if (!FaustDsp) error_msg = "Could not create Faust DSP.";
+    static llvm_dsp_factory *dsp_factory;
+    if (box && error_msg.empty()) {
+        static const int optimize_level = -1;
+        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv, "", error_msg, optimize_level);
+    }
+    if (!box && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
+
+    if (dsp_factory && error_msg.empty()) {
+        Dsp = dsp_factory->createDSPInstance();
+        if (!Dsp) error_msg = "Could not create Faust DSP.";
         else {
-            FaustDsp->init(s.Audio.Device.SampleRate);
-            FaustUi = make_unique<FaustParams>();
-            FaustDsp->buildUserInterface(FaustUi.get());
+            Dsp->init(s.Audio.Device.SampleRate);
+            Ui = make_unique<FaustParams>();
+            Dsp->buildUserInterface(Ui.get());
         }
     }
 
@@ -175,24 +177,24 @@ static void InitFaust() {
     if (!error_msg.empty()) q(SetValue{FaustLog.Error.Path, error_msg});
     else if (FaustLog.Error) q(SetValue{FaustLog.Error.Path, ""});
 
-    OnBoxChange(FaustBox);
-    OnUiChange(FaustUi.get());
+    OnBoxChange(box);
+    OnUiChange(Ui.get());
 }
-static void UninitFaust() {
+static void Uninit() {
     OnBoxChange(nullptr);
     OnUiChange(nullptr);
 
-    FaustUi = nullptr;
-    if (FaustDsp) {
-        delete FaustDsp;
-        FaustDsp = nullptr;
+    Ui = nullptr;
+    if (Dsp) {
+        delete Dsp;
+        Dsp = nullptr;
         deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
     }
 
     destroyLibContext();
 }
 
-static bool FaustNeedsRestart() {
+static bool NeedsRestart() {
     static string PreviousFaustCode = s.Faust.Code;
     static U32 PreviousSampleRate = s.Audio.Device.SampleRate;
 
@@ -203,6 +205,7 @@ static bool FaustNeedsRestart() {
 
     return needs_restart;
 }
+} // namespace FaustContext
 
 void Audio::Update() const {
     const bool is_initialized = Device.IsStarted();
@@ -220,14 +223,14 @@ void Audio::Update() const {
     Device.Update();
 
     const bool is_faust_initialized = s.UiProcess.Running && s.Faust.Code && !s.Faust.Log.Error;
-    const bool faust_needs_restart = FaustNeedsRestart(); // Don't inline! Must run during every update.
-    if (!FaustDsp && is_faust_initialized) {
-        InitFaust();
-    } else if (FaustDsp && !is_faust_initialized) {
-        UninitFaust();
+    const bool faust_needs_restart = FaustContext::NeedsRestart(); // Don't inline! Must run during every update.
+    if (!FaustContext::Dsp && is_faust_initialized) {
+        FaustContext::Init();
+    } else if (FaustContext::Dsp && !is_faust_initialized) {
+        FaustContext::Uninit();
     } else if (faust_needs_restart) {
-        UninitFaust();
-        InitFaust();
+        FaustContext::Uninit();
+        FaustContext::Init();
     }
 
     if (Device.IsStarted()) Graph.Update();
@@ -620,7 +623,7 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
     // ma_pcm_rb_init_ex()
     // ma_deinterleave_pcm_frames()
     float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
-    if (FaustDsp) FaustDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
+    if (FaustContext::Dsp) FaustContext::Dsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
 
     (void)node; // unused
     (void)frame_count_in; // unused
@@ -631,12 +634,12 @@ void Audio::Graph::FaustNode::DoInit() const {
     static ma_node_config Config{};
     static ma_node_vtable Vtable{};
 
-    if (FaustDsp && FaustDsp->getNumInputs() > 0 && FaustDsp->getNumOutputs() > 0) {
+    if (FaustContext::Dsp && FaustContext::Dsp->getNumInputs() > 0 && FaustContext::Dsp->getNumOutputs() > 0) {
         Config = ma_node_config_init();
         Vtable = {FaustProcess, nullptr, 1, 1, 0};
         Config.vtable = &Vtable;
-        Config.pInputChannels = (U32[]){U32(FaustDsp->getNumInputs())}; // One input bus, with N channels.
-        Config.pOutputChannels = (U32[]){U32(FaustDsp->getNumOutputs())}; // One output bus, with M channels.
+        Config.pInputChannels = (U32[]){U32(FaustContext::Dsp->getNumInputs())}; // One input bus, with N channels.
+        Config.pOutputChannels = (U32[]){U32(FaustContext::Dsp->getNumOutputs())}; // One output bus, with M channels.
 
         const int result = ma_node_init(&NodeGraph, &Config, nullptr, &Node);
         if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
@@ -645,10 +648,10 @@ void Audio::Graph::FaustNode::DoInit() const {
     }
 }
 bool Audio::Graph::FaustNode::NeedsRestart() const {
-    static dsp *PreviousDsp = FaustDsp;
+    static dsp *PreviousDsp = FaustContext::Dsp;
 
-    const bool needs_restart = PreviousDsp != FaustDsp;
-    PreviousDsp = FaustDsp;
+    const bool needs_restart = PreviousDsp != FaustContext::Dsp;
+    PreviousDsp = FaustContext::Dsp;
 
     return needs_restart;
 }

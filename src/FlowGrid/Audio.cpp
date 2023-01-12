@@ -216,6 +216,7 @@ void Audio::Update() const {
         Uninit();
     } else if (needs_restart && is_initialized) {
         // todo no need to completely reset in many cases (like when only format has changed) - just modify as needed in `Device::Update`.
+        // todo sample rate conversion is happening even when choosing a SR that is native to both intpu & output, if it's not the highest-priority SR.
         Uninit();
         Init();
     }
@@ -238,7 +239,7 @@ void Audio::Update() const {
 
 bool Audio::NeedsRestart() const {
     static string PreviousInDeviceName = Device.InDeviceName, PreviousOutDeviceName = Device.OutDeviceName;
-    static Audio::IoFormat PreviousInFormat = Device.InFormat, PreviousOutFormat = Device.OutFormat;
+    static int PreviousInFormat = Device.InFormat, PreviousOutFormat = Device.OutFormat;
     static U32 PreviousSampleRate = Device.SampleRate;
 
     const bool needs_restart =
@@ -257,44 +258,15 @@ bool Audio::NeedsRestart() const {
 }
 
 // todo support loopback mode? (think of use cases)
-const vector<Audio::IoFormat> Audio::Device::PrioritizedFormats = {
-    IoFormat_F32,
-    IoFormat_S32,
-    IoFormat_S16,
-    IoFormat_S24,
-    IoFormat_U8,
-};
+
 const vector<U32> Audio::Device::PrioritizedSampleRates = {std::begin(g_maStandardSampleRatePriorities), std::end(g_maStandardSampleRatePriorities)};
 
-ma_format ToAudioFormat(const Audio::IoFormat format) {
-    switch (format) {
-        case Audio::IoFormat_Native: return ma_format_unknown;
-        case Audio::IoFormat_F32: return ma_format_f32;
-        case Audio::IoFormat_S32: return ma_format_s32;
-        case Audio::IoFormat_S16: return ma_format_s16;
-        case Audio::IoFormat_S24: return ma_format_s24;
-        case Audio::IoFormat_U8: return ma_format_u8;
-        default: return ma_format_unknown;
-    }
-}
-Audio::IoFormat ToAudioFormat(const ma_format format) {
-    switch (format) {
-        case ma_format_unknown: return Audio::IoFormat_Native;
-        case ma_format_f32: return Audio::IoFormat_F32;
-        case ma_format_s32: return Audio::IoFormat_S32;
-        case ma_format_s16: return Audio::IoFormat_S16;
-        case ma_format_s24: return Audio::IoFormat_S24;
-        case ma_format_u8: return Audio::IoFormat_U8;
-        default: return Audio::IoFormat_Native;
-    }
-}
-
-static vector<Audio::IoFormat> NativeFormats;
+static vector<ma_format> NativeFormats;
 static vector<U32> NativeSampleRates;
 
-const string Audio::Device::GetFormatName(const Audio::IoFormat format) {
+const string Audio::Device::GetFormatName(const int format) {
     const bool is_native = std::find(NativeFormats.begin(), NativeFormats.end(), format) != NativeFormats.end();
-    return ::format("{}{}", ma_get_format_name(ToAudioFormat(format)), is_native ? "*" : "");
+    return ::format("{}{}", ma_get_format_name((ma_format)format), is_native ? "*" : "");
 }
 const string Audio::Device::GetSampleRateName(const U32 sample_rate) {
     const bool is_native = std::find(NativeSampleRates.begin(), NativeSampleRates.end(), sample_rate) != NativeSampleRates.end();
@@ -357,8 +329,8 @@ void Audio::Device::Init() const {
     StoreEntries initial_settings;
     if (MaDevice.capture.name != InDeviceName) initial_settings.emplace_back(InDeviceName.Path, MaDevice.capture.name);
     if (MaDevice.playback.name != OutDeviceName) initial_settings.emplace_back(OutDeviceName.Path, MaDevice.playback.name);
-    if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, ToAudioFormat(MaDevice.capture.format));
-    if (MaDevice.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, ToAudioFormat(MaDevice.playback.format));
+    if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, MaDevice.capture.format);
+    if (MaDevice.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, MaDevice.playback.format);
     if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
     if (!initial_settings.empty()) q(SetValues{initial_settings}, true);
 }
@@ -635,6 +607,7 @@ void Audio::Graph::FaustNode::DoInit() const {
     static ma_node_vtable Vtable{};
 
     if (FaustContext::Dsp && FaustContext::Dsp->getNumInputs() > 0 && FaustContext::Dsp->getNumOutputs() > 0) {
+        // todo called twice when restarting audio due to sample rate/format change
         Config = ma_node_config_init();
         Vtable = {FaustProcess, nullptr, 1, 1, 0};
         Config.vtable = &Vtable;

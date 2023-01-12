@@ -763,24 +763,12 @@ protected:
 struct Audio : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    // A selection of supported formats, corresponding to `SoundIoFormat`
-    enum IoFormat_ {
-        IoFormat_Native = 0,
-        IoFormat_U8,
-        IoFormat_S16,
-        IoFormat_S24,
-        IoFormat_S32,
-        IoFormat_F32,
-    };
-    using IoFormat = int;
-
     // Corresponds to `ma_device`.
     struct Device : UIStateMember {
         using UIStateMember::UIStateMember;
 
-        static const vector<IoFormat> PrioritizedFormats;
         static const vector<U32> PrioritizedSampleRates;
-        static const string GetFormatName(IoFormat);
+        static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.
         static const string GetSampleRateName(U32);
 
         void Init() const;
@@ -796,8 +784,8 @@ struct Audio : TabsWindow {
         Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
         Prop(String, InDeviceName);
         Prop(String, OutDeviceName);
-        Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
-        Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName, IoFormat_Native);
+        Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName);
+        Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName);
         Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", GetSampleRateName);
 
     protected:

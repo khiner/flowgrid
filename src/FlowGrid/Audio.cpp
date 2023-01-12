@@ -149,7 +149,7 @@ static void InitFaust() {
     const char **argv = new const char *[8];
     argv[argc++] = "-I";
     argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-    if (sizeof(Sample) == sizeof(double)) argv[argc++] = "-double";
+    if (std::is_same_v<Sample, double>) argv[argc++] = "-double";
 
     static int num_inputs, num_outputs;
     static string error_msg;

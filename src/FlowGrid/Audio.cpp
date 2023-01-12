@@ -140,10 +140,7 @@ void Audio::Render() const {
 }
 
 static dsp *FaustDsp = nullptr;
-static Box FaustBox;
-static llvm_dsp_factory *DspFactory;
 static unique_ptr<FaustParams> FaustUi;
-static string error_msg;
 
 static void InitFaust() {
     createLibContext();
@@ -154,9 +151,10 @@ static void InitFaust() {
     argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
     if (sizeof(Sample) == sizeof(double)) argv[argc++] = "-double";
 
-    int num_inputs, num_outputs;
-
-    FaustBox = DSPToBoxes("FlowGrid", s.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+    static int num_inputs, num_outputs;
+    static string error_msg;
+    static llvm_dsp_factory *DspFactory;
+    const Box FaustBox = DSPToBoxes("FlowGrid", s.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
     if (FaustBox && error_msg.empty()) {
         static const int optimize_level = -1;
         DspFactory = createDSPFactoryFromBoxes("FlowGrid", FaustBox, argc, argv, "", error_msg, optimize_level);
@@ -185,12 +183,10 @@ static void UninitFaust() {
     OnUiChange(nullptr);
 
     FaustUi = nullptr;
-    FaustBox = nullptr;
     if (FaustDsp) {
         delete FaustDsp;
         FaustDsp = nullptr;
-        deleteDSPFactory(DspFactory);
-        DspFactory = nullptr;
+        deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
     }
 
     destroyLibContext();
@@ -223,7 +219,7 @@ void Audio::Update() const {
 
     Device.Update();
 
-    const bool is_faust_initialized = s.Faust.Code && !s.Faust.Log.Error;
+    const bool is_faust_initialized = s.UiProcess.Running && s.Faust.Code && !s.Faust.Log.Error;
     const bool faust_needs_restart = FaustNeedsRestart() && is_faust_initialized; // Don't inline! Must run during every update.
     if (!FaustDsp && is_faust_initialized) {
         InitFaust();

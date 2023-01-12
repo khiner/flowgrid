@@ -77,6 +77,7 @@ struct StateMember {
 
     virtual ~StateMember();
     const StateMember *Child(Count i) const { return Children[i]; }
+    inline Count ChildCount() const { return Children.size(); }
 
     const StateMember *Parent;
     vector<StateMember *> Children{};
@@ -836,6 +837,10 @@ struct Audio : TabsWindow {
 
         struct Nodes : UIStateMember {
             using UIStateMember::UIStateMember;
+
+            // todo iterator
+            inline Node *Get(Count i) const { return i < Size() ? dynamic_cast<Node *>(Children[i]) : nullptr; }
+            inline Count Size() const { return ChildCount(); }
 
             void Init() const;
             void Update() const;

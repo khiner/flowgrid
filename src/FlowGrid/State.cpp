@@ -1683,7 +1683,7 @@ void Faust::Render() const {
 }
 
 void Audio::Graph::RenderConnections() const {
-    const Count input_count = Nodes.Children.size(), output_count = Nodes.Children.size();
+    const Count input_count = Nodes.Size(), output_count = Nodes.Size();
     if (input_count == 0 && output_count == 0) return;
 
     const float cell_size = s.Style.FlowGrid.Matrix.CellSize * GetTextLineHeight();

@@ -464,11 +464,25 @@ void Audio::Graph::Init() const {
             connections.push_back(default_connected);
         }
     }
-    q(SetMatrix{Connections.Path, connections, Count(Nodes.Children.size())}, true);
+    q(SetMatrix{Connections.Path, connections, Count(Nodes.Size())}, true);
 }
 
 void Audio::Graph::Update() const {
     Nodes.Update();
+
+    // Setting up busses is idempotent.
+    for (Count i = 0; i < Nodes.Size(); i++) {
+        if (auto *output_node = Nodes.Get(i)->Get()) {
+            ma_node_detach_output_bus(output_node, 0); // No way to just detach one connection.
+            for (Count j = 0; j < Nodes.Size(); j++) {
+                if (auto *input_node = Nodes.Get(j)->Get()) {
+                    if (Connections(i, j)) {
+                        ma_node_attach_output_bus(input_node, 0, output_node, 0);
+                    }
+                }
+            }
+        }
+    }
 }
 void Audio::Graph::Uninit() const {
     Nodes.Uninit();
@@ -490,23 +504,7 @@ void Audio::Graph::Render() const {
 
 void Audio::Graph::Nodes::Update() const {
     Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
-
     for (const auto *child : Children) dynamic_cast<const Node *>(child)->Update();
-
-    // Setting up busses is idempotent.
-    const auto *graph = dynamic_cast<const Graph *>(Parent);
-    for (Count i = 0; i < Children.size(); i++) {
-        if (auto *output_node = dynamic_cast<const Node *>(Children[i])->Get()) {
-            ma_node_detach_output_bus(output_node, 0); // No way to just detach one connection.
-            for (Count j = 0; j < Children.size(); j++) {
-                if (auto *input_node = dynamic_cast<const Node *>(Children[j])->Get()) {
-                    if (graph->Connections(i, j)) {
-                        ma_node_attach_output_bus(input_node, 0, output_node, 0);
-                    }
-                }
-            }
-        }
-    }
 }
 
 void Audio::Graph::Nodes::Init() const {
@@ -526,13 +524,12 @@ void Audio::Graph::Nodes::Render() const {
     }
 }
 
-unordered_map<ID, void *> Audio::Graph::Node::DataFor;
-
 Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateMember(parent, path_segment, name_help) {
     ::Set(On, on, c.InitStore);
 }
 
+unordered_map<ID, void *> Audio::Graph::Node::DataFor;
 void *Audio::Graph::Node::Get() const { return DataFor.contains(Id) ? DataFor.at(Id) : nullptr; }
 void Audio::Graph::Node::Set(ma_node *data) const {
     if (data == nullptr) DataFor.erase(Id);

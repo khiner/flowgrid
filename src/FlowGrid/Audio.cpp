@@ -595,24 +595,28 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
     (void)frame_count_in; // unused
 }
 
+// todo called twice when restarting audio due to sample rate/format change
 void Audio::Graph::FaustNode::DoInit() const {
-    static ma_node_base Node{};
-    static ma_node_config Config{};
-    static ma_node_vtable Vtable{};
+    if (!FaustContext::Dsp) return;
 
-    if (FaustContext::Dsp && FaustContext::Dsp->getNumInputs() > 0 && FaustContext::Dsp->getNumOutputs() > 0) {
-        // todo called twice when restarting audio due to sample rate/format change
-        Config = ma_node_config_init();
-        Vtable = {FaustProcess, nullptr, 1, 1, 0};
-        Config.vtable = &Vtable;
-        Config.pInputChannels = (U32[]){U32(FaustContext::Dsp->getNumInputs())}; // One input bus, with N channels.
-        Config.pOutputChannels = (U32[]){U32(FaustContext::Dsp->getNumOutputs())}; // One output bus, with M channels.
+    const Count in_channels = FaustContext::Dsp->getNumInputs();
+    const Count out_channels = FaustContext::Dsp->getNumOutputs();
+    if (in_channels == 0 && out_channels == 0) return;
 
-        const int result = ma_node_init(&NodeGraph, &Config, nullptr, &Node);
-        if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
+    static ma_node_vtable vtable{};
+    vtable = {FaustProcess, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
 
-        Set(&Node);
-    }
+    static ma_node_config config;
+    config = ma_node_config_init();
+    config.pInputChannels = in_channels > 0 ? (U32[]){in_channels} : nullptr; // One input bus with N channels, or zero input busses.
+    config.pOutputChannels = out_channels > 0 ? (U32[]){out_channels} : nullptr; // One output bus with M channels, or zero output busses.
+    config.vtable = &vtable;
+
+    static ma_node_base node{};
+    const int result = ma_node_init(&NodeGraph, &config, nullptr, &node);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the Faust node: {}", result));
+
+    Set(&node);
 }
 bool Audio::Graph::FaustNode::NeedsRestart() const {
     static dsp *PreviousDsp = FaustContext::Dsp;

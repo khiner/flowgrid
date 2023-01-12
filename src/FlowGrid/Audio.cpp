@@ -206,12 +206,12 @@ static bool FaustNeedsRestart() {
 
 void Audio::Update() const {
     const bool is_initialized = Device.IsStarted();
-    const bool needs_restart = NeedsRestart() && is_initialized; // Don't inline! Must run during every update.
+    const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
     if (Device.On && !is_initialized) {
         Init();
     } else if (!Device.On && is_initialized) {
         Uninit();
-    } else if (needs_restart) {
+    } else if (needs_restart && is_initialized) {
         // todo no need to completely reset in many cases (like when only format has changed) - just modify as needed in `Device::Update`.
         Uninit();
         Init();
@@ -220,7 +220,7 @@ void Audio::Update() const {
     Device.Update();
 
     const bool is_faust_initialized = s.UiProcess.Running && s.Faust.Code && !s.Faust.Log.Error;
-    const bool faust_needs_restart = FaustNeedsRestart() && is_faust_initialized; // Don't inline! Must run during every update.
+    const bool faust_needs_restart = FaustNeedsRestart(); // Don't inline! Must run during every update.
     if (!FaustDsp && is_faust_initialized) {
         InitFaust();
     } else if (FaustDsp && !is_faust_initialized) {
@@ -229,6 +229,7 @@ void Audio::Update() const {
         UninitFaust();
         InitFaust();
     }
+
     if (Device.IsStarted()) Graph.Update();
 }
 
@@ -574,12 +575,12 @@ void Audio::Graph::Node::DoInit() const {
 }
 void Audio::Graph::Node::Update() const {
     const bool is_initialized = NodeForId.contains(Id);
-    const bool needs_restart = NeedsRestart() && is_initialized; // Don't inline! Must run during every update.
+    const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
     if (On && !is_initialized) {
         Init();
     } else if (!On && is_initialized) {
         Uninit();
-    } else if (needs_restart) {
+    } else if (needs_restart && is_initialized) {
         Uninit();
         Init();
     }

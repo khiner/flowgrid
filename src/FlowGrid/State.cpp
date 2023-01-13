@@ -1686,10 +1686,11 @@ void Audio::Graph::RenderConnections() const {
     const Count input_count = Nodes.Size(), output_count = Nodes.Size();
     if (input_count == 0 && output_count == 0) return;
 
-    const float cell_size = s.Style.FlowGrid.Matrix.CellSize * GetTextLineHeight();
-    const float cell_gap = s.Style.FlowGrid.Matrix.CellGap;
-    const float label_size = s.Style.FlowGrid.Matrix.LabelSize * GetTextLineHeight(); // Does not include padding.
-    const float label_padding = GetStyle().ItemInnerSpacing.x;
+    const auto &style = s.Style.FlowGrid.Matrix;
+    const float cell_size = style.CellSize * GetTextLineHeight();
+    const float cell_gap = style.CellGap;
+    const float label_size = style.LabelSize * GetTextLineHeight(); // Does not include padding.
+    const float label_padding = ImGui::GetStyle().ItemInnerSpacing.x;
     const float max_label_w = label_size + 2 * label_padding;
     const ImVec2 grid_top_left = GetCursorScreenPos() + max_label_w;
 

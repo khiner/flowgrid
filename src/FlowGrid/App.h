@@ -806,6 +806,11 @@ struct Audio : TabsWindow {
             void Set(void *) const; // Set MA node.
             void *Get() const; // Get MA node.
 
+            Count InputBusCount() const;
+            Count OutputBusCount() const;
+            Count InputChannelCount(Count bus) const;
+            Count OutputChannelCount(Count bus) const;
+
             void Init() const; // Add MA node.
             void Update() const; // Update MA node based on current settings (e.g. volume).
             void Uninit() const; // Remove MA node.

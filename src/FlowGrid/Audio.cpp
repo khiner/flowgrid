@@ -173,9 +173,9 @@ static void Init() {
         }
     }
 
-    const auto &FaustLog = s.Faust.Log;
-    if (!error_msg.empty()) q(SetValue{FaustLog.Error.Path, error_msg});
-    else if (FaustLog.Error) q(SetValue{FaustLog.Error.Path, ""});
+    const auto &ErrorLog = s.Faust.Log.Error;
+    if (!error_msg.empty()) q(SetValue{ErrorLog.Path, error_msg});
+    else if (ErrorLog) q(SetValue{ErrorLog.Path, ""});
 
     OnBoxChange(box);
     OnUiChange(Ui.get());
@@ -532,6 +532,11 @@ void Audio::Graph::Node::Set(ma_node *data) const {
     if (data == nullptr) DataFor.erase(Id);
     else DataFor[Id] = data;
 }
+
+Count Audio::Graph::Node::InputBusCount() const { return ma_node_get_input_bus_count(Get()); }
+Count Audio::Graph::Node::OutputBusCount() const { return ma_node_get_output_bus_count(Get()); }
+Count Audio::Graph::Node::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Get(), bus); }
+Count Audio::Graph::Node::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Get(), bus); }
 
 void Audio::Graph::Node::Init() const {
     DoInit();

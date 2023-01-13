@@ -501,19 +501,16 @@ void Audio::Graph::Render() const {
 
 void Audio::Graph::Nodes::Update() const {
     Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
-    for (const auto *child : Children) dynamic_cast<const Node *>(child)->Update();
+    for (const Node *node : *this) node->Update();
 }
-
 void Audio::Graph::Nodes::Init() const {
-    for (const auto *child : Children) dynamic_cast<const Node *>(child)->Init();
+    for (const Node *node : *this) node->Init();
 }
-
 void Audio::Graph::Nodes::Uninit() const {
-    for (const auto *child : Children) dynamic_cast<const Node *>(child)->Uninit();
+    for (const Node *node : *this) node->Uninit();
 }
 void Audio::Graph::Nodes::Render() const {
-    for (const auto *child : Children) {
-        const auto *node = dynamic_cast<const Node *>(child);
+    for (const Node *node : *this) {
         if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
             node->Draw();
             TreePop();

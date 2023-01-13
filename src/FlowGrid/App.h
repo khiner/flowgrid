@@ -843,7 +843,16 @@ struct Audio : TabsWindow {
         struct Nodes : UIStateMember {
             using UIStateMember::UIStateMember;
 
-            // todo iterator
+            // Iterate over all children, converting each element from a `StateMember *` to a `Node *`.
+            // Usage: `for (const Node *node : Nodes) ...`
+            struct Iterator : vector<StateMember *>::const_iterator {
+                Iterator(auto it) : vector<StateMember *>::const_iterator(it) {}
+                const Node *operator*() const { return dynamic_cast<Node *>(vector<StateMember *>::const_iterator::operator*()); }
+            };
+            auto begin() const { return Iterator(Children.begin()); }
+            auto end() const { return Iterator(Children.end()); }
+
+            // todo input-nodes iterator, output-nodes iterator
             inline Node *Get(Count i) const { return i < Size() ? dynamic_cast<Node *>(Children[i]) : nullptr; }
             inline Count Size() const { return ChildCount(); }
 

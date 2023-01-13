@@ -15,6 +15,7 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 #include "nlohmann/json_fwd.hpp"
+#include <range/v3/view/filter.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/join.hpp>
 #include <range/v3/view/map.hpp>
@@ -847,14 +848,19 @@ struct Audio : TabsWindow {
             // Usage: `for (const Node *node : Nodes) ...`
             struct Iterator : vector<StateMember *>::const_iterator {
                 Iterator(auto it) : vector<StateMember *>::const_iterator(it) {}
-                const Node *operator*() const { return dynamic_cast<Node *>(vector<StateMember *>::const_iterator::operator*()); }
+                const Node *operator*() const { return dynamic_cast<const Node *>(vector<StateMember *>::const_iterator::operator*()); }
             };
-            auto begin() const { return Iterator(Children.begin()); }
-            auto end() const { return Iterator(Children.end()); }
+            auto begin() const { return Iterator(Children.cbegin()); }
+            auto end() const { return Iterator(Children.cend()); }
 
-            // todo input-nodes iterator, output-nodes iterator
-            inline Node *Get(Count i) const { return i < Size() ? dynamic_cast<Node *>(Children[i]) : nullptr; }
-            inline Count Size() const { return ChildCount(); }
+            auto InputNodes() const {
+                return Children | transform([](const auto *child) { return dynamic_cast<const Node *>(child); }) |
+                    views::filter([](const Node *node) { return node->OutputBusCount() > 0; });
+            }
+            auto OutputNodes() const {
+                return Children | transform([](const auto *child) { return dynamic_cast<const Node *>(child); }) |
+                    views::filter([](const Node *node) { return node->InputBusCount() > 0; });
+            }
 
             void Init() const;
             void Update() const;

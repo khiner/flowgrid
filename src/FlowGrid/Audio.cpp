@@ -453,32 +453,34 @@ void Audio::Graph::Init() const {
 
     Nodes.Init();
     vector<Primitive> connections{};
-    for (const auto *output_node : Nodes.Children) {
-        for (const auto *input_node : Nodes.Children) {
+    Count out_count = 0;
+    for (const auto *out_node : Nodes.OutputNodes()) {
+        for (const auto *in_node : Nodes.InputNodes()) {
             const bool default_connected =
-                (input_node == &Nodes.Input && output_node == &Nodes.Faust) ||
-                (input_node == &Nodes.Faust && output_node == &Nodes.Output);
+                (in_node == &Nodes.Input && out_node == &Nodes.Faust) ||
+                (in_node == &Nodes.Faust && out_node == &Nodes.Output);
             connections.push_back(default_connected);
         }
+        out_count++;
     }
-    q(SetMatrix{Connections.Path, connections, Count(Nodes.Size())}, true);
+    q(SetMatrix{Connections.Path, connections, out_count}, true);
 }
 
 void Audio::Graph::Update() const {
     Nodes.Update();
 
     // Setting up busses is idempotent.
-    for (Count i = 0; i < Nodes.Size(); i++) {
-        if (auto *output_node = Nodes.Get(i)->Get()) {
-            ma_node_detach_output_bus(output_node, 0); // No way to just detach one connection.
-            for (Count j = 0; j < Nodes.Size(); j++) {
-                if (auto *input_node = Nodes.Get(j)->Get()) {
-                    if (Connections(i, j)) {
-                        ma_node_attach_output_bus(input_node, 0, output_node, 0);
-                    }
-                }
+    Count out_i = 0;
+    for (const Node *out_node : Nodes.OutputNodes()) {
+        ma_node_detach_output_bus(out_node->Get(), 0); // No way to just detach one connection.
+        Count in_i = 0;
+        for (const Node *in_node : Nodes.InputNodes()) {
+            if (Connections(out_i, in_i)) {
+                ma_node_attach_output_bus(in_node->Get(), 0, out_node->Get(), 0);
             }
+            in_i++;
         }
+        out_i++;
     }
 }
 void Audio::Graph::Uninit() const {
@@ -499,12 +501,12 @@ void Audio::Graph::Render() const {
     }
 }
 
-void Audio::Graph::Nodes::Update() const {
-    Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
-    for (const Node *node : *this) node->Update();
-}
 void Audio::Graph::Nodes::Init() const {
+    Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
     for (const Node *node : *this) node->Init();
+}
+void Audio::Graph::Nodes::Update() const {
+    for (const Node *node : *this) node->Update();
 }
 void Audio::Graph::Nodes::Uninit() const {
     for (const Node *node : *this) node->Uninit();

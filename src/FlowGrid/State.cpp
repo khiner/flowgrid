@@ -1692,49 +1692,49 @@ void Audio::Graph::RenderConnections() const {
     const ImVec2 grid_top_left = GetCursorScreenPos() + max_label_w;
 
     BeginGroup();
-    // Draw the input channel labels.
-    Count in_count = 0;
-    for (const auto *input_node : Nodes.InputNodes()) {
-        const char *label = input_node->Name.c_str();
+    // Draw the source channel labels.
+    Count source_count = 0;
+    for (const auto *source_node : Nodes.SourceNodes()) {
+        const char *label = source_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
 
-        SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * in_count, -max_label_w});
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, input_node->ImGuiLabel.c_str());
+        SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_count, -max_label_w});
+        const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, source_node->ImGuiLabel.c_str());
         ImPlot::AddTextVertical(
             GetWindowDrawList(),
-            grid_top_left + ImVec2{(cell_size + cell_gap) * in_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
+            grid_top_left + ImVec2{(cell_size + cell_gap) * source_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
             GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
         );
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
-        in_count++;
+        source_count++;
     }
 
-    // Draw the output channel labels and mixer cells.
-    Count i = 0;
-    for (const auto *output_node : Nodes.OutputNodes()) {
-        const char *label = output_node->Name.c_str();
+    // Draw the destination channel labels and mixer cells.
+    Count dest_i = 0;
+    for (const auto *dest_node : Nodes.DestinationNodes()) {
+        const char *label = dest_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
 
-        SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * i});
-        const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, output_node->ImGuiLabel.c_str());
+        SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * dest_i});
+        const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, dest_node->ImGuiLabel.c_str());
         const float label_w = CalcTextSize(ellipsified_label.c_str()).x;
         SetCursorPos(GetCursorPos() + ImVec2{max_label_w - label_w - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
         TextUnformatted(ellipsified_label.c_str());
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
 
-        for (Count j = 0; j < in_count; j++) {
-            PushID(i * in_count + j);
-            SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * j, (cell_size + cell_gap) * i});
+        for (Count source_i = 0; source_i < source_count; source_i++) {
+            PushID(dest_i * source_count + source_i);
+            SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(i, j), !Connections(i, j)});
+            if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)});
 
-            const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(i, j) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
+            const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));
             PopID();
         }
-        i++;
+        dest_i++;
     }
     EndGroup();
 }

@@ -853,11 +853,11 @@ struct Audio : TabsWindow {
             auto begin() const { return Iterator(Children.cbegin()); }
             auto end() const { return Iterator(Children.cend()); }
 
-            auto InputNodes() const {
+            auto SourceNodes() const {
                 return Children | transform([](const auto *child) { return dynamic_cast<const Node *>(child); }) |
                     views::filter([](const Node *node) { return node->OutputBusCount() > 0; });
             }
-            auto OutputNodes() const {
+            auto DestinationNodes() const {
                 return Children | transform([](const auto *child) { return dynamic_cast<const Node *>(child); }) |
                     views::filter([](const Node *node) { return node->InputBusCount() > 0; });
             }

@@ -448,39 +448,36 @@ void Audio::Graph::Init() const {
     int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize node graph: {}", result));
 
-    result = ma_audio_buffer_ref_init(MaDevice.capture.format, MaDevice.capture.channels, nullptr, 0, &InputBuffer);
-    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input audio buffer: ", result));
-
     Nodes.Init();
     vector<Primitive> connections{};
-    Count out_count = 0;
-    for (const auto *out_node : Nodes.OutputNodes()) {
-        for (const auto *in_node : Nodes.InputNodes()) {
+    Count dest_count = 0;
+    for (const auto *dest_node : Nodes.DestinationNodes()) {
+        for (const auto *source_node : Nodes.SourceNodes()) {
             const bool default_connected =
-                (in_node == &Nodes.Input && out_node == &Nodes.Faust) ||
-                (in_node == &Nodes.Faust && out_node == &Nodes.Output);
+                (source_node == &Nodes.Input && dest_node == &Nodes.Faust) ||
+                (source_node == &Nodes.Faust && dest_node == &Nodes.Output);
             connections.push_back(default_connected);
         }
-        out_count++;
+        dest_count++;
     }
-    q(SetMatrix{Connections.Path, connections, out_count}, true);
+    q(SetMatrix{Connections.Path, connections, dest_count}, true);
 }
 
 void Audio::Graph::Update() const {
     Nodes.Update();
 
     // Setting up busses is idempotent.
-    Count out_i = 0;
-    for (const Node *out_node : Nodes.OutputNodes()) {
-        ma_node_detach_output_bus(out_node->Get(), 0); // No way to just detach one connection.
-        Count in_i = 0;
-        for (const Node *in_node : Nodes.InputNodes()) {
-            if (Connections(out_i, in_i)) {
-                ma_node_attach_output_bus(in_node->Get(), 0, out_node->Get(), 0);
+    Count source_i = 0;
+    for (const Node *source_node : Nodes.SourceNodes()) {
+        ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
+        Count dest_i = 0;
+        for (const Node *dest_node : Nodes.DestinationNodes()) {
+            if (Connections(dest_i, source_i)) {
+                ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
             }
-            in_i++;
+            dest_i++;
         }
-        out_i++;
+        source_i++;
     }
 }
 void Audio::Graph::Uninit() const {
@@ -572,18 +569,21 @@ void Audio::Graph::Node::Render() const {
 
 // Output node is already allocated by the MA graph, so we don't need to track internal data for it.
 void Audio::Graph::InputNode::DoInit() const {
+    int result = ma_audio_buffer_ref_init(MaDevice.capture.format, MaDevice.capture.channels, nullptr, 0, &InputBuffer);
+    if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize input audio buffer: ", result));
+
     static ma_data_source_node Node{};
     static ma_data_source_node_config Config{};
 
     Config = ma_data_source_node_config_init(&InputBuffer);
-
-    int result = ma_data_source_node_init(&NodeGraph, &Config, nullptr, &Node);
+    result = ma_data_source_node_init(&NodeGraph, &Config, nullptr, &Node);
     if (result != MA_SUCCESS) throw std::runtime_error(format("Failed to initialize the input node: ", result));
 
     Set(&Node);
 }
 void Audio::Graph::InputNode::DoUninit() const {
     ma_data_source_node_uninit((ma_data_source_node *)Get(), nullptr);
+    ma_audio_buffer_ref_uninit(&InputBuffer);
 }
 
 void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {

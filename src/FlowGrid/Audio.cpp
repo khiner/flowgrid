@@ -167,9 +167,9 @@ static void Init() {
         Dsp = dsp_factory->createDSPInstance();
         if (!Dsp) error_msg = "Could not create Faust DSP.";
         else {
-            Dsp->init(s.Audio.Device.SampleRate);
             Ui = make_unique<FaustParams>();
             Dsp->buildUserInterface(Ui.get());
+            // `Dsp->Init` happens in the Faust graph node.
         }
     }
 
@@ -196,18 +196,26 @@ static void Uninit() {
 
 static bool NeedsRestart() {
     static string PreviousFaustCode = s.Faust.Code;
-    static U32 PreviousSampleRate = s.Audio.Device.SampleRate;
 
-    const bool needs_restart = s.Faust.Code != PreviousFaustCode || s.Audio.Device.SampleRate != PreviousSampleRate;
-
+    const bool needs_restart = s.Faust.Code != PreviousFaustCode;
     PreviousFaustCode = s.Faust.Code;
-    PreviousSampleRate = s.Audio.Device.SampleRate;
-
     return needs_restart;
 }
 } // namespace FaustContext
 
 void Audio::Update() const {
+    // Faust setup is only dependent on the faust code.
+    const bool is_faust_initialized = s.UiProcess.Running && s.Faust.Code && !s.Faust.Log.Error;
+    const bool faust_needs_restart = FaustContext::NeedsRestart(); // Don't inline! Must run during every update.
+    if (!FaustContext::Dsp && is_faust_initialized) {
+        FaustContext::Init();
+    } else if (FaustContext::Dsp && !is_faust_initialized) {
+        FaustContext::Uninit();
+    } else if (faust_needs_restart) {
+        FaustContext::Uninit();
+        FaustContext::Init();
+    }
+
     const bool is_initialized = Device.IsStarted();
     const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
     if (Device.On && !is_initialized) {
@@ -222,17 +230,6 @@ void Audio::Update() const {
     }
 
     Device.Update();
-
-    const bool is_faust_initialized = s.UiProcess.Running && s.Faust.Code && !s.Faust.Log.Error;
-    const bool faust_needs_restart = FaustContext::NeedsRestart(); // Don't inline! Must run during every update.
-    if (!FaustContext::Dsp && is_faust_initialized) {
-        FaustContext::Init();
-    } else if (FaustContext::Dsp && !is_faust_initialized) {
-        FaustContext::Uninit();
-    } else if (faust_needs_restart) {
-        FaustContext::Uninit();
-        FaustContext::Init();
-    }
 
     if (Device.IsStarted()) Graph.Update();
 }
@@ -595,10 +592,10 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
     (void)frame_count_in; // unused
 }
 
-// todo called twice when restarting audio due to sample rate/format change
 void Audio::Graph::FaustNode::DoInit() const {
     if (!FaustContext::Dsp) return;
 
+    FaustContext::Dsp->init(s.Audio.Device.SampleRate);
     const Count in_channels = FaustContext::Dsp->getNumInputs();
     const Count out_channels = FaustContext::Dsp->getNumOutputs();
     if (in_channels == 0 && out_channels == 0) return;
@@ -620,9 +617,11 @@ void Audio::Graph::FaustNode::DoInit() const {
 }
 bool Audio::Graph::FaustNode::NeedsRestart() const {
     static dsp *PreviousDsp = FaustContext::Dsp;
+    static U32 PreviousSampleRate = s.Audio.Device.SampleRate;
 
-    const bool needs_restart = PreviousDsp != FaustContext::Dsp;
+    const bool needs_restart = FaustContext::Dsp != PreviousDsp || s.Audio.Device.SampleRate != PreviousSampleRate;
     PreviousDsp = FaustContext::Dsp;
+    PreviousSampleRate = s.Audio.Device.SampleRate;
 
     return needs_restart;
 }

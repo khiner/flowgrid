@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# By default, this script deletes both build debug AND release build directories.
+# You can call this script from anywhere, and it will delete the build directories in the project root directory.
+# Flags:
+#   * `-d, --debug`: Only delete the debug build directory.
+#   * `-r, --release`: Only delete the release build directory.
+
+CleanDebug=false
+CleanRelease=false
+
+if [ $# -eq 0 ] || [ "$1" = "-d" ] || [ "$1" = "--debug" ]; then
+    CleanDebug=true
+fi
+if [ $# -eq 0 ] || [ "$1" = "-r" ] || [ "$1" = "--release" ]; then
+    CleanRelease=true
+fi
+
+ScriptDir="$(cd "$(dirname "${0}")" && pwd)"
+ProjectRootDir="$(dirname "${ScriptDir}")" 
+
+if [ "$CleanDebug" = true ]; then
+    rm -rf "${ProjectRootDir}/build"
+fi
+if [ "$CleanRelease" = true ]; then
+    rm -rf "${ProjectRootDir}/build-release"
+fi

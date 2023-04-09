@@ -73,52 +73,50 @@ Each type of FlowGrid project file is saved as plain JSON.
   - **Gesture compression:** Actions within each gesture are compressed down to a potentially smaller set of actions.
     This compression is done in a way that retains the same application-state effects, while also keeping the same application-domain semantics.
 
-## Build and run
+## Clean/Build/Run
+
+This project uses LLVM IR to JIT-compile Faust code.
+To simplify, make things more predictable, and reduce bloat, we use the LLVM ecosystem as much as possible.
+
+We use `clang++/clang` to compile, and LLVM's `lld` for linking.
+Even if it's not strictly required, we generally aim to use the newest available LLVM point release (`x.0.1` and beyond).
+If the project does not build correctly for you, please make sure your `clang`, `lld`, and `clang-config` point to the newest available point-release of LLVM.
+If that doesn't work, try the latest release in the previous LLVM major version.
+
+**VSCode:** The `.vscode/launch.json` config has debug/release launch profiles (todo actually add release profile).
 
 ### Mac
 
-#### System requirements
+- **Install system requirements:**
 
-Prepare your environment:
-
-```sh
+```shell
 $ git clone --recursive git@github.com:khiner/flowgrid.git
 $ brew install cmake pkgconfig llvm freetype
 $ brew link llvm --force
 ```
 
-#### VSCode clean/build/run
+All scripts can be run from anywhere, but to the root repo directory (clean/build).
 
-The `.vscode/launch.json` config has a single debug launch profile.
+- **Clean:**
+  - Clean up everything: `./script/Clean`
+  - Clean debug build only: `./script/Clean -d [--debug]`
+  - Clean release build only: `./script/Clean -r [--release]`
+- **Build:**
+  - Debug build (default): `./script/Build`
+  - Release build: `./script/Build -r [--release]`
 
-#### Manual clean/build/run
+Debug build is generated in the `./build` directory relative to project (repo) root.
+Release build is generated in `./build-release`.
 
-Clean and build the project in a directory named `cmake-build-debug`:
-
-```sh
-$ rm -rf cmake-build-debug # Clean
-$ cmake -B cmake-build-debug # Configure
-$ cmake --build cmake-build-debug --target FlowGrid -- -j 8 # Build
-```
-
-The `build` script does exactly this.
-It also accepts a `--release` arg to create a release build in `cmake-build`:
-
-```sh
-$ ./build # Debug build
-$ ./build --release # Release build
-```
-
-The application should now be fully rebuilt and ready to run.
 To run the freshly built application:
 
 ```sh
 # The application assumes it's being run from the build directory when locating its resource files (e.g. font files).
-$ cd make-build-debug # or `cd make-build` for a release build
-$ ./FlowGrid
+$ cd build # or build-release
+$ ./FlowGrid # application must be run from a directory above root. todo run from anywhere
 ```
 
-If the build/run doesn't work for you, please [file an issue](https://github.com/khiner/flowgrid/issues/new), providing your environment and any other relevant details, and I will try and fix it!
+If the build/run doesn't work for you, please [file an issue](https://github.com/khiner/flowgrid/issues/new), providing your environment and any other relevant details, and I will try and repro/fix!
 
 ## Stack
 
@@ -126,24 +124,24 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 - [Faust](https://github.com/grame-cncm/faust) for DSP
 - [miniaudio](https://github.com/mackron/miniaudio) for the audio backend
-- [r8brain-free-src](https://github.com/avaneev/r8brain-free-src/) for audio resampling, currently only used when monitoring an audio input stream with a sample rate different from the output stream
+- ~~[r8brain-free-src](https://github.com/avaneev/r8brain-free-src/)~~ (_not actually used atm_): audio resampling, currently only used when monitoring an audio input stream with a sample rate different from the output stream
 
 ### UI/UX
 
-- [ImGui](https://github.com/ocornut/imgui) for UI
-- [ImPlot](https://github.com/epezent/implot) for plotting
-- [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog) for file selection
-- [zep](https://github.com/Rezonality/zep) for code/text editing
-- [ImGui memory_editor](https://github.com/ocornut/imgui_club) for viewing/editing memory directly
+- [ImGui](https://github.com/ocornut/imgui): UI & interactions
+- [ImPlot](https://github.com/epezent/implot): plotting
+- [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog): file selection
+- [zep](https://github.com/Rezonality/zep): code/text editing
+- [ImGui memory_editor](https://github.com/ocornut/imgui_club): viewing/editing memory directly
 
 ### Backend
 
-- [immer](https://github.com/arximboldi/immer) persistent data structures for the main application state store
-  - Used to efficiently create and store persistent state snapshots for undo history, and to compute state diffs.
-- [json](https://github.com/nlohmann/json) for state serialization
-- [ConcurrentQueue](https://github.com/cameron314/concurrentqueue) for the main action queue
-  - Actions are
-    _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
+- [immer](https://github.com/arximboldi/immer): persistent data structures for the main application state store
+  - Used to quickly create, store, and restore persistent state snapshot
+    (used for undo/redo, and for debugging/inspection/monitoring)
+- [json](https://github.com/nlohmann/json): state serialization
+- [ConcurrentQueue](https://github.com/cameron314/concurrentqueue): the main action queue
+  - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
 - ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
   text~~
   - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
@@ -151,7 +149,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 ### C++ extensions
 
-For C++20 features only partially/experimentally supported in Clang 15:
+For C++20 features only partially/experimentally supported in Clang 16:
 
 - [range-v3](https://github.com/ericniebler/range-v3)
 - [fmt](https://github.com/fmtlib/fmt)
@@ -181,8 +179,10 @@ In addition, the `Format` script formats every source Cxx file.
 ### Tracing
 
 To enable tracing, set `TRACY_ENABLE` to `ON` in the main project `CMakeLists.txt`.
+todo only build/include tracy in a new build type, built in
+todo create a third build type for
 
-To build and run the [Tracy](https://github.com/wolfpld/tracy) profiler,
+To build and run the [Tracy](https://github.com/wolfpld/tracy) profiler, run:
 
 ```sh
 $ brew install gtk+3 glfw capstone freetype

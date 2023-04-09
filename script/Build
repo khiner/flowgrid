@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# By default, this script produces a debug build in `./build`, relative to the project root directory.
+# The project is built in the root directory regardless of where it's called from.
+# Flags:
+#   * `-r, --release`: Build a release build instead of a debug build, in `./build-release` relative to the project root directory.
+IsRelease=false
+if [ "$1" = "-r" ] || [ "$1" = "--release" ]; then
+    IsRelease=true
+fi
+
+ScriptDir="$(cd "$(dirname "${0}")" && pwd)"
+ProjectRootDir="$(dirname "${ScriptDir}")" 
+BuildDir="${ProjectRootDir}/build"
+if [ "$IsRelease" = true ]; then
+    BuildDir="${BuildDir}-release"
+fi
+
+# Common part of cmake configure command
+# See readme for details on the choice to specify clang compiler.
+CMakeConfig="CC=clang CXX=clang++ cmake -B \"${BuildDir}\" -S \"${ProjectRootDir}\""
+
+# Configure.
+if [ "$IsRelease" = true ]; then
+    eval "${CMakeConfig} -D CMAKE_BUILD_TYPE=Release"
+else
+    eval "${CMakeConfig}"
+fi
+
+# Build.
+CC=clang CXX=clang++ cmake --build "${BuildDir}" --target FlowGrid -- -j 8

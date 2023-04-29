@@ -54,7 +54,7 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
         RenderFrame(rect_pos, rect_pos + size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
         draw_list->AddRectFilled(
             rect_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
-            rect_pos + size * ImVec2{is_h ? fraction : 1, 1},
+            rect_pos + size *ImVec2{is_h ? fraction : 1, 1},
             GetColorU32(ImGuiCol_PlotHistogram),
             style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
         );
@@ -312,13 +312,15 @@ void DrawUiItem(const FaustParams::Item &item, const char *label, const float su
         SetCursorPos(old_cursor + ImVec2{max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)), max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))});
 
         if (type == ItemType_Button) {
-            *item.zone = Real(Button(label));
+            Button(label);
+            if (IsItemActivated() && *item.zone == 0.0) *item.zone = 1.0;
+            else if (IsItemDeactivated() && *item.zone == 1.0) *item.zone = 0.0;
         } else if (type == ItemType_CheckButton) {
             auto value = bool(*item.zone);
             if (Checkbox(label, &value)) *item.zone = Real(value);
         } else if (type == ItemType_NumEntry) {
-            auto value = float(*item.zone);
-            if (InputFloat(label, &value, float(item.step))) *item.zone = Real(value);
+            auto value = int(*item.zone);
+            if (InputInt(label, &value, int(item.step))) *item.zone = std::clamp(Real(value), item.min, item.max);
         } else if (type == ItemType_HSlider || type == ItemType_VSlider || type == ItemType_HBargraph || type == ItemType_VBargraph) {
             auto value = float(*item.zone);
             ValueBarFlags flags = ValueBarFlags_None;

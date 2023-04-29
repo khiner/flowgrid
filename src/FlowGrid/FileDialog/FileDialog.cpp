@@ -3,6 +3,7 @@
 #include "FileDialogDemo.h"
 #include "ImGuiFileDialog.h"
 
+#include "../Helper/File.h"
 #include "../StateJson.h"
 
 using namespace ImGui;

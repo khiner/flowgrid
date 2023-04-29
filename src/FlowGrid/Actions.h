@@ -2,33 +2,12 @@
 
 #include <unordered_map>
 
-#include "Helper/File.h"
-#include "Helper/String.h"
 #include "Helper/Time.h"
 #include "Primitive.h"
 
-using std::unordered_map;
+using std::vector;
 
-/**
-An ID is used to uniquely identify something.
-
-## Notable uses
-
-### `StateMember`
-
-A `StateMember` has an `ID id` instance member.
-`StateMember::Id` reflects its `StatePath Path`, using `ImHashStr` to calculate its own `Id` using its parent's `Id` as a seed.
-In the same way, each segment in `StateMember::Path` is calculated by appending its own `PathSegment` to its parent's `Path`.
-This exactly reflects the way ImGui calculates its window/tab/dockspace/etc. ID calculation.
-A drawable `UIStateMember` uses its `ID` (which is also an `ImGuiID`) as the ID for the top-level `ImGui` widget rendered during its `Draw` call.
-This results in the nice property that we can find any `UIStateMember` instance by calling `StateMember::WithId.contains(ImGui::GetHoveredID())` any time during a `UIStateMember::Draw`.
- */
-using ID = unsigned int;
-using StatePath = fs::path;
-
-static const StatePath RootPath{"/"};
-
-using StoreEntry = pair<StatePath, Primitive>;
+using StoreEntry = std::pair<StatePath, Primitive>;
 using StoreEntries = vector<StoreEntry>;
 
 struct StatePathHash {
@@ -47,7 +26,7 @@ struct PatchOp {
     std::optional<Primitive> Old{}; // Present for remove/replace
 };
 
-using PatchOps = unordered_map<StatePath, PatchOp, StatePathHash>;
+using PatchOps = std::unordered_map<StatePath, PatchOp, StatePathHash>;
 
 static constexpr auto AddOp = PatchOp::Type::Add;
 static constexpr auto RemoveOp = PatchOp::Type::Remove;
@@ -220,7 +199,7 @@ using EmptyAction = std::variant<
 
 namespace action {
 
-using ActionMoment = pair<Action, TimePoint>;
+using ActionMoment = std::pair<Action, TimePoint>;
 using StateActionMoment = std::pair<StateAction, TimePoint>;
 using Gesture = vector<StateActionMoment>;
 using Gestures = vector<Gesture>;
@@ -242,10 +221,8 @@ template<ID I = 0> Action Create(ID index) {
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
 template<typename T> constexpr ActionID id = mp_find<Action, T>::value;
 
-#define ActionName(action_var_name) PascalToSentenceCase(#action_var_name)
-
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-const unordered_map<ActionID, string> ShortcutForId = {
+const std::unordered_map<ActionID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},
     {id<Redo>, "shift+cmd+z"},
     {id<OpenEmptyProject>, "cmd+n"},

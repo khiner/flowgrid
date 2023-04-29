@@ -1,5 +1,6 @@
 #include <sstream>
 #include <stack>
+#include <unordered_map>
 
 #include <range/v3/algorithm/contains.hpp>
 #include <range/v3/view/take.hpp>
@@ -9,9 +10,12 @@
 #include "faust/dsp/libfaust-signal.h"
 
 #include "../../App.h"
+#include "../../Helper/File.h"
+#include "../../Helper/String.h"
 #include "../../Helper/basen.h"
 
 using namespace ImGui;
+using std::unordered_map;
 
 enum DeviceType {
     DeviceType_ImGui,
@@ -79,7 +83,7 @@ static inline string GetFontPath() {
     return format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
 }
 static inline string GetFontBase64() {
-    static map<string, string> base64_for_font_name; // avoid recomputing
+    static unordered_map<string, string> base64_for_font_name; // avoid recomputing
     string font_name = GetFontName();
     if (!base64_for_font_name.contains(font_name)) {
         const string ttf_contents = FileIO::read(GetFontPath());
@@ -117,7 +121,7 @@ struct SVGDevice : Device {
     DeviceType Type() override { return DeviceType_SVG; }
 
     static string XmlSanitize(string copy) {
-        static map<char, string> Replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
+        static unordered_map<char, string> Replacements{{'<', "&lt;"}, {'>', "&gt;"}, {'\'', "&apos;"}, {'"', "&quot;"}, {'&', "&amp;"}};
         for (const auto &[ch, replacement] : Replacements) copy = StringHelper::Replace(copy, ch, replacement);
         return copy;
     }
@@ -328,9 +332,11 @@ string GetTreeInfo(Tree tree) {
 // Hex address (without the '0x' prefix)
 static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
+using StringHelper::Capitalize;
+
 // An abstract block graph node.
 struct Node {
-    static map<ID, const Node *> WithId;
+    inline static unordered_map<ID, const Node *> WithId;
 
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
@@ -505,7 +511,6 @@ protected:
     }
 };
 
-map<ID, const Node *> Node::WithId{};
 std::stack<Node *> FocusedNodeStack;
 
 static inline float GetScale() {
@@ -739,7 +744,7 @@ struct BinaryNode : Node {
                 return;
             }
             // todo should be able to simplify now and not create this map
-            map<ImGuiDir, vector<Count>> ChannelsForDirection;
+            unordered_map<ImGuiDir, vector<Count>> ChannelsForDirection;
             for (Count i = 0; i < A->IoCount(IO_Out); i++) {
                 const auto dy = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
                 ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
@@ -783,7 +788,7 @@ struct BinaryNode : Node {
             // todo simplify this by only tracking two counts: max same dir count in either direction, and current same dir count ...
             ImGuiDir prev_dir = ImGuiDir_None;
             Count same_dir_count = 0;
-            map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
+            unordered_map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
             for (Count i = 0; i < A->IoCount(IO_Out); i++) {
                 const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
                 const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
@@ -1001,7 +1006,7 @@ static bool isBoxInts(Box box, vector<int> &v) {
 }
 
 // Track trees only made of cut, wires, or slots ("pure routing" trees).
-static map<Tree, bool> IsTreePureRouting{};
+static unordered_map<Tree, bool> IsTreePureRouting{};
 static bool IsPureRouting(Tree t) {
     if (IsTreePureRouting.contains(t)) return IsTreePureRouting[t];
 

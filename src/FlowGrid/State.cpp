@@ -1,12 +1,16 @@
 #include "StateJson.h"
 
 #include <fstream>
+#include <iostream>
+#include <range/v3/view/iota.hpp>
 
 #include "imgui_memory_editor.h"
 #include "implot_internal.h"
 
 #include "FileDialog/FileDialogDemo.h"
 #include "UI/Faust/FaustGraph.h"
+
+#include "Helper/String.h"
 
 using namespace ImGui;
 using namespace fg;
@@ -234,6 +238,10 @@ void String::Render(const vector<string> &options) const {
 
 } // namespace Field
 
+template<IsPrimitive T> StatePath Vector<T>::PathAt(const Count i) const { return Path / to_string(i); }
+template<IsPrimitive T> Count Vector<T>::Size() const { return Value.size(); }
+template<IsPrimitive T> T Vector<T>::operator[](const Count i) const { return Value[i]; }
+
 template<IsPrimitive T>
 void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
     Count i = 0;
@@ -264,6 +272,11 @@ void Vector<T>::Update() {
     }
     Value.resize(i);
 }
+
+template<IsPrimitive T> StatePath Vector2D<T>::PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
+template<IsPrimitive T> Count Vector2D<T>::Size() const { return Value.size(); };
+template<IsPrimitive T> Count Vector2D<T>::Size(Count i) const { return Value[i].size(); };
+template<IsPrimitive T> T Vector2D<T>::operator()(Count i, Count j) const { return Value[i][j]; }
 
 template<IsPrimitive T>
 void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {
@@ -302,6 +315,11 @@ void Vector2D<T>::Update() {
     }
     Value.resize(i);
 }
+template<IsPrimitive T>
+StatePath Matrix<T>::PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
+template<IsPrimitive T> Count Matrix<T>::Rows() const { return RowCount; }
+template<IsPrimitive T> Count Matrix<T>::Cols() const { return ColCount; }
+template<IsPrimitive T> T Matrix<T>::operator()(const Count row, const Count col) const { return Data[row * ColCount + col]; }
 
 template<IsPrimitive T>
 void Matrix<T>::Update() {
@@ -425,6 +443,10 @@ void TabsWindow::Render() const {
         EndTabBar();
     }
 }
+
+Menu::Menu(string_view label, const vector<const Item> items) : Label(label), Items(std::move(items)) {}
+Menu::Menu(const vector<const Item> items) : Menu("", std::move(items)) {}
+Menu::Menu(const vector<const Item> items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
 void Menu::Render() const {
     if (Items.empty()) return;
@@ -625,7 +647,7 @@ void WindowSettings::Apply(ImGuiContext *) const {
         const auto id = Id[i];
         auto *window = FindWindowByID(id);
         if (!window) {
-            cout << "Unable to apply settings for window with ID " << format("{:#08X}", id) << ": Window not found.\n";
+            std::cerr << "Unable to apply settings for window with ID " << format("{:#08X}", id) << ": Window not found.\n";
             continue;
         }
 
@@ -717,7 +739,7 @@ void TableSettings::Apply(ImGuiContext *) const {
         const auto id = ID[i];
         const auto table = TableFindByID(id);
         if (!table) {
-            cout << "Unable to apply settings for table with ID " << format("{:#08X}", id) << ": Table not found.\n";
+            std::cerr << "Unable to apply settings for table with ID " << format("{:#08X}", id) << ": Table not found.\n";
             continue;
         }
 
@@ -879,7 +901,7 @@ void State::Apply(const UIContext::Flags flags) const {
 void StateViewer::StateJsonTree(string_view key, const json &value, const StatePath &path) const {
     const string leaf_name = path == RootPath ? path.string() : path.filename().string();
     const auto &parent_path = path == RootPath ? path : path.parent_path();
-    const bool is_array_item = IsInteger(leaf_name);
+    const bool is_array_item = StringHelper::IsInteger(leaf_name);
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
     const bool is_imgui_color = parent_path == s.Style.ImGui.Colors.Path;
     const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
@@ -1195,6 +1217,23 @@ void Style::FlowGridStyle::Graph::LayoutFaust(TransientStore &store) const {
         store
     );
 }
+
+Colors::Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
+    : UIStateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
+    for (Count i = 0; i < size; i++) {
+        new UInt(this, to_string(i), get_color_name(i)); // Adds to `Children` as a side-effect.
+    }
+}
+Colors::~Colors() {
+    const Count size = Size();
+    for (int i = size - 1; i >= 0; i--) {
+        delete Children[i];
+    }
+}
+
+U32 Colors::ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
+ImVec4 Colors::ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
+Count Colors::Size() const { return Children.size(); }
 
 const UInt *Colors::At(Count i) const { return dynamic_cast<const UInt *>(Children[i]); }
 U32 Colors::operator[](Count i) const { return *At(i); };

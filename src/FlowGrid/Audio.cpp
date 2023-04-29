@@ -4,6 +4,7 @@
 
 #include "App.h"
 #include "Helper/File.h"
+#include "Helper/String.h"
 #include "UI/Faust/FaustGraph.h"
 #include "UI/Faust/FaustParams.h"
 
@@ -349,7 +350,7 @@ void Audio::Device::Render() const {
     Volume.Draw();
     SampleRate.Render(PrioritizedSampleRates);
     for (const IO io : IO_All) {
-        TextUnformatted(Capitalize(to_string(io)).c_str());
+        TextUnformatted(StringHelper::Capitalize(to_string(io)).c_str());
         (io == IO_In ? InDeviceName : OutDeviceName).Render(DeviceNames[io]);
         // (io == IO_In ? InFormat : OutFormat).Render(PrioritizedFormats); // See above - always using f32 format.
     }
@@ -522,7 +523,6 @@ Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_v
     ::Set(On, on, c.InitStore);
 }
 
-unordered_map<ID, void *> Audio::Graph::Node::DataFor;
 void *Audio::Graph::Node::Get() const { return DataFor.contains(Id) ? DataFor.at(Id) : nullptr; }
 void Audio::Graph::Node::Set(ma_node *data) const {
     if (data == nullptr) DataFor.erase(Id);

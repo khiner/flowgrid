@@ -8,11 +8,64 @@
 
 #include "UI/Faust/FaustGraph.h"
 
-unordered_map<ID, StateMember *> StateMember::WithId{};
-unordered_map<StatePath, Base *, StatePathHash> Base::WithPath{};
+#include "Helper/File.h"
+#include "Helper/String.h"
 
 vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
+
+Base::Base(StateMember *parent, string_view path_segment, string_view name_help) : UIStateMember(parent, path_segment, name_help) {
+    WithPath[Path] = this;
+}
+Base::~Base() {
+    WithPath.erase(Path);
+}
+
+UInt::UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value, U32 min, U32 max)
+    : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
+UInt::UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value)
+    : TypedBase(parent, path_segment, name_help, value), Min(0), Max(100), GetName(std::move(get_name)) {}
+UInt::operator bool() const { return Value; }
+UInt::operator int() const { return Value; }
+UInt::operator ImColor() const { return Value; }
+string UInt::ValueName(const U32 value) const { return GetName ? (*GetName)(value) : to_string(value); }
+
+Int::Int(StateMember *parent, string_view path_segment, string_view name_help, int value, int min, int max)
+    : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
+Int::operator bool() const { return Value; }
+Int::operator short() const { return Value; }
+Int::operator char() const { return Value; }
+Int::operator S8() const { return Value; }
+
+Float::Float(StateMember *parent, string_view path_segment, string_view name_help, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
+    : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
+
+// todo instead of overriding `Update` to handle ints, try ensuring floats are written to the store.
+void Float::Update() {
+    const Primitive PrimitiveValue = Get();
+    if (std::holds_alternative<int>(PrimitiveValue)) Value = float(std::get<int>(PrimitiveValue));
+    else Value = std::get<float>(PrimitiveValue);
+}
+
+String::String(StateMember *parent, string_view path_segment, string_view name_help, string_view value)
+    : TypedBase(parent, path_segment, name_help, string(value)) {}
+String::operator bool() const { return !Value.empty(); }
+String::operator string_view() const { return Value; }
+
+Enum::Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value)
+    : TypedBase(parent, path_segment, name_help, value), Names(std::move(names)) {}
+Enum::Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value)
+    : TypedBase(parent, path_segment, name_help, value), Names({}), GetName(std::move(get_name)) {}
+string Enum::OptionName(const int option) const { return GetName ? (*GetName)(option) : Names[option]; }
+
+Flags::Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value)
+    : TypedBase(parent, path_segment, name_help, value), Items(std::move(items)) {}
+
+Flags::Item::Item(const char *name_and_help) {
+    const auto &[name, help] = StringHelper::ParseHelpText(name_and_help);
+    Name = name;
+    Help = help;
+}
 
 // Transient modifiers
 void Set(const Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
@@ -50,24 +103,6 @@ void Set(const StatePath &path, const vector<Primitive> &data, const Count row_c
         while (store.count(path / to_string(row) / to_string(col))) store.erase(path / to_string(row) / to_string(col++));
         row++;
     }
-}
-
-StateMember::StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help)
-    : Parent(parent),
-      PathSegment(path_segment),
-      Path(Parent && !PathSegment.empty() ? Parent->Path / PathSegment : (Parent ? Parent->Path : (!PathSegment.empty() ? StatePath(PathSegment) : RootPath))),
-      Name(name_help.first.empty() ? PathSegment.empty() ? "" : PascalToSentenceCase(PathSegment) : name_help.first),
-      Help(name_help.second),
-      ImGuiLabel(Name.empty() ? "" : format("{}##{}", Name, PathSegment)),
-      Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0)) {
-    if (parent) parent->Children.emplace_back(this);
-    WithId[Id] = this;
-}
-
-StateMember::StateMember(StateMember *parent, string_view path_segment, string_view name_help) : StateMember(parent, path_segment, ParseHelpText(name_help)) {}
-
-StateMember::~StateMember() {
-    WithId.erase(Id);
 }
 
 Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
@@ -111,6 +146,8 @@ string to_string(PatchOp::Type patch_op_type) {
 string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 namespace action {
+
+#define ActionName(action_var_name) StringHelper::PascalToSentenceCase(#action_var_name)
 
 string GetName(const ProjectAction &action) {
     return Match(
@@ -339,7 +376,7 @@ Patch Context::SetStore(const Store &store) {
     History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;
 
-    static set<Base *> modified_fields;
+    static std::set<Base *> modified_fields;
     modified_fields.clear();
     for (const auto &path : History.LatestUpdatedPaths) {
         // Find all updated fields, including container fields.
@@ -528,7 +565,7 @@ std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) c
 }
 
 StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const {
-    const set<StatePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<set>;
+    const std::set<StatePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<std::set>;
     if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();

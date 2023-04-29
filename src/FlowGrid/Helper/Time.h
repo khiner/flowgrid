@@ -9,4 +9,4 @@ using Clock = std::chrono::system_clock; // Main system clock
 using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
 
-static inline string FormatTimeSince(const TimePoint &start) { return fmt::format("{}", Clock::now() - start); }
+static inline std::string FormatTimeSince(const TimePoint &start) { return fmt::format("{}", Clock::now() - start); }

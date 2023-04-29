@@ -127,7 +127,7 @@ void RenderFrame(RenderContext &rc) {
 
 using KeyShortcut = pair<ImGuiModFlags, ImGuiKey>;
 
-const map<string, ImGuiModFlags> ModKeys{
+const std::map<string, ImGuiModFlags> ModKeys{
     {"shift", ImGuiModFlags_Shift},
     {"ctrl", ImGuiModFlags_Ctrl},
     {"alt", ImGuiModFlags_Alt},
@@ -163,7 +163,7 @@ const auto KeyMap = action::ShortcutForId | transform([](const auto &entry) {
                         const auto &[action_id, shortcut] = entry;
                         return pair(*ParseShortcut(shortcut), action_id);
                     }) |
-    to<map>;
+    to<std::map>;
 
 bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
     const auto &[mod, key] = key_shortcut;

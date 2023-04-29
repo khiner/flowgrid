@@ -161,7 +161,7 @@ For C++20 features only partially/experimentally supported in Clang 16:
 ## Development
 
 I try and keep all dependencies up to date.
-LLVM version 15.x.x is required to build.
+LLVM version 15+ is required to build.
 
 ### Formatting
 

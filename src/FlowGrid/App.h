@@ -1,49 +1,40 @@
 #pragma once
 
+#include <list>
+#include <range/v3/core.hpp>
+#include <range/v3/view/filter.hpp>
+#include <range/v3/view/transform.hpp>
+
+#include "imgui_internal.h"
+#include "immer/map.hpp"
+#include "immer/map_transient.hpp"
+#include "nlohmann/json_fwd.hpp"
+
+#include "Actions.h"
+#include "StateMember.h"
+
 /**
  * The main `State` instance fully describes the application at any point in time.
  *
  * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
  * which also provides an immutable `Update(const Action &, TransientState &) const` method, and a `Draw() const` method.
  */
-#include <iostream>
-#include <list>
-#include <map>
-#include <queue>
-#include <set>
-
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
-#include "nlohmann/json_fwd.hpp"
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/iota.hpp>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
-
-#include "Actions.h"
-#include "Helper/Sample.h"
-#include "UI/Style.h"
-#include "UI/UI.h"
-
-#include "imgui_internal.h"
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
-using namespace StringHelper;
+namespace views = ranges::views;
+
+using ranges::to;
 
 using fmt::format, fmt::to_string;
 using views::transform;
 using namespace nlohmann;
-using std::cout, std::cerr;
-using std::map, std::set;
 using std::min, std::max;
 using std::nullopt, std::unique_ptr, std::make_unique;
+using std::pair;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
-
-extern const Store &AppStore; // Read-only global for full, read-only canonical application state.
 
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
 
@@ -53,43 +44,8 @@ constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >>
 
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
-// E.g. '/foo/bar/baz' => 'baz'
-inline string PathVariableName(const StatePath &path) { return path.filename(); }
-inline string PathLabel(const StatePath &path) { return PascalToSentenceCase(PathVariableName(path)); }
-
-// Split the string on '?'.
-// If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
-// todo don't split on escaped '\?'
-static pair<string_view, string_view> ParseHelpText(string_view str) {
-    const auto help_split = str.find_first_of('?');
-    const bool found = help_split != string::npos;
-    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
-}
-
 struct Preferences {
     std::list<fs::path> RecentlyOpenedPaths{};
-};
-
-struct StateMember {
-    static unordered_map<ID, StateMember *> WithId; // Access any state member by its ID.
-
-    StateMember(StateMember *parent = nullptr, string_view path_segment = "", string_view name_help = "");
-    StateMember(StateMember *parent, string_view path_segment, pair<string_view, string_view> name_help);
-
-    virtual ~StateMember();
-    const StateMember *Child(Count i) const { return Children[i]; }
-    inline Count ChildCount() const { return Children.size(); }
-
-    const StateMember *Parent;
-    vector<StateMember *> Children{};
-    const string PathSegment;
-    const StatePath Path;
-    const string Name, Help, ImGuiLabel;
-    const ID Id;
-
-protected:
-    // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
-    void HelpMarker(bool after = true) const;
 };
 
 /**
@@ -168,9 +124,9 @@ struct Menu : Drawable {
         const std::reference_wrapper<MenuItemDrawable>,
         const EmptyAction>;
 
-    Menu(string_view label, const vector<const Item> items) : Label(label), Items(std::move(items)) {}
-    explicit Menu(const vector<const Item> items) : Menu("", std::move(items)) {}
-    Menu(const vector<const Item> items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
+    Menu(string_view label, const vector<const Item> items);
+    explicit Menu(const vector<const Item> items);
+    Menu(const vector<const Item> items, const bool is_main);
 
     const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
     const vector<const Item> Items;
@@ -225,14 +181,10 @@ struct UIStateMember : StateMember, Drawable {
 namespace Field {
 
 struct Base : UIStateMember {
-    static unordered_map<StatePath, Base *, StatePathHash> WithPath; // Find any field by its path.
+    inline static unordered_map<StatePath, Base *, StatePathHash> WithPath; // Find any field by its path.
 
-    Base(StateMember *parent, string_view path_segment, string_view name_help) : UIStateMember(parent, path_segment, name_help) {
-        WithPath[Path] = this;
-    }
-    ~Base() {
-        WithPath.erase(Path);
-    }
+    Base(StateMember *parent, string_view path_segment, string_view name_help);
+    ~Base();
 
     virtual void Update() = 0;
 
@@ -274,14 +226,12 @@ private:
 };
 
 struct UInt : TypedBase<U32> {
-    UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100)
-        : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
-    UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0)
-        : TypedBase(parent, path_segment, name_help, value), Min(0), Max(100), GetName(std::move(get_name)) {}
+    UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100);
+    UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0);
 
-    operator bool() const { return Value; }
-    operator int() const { return Value; }
-    operator ImColor() const { return Value; }
+    operator bool() const;
+    operator int() const;
+    operator ImColor() const;
 
     void Render(const vector<U32> &options) const;
     void ColorEdit4(ImGuiColorEditFlags = ImGuiColorEditFlags_None, bool allow_auto = false) const;
@@ -290,19 +240,18 @@ struct UInt : TypedBase<U32> {
 
 private:
     void Render() const override;
-    string ValueName(const U32 value) const { return GetName ? (*GetName)(value) : to_string(value); }
+    string ValueName(const U32 value) const;
 
     const std::optional<std::function<const string(U32)>> GetName{};
 };
 
 struct Int : TypedBase<int> {
-    Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100)
-        : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
+    Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100);
 
-    operator bool() const { return Value; }
-    operator short() const { return Value; }
-    operator char() const { return Value; }
-    operator S8() const { return Value; }
+    operator bool() const;
+    operator short() const;
+    operator char() const;
+    operator S8() const;
 
     void Render(const vector<int> &options) const;
 
@@ -314,15 +263,13 @@ private:
 
 struct Float : TypedBase<float> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(StateMember *parent, string_view path_segment, string_view name_help, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0)
-        : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
+    Float(
+        StateMember *parent, string_view path_segment, string_view name_help,
+        float value = 0, float min = 0, float max = 1, const char *fmt = nullptr,
+        ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0
+    );
 
-    // todo instead of overriding `Update` to handle ints, try ensuring floats are written to the store.
-    void Update() override {
-        const Primitive PrimitiveValue = Get();
-        if (std::holds_alternative<int>(PrimitiveValue)) Value = float(std::get<int>(PrimitiveValue));
-        else Value = std::get<float>(PrimitiveValue);
-    }
+    void Update() override;
 
     const float Min, Max, DragSpeed; // If `DragSpeed` is non-zero, this is rendered as an `ImGui::DragFloat`.
     const char *Format;
@@ -333,11 +280,10 @@ private:
 };
 
 struct String : TypedBase<string> {
-    String(StateMember *parent, string_view path_segment, string_view name_help, string_view value = "")
-        : TypedBase(parent, path_segment, name_help, string(value)) {}
+    String(StateMember *parent, string_view path_segment, string_view name_help, string_view value = "");
 
-    operator bool() const { return !Value.empty(); }
-    operator string_view() const { return Value; }
+    operator bool() const;
+    operator string_view() const;
 
     void Render(const vector<string> &options) const;
 
@@ -346,10 +292,8 @@ private:
 };
 
 struct Enum : TypedBase<int>, MenuItemDrawable {
-    Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0)
-        : TypedBase(parent, path_segment, name_help, value), Names(std::move(names)) {}
-    Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0)
-        : TypedBase(parent, path_segment, name_help, value), Names({}), GetName(std::move(get_name)) {}
+    Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0);
+    Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0);
 
     void Render(const vector<int> &options) const;
     void MenuItem() const override;
@@ -358,7 +302,7 @@ struct Enum : TypedBase<int>, MenuItemDrawable {
 
 private:
     void Render() const override;
-    string OptionName(const int option) const { return GetName ? (*GetName)(option) : Names[option]; }
+    string OptionName(const int option) const;
 
     const std::optional<std::function<const string(int)>> GetName{};
 };
@@ -366,19 +310,14 @@ private:
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
 struct Flags : TypedBase<int>, MenuItemDrawable {
     struct Item {
-        Item(const char *name_and_help) {
-            const auto &[name, help] = ParseHelpText(name_and_help);
-            Name = name;
-            Help = help;
-        }
+        Item(const char *name_and_help);
 
         string Name, Help;
     };
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value = 0)
-        : TypedBase(parent, path_segment, name_help, value), Items(std::move(items)) {}
+    Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value = 0);
 
     void MenuItem() const override;
 
@@ -398,9 +337,9 @@ template<IsPrimitive T>
 struct Vector : Base {
     using Base::Base;
 
-    inline StatePath PathAt(const Count i) const { return Path / to_string(i); }
-    inline Count Size() const { return Value.size(); }
-    inline T operator[](const Count i) const { return Value[i]; }
+    StatePath PathAt(const Count i) const;
+    Count Size() const;
+    T operator[](const Count i) const;
     void Set(const vector<T> &, TransientStore &) const;
     void Set(const vector<pair<int, T>> &, TransientStore &) const;
 
@@ -415,11 +354,11 @@ template<IsPrimitive T>
 struct Vector2D : Base {
     using Base::Base;
 
-    inline StatePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
-    inline Count Size() const { return Value.size(); }; // Number of outer vectors
-    inline Count Size(Count i) const { return Value[i].size(); }; // Size of inner vector at index `i`
+    StatePath PathAt(const Count i, const Count j) const;
+    Count Size() const; // Number of outer vectors
+    Count Size(Count i) const; // Size of inner vector at index `i`
 
-    inline T operator()(Count i, Count j) const { return Value[i][j]; }
+    T operator()(Count i, Count j) const;
     void Set(const vector<vector<T>> &, TransientStore &) const;
 
     void Update() override;
@@ -432,10 +371,10 @@ template<IsPrimitive T>
 struct Matrix : Base {
     using Base::Base;
 
-    inline StatePath PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
-    inline Count Rows() const { return RowCount; }
-    inline Count Cols() const { return ColCount; }
-    inline T operator()(const Count row, const Count col) const { return Data[row * ColCount + col]; }
+    StatePath PathAt(const Count row, const Count col) const;
+    Count Rows() const;
+    Count Cols() const;
+    T operator()(const Count row, const Count col) const;
 
     void Update() override;
 
@@ -450,23 +389,13 @@ struct Colors : UIStateMember {
     // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
     static constexpr U32 AutoColor = 0X00010101;
 
-    Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false)
-        : UIStateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
-        for (Count i = 0; i < size; i++) {
-            new UInt(this, to_string(i), get_color_name(i)); // Adds to `Children` as a side-effect.
-        }
-    }
-    ~Colors() {
-        const Count size = Size();
-        for (int i = size - 1; i >= 0; i--) {
-            delete Children[i];
-        }
-    }
+    Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
+    ~Colors();
 
-    static U32 ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
-    static ImVec4 ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
+    static U32 ConvertFloat4ToU32(const ImVec4 &value);
+    static ImVec4 ConvertU32ToFloat4(const U32 value);
 
-    Count Size() const { return Children.size(); }
+    Count Size() const;
     U32 operator[](Count) const;
 
     void Set(const vector<ImVec4> &, TransientStore &) const;
@@ -511,7 +440,7 @@ enum ParamsWidthSizingPolicy_ {
 };
 using ParamsWidthSizingPolicy = int;
 
-static const vector<Flags::Item> TableFlagItems{
+inline static const vector<Flags::Item> TableFlagItems{
     "Resizable?Enable resizing columns",
     "Reorderable?Enable reordering columns in header row",
     "Hideable?Enable hiding/disabling columns in context menu",
@@ -826,7 +755,7 @@ struct Audio : TabsWindow {
             virtual bool NeedsRestart() const { return false; }; // Return `true` if node needs re-initialization due to changed state.
 
         private:
-            static unordered_map<ID, void *> DataFor; // MA node for owning Node's ID.
+            inline static unordered_map<ID, void *> DataFor; // MA node for owning Node's ID.
         };
 
         struct InputNode : Node {
@@ -980,6 +909,9 @@ struct Metrics : TabsWindow {
     Prop(ImGuiMetrics, ImGui);
     Prop(ImPlotMetrics, ImPlot);
 };
+
+#include "UI/Style.h"
+#include "UI/UI.h"
 
 // Namespace needed because Audio imports `CoreAudio.h`, which imports `CoreAudioTypes->MacTypes`, which has a `Style` type without a namespace.
 namespace FlowGrid {
@@ -1427,7 +1359,7 @@ UIMember(
     WindowMember_(
         UIProcess,
         false,
-        Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Lowercase(Name)), true);
+        Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Name), true);
     );
 
     Prop(ImGuiSettings, ImGuiSettings);
@@ -1454,19 +1386,24 @@ UIMember(
 // [SECTION] Main application `Context`
 //-----------------------------------------------------------------------------
 
-static const unordered_map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
-static const auto ProjectFormatForExtension = ExtensionForProjectFormat | transform([](const auto &p) { return pair(p.second, p.first); }) | to<map>();
-static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<set>;
-static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
-static const string PreferencesFileExtension = ".flp";
-static const string FaustDspFileExtension = ".dsp";
+#include <map>
+#include <range/v3/view/join.hpp>
+#include <range/v3/view/map.hpp>
+#include <set>
 
-static const fs::path InternalPath = ".flowgrid";
-static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
+inline static const unordered_map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
+inline static const auto ProjectFormatForExtension = ExtensionForProjectFormat | transform([](const auto &p) { return pair(p.second, p.first); }) | to<std::map>();
+inline static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
+inline static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
+inline static const string PreferencesFileExtension = ".flp";
+inline static const string FaustDspFileExtension = ".dsp";
+
+inline static const fs::path InternalPath = ".flowgrid";
+inline static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
 // The default project is a user-created project that loads on app start, instead of the empty project.
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(ActionFormat));
-static const fs::path PreferencesPath = InternalPath / ("Preferences" + PreferencesFileExtension);
+inline static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(ActionFormat));
+inline static const fs::path PreferencesPath = InternalPath / ("Preferences" + PreferencesFileExtension);
 
 enum Direction {
     Forward,
@@ -1511,6 +1448,8 @@ struct StoreHistory {
 private:
     unordered_map<StatePath, vector<TimePoint>, StatePathHash> GestureUpdateTimesForPath{};
 };
+
+extern const Store &AppStore; // Read-only global for full, read-only canonical application state.
 
 struct Context {
     Context();

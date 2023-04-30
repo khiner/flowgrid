@@ -28,14 +28,10 @@ namespace views = ranges::views;
 
 using namespace nlohmann;
 using fmt::format, fmt::to_string;
-using ranges::to;
-using std::min, std::max;
-using std::pair;
-using std::unique_ptr, std::make_unique;
-using views::transform;
+using ranges::to, views::transform;
+using std::pair, std::unique_ptr, std::make_unique;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
-
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
 
 // todo move to ImVec2ih, or make a new Vec2S16 type

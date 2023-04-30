@@ -9,6 +9,7 @@
 using namespace ImGui;
 using ItemType = FaustParams::ItemType;
 using enum FaustParams::ItemType;
+using std::min, std::max;
 
 FaustParams *interface;
 

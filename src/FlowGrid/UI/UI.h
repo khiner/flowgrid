@@ -57,7 +57,6 @@ enum InteractionFlags_ {
 using InteractionFlags = int;
 
 namespace FlowGrid {
-using namespace nlohmann;
 void HelpMarker(const char *help); // Like the one defined in `imgui_demo.cpp`
 
 InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id); // Basically `ImGui::InvisibleButton`, but supporting hover/held testing.

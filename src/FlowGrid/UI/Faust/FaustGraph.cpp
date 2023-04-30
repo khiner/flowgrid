@@ -16,6 +16,7 @@
 #include "../../Helper/basen.h"
 
 using namespace ImGui;
+using std::min, std::max;
 using std::unordered_map;
 
 enum DeviceType {

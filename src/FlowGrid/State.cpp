@@ -964,7 +964,7 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
     if (latest_update_time) {
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
         ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
-        flash_color.Value.w = max(0.f, 1 - flash_elapsed_ratio);
+        flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
 
@@ -1435,7 +1435,7 @@ void Style::ImGuiStyle::Render() const {
 
                     Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
 
-                    const float canvas_width = max(min_widget_width, rad * 2);
+                    const float canvas_width = std::max(min_widget_width, rad * 2);
                     draw_list->AddCircle(GetCursorScreenPos() + ImVec2{floorf(canvas_width * 0.5f), floorf(RAD_MAX)}, rad, GetColorU32(ImGuiCol_Text));
                     Dummy({canvas_width, RAD_MAX * 2});
 

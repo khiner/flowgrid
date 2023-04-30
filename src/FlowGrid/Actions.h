@@ -7,13 +7,6 @@
 
 using std::vector;
 
-using StoreEntry = std::pair<StatePath, Primitive>;
-using StoreEntries = vector<StoreEntry>;
-
-struct StatePathHash {
-    auto operator()(const StatePath &p) const noexcept { return fs::hash_value(p); }
-};
-
 struct PatchOp {
     enum Type {
         Add,

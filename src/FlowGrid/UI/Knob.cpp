@@ -22,7 +22,7 @@ void draw_arc1(ImVec2 center, float radius, float start_angle, float end_angle, 
     const auto &arc1 = center + a + ImVec2{-k2 * a.y, k2 * a.x};
     const auto &arc2 = center + b + ImVec2{k2 * b.y, -k2 * b.x};
 
-    GetWindowDrawList()->AddBezierCurve(start, arc1, arc2, end, color, thickness, num_segments);
+    GetWindowDrawList()->AddBezierCubic(start, arc1, arc2, end, color, thickness, num_segments);
 }
 
 void draw_arc(ImVec2 center, float radius, float start_angle, float end_angle, float thickness, ImColor color, int num_segments, int bezier_count) {

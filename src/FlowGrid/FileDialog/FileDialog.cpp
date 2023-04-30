@@ -10,7 +10,7 @@
 
 using namespace ImGui;
 
-static auto *Dialog = ImGuiFileDialog::Instance();
+static IGFD::FileDialog *Dialog;
 
 // Same as `ImGui::CheckboxFlags`, but with `help` arg.
 bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *help) {
@@ -21,6 +21,7 @@ bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *h
 }
 
 void IGFD::InitializeDemo() {
+    Dialog = ImGuiFileDialog::Instance();
 #ifdef USE_THUMBNAILS
     Dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void {
         if (thumbnail_info && thumbnail_info->isReadyToUpload && thumbnail_info->textureFileDatas) {

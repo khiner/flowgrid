@@ -1,7 +1,7 @@
 #include "SDL.h"
 #include "SDL_opengl.h"
 #include "imgui_impl_opengl3.h" // TODO vulkan
-#include "imgui_impl_sdl.h"
+#include "imgui_impl_sdl2.h"
 #include "nlohmann/json.hpp"
 #include "zep/stringutils.h"
 #include <Tracy.hpp>

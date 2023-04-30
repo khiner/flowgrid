@@ -1,5 +1,5 @@
 #include "FaustEditor.h"
-#include "../../AppContext.h"
+#include "../../App.h"
 
 #include "zep/editor.h"
 #include "zep/mode_repl.h"

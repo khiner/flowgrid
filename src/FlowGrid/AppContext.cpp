@@ -7,6 +7,7 @@
 #include "blockingconcurrentqueue.h"
 #include <range/v3/view/concat.hpp>
 
+#include "Config.h"
 #include "Helper/File.h"
 #include "StateJson.h"
 #include "UI/Faust/FaustGraph.h"
@@ -451,3 +452,7 @@ bool q(Action &&action, bool flush) {
     if (flush) c.RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
     return true;
 }
+
+bool ActionAllowed(ID id) { return c.ActionAllowed(id); }
+bool ActionAllowed(const Action &action) { return c.ActionAllowed(action); }
+bool ActionAllowed(const EmptyAction &action) { return c.ActionAllowed(action); }

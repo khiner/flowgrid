@@ -3,13 +3,14 @@
 #include <unordered_map>
 
 #include <range/v3/algorithm/contains.hpp>
+#include <range/v3/view/map.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
 
 #include "faust/dsp/libfaust-box.h"
 #include "faust/dsp/libfaust-signal.h"
 
-#include "../../AppContext.h"
+#include "../../App.h"
 #include "../../Helper/File.h"
 #include "../../Helper/String.h"
 #include "../../Helper/basen.h"

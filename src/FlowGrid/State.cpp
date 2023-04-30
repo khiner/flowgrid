@@ -1764,6 +1764,11 @@ void Faust::Render() const {
     Log.Draw();
 }
 
+Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
+    : UIStateMember(parent, path_segment, name_help) {
+    ::Set(On, on, c.InitStore);
+}
+
 void Audio::Graph::RenderConnections() const {
     const auto &style = s.Style.FlowGrid.Matrix;
     const float cell_size = style.CellSize * GetTextLineHeight();

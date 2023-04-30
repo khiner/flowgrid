@@ -2,7 +2,7 @@
 #include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
-#include "AppContext.h"
+#include "App.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "UI/Faust/FaustGraph.h"
@@ -516,11 +516,6 @@ void Audio::Graph::Nodes::Render() const {
             TreePop();
         }
     }
-}
-
-Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
-    : UIStateMember(parent, path_segment, name_help) {
-    ::Set(On, on, c.InitStore);
 }
 
 void *Audio::Graph::Node::Get() const { return DataFor.contains(Id) ? DataFor.at(Id) : nullptr; }

@@ -6,7 +6,7 @@
 #include "zep/stringutils.h"
 #include <Tracy.hpp>
 
-#include "../AppContext.h"
+#include "../App.h"
 
 #include "../FileDialog/FileDialogDemo.h"
 #include "Faust/FaustEditor.h"
@@ -209,7 +209,7 @@ void TickUi() {
     }
 
     for (const auto &[shortcut, action_id] : KeyMap) {
-        if (IsShortcutPressed(shortcut) && c.ActionAllowed(action_id)) {
+        if (IsShortcutPressed(shortcut) && ActionAllowed(action_id)) {
             q(action::Create(action_id));
         }
     }

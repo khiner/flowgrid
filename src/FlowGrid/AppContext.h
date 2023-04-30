@@ -2,29 +2,6 @@
 
 #include "App.h"
 
-#include <map>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/map.hpp>
-#include <set>
-
-//-----------------------------------------------------------------------------
-// [SECTION] Configuration constants
-//-----------------------------------------------------------------------------
-
-inline static const unordered_map<ProjectFormat, string> ExtensionForProjectFormat{{StateFormat, ".fls"}, {ActionFormat, ".fla"}};
-inline static const auto ProjectFormatForExtension = ExtensionForProjectFormat | transform([](const auto &p) { return pair(p.second, p.first); }) | to<std::map>();
-inline static const auto AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
-inline static const string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<string>;
-inline static const string PreferencesFileExtension = ".flp";
-inline static const string FaustDspFileExtension = ".dsp";
-
-inline static const fs::path InternalPath = ".flowgrid";
-inline static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(StateFormat));
-// The default project is a user-created project that loads on app start, instead of the empty project.
-// As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-inline static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(ActionFormat));
-inline static const fs::path PreferencesPath = InternalPath / ("Preferences" + PreferencesFileExtension);
-
 //-----------------------------------------------------------------------------
 // [SECTION] History
 //-----------------------------------------------------------------------------
@@ -123,36 +100,5 @@ private:
     std::optional<fs::path> CurrentProjectPath;
 };
 
-//-----------------------------------------------------------------------------
-// [SECTION] Globals
-//-----------------------------------------------------------------------------
-
-/**
-Declare read-only accessors for:
- - The global state instance `state` (and its shorthand, `s`)
- - The global context instance `context` (and its shorthand, `c`)
-
-The state & context instances are initialized and instantiated in `main.cpp`.
-
-`s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
-It provides a complete nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
-Basically, it contains all data for each state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
-(Actually, each primitive leaf value is cached on its respective `Field`, but this is a technicality - the `Store` is conceptually the source of truth.)
-
-`s` has an immutable assignment operator, which return a modified copy of the `Store` value resulting from applying the assignment to the provided `Store`.
-(Note that this is only _conceptually_ a copy - see [Application Architecture](https://github.com/khiner/flowgrid#application-architecture) for more details.)
-
-Usage example:
-
-```cpp
-// Get the canonical application audio state:
-const Audio &audio = s.Audio;
-
-// Get the currently active gesture (collection of actions) from the global application context:
- const Gesture &ActiveGesture = c.ActiveGesture;
-```
-*/
-
-extern const State &s;
+// See the bottom of `App.h` for details on global constants.
 extern Context c;
-extern const Store &AppStore; // Read-only global for full, read-only canonical application state.

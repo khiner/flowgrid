@@ -1365,3 +1365,38 @@ void Set(const StatePath &, const vector<Primitive> &, TransientStore &);
 void Set(const StatePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);
+
+//-----------------------------------------------------------------------------
+// [SECTION] Globals
+//-----------------------------------------------------------------------------
+
+/**
+Declare global read-only accessors for:
+ - State instance `s`
+ - Complete, canonical application store instance `AppStore`
+
+(Global application `Context` instance `c` is defined in `Context.h`.)
+
+All three of these global variables are initialized in `main.cpp`.
+
+`s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
+It provides a complete nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
+Basically, it contains all data for each state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
+(Actually, each primitive leaf value is cached on its respective `Field`, but this is a technicality - the `Store` is conceptually the source of truth.)
+
+`s` has an immutable assignment operator, which return a modified copy of the `Store` value resulting from applying the assignment to the provided `Store`.
+(Note that this is only _conceptually_ a copy - see [Application Architecture](https://github.com/khiner/flowgrid#application-architecture) for more details.)
+
+Usage example:
+
+```cpp
+// Get the canonical application audio state:
+const Audio &audio = s.Audio;
+
+// Get the currently active gesture (collection of actions) from the global application context:
+ const Gesture &ActiveGesture = c.ActiveGesture;
+```
+*/
+
+extern const State &s;
+extern const Store &AppStore;

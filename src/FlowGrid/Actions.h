@@ -249,3 +249,8 @@ Gesture MergeGesture(const Gesture &);
  _Defined in AppContext.h for now._
 */
 bool q(Action &&a, bool flush = false);
+
+// These global methods defer to instance methods on `Context` with the same name.
+bool ActionAllowed(ID);
+bool ActionAllowed(const Action &);
+bool ActionAllowed(const EmptyAction &);

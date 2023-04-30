@@ -1182,7 +1182,7 @@ void OnBoxChange(Box box) {
         FocusedNodeStack.push(&(*RootNode));
         Node::WithId.clear();
     } else {
-        RootNode = nullopt;
+        RootNode = std::nullopt;
     }
 }
 

@@ -14,21 +14,6 @@
 using namespace fg;
 using namespace ImGui;
 
-/**
-Public methods:
-    CreateUi();
-    TickUi();
-    DestroyUi();
-
-Internal render context methods:
-    CreateRenderContext();
-    DestroyRenderContext(RenderContext);
-
-Internal frame methods:
-    PrepareFrame();
-    RenderFrame(RenderContext);
- */
-
 struct RenderContext {
     SDL_Window *window = nullptr;
     SDL_GLContext gl_context{};

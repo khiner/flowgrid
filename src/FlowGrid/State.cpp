@@ -1,3 +1,4 @@
+#include "AppContext.h"
 #include "StateJson.h"
 
 #include <fstream>
@@ -1633,6 +1634,8 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
 void Demo::FileDialogDemo::Render() const {
     IGFD::ShowDemoWindow();
 }
+
+#include "fmt/chrono.h"
 
 void ShowGesture(const Gesture &gesture) {
     for (Count action_index = 0; action_index < gesture.size(); action_index++) {

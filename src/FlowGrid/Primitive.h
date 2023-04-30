@@ -74,3 +74,5 @@ namespace fs = std::filesystem;
 
 using StatePath = fs::path;
 inline static const StatePath RootPath{"/"};
+
+string to_string(const Primitive &);

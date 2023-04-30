@@ -3,6 +3,7 @@
 #include "FileDialogDemo.h"
 #include "ImGuiFileDialog.h"
 
+#include "../AppContext.h"
 #include "../Helper/File.h"
 #include "../StateJson.h"
 

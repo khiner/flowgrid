@@ -241,3 +241,11 @@ string GetShortcut(const EmptyAction &);
 string GetMenuLabel(const EmptyAction &);
 Gesture MergeGesture(const Gesture &);
 } // namespace action
+
+/**
+ This is the main action-queue method.
+ Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
+ This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
+ _Defined in AppContext.h for now._
+*/
+bool q(Action &&a, bool flush = false);

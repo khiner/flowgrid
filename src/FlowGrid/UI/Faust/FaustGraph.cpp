@@ -9,7 +9,7 @@
 #include "faust/dsp/libfaust-box.h"
 #include "faust/dsp/libfaust-signal.h"
 
-#include "../../App.h"
+#include "../../AppContext.h"
 #include "../../Helper/File.h"
 #include "../../Helper/String.h"
 #include "../../Helper/basen.h"

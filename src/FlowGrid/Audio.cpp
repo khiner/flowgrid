@@ -2,7 +2,7 @@
 #include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
-#include "App.h"
+#include "AppContext.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "UI/Faust/FaustGraph.h"

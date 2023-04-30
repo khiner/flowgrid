@@ -6,7 +6,7 @@
 #include "zep/stringutils.h"
 #include <Tracy.hpp>
 
-#include "../App.h"
+#include "../AppContext.h"
 
 #include "../FileDialog/FileDialogDemo.h"
 #include "Faust/FaustEditor.h"

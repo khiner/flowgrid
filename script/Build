@@ -18,6 +18,7 @@ fi
 
 # Common part of cmake configure command
 # See readme for details on the choice to specify clang compiler.
+# CMakeConfig="CC=clang CXX=clang++ cmake "-DCMAKE_CXX_INCLUDE_WHAT_YOU_USE=/Users/khiner/Development/iwyu/build/bin/include-what-you-use" -B \"${BuildDir}\" -S \"${ProjectRootDir}\""
 CMakeConfig="CC=clang CXX=clang++ cmake -B \"${BuildDir}\" -S \"${ProjectRootDir}\""
 
 # Configure.

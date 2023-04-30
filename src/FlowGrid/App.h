@@ -860,11 +860,9 @@ using FlowGridGraphCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr)
-        : UIStateMember(parent, path_segment, name_help),
-          X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max), Format(fmt) {}
+    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 
-    operator ImVec2() const { return {X, Y}; }
+    operator ImVec2() const;
 
     Float X, Y;
     const char *Format;
@@ -886,8 +884,7 @@ protected:
 };
 
 struct Demo : TabsWindow {
-    Demo(StateMember *parent, string_view path_segment, string_view name_help)
-        : TabsWindow(parent, path_segment, name_help, ImGuiWindowFlags_MenuBar) {}
+    Demo(StateMember *parent, string_view path_segment, string_view name_help);
 
     UIMember(ImGuiDemo);
     UIMember(ImPlotDemo);
@@ -901,7 +898,7 @@ struct Demo : TabsWindow {
 struct Metrics : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true););
+    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true));
     UIMember(ImGuiMetrics);
     UIMember(ImPlotMetrics);
 
@@ -1007,22 +1004,7 @@ struct Style : TabsWindow {
             void LayoutFlowGrid(TransientStore &store) const;
             void LayoutFaust(TransientStore &store) const; // Layout Faust graphs the same way Faust does when it renders to SVG.
 
-            static const char *GetColorName(FlowGridGraphCol idx) {
-                switch (idx) {
-                    case FlowGridGraphCol_Bg: return "GraphBg";
-                    case FlowGridGraphCol_DecorateStroke: return "GraphDecorateStroke";
-                    case FlowGridGraphCol_GroupStroke: return "GraphGroupStroke";
-                    case FlowGridGraphCol_Line: return "GraphLine";
-                    case FlowGridGraphCol_Link: return "GraphLink";
-                    case FlowGridGraphCol_Normal: return "GraphNormal";
-                    case FlowGridGraphCol_Ui: return "GraphUi";
-                    case FlowGridGraphCol_Slot: return "GraphSlot";
-                    case FlowGridGraphCol_Number: return "GraphNumber";
-                    case FlowGridGraphCol_Inverter: return "GraphInverter";
-                    case FlowGridGraphCol_OrientationMark: return "GraphOrientationMark";
-                    default: return "Unknown";
-                }
-            }
+            static const char *GetColorName(FlowGridGraphCol idx);
         );
 
         UIMember(
@@ -1057,14 +1039,7 @@ struct Style : TabsWindow {
         void ColorsLight(TransientStore &store) const;
         void ColorsClassic(TransientStore &store) const;
 
-        static const char *GetColorName(FlowGridCol idx) {
-            switch (idx) {
-                case FlowGridCol_GestureIndicator: return "GestureIndicator";
-                case FlowGridCol_HighlightText: return "HighlightText";
-                case FlowGridCol_ParamsBg: return "ParamsBg";
-                default: return "Unknown";
-            }
-        }
+        static const char *GetColorName(FlowGridCol idx);
     );
 
     UIMember_(

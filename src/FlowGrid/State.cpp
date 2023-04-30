@@ -337,6 +337,12 @@ void Matrix<T>::Update() {
     }
 }
 
+Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, const char *fmt)
+    : UIStateMember(parent, path_segment, name_help),
+      X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max), Format(fmt) {}
+
+Vec2::operator ImVec2() const { return {X, Y}; }
+
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
@@ -346,6 +352,11 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
 }
 
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
+
+Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
+    : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
+    Set(Linked, linked, c.InitStore);
+}
 
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
@@ -801,6 +812,32 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     // Other housekeeping to emulate `LoadIniSettingsFromMemory`
     ctx->SettingsLoaded = true;
     ctx->SettingsDirty = false;
+}
+
+const char *Style::FlowGridStyle::Graph::GetColorName(FlowGridGraphCol idx) {
+    switch (idx) {
+        case FlowGridGraphCol_Bg: return "GraphBg";
+        case FlowGridGraphCol_DecorateStroke: return "GraphDecorateStroke";
+        case FlowGridGraphCol_GroupStroke: return "GraphGroupStroke";
+        case FlowGridGraphCol_Line: return "GraphLine";
+        case FlowGridGraphCol_Link: return "GraphLink";
+        case FlowGridGraphCol_Normal: return "GraphNormal";
+        case FlowGridGraphCol_Ui: return "GraphUi";
+        case FlowGridGraphCol_Slot: return "GraphSlot";
+        case FlowGridGraphCol_Number: return "GraphNumber";
+        case FlowGridGraphCol_Inverter: return "GraphInverter";
+        case FlowGridGraphCol_OrientationMark: return "GraphOrientationMark";
+        default: return "Unknown";
+    }
+}
+
+const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
+    switch (idx) {
+        case FlowGridCol_GestureIndicator: return "GestureIndicator";
+        case FlowGridCol_HighlightText: return "HighlightText";
+        case FlowGridCol_ParamsBg: return "ParamsBg";
+        default: return "Unknown";
+    }
 }
 
 void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
@@ -1567,6 +1604,9 @@ void ApplicationSettings::Render() const {
     if (SliderInt("History index", &value, 0, int(c.History.Size() - 1))) q(SetHistoryIndex{value});
     GestureDurationSec.Draw();
 }
+
+Demo::Demo(StateMember *parent, string_view path_segment, string_view name_help)
+    : TabsWindow(parent, path_segment, name_help, ImGuiWindowFlags_MenuBar) {}
 
 void Demo::ImGuiDemo::Render() const {
     ShowDemoWindow();

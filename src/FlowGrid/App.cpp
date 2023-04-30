@@ -105,11 +105,6 @@ void Set(const StatePath &path, const vector<Primitive> &data, const Count row_c
     }
 }
 
-Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
-    : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
-    Set(Linked, linked, c.InitStore);
-}
-
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
     for (const auto &[key, value] : v) j[json::json_pointer(key.string())] = value;

@@ -27,7 +27,7 @@ namespace fg = FlowGrid;
 namespace views = ranges::views;
 
 using namespace nlohmann;
-using fmt::format, fmt::to_string;
+using fmt::to_string;
 using ranges::to, views::transform;
 using std::pair, std::unique_ptr, std::make_unique;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
@@ -1322,7 +1322,7 @@ UIMember(
     WindowMember_(
         UIProcess,
         false,
-        Prop_(Bool, Running, format("?Disabling ends the {} process.\nEnabling will start the process up again.", Name), true);
+        Prop_(Bool, Running, fmt::format("?Disabling ends the {} process.\nEnabling will start the process up again.", Name), true);
     );
 
     Prop(ImGuiSettings, ImGuiSettings);

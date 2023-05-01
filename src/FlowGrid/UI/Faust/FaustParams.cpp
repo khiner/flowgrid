@@ -62,11 +62,11 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
         Dummy(size);
     } else {
         // Draw ImGui widget without value or label text.
-        const string id = format("##{}", label);
+        const string id = fmt::format("##{}", label);
         changed = is_h ? SliderFloat(id.c_str(), value, min_value, max_value, "") : VSliderFloat(id.c_str(), size, value, min_value, max_value, "");
     }
 
-    const string value_text = format("{:.2f}", *value);
+    const string value_text = fmt::format("{:.2f}", *value);
     const float value_text_w = CalcTextSize(value_text.c_str()).x;
     const float value_text_x = CalcAlignedX(is_h ? HJustify_Middle : h_justify, value_text_w, rect_width);
     draw_list->AddText(rect_pos + ImVec2{value_text_x, (size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());

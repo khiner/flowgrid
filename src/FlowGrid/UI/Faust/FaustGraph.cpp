@@ -82,7 +82,7 @@ static inline string GetFontName() {
 }
 static inline string GetFontPath() {
     const string name = GetFont()->GetDebugName();
-    return format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
+    return fmt::format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
 }
 static inline string GetFontBase64() {
     static unordered_map<string, string> base64_for_font_name; // avoid recomputing
@@ -100,19 +100,19 @@ static inline string GetFontBase64() {
 struct SVGDevice : Device {
     SVGDevice(fs::path Directory, string FileName, ImVec2 size) : Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
-        Stream << format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        Stream << (Style().ScaleFillHeight ? R"( height="100%">)" : format(R"( width="{}" height="{}">)", w, h));
+        Stream << fmt::format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
+        Stream << (Style().ScaleFillHeight ? R"( height="100%">)" : fmt::format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
-        Stream << format(R"(
+        Stream << fmt::format(R"(
         <defs><style>
             @font-face{{
                 font-family:"{}";
-                src:url(data:application/font-woff;charset=utf-8;base64,{}) format("woff");
+                src:url(data:application/font-woff;charset=utf-8;base64,{}) fmt::format("woff");
                 font-weight:normal;font-style:normal;
             }}
         </style></defs>)",
-                         GetFontName(), GetFontBase64());
+                              GetFontName(), GetFontBase64());
     }
 
     ~SVGDevice() override {
@@ -134,11 +134,11 @@ struct SVGDevice : Device {
         return CreateTriangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
     }
     static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &fill_color, const ImColor &stroke_color) {
-        return format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+        return fmt::format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
     static string RgbColor(const ImColor &color) {
         const auto &[r, g, b, a] = color.Value * 255;
-        return format("rgb({}, {}, {}, {})", r, g, b, a);
+        return fmt::format("rgb({}, {}, {}, {})", r, g, b, a);
     }
     // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
     // Determined empirically to make the two renderings look the same.
@@ -147,12 +147,12 @@ struct SVGDevice : Device {
     void Rect(const ImRect &local_rect, const RectStyle &style) override {
         const auto &rect = At(local_rect);
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
-        Stream << format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="{}" style="stroke:{};stroke-width={};fill:{};"/>)", rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), corner_radius, RgbColor(stroke_color), stroke_width, RgbColor(fill_color));
+        Stream << fmt::format(R"(<rect x="{}" y="{}" width="{}" height="{}" rx="{}" style="stroke:{};stroke-width={};fill:{};"/>)", rect.Min.x, rect.Min.y, rect.GetWidth(), rect.GetHeight(), corner_radius, RgbColor(stroke_color), stroke_width, RgbColor(fill_color));
     }
 
     // Only SVG device has a rect-with-link method
     void Rect(const ImRect &local_rect, const RectStyle &style, string_view link) {
-        if (!link.empty()) Stream << format(R"(<a href="{}">)", XmlSanitize(string(link)));
+        if (!link.empty()) Stream << fmt::format(R"(<a href="{}">)", XmlSanitize(string(link)));
         Rect(local_rect, style);
         if (!link.empty()) Stream << "</a>";
     }
@@ -167,13 +167,13 @@ struct SVGDevice : Device {
         const ImVec2 &text_right = {min(text_x + CalcTextSize(string(label)).x, tr.x), tr.y};
         const float r = Scale(rect_style.CornerRadius);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
-        Stream << format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)", text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - label_offset) + r, r, r, -r, r, // before text to top-left
-                         rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
-                         rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
-                         -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
-                         -(tr.x - r - text_right.x), // top-right to after text
-                         Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor));
-        Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)", text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(string(label)));
+        Stream << fmt::format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)", text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - label_offset) + r, r, r, -r, r, // before text to top-left
+                              rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
+                              rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
+                              -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
+                              -(tr.x - r - text_right.x), // top-right to after text
+                              Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor));
+        Stream << fmt::format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)", text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(string(label)));
     }
 
     void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
@@ -182,7 +182,7 @@ struct SVGDevice : Device {
 
     void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) override {
         const auto [x, y] = At(pos);
-        Stream << format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), x, y, radius);
+        Stream << fmt::format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), x, y, radius);
     }
 
     void Arrow(const ImVec2 &pos, GraphOrientation orientation) override {
@@ -195,7 +195,7 @@ struct SVGDevice : Device {
         const auto &end_scaled = At(end);
         const ImColor &color = Style().Colors[FlowGridGraphCol_Line];
         const auto width = Scale(Style().WireWidth);
-        Stream << format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
+        Stream << fmt::format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
     }
 
     void Text(const ImVec2 &pos, string_view text, const TextStyle &style) override {
@@ -204,12 +204,12 @@ struct SVGDevice : Device {
         const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
         const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
-        Stream << format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)", p.x, p.y, GetFontName(), font_style_formatted, font_weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(string(text)));
+        Stream << fmt::format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)", p.x, p.y, GetFontName(), font_style_formatted, font_weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(string(text)));
     }
 
     // Only SVG device has a text-with-link method
     void Text(const ImVec2 &pos, string_view str, const TextStyle &style, string_view link) {
-        if (!link.empty()) Stream << format(R"(<a href="{}">)", XmlSanitize(string(link)));
+        if (!link.empty()) Stream << fmt::format(R"(<a href="{}">)", XmlSanitize(string(link)));
         Text(pos, str, style);
         if (!link.empty()) Stream << "</a>";
     }
@@ -217,7 +217,7 @@ struct SVGDevice : Device {
     void Dot(const ImVec2 &pos, const ImColor &fill_color) override {
         const auto &p = At(pos);
         const float radius = Scale(Style().OrientationMarkRadius);
-        Stream << format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, RgbColor(fill_color));
+        Stream << fmt::format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, RgbColor(fill_color));
     }
 
     fs::path Directory;
@@ -332,7 +332,7 @@ string GetTreeInfo(Tree tree) {
 }
 
 // Hex address (without the '0x' prefix)
-static string UniqueId(const void *instance) { return format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
+static string UniqueId(const void *instance) { return fmt::format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
 using StringHelper::Capitalize;
 
@@ -445,7 +445,7 @@ struct Node {
     }
     void DrawType(Device &device) const {
         const static float padding = 2;
-        const auto &label = format("{}: {}", BoxTypeLabel, Descendents);
+        const auto &label = fmt::format("{}: {}", BoxTypeLabel, Descendents);
         device.Rect({{0, 0}, CalcTextSize(label) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
         device.Text({padding, padding}, label, {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Left, VJustify_Top}});
     }
@@ -454,7 +454,7 @@ struct Node {
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 device.Text(
                     Point(io, channel),
-                    format("{}:{}", Capitalize(to_string(io, true)), channel),
+                    fmt::format("{}:{}", Capitalize(to_string(io, true)), channel),
                     {.Color = {0.f, 0.f, 1.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .FontStyle = TextStyle::FontStyle::Bold}
                 );
                 device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
@@ -468,7 +468,7 @@ struct Node {
                 for (Count channel = 0; channel < child->IoCount(io); channel++) {
                     device.Text(
                         child->ChildPoint(io, channel),
-                        format("C{}->{}:{}", child_index, Capitalize(to_string(io, true)), channel),
+                        fmt::format("C{}->{}:{}", child_index, Capitalize(to_string(io, true)), channel),
                         {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .FontStyle = TextStyle::FontStyle::Bold}
                     );
                     device.Circle(child->ChildPoint(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
@@ -485,7 +485,7 @@ struct Node {
         const string tree_name = GetTreeName(FaustTree);
         if (tree_name == "process") return tree_name + ".svg";
 
-        return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+format("-{}", Id) + ".svg";
+        return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+fmt::format("-{}", Id) + ".svg";
     }
 
     void WriteSvg(const fs::path &path) const {
@@ -1090,7 +1090,7 @@ static Node *Tree2NodeInner(Tree t) {
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
     if (is_vgroup || is_hgroup || is_tgroup) {
         const char prefix = is_vgroup ? 'v' : (is_hgroup ? 'h' : 't');
-        return new GroupNode(NodeType_Group, t, Tree2Node(a), format("{}group({})", prefix, extractName(label)));
+        return new GroupNode(NodeType_Group, t, Tree2Node(a), fmt::format("{}group({})", prefix, extractName(label)));
     }
 
     Tree route;
@@ -1123,7 +1123,7 @@ static Node *Tree2Node(Tree t) {
 }
 
 string GetBoxType(Box t) {
-    if (getUserData(t) != nullptr) return format("{}({},{})", xtendedName(t), xtendedArity(t), 1);
+    if (getUserData(t) != nullptr) return fmt::format("{}({},{})", xtendedName(t), xtendedArity(t), 1);
     if (isBoxInverter(t)) return "Inverter";
     if (isBoxInt(t)) return "Int";
     if (isBoxReal(t)) return "Real";
@@ -1151,22 +1151,22 @@ string GetBoxType(Box t) {
     if (isBoxRec(t, a, b)) return "Recursive";
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return format("FFun:{}({})", ffname(ff), ffarity(ff));
+    if (isBoxFFun(t, ff)) return fmt::format("FFun:{}({})", ffname(ff), ffarity(ff));
 
     Tree type, name, file;
-    if (isBoxFConst(t, type, name, file)) return format("FConst:{}", tree2str(name));
-    if (isBoxFVar(t, type, name, file)) return format("FVar:{}", tree2str(name));
+    if (isBoxFConst(t, type, name, file)) return fmt::format("FConst:{}", tree2str(name));
+    if (isBoxFVar(t, type, name, file)) return fmt::format("FVar:{}", tree2str(name));
 
     Tree label, chan;
-    if (isBoxSoundfile(t, label, chan)) return format("Soundfile({},{})", 2, 2 + tree2int(chan));
+    if (isBoxSoundfile(t, label, chan)) return fmt::format("Soundfile({},{})", 2, 2 + tree2int(chan));
 
     int i;
-    if (isBoxSlot(t, &i)) return format("Slot({})", i);
+    if (isBoxSlot(t, &i)) return fmt::format("Slot({})", i);
 
     Tree route;
     if (isBoxRoute(t, a, b, route)) {
         int ins, outs;
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs)) return format("Route({}x{})", ins, outs);
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs)) return fmt::format("Route({}x{})", ins, outs);
         throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 

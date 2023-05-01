@@ -126,7 +126,6 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 - [Faust](https://github.com/grame-cncm/faust) for DSP
 - [miniaudio](https://github.com/mackron/miniaudio) for the audio backend
-- ~~[r8brain-free-src](https://github.com/avaneev/r8brain-free-src/)~~ (_not actually used atm_): audio resampling, currently only used when monitoring an audio input stream with a sample rate different from the output stream
 
 ### UI/UX
 
@@ -144,16 +143,13 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 - [json](https://github.com/nlohmann/json): state serialization
 - [ConcurrentQueue](https://github.com/cameron314/concurrentqueue): the main action queue
   - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
-- ~~[diff-match-patch-cpp-stl](https://github.com/leutloff/diff-match-patch-cpp-stl) for diff-patching on unstructured
-  text~~
-  - Was using this to handle ImGui `.ini` settings string diffs, but those are now deserialized into the structured state.
-    I'll likely be using this again at some point for generic handling of actions involving long text strings.
 
 ### C++ extensions
 
 For C++20 features only partially/experimentally supported in Clang 16:
 
 - [range-v3](https://github.com/ericniebler/range-v3)
+  - Only still needed since `std::ranges::to` was pushed to C++23 and isn't supported by clang yet.
 
 ### Debugging
 
@@ -162,7 +158,7 @@ For C++20 features only partially/experimentally supported in Clang 16:
 ## Development
 
 I try and keep all dependencies up to date.
-LLVM version 15+ is required to build.
+LLVM version 16+ is required to build.
 
 ### Formatting
 

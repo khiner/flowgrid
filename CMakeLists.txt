@@ -1,18 +1,15 @@
 cmake_minimum_required(VERSION 3.20)
-# set(CMAKE_CXX_STANDARD 20)
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdlib++ -std=c++20 -fexperimental-library -stdlib=libc++")
+project(FlowGrid LANGUAGES C CXX)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -stdlib=libc++ -fexperimental-library")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
-project(FlowGrid LANGUAGES C CXX)
-
-add_subdirectory("lib")
+add_subdirectory(lib)
 
 file(
     GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
     lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_demo.cpp
-    lib/r8brain/r8bbase.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -25,7 +22,6 @@ include_directories(
     lib/implot
     lib/imgui_club/imgui_memory_editor
     lib/range-v3/include
-    lib/r8brain
     lib/immer
     lib/concurrentqueue
     lib/date/include/date
@@ -40,9 +36,6 @@ if(TRACING_ENABLED)
     target_link_libraries(${PROJECT_NAME} PRIVATE Tracy::TracyClient)
     target_compile_definitions(${PROJECT_NAME} PRIVATE TRACING_ENABLED)
 endif()
-
-# See readme for plans with diff-match-patch.
-#include_directories(lib/diff-match-patch-cpp-stl)
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
 target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI nlohmann_json::nlohmann_json dynamiclib Zep::Zep)

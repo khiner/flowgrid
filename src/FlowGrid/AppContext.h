@@ -1,6 +1,7 @@
 #pragma once
 
 #include "App.h"
+#include "Config.h"
 
 //-----------------------------------------------------------------------------
 // [SECTION] History
@@ -70,7 +71,6 @@ struct Context {
     bool ActionAllowed(const Action &) const;
     bool ActionAllowed(const EmptyAction &) const;
 
-    bool ClearPreferences();
     void Clear();
 
     // Main setter to modify the canonical application state store.
@@ -87,7 +87,6 @@ public:
     const State &s = ApplicationState;
     const Store &AppStore = ApplicationStore;
 
-    Preferences Preferences;
     StoreHistory History{AppStore}; // One store checkpoint for every gesture.
     bool ProjectHasChanges{false};
 
@@ -95,7 +94,6 @@ private:
     void ApplyAction(const ProjectAction &);
 
     void SetCurrentProjectPath(const fs::path &);
-    bool WritePreferences() const;
 
     std::optional<fs::path> CurrentProjectPath;
 };

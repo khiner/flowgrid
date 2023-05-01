@@ -1,6 +1,7 @@
 #pragma once
 
 #include "App.h"
+#include "AppPreferences.h"
 
 #include "nlohmann/json.hpp"
 
@@ -23,7 +24,7 @@ void from_json(const json &, Primitive &);
     void from_json(const nlohmann::json &, Type &);
 
 DeclareJsonType(StatePath);
-DeclareJsonType(Preferences);
+DeclareJsonType(AppPreferences);
 
 namespace nlohmann {
 DeclareJsonType(StateAction);

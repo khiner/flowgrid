@@ -1,9 +1,11 @@
 #include <filesystem>
 
 #include "FlowGrid/AppContext.h"
+#include "FlowGrid/AppPreferences.h"
 #include "FlowGrid/Config.h"
 
 // Create global, mutable `UIContext` and `Context` instances.
+AppPreferences Preferences{};
 UIContext UiContext{};
 Context c{};
 const Store &AppStore = c.AppStore; // Create the read-only store reference global.

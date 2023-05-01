@@ -1,4 +1,5 @@
 #include "AppContext.h"
+#include "AppPreferences.h"
 #include "StateJson.h"
 
 #include <fstream>
@@ -507,8 +508,8 @@ void Info::Render() const {
 void State::UIProcess::Render() const {}
 
 void OpenRecentProject::MenuItem() const {
-    if (BeginMenu("Open recent project", !c.Preferences.RecentlyOpenedPaths.empty())) {
-        for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
+    if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
+        for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
             if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
         }
         EndMenu();
@@ -1713,15 +1714,15 @@ void Metrics::FlowGridMetrics::Render() const {
     Separator();
     {
         // Preferences
-        const bool has_RecentlyOpenedPaths = !c.Preferences.RecentlyOpenedPaths.empty();
+        const bool has_RecentlyOpenedPaths = !Preferences.RecentlyOpenedPaths.empty();
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
-            if (SmallButton("Clear")) c.ClearPreferences();
+            if (SmallButton("Clear")) Preferences.Clear();
             SameLine();
             ShowRelativePaths.Draw();
 
             if (!has_RecentlyOpenedPaths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
-                for (const auto &recently_opened_path : c.Preferences.RecentlyOpenedPaths) {
+                for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
                     BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();

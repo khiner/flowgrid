@@ -40,10 +40,6 @@ constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >>
 
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
-struct Preferences {
-    std::list<fs::path> RecentlyOpenedPaths{};
-};
-
 /**
 Convenience macros for compactly defining `StateMember` types and their properties.
 
@@ -504,10 +500,6 @@ WindowMember_(
 WindowMember_(StateMemoryEditor, ImGuiWindowFlags_NoScrollbar);
 WindowMember(StatePathUpdateFrequency);
 
-enum ProjectFormat {
-    StateFormat,
-    ActionFormat
-};
 WindowMember(
     ProjectPreview,
     Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);

@@ -88,7 +88,7 @@ void from_json(const json &j, ProjectAction &value) {
 }
 } // namespace nlohmann
 
-string to_string(const Primitive &primitive) { return nlohmann::json(primitive).dump(); }
+string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 // This boilerplate is for handling `std::optional` values.
 // From https://github.com/nlohmann/json/issues/1749#issuecomment-1099890282
@@ -126,7 +126,7 @@ template<typename T> constexpr void extended_from_json(const char *key, const js
     void to_json(nlohmann::json &, const Type &) {} \
     void from_json(const nlohmann::json &, Type &) {}
 
-JsonType(Preferences, RecentlyOpenedPaths);
+JsonType(AppPreferences, RecentlyOpenedPaths);
 
 JsonType(PatchOp, Op, Value, Old);
 JsonType(Patch, Ops, BasePath);

@@ -7,7 +7,7 @@
 #include "blockingconcurrentqueue.h"
 #include <range/v3/view/concat.hpp>
 
-#include "Config.h"
+#include "AppPreferences.h"
 #include "Helper/File.h"
 #include "StateJson.h"
 #include "UI/Faust/FaustGraph.h"
@@ -107,11 +107,6 @@ void State::Update(const StateAction &action, TransientStore &store) const {
 
 Context::Context() {
     InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
-    if (fs::exists(PreferencesPath)) {
-        Preferences = json::parse(FileIO::read(PreferencesPath));
-    } else {
-        WritePreferences();
-    }
 }
 
 Context::~Context() = default;
@@ -124,11 +119,6 @@ bool Context::IsUserProjectPath(const fs::path &path) {
 void Context::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
 void Context::SaveCurrentProject() {
     if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
-}
-
-bool Context::ClearPreferences() {
-    Preferences.RecentlyOpenedPaths.clear();
-    return WritePreferences();
 }
 
 json Context::GetProjectJson(const ProjectFormat format) {
@@ -231,12 +221,8 @@ bool Context::SaveProject(const fs::path &path) {
 void Context::SetCurrentProjectPath(const fs::path &path) {
     ProjectHasChanges = false;
     CurrentProjectPath = path;
-    Preferences.RecentlyOpenedPaths.remove(path);
-    Preferences.RecentlyOpenedPaths.emplace_front(path);
-    WritePreferences();
+    Preferences.SetCurrentProjectPath(path);
 }
-
-bool Context::WritePreferences() const { return FileIO::write(PreferencesPath, json(Preferences).dump()); }
 
 bool Context::ActionAllowed(const ActionID id) const {
     switch (id) {

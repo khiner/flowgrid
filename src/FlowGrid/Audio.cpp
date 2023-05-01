@@ -58,12 +58,12 @@ void Audio::Init() const {
     }
 
     int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error initializing audio context: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
 
     static Count PlaybackDeviceCount, CaptureDeviceCount;
     static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
     result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error getting audio devices: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio devices: {}", result));
 
     for (Count i = 0; i < CaptureDeviceCount; i++) {
         DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
@@ -87,14 +87,14 @@ void Audio::Uninit() const {
     Device.Uninit();
 
     const int result = ma_context_uninit(&AudioContext);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error shutting down audio context: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
 }
 
 // todo draw debug info for all devices, not just current
 //  void DrawDevices() {
 //      for (const IO io : IO_All) {
 //          const Count device_count = GetDeviceCount(io);
-//          if (TreeNodeEx(fmt::format("{} devices ({})", Capitalize(to_string(io)), device_count).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+//          if (TreeNodeEx(std::format("{} devices ({})", Capitalize(to_string(io)), device_count).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
 //              for (Count device_index = 0; device_index < device_count; device_index++) {
 //                  auto *device = GetDevice(io, device_index);
 //                  ShowDevice(*device);
@@ -264,11 +264,11 @@ static vector<U32> NativeSampleRates;
 
 const string Audio::Device::GetFormatName(const int format) {
     const bool is_native = std::find(NativeFormats.begin(), NativeFormats.end(), format) != NativeFormats.end();
-    return ::fmt::format("{}{}", ma_get_format_name((ma_format)format), is_native ? "*" : "");
+    return ::std::format("{}{}", ma_get_format_name((ma_format)format), is_native ? "*" : "");
 }
 const string Audio::Device::GetSampleRateName(const U32 sample_rate) {
     const bool is_native = std::find(NativeSampleRates.begin(), NativeSampleRates.end(), sample_rate) != NativeSampleRates.end();
-    return fmt::format("{}{}", to_string(sample_rate), is_native ? "*" : "");
+    return std::format("{}{}", to_string(sample_rate), is_native ? "*" : "");
 }
 
 // Current device
@@ -308,14 +308,14 @@ void Audio::Device::Init() const {
 
     // ResamplerConfig = ma_resampler_config_init(ma_format_f32, 2, 0, 0, ma_resample_algorithm_custom);
     // auto result = ma_resampler_init(&ResamplerConfig, nullptr, &Resampler);
-    // if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error initializing resampler: {}", result));
+    // if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing resampler: {}", result));
     // ResamplerConfig.pBackendVTable = &ResamplerVTable;
 
     int result = ma_device_init(nullptr, &DeviceConfig, &MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error initializing audio device: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio device: {}", result));
 
     result = ma_context_get_device_info(MaDevice.pContext, MaDevice.type, nullptr, &DeviceInfo);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error getting audio device info: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio device info: {}", result));
 
     // todo need to clarify that the cross-product of these formats & sample rates are supported natively, and not just each config jointly
     for (Count i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
@@ -362,7 +362,7 @@ void Audio::Device::Render() const {
 
         static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
         ma_device_get_name(device, device->type == ma_device_type_loopback ? ma_device_type_playback : ma_device_type_capture, name, sizeof(name), nullptr);
-        if (TreeNode(fmt::format("{} ({})", name, "Capture").c_str())) {
+        if (TreeNode(std::format("{} ({})", name, "Capture").c_str())) {
             Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
             Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
             Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
@@ -389,7 +389,7 @@ void Audio::Device::Render() const {
         if (device->type == ma_device_type_loopback) return;
 
         ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), nullptr);
-        if (TreeNode(fmt::format("{} ({})", name, "Playback").c_str())) {
+        if (TreeNode(std::format("{} ({})", name, "Playback").c_str())) {
             Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
             Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
             Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
@@ -436,18 +436,18 @@ void Audio::Device::Uninit() const {
 
 void Audio::Device::Start() const {
     const int result = ma_device_start(&MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error starting audio device: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio device: {}", result));
 }
 void Audio::Device::Stop() const {
     const int result = ma_device_stop(&MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Error stopping audio device: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error stopping audio device: {}", result));
 }
 bool Audio::Device::IsStarted() const { return ma_device_is_started(&MaDevice); }
 
 void Audio::Graph::Init() const {
     NodeGraphConfig = ma_node_graph_config_init(MaDevice.capture.channels);
     int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Failed to initialize node graph: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
 
     Nodes.Init();
     vector<Primitive> connections{};
@@ -565,14 +565,14 @@ void Audio::Graph::Node::Render() const {
 // Output node is already allocated by the MA graph, so we don't need to track internal data for it.
 void Audio::Graph::InputNode::DoInit() const {
     int result = ma_audio_buffer_ref_init(MaDevice.capture.format, MaDevice.capture.channels, nullptr, 0, &InputBuffer);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Failed to initialize input audio buffer: ", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
 
     static ma_data_source_node Node{};
     static ma_data_source_node_config Config{};
 
     Config = ma_data_source_node_config_init(&InputBuffer);
     result = ma_data_source_node_init(&NodeGraph, &Config, nullptr, &Node);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Failed to initialize the input node: ", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));
 
     Set(&Node);
 }
@@ -610,7 +610,7 @@ void Audio::Graph::FaustNode::DoInit() const {
 
     static ma_node_base node{};
     const int result = ma_node_init(&NodeGraph, &config, nullptr, &node);
-    if (result != MA_SUCCESS) throw std::runtime_error(fmt::format("Failed to initialize the Faust node: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust node: {}", result));
 
     Set(&node);
 }

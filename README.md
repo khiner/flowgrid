@@ -154,7 +154,6 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 For C++20 features only partially/experimentally supported in Clang 16:
 
 - [range-v3](https://github.com/ericniebler/range-v3)
-- [fmt](https://github.com/fmtlib/fmt)
 
 ### Debugging
 

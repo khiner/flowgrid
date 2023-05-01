@@ -78,3 +78,7 @@ struct StatePathHash {
 };
 
 inline static const StatePath RootPath{"/"};
+
+string to_string(const Primitive &); // xxx this is implemented in `StateJson.cpp`
+
+static constexpr string to_string(uint value) noexcept { return std::to_string(int(value)); }

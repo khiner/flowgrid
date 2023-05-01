@@ -184,10 +184,10 @@ void IGFD::ShowDemoWindow() {
     TextUnformatted("FileDialog state:\n");
     Indent();
     {
-        TextUnformatted(fmt::format("FilePathName: {}", FilePathName).c_str());
-        TextUnformatted(fmt::format("FilePath: {}", file_path).c_str());
-        TextUnformatted(fmt::format("Filters: {}", string(s.FileDialog.Filters)).c_str());
-        TextUnformatted(fmt::format("UserDatas: {}", user_data).c_str());
+        TextUnformatted(std::format("FilePathName: {}", FilePathName).c_str());
+        TextUnformatted(std::format("FilePath: {}", file_path).c_str());
+        TextUnformatted(std::format("Filters: {}", string(s.FileDialog.Filters)).c_str());
+        TextUnformatted(std::format("UserDatas: {}", user_data).c_str());
         TextUnformatted("Selection: ");
         Indent();
         {

@@ -36,9 +36,6 @@
 	path = lib/imgui_club
 	url = git@github.com:khiner/imgui_club.git
 	branch = main
-[submodule "lib/fmt"]
-	path = lib/fmt
-	url = git@github.com:fmtlib/fmt.git
 [submodule "lib/range-v3"]
 	path = lib/range-v3
 	url = git@github.com:ericniebler/range-v3.git
@@ -51,3 +48,6 @@
 [submodule "lib/miniaudio"]
 	path = lib/miniaudio
 	url = git@github.com:mackron/miniaudio.git
+[submodule "lib/date"]
+	path = lib/date
+	url = git@github.com:HowardHinnant/date.git

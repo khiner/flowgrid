@@ -156,7 +156,7 @@ Patch Context::SetStore(const Store &store) {
         auto modified_field = Base::WithPath.find(path);
         if (modified_field == Base::WithPath.end()) modified_field = Base::WithPath.find(path.parent_path());
         if (modified_field == Base::WithPath.end()) modified_field = Base::WithPath.find(path.parent_path().parent_path());
-        if (modified_field == Base::WithPath.end()) throw std::runtime_error(fmt::format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
+        if (modified_field == Base::WithPath.end()) throw std::runtime_error(std::format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
 
         modified_fields.emplace(modified_field->second);
 

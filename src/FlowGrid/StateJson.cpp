@@ -37,7 +37,7 @@ void adl_serializer<std::chrono::time_point<Clock, Duration>>::from_json(const j
 
 void to_json(json &j, const Primitive &value) {
     if (std::holds_alternative<U32>(value)) {
-        j = fmt::format("{:#08X}", std::get<U32>(value));
+        j = std::format("{:#08X}", std::get<U32>(value));
     } else {
         std::visit(
             [&](auto &&inner_value) {
@@ -55,7 +55,7 @@ void from_json(const json &j, Primitive &field) {
         const auto j_string = j.get<string>();
         if (j_string.starts_with("0X")) field = U32(std::stoul(j_string, nullptr, 0));
         else field = j.get<string>();
-    } else throw std::runtime_error(fmt::format("Could not parse Primitive JSON value: {}", j.dump()));
+    } else throw std::runtime_error(std::format("Could not parse Primitive JSON value: {}", j.dump()));
 }
 
 void to_json(json &j, const StatePath &path) { j = path.string(); }

@@ -2,6 +2,8 @@
 #include "AppPreferences.h"
 #include "StateJson.h"
 
+#include "date.h"
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <range/v3/view/iota.hpp>
@@ -497,7 +499,7 @@ void Info::Render() const {
     PushTextWrapPos(0);
     if (StateMember::WithId.contains(hovered_id)) {
         const auto *member = StateMember::WithId.at(hovered_id);
-        const string help = member->Help.empty() ? fmt::format("No info available for \"{}\".", member->Name) : member->Help;
+        const string help = member->Help.empty() ? std::format("No info available for \"{}\".", member->Name) : member->Help;
         TextUnformatted(help.c_str());
     } else if (Box box = GetHoveredBox(hovered_id)) {
         TextUnformatted(GetTreeInfo(box).c_str());
@@ -660,7 +662,7 @@ void WindowSettings::Apply(ImGuiContext *) const {
         const auto id = Id[i];
         auto *window = FindWindowByID(id);
         if (!window) {
-            std::cerr << "Unable to apply settings for window with ID " << fmt::format("{:#08X}", id) << ": Window not found.\n";
+            std::cerr << "Unable to apply settings for window with ID " << std::format("{:#08X}", id) << ": Window not found.\n";
             continue;
         }
 
@@ -752,7 +754,7 @@ void TableSettings::Apply(ImGuiContext *) const {
         const auto id = ID[i];
         const auto table = TableFindByID(id);
         if (!table) {
-            std::cerr << "Unable to apply settings for table with ID " << fmt::format("{:#08X}", id) << ": Table not found.\n";
+            std::cerr << "Unable to apply settings for table with ID " << std::format("{:#08X}", id) << ": Table not found.\n";
             continue;
         }
 
@@ -1520,7 +1522,7 @@ void Style::FlowGridStyle::Graph::Render() const {
     Scale.Draw();
     if (scale_fill) {
         SameLine();
-        TextUnformatted(fmt::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
+        TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
         EndDisabled();
     }
     Direction.Draw();
@@ -1636,12 +1638,10 @@ void Demo::FileDialogDemo::Render() const {
     IGFD::ShowDemoWindow();
 }
 
-#include "fmt/chrono.h"
-
 void ShowGesture(const Gesture &gesture) {
     for (Count action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &[action, time] = gesture[action_index];
-        JsonTree(fmt::format("{}: {}", action::GetName(action), time), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
+        JsonTree(std::format("{}: {}", action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()), json(action)[1], JsonTreeNodeFlags_None, to_string(action_index).c_str());
     }
 }
 
@@ -1681,7 +1681,7 @@ void Metrics::FlowGridMetrics::Render() const {
             for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[committed, store_record, gesture] = History.Records[i];
-                    BulletText("Committed: %s", fmt::format("{}\n", committed).c_str());
+                    BulletText("Committed: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing them.
                         const auto &patch = CreatePatch(History.Records[i - 1].Store, History.Records[i].Store);

@@ -12,7 +12,6 @@ file(
     GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
     lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_demo.cpp
-    lib/fmt/src/format.cc
     lib/r8brain/r8bbase.cpp
 )
 
@@ -25,11 +24,11 @@ include_directories(
     lib/ImGuiFileDialog
     lib/implot
     lib/imgui_club/imgui_memory_editor
-    lib/fmt/include
     lib/range-v3/include
     lib/r8brain
     lib/immer
     lib/concurrentqueue
+    lib/date/include/date
 )
 
 option(TRACING_ENABLED "Enable Tracy profiling" OFF)

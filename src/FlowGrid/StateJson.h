@@ -5,8 +5,6 @@
 
 #include "nlohmann/json.hpp"
 
-string to_string(const Primitive &); // xxx should be defined in `Primitive.h`
-
 namespace nlohmann {
 // Convert `std::chrono::time_point`s to/from JSON.
 // Based on https://github.com/nlohmann/json/issues/2159#issuecomment-638104529

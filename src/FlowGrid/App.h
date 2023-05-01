@@ -1,11 +1,11 @@
 #pragma once
 
+#include <format>
 #include <list>
 #include <range/v3/core.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "fmt/format.h"
 #include "imgui_internal.h"
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
@@ -27,7 +27,6 @@ namespace fg = FlowGrid;
 namespace views = ranges::views;
 
 using namespace nlohmann;
-using fmt::to_string;
 using ranges::to, views::transform;
 using std::pair, std::unique_ptr, std::make_unique;
 using Store = immer::map<StatePath, Primitive, StatePathHash>;
@@ -1322,7 +1321,7 @@ UIMember(
     WindowMember_(
         UIProcess,
         false,
-        Prop_(Bool, Running, fmt::format("?Disabling ends the {} process.\nEnabling will start the process up again.", Name), true);
+        Prop_(Bool, Running, std::format("?Disabling ends the {} process.\nEnabling will start the process up again.", Name), true);
     );
 
     Prop(ImGuiSettings, ImGuiSettings);

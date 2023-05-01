@@ -36,6 +36,7 @@
 [submodule "lib/imgui_club"]
 	path = lib/imgui_club
 	url = git@github.com:khiner/imgui_club.git
+	branch = main
 [submodule "lib/fmt"]
 	path = lib/fmt
 	url = git@github.com:fmtlib/fmt.git

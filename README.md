@@ -213,7 +213,7 @@ The following modules are [forked by me](https://github.com/khiner?tab=repositor
 - `imgui:docking`
 - `implot:master`
 - `zep:master`
-- `imgui_club:master`
+- `imgui_club:main`
 
 I keep my changes rebased on top of the original repo branches.
 Here's my process:

@@ -82,10 +82,6 @@ find_package(Freetype REQUIRED)
 set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
 
-#=================== tracy ===================
-
-add_subdirectory(tracy)
-
 #=================== fmt ===================
 
 add_subdirectory(fmt)

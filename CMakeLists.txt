@@ -4,10 +4,6 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
 project(FlowGrid LANGUAGES C CXX)
 
-# TODO debug/release builds
-set(TRACY_ENABLE OFF CACHE STRING "Enable profiling" FORCE)
-set(TRACY_ON_DEMAND OFF CACHE STRING "On-demand profiling" FORCE)
-
 add_subdirectory("lib")
 
 file(
@@ -31,15 +27,24 @@ include_directories(
     lib/range-v3/include
     lib/r8brain
     lib/immer
-    lib/tracy/public/tracy
     lib/concurrentqueue
 )
 
-# See readme for plans with these libraries
+option(TRACING_ENABLED "Enable Tracy profiling" OFF)
+if(TRACING_ENABLED)
+    set(TRACY_ENABLE ON CACHE STRING "Enable profiling" FORCE)
+    set(TRACY_ON_DEMAND OFF CACHE STRING "On-demand profiling" FORCE)
+    add_subdirectory(lib/tracy)
+    include_directories(lib/tracy/public/tracy)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Tracy::TracyClient)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TRACING_ENABLED)
+endif()
+
+# See readme for plans with diff-match-patch.
 #include_directories(lib/diff-match-patch-cpp-stl)
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
-target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI nlohmann_json::nlohmann_json dynamiclib Zep::Zep Tracy::TracyClient)
+target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI nlohmann_json::nlohmann_json dynamiclib Zep::Zep)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

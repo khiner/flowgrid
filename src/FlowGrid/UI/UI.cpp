@@ -4,12 +4,15 @@
 #include "imgui_impl_sdl2.h"
 #include "nlohmann/json.hpp"
 #include "zep/stringutils.h"
-#include <Tracy.hpp>
 
 #include "../App.h"
 
 #include "../FileDialog/FileDialogDemo.h"
 #include "Faust/FaustEditor.h"
+
+#ifdef TRACING_ENABLED
+#include <Tracy.hpp>
+#endif
 
 using namespace fg;
 using namespace ImGui;
@@ -221,8 +224,9 @@ void TickUi() {
         if (!patch.Empty()) q(ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }
-
+#ifdef TRACING_ENABLED
     FrameMark;
+#endif
 }
 
 void DestroyUi() {

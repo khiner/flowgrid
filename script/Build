@@ -4,9 +4,15 @@
 # The project is built in the root directory regardless of where it's called from.
 # Flags:
 #   * `-r, --release`: Build a release build instead of a debug build, in `./build-release` relative to the project root directory.
+#   * `-t, --trace`: Build a traced debug build
+
 IsRelease=false
+IsTracing=false
+
 if [ "$1" = "-r" ] || [ "$1" = "--release" ]; then
     IsRelease=true
+elif [ "$1" = "-t" ] || [ "$1" = "--trace" ]; then
+    IsTracing=true
 fi
 
 ScriptDir="$(cd "$(dirname "${0}")" && pwd)"
@@ -14,6 +20,8 @@ ProjectRootDir="$(dirname "${ScriptDir}")"
 BuildDir="${ProjectRootDir}/build"
 if [ "$IsRelease" = true ]; then
     BuildDir="${BuildDir}-release"
+elif [ "$IsTracing" = true ]; then
+    BuildDir="${BuildDir}-tracing"
 fi
 
 # Common part of cmake configure command
@@ -24,6 +32,8 @@ CMakeConfig="CC=clang CXX=clang++ cmake -B \"${BuildDir}\" -S \"${ProjectRootDir
 # Configure.
 if [ "$IsRelease" = true ]; then
     eval "${CMakeConfig} -D CMAKE_BUILD_TYPE=Release"
+elif [ "$IsTracing" = true ]; then
+    eval "${CMakeConfig} -D TRACING_ENABLED=ON"
 else
     eval "${CMakeConfig}"
 fi

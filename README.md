@@ -104,9 +104,11 @@ All scripts can be run from anywhere, but to the root repo directory (clean/buil
 - **Build:**
   - Debug build (default): `./script/Build`
   - Release build: `./script/Build -r [--release]`
+  - Tracy build: `./script/Build -t [--trace]`
 
 Debug build is generated in the `./build` directory relative to project (repo) root.
 Release build is generated in `./build-release`.
+Tracy build generated in `./build-tracing`
 
 To run the freshly built application:
 
@@ -178,9 +180,7 @@ In addition, the `Format` script formats every source Cxx file.
 
 ### Tracing
 
-To enable tracing, set `TRACY_ENABLE` to `ON` in the main project `CMakeLists.txt`.
-todo only build/include tracy in a new build type, built in
-todo create a third build type for
+Use `./script/Build -t [--trace]` to create a traced build.
 
 To build and run the [Tracy](https://github.com/wolfpld/tracy) profiler, run:
 

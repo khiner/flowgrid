@@ -1,9 +1,10 @@
-#include "SDL.h"
-#include "SDL_opengl.h"
 #include "imgui_impl_opengl3.h" // TODO vulkan
-#include "imgui_impl_sdl2.h"
+#include "imgui_impl_sdl3.h"
 #include "nlohmann/json.hpp"
 #include "zep/stringutils.h"
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_opengl.h>
 
 #include "../App.h"
 
@@ -27,35 +28,40 @@ struct RenderContext {
 RenderContext CreateRenderContext() {
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
+    const char *glsl_version = "#version 150";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #else
     // GL 3.0 + GLSL 130
-    context.glsl_version = "#version 130";
+    const char *glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
 
+    // Enable native IME.
+    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+
     // Create window with graphics context
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    auto window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_MAXIMIZED;
+    auto window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
 
-    RenderContext draw_context;
-    draw_context.window = SDL_CreateWindow("FlowGrid", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
-    draw_context.gl_context = SDL_GL_CreateContext(draw_context.window);
+    RenderContext render_context;
+    render_context.window = SDL_CreateWindowWithPosition("FlowGrid", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
 
-    return draw_context;
+    render_context.gl_context = SDL_GL_CreateContext(render_context.window);
+
+    return render_context;
 }
 
 void DestroyRenderContext(const RenderContext &rc) {
     ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     DestroyContext();
     ImPlot::DestroyContext();
 
@@ -82,7 +88,7 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
     // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(RenderContext.window, RenderContext.gl_context);
+    ImGui_ImplSDL3_InitForOpenGL(RenderContext.window, RenderContext.gl_context);
     ImGui_ImplOpenGL3_Init(RenderContext.glsl_version);
 
     UIContext ui_context = {imgui_context, implot_context};
@@ -101,12 +107,13 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
 
 void PrepareFrame() {
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     NewFrame();
 }
 
 void RenderFrame(RenderContext &rc) {
     Render();
+
     glViewport(0, 0, (int)rc.io.DisplaySize.x, (int)rc.io.DisplaySize.y);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(GetDrawData());
@@ -161,7 +168,7 @@ bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
 RenderContext RenderContext;
 
 UIContext CreateUi() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) throw std::runtime_error(SDL_GetError());
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) throw std::runtime_error(SDL_GetError());
 
     RenderContext = CreateRenderContext();
     const auto &ui_context = CreateUiContext(RenderContext);
@@ -182,10 +189,9 @@ void TickUi() {
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        ImGui_ImplSDL2_ProcessEvent(&event);
-        if (event.type == SDL_QUIT ||
-            (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-             event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
+        ImGui_ImplSDL3_ProcessEvent(&event);
+        if (event.type == SDL_EVENT_QUIT ||
+            (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
             q(CloseApplication{}, true);
         }
     }

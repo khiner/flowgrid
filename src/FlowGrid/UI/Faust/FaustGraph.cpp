@@ -961,7 +961,8 @@ static bool isBoxInverter(Box box) {
 }
 
 static inline string PrintTree(Tree tree) {
-    const auto &str = printBox(tree, false);
+    static const int max_num_characters = 20;
+    const auto &str = printBox(tree, false, max_num_characters);
     return str.substr(0, str.size() - 1); // Last character is a newline.
 }
 

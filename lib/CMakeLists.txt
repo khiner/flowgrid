@@ -68,6 +68,8 @@ set(OLDCPP_BACKEND OFF CACHE STRING "Include old CPP backend" FORCE)
 set(RUST_BACKEND OFF CACHE STRING "Include RUST backend" FORCE)
 set(WASM_BACKEND OFF CACHE STRING "Include WASM backend" FORCE)
 
+include_directories(faust/compiler/generator/c)
+include_directories(faust/compiler/generator/cpp)
 add_subdirectory(faust/build EXCLUDE_FROM_ALL)
 target_compile_definitions(dynamiclib PUBLIC LLVM_BUILD_UNIVERSAL=1)
 

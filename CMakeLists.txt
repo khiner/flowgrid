@@ -7,11 +7,11 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 add_subdirectory(lib)
 
 set(IMGUI_DIR lib/imgui)
+set(IMPLOT_DIR lib/implot)
 
 file(
     GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
-    lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_demo.cpp
     ${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
@@ -19,6 +19,9 @@ file(
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
+    ${IMPLOT_DIR}/implot.cpp
+    ${IMPLOT_DIR}/implot_items.cpp
+    ${IMPLOT_DIR}/implot_demo.cpp
 )
 
 find_package(OpenGL REQUIRED)
@@ -26,14 +29,14 @@ find_package(OpenGL REQUIRED)
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 include_directories(
+    ${SDL3_DIR}/include
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
-    ${SDL3_DIR}/include
+    ${IMPLOT_DIR}
     lib/miniaudio
     lib/faust/architecture
     lib/zep/include
     lib/ImGuiFileDialog
-    lib/implot
     lib/imgui_club/imgui_memory_editor
     lib/range-v3/include
     lib/immer

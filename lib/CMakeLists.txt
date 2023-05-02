@@ -1,8 +1,5 @@
 #=================== SDL3 ===================
 
-cmake_policy(SET CMP0077 NEW)
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-
 set(SDL3_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
 add_subdirectory(${SDL3_DIR})
 
@@ -50,7 +47,3 @@ find_package(Freetype REQUIRED)
 
 set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)
-
-#=================== range-v3 ===================
-
-add_subdirectory(range-v3)

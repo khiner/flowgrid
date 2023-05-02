@@ -2,9 +2,10 @@
 
 #include <string>
 
-#include "imgui.h"
-
 using std::string;
+using U32 = unsigned int;
+
+struct ImVec2;
 
 // Uses same argument ordering as CSS.
 struct Padding {
@@ -42,14 +43,14 @@ struct TextStyle {
         Italic
     };
 
-    const ImColor Color;
+    const U32 Color;
     const Justify Justify{HJustify_Middle, VJustify_Middle};
     const Padding Padding;
     const FontStyle FontStyle{Normal};
 };
 
 struct RectStyle {
-    const ImColor FillColor, StrokeColor;
+    const U32 FillColor, StrokeColor;
     const float StrokeWidth{0}, CornerRadius{0};
 };
 

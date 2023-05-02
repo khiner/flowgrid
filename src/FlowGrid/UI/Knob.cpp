@@ -1,5 +1,6 @@
 #include "Knob.h"
 
+#include <imgui.h>
 #include <imgui_internal.h>
 #include <numbers>
 
@@ -42,22 +43,21 @@ void draw_arc(ImVec2 center, float radius, float start_angle, float end_angle, f
 }
 
 ColorSet GetPrimaryColorSet() {
-    auto *colors = GetStyle().Colors;
-    return {colors[ImGuiCol_ButtonActive], colors[ImGuiCol_ButtonHovered], colors[ImGuiCol_ButtonHovered]};
+    return {GetColorU32(ImGuiCol_ButtonActive), GetColorU32(ImGuiCol_ButtonHovered), GetColorU32(ImGuiCol_ButtonHovered)};
 }
 ColorSet GetTrackColorSet() {
-    const auto *colors = GetStyle().Colors;
-    return {colors[ImGuiCol_FrameBg]};
+    return {GetColorU32(ImGuiCol_FrameBg)};
 }
 ColorSet GetSecondaryColorSet() {
+    // todo make style color
     const auto *colors = GetStyle().Colors;
-    const auto &active = ImVec4(
+    const auto &active = ImColor(
         colors[ImGuiCol_ButtonActive].x * 0.5f,
         colors[ImGuiCol_ButtonActive].y * 0.5f,
         colors[ImGuiCol_ButtonActive].z * 0.5f,
         colors[ImGuiCol_ButtonActive].w
     );
-    const auto &hovered = ImVec4(
+    const auto &hovered = ImColor(
         colors[ImGuiCol_ButtonHovered].x * 0.5f,
         colors[ImGuiCol_ButtonHovered].y * 0.5f,
         colors[ImGuiCol_ButtonHovered].z * 0.5f,

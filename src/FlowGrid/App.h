@@ -6,7 +6,7 @@
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "imgui_internal.h"
+#include "implot.h"
 #include "nlohmann/json_fwd.hpp"
 
 #include "Store.h"
@@ -28,10 +28,6 @@ using namespace nlohmann;
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
 using ranges::to, views::transform;
 using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
-
-// todo move to ImVec2ih, or make a new Vec2S16 type
-constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
-constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >> 16), S16(U32(packed) & 0xffff)}; }
 
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
 
@@ -110,13 +106,15 @@ inline static const vector<Flags::Item> TableFlagItems{
 
 ImGuiTableFlags TableFlagsToImgui(TableFlags);
 
+struct ImGuiWindow;
+
 struct Window : UIStateMember, MenuItemDrawable {
     using UIStateMember::UIStateMember;
     Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
     Window(StateMember *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
     Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu);
 
-    ImGuiWindow &FindImGuiWindow() const { return *ImGui::FindWindowByName(ImGuiLabel.c_str()); }
+    ImGuiWindow &FindImGuiWindow() const;
     void Draw() const override;
     void MenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
     void Dock(ID node_id) const;
@@ -558,8 +556,36 @@ struct Metrics : TabsWindow {
 #include "UI/Style.h"
 #include "UI/UI.h"
 
+enum InteractionFlags_ {
+    InteractionFlags_None = 0,
+    InteractionFlags_Hovered = 1 << 0,
+    InteractionFlags_Held = 1 << 1,
+    InteractionFlags_Clicked = 1 << 2,
+};
+using InteractionFlags = int;
+
 // Namespace needed because Audio imports `CoreAudio.h`, which imports `CoreAudioTypes->MacTypes`, which has a `Style` type without a namespace.
 namespace FlowGrid {
+void HelpMarker(const char *help); // Like the one defined in `imgui_demo.cpp`
+
+InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id); // Basically `ImGui::InvisibleButton`, but supporting hover/held testing.
+
+enum JsonTreeNodeFlags_ {
+    JsonTreeNodeFlags_None = 0,
+    JsonTreeNodeFlags_Highlighted = 1 << 0,
+    JsonTreeNodeFlags_Disabled = 1 << 1,
+    JsonTreeNodeFlags_DefaultOpen = 1 << 2,
+};
+using JsonTreeNodeFlags = int;
+
+bool JsonTreeNode(string_view label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr);
+
+// If `label` is empty, `JsonTree` will simply show the provided json `value` (object/array/raw value), with no nesting.
+// For a non-empty `label`:
+//   * If the provided `value` is an array or object, it will show as a nested `JsonTreeNode` with `label` as its parent.
+//   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
+void JsonTree(string_view label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
+
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
 
@@ -821,7 +847,7 @@ struct Style : TabsWindow {
         Prop(Bool, UseISO8601);
         Prop(Bool, Use24HourClock);
 
-        Prop(Int, Marker, ImPlotMarker_None); // Not editable todo delete?
+        Prop(Int, Marker, 0); // Not editable todo delete?
     );
 
     Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
@@ -829,6 +855,9 @@ struct Style : TabsWindow {
     Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
 };
 } // namespace FlowGrid
+
+template<typename T>
+struct ImChunkStream;
 
 struct ImGuiDockNodeSettings;
 
@@ -855,6 +884,9 @@ Member(
     Prop(Vector<U32>, Size); // Packed ImVec2ih
     Prop(Vector<U32>, SizeRef); // Packed ImVec2ih
 );
+
+struct ImGuiWindowSettings;
+struct ImGuiTableSettings;
 
 Member(
     WindowSettings,

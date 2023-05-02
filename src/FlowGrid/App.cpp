@@ -20,6 +20,85 @@ using namespace ImGui;
 using namespace fg;
 using namespace action;
 
+//-----------------------------------------------------------------------------
+// [SECTION] Widgets
+//-----------------------------------------------------------------------------
+
+namespace FlowGrid {
+void HelpMarker(const char *help) {
+    TextDisabled("(?)");
+    if (IsItemHovered()) {
+        BeginTooltip();
+        PushTextWrapPos(GetFontSize() * 35);
+        TextUnformatted(help);
+        PopTextWrapPos();
+        EndTooltip();
+    }
+}
+
+InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id) {
+    auto *window = GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    const auto imgui_id = window->GetID(id);
+    const auto size = CalcItemSize(size_arg, 0.0f, 0.0f);
+    const auto &cursor = GetCursorScreenPos();
+    const ImRect rect{cursor, cursor + size};
+    if (!ItemAdd(rect, imgui_id)) return false;
+
+    InteractionFlags flags = InteractionFlags_None;
+    static bool hovered, held;
+    if (ButtonBehavior(rect, imgui_id, &hovered, &held, ImGuiButtonFlags_AllowItemOverlap)) {
+        flags |= InteractionFlags_Clicked;
+    }
+    if (hovered) flags |= InteractionFlags_Hovered;
+    if (held) flags |= InteractionFlags_Held;
+
+    return flags;
+}
+
+bool JsonTreeNode(string_view label_view, JsonTreeNodeFlags flags, const char *id) {
+    const auto label = string(label_view);
+    const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
+    const bool disabled = flags & JsonTreeNodeFlags_Disabled;
+    const ImGuiTreeNodeFlags imgui_flags = flags & JsonTreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
+
+    if (disabled) BeginDisabled();
+    if (highlighted) PushStyleColor(ImGuiCol_Text, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+    const bool is_open = id ? TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : TreeNodeEx(label.c_str(), imgui_flags);
+    if (highlighted) PopStyleColor();
+    if (disabled) EndDisabled();
+
+    return is_open;
+}
+
+void JsonTree(string_view label_view, const json &value, JsonTreeNodeFlags node_flags, const char *id) {
+    const auto label = string(label_view);
+    if (value.is_null()) {
+        TextUnformatted(label.empty() ? "(null)" : label.c_str());
+    } else if (value.is_object()) {
+        if (label.empty() || JsonTreeNode(label, node_flags, id)) {
+            for (auto it = value.begin(); it != value.end(); ++it) {
+                JsonTree(it.key(), *it, node_flags);
+            }
+            if (!label.empty()) TreePop();
+        }
+    } else if (value.is_array()) {
+        if (label.empty() || JsonTreeNode(label, node_flags, id)) {
+            Count i = 0;
+            for (const auto &it : value) {
+                JsonTree(to_string(i), it, node_flags);
+                i++;
+            }
+            if (!label.empty()) TreePop();
+        }
+    } else {
+        if (label.empty()) TextUnformatted(value.dump().c_str());
+        else Text("%s: %s", label.c_str(), value.dump().c_str());
+    }
+}
+} // namespace FlowGrid
+
 vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
@@ -446,6 +525,8 @@ Window::Window(StateMember *parent, string_view path_segment, string_view name_h
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu)
     : UIStateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {}
 
+ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }
+
 void Window::Draw() const {
     if (!Visible) return;
 
@@ -607,6 +688,9 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih Size;
     ImVec2ih SizeRef;
 };
+
+constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
+constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >> 16), S16(U32(packed) & 0xffff)}; }
 
 void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &store) const {
     const Count size = dss.Size;

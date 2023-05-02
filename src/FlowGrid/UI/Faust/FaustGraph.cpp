@@ -10,6 +10,8 @@
 #include "faust/dsp/libfaust-box.h"
 #include "faust/dsp/libfaust-signal.h"
 
+#include "imgui_internal.h"
+
 #include "../../App.h"
 #include "../../Helper/File.h"
 #include "../../Helper/String.h"
@@ -239,8 +241,8 @@ struct ImGuiDevice : Device {
     void Rect(const ImRect &local_rect, const RectStyle &style) override {
         const auto &rect = At(local_rect);
         const auto &[fill_color, stroke_color, stroke_width, corner_radius] = style;
-        if (fill_color.Value.w != 0) DrawList->AddRectFilled(rect.Min, rect.Max, fill_color, corner_radius);
-        if (stroke_color.Value.w != 0) DrawList->AddRect(rect.Min, rect.Max, stroke_color, corner_radius);
+        DrawList->AddRectFilled(rect.Min, rect.Max, fill_color, corner_radius);
+        DrawList->AddRect(rect.Min, rect.Max, stroke_color, corner_radius);
     }
 
     void LabeledRect(const ImRect &local_rect, string_view label, const RectStyle &rect_style, const TextStyle &text_style) override {
@@ -339,6 +341,14 @@ using StringHelper::Capitalize;
 // An abstract block graph node.
 struct Node {
     inline static unordered_map<ID, const Node *> WithId;
+
+    inline static const U32
+        BgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.1f}),
+        BorderColor = ColorConvertFloat4ToU32({0.f, 0.f, 1.f, 1.f}),
+        ChannelLabelColor = ColorConvertFloat4ToU32({0.f, 0.f, 1.f, 1.f}),
+        ChildChannelLabelColor = ColorConvertFloat4ToU32({1.f, 0.f, 0.f, 1.f}),
+        TypeLabelBgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.3f}),
+        TypeTextColor = ColorConvertFloat4ToU32({1.f, 0.f, 0.f, 1.f});
 
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
@@ -441,13 +451,13 @@ struct Node {
 
     // Debug
     void DrawRect(Device &device) const {
-        device.Rect(*this, {.FillColor = {0.5f, 0.5f, 0.5f, 0.1f}, .StrokeColor = {0.f, 0.f, 1.f, 1.f}, .StrokeWidth = 1});
+        device.Rect(*this, {.FillColor = BgColor, .StrokeColor = BorderColor, .StrokeWidth = 1});
     }
     void DrawType(Device &device) const {
         const static float padding = 2;
         const auto &label = std::format("{}: {}", BoxTypeLabel, Descendents);
-        device.Rect({{0, 0}, CalcTextSize(label) + padding * 2}, {.FillColor = {0.5f, 0.5f, 0.5f, 0.3f}});
-        device.Text({padding, padding}, label, {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Left, VJustify_Top}});
+        device.Rect({{0, 0}, CalcTextSize(label) + padding * 2}, {.FillColor = TypeLabelBgColor});
+        device.Text({padding, padding}, label, {.Color = TypeTextColor, .Justify = {HJustify_Left, VJustify_Top}});
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
@@ -455,7 +465,7 @@ struct Node {
                 device.Text(
                     Point(io, channel),
                     std::format("{}:{}", Capitalize(to_string(io, true)), channel),
-                    {.Color = {0.f, 0.f, 1.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .FontStyle = TextStyle::FontStyle::Bold}
+                    {.Color = ChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .FontStyle = TextStyle::FontStyle::Bold}
                 );
                 device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
             }
@@ -469,7 +479,7 @@ struct Node {
                     device.Text(
                         child->ChildPoint(io, channel),
                         std::format("C{}->{}:{}", child_index, Capitalize(to_string(io, true)), channel),
-                        {.Color = {1.f, 0.f, 0.f, 1.f}, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .FontStyle = TextStyle::FontStyle::Bold}
+                        {.Color = ChildChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .FontStyle = TextStyle::FontStyle::Bold}
                     );
                     device.Circle(child->ChildPoint(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
                 }
@@ -903,6 +913,8 @@ private:
 };
 
 struct RouteNode : Node {
+    inline static const U32 RouteFrameBgColor = ColorConvertFloat4ToU32({0.93f, 0.93f, 0.65f, 1.f});
+
     RouteNode(Tree tree, Count in_count, Count out_count, vector<int> routes)
         : Node(tree, in_count, out_count), Routes(std::move(routes)) {}
 
@@ -915,7 +927,7 @@ struct RouteNode : Node {
 
     void Render(Device &device, InteractionFlags) const override {
         if (Style().RouteFrame) {
-            device.Rect(GetFrameRect(), {.FillColor = {0.93f, 0.93f, 0.65f, 1.f}}); // todo move to style
+            device.Rect(GetFrameRect(), {.FillColor = RouteFrameBgColor});
             DrawOrientationMark(device);
             // Input arrows
             for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XMargin(), 0}, Orientation);

@@ -1,5 +1,7 @@
 #include "Style.h"
 
+#include "imgui.h"
+
 using namespace ImGui;
 
 float CalcAlignedX(const HJustify h_justify, const float inner_w, const float outer_w, bool is_label) {

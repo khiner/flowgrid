@@ -1,5 +1,7 @@
 #include <sstream>
 
+#include <imgui_internal.h>
+
 #include "FileDialogDemo.h"
 #include "ImGuiFileDialog.h"
 

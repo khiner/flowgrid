@@ -3,9 +3,19 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
 
+#include "Helper/String.h"
+
 using namespace action;
 using ranges::to;
 namespace views = ranges::views;
+
+string to_string(PatchOp::Type patch_op_type) {
+    switch (patch_op_type) {
+        case AddOp: return "Add";
+        case RemoveOp: return "Remove";
+        case ReplaceOp: return "Replace";
+    }
+}
 
 PatchOps Merge(const PatchOps &a, const PatchOps &b) {
     PatchOps merged = a;
@@ -107,7 +117,8 @@ std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b
     }
 }
 
-Gesture action::MergeGesture(const Gesture &gesture) {
+namespace action {
+Gesture MergeGesture(const Gesture &gesture) {
     Gesture merged_gesture; // Mutable return value
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
@@ -133,3 +144,70 @@ Gesture action::MergeGesture(const Gesture &gesture) {
 
     return merged_gesture;
 }
+
+#define Name(action_var_name) StringHelper::PascalToSentenceCase(#action_var_name)
+
+string GetName(const ProjectAction &action) {
+    return Match(
+        action,
+        [](const Undo &) { return Name(Undo); },
+        [](const Redo &) { return Name(Redo); },
+        [](const SetHistoryIndex &) { return Name(SetHistoryIndex); },
+        [](const OpenProject &) { return Name(OpenProject); },
+        [](const OpenEmptyProject &) { return Name(OpenEmptyProject); },
+        [](const OpenDefaultProject &) { return Name(OpenDefaultProject); },
+        [](const SaveProject &) { return Name(SaveProject); },
+        [](const SaveDefaultProject &) { return Name(SaveDefaultProject); },
+        [](const SaveCurrentProject &) { return Name(SaveCurrentProject); },
+        [](const SaveFaustFile &) { return "Save Faust file"s; },
+        [](const SaveFaustSvgFile &) { return "Save Faust SVG file"s; },
+    );
+}
+
+string GetName(const StateAction &action) {
+    return Match(
+        action,
+        [](const OpenFaustFile &) { return "Open Faust file"s; },
+        [](const ShowOpenFaustFileDialog &) { return "Show open Faust file dialog"s; },
+        [](const ShowSaveFaustFileDialog &) { return "Show save Faust file dialog"s; },
+        [](const ShowSaveFaustSvgFileDialog &) { return "Show save Faust SVG file dialog"s; },
+        [](const SetImGuiColorStyle &) { return "Set ImGui color style"s; },
+        [](const SetImPlotColorStyle &) { return "Set ImPlot color style"s; },
+        [](const SetFlowGridColorStyle &) { return "Set FlowGrid color style"s; },
+        [](const SetGraphColorStyle &) { return Name(SetGraphColorStyle); },
+        [](const SetGraphLayoutStyle &) { return Name(SetGraphLayoutStyle); },
+        [](const OpenFileDialog &) { return Name(OpenFileDialog); },
+        [](const CloseFileDialog &) { return Name(CloseFileDialog); },
+        [](const ShowOpenProjectDialog &) { return Name(ShowOpenProjectDialog); },
+        [](const ShowSaveProjectDialog &) { return Name(ShowSaveProjectDialog); },
+        [](const SetValue &) { return Name(SetValue); },
+        [](const SetValues &) { return Name(SetValues); },
+        [](const SetVector &) { return Name(SetVector); },
+        [](const SetMatrix &) { return Name(SetMatrix); },
+        [](const ToggleValue &) { return Name(ToggleValue); },
+        [](const ApplyPatch &) { return Name(ApplyPatch); },
+        [](const CloseApplication &) { return Name(CloseApplication); },
+    );
+}
+
+string GetShortcut(const EmptyAction &action) {
+    const ID id = std::visit([](const Action &&a) { return GetId(a); }, action);
+    return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
+}
+
+// An action's menu label is its name, except for a few exceptions.
+string GetMenuLabel(const EmptyAction &action) {
+    return Match(
+        action,
+        [](const ShowOpenProjectDialog &) { return "Open project"s; },
+        [](const OpenEmptyProject &) { return "New project"s; },
+        [](const SaveCurrentProject &) { return "Save project"s; },
+        [](const ShowSaveProjectDialog &) { return "Save project as..."s; },
+        [](const ShowOpenFaustFileDialog &) { return "Open DSP file"s; },
+        [](const ShowSaveFaustFileDialog &) { return "Save DSP as..."s; },
+        [](const ShowSaveFaustSvgFileDialog &) { return "Export SVG"s; },
+        [](const ProjectAction &a) { return GetName(a); },
+        [](const StateAction &a) { return GetName(a); },
+    );
+}
+} // namespace action

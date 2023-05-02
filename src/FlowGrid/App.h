@@ -7,12 +7,9 @@
 #include <range/v3/view/transform.hpp>
 
 #include "imgui_internal.h"
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 #include "nlohmann/json_fwd.hpp"
 
-#include "Actions.h"
-#include "StateMember.h"
+#include "Store.h"
 
 /**
  * The main `State` instance fully describes the application at any point in time.
@@ -24,249 +21,19 @@
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
-namespace views = ranges::views;
+using namespace Field;
 
+namespace views = ranges::views;
 using namespace nlohmann;
-using ranges::to, views::transform;
-using std::pair, std::unique_ptr, std::make_unique;
-using std::unordered_map;
-using Store = immer::map<StatePath, Primitive, StatePathHash>;
-using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
+using ranges::to, views::transform;
+using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
 
 // todo move to ImVec2ih, or make a new Vec2S16 type
 constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
 constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >> 16), S16(U32(packed) & 0xffff)}; }
 
 constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
-
-struct MenuItemDrawable {
-    virtual void MenuItem() const = 0;
-};
-
-struct Menu : Drawable {
-    using Item = std::variant<
-        const Menu,
-        const std::reference_wrapper<MenuItemDrawable>,
-        const EmptyAction>;
-
-    Menu(string_view label, const vector<const Item> items);
-    explicit Menu(const vector<const Item> items);
-    Menu(const vector<const Item> items, const bool is_main);
-
-    const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
-    const vector<const Item> Items;
-    const bool IsMain{false};
-
-protected:
-    void Render() const override;
-};
-
-// A `Field` is a drawable state-member that wraps around a primitive type.
-namespace Field {
-
-struct Base : UIStateMember {
-    inline static unordered_map<StatePath, Base *, StatePathHash> WithPath; // Find any field by its path.
-
-    Base(StateMember *parent, string_view path_segment, string_view name_help);
-    ~Base();
-
-    virtual void Update() = 0;
-
-protected:
-    void Render() const override {}
-};
-
-struct PrimitiveBase : Base {
-    PrimitiveBase(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
-
-    Primitive Get() const; // Returns the value in the main state store.
-    Primitive GetInitial() const; // Returns the value in the initialization state store.
-};
-
-template<IsPrimitive T>
-struct TypedBase : PrimitiveBase {
-    TypedBase(StateMember *parent, string_view path_segment, string_view name_help, T value = {})
-        : PrimitiveBase(parent, path_segment, name_help, value), Value(value) {}
-
-    operator T() const { return Value; }
-    bool operator==(const T &value) const { return Value == value; }
-
-    // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
-    virtual void Update() override { Value = std::get<T>(Get()); }
-
-protected:
-    T Value;
-};
-
-struct Bool : TypedBase<bool>, MenuItemDrawable {
-    using TypedBase::TypedBase;
-
-    bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
-    void MenuItem() const override;
-
-private:
-    void Render() const override;
-    void Toggle() const; // Used in draw methods.
-};
-
-struct UInt : TypedBase<U32> {
-    UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100);
-    UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0);
-
-    operator bool() const;
-    operator int() const;
-    operator ImColor() const;
-
-    void Render(const vector<U32> &options) const;
-    void ColorEdit4(ImGuiColorEditFlags = ImGuiColorEditFlags_None, bool allow_auto = false) const;
-
-    const U32 Min, Max;
-
-private:
-    void Render() const override;
-    string ValueName(const U32 value) const;
-
-    const std::optional<std::function<const string(U32)>> GetName{};
-};
-
-struct Int : TypedBase<int> {
-    Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100);
-
-    operator bool() const;
-    operator short() const;
-    operator char() const;
-    operator S8() const;
-
-    void Render(const vector<int> &options) const;
-
-    const int Min, Max;
-
-private:
-    void Render() const override;
-};
-
-struct Float : TypedBase<float> {
-    // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Float(
-        StateMember *parent, string_view path_segment, string_view name_help,
-        float value = 0, float min = 0, float max = 1, const char *fmt = nullptr,
-        ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0
-    );
-
-    void Update() override;
-
-    const float Min, Max, DragSpeed; // If `DragSpeed` is non-zero, this is rendered as an `ImGui::DragFloat`.
-    const char *Format;
-    const ImGuiSliderFlags Flags;
-
-private:
-    void Render() const override;
-};
-
-struct String : TypedBase<string> {
-    String(StateMember *parent, string_view path_segment, string_view name_help, string_view value = "");
-
-    operator bool() const;
-    operator string_view() const;
-
-    void Render(const vector<string> &options) const;
-
-private:
-    void Render() const override;
-};
-
-struct Enum : TypedBase<int>, MenuItemDrawable {
-    Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value = 0);
-    Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0);
-
-    void Render(const vector<int> &options) const;
-    void MenuItem() const override;
-
-    const vector<string> Names;
-
-private:
-    void Render() const override;
-    string OptionName(const int option) const;
-
-    const std::optional<std::function<const string(int)>> GetName{};
-};
-
-// todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
-struct Flags : TypedBase<int>, MenuItemDrawable {
-    struct Item {
-        Item(const char *name_and_help);
-
-        string Name, Help;
-    };
-
-    // All text after an optional '?' character for each name will be interpreted as an item help string.
-    // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value = 0);
-
-    void MenuItem() const override;
-
-    const vector<Item> Items;
-
-private:
-    void Render() const override;
-};
-} // namespace Field
-
-using namespace Field;
-
-using FieldEntry = pair<const Base &, Primitive>;
-using FieldEntries = vector<FieldEntry>;
-
-template<IsPrimitive T>
-struct Vector : Base {
-    using Base::Base;
-
-    StatePath PathAt(const Count i) const;
-    Count Size() const;
-    T operator[](const Count i) const;
-    void Set(const vector<T> &, TransientStore &) const;
-    void Set(const vector<pair<int, T>> &, TransientStore &) const;
-
-    void Update() override;
-
-private:
-    vector<T> Value;
-};
-
-// Vector of vectors. Inner vectors need not have the same length.
-template<IsPrimitive T>
-struct Vector2D : Base {
-    using Base::Base;
-
-    StatePath PathAt(const Count i, const Count j) const;
-    Count Size() const; // Number of outer vectors
-    Count Size(Count i) const; // Size of inner vector at index `i`
-
-    T operator()(Count i, Count j) const;
-    void Set(const vector<vector<T>> &, TransientStore &) const;
-
-    void Update() override;
-
-private:
-    vector<vector<T>> Value;
-};
-
-template<IsPrimitive T>
-struct Matrix : Base {
-    using Base::Base;
-
-    StatePath PathAt(const Count row, const Count col) const;
-    Count Rows() const;
-    Count Cols() const;
-    T operator()(const Count row, const Count col) const;
-
-    void Update() override;
-
-private:
-    Count RowCount, ColCount;
-    vector<T> Data;
-};
 
 struct Colors : UIStateMember {
     // An arbitrary transparent color is used to mark colors as "auto".
@@ -875,7 +642,7 @@ struct Style : TabsWindow {
                 ArrowSize.Y,
                 InverterRadius,
             };
-            const FieldEntries DefaultLayoutEntries = LayoutFields | transform([](const PrimitiveBase &field) { return FieldEntry(field, field.GetInitial()); }) | to<const FieldEntries>;
+            const Field::Entries DefaultLayoutEntries = LayoutFields | transform([](const PrimitiveBase &field) { return Field::Entry(field, field.GetInitial()); }) | to<const Field::Entries>;
 
             void ColorsDark(TransientStore &store) const;
             void ColorsClassic(TransientStore &store) const;
@@ -1238,23 +1005,12 @@ UIMember(
     Prop(ProjectPreview, ProjectPreview);
 );
 
-// Store setters
-void Set(const Base &, const Primitive &, TransientStore &);
-void Set(const StoreEntries &, TransientStore &);
-void Set(const FieldEntries &, TransientStore &);
-void Set(const StatePath &, const vector<Primitive> &, TransientStore &);
-void Set(const StatePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
-
-Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);
-
 //-----------------------------------------------------------------------------
 // [SECTION] Globals
 //-----------------------------------------------------------------------------
 
 /**
-Declare global read-only accessors for:
- - State instance `s`
- - Complete, canonical application store instance `AppStore`
+Declare global read-only accessors for the canonical state instance `s`.
 
 (Global application `Context` instance `c` is defined in `Context.h`.)
 
@@ -1280,4 +1036,3 @@ const Audio &audio = s.Audio;
 */
 
 extern const State &s;
-extern const Store &AppStore;

@@ -11,7 +11,7 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
-#include "implot_internal.h"
+#include "imgui.h"
 
 // todo implement for r8brain resampler
 // todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.

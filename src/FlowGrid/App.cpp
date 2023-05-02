@@ -8,7 +8,10 @@
 #include <iostream>
 #include <range/v3/view/iota.hpp>
 
+#include "imgui.h"
 #include "imgui_memory_editor.h"
+
+#include "implot.h"
 #include "implot_internal.h"
 
 #include "FileDialog/FileDialogDemo.h"
@@ -110,7 +113,7 @@ string to_string(const IO io, const bool shorten) {
     }
 }
 
-ImGuiTableFlags TableFlagsToImgui(const TableFlags flags) {
+ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
     ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingStretchProp;
     if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
     if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
@@ -449,9 +452,9 @@ void Matrix<T>::Update() {
     }
 }
 
-Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, const char *fmt)
+Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value, float min, float max, const char *fmt)
     : UIStateMember(parent, path_segment, name_help),
-      X(this, "X", "", value.x, min, max), Y(this, "Y", "", value.y, min, max), Format(fmt) {}
+      X(this, "X", "", value.first, min, max), Y(this, "Y", "", value.second, min, max), Format(fmt) {}
 
 Vec2::operator ImVec2() const { return {X, Y}; }
 
@@ -465,7 +468,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
 
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
-Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value, float min, float max, bool linked, const char *fmt)
+Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
     Set(Linked, linked, c.InitStore);
 }
@@ -1334,6 +1337,11 @@ void Style::FlowGridStyle::Graph::ColorsFaust(TransientStore &store) const {
         store
     );
 }
+
+Style::ImGuiStyle::ImGuiColors::ImGuiColors(StateMember *parent, string_view path_segment, string_view name_help)
+    : Colors(parent, path_segment, name_help, ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
+Style::ImPlotStyle::ImPlotColors::ImPlotColors(StateMember *parent, string_view path_segment, string_view name_help)
+    : Colors(parent, path_segment, name_help, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::FlowGridStyle::Graph::LayoutFlowGrid(TransientStore &store) const {
     Set(DefaultLayoutEntries, store);

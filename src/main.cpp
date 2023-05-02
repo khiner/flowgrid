@@ -4,6 +4,8 @@
 #include "FlowGrid/AppPreferences.h"
 #include "FlowGrid/Config.h"
 
+#include "imgui.h"
+
 // Create global, mutable `UIContext` and `Context` instances.
 AppPreferences Preferences{};
 UIContext UiContext{};

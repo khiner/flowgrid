@@ -262,7 +262,7 @@ void DrawUiItem(const FaustParams::Item &item, const char *label, const float su
             if (type == ItemType_None) { // Root group (treated as a vertical group but not as a table)
                 for (const auto &child : children) DrawUiItem(child, child.label.c_str(), suggested_item_height);
             } else {
-                if (BeginTable(item.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImgui(fg_style.Params.TableFlags))) {
+                if (BeginTable(item.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImGui(fg_style.Params.TableFlags))) {
                     const float row_min_height = suggested_item_height + cell_padding;
                     if (is_h) {
                         ParamsWidthSizingPolicy policy = fg_style.Params.WidthSizingPolicy;

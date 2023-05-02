@@ -1,12 +1,10 @@
 #pragma once
 
 #include <format>
-#include <list>
 #include <range/v3/core.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "implot.h"
 #include "nlohmann/json_fwd.hpp"
 
 #include "Store.h"
@@ -29,7 +27,65 @@ using action::ActionMoment, action::Gesture, action::Gestures, action::StateActi
 using ranges::to, views::transform;
 using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
 
-constexpr bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }
+struct ImVec2;
+struct ImVec4;
+struct ImGuiWindow;
+using ImGuiID = unsigned int;
+using ImGuiWindowFlags = int;
+using ImGuiTableFlags = int;
+using ImGuiSliderFlags = int;
+
+// Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
+// Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.
+enum WindowFlags_ {
+    WindowFlags_None = 0,
+    WindowFlags_NoScrollbar = 1 << 3,
+    WindowFlags_MenuBar = 1 << 10,
+};
+
+enum Dir_ {
+    Dir_None = -1,
+    Dir_Left = 0,
+    Dir_Right = 1,
+    Dir_Up = 2,
+    Dir_Down = 3,
+    Dir_COUNT
+};
+
+enum SliderFlags_ {
+    SliderFlags_None = 0,
+    SliderFlags_AlwaysClamp = 1 << 4, // Clamp value to min/max bounds when input manually with CTRL+Click. By default CTRL+Click allows going out of bounds.
+    SliderFlags_Logarithmic = 1 << 5, // Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
+};
+
+// Subset of `ImGuiTableFlags`.
+// Unlike the enums above, this one is not a copy of an ImGui enum.
+// They can be converted between each other with `TableFlagsToImGui`.
+// todo 'Condensed' preset, with NoHostExtendX, NoBordersInBody, NoPadOuterX
+enum TableFlags_ {
+    TableFlags_None = 0,
+    // Features
+    TableFlags_Resizable = 1 << 0,
+    TableFlags_Reorderable = 1 << 1,
+    TableFlags_Hideable = 1 << 2,
+    TableFlags_Sortable = 1 << 3,
+    TableFlags_ContextMenuInBody = 1 << 4,
+    // Borders
+    TableFlags_BordersInnerH = 1 << 5,
+    TableFlags_BordersOuterH = 1 << 6,
+    TableFlags_BordersInnerV = 1 << 7,
+    TableFlags_BordersOuterV = 1 << 8,
+    TableFlags_Borders = TableFlags_BordersInnerH | TableFlags_BordersOuterH | TableFlags_BordersInnerV | TableFlags_BordersOuterV,
+    TableFlags_NoBordersInBody = 1 << 9,
+    // Padding
+    TableFlags_PadOuterX = 1 << 10,
+    TableFlags_NoPadOuterX = 1 << 11,
+    TableFlags_NoPadInnerX = 1 << 12,
+};
+
+using TableFlags = int;
+
+ImGuiTableFlags TableFlagsToImGui(TableFlags);
 
 struct Colors : UIStateMember {
     // An arbitrary transparent color is used to mark colors as "auto".
@@ -58,29 +114,6 @@ private:
     bool AllowAuto;
 };
 
-// Subset of `ImGuiTableFlags`.
-enum TableFlags_ {
-    // Features
-    TableFlags_Resizable = 1 << 0,
-    TableFlags_Reorderable = 1 << 1,
-    TableFlags_Hideable = 1 << 2,
-    TableFlags_Sortable = 1 << 3,
-    TableFlags_ContextMenuInBody = 1 << 4,
-    // Borders
-    TableFlags_BordersInnerH = 1 << 5,
-    TableFlags_BordersOuterH = 1 << 6,
-    TableFlags_BordersInnerV = 1 << 7,
-    TableFlags_BordersOuterV = 1 << 8,
-    TableFlags_Borders = TableFlags_BordersInnerH | TableFlags_BordersOuterH | TableFlags_BordersInnerV | TableFlags_BordersOuterV,
-    TableFlags_NoBordersInBody = 1 << 9,
-    // Padding
-    TableFlags_PadOuterX = 1 << 10,
-    TableFlags_NoPadOuterX = 1 << 11,
-    TableFlags_NoPadInnerX = 1 << 12,
-};
-// todo 'Condensed' preset, with NoHostExtendX, NoBordersInBody, NoPadOuterX
-using TableFlags = int;
-
 enum ParamsWidthSizingPolicy_ {
     ParamsWidthSizingPolicy_StretchToFill, // If a table contains only fixed-width items, allow columns to stretch to fill available width.
     ParamsWidthSizingPolicy_StretchFlexibleOnly, // If a table contains only fixed-width items, it won't stretch to fill available width.
@@ -104,12 +137,9 @@ inline static const vector<Flags::Item> TableFlagItems{
     "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
 };
 
-ImGuiTableFlags TableFlagsToImgui(TableFlags);
-
-struct ImGuiWindow;
-
 struct Window : UIStateMember, MenuItemDrawable {
     using UIStateMember::UIStateMember;
+
     Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
     Window(StateMember *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
     Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu);
@@ -123,7 +153,7 @@ struct Window : UIStateMember, MenuItemDrawable {
     Prop(Bool, Visible, true);
 
     const Menu WindowMenu{{}};
-    const ImGuiWindowFlags WindowFlags{ImGuiWindowFlags_None};
+    const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.
@@ -155,7 +185,7 @@ WindowMember_(
     void StateJsonTree(string_view key, const json &value, const StatePath &path = RootPath) const;
 );
 
-WindowMember_(StateMemoryEditor, ImGuiWindowFlags_NoScrollbar);
+WindowMember_(StateMemoryEditor, WindowFlags_NoScrollbar);
 WindowMember(StatePathUpdateFrequency);
 
 WindowMember(
@@ -191,7 +221,7 @@ struct Faust : UIStateMember {
 
     WindowMember_(
         FaustEditor,
-        ImGuiWindowFlags_MenuBar,
+        WindowFlags_MenuBar,
 
         // todo state member & respond to changes, or remove from state
         string FileName{"default.dsp"};
@@ -506,7 +536,7 @@ using FlowGridGraphCol = int;
 
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
+    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 
     operator ImVec2() const;
 
@@ -520,7 +550,7 @@ protected:
 
 struct Vec2Linked : Vec2 {
     using Vec2::Vec2;
-    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const ImVec2 &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
+    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
     Prop(Bool, Linked, true);
 
@@ -611,7 +641,7 @@ struct Style : TabsWindow {
             );
             Prop_(Bool, ScaleFillHeight, "?Automatically scale to fill the full height of the graph window, keeping the same aspect ratio.");
             Prop(Float, Scale, 1, 0.1, 5);
-            Prop(Enum, Direction, {"Left", "Right"}, ImGuiDir_Right);
+            Prop(Enum, Direction, {"Left", "Right"}, Dir_Right);
             Prop(Bool, RouteFrame);
             Prop(Bool, SequentialConnectionZigzag); // `false` uses diagonal lines instead of zigzags instead of zigzags
             Prop(Bool, OrientationMark);
@@ -716,10 +746,14 @@ struct Style : TabsWindow {
         static const char *GetColorName(FlowGridCol idx);
     );
 
-    UIMember_(
-        ImGuiStyle,
+    struct ImGuiStyle : UIStateMember {
+        ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help = "");
 
         static vector<ImVec4> ColorPresetBuffer;
+
+        struct ImGuiColors : Colors {
+            ImGuiColors(StateMember *parent, string_view path_segment, string_view name_help);
+        };
 
         void Apply(ImGuiContext *ctx) const;
         void ColorsDark(TransientStore &) const;
@@ -763,8 +797,8 @@ struct Style : TabsWindow {
 
         // Alignment
         Prop(Vec2, WindowTitleAlign, {0, 0.5}, 0, 1, "%.2f");
-        Prop(Enum, WindowMenuButtonPosition, {"Left", "Right"}, ImGuiDir_Left);
-        Prop(Enum, ColorButtonPosition, {"Left", "Right"}, ImGuiDir_Right);
+        Prop(Enum, WindowMenuButtonPosition, {"Left", "Right"}, Dir_Left);
+        Prop(Enum, ColorButtonPosition, {"Left", "Right"}, Dir_Right);
         Prop_(Vec2Linked, ButtonTextAlign, "?Alignment applies when a button is larger than its text content.", {0.5, 0.5}, 0, 1, "%.2f");
         Prop_(Vec2Linked, SelectableTextAlign, "?Alignment applies when a selectable is larger than its text content.", {0, 0}, 0, 1, "%.2f");
 
@@ -775,14 +809,14 @@ struct Style : TabsWindow {
         Prop_(Bool, AntiAliasedLines, "Anti-aliased lines?When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.", true);
         Prop_(Bool, AntiAliasedLinesUseTex, "Anti-aliased lines use texture?Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).", true);
         Prop_(Bool, AntiAliasedFill, "Anti-aliased fill", true);
-        Prop_(Float, CurveTessellationTol, "Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f", ImGuiSliderFlags_None, 0.02f);
+        Prop_(Float, CurveTessellationTol, "Curve tesselation tolerance", 1.25, 0.1, 10, "%.2f", SliderFlags_None, 0.02f);
         Prop(Float, CircleTessellationMaxError, 0.3, 0.1, 5, "%.2f");
-        Prop(Float, Alpha, 1, 0.2, 1, "%.2f", ImGuiSliderFlags_None, 0.005); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
-        Prop_(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f", ImGuiSliderFlags_None, 0.005);
+        Prop(Float, Alpha, 1, 0.2, 1, "%.2f", SliderFlags_None, 0.005); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets).
+        Prop_(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f", SliderFlags_None, 0.005);
 
         // Fonts
         Prop(Int, FontIndex);
-        Prop_(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f", ImGuiSliderFlags_AlwaysClamp, 0.005f);
+        Prop_(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f", SliderFlags_AlwaysClamp, 0.005f);
 
         // Not editable todo delete?
         Prop(Float, TabMinWidthForCloseButton, 0);
@@ -791,13 +825,20 @@ struct Style : TabsWindow {
         Prop(Float, MouseCursorScale, 1);
         Prop(Float, ColumnsMinSpacing, 6);
 
-        Prop(Colors, Colors, ImGuiCol_COUNT, ImGui::GetStyleColorName);
-    );
+        Prop(ImGuiColors, Colors);
 
-    UIMember_(
-        ImPlotStyle,
+    protected:
+        void Render() const override;
+    };
+
+    struct ImPlotStyle : UIStateMember {
+        ImPlotStyle(StateMember *parent, string_view path_segment, string_view name_help = "");
 
         static vector<ImVec4> ColorPresetBuffer;
+
+        struct ImPlotColors : Colors {
+            ImPlotColors(StateMember *parent, string_view path_segment, string_view name_help);
+        };
 
         void Apply(ImPlotContext *ctx) const;
         void ColorsAuto(TransientStore &store) const;
@@ -842,13 +883,16 @@ struct Style : TabsWindow {
         Prop(Vec2Linked, AnnotationPadding, {2, 2}, 0, 5, "%.0f");
         Prop(Vec2Linked, FitPadding, {0, 0}, 0, 0.2, "%.2f");
 
-        Prop(Colors, Colors, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true);
+        Prop(ImPlotColors, Colors);
         Prop(Bool, UseLocalTime);
         Prop(Bool, UseISO8601);
         Prop(Bool, Use24HourClock);
 
         Prop(Int, Marker, 0); // Not editable todo delete?
-    );
+
+    protected:
+        void Render() const override;
+    };
 
     Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
@@ -860,6 +904,9 @@ template<typename T>
 struct ImChunkStream;
 
 struct ImGuiDockNodeSettings;
+
+template<typename T>
+struct ImVector;
 
 // These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
 // They are stored here a structs-of-arrays (vs. arrays-of-structs)

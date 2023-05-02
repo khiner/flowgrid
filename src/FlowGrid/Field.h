@@ -3,7 +3,7 @@
 #include "Actions.h"
 #include "StateMember.h"
 
-#include "imgui.h"
+struct ImColor;
 
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;
@@ -75,6 +75,8 @@ private:
     void Toggle() const; // Used in draw methods.
 };
 
+using ImGuiColorEditFlags = int;
+
 struct UInt : TypedBase<U32> {
     UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100);
     UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0);
@@ -84,7 +86,7 @@ struct UInt : TypedBase<U32> {
     operator ImColor() const;
 
     void Render(const vector<U32> &options) const;
-    void ColorEdit4(ImGuiColorEditFlags = ImGuiColorEditFlags_None, bool allow_auto = false) const;
+    void ColorEdit4(ImGuiColorEditFlags flags = 0, bool allow_auto = false) const;
 
     const U32 Min, Max;
 
@@ -94,6 +96,8 @@ private:
 
     const std::optional<std::function<const string(U32)>> GetName{};
 };
+
+using ImGuiSliderFlags = int;
 
 struct Int : TypedBase<int> {
     Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100);
@@ -116,7 +120,7 @@ struct Float : TypedBase<float> {
     Float(
         StateMember *parent, string_view path_segment, string_view name_help,
         float value = 0, float min = 0, float max = 1, const char *fmt = nullptr,
-        ImGuiSliderFlags flags = ImGuiSliderFlags_None, float drag_speed = 0
+        ImGuiSliderFlags flags = 0, float drag_speed = 0
     );
 
     void Update() override;

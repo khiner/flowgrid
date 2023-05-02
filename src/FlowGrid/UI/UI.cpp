@@ -3,6 +3,7 @@
 
 #include "imgui_impl_opengl3.h" // TODO vulkan
 #include "imgui_impl_sdl3.h"
+#include "immer/map.hpp"
 #include "nlohmann/json.hpp"
 #include "zep/stringutils.h"
 

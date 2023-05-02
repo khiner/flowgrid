@@ -1,12 +1,26 @@
 #pragma once
 
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
+#include <immer/memory_policy.hpp>
 
 #include "Field.h"
 
-using Store = immer::map<StatePath, Primitive, StatePathHash>;
-using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash>;
+namespace immer {
+namespace detail {
+namespace hamts {
+using bits_t = std::uint32_t;
+} // namespace hamts
+} // namespace detail
+
+template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, detail::hamts::bits_t B>
+class map;
+
+template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, detail::hamts::bits_t B>
+class map_transient;
+} // namespace immer
+
+const auto immer_default_bits = 5;
+using Store = immer::map<StatePath, Primitive, StatePathHash, std::equal_to<StatePath>, immer::default_memory_policy, immer_default_bits>;
+using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash, std::equal_to<StatePath>, immer::default_memory_policy, immer_default_bits>;
 
 /**
 Declare global read-only accessors for the complete, canonical application store instance `AppStore`.

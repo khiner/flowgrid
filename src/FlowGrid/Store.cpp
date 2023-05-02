@@ -1,6 +1,8 @@
 #include "Store.h"
 
-#include <immer/algorithm.hpp>
+#include "immer/algorithm.hpp"
+#include "immer/map.hpp"
+#include "immer/map_transient.hpp"
 
 // Transient modifiers
 void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }

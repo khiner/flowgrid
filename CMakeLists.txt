@@ -6,15 +6,29 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
 add_subdirectory(lib)
 
+set(IMGUI_DIR lib/imgui)
+
 file(
     GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
     lib/implot/implot.cpp lib/implot/implot_items.cpp lib/implot/implot_demo.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
 )
+
+find_package(OpenGL REQUIRED)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 include_directories(
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
+    ${SDL3_DIR}/include
     lib/miniaudio
     lib/faust/architecture
     lib/zep/include
@@ -38,7 +52,7 @@ if(TRACING_ENABLED)
 endif()
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
-target_link_libraries(${PROJECT_NAME} PRIVATE IMGUI nlohmann_json::nlohmann_json dynamiclib Zep::Zep)
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL SDL3::SDL3 nlohmann_json::nlohmann_json dynamiclib Zep::Zep)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

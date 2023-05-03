@@ -7,6 +7,7 @@
 
 #include "nlohmann/json_fwd.hpp"
 
+#include "Actions.h"
 #include "Store.h"
 
 /**
@@ -86,6 +87,24 @@ enum TableFlags_ {
 using TableFlags = int;
 
 ImGuiTableFlags TableFlagsToImGui(TableFlags);
+
+struct Menu : Drawable {
+    using Item = std::variant<
+        const Menu,
+        const std::reference_wrapper<MenuItemDrawable>,
+        const EmptyAction>;
+
+    Menu(string_view label, const vector<const Item> items);
+    explicit Menu(const vector<const Item> items);
+    Menu(const vector<const Item> items, const bool is_main);
+
+    const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
+    const vector<const Item> Items;
+    const bool IsMain{false};
+
+protected:
+    void Render() const override;
+};
 
 struct Colors : UIStateMember {
     // An arbitrary transparent color is used to mark colors as "auto".

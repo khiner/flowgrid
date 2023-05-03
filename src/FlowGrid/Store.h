@@ -4,6 +4,8 @@
 
 #include "Field.h"
 
+struct Patch;
+
 namespace immer {
 namespace detail {
 namespace hamts {

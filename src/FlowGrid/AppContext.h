@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Actions.h"
 #include "Config.h"
 #include "Store.h"
 

@@ -1,9 +1,11 @@
 #pragma once
 
-#include "App.h"
+#include "Actions.h"
 #include "Config.h"
+#include "Store.h"
 
 #include "immer/map.hpp"
+#include "nlohmann/json_fwd.hpp"
 
 //-----------------------------------------------------------------------------
 // [SECTION] History
@@ -13,6 +15,8 @@ enum Direction {
     Forward,
     Reverse
 };
+
+using namespace action;
 
 struct StoreHistory {
     struct Record {
@@ -47,10 +51,10 @@ struct StoreHistory {
     vector<Record> Records;
     Gesture ActiveGesture{}; // uncompressed, uncommitted
     vector<StatePath> LatestUpdatedPaths{};
-    unordered_map<StatePath, vector<TimePoint>, StatePathHash> CommittedUpdateTimesForPath{};
+    std::unordered_map<StatePath, vector<TimePoint>, StatePathHash> CommittedUpdateTimesForPath{};
 
 private:
-    unordered_map<StatePath, vector<TimePoint>, StatePathHash> GestureUpdateTimesForPath{};
+    std::unordered_map<StatePath, vector<TimePoint>, StatePathHash> GestureUpdateTimesForPath{};
 };
 
 //-----------------------------------------------------------------------------
@@ -60,7 +64,7 @@ private:
 struct Context {
     static bool IsUserProjectPath(const fs::path &);
 
-    json GetProjectJson(ProjectFormat format = StateFormat);
+    nlohmann::json GetProjectJson(ProjectFormat format = StateFormat);
     void SaveEmptyProject();
     void OpenProject(const fs::path &);
     bool SaveProject(const fs::path &);
@@ -77,12 +81,7 @@ struct Context {
     // _All_ store assignments happen via this method.
     Patch SetStore(const Store &);
 
-private:
-    const State ApplicationState{};
-
 public:
-    const State &s = ApplicationState;
-
     bool ProjectHasChanges{false};
 
 private:

@@ -1,3 +1,4 @@
+#include "FlowGrid/App.h"
 #include "FlowGrid/AppContext.h"
 
 #include "imgui.h"
@@ -6,10 +7,12 @@
 
 // Initialize global extern variables.
 Context c{};
+TransientStore InitStore{};
+const State ApplicationState{};
 Store ApplicationStore{InitStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
 StoreHistory History{AppStore};
 UIContext UiContext{};
-const State &s = c.s; // Create the read-only state reference global.
+const State &s = ApplicationState; // Create the read-only state reference global.
 
 int main(int, const char **) {
     InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.

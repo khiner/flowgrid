@@ -1,12 +1,7 @@
 #include "AppContext.h"
 
-//-----------------------------------------------------------------------------
-// [SECTION] State JSON
-//-----------------------------------------------------------------------------
-
 #include "blockingconcurrentqueue.h"
 #include "immer/map_transient.hpp"
-#include <range/v3/view/concat.hpp>
 
 #include "AppPreferences.h"
 #include "Helper/File.h"
@@ -279,6 +274,8 @@ void Context::ApplyAction(const ProjectAction &action) {
 //-----------------------------------------------------------------------------
 // [SECTION] History
 //-----------------------------------------------------------------------------
+
+#include <range/v3/view/concat.hpp>
 
 Count StoreHistory::Size() const { return Records.size(); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.

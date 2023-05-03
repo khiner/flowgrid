@@ -86,3 +86,5 @@ private:
     Count RowCount, ColCount;
     vector<T> Data;
 };
+
+extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.

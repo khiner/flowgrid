@@ -59,10 +59,8 @@ private:
 //-----------------------------------------------------------------------------
 
 struct Context {
-    Context();
-    ~Context();
-
     static bool IsUserProjectPath(const fs::path &);
+
     json GetProjectJson(ProjectFormat format = StateFormat);
     void SaveEmptyProject();
     void OpenProject(const fs::path &);
@@ -79,8 +77,6 @@ struct Context {
     // Main setter to modify the canonical application state store.
     // _All_ store assignments happen via this method.
     Patch SetStore(const Store &);
-
-    TransientStore InitStore{}; // Used in `StateMember` constructors to initialize the store.
 
 private:
     const State ApplicationState{};

@@ -6,14 +6,17 @@
 
 #include "imgui.h"
 
-// Create global, mutable `UIContext` and `Context` instances.
+// Initialize global extern variables.
 AppPreferences Preferences{};
+TransientStore InitStore{};
 UIContext UiContext{};
 Context c{};
 const Store &AppStore = c.AppStore; // Create the read-only store reference global.
 const State &s = c.s; // Create the read-only state reference global.
 
 int main(int, const char **) {
+    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
+
     // Ensure all store values set during initialization are reflected in cached field/collection values.
     for (auto *field : views::values(Base::WithPath)) field->Update();
 

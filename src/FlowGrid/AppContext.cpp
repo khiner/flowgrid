@@ -105,12 +105,6 @@ void State::Update(const StateAction &action, TransientStore &store) const {
 // [SECTION] Context
 //-----------------------------------------------------------------------------
 
-Context::Context() {
-    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
-}
-
-Context::~Context() = default;
-
 bool Context::IsUserProjectPath(const fs::path &path) {
     return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
         fs::relative(path).string() != fs::relative(DefaultProjectPath).string();

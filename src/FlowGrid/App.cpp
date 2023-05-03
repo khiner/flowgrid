@@ -157,11 +157,11 @@ void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive])
 
 namespace Field {
 PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value) : Base(parent, id, name_help) {
-    Set(*this, value, c.InitStore);
+    Set(*this, value, InitStore);
 }
 
 Primitive PrimitiveBase::Get() const { return AppStore.at(Path); }
-Primitive PrimitiveBase::GetInitial() const { return c.InitStore.at(Path); }
+Primitive PrimitiveBase::GetInitial() const { return InitStore.at(Path); }
 
 void Bool::Toggle() const { q(ToggleValue{Path}); }
 
@@ -470,7 +470,7 @@ void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
 Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
-    Set(Linked, linked, c.InitStore);
+    Set(Linked, linked, InitStore);
 }
 
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
@@ -521,7 +521,7 @@ void StateMember::HelpMarker(const bool after) const {
 
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const bool visible)
     : UIStateMember(parent, path_segment, name_help) {
-    Set(Visible, visible, c.InitStore);
+    Set(Visible, visible, InitStore);
 }
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
     : UIStateMember(parent, path_segment, name_help), WindowFlags(flags) {}
@@ -1176,20 +1176,20 @@ void ProjectPreview::Render() const {
 
 Style::ImGuiStyle::ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(c.InitStore);
+    ColorsDark(InitStore);
 }
 Style::ImPlotStyle::ImPlotStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsAuto(c.InitStore);
+    ColorsAuto(InitStore);
 }
 Style::FlowGridStyle::FlowGridStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(c.InitStore);
+    ColorsDark(InitStore);
 }
 Style::FlowGridStyle::Graph::Graph(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(c.InitStore);
-    LayoutFlowGrid(c.InitStore);
+    ColorsDark(InitStore);
+    LayoutFlowGrid(InitStore);
 }
 
 void Style::ImGuiStyle::ColorsDark(TransientStore &store) const {
@@ -1888,7 +1888,7 @@ void Faust::Render() const {
 
 Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateMember(parent, path_segment, name_help) {
-    ::Set(On, on, c.InitStore);
+    ::Set(On, on, InitStore);
 }
 
 void Audio::Graph::RenderConnections() const {

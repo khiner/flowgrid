@@ -5,6 +5,7 @@
 //-----------------------------------------------------------------------------
 
 #include "blockingconcurrentqueue.h"
+#include "immer/map_transient.hpp"
 #include <range/v3/view/concat.hpp>
 
 #include "AppPreferences.h"

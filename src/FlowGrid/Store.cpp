@@ -4,6 +4,8 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
+TransientStore InitStore{};
+
 // Transient modifiers
 void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
 void Set(const StoreEntries &values, TransientStore &store) {

@@ -1,17 +1,14 @@
-#include <filesystem>
-
 #include "FlowGrid/AppContext.h"
-#include "FlowGrid/AppPreferences.h"
-#include "FlowGrid/Config.h"
 
 #include "imgui.h"
+#include "immer/map_transient.hpp"
+#include <filesystem>
 
 // Initialize global extern variables.
-AppPreferences Preferences{};
-TransientStore InitStore{};
-UIContext UiContext{};
 Context c{};
-const Store &AppStore = c.AppStore; // Create the read-only store reference global.
+Store ApplicationStore{InitStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
+StoreHistory History{AppStore};
+UIContext UiContext{};
 const State &s = c.s; // Create the read-only state reference global.
 
 int main(int, const char **) {

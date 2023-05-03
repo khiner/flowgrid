@@ -3,6 +3,7 @@
 #include "StateJson.h"
 
 #include "date.h"
+#include "immer/map_transient.hpp"
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -10,7 +11,6 @@
 
 #include "imgui.h"
 #include "imgui_memory_editor.h"
-
 #include "implot.h"
 #include "implot_internal.h"
 
@@ -1072,14 +1072,14 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
         string(key);
 
     if (AutoSelect) {
-        const auto &updated_paths = c.History.LatestUpdatedPaths;
+        const auto &updated_paths = History.LatestUpdatedPaths;
         const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
         const bool was_recently_updated = std::find_if(updated_paths.begin(), updated_paths.end(), is_ancestor_path) != updated_paths.end();
         SetNextItemOpen(was_recently_updated);
     }
 
     // Flash background color of nodes when its corresponding path updates.
-    const auto &latest_update_time = c.History.LatestUpdateTime(path);
+    const auto &latest_update_time = History.LatestUpdateTime(path);
     if (latest_update_time) {
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
         ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
@@ -1134,7 +1134,7 @@ void StateMemoryEditor::Render() const {
 }
 
 void StatePathUpdateFrequency::Render() const {
-    auto [labels, values] = c.History.StatePathUpdateFrequencyPlottable();
+    auto [labels, values] = History.StatePathUpdateFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;
@@ -1151,7 +1151,7 @@ void StatePathUpdateFrequency::Render() const {
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};
-        const int item_count = !c.History.ActiveGesture.empty() ? 2 : 1;
+        const int item_count = !History.ActiveGesture.empty() ? 2 : 1;
         const int group_count = int(values.size()) / item_count;
         ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
@@ -1725,8 +1725,8 @@ void Style::FlowGridStyle::Render() const {
 //-----------------------------------------------------------------------------
 
 void ApplicationSettings::Render() const {
-    int value = int(c.History.Index);
-    if (SliderInt("History index", &value, 0, int(c.History.Size() - 1))) q(SetHistoryIndex{value});
+    int value = int(History.Index);
+    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(SetHistoryIndex{value});
     GestureDurationSec.Draw();
 }
 
@@ -1770,10 +1770,10 @@ void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
         const bool widget_gesturing = UiContext.IsWidgetGesturing;
-        const bool ActiveGesturePresent = !c.History.ActiveGesture.empty();
+        const bool ActiveGesturePresent = !History.ActiveGesture.empty();
         if (ActiveGesturePresent || widget_gesturing) {
             // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - c.History.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
             const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
@@ -1783,7 +1783,7 @@ void Metrics::FlowGridMetrics::Render() const {
                 Text("Widget gesture: %s", widget_gesturing ? "true" : "false");
                 if (!widget_gesturing) EndDisabled();
 
-                if (ActiveGesturePresent) ShowGesture(c.History.ActiveGesture);
+                if (ActiveGesturePresent) ShowGesture(History.ActiveGesture);
                 else Text("No actions yet");
                 TreePop();
             }
@@ -1795,10 +1795,9 @@ void Metrics::FlowGridMetrics::Render() const {
     }
     Separator();
     {
-        const auto &History = c.History;
         const bool no_history = History.Empty();
         if (no_history) BeginDisabled();
-        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", c.History.Size() - 1, History.Index)) {
+        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", History.Size() - 1, History.Index)) {
             for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[committed, store_record, gesture] = History.Records[i];

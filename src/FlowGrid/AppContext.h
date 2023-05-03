@@ -4,7 +4,6 @@
 #include "Config.h"
 
 #include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 
 //-----------------------------------------------------------------------------
 // [SECTION] History
@@ -80,13 +79,10 @@ struct Context {
 
 private:
     const State ApplicationState{};
-    Store ApplicationStore{InitStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
 
 public:
     const State &s = ApplicationState;
-    const Store &AppStore = ApplicationStore;
 
-    StoreHistory History{AppStore}; // One store checkpoint for every gesture.
     bool ProjectHasChanges{false};
 
 private:
@@ -97,5 +93,5 @@ private:
     std::optional<fs::path> CurrentProjectPath;
 };
 
-// See the bottom of `App.h` for details on global constants.
-extern Context c;
+extern Context c; // Context global, initialized in `main.cpp`.
+extern StoreHistory History; // One store checkpoint for every gesture.

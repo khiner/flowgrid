@@ -3,6 +3,8 @@
 #include "Helper/File.h"
 #include "StateJson.h"
 
+AppPreferences Preferences{};
+
 AppPreferences::AppPreferences() {
     static bool loading_from_json = false;
     if (loading_from_json) return;

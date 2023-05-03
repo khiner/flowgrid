@@ -1,5 +1,5 @@
-#include "AppContext.h"
 #include "AppPreferences.h"
+#include "Project.h"
 #include "StateJson.h"
 #include "StoreHistory.h"
 
@@ -595,7 +595,7 @@ void Menu::Render() const {
                 [](const EmptyAction &action) {
                     const string menu_label = action::GetMenuLabel(action);
                     const string shortcut = action::GetShortcut(action);
-                    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, c.ActionAllowed(action))) {
+                    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, ActionAllowed(action))) {
                         Match(action, [](const auto &a) { q(a); });
                     }
                 },
@@ -1119,7 +1119,7 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
 }
 
 void StateViewer::Render() const {
-    StateJsonTree("State", c.GetProjectJson());
+    StateJsonTree("State", Project::GetProjectJson());
 }
 
 void StateMemoryEditor::Render() const {
@@ -1167,7 +1167,7 @@ void ProjectPreview::Render() const {
 
     Separator();
 
-    const json project_json = c.GetProjectJson(ProjectFormat(int(Format)));
+    const json project_json = Project::GetProjectJson(Project::Format(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }

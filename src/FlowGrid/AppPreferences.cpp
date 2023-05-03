@@ -27,7 +27,7 @@ bool AppPreferences::Clear() {
     return Write();
 }
 
-void AppPreferences::SetCurrentProjectPath(const fs::path &path) {
+void AppPreferences::OnProjectOpened(const fs::path &path) {
     RecentlyOpenedPaths.remove(path);
     RecentlyOpenedPaths.emplace_front(path);
     Write();

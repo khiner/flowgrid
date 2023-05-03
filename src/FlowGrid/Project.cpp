@@ -1,15 +1,36 @@
-#include "AppContext.h"
+#include "Project.h"
 
 #include "blockingconcurrentqueue.h"
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
+#include "Actions.h"
 #include "AppPreferences.h"
+#include "Helper/File.h"
 #include "StateJson.h"
 #include "StoreHistory.h"
-
-#include "Helper/File.h"
 #include "UI/Faust/FaustGraph.h"
+
+#include <range/v3/core.hpp>
+#include <range/v3/view/join.hpp>
+#include <range/v3/view/map.hpp>
+#include <range/v3/view/transform.hpp>
+
+namespace views = ranges::views;
+using ranges::to, views::transform;
+
+inline static const std::map<Project::Format, string> ExtensionForProjectFormat{{Project::StateFormat, ".fls"}, {Project::ActionFormat, ".fla"}};
+inline static const auto ProjectFormatForExtension = ExtensionForProjectFormat | transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();
+const auto Project::AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
+inline static const string AllProjectExtensionsDelimited = Project::AllProjectExtensions | views::join(',') | to<string>;
+
+inline static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(Project::StateFormat));
+// The default project is a user-created project that loads on app start, instead of the empty project.
+// As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
+inline static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(Project::ActionFormat));
+
+static std::optional<fs::path> CurrentProjectPath;
+static bool ProjectHasChanges{false};
 
 namespace nlohmann {
 inline void to_json(json &j, const Store &v) {
@@ -101,45 +122,45 @@ void State::Update(const StateAction &action, TransientStore &store) const {
 }
 
 //-----------------------------------------------------------------------------
-// [SECTION] Context
+// [SECTION] Project
 //-----------------------------------------------------------------------------
 
-bool Context::IsUserProjectPath(const fs::path &path) {
+bool Project::IsUserProjectPath(const fs::path &path) {
     return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
         fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
 }
 
-void Context::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
-void Context::SaveCurrentProject() {
+void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
+void Project::SaveCurrentProject() {
     if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
 }
 
-json Context::GetProjectJson(const ProjectFormat format) {
+json Project::GetProjectJson(const Format format) {
     switch (format) {
         case StateFormat: return AppStore;
         case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
     }
 }
 
-void Context::Clear() {
+void Project::Clear() {
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {ApplicationStore};
     UiContext.IsWidgetGesturing = false;
 }
 
-std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
+std::optional<Project::Format> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();
     if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
     return {};
 }
 
-void Context::SetHistoryIndex(Count index) {
+void Project::SetHistoryIndex(Count index) {
     History.SetIndex(index);
     SetStore(History.CurrentStore());
 }
 
-Patch Context::SetStore(const Store &store) {
+Patch Project::SetStore(const Store &store) {
     const auto &patch = CreatePatch(AppStore, store);
     if (patch.Empty()) return {};
 
@@ -169,7 +190,13 @@ Patch Context::SetStore(const Store &store) {
     return patch;
 }
 
-void Context::OpenProject(const fs::path &path) {
+void SetCurrentProjectPath(const fs::path &path) {
+    ProjectHasChanges = false;
+    CurrentProjectPath = path;
+    Preferences.OnProjectOpened(path);
+}
+
+void Project::OpenProject(const fs::path &path) {
     const auto format = GetProjectFormat(path);
     if (!format) return; // TODO log
 
@@ -201,7 +228,7 @@ void Context::OpenProject(const fs::path &path) {
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
 }
 
-bool Context::SaveProject(const fs::path &path) {
+bool Project::SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ActionAllowed(action::id<Actions::SaveCurrentProject>)) return false;
 
@@ -215,33 +242,7 @@ bool Context::SaveProject(const fs::path &path) {
     return true;
 }
 
-void Context::SetCurrentProjectPath(const fs::path &path) {
-    ProjectHasChanges = false;
-    CurrentProjectPath = path;
-    Preferences.SetCurrentProjectPath(path);
-}
-
-bool Context::ActionAllowed(const ActionID id) const {
-    switch (id) {
-        case action::id<Actions::Undo>: return History.CanUndo();
-        case action::id<Actions::Redo>: return History.CanRedo();
-        case action::id<Actions::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
-        case action::id<Actions::SaveProject>:
-        case action::id<Actions::SaveDefaultProject>: return !History.Empty();
-        case action::id<Actions::ShowSaveProjectDialog>:
-            // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
-        case action::id<Actions::SaveCurrentProject>: return ProjectHasChanges;
-        case action::id<Actions::OpenFileDialog>: return !s.FileDialog.Visible;
-        case action::id<Actions::CloseFileDialog>: return s.FileDialog.Visible;
-        default: return true;
-    }
-}
-bool Context::ActionAllowed(const Action &action) const { return ActionAllowed(action::GetId(action)); }
-bool Context::ActionAllowed(const EmptyAction &action) const {
-    return std::visit([&](Action &&a) { return ActionAllowed(a); }, action);
-}
-
-void Context::ApplyAction(const ProjectAction &action) {
+void ApplyAction(const ProjectAction &action) {
     Match(
         action,
         // Handle actions that don't directly update state.
@@ -284,7 +285,7 @@ void Context::ApplyAction(const ProjectAction &action) {
 
 static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue; // NOLINT(cppcoreguidelines-interfaces-global-init)
 
-void Context::RunQueuedActions(bool force_finalize_gesture) {
+void Project::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
     static vector<StateActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     state_actions.clear();
@@ -323,10 +324,26 @@ void Context::RunQueuedActions(bool force_finalize_gesture) {
 
 bool q(Action &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
-    if (flush) c.RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
+    if (flush) Project::RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
     return true;
 }
 
-bool ActionAllowed(ID id) { return c.ActionAllowed(id); }
-bool ActionAllowed(const Action &action) { return c.ActionAllowed(action); }
-bool ActionAllowed(const EmptyAction &action) { return c.ActionAllowed(action); }
+bool ActionAllowed(const ActionID id) {
+    switch (id) {
+        case action::id<Actions::Undo>: return History.CanUndo();
+        case action::id<Actions::Redo>: return History.CanRedo();
+        case action::id<Actions::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
+        case action::id<Actions::SaveProject>:
+        case action::id<Actions::SaveDefaultProject>: return !History.Empty();
+        case action::id<Actions::ShowSaveProjectDialog>:
+            // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
+        case action::id<Actions::SaveCurrentProject>: return ProjectHasChanges;
+        case action::id<Actions::OpenFileDialog>: return !s.FileDialog.Visible;
+        case action::id<Actions::CloseFileDialog>: return s.FileDialog.Visible;
+        default: return true;
+    }
+}
+bool ActionAllowed(const Action &action) { return ActionAllowed(action::GetId(action)); }
+bool ActionAllowed(const EmptyAction &action) {
+    return std::visit([&](Action &&a) { return ActionAllowed(a); }, action);
+}

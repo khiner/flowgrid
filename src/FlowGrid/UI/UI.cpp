@@ -186,11 +186,11 @@ UIContext CreateUi() {
     return ui_context;
 }
 
-static int PrevFontIndex = 0;
-static float PrevFontScale = 1.0;
-
 // Main UI tick function
 void TickUi() {
+    static int PrevFontIndex = 0;
+    static float PrevFontScale = 1.0;
+
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.

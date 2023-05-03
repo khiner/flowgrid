@@ -1,11 +1,10 @@
 #pragma once
 
+#include "nlohmann/json_fwd.hpp"
 #include <format>
 #include <range/v3/core.hpp>
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
-
-#include "nlohmann/json_fwd.hpp"
 
 #include "Actions.h"
 #include "Store.h"
@@ -1110,8 +1109,6 @@ UIMember(
 /**
 Declare global read-only accessors for the canonical state instance `s`.
 
-(Global application `Context` instance `c` is defined in `Context.h`.)
-
 All three of these global variables are initialized in `main.cpp`.
 
 `s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
@@ -1129,7 +1126,7 @@ Usage example:
 const Audio &audio = s.Audio;
 
 // Get the currently active gesture (collection of actions) from the global application context:
- const Gesture &ActiveGesture = c.ActiveGesture;
+ const Gesture &ActiveGesture = Project::ActiveGesture;
 ```
 */
 

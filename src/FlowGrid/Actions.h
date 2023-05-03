@@ -215,7 +215,7 @@ template<ID I = 0> Action Create(ID index) {
 template<typename T> constexpr ActionID id = mp_find<Action, T>::value;
 
 // Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-const std::unordered_map<ActionID, string> ShortcutForId = {
+inline static const std::unordered_map<ActionID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},
     {id<Redo>, "shift+cmd+z"},
     {id<OpenEmptyProject>, "cmd+n"},
@@ -239,11 +239,11 @@ Gesture MergeGesture(const Gesture &);
  This is the main action-queue method.
  Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
- _Defined in AppContext.h for now._
+ Defined in `Project.cpp`.
 */
 bool q(Action &&a, bool flush = false);
 
-// These global methods defer to instance methods on `Context` with the same name.
+// These are also defined in `Project.cpp`.
 bool ActionAllowed(ID);
 bool ActionAllowed(const Action &);
 bool ActionAllowed(const EmptyAction &);

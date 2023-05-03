@@ -1,6 +1,7 @@
 #include "AppContext.h"
 
 #include "blockingconcurrentqueue.h"
+#include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
 #include "AppPreferences.h"
@@ -135,7 +136,7 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 
 void Context::SetHistoryIndex(Count index) {
     History.SetIndex(index);
-    SetStore(History.Records[History.Index].Store);
+    SetStore(History.CurrentStore());
 }
 
 Patch Context::SetStore(const Store &store) {
@@ -190,8 +191,7 @@ void Context::OpenProject(const fs::path &path) {
             const auto after_store = transient.persistent();
             const auto &patch = CreatePatch(before_store, after_store);
             const auto &gesture_time = gesture.back().second;
-            History.Records.push_back({gesture_time, after_store, gesture}); // todo save/load gesture commit times
-            History.Index = History.Size() - 1;
+            History.Add(gesture_time, after_store, gesture); // todo save/load gesture commit times
             for (const auto &[partial_path, op] : patch.Ops) History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
         }
         SetStore(transient.persistent());

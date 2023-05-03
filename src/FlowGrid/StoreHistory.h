@@ -3,8 +3,6 @@
 #include "Actions.h"
 #include "Store.h"
 
-#include "immer/map.hpp"
-
 enum Direction {
     Forward,
     Reverse
@@ -13,17 +11,21 @@ enum Direction {
 using namespace action;
 
 struct StoreHistory {
-    struct Record {
+    struct ReferenceRecord {
         const TimePoint Committed;
-        const Store Store; // The store as it was at `Committed` time
-        const Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
+        const Store &Store; // Reference to the store as it was at `Committed` time
+        const Gesture &Gesture; // Reference to the compressed gesture (list of `ActionMoment`s) that caused the store change
     };
+
     struct Plottable {
         vector<const char *> Labels;
         vector<ImU64> Values;
     };
 
-    StoreHistory(const Store &store) : Records{{Clock::now(), store, {}}} {}
+    StoreHistory(const Store &);
+    ~StoreHistory() = default;
+
+    void Reset(const Store &);
 
     void UpdateGesturePaths(const Gesture &, const Patch &);
     Plottable StatePathUpdateFrequencyPlottable() const;
@@ -31,18 +33,21 @@ struct StoreHistory {
 
     void FinalizeGesture();
     void SetIndex(Count);
+    void Add(TimePoint, const Store &, const Gesture &);
 
     Count Size() const;
     bool Empty() const;
     bool CanUndo() const;
     bool CanRedo() const;
 
+    const Store &CurrentStore() const;
+    Patch CreatePatch(Count index) const; // Create a patch between the store at `index` and the store at `index - 1`.
+    ReferenceRecord RecordAt(Count index) const;
     Gestures Gestures() const;
     TimePoint GestureStartTime() const;
     float GestureTimeRemainingSec(float gesture_duration_sec) const;
 
     Count Index{0};
-    vector<Record> Records;
     Gesture ActiveGesture{}; // uncompressed, uncommitted
     vector<StatePath> LatestUpdatedPaths{};
     std::unordered_map<StatePath, vector<TimePoint>, StatePathHash> CommittedUpdateTimesForPath{};

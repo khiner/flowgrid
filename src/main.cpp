@@ -3,6 +3,7 @@
 #include "FlowGrid/StoreHistory.h"
 
 #include "imgui.h"
+#include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 #include <filesystem>
 

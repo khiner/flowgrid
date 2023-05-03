@@ -4,6 +4,7 @@
 #include "StoreHistory.h"
 
 #include "date.h"
+#include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 #include <format>
 #include <fstream>
@@ -1801,11 +1802,11 @@ void Metrics::FlowGridMetrics::Render() const {
         if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", History.Size() - 1, History.Index)) {
             for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[committed, store_record, gesture] = History.Records[i];
+                    const auto &[committed, store_record, gesture] = History.RecordAt(i);
                     BulletText("Committed: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing them.
-                        const auto &patch = CreatePatch(History.Records[i - 1].Store, History.Records[i].Store);
+                        const auto &patch = History.CreatePatch(i);
                         for (const auto &[partial_path, op] : patch.Ops) {
                             const auto &path = patch.BasePath / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

@@ -1,5 +1,6 @@
 #include "StoreHistory.h"
 
+#include "immer/map.hpp"
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/filter.hpp>
@@ -10,10 +11,36 @@
 namespace views = ranges::views;
 using ranges::to, views::transform;
 
+struct Record {
+    const TimePoint Committed;
+    const Store Store; // The store as it was at `Committed` time
+    const Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
+};
+
+static vector<Record> Records;
+
+StoreHistory::StoreHistory(const Store &store) {
+    Records.clear();
+    Records.push_back({Clock::now(), store, {}});
+}
+
+void StoreHistory::Add(TimePoint time, const Store &store, const Gesture &gesture) {
+    Records.push_back({time, store, gesture});
+    Index = Size() - 1;
+}
+
 Count StoreHistory::Size() const { return Records.size(); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
 bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
+
+const Store &StoreHistory::CurrentStore() const { return Records[Index].Store; }
+Patch StoreHistory::CreatePatch(Count index) const { return ::CreatePatch(Records[index - 1].Store, Records[index].Store); }
+
+StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
+    const auto &[time, store, gesture] = Records[index];
+    return {time, store, gesture};
+}
 
 Gestures StoreHistory::Gestures() const {
     return Records | transform([](const auto &record) { return record.Gesture; }) |
@@ -37,12 +64,11 @@ void StoreHistory::FinalizeGesture() {
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;
 
-    const auto &patch = CreatePatch(AppStore, Records[Index].Store);
+    const auto &patch = ::CreatePatch(AppStore, Records[Index].Store);
     if (patch.Empty()) return;
 
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
-    Records.push_back({Clock::now(), AppStore, merged_gesture});
-    Index = Size() - 1;
+    Add(Clock::now(), AppStore, merged_gesture);
     const auto &gesture_time = merged_gesture.back().second;
     for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
@@ -97,7 +123,7 @@ void StoreHistory::SetIndex(Count new_index) {
     while (i != int(new_index)) {
         const int history_index = direction == Reverse ? --i : i++;
         const Count record_index = history_index == -1 ? Index : history_index;
-        const auto &segment_patch = CreatePatch(Records[record_index].Store, Records[record_index + 1].Store);
+        const auto &segment_patch = CreatePatch(record_index + 1);
         const auto &gesture_time = Records[record_index + 1].Gesture.back().second;
         for (const auto &[partial_path, op] : segment_patch.Ops) {
             const auto &path = segment_patch.BasePath / partial_path;

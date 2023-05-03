@@ -1,5 +1,6 @@
 #include "FlowGrid/App.h"
 #include "FlowGrid/AppContext.h"
+#include "FlowGrid/StoreHistory.h"
 
 #include "imgui.h"
 #include "immer/map_transient.hpp"

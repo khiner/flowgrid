@@ -1,6 +1,7 @@
 #include "AppContext.h"
 #include "AppPreferences.h"
 #include "StateJson.h"
+#include "StoreHistory.h"
 
 #include "date.h"
 #include "immer/map_transient.hpp"
@@ -1773,7 +1774,7 @@ void Metrics::FlowGridMetrics::Render() const {
         const bool ActiveGesturePresent = !History.ActiveGesture.empty();
         if (ActiveGesturePresent || widget_gesturing) {
             // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec() / s.ApplicationSettings.GestureDurationSec);
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec(s.ApplicationSettings.GestureDurationSec) / s.ApplicationSettings.GestureDurationSec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
             const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");

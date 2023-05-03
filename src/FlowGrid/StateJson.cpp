@@ -126,8 +126,6 @@ template<typename T> constexpr void extended_from_json(const char *key, const js
     void to_json(nlohmann::json &, const Type &) {} \
     void from_json(const nlohmann::json &, Type &) {}
 
-JsonType(AppPreferences, RecentlyOpenedPaths);
-
 JsonType(PatchOp, Op, Value, Old);
 JsonType(Patch, Ops, BasePath);
 JsonType(StatePatch, Patch, Time);

@@ -1,7 +1,5 @@
 #include <sstream>
 
-#include <imgui_internal.h>
-
 #include "FileDialogDemo.h"
 #include "ImGuiFileDialog.h"
 
@@ -9,6 +7,8 @@
 #include "../Config.h"
 #include "../Helper/File.h"
 #include "../StateJson.h"
+
+#include <imgui_internal.h>
 
 using namespace ImGui;
 

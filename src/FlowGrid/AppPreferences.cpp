@@ -1,25 +1,25 @@
 #include "AppPreferences.h"
 
-#include "Helper/File.h"
-#include "StateJson.h"
+#include "nlohmann/json.hpp"
 
-AppPreferences Preferences{};
+#include "Helper/File.h"
+
+using namespace nlohmann;
 
 AppPreferences::AppPreferences() {
-    static bool loading_from_json = false;
-    if (loading_from_json) return;
-
     if (fs::exists(Path)) {
-        loading_from_json = true;
-        *this = json::parse(FileIO::read(Path));
-        loading_from_json = false;
+        const json js = json::parse(FileIO::read(Path));
+        RecentlyOpenedPaths = js["RecentlyOpenedPaths"].get<std::list<fs::path>>();
     } else {
         Write();
     }
 }
 
 bool AppPreferences::Write() const {
-    return FileIO::write(Path, json(Preferences).dump());
+    json js;
+    js["RecentlyOpenedPaths"] = RecentlyOpenedPaths;
+
+    return FileIO::write(Path, js.dump());
 }
 
 bool AppPreferences::Clear() {
@@ -32,3 +32,5 @@ void AppPreferences::SetCurrentProjectPath(const fs::path &path) {
     RecentlyOpenedPaths.emplace_front(path);
     Write();
 }
+
+AppPreferences Preferences{};

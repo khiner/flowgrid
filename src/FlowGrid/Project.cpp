@@ -33,8 +33,10 @@ static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
 namespace nlohmann {
-inline void to_json(json &j, const Store &v) {
-    for (const auto &[key, value] : v) j[json::json_pointer(key.string())] = value;
+inline void to_json(json &j, const Store &store) {
+    for (const auto &[key, value] : store) {
+        j[json::json_pointer(key.string())] = value;
+    }
 }
 } // namespace nlohmann
 
@@ -300,13 +302,17 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
-        if (std::holds_alternative<Actions::SaveCurrentProject>(action) && !CurrentProjectPath) action = Actions::ShowSaveProjectDialog{};
+        if (std::holds_alternative<Actions::SaveCurrentProject>(action) && !CurrentProjectPath) {
+            action = Actions::ShowSaveProjectDialog{};
+        }
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
         force_finalize_gesture |= std::holds_alternative<ToggleValue>(action);
 
         Match(
             action,
-            [&](const ProjectAction &a) { ApplyAction(a); },
+            [&](const ProjectAction &a) {
+                ApplyAction(a);
+            },
             [&](const StateAction &a) {
                 s.Update(a, transient);
                 state_actions.emplace_back(a, action_moment.second);

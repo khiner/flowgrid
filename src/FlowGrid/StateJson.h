@@ -4,6 +4,10 @@
 
 #include "nlohmann/json.hpp"
 
+#define DeclareJsonType(Type)                     \
+    void to_json(nlohmann::json &, const Type &); \
+    void from_json(const nlohmann::json &, Type &);
+
 namespace nlohmann {
 // Convert `std::chrono::time_point`s to/from JSON.
 // Based on https://github.com/nlohmann/json/issues/2159#issuecomment-638104529
@@ -14,24 +18,19 @@ template<typename Clock, typename Duration> struct adl_serializer<std::chrono::t
 
 void to_json(json &, const Primitive &);
 void from_json(const json &, Primitive &);
-} // namespace nlohmann
-
-#define DeclareJsonType(Type)                     \
-    void to_json(nlohmann::json &, const Type &); \
-    void from_json(const nlohmann::json &, Type &);
 
 DeclareJsonType(StatePath);
-
-namespace nlohmann {
 DeclareJsonType(StateAction);
 DeclareJsonType(ProjectAction);
-} // namespace nlohmann
+
+DeclareJsonType(Store);
 
 DeclareJsonType(PatchOp);
 DeclareJsonType(Patch);
 DeclareJsonType(StatePatch);
 
 DeclareJsonType(FileDialogData);
+} // namespace nlohmann
 
 namespace Actions {
 DeclareJsonType(Undo);

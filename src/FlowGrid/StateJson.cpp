@@ -86,9 +86,6 @@ void from_json(const json &j, ProjectAction &value) {
     auto id = j[0].get<ActionID>();
     value = CreateProjectAction(id, j[1]);
 }
-} // namespace nlohmann
-
-string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 // This boilerplate is for handling `std::optional` values.
 // From https://github.com/nlohmann/json/issues/1749#issuecomment-1099890282
@@ -131,6 +128,10 @@ JsonType(Patch, Ops, BasePath);
 JsonType(StatePatch, Patch, Time);
 
 JsonType(FileDialogData, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags);
+
+} // namespace nlohmann
+
+string to_string(const Primitive &primitive) { return json(primitive).dump(); }
 
 namespace Actions {
 EmptyJsonType(Undo);

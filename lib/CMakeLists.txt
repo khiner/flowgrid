@@ -23,12 +23,3 @@ include_directories(faust/compiler/generator/c)
 include_directories(faust/compiler/generator/cpp)
 add_subdirectory(faust/build EXCLUDE_FROM_ALL)
 target_compile_definitions(dynamiclib PUBLIC LLVM_BUILD_UNIVERSAL=1)
-
-#=================== zep ===================
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-set(FREETYPE_DIR /opt/homebrew/opt/freetype)
-find_package(Freetype REQUIRED)
-
-set(BUILD_TESTS OFF CACHE STRING "Make the tests" FORCE)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zep)

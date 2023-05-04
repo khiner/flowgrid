@@ -38,7 +38,6 @@ include_directories(
     ${IMPLOT_DIR}
     lib/miniaudio
     lib/faust/architecture
-    lib/zep/include
     lib/ImGuiFileDialog
     lib/imgui_club/imgui_memory_editor
     lib/range-v3/include
@@ -59,10 +58,9 @@ if(TRACING_ENABLED)
 endif()
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL SDL3::SDL3 nlohmann_json::nlohmann_json dynamiclib Zep::Zep)
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL SDL3::SDL3 nlohmann_json::nlohmann_json dynamiclib)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 add_definitions(-DIMGUI_DEFINE_MATH_OPERATORS) # ImVec2 & ImVec4 math operators
-add_definitions(-DZEP_USE_SDL) # Needed for ctrl key to work with Zep
 add_definitions(-DCUSTOM_IMGUIFILEDIALOG_CONFIG="../../src/FlowGrid/FileDialog/Config.h") # Relative to `lib/ImGuiFileDialog`

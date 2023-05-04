@@ -2,10 +2,6 @@
 	path = lib/imgui
 	url = git@github.com:khiner/imgui.git
 	branch = docking
-[submodule "lib/zep"]
-	path = lib/zep
-	url = git@github.com:khiner/zep.git
-	branch = master
 [submodule "lib/SDL"]
 	path = lib/SDL
 	url = git@github.com:libsdl-org/SDL.git

@@ -238,9 +238,6 @@ struct Faust : UIStateMember {
     WindowMember_(
         FaustEditor,
         WindowFlags_MenuBar,
-
-        // todo state member & respond to changes, or remove from state
-        string FileName{"default.dsp"};
     );
 
     WindowMember_(
@@ -1049,11 +1046,6 @@ struct OpenRecentProject : MenuItemDrawable {
     void MenuItem() const override;
 };
 
-WindowMember_(
-    Editor,
-    WindowFlags_MenuBar,
-);
-
 UIMember(
     State,
 
@@ -1103,8 +1095,6 @@ UIMember(
     Prop(StateMemoryEditor, StateMemoryEditor);
     Prop(StatePathUpdateFrequency, StatePathUpdateFrequency);
     Prop(ProjectPreview, ProjectPreview);
-
-    Prop(Editor, Editor);
 );
 
 /**

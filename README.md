@@ -132,7 +132,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 - [ImGui](https://github.com/ocornut/imgui): UI & interactions
 - [ImPlot](https://github.com/epezent/implot): plotting
 - [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog): file selection
-- [zep](https://github.com/Rezonality/zep): code/text editing
+- [ImGuiColorTextEdit](https://github.com/santaclose/ImGuiColorTextEdit): code/text editing
 - [ImGui memory_editor](https://github.com/ocornut/imgui_club): viewing/editing memory directly
 
 ### Backend
@@ -207,7 +207,6 @@ The following modules are [forked by me](https://github.com/khiner?tab=repositor
 
 - `imgui:docking`
 - `implot:master`
-- `zep:master`
 - `imgui_club:main`
 
 I keep my changes rebased on top of the original repo branches.
@@ -217,16 +216,6 @@ Here's my process:
 $ cd lib/{library}
 $ git pull --rebase upstream {branch} # `upstream` points to the original repo. See list above for the tracked branch
 $ ... # Resolve any conflicts & test
-$ git push --force
-```
-
-A notable exception is my zep fork, which has so many changes that almost no upstream commits will rebase successfully.
-The way I handle rebasing against zep is to rebase one commit at a time, using `--strategy-option theirs` (`-Xtheirs`), manually resolving any rebase conflicts:
-
-```sh
-$ cd lib/zep
-$ git pull --rebase -Xtheirs upstream {commit_sha}
-$ ... # Resolve any conflicts, port any missing changes manually, verify...
 $ git push --force
 ```
 

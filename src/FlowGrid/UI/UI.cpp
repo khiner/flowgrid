@@ -5,7 +5,6 @@
 #include "imgui_impl_sdl3.h"
 #include "immer/map.hpp"
 #include "nlohmann/json.hpp"
-#include "zep/stringutils.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
@@ -13,7 +12,7 @@
 #include "../App.h"
 
 #include "../FileDialog/FileDialogDemo.h"
-#include "Faust/FaustEditor.h"
+#include "../Helper/String.h"
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>
@@ -143,7 +142,7 @@ const std::map<string, ImGuiModFlags> ModKeys{
 // **Case-sensitive. `shortcut` must be lowercase.**
 std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
     vector<string> tokens;
-    Zep::string_split(shortcut, "+", tokens);
+    StringHelper::Split(shortcut, "+", tokens);
     if (tokens.empty()) return {};
 
     const string command = tokens.back();
@@ -246,6 +245,5 @@ void TickUi() {
 
 void DestroyUi() {
     IGFD::CleanupDemo();
-    DestroyFaustEditor();
     DestroyRenderContext(RenderContext);
 }

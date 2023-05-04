@@ -10,10 +10,8 @@
 #include "Store.h"
 
 /**
- * The main `State` instance fully describes the application at any point in time.
- *
- * The entire codebase has read-only access to the immutable, single source-of-truth application `const State &s` instance,
- * which also provides an immutable `Update(const Action &, TransientState &) const` method, and a `Draw() const` method.
+ * This class defines the main `State`, which fully describes the application at any point in time.
+ * An immutable reference to the single source-of-truth application state `const State &s` is defined at the bottom of this file.
  */
 
 namespace FlowGrid {}
@@ -1051,6 +1049,11 @@ struct OpenRecentProject : MenuItemDrawable {
     void MenuItem() const override;
 };
 
+WindowMember_(
+    Editor,
+    WindowFlags_MenuBar,
+);
+
 UIMember(
     State,
 
@@ -1100,16 +1103,12 @@ UIMember(
     Prop(StateMemoryEditor, StateMemoryEditor);
     Prop(StatePathUpdateFrequency, StatePathUpdateFrequency);
     Prop(ProjectPreview, ProjectPreview);
+
+    Prop(Editor, Editor);
 );
 
-//-----------------------------------------------------------------------------
-// [SECTION] Globals
-//-----------------------------------------------------------------------------
-
 /**
-Declare global read-only accessors for the canonical state instance `s`.
-
-All three of these global variables are initialized in `main.cpp`.
+Declare global read-only accessor for the canonical state instance `s`.
 
 `s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
 It provides a complete nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
@@ -1122,12 +1121,8 @@ Basically, it contains all data for each state member except its _actual value_ 
 Usage example:
 
 ```cpp
-// Get the canonical application audio state:
+// Get a read-only reference to the complete, current, structured audio state instance:
 const Audio &audio = s.Audio;
-
-// Get the currently active gesture (collection of actions) from the global application context:
- const Gesture &ActiveGesture = Project::ActiveGesture;
 ```
 */
-
 extern const State &s;

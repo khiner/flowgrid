@@ -650,6 +650,7 @@ void State::Render() const {
         ApplicationSettings.Dock(settings_node_id);
 
         Faust.Editor.Dock(dockspace_id);
+        Editor.Dock(dockspace_id);
         Faust.Graph.Dock(faust_tools_node_id);
         Faust.Params.Dock(faust_tools_node_id);
 

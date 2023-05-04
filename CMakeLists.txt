@@ -11,7 +11,6 @@ set(IMPLOT_DIR lib/implot)
 
 file(
     GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp
-    lib/ImGuiFileDialog/ImGuiFileDialog.cpp
     ${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
@@ -22,6 +21,10 @@ file(
     ${IMPLOT_DIR}/implot.cpp
     ${IMPLOT_DIR}/implot_items.cpp
     ${IMPLOT_DIR}/implot_demo.cpp
+    lib/ImGuiFileDialog/ImGuiFileDialog.cpp
+    lib/ImGuiColorTextEdit/TextEditor.cpp
+    lib/ImGuiColorTextEdit/LanguageDefinitions.cpp
+    lib/ImGuiColorTextEdit/ImGuiDebugPanel.cpp
 )
 
 find_package(OpenGL REQUIRED)
@@ -42,6 +45,7 @@ include_directories(
     lib/immer
     lib/concurrentqueue
     lib/date/include/date
+    lib/ImGuiColorTextEdit
 )
 
 option(TRACING_ENABLED "Enable Tracy profiling" OFF)

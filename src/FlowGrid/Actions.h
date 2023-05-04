@@ -37,7 +37,6 @@ struct StatePatch {
     TimePoint Time{};
 };
 
-string to_string(const Primitive &);
 string to_string(PatchOp::Type);
 
 /**
@@ -171,6 +170,7 @@ using StateAction = std::variant<
     SetGraphLayoutStyle,
 
     CloseApplication>;
+
 using Action = Combine<ProjectAction, StateAction>::type;
 using ActionID = ID;
 

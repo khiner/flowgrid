@@ -10,7 +10,6 @@
 #include <range/v3/view/map.hpp>
 
 // Initialize global extern variables.
-Project c{};
 TransientStore InitStore{};
 const State ApplicationState{};
 Store ApplicationStore{InitStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.

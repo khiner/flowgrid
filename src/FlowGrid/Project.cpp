@@ -4,7 +4,6 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
-#include "Actions.h"
 #include "AppPreferences.h"
 #include "Helper/File.h"
 #include "StateJson.h"
@@ -52,10 +51,6 @@ Store store_from_json(const json &j) {
     for (const auto &[path, value] : entries) store.set(path, value);
     return store.persistent();
 }
-
-//-----------------------------------------------------------------------------
-// [SECTION] Main state update method
-//-----------------------------------------------------------------------------
 
 void State::Update(const StateAction &action, TransientStore &store) const {
     Match(
@@ -122,10 +117,6 @@ void State::Update(const StateAction &action, TransientStore &store) const {
         [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
     );
 }
-
-//-----------------------------------------------------------------------------
-// [SECTION] Project
-//-----------------------------------------------------------------------------
 
 bool Project::IsUserProjectPath(const fs::path &path) {
     return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
@@ -244,7 +235,7 @@ bool Project::SaveProject(const fs::path &path) {
     return true;
 }
 
-void ApplyAction(const ProjectAction &action) {
+void Project::ApplyAction(const ProjectAction &action) {
     Match(
         action,
         // Handle actions that don't directly update state.
@@ -328,12 +319,6 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
     if (finalize) History.FinalizeGesture();
 }
 
-bool q(Action &&action, bool flush) {
-    ActionQueue.enqueue({action, Clock::now()});
-    if (flush) Project::RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
-    return true;
-}
-
 bool ActionAllowed(const ActionID id) {
     switch (id) {
         case action::id<Actions::Undo>: return History.CanUndo();
@@ -352,4 +337,10 @@ bool ActionAllowed(const ActionID id) {
 bool ActionAllowed(const Action &action) { return ActionAllowed(action::GetId(action)); }
 bool ActionAllowed(const EmptyAction &action) {
     return std::visit([&](Action &&a) { return ActionAllowed(a); }, action);
+}
+
+bool q(Action &&action, bool flush) {
+    ActionQueue.enqueue({action, Clock::now()});
+    if (flush) Project::RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
+    return true;
 }

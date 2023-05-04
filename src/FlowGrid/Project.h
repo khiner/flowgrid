@@ -3,6 +3,7 @@
 #include "nlohmann/json_fwd.hpp"
 #include <set>
 
+#include "Actions.h"
 #include "Store.h"
 
 inline static const fs::path InternalPath = ".flowgrid";
@@ -33,4 +34,9 @@ struct Project {
     static Patch SetStore(const Store &);
 
     static void SetHistoryIndex(Count);
+
+    // todo there's some weird circular dependency type thing going on here.
+    //   I should be able to define this inside `Project.h` and not include `Actions.h` here,
+    //   but when I do, it compiles but with invisible issues around `Match` not working with `ProjectAction`.
+    static void ApplyAction(const ProjectAction &);
 };

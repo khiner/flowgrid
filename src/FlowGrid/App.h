@@ -257,6 +257,10 @@ struct Faust : UIStateMember {
     WindowMember_(
         FaustEditor,
         WindowFlags_MenuBar,
+
+        WindowMember(Metrics);
+
+        Prop_(Metrics, Metrics, "Faust editor metrics");
     );
 
     WindowMember_(
@@ -1077,7 +1081,15 @@ UIMember(
                 "Windows",
                 {
                     Menu("Debug", {DebugLog, StackTool, StateViewer, StatePathUpdateFrequency, StateMemoryEditor, ProjectPreview}),
-                    Menu("Faust", {Faust.Editor, Faust.Graph, Faust.Params, Faust.Log}),
+                    Menu(
+                        "Faust",
+                        {
+                            Menu("Editor", {Faust.Editor, Faust.Editor.Metrics}),
+                            Faust.Graph,
+                            Faust.Params,
+                            Faust.Log,
+                        }
+                    ),
                     Audio,
                     Metrics,
                     Style,

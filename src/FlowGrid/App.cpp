@@ -645,11 +645,13 @@ void State::Render() const {
         auto utilities_node_id = DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.5f, nullptr, &settings_node_id);
         auto debug_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.3f, nullptr, &dockspace_id);
         auto faust_tools_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.5f, nullptr, &dockspace_id);
+        auto faust_editor_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.7f, nullptr, &dockspace_id);
 
         Audio.Dock(settings_node_id);
         ApplicationSettings.Dock(settings_node_id);
 
-        Faust.Editor.Dock(dockspace_id);
+        Faust.Editor.Dock(faust_editor_node_id);
+        Faust.Editor.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
         Faust.Graph.Dock(faust_tools_node_id);
         Faust.Params.Dock(faust_tools_node_id);
 
@@ -1882,6 +1884,7 @@ void Faust::FaustLog::Render() const {
 
 void Faust::Render() const {
     Editor.Draw();
+    Editor.Metrics.Draw();
     Graph.Draw();
     Params.Draw();
     Log.Draw();

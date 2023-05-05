@@ -24,7 +24,6 @@ file(
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
     lib/ImGuiColorTextEdit/TextEditor.cpp
     lib/ImGuiColorTextEdit/LanguageDefinitions.cpp
-    lib/ImGuiColorTextEdit/ImGuiDebugPanel.cpp
 )
 
 find_package(OpenGL REQUIRED)

@@ -203,11 +203,12 @@ $ git cm -m "Update libs"
 
 #### Forked submodules
 
-The following modules are [forked by me](https://github.com/khiner?tab=repositories&q=&type=fork), along with the upstream branch the fork is based on:
+The following modules are forked by me, along with the upstream branch the fork is based on:
 
-- `imgui:docking`
-- `implot:master`
-- `imgui_club:main`
+- [`imgui:docking`](https://github.com/khiner/imgui/tree/docking)
+- [`implot:master`](https://github.com/khiner/implot)
+- [`ImGuiColorTextEdit:master`](https://github.com/khiner/ImGuiColorTextEdit)
+- [`imgui_club:main`](https://github.com/khiner/imgui_club)
 
 I keep my changes rebased on top of the original repo branches.
 Here's my process:

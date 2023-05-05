@@ -43,4 +43,4 @@
 	url = git@github.com:HowardHinnant/date.git
 [submodule "lib/ImGuiColorTextEdit"]
 	path = lib/ImGuiColorTextEdit
-	url = git@github.com:santaclose/ImGuiColorTextEdit.git
+	url = git@github.com:khiner/ImGuiColorTextEdit.git

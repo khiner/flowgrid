@@ -2,7 +2,6 @@
 
 #include <unordered_map>
 
-#include "Primitive.h"
 #include "StateMember.h"
 
 using std::vector;

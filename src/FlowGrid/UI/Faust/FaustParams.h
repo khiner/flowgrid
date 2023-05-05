@@ -6,12 +6,13 @@
 #include <string>
 #include <vector>
 
-#include "../../Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/gui/MetaDataUI.h"
 #include "faust/gui/PathBuilder.h"
 #include "faust/gui/UI.h"
 
-using std::string, std::vector, std::map;
+#include "../../Helper/Sample.h" // Must be included before any Faust includes
+
+using std::string, std::string_view, std::vector, std::map;
 using Real = Sample;
 
 // Label, shortname, or complete path (to discriminate between possibly identical labels

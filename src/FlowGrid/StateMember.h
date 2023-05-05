@@ -117,22 +117,3 @@ struct UIStateMember : StateMember, Drawable {
     protected:                                                                                 \
         void Render() const override;                                                          \
     };
-
-#define WindowMember(MemberName, ...) \
-    struct MemberName : Window {      \
-        using Window::Window;         \
-        __VA_ARGS__;                  \
-                                      \
-    protected:                        \
-        void Render() const override; \
-    };
-
-#define WindowMember_(MemberName, VisibleOrMenu, ...)                                         \
-    struct MemberName : Window {                                                              \
-        MemberName(StateMember *parent, string_view path_segment, string_view name_help = "") \
-            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}                     \
-        __VA_ARGS__;                                                                          \
-                                                                                              \
-    protected:                                                                                \
-        void Render() const override;                                                         \
-    };

@@ -130,13 +130,6 @@ private:
     bool AllowAuto;
 };
 
-enum ParamsWidthSizingPolicy_ {
-    ParamsWidthSizingPolicy_StretchToFill, // If a table contains only fixed-width items, allow columns to stretch to fill available width.
-    ParamsWidthSizingPolicy_StretchFlexibleOnly, // If a table contains only fixed-width items, it won't stretch to fill available width.
-    ParamsWidthSizingPolicy_Balanced, // All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).
-};
-using ParamsWidthSizingPolicy = int;
-
 inline static const vector<Flags::Item> TableFlagItems{
     "Resizable?Enable resizing columns",
     "Reorderable?Enable reordering columns in header row",
@@ -171,6 +164,25 @@ struct Window : UIStateMember, MenuItemDrawable {
     const Menu WindowMenu{{}};
     const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 };
+
+#define WindowMember(MemberName, ...) \
+    struct MemberName : Window {      \
+        using Window::Window;         \
+        __VA_ARGS__;                  \
+                                      \
+    protected:                        \
+        void Render() const override; \
+    };
+
+#define WindowMember_(MemberName, VisibleOrMenu, ...)                                         \
+    struct MemberName : Window {                                                              \
+        MemberName(StateMember *parent, string_view path_segment, string_view name_help = "") \
+            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}                     \
+        __VA_ARGS__;                                                                          \
+                                                                                              \
+    protected:                                                                                \
+        void Render() const override;                                                         \
+    };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.
 // The controct we're signing up for is to implement `void TabsWindow::Render() const`.
@@ -231,6 +243,13 @@ enum FaustGraphHoverFlags_ {
     FaustGraphHoverFlags_ShowChildChannels = 1 << 3,
 };
 using FaustGraphHoverFlags = int;
+
+enum ParamsWidthSizingPolicy_ {
+    ParamsWidthSizingPolicy_StretchToFill, // If a table contains only fixed-width items, allow columns to stretch to fill available width.
+    ParamsWidthSizingPolicy_StretchFlexibleOnly, // If a table contains only fixed-width items, it won't stretch to fill available width.
+    ParamsWidthSizingPolicy_Balanced, // All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).
+};
+using ParamsWidthSizingPolicy = int;
 
 struct Faust : UIStateMember {
     using UIStateMember::UIStateMember;

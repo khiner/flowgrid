@@ -1,3 +1,5 @@
+#include "FaustParams.h"
+
 #include <range/v3/algorithm/any_of.hpp>
 #include <range/v3/algorithm/max.hpp>
 #include <range/v3/numeric/accumulate.hpp>
@@ -6,7 +8,6 @@
 
 #include "../../App.h"
 #include "../Knob.h"
-#include "FaustParams.h"
 
 using namespace ImGui;
 using ItemType = FaustParams::ItemType;

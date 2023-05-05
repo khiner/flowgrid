@@ -234,20 +234,23 @@ bool Project::SaveProject(const fs::path &path) {
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
     return true;
 }
-
-void Project::ApplyAction(const ProjectAction &action) {
+// todo there's some weird circular dependency type thing going on here.
+//   I should be able to define this inside `Project.h` and not include `Actions.h` here,
+//   but when I do, it compiles but with invisible issues around `Match` not working with `ProjectAction`.
+// static void ApplyAction(const ProjectAction &);
+static void ApplyAction(const ProjectAction &action) {
     Match(
         action,
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Actions::OpenEmptyProject &) { OpenProject(EmptyProjectPath); },
-        [&](const Actions::OpenProject &a) { OpenProject(a.path); },
-        [&](const Actions::OpenDefaultProject &) { OpenProject(DefaultProjectPath); },
+        [&](const Actions::OpenEmptyProject &) { Project::OpenProject(EmptyProjectPath); },
+        [&](const Actions::OpenProject &a) { Project::OpenProject(a.path); },
+        [&](const Actions::OpenDefaultProject &) { Project::OpenProject(DefaultProjectPath); },
 
-        [&](const Actions::SaveProject &a) { SaveProject(a.path); },
-        [&](const Actions::SaveDefaultProject &) { SaveProject(DefaultProjectPath); },
-        [&](const Actions::SaveCurrentProject &) { SaveCurrentProject(); },
+        [&](const Actions::SaveProject &a) { Project::SaveProject(a.path); },
+        [&](const Actions::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
+        [&](const Actions::SaveCurrentProject &) { Project::SaveCurrentProject(); },
         [&](const Actions::SaveFaustFile &a) { FileIO::write(a.path, s.Faust.Code); },
         [](const Actions::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 
@@ -262,13 +265,13 @@ void Project::ApplyAction(const ProjectAction &action) {
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
             if (History.Index == History.Size() - 1) {
                 if (!History.ActiveGesture.empty()) History.FinalizeGesture();
-                SetHistoryIndex(History.Index - 1);
+                Project::SetHistoryIndex(History.Index - 1);
             } else {
-                SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
+                Project::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
             }
         },
-        [&](const Actions::Redo &) { SetHistoryIndex(History.Index + 1); },
-        [&](const Actions::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+        [&](const Actions::Redo &) { Project::SetHistoryIndex(History.Index + 1); },
+        [&](const Actions::SetHistoryIndex &a) { Project::SetHistoryIndex(a.index); },
     );
 }
 

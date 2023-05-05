@@ -40,7 +40,7 @@ struct IMGUI_API TextEditor {
         Max
     };
 
-    enum class SelectionMode {
+    enum class SelectionModeT {
         Normal,
         Word,
         Line
@@ -58,9 +58,9 @@ struct IMGUI_API TextEditor {
     // Represents a character coordinate from the user's point of view,
     // i. e. consider an uniform grid (assuming fixed-width font) on the
     // screen as it is rendered, and each cell has its own coordinate, starting from 0.
-    // Tabs are counted as [1..mTabSize] count empty spaces, depending on
+    // Tabs are counted as [1..TabSize] count empty spaces, depending on
     // how many space is necessary to reach the next tab stop.
-    // For example, coordinate (1, 5) represents the character 'B' in a line "\tABC", when mTabSize = 4,
+    // For example, coordinate (1, 5) represents the character 'B' in a line "\tABC", when TabSize = 4,
     // because it is rendered as "    ABC" on the screen.
     struct Coordinates {
         int mLine, mColumn;
@@ -139,57 +139,56 @@ struct IMGUI_API TextEditor {
     using LineT = std::vector<Glyph>;
     using LinesT = std::vector<LineT>;
 
-    struct LanguageDefinition {
+    struct LanguageDefT {
         using TokenRegexStringT = std::pair<string, PaletteIndexT>;
         using TokenRegexStringsT = std::vector<TokenRegexStringT>;
         using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&out_end, PaletteIndexT &paletteIndex);
 
-        string mName;
+        string Name;
         KeywordsT mKeywords;
-        IdentifiersT mIdentifiers;
-        IdentifiersT mPreprocIdentifiers;
-        string mCommentStart, mCommentEnd, mSingleLineComment;
-        char mPreprocChar;
-        bool mAutoIndentation;
+        IdentifiersT Identifiers;
+        IdentifiersT PreprocIdentifiers;
+        string CommentStart, CommentEnd, SingleLineComment;
+        char PreprocChar;
+        bool AudioIndentation;
 
-        TokenizeCallbackT mTokenize;
+        TokenizeCallbackT Tokenize;
+        TokenRegexStringsT TokenRegexStrings;
 
-        TokenRegexStringsT mTokenRegexStrings;
+        bool IsCaseSensitive;
 
-        bool mCaseSensitive;
+        LanguageDefT() : PreprocChar('#'), AudioIndentation(true), Tokenize(nullptr), IsCaseSensitive(true) {}
 
-        LanguageDefinition()
-            : mPreprocChar('#'), mAutoIndentation(true), mTokenize(nullptr), mCaseSensitive(true) {
-        }
-
-        static const LanguageDefinition &CPlusPlus();
-        static const LanguageDefinition &HLSL();
-        static const LanguageDefinition &GLSL();
-        static const LanguageDefinition &Python();
-        static const LanguageDefinition &C();
-        static const LanguageDefinition &SQL();
-        static const LanguageDefinition &AngelScript();
-        static const LanguageDefinition &Lua();
-        static const LanguageDefinition &CSharp();
-        static const LanguageDefinition &Json();
+        static const LanguageDefT &CPlusPlus();
+        static const LanguageDefT &HLSL();
+        static const LanguageDefT &GLSL();
+        static const LanguageDefT &Python();
+        static const LanguageDefT &C();
+        static const LanguageDefT &SQL();
+        static const LanguageDefT &AngelScript();
+        static const LanguageDefT &Lua();
+        static const LanguageDefT &CSharp();
+        static const LanguageDefT &Json();
     };
 
-    enum class UndoOperationType { Add,
-                                   Delete };
+    enum class UndoOperationType {
+        Add,
+        Delete,
+    };
     struct UndoOperation {
-        string mText;
-        TextEditor::Coordinates mStart;
-        TextEditor::Coordinates mEnd;
+        string Text;
+        TextEditor::Coordinates Start;
+        TextEditor::Coordinates End;
         UndoOperationType mType;
     };
 
     TextEditor();
     ~TextEditor();
 
-    void SetLanguageDefinition(const LanguageDefinition &);
+    void SetLanguageDefinition(const LanguageDefT &);
     const char *GetLanguageDefinitionName() const;
 
-    const PaletteT &GetPalette() const { return mPaletteBase; }
+    const PaletteT &GetPalette() const { return PalletteBase; }
     void SetPalette(const PaletteT &);
 
     bool Render(const char *aTitle, bool aParentIsFocused = false, const ImVec2 &aSize = ImVec2(), bool aBorder = false);
@@ -212,23 +211,23 @@ struct IMGUI_API TextEditor {
     void SetCursorPosition(int aLine, int aCharIndex, int aCursor = -1);
 
     inline void OnLineDeleted(int aLineIndex, const std::unordered_set<int> *aHandledCursors = nullptr) {
-        for (int c = 0; c <= EditorState.mCurrentCursor; c++) {
-            if (EditorState.mCursors[c].mCursorPosition.mLine >= aLineIndex) {
+        for (int c = 0; c <= EditorState.CurrentCursor; c++) {
+            if (EditorState.Cursors[c].CursorPosition.mLine >= aLineIndex) {
                 if (aHandledCursors == nullptr || aHandledCursors->find(c) == aHandledCursors->end()) // move up if has not been handled already
-                    SetCursorPosition({EditorState.mCursors[c].mCursorPosition.mLine - 1, EditorState.mCursors[c].mCursorPosition.mColumn}, c);
+                    SetCursorPosition({EditorState.Cursors[c].CursorPosition.mLine - 1, EditorState.Cursors[c].CursorPosition.mColumn}, c);
             }
         }
     }
     inline void OnLinesDeleted(int aFirstLineIndex, int aLastLineIndex) {
-        for (int c = 0; c <= EditorState.mCurrentCursor; c++) {
-            if (EditorState.mCursors[c].mCursorPosition.mLine >= aFirstLineIndex)
-                SetCursorPosition({EditorState.mCursors[c].mCursorPosition.mLine - (aLastLineIndex - aFirstLineIndex), EditorState.mCursors[c].mCursorPosition.mColumn}, c);
+        for (int c = 0; c <= EditorState.CurrentCursor; c++) {
+            if (EditorState.Cursors[c].CursorPosition.mLine >= aFirstLineIndex)
+                SetCursorPosition({EditorState.Cursors[c].CursorPosition.mLine - (aLastLineIndex - aFirstLineIndex), EditorState.Cursors[c].CursorPosition.mColumn}, c);
         }
     }
     inline void OnLineAdded(int aLineIndex) {
-        for (int c = 0; c <= EditorState.mCurrentCursor; c++) {
-            if (EditorState.mCursors[c].mCursorPosition.mLine >= aLineIndex)
-                SetCursorPosition({EditorState.mCursors[c].mCursorPosition.mLine + 1, EditorState.mCursors[c].mCursorPosition.mColumn}, c);
+        for (int c = 0; c <= EditorState.CurrentCursor; c++) {
+            if (EditorState.Cursors[c].CursorPosition.mLine >= aLineIndex)
+                SetCursorPosition({EditorState.Cursors[c].CursorPosition.mLine + 1, EditorState.Cursors[c].CursorPosition.mColumn}, c);
         }
     }
 
@@ -243,7 +242,7 @@ struct IMGUI_API TextEditor {
     }
 
     void SetTabSize(int aValue);
-    inline int GetTabSize() const { return mTabSize; }
+    inline int GetTabSize() const { return TabSize; }
 
     void InsertText(const string &aValue, int aCursor = -1);
     void InsertText(const char *aValue, int aCursor = -1);
@@ -259,8 +258,8 @@ struct IMGUI_API TextEditor {
 
     void SetSelectionStart(const Coordinates &aPosition, int aCursor = -1);
     void SetSelectionEnd(const Coordinates &aPosition, int aCursor = -1);
-    void SetSelection(const Coordinates &aStart, const Coordinates &aEnd, SelectionMode aMode = SelectionMode::Normal, int aCursor = -1, bool isSpawningNewCursor = false);
-    void SetSelection(int aStartLine, int aStartCharIndex, int aEndLine, int aEndCharIndex, SelectionMode aMode = SelectionMode::Normal, int aCursor = -1, bool isSpawningNewCursor = false);
+    void SetSelection(const Coordinates &aStart, const Coordinates &aEnd, SelectionModeT aMode = SelectionModeT::Normal, int aCursor = -1, bool isSpawningNewCursor = false);
+    void SetSelection(int aStartLine, int aStartCharIndex, int aEndLine, int aEndCharIndex, SelectionModeT aMode = SelectionModeT::Normal, int aCursor = -1, bool isSpawningNewCursor = false);
     void SelectWordUnderCursor();
     void SelectAll();
     bool HasSelection() const;
@@ -306,36 +305,36 @@ struct IMGUI_API TextEditor {
     using RegexListT = std::vector<std::pair<std::regex, PaletteIndexT>>;
 
     struct Cursor {
-        Coordinates mCursorPosition = {0, 0};
-        Coordinates mSelectionStart = {0, 0};
-        Coordinates mSelectionEnd = {0, 0};
-        Coordinates mInteractiveStart = {0, 0};
-        Coordinates mInteractiveEnd = {0, 0};
-        bool mCursorPositionChanged = false;
+        Coordinates CursorPosition = {0, 0};
+        Coordinates SelectionStart = {0, 0};
+        Coordinates SelectionEnd = {0, 0};
+        Coordinates InteractiveStart = {0, 0};
+        Coordinates InteractiveEnd = {0, 0};
+        bool CursorPositionChanged = false;
     };
 
     struct EditorStateT {
-        int mCurrentCursor = 0;
-        int mLastAddedCursor = 0;
-        std::vector<Cursor> mCursors = {{{0, 0}}};
+        int CurrentCursor = 0;
+        int LastAddedCursor = 0;
+        std::vector<Cursor> Cursors = {{{0, 0}}};
         void AddCursor() {
-            // vector is never resized to smaller size, mCurrentCursor points to last available cursor in vector
-            mCurrentCursor++;
-            mCursors.resize(mCurrentCursor + 1);
-            mLastAddedCursor = mCurrentCursor;
+            // vector is never resized to smaller size, CurrentCursor points to last available cursor in vector
+            CurrentCursor++;
+            Cursors.resize(CurrentCursor + 1);
+            LastAddedCursor = CurrentCursor;
         }
         int GetLastAddedCursorIndex() {
-            return mLastAddedCursor > mCurrentCursor ? 0 : mLastAddedCursor;
+            return LastAddedCursor > CurrentCursor ? 0 : LastAddedCursor;
         }
         void SortCursorsFromTopToBottom() {
-            Coordinates lastAddedCursorPos = mCursors[GetLastAddedCursorIndex()].mCursorPosition;
-            std::sort(mCursors.begin(), mCursors.begin() + (mCurrentCursor + 1), [](const Cursor &a, const Cursor &b) -> bool {
-                return a.mSelectionStart < b.mSelectionStart;
+            Coordinates lastAddedCursorPos = Cursors[GetLastAddedCursorIndex()].CursorPosition;
+            std::sort(Cursors.begin(), Cursors.begin() + (CurrentCursor + 1), [](const Cursor &a, const Cursor &b) -> bool {
+                return a.SelectionStart < b.SelectionStart;
             });
             // update last added cursor index to be valid after sort
-            for (int c = mCurrentCursor; c > -1; c--)
-                if (mCursors[c].mCursorPosition == lastAddedCursorPos)
-                    mLastAddedCursor = c;
+            for (int c = CurrentCursor; c > -1; c--)
+                if (Cursors[c].CursorPosition == lastAddedCursorPos)
+                    LastAddedCursor = c;
         }
     };
 
@@ -354,10 +353,10 @@ struct IMGUI_API TextEditor {
         void Undo(TextEditor *aEditor);
         void Redo(TextEditor *aEditor);
 
-        std::vector<UndoOperation> mOperations;
+        std::vector<UndoOperation> Operations;
 
-        EditorStateT mBefore;
-        EditorStateT mAfter;
+        EditorStateT Before;
+        EditorStateT After;
     };
 
     using UndoBufferT = std::vector<UndoRecord>;
@@ -415,28 +414,28 @@ private:
 
     bool FindNextOccurrence(const char *aText, int aTextSize, const Coordinates &aFrom, Coordinates &outStart, Coordinates &outEnd);
 
-    int mTabSize;
-    bool mWithinRender;
-    bool mScrollToCursor;
-    bool mScrollToTop;
-    float mTextStart; // position (in pixels) where a code line starts relative to the left of the TextEditor.
-    int mLeftMargin;
-    int mColorRangeMin, mColorRangeMax;
-    SelectionMode mSelectionMode;
+    int TabSize;
+    bool WithinRender;
+    bool ScrollToCursor;
+    bool ScrollToTop;
+    float TextStart; // position (in pixels) where a code line starts relative to the left of the TextEditor.
+    int LeftMargin;
+    int ColorRangeMin, ColorRangeMax;
+    SelectionModeT SelectionMode;
 
-    bool mDraggingSelection = false;
+    bool IsDraggingSelection = false;
 
-    PaletteT mPaletteBase;
-    PaletteT mPalette;
-    const LanguageDefinition *mLanguageDefinition = nullptr;
-    RegexListT mRegexList;
+    PaletteT PalletteBase;
+    PaletteT Pallette;
+    const LanguageDefT *LanguageDef = nullptr;
+    RegexListT RegexList;
 
-    bool mCheckComments;
-    BreakpointsT mBreakpoints;
-    ErrorMarkersT mErrorMarkers;
-    ImVec2 mCharAdvance;
-    string mLineBuffer;
-    uint64_t mStartTime;
+    bool ShouldCheckComments;
+    BreakpointsT Breakpoints;
+    ErrorMarkersT ErrorMarkers;
+    ImVec2 CharAdvance;
+    string LineBuffer;
+    uint64_t StartTime;
 
-    float mLastClick;
+    float LastClickTime; // In ImGui time
 };

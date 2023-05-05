@@ -39,7 +39,7 @@ void Faust::FaustEditor::Render() const {
     }
 
     static bool initialized = false;
-    static auto lang = TextEditor::LanguageDefinition::CPlusPlus();
+    static auto lang = TextEditor::LanguageDefT::CPlusPlus();
 
     if (!initialized) {
         initialized = true;

@@ -67,48 +67,16 @@ struct IMGUI_API TextEditor {
             assert(line_number >= 0);
             assert(column >= 0);
         }
-        static Coordinates Invalid() {
-            static Coordinates invalid(-1, -1);
-            return invalid;
-        }
+        static Coordinates Invalid() { return {-1, -1}; }
 
-        bool operator==(const Coordinates &o) const {
-            return Line == o.Line &&
-                Column == o.Column;
-        }
+        bool operator==(const Coordinates &o) const { return Line == o.Line && Column == o.Column; }
+        bool operator!=(const Coordinates &o) const { return Line != o.Line || Column != o.Column; }
+        bool operator<(const Coordinates &o) const { return Line != o.Line ? Line < o.Line : Column < o.Column; }
+        bool operator>(const Coordinates &o) const { return Line != o.Line ? Line > o.Line : Column > o.Column; }
+        bool operator<=(const Coordinates &o) const { return Line != o.Line ? Line < o.Line : Column <= o.Column; }
+        bool operator>=(const Coordinates &o) const { return Line != o.Line ? Line > o.Line : Column >= o.Column; }
 
-        bool operator!=(const Coordinates &o) const {
-            return Line != o.Line ||
-                Column != o.Column;
-        }
-
-        bool operator<(const Coordinates &o) const {
-            if (Line != o.Line)
-                return Line < o.Line;
-            return Column < o.Column;
-        }
-
-        bool operator>(const Coordinates &o) const {
-            if (Line != o.Line)
-                return Line > o.Line;
-            return Column > o.Column;
-        }
-
-        bool operator<=(const Coordinates &o) const {
-            if (Line != o.Line)
-                return Line < o.Line;
-            return Column <= o.Column;
-        }
-
-        bool operator>=(const Coordinates &o) const {
-            if (Line != o.Line)
-                return Line > o.Line;
-            return Column >= o.Column;
-        }
-
-        Coordinates operator-(const Coordinates &o) {
-            return Coordinates(Line - o.Line, Column - o.Column);
-        }
+        Coordinates operator-(const Coordinates &o) { return {Line - o.Line, Column - o.Column}; }
     };
 
     struct Identifier {
@@ -202,7 +170,7 @@ struct IMGUI_API TextEditor {
 
     int GetTotalLines() const { return (int)Lines.size(); }
 
-    void OnCursorPositionChanged(int cursor);
+    void OnCursorPositionChanged();
 
     Coordinates GetCursorPosition() const { return GetActualCursorCoordinates(); }
     void SetCursorPosition(const Coordinates &position, int cursor = -1);
@@ -230,7 +198,7 @@ struct IMGUI_API TextEditor {
     }
 
     inline ImVec4 U32ColorToVec4(ImU32 in) {
-        float s = 1.0f / 255.0f;
+        static const float s = 1.0f / 255.0f;
         return ImVec4(
             ((in >> IM_COL32_A_SHIFT) & 0xFF) * s,
             ((in >> IM_COL32_B_SHIFT) & 0xFF) * s,

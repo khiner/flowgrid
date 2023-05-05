@@ -11,9 +11,10 @@
 #include <unordered_set>
 #include <vector>
 
-class IMGUI_API TextEditor {
-public:
-    enum class PaletteIndex {
+using std::string;
+
+struct IMGUI_API TextEditor {
+    enum class PaletteIndexT {
         Default,
         Keyword,
         Number,
@@ -48,7 +49,7 @@ public:
     struct Breakpoint {
         int mLine;
         bool mEnabled;
-        std::string mCondition;
+        string mCondition;
 
         Breakpoint()
             : mLine(-1), mEnabled(false) {}
@@ -114,47 +115,46 @@ public:
 
     struct Identifier {
         Coordinates mLocation;
-        std::string mDeclaration;
+        string mDeclaration;
     };
 
-    typedef std::string String;
-    typedef std::unordered_map<std::string, Identifier> Identifiers;
-    typedef std::unordered_set<std::string> Keywords;
-    typedef std::map<int, std::string> ErrorMarkers;
-    typedef std::unordered_set<int> Breakpoints;
-    typedef std::array<ImU32, (unsigned)PaletteIndex::Max> Palette;
-    typedef uint8_t Char;
+    using IdentifiersT = std::unordered_map<string, Identifier>;
+    using KeywordsT = std::unordered_set<string>;
+    using ErrorMarkersT = std::map<int, string>;
+    using BreakpointsT = std::unordered_set<int>;
+    using PaletteT = std::array<ImU32, (unsigned)PaletteIndexT::Max>;
+    using CharT = uint8_t;
 
     struct Glyph {
-        Char mChar;
-        PaletteIndex mColorIndex = PaletteIndex::Default;
+        CharT mChar;
+        PaletteIndexT mColorIndex = PaletteIndexT::Default;
         bool mComment : 1;
         bool mMultiLineComment : 1;
         bool mPreprocessor : 1;
 
-        Glyph(Char aChar, PaletteIndex aColorIndex) : mChar(aChar), mColorIndex(aColorIndex),
-                                                      mComment(false), mMultiLineComment(false), mPreprocessor(false) {}
+        Glyph(CharT aChar, PaletteIndexT aColorIndex) : mChar(aChar), mColorIndex(aColorIndex),
+                                                        mComment(false), mMultiLineComment(false), mPreprocessor(false) {}
     };
 
-    typedef std::vector<Glyph> Line;
-    typedef std::vector<Line> Lines;
+    using LineT = std::vector<Glyph>;
+    using LinesT = std::vector<LineT>;
 
     struct LanguageDefinition {
-        typedef std::pair<std::string, PaletteIndex> TokenRegexString;
-        typedef std::vector<TokenRegexString> TokenRegexStrings;
-        typedef bool (*TokenizeCallback)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&out_end, PaletteIndex &paletteIndex);
+        using TokenRegexStringT = std::pair<string, PaletteIndexT>;
+        using TokenRegexStringsT = std::vector<TokenRegexStringT>;
+        using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&out_end, PaletteIndexT &paletteIndex);
 
-        std::string mName;
-        Keywords mKeywords;
-        Identifiers mIdentifiers;
-        Identifiers mPreprocIdentifiers;
-        std::string mCommentStart, mCommentEnd, mSingleLineComment;
+        string mName;
+        KeywordsT mKeywords;
+        IdentifiersT mIdentifiers;
+        IdentifiersT mPreprocIdentifiers;
+        string mCommentStart, mCommentEnd, mSingleLineComment;
         char mPreprocChar;
         bool mAutoIndentation;
 
-        TokenizeCallback mTokenize;
+        TokenizeCallbackT mTokenize;
 
-        TokenRegexStrings mTokenRegexStrings;
+        TokenRegexStringsT mTokenRegexStrings;
 
         bool mCaseSensitive;
 
@@ -177,7 +177,7 @@ public:
     enum class UndoOperationType { Add,
                                    Delete };
     struct UndoOperation {
-        std::string mText;
+        string mText;
         TextEditor::Coordinates mStart;
         TextEditor::Coordinates mEnd;
         UndoOperationType mType;
@@ -189,21 +189,21 @@ public:
     void SetLanguageDefinition(const LanguageDefinition &);
     const char *GetLanguageDefinitionName() const;
 
-    const Palette &GetPalette() const { return mPaletteBase; }
-    void SetPalette(const Palette &);
+    const PaletteT &GetPalette() const { return mPaletteBase; }
+    void SetPalette(const PaletteT &);
 
     bool Render(const char *aTitle, bool aParentIsFocused = false, const ImVec2 &aSize = ImVec2(), bool aBorder = false);
-    void SetText(const std::string &aText);
-    std::string GetText() const;
+    void SetText(const string &aText);
+    string GetText() const;
 
-    void SetTextLines(const std::vector<std::string> &);
-    std::vector<std::string> GetTextLines() const;
+    void SetTextLines(const std::vector<string> &);
+    std::vector<string> GetTextLines() const;
 
-    std::string GetClipboardText() const;
-    std::string GetSelectedText(int aCursor = -1) const;
-    std::string GetCurrentLineText() const;
+    string GetClipboardText() const;
+    string GetSelectedText(int aCursor = -1) const;
+    string GetCurrentLineText() const;
 
-    int GetTotalLines() const { return (int)mLines.size(); }
+    int GetTotalLines() const { return (int)Lines.size(); }
 
     void OnCursorPositionChanged(int aCursor);
 
@@ -212,23 +212,23 @@ public:
     void SetCursorPosition(int aLine, int aCharIndex, int aCursor = -1);
 
     inline void OnLineDeleted(int aLineIndex, const std::unordered_set<int> *aHandledCursors = nullptr) {
-        for (int c = 0; c <= mState.mCurrentCursor; c++) {
-            if (mState.mCursors[c].mCursorPosition.mLine >= aLineIndex) {
+        for (int c = 0; c <= EditorState.mCurrentCursor; c++) {
+            if (EditorState.mCursors[c].mCursorPosition.mLine >= aLineIndex) {
                 if (aHandledCursors == nullptr || aHandledCursors->find(c) == aHandledCursors->end()) // move up if has not been handled already
-                    SetCursorPosition({mState.mCursors[c].mCursorPosition.mLine - 1, mState.mCursors[c].mCursorPosition.mColumn}, c);
+                    SetCursorPosition({EditorState.mCursors[c].mCursorPosition.mLine - 1, EditorState.mCursors[c].mCursorPosition.mColumn}, c);
             }
         }
     }
     inline void OnLinesDeleted(int aFirstLineIndex, int aLastLineIndex) {
-        for (int c = 0; c <= mState.mCurrentCursor; c++) {
-            if (mState.mCursors[c].mCursorPosition.mLine >= aFirstLineIndex)
-                SetCursorPosition({mState.mCursors[c].mCursorPosition.mLine - (aLastLineIndex - aFirstLineIndex), mState.mCursors[c].mCursorPosition.mColumn}, c);
+        for (int c = 0; c <= EditorState.mCurrentCursor; c++) {
+            if (EditorState.mCursors[c].mCursorPosition.mLine >= aFirstLineIndex)
+                SetCursorPosition({EditorState.mCursors[c].mCursorPosition.mLine - (aLastLineIndex - aFirstLineIndex), EditorState.mCursors[c].mCursorPosition.mColumn}, c);
         }
     }
     inline void OnLineAdded(int aLineIndex) {
-        for (int c = 0; c <= mState.mCurrentCursor; c++) {
-            if (mState.mCursors[c].mCursorPosition.mLine >= aLineIndex)
-                SetCursorPosition({mState.mCursors[c].mCursorPosition.mLine + 1, mState.mCursors[c].mCursorPosition.mColumn}, c);
+        for (int c = 0; c <= EditorState.mCurrentCursor; c++) {
+            if (EditorState.mCursors[c].mCursorPosition.mLine >= aLineIndex)
+                SetCursorPosition({EditorState.mCursors[c].mCursorPosition.mLine + 1, EditorState.mCursors[c].mCursorPosition.mColumn}, c);
         }
     }
 
@@ -245,7 +245,7 @@ public:
     void SetTabSize(int aValue);
     inline int GetTabSize() const { return mTabSize; }
 
-    void InsertText(const std::string &aValue, int aCursor = -1);
+    void InsertText(const string &aValue, int aCursor = -1);
     void InsertText(const char *aValue, int aCursor = -1);
 
     void MoveUp(int aAmount = 1, bool aSelect = false);
@@ -281,10 +281,10 @@ public:
     void SelectNextOccurrenceOf(const char *aText, int aTextSize, int aCursor = -1);
     void AddCursorForNextOccurrence();
 
-    static const Palette &GetMarianaPalette();
-    static const Palette &GetDarkPalette();
-    static const Palette &GetLightPalette();
-    static const Palette &GetRetroBluePalette();
+    static const PaletteT &GetMarianaPalette();
+    static const PaletteT &GetDarkPalette();
+    static const PaletteT &GetLightPalette();
+    static const PaletteT &GetRetroBluePalette();
 
     static bool IsGlyphWordChar(const Glyph &aGlyph);
 
@@ -303,7 +303,7 @@ public:
 
     float LineSpacing;
 
-    typedef std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
+    using RegexListT = std::vector<std::pair<std::regex, PaletteIndexT>>;
 
     struct Cursor {
         Coordinates mCursorPosition = {0, 0};
@@ -314,7 +314,7 @@ public:
         bool mCursorPositionChanged = false;
     };
 
-    struct EditorState {
+    struct EditorStateT {
         int mCurrentCursor = 0;
         int mLastAddedCursor = 0;
         std::vector<Cursor> mCursors = {{{0, 0}}};
@@ -341,15 +341,14 @@ public:
 
     void MergeCursorsIfPossible();
 
-    class UndoRecord {
-    public:
+    struct UndoRecord {
         UndoRecord() {}
         ~UndoRecord() {}
 
         UndoRecord(
             const std::vector<UndoOperation> &aOperations,
-            TextEditor::EditorState &aBefore,
-            TextEditor::EditorState &aAfter
+            TextEditor::EditorStateT &aBefore,
+            TextEditor::EditorStateT &aAfter
         );
 
         void Undo(TextEditor *aEditor);
@@ -357,16 +356,16 @@ public:
 
         std::vector<UndoOperation> mOperations;
 
-        EditorState mBefore;
-        EditorState mAfter;
+        EditorStateT mBefore;
+        EditorStateT mAfter;
     };
 
-    typedef std::vector<UndoRecord> UndoBuffer;
+    using UndoBufferT = std::vector<UndoRecord>;
 
-    Lines mLines;
-    EditorState mState;
-    UndoBuffer mUndoBuffer;
-    int mUndoIndex;
+    LinesT Lines;
+    EditorStateT EditorState;
+    UndoBufferT UndoBuffer;
+    int UndoIndex;
 
 private:
     void ProcessInputs();
@@ -376,7 +375,7 @@ private:
     float TextDistanceToLineStart(const Coordinates &aFrom) const;
     void EnsureCursorVisible(int aCursor = -1);
     int GetPageSize() const;
-    std::string GetText(const Coordinates &aStart, const Coordinates &aEnd) const;
+    string GetText(const Coordinates &aStart, const Coordinates &aEnd) const;
     Coordinates GetActualCursorCoordinates(int aCursor = -1) const;
     Coordinates SanitizeCoordinates(const Coordinates &aValue) const;
     void Advance(Coordinates &aCoordinates) const;
@@ -398,15 +397,15 @@ private:
     void RemoveCurrentLines();
     void OnLineChanged(bool aBeforeChange, int aLine, int aColumn, int aCharCount, bool aDeleted);
     void RemoveGlyphsFromLine(int aLine, int aStartChar, int aEndChar = -1);
-    void AddGlyphsToLine(int aLine, int aTargetIndex, Line::iterator aSourceStart, Line::iterator aSourceEnd);
+    void AddGlyphsToLine(int aLine, int aTargetIndex, LineT::iterator aSourceStart, LineT::iterator aSourceEnd);
     void AddGlyphToLine(int aLine, int aTargetIndex, Glyph aGlyph);
-    Line &InsertLine(int aIndex);
+    LineT &InsertLine(int aIndex);
     void ChangeCurrentLinesIndentation(bool aIncrease);
     void EnterCharacter(ImWchar aChar, bool aShift);
     void Backspace(bool aWordMode = false);
     void DeleteSelection(int aCursor = -1);
-    std::string GetWordUnderCursor() const;
-    std::string GetWordAt(const Coordinates &aCoords) const;
+    string GetWordUnderCursor() const;
+    string GetWordAt(const Coordinates &aCoords) const;
     ImU32 GetGlyphColor(const Glyph &aGlyph) const;
 
     void HandleKeyboardInputs(bool aParentIsFocused = false);
@@ -427,16 +426,16 @@ private:
 
     bool mDraggingSelection = false;
 
-    Palette mPaletteBase;
-    Palette mPalette;
+    PaletteT mPaletteBase;
+    PaletteT mPalette;
     const LanguageDefinition *mLanguageDefinition = nullptr;
-    RegexList mRegexList;
+    RegexListT mRegexList;
 
     bool mCheckComments;
-    Breakpoints mBreakpoints;
-    ErrorMarkers mErrorMarkers;
+    BreakpointsT mBreakpoints;
+    ErrorMarkersT mErrorMarkers;
     ImVec2 mCharAdvance;
-    std::string mLineBuffer;
+    string mLineBuffer;
     uint64_t mStartTime;
 
     float mLastClick;

@@ -22,8 +22,6 @@ file(
     ${IMPLOT_DIR}/implot_items.cpp
     ${IMPLOT_DIR}/implot_demo.cpp
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
-    lib/ImGuiColorTextEdit/TextEditor.cpp
-    lib/ImGuiColorTextEdit/LanguageDefinitions.cpp
 )
 
 find_package(OpenGL REQUIRED)
@@ -43,7 +41,6 @@ include_directories(
     lib/immer
     lib/concurrentqueue
     lib/date/include/date
-    lib/ImGuiColorTextEdit
 )
 
 option(TRACING_ENABLED "Enable Tracy profiling" OFF)

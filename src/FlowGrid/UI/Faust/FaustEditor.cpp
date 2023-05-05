@@ -1,4 +1,4 @@
-#include "TextEditor.h"
+#include "../TextEditor/TextEditor.h"
 
 #include "../../App.h"
 
@@ -65,38 +65,11 @@ void Faust::FaustEditor::Render() const {
         q(SetValue{s.Faust.Code.Path, text});
     } else if (s.Faust.Code != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
-        //   Really what I want is to incorporate the ImGuiColorTextEdit undo/redo system into the FlowGrid system.
+        //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.
         editor.SetText(s.Faust.Code);
     }
 }
 
-using namespace ImGui;
-
 void Faust::FaustEditor::Metrics::Render() const {
-    if (CollapsingHeader("Cursor info")) {
-        DragInt("Cursor count", &editor.mState.mCurrentCursor);
-        for (int i = 0; i <= editor.mState.mCurrentCursor; i++) {
-            DragInt2("Cursor", &editor.mState.mCursors[i].mCursorPosition.mLine);
-            DragInt2("Selection start", &editor.mState.mCursors[i].mSelectionStart.mLine);
-            DragInt2("Selection end", &editor.mState.mCursors[i].mSelectionEnd.mLine);
-            DragInt2("Interactive start", &editor.mState.mCursors[i].mInteractiveStart.mLine);
-            DragInt2("Interactive end", &editor.mState.mCursors[i].mInteractiveEnd.mLine);
-        }
-    }
-    if (CollapsingHeader("Undo")) {
-        Text("Number of records: %lu", editor.mUndoBuffer.size());
-        DragInt("Undo index", &editor.mState.mCurrentCursor);
-        for (size_t i = 0; i < editor.mUndoBuffer.size(); i++) {
-            if (CollapsingHeader(std::to_string(i).c_str())) {
-                TextUnformatted("Operations");
-                for (size_t j = 0; j < editor.mUndoBuffer[i].mOperations.size(); j++) {
-                    TextUnformatted(editor.mUndoBuffer[i].mOperations[j].mText.c_str());
-                    TextUnformatted(editor.mUndoBuffer[i].mOperations[j].mType == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
-                    DragInt2("Start", &editor.mUndoBuffer[i].mOperations[j].mStart.mLine);
-                    DragInt2("End", &editor.mUndoBuffer[i].mOperations[j].mEnd.mLine);
-                    Separator();
-                }
-            }
-        }
-    }
+    editor.DebugPanel();
 }

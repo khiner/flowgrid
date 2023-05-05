@@ -333,7 +333,6 @@ struct IMGUI_API TextEditor {
     int UndoIndex;
 
 private:
-    void ProcessInputs();
     void Colorize(int from_line_number = 0, int line_count = -1);
     void ColorizeRange(int from_line_number = 0, int to_line_number = 0);
     void ColorizeInternal();

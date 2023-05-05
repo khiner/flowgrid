@@ -47,12 +47,10 @@ struct IMGUI_API TextEditor {
     };
 
     struct Breakpoint {
-        int mLine;
-        bool mEnabled;
-        string mCondition;
+        int Line;
+        bool Enabled;
 
-        Breakpoint()
-            : mLine(-1), mEnabled(false) {}
+        Breakpoint() : Line(-1), Enabled(false) {}
     };
 
     // Represents a character coordinate from the user's point of view,
@@ -63,11 +61,11 @@ struct IMGUI_API TextEditor {
     // For example, coordinate (1, 5) represents the character 'B' in a line "\tABC", when TabSize = 4,
     // because it is rendered as "    ABC" on the screen.
     struct Coordinates {
-        int mLine, mColumn;
-        Coordinates() : mLine(0), mColumn(0) {}
-        Coordinates(int aLine, int aColumn) : mLine(aLine), mColumn(aColumn) {
-            assert(aLine >= 0);
-            assert(aColumn >= 0);
+        int Line, Column;
+        Coordinates() : Line(0), Column(0) {}
+        Coordinates(int line_number, int column) : Line(line_number), Column(column) {
+            assert(line_number >= 0);
+            assert(column >= 0);
         }
         static Coordinates Invalid() {
             static Coordinates invalid(-1, -1);
@@ -75,47 +73,47 @@ struct IMGUI_API TextEditor {
         }
 
         bool operator==(const Coordinates &o) const {
-            return mLine == o.mLine &&
-                mColumn == o.mColumn;
+            return Line == o.Line &&
+                Column == o.Column;
         }
 
         bool operator!=(const Coordinates &o) const {
-            return mLine != o.mLine ||
-                mColumn != o.mColumn;
+            return Line != o.Line ||
+                Column != o.Column;
         }
 
         bool operator<(const Coordinates &o) const {
-            if (mLine != o.mLine)
-                return mLine < o.mLine;
-            return mColumn < o.mColumn;
+            if (Line != o.Line)
+                return Line < o.Line;
+            return Column < o.Column;
         }
 
         bool operator>(const Coordinates &o) const {
-            if (mLine != o.mLine)
-                return mLine > o.mLine;
-            return mColumn > o.mColumn;
+            if (Line != o.Line)
+                return Line > o.Line;
+            return Column > o.Column;
         }
 
         bool operator<=(const Coordinates &o) const {
-            if (mLine != o.mLine)
-                return mLine < o.mLine;
-            return mColumn <= o.mColumn;
+            if (Line != o.Line)
+                return Line < o.Line;
+            return Column <= o.Column;
         }
 
         bool operator>=(const Coordinates &o) const {
-            if (mLine != o.mLine)
-                return mLine > o.mLine;
-            return mColumn >= o.mColumn;
+            if (Line != o.Line)
+                return Line > o.Line;
+            return Column >= o.Column;
         }
 
         Coordinates operator-(const Coordinates &o) {
-            return Coordinates(mLine - o.mLine, mColumn - o.mColumn);
+            return Coordinates(Line - o.Line, Column - o.Column);
         }
     };
 
     struct Identifier {
-        Coordinates mLocation;
-        string mDeclaration;
+        Coordinates Location;
+        string Declaration;
     };
 
     using IdentifiersT = std::unordered_map<string, Identifier>;
@@ -126,14 +124,14 @@ struct IMGUI_API TextEditor {
     using CharT = uint8_t;
 
     struct Glyph {
-        CharT mChar;
-        PaletteIndexT mColorIndex = PaletteIndexT::Default;
-        bool mComment : 1;
-        bool mMultiLineComment : 1;
-        bool mPreprocessor : 1;
+        CharT Char;
+        PaletteIndexT ColorIndex = PaletteIndexT::Default;
+        bool IsComment : 1;
+        bool IsMultiLineComment : 1;
+        bool IsPreprocessor : 1;
 
-        Glyph(CharT aChar, PaletteIndexT aColorIndex) : mChar(aChar), mColorIndex(aColorIndex),
-                                                        mComment(false), mMultiLineComment(false), mPreprocessor(false) {}
+        Glyph(CharT character, PaletteIndexT color_index)
+            : Char(character), ColorIndex(color_index), IsComment(false), IsMultiLineComment(false), IsPreprocessor(false) {}
     };
 
     using LineT = std::vector<Glyph>;
@@ -142,10 +140,10 @@ struct IMGUI_API TextEditor {
     struct LanguageDefT {
         using TokenRegexStringT = std::pair<string, PaletteIndexT>;
         using TokenRegexStringsT = std::vector<TokenRegexStringT>;
-        using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&out_end, PaletteIndexT &paletteIndex);
+        using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndexT &palette_index);
 
         string Name;
-        KeywordsT mKeywords;
+        KeywordsT Keywords;
         IdentifiersT Identifiers;
         IdentifiersT PreprocIdentifiers;
         string CommentStart, CommentEnd, SingleLineComment;
@@ -179,7 +177,7 @@ struct IMGUI_API TextEditor {
         string Text;
         TextEditor::Coordinates Start;
         TextEditor::Coordinates End;
-        UndoOperationType mType;
+        UndoOperationType Type;
     };
 
     TextEditor();
@@ -191,43 +189,43 @@ struct IMGUI_API TextEditor {
     const PaletteT &GetPalette() const { return PalletteBase; }
     void SetPalette(const PaletteT &);
 
-    bool Render(const char *aTitle, bool aParentIsFocused = false, const ImVec2 &aSize = ImVec2(), bool aBorder = false);
-    void SetText(const string &aText);
+    bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
+    void SetText(const string &text);
     string GetText() const;
 
     void SetTextLines(const std::vector<string> &);
     std::vector<string> GetTextLines() const;
 
     string GetClipboardText() const;
-    string GetSelectedText(int aCursor = -1) const;
+    string GetSelectedText(int cursor = -1) const;
     string GetCurrentLineText() const;
 
     int GetTotalLines() const { return (int)Lines.size(); }
 
-    void OnCursorPositionChanged(int aCursor);
+    void OnCursorPositionChanged(int cursor);
 
     Coordinates GetCursorPosition() const { return GetActualCursorCoordinates(); }
-    void SetCursorPosition(const Coordinates &aPosition, int aCursor = -1);
-    void SetCursorPosition(int aLine, int aCharIndex, int aCursor = -1);
+    void SetCursorPosition(const Coordinates &position, int cursor = -1);
+    void SetCursorPosition(int line_number, int characterIndex, int cursor = -1);
 
-    inline void OnLineDeleted(int aLineIndex, const std::unordered_set<int> *aHandledCursors = nullptr) {
+    inline void OnLineDeleted(int line_number, const std::unordered_set<int> *handled_cursors = nullptr) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.mLine >= aLineIndex) {
-                if (aHandledCursors == nullptr || aHandledCursors->find(c) == aHandledCursors->end()) // move up if has not been handled already
-                    SetCursorPosition({EditorState.Cursors[c].CursorPosition.mLine - 1, EditorState.Cursors[c].CursorPosition.mColumn}, c);
+            if (EditorState.Cursors[c].CursorPosition.Line >= line_number) {
+                if (handled_cursors == nullptr || handled_cursors->find(c) == handled_cursors->end()) // move up if has not been handled already
+                    SetCursorPosition({EditorState.Cursors[c].CursorPosition.Line - 1, EditorState.Cursors[c].CursorPosition.Column}, c);
             }
         }
     }
-    inline void OnLinesDeleted(int aFirstLineIndex, int aLastLineIndex) {
+    inline void OnLinesDeleted(int first_line_number, int last_line_number) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.mLine >= aFirstLineIndex)
-                SetCursorPosition({EditorState.Cursors[c].CursorPosition.mLine - (aLastLineIndex - aFirstLineIndex), EditorState.Cursors[c].CursorPosition.mColumn}, c);
+            if (EditorState.Cursors[c].CursorPosition.Line >= first_line_number)
+                SetCursorPosition({EditorState.Cursors[c].CursorPosition.Line - (last_line_number - first_line_number), EditorState.Cursors[c].CursorPosition.Column}, c);
         }
     }
-    inline void OnLineAdded(int aLineIndex) {
+    inline void OnLineAdded(int line_number) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.mLine >= aLineIndex)
-                SetCursorPosition({EditorState.Cursors[c].CursorPosition.mLine + 1, EditorState.Cursors[c].CursorPosition.mColumn}, c);
+            if (EditorState.Cursors[c].CursorPosition.Line >= line_number)
+                SetCursorPosition({EditorState.Cursors[c].CursorPosition.Line + 1, EditorState.Cursors[c].CursorPosition.Column}, c);
         }
     }
 
@@ -241,25 +239,25 @@ struct IMGUI_API TextEditor {
         );
     }
 
-    void SetTabSize(int aValue);
+    void SetTabSize(int);
     inline int GetTabSize() const { return TabSize; }
 
-    void InsertText(const string &aValue, int aCursor = -1);
-    void InsertText(const char *aValue, int aCursor = -1);
+    void InsertText(const string &, int cursor = -1);
+    void InsertText(const char *, int cursor = -1);
 
-    void MoveUp(int aAmount = 1, bool aSelect = false);
-    void MoveDown(int aAmount = 1, bool aSelect = false);
-    void MoveLeft(int aAmount = 1, bool aSelect = false, bool aWordMode = false);
-    void MoveRight(int aAmount = 1, bool aSelect = false, bool aWordMode = false);
-    void MoveTop(bool aSelect = false);
-    void MoveBottom(bool aSelect = false);
-    void MoveHome(bool aSelect = false);
-    void MoveEnd(bool aSelect = false);
+    void MoveUp(int amount = 1, bool select = false);
+    void MoveDown(int amount = 1, bool select = false);
+    void MoveLeft(int amount = 1, bool select = false, bool is_word_mode = false);
+    void MoveRight(int amount = 1, bool select = false, bool is_word_mode = false);
+    void MoveTop(bool select = false);
+    void MoveBottom(bool select = false);
+    void MoveHome(bool select = false);
+    void MoveEnd(bool select = false);
 
-    void SetSelectionStart(const Coordinates &aPosition, int aCursor = -1);
-    void SetSelectionEnd(const Coordinates &aPosition, int aCursor = -1);
-    void SetSelection(const Coordinates &aStart, const Coordinates &aEnd, SelectionModeT aMode = SelectionModeT::Normal, int aCursor = -1, bool isSpawningNewCursor = false);
-    void SetSelection(int aStartLine, int aStartCharIndex, int aEndLine, int aEndCharIndex, SelectionModeT aMode = SelectionModeT::Normal, int aCursor = -1, bool isSpawningNewCursor = false);
+    void SetSelectionStart(const Coordinates &position, int cursor = -1);
+    void SetSelectionEnd(const Coordinates &position, int cursor = -1);
+    void SetSelection(const Coordinates &start, const Coordinates &end, SelectionModeT mode = SelectionModeT::Normal, int cursor = -1, bool is_spawning_new_cursor = false);
+    void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_indexIndex, SelectionModeT mode = SelectionModeT::Normal, int cursor = -1, bool is_spawning_new_cursor = false);
     void SelectWordUnderCursor();
     void SelectAll();
     bool HasSelection() const;
@@ -267,7 +265,7 @@ struct IMGUI_API TextEditor {
     void Copy();
     void Cut();
     void Paste();
-    void Delete(bool aWordMode = false);
+    void Delete(bool is_word_mode = false);
 
     int GetUndoIndex() const;
     bool CanUndo() const;
@@ -275,9 +273,9 @@ struct IMGUI_API TextEditor {
     void Undo(int aSteps = 1);
     void Redo(int aSteps = 1);
 
-    void ClearExtraCursors();
+    void ClearExtrcursors();
     void ClearSelections();
-    void SelectNextOccurrenceOf(const char *aText, int aTextSize, int aCursor = -1);
+    void SelectNextOccurrenceOf(const char *text, int text_size, int cursor = -1);
     void AddCursorForNextOccurrence();
 
     static const PaletteT &GetMarianaPalette();
@@ -285,7 +283,7 @@ struct IMGUI_API TextEditor {
     static const PaletteT &GetLightPalette();
     static const PaletteT &GetRetroBluePalette();
 
-    static bool IsGlyphWordChar(const Glyph &aGlyph);
+    static bool IsGlyphWordChar(const Glyph &glyph);
 
     void DebugPanel();
     void UnitTests();
@@ -345,13 +343,13 @@ struct IMGUI_API TextEditor {
         ~UndoRecord() {}
 
         UndoRecord(
-            const std::vector<UndoOperation> &aOperations,
-            TextEditor::EditorStateT &aBefore,
-            TextEditor::EditorStateT &aAfter
+            const std::vector<UndoOperation> &operations,
+            TextEditor::EditorStateT &before,
+            TextEditor::EditorStateT &after
         );
 
-        void Undo(TextEditor *aEditor);
-        void Redo(TextEditor *aEditor);
+        void Undo(TextEditor *editor);
+        void Redo(TextEditor *editor);
 
         std::vector<UndoOperation> Operations;
 
@@ -368,51 +366,51 @@ struct IMGUI_API TextEditor {
 
 private:
     void ProcessInputs();
-    void Colorize(int aFromLine = 0, int aCount = -1);
-    void ColorizeRange(int aFromLine = 0, int aToLine = 0);
+    void Colorize(int from_line_number = 0, int line_count = -1);
+    void ColorizeRange(int from_line_number = 0, int to_line_number = 0);
     void ColorizeInternal();
-    float TextDistanceToLineStart(const Coordinates &aFrom) const;
-    void EnsureCursorVisible(int aCursor = -1);
+    float TextDistanceToLineStart(const Coordinates &from) const;
+    void EnsureCursorVisible(int cursor = -1);
     int GetPageSize() const;
-    string GetText(const Coordinates &aStart, const Coordinates &aEnd) const;
-    Coordinates GetActualCursorCoordinates(int aCursor = -1) const;
-    Coordinates SanitizeCoordinates(const Coordinates &aValue) const;
-    void Advance(Coordinates &aCoordinates) const;
-    void DeleteRange(const Coordinates &aStart, const Coordinates &aEnd);
-    int InsertTextAt(Coordinates &aWhere, const char *aValue);
-    void AddUndo(UndoRecord &aValue);
-    Coordinates ScreenPosToCoordinates(const ImVec2 &aPosition, bool aInsertionMode = false, bool *isOverLineNumber = nullptr) const;
-    Coordinates FindWordStart(const Coordinates &aFrom) const;
-    Coordinates FindWordEnd(const Coordinates &aFrom) const;
-    Coordinates FindNextWord(const Coordinates &aFrom) const;
-    int GetCharacterIndexL(const Coordinates &aCoordinates) const;
-    int GetCharacterIndexR(const Coordinates &aCoordinates) const;
-    int GetCharacterColumn(int aLine, int aIndex) const;
-    int GetLineCharacterCount(int aLine) const;
-    int GetLineMaxColumn(int aLine) const;
-    bool IsOnWordBoundary(const Coordinates &aAt) const;
-    void RemoveLines(int aStart, int aEnd);
-    void RemoveLine(int aIndex, const std::unordered_set<int> *aHandledCursors = nullptr);
+    string GetText(const Coordinates &start, const Coordinates &end) const;
+    Coordinates GetActualCursorCoordinates(int cursor = -1) const;
+    Coordinates SanitizeCoordinates(const Coordinates &) const;
+    void Advance(Coordinates &coords) const;
+    void DeleteRange(const Coordinates &start, const Coordinates &end);
+    int InsertTextAt(Coordinates &at, const char *);
+    void AddUndo(UndoRecord &);
+    Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_line_number = nullptr) const;
+    Coordinates FindWordStart(const Coordinates &from) const;
+    Coordinates FindWordEnd(const Coordinates &from) const;
+    Coordinates FindNextWord(const Coordinates &from) const;
+    int GetCharacterIndexL(const Coordinates &coords) const;
+    int GetCharacterIndexR(const Coordinates &coords) const;
+    int GetCharacterColumn(int line_number, int char_index) const;
+    int GetLineCharacterCount(int line_number) const;
+    int GetLineMaxColumn(int line_number) const;
+    bool IsOnWordBoundary(const Coordinates &at) const;
+    void RemoveLines(int start, int end);
+    void RemoveLine(int line_number, const std::unordered_set<int> *handled_cursors = nullptr);
     void RemoveCurrentLines();
-    void OnLineChanged(bool aBeforeChange, int aLine, int aColumn, int aCharCount, bool aDeleted);
-    void RemoveGlyphsFromLine(int aLine, int aStartChar, int aEndChar = -1);
-    void AddGlyphsToLine(int aLine, int aTargetIndex, LineT::iterator aSourceStart, LineT::iterator aSourceEnd);
-    void AddGlyphToLine(int aLine, int aTargetIndex, Glyph aGlyph);
-    LineT &InsertLine(int aIndex);
-    void ChangeCurrentLinesIndentation(bool aIncrease);
-    void EnterCharacter(ImWchar aChar, bool aShift);
-    void Backspace(bool aWordMode = false);
-    void DeleteSelection(int aCursor = -1);
+    void OnLineChanged(bool before_change, int line_number, int column, int char_count, bool is_deleted);
+    void RemoveGlyphsFromLine(int line_number, int start_char_index, int end_char_index = -1);
+    void AddGlyphsToLine(int line_number, int target_index, LineT::iterator source_start, LineT::iterator source_end);
+    void AddGlyphToLine(int line_number, int target_index, Glyph glyph);
+    LineT &InsertLine(int line_number);
+    void ChangeCurrentLinesIndentation(bool increase);
+    void EnterCharacter(ImWchar character, bool is_shift);
+    void Backspace(bool is_word_mode = false);
+    void DeleteSelection(int cursor = -1);
     string GetWordUnderCursor() const;
-    string GetWordAt(const Coordinates &aCoords) const;
-    ImU32 GetGlyphColor(const Glyph &aGlyph) const;
+    string GetWordAt(const Coordinates &coords) const;
+    ImU32 GetGlyphColor(const Glyph &glyph) const;
 
-    void HandleKeyboardInputs(bool aParentIsFocused = false);
+    void HandleKeyboardInputs(bool is_parent_focused = false);
     void HandleMouseInputs();
     void UpdatePalette();
-    void Render(bool aParentIsFocused = false);
+    void Render(bool is_parent_focused = false);
 
-    bool FindNextOccurrence(const char *aText, int aTextSize, const Coordinates &aFrom, Coordinates &outStart, Coordinates &outEnd);
+    bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out);
 
     int TabSize;
     bool WithinRender;

@@ -49,7 +49,7 @@ void Faust::FaustEditor::Render() const {
 
     const string editing_file = "no file";
     ImGui::Text(
-        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.Line + 1, cpos.Column + 1, editor.GetTotalLines(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
         editor.GetLanguageDefinitionName(),

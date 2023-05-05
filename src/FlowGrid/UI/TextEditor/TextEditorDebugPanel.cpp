@@ -8,11 +8,11 @@ void TextEditor::DebugPanel() {
     if (CollapsingHeader("Cursor info")) {
         DragInt("Cursor count", &EditorState.CurrentCursor);
         for (int i = 0; i <= EditorState.CurrentCursor; i++) {
-            DragInt2("Cursor", &EditorState.Cursors[i].CursorPosition.mLine);
-            DragInt2("Selection start", &EditorState.Cursors[i].SelectionStart.mLine);
-            DragInt2("Selection end", &EditorState.Cursors[i].SelectionEnd.mLine);
-            DragInt2("Interactive start", &EditorState.Cursors[i].InteractiveStart.mLine);
-            DragInt2("Interactive end", &EditorState.Cursors[i].InteractiveEnd.mLine);
+            DragInt2("Cursor", &EditorState.Cursors[i].CursorPosition.Line);
+            DragInt2("Selection start", &EditorState.Cursors[i].SelectionStart.Line);
+            DragInt2("Selection end", &EditorState.Cursors[i].SelectionEnd.Line);
+            DragInt2("Interactive start", &EditorState.Cursors[i].InteractiveStart.Line);
+            DragInt2("Interactive end", &EditorState.Cursors[i].InteractiveEnd.Line);
         }
     }
     if (CollapsingHeader("Undo")) {
@@ -23,9 +23,9 @@ void TextEditor::DebugPanel() {
                 TextUnformatted("Operations");
                 for (size_t j = 0; j < UndoBuffer[i].Operations.size(); j++) {
                     TextUnformatted(UndoBuffer[i].Operations[j].Text.c_str());
-                    TextUnformatted(UndoBuffer[i].Operations[j].mType == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
-                    DragInt2("Start", &UndoBuffer[i].Operations[j].Start.mLine);
-                    DragInt2("End", &UndoBuffer[i].Operations[j].End.mLine);
+                    TextUnformatted(UndoBuffer[i].Operations[j].Type == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
+                    DragInt2("Start", &UndoBuffer[i].Operations[j].Start.Line);
+                    DragInt2("End", &UndoBuffer[i].Operations[j].End.Line);
                     Separator();
                 }
             }

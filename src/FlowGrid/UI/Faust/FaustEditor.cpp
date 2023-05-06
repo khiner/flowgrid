@@ -8,7 +8,7 @@ using namespace ImGui;
 
 static TextEditor editor;
 
-void Faust::FaustEditor::Render() const {
+void Audio::Faust::FaustEditor::Render() const {
     if (ImGui::BeginMenuBar()) {
         FileMenu.Draw();
         if (ImGui::BeginMenu("Edit")) {
@@ -62,14 +62,14 @@ void Faust::FaustEditor::Render() const {
 
     const auto text = editor.GetText();
     if (editor.TextChanged) {
-        q(SetValue{s.Faust.Code.Path, text});
-    } else if (s.Faust.Code != text) {
+        q(SetValue{s.Audio.Faust.Code.Path, text});
+    } else if (s.Audio.Faust.Code != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
         //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.
-        editor.SetText(s.Faust.Code);
+        editor.SetText(s.Audio.Faust.Code);
     }
 }
 
-void Faust::FaustEditor::Metrics::Render() const {
+void Audio::Faust::FaustEditor::Metrics::Render() const {
     editor.DebugPanel();
 }

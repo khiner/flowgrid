@@ -113,7 +113,7 @@ void State::Update(const StateAction &action, TransientStore &store) const {
                 case 1: return Style.FlowGrid.Graph.LayoutFaust(store);
             }
         },
-        [&](const OpenFaustFile &a) { Set(Faust.Code, FileIO::read(a.path), store); },
+        [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), store); },
         [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
     );
 }
@@ -251,7 +251,7 @@ static void ApplyAction(const ProjectAction &action) {
         [&](const Actions::SaveProject &a) { Project::SaveProject(a.path); },
         [&](const Actions::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
         [&](const Actions::SaveCurrentProject &) { Project::SaveCurrentProject(); },
-        [&](const Actions::SaveFaustFile &a) { FileIO::write(a.path, s.Faust.Code); },
+        [&](const Actions::SaveFaustFile &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
         [](const Actions::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 
         // `History.Index`-changing actions:

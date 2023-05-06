@@ -175,52 +175,55 @@ enum ParamsWidthSizingPolicy_ {
 };
 using ParamsWidthSizingPolicy = int;
 
-struct Faust : UIStateMember {
-    using UIStateMember::UIStateMember;
+struct Audio : TabsWindow {
+    using TabsWindow::TabsWindow;
 
-    WindowMember_(
-        FaustEditor,
-        WindowFlags_MenuBar,
+    struct Faust : UIStateMember {
+        using UIStateMember::UIStateMember;
 
-        WindowMember(Metrics);
+        WindowMember_(
+            FaustEditor,
+            WindowFlags_MenuBar,
 
-        Prop_(Metrics, Metrics, "Faust editor metrics");
-    );
+            WindowMember(Metrics);
 
-    WindowMember_(
-        FaustGraph,
-        Menu({
-            Menu("File", {ShowSaveFaustSvgFileDialog{}}),
-            Menu("View", {Settings.HoverFlags}),
-        }),
-
-        Member(
-            GraphSettings,
-            Prop_(
-                Flags, HoverFlags,
-                "?Hovering over a node in the graph will display the selected information",
-                {"ShowRect?Display the hovered node's bounding rectangle",
-                 "ShowType?Display the hovered node's box type",
-                 "ShowChannels?Display the hovered node's channel points and indices",
-                 "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
-                FaustGraphHoverFlags_None
-            )
+            Prop_(Metrics, Metrics, "Faust editor metrics");
         );
-        Prop(GraphSettings, Settings);
-    );
 
-    WindowMember(FaustParams);
-    WindowMember(
-        FaustLog,
-        Prop(String, Error);
-    );
+        WindowMember_(
+            FaustGraph,
+            Menu({
+                Menu("File", {ShowSaveFaustSvgFileDialog{}}),
+                Menu("View", {Settings.HoverFlags}),
+            }),
 
-    Prop_(FaustEditor, Editor, "Faust editor");
-    Prop_(FaustGraph, Graph, "Faust graph");
-    Prop_(FaustParams, Params, "Faust params");
-    Prop_(FaustLog, Log, "Faust log");
+            Member(
+                GraphSettings,
+                Prop_(
+                    Flags, HoverFlags,
+                    "?Hovering over a node in the graph will display the selected information",
+                    {"ShowRect?Display the hovered node's bounding rectangle",
+                     "ShowType?Display the hovered node's box type",
+                     "ShowChannels?Display the hovered node's channel points and indices",
+                     "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
+                    FaustGraphHoverFlags_None
+                )
+            );
+            Prop(GraphSettings, Settings);
+        );
 
-    Prop(String, Code, R"#(import("stdfaust.lib");
+        WindowMember(FaustParams);
+        WindowMember(
+            FaustLog,
+            Prop(String, Error);
+        );
+
+        Prop_(FaustEditor, Editor, "Faust editor");
+        Prop_(FaustGraph, Graph, "Faust graph");
+        Prop_(FaustParams, Params, "Faust params");
+        Prop_(FaustLog, Log, "Faust log");
+
+        Prop(String, Code, R"#(import("stdfaust.lib");
     pitchshifter = vgroup("Pitch Shifter", ef.transpose(
        vslider("window (samples)", 1000, 50, 10000, 1),
        vslider("xfade (samples)", 10, 1, 10000, 1),
@@ -228,107 +231,104 @@ struct Faust : UIStateMember {
      )
     );
     process = _ : pitchshifter;)#");
-    //    Prop(String, Code, R"#(import("stdfaust.lib");
-    // s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
-    // process = select2(s,no.noise,os.sawtooth(440));)#");
-    //    Prop(String, Code, R"(import("stdfaust.lib");
-    // process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)");
-    //        Prop(String, Code, R"(import("stdfaust.lib");
-    // process = _:fi.highpass(2,1000):_;)");
-    //        Prop(String, Code, R"(import("stdfaust.lib");
-    // ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
-    // q = hslider("q",5,1,30,0.1);
-    // gain = hslider("gain",1,0,1,0.01);
-    // process = no:noise : fi.resonlp(ctFreq,q,gain);");
+        //    Prop(String, Code, R"#(import("stdfaust.lib");
+        // s = vslider("Signal[style:radio{'Noise':0;'Sawtooth':1}]",0,0,1,1);
+        // process = select2(s,no.noise,os.sawtooth(440));)#");
+        //    Prop(String, Code, R"(import("stdfaust.lib");
+        // process = ba.beat(240) : pm.djembe(60, 0.3, 0.4, 1) <: dm.freeverb_demo;)");
+        //        Prop(String, Code, R"(import("stdfaust.lib");
+        // process = _:fi.highpass(2,1000):_;)");
+        //        Prop(String, Code, R"(import("stdfaust.lib");
+        // ctFreq = hslider("cutoffFrequency",500,50,10000,0.01);
+        // q = hslider("q",5,1,30,0.1);
+        // gain = hslider("gain",1,0,1,0.01);
+        // process = no:noise : fi.resonlp(ctFreq,q,gain);");
 
-    // Based on Faust::UITester.dsp
-    //     Prop(String, Code, R"#(import("stdfaust.lib");
-    // declare name "UI Tester";
-    // declare version "1.0";
-    // declare author "O. Guillerminet";
-    // declare license "BSD";
-    // declare copyright "(c) O. Guillerminet 2012";
+        // Based on Faust::UITester.dsp
+        //     Prop(String, Code, R"#(import("stdfaust.lib");
+        // declare name "UI Tester";
+        // declare version "1.0";
+        // declare author "O. Guillerminet";
+        // declare license "BSD";
+        // declare copyright "(c) O. Guillerminet 2012";
 
-    // vbox = vgroup("vbox",
-    //     checkbox("check1"),
-    //     checkbox("check2"),
-    //     nentry("knob0[style:knob]", 60, 0, 127, 0.1)
-    // );
+        // vbox = vgroup("vbox",
+        //     checkbox("check1"),
+        //     checkbox("check2"),
+        //     nentry("knob0[style:knob]", 60, 0, 127, 0.1)
+        // );
 
-    // sliders = hgroup("sliders",
-    //     vslider("vslider1", 60, 0, 127, 0.1),
-    //     vslider("vslider2", 60, 0, 127, 0.1),
-    //     vslider("vslider3", 60, 0, 127, 0.1)
-    // );
+        // sliders = hgroup("sliders",
+        //     vslider("vslider1", 60, 0, 127, 0.1),
+        //     vslider("vslider2", 60, 0, 127, 0.1),
+        //     vslider("vslider3", 60, 0, 127, 0.1)
+        // );
 
-    // knobs = hgroup("knobs",
-    //     vslider("knob1[style:knob]", 60, 0, 127, 0.1),
-    //     vslider("knob2[style:knob]", 60, 0, 127, 0.1),
-    //     vslider("knob3[style:knob]", 60, 0, 127, 0.1)
-    // );
+        // knobs = hgroup("knobs",
+        //     vslider("knob1[style:knob]", 60, 0, 127, 0.1),
+        //     vslider("knob2[style:knob]", 60, 0, 127, 0.1),
+        //     vslider("knob3[style:knob]", 60, 0, 127, 0.1)
+        // );
 
-    // smallhbox1 = hgroup("small box 1",
-    //     vslider("vslider5 [unit:Hz]", 60, 0, 127, 0.1),
-    //     vslider("vslider6 [unit:Hz]", 60, 0, 127, 0.1),
-    //     vslider("knob4[style:knob]", 60, 0, 127, 0.1),
-    //     nentry("num1 [unit:f]", 60, 0, 127, 0.1),
-    //     vbargraph("vbar1", 0, 127)
-    // );
+        // smallhbox1 = hgroup("small box 1",
+        //     vslider("vslider5 [unit:Hz]", 60, 0, 127, 0.1),
+        //     vslider("vslider6 [unit:Hz]", 60, 0, 127, 0.1),
+        //     vslider("knob4[style:knob]", 60, 0, 127, 0.1),
+        //     nentry("num1 [unit:f]", 60, 0, 127, 0.1),
+        //     vbargraph("vbar1", 0, 127)
+        // );
 
-    // smallhbox2 = hgroup("small box 2",
-    //     vslider("vslider7 [unit:Hz]", 60, 0, 127, 0.1),
-    //     vslider("vslider8 [unit:Hz]", 60, 0, 127, 0.1),
-    //     vslider("knob5[style:knob]", 60, 0, 127, 0.1),
-    //     nentry("num2 [unit:f]", 60, 0, 127, 0.1),
-    //     vbargraph("vbar2", 0, 127)
-    // );
+        // smallhbox2 = hgroup("small box 2",
+        //     vslider("vslider7 [unit:Hz]", 60, 0, 127, 0.1),
+        //     vslider("vslider8 [unit:Hz]", 60, 0, 127, 0.1),
+        //     vslider("knob5[style:knob]", 60, 0, 127, 0.1),
+        //     nentry("num2 [unit:f]", 60, 0, 127, 0.1),
+        //     vbargraph("vbar2", 0, 127)
+        // );
 
-    // smallhbox3 = hgroup("small box 3",
-    //     vslider("vslider9 [unit:Hz]", 60, 0, 127, 0.1),
-    //     vslider("vslider10 [unit:m]", 60, 0, 127, 0.1),
-    //     vslider("knob6[style:knob]", 60, 0, 127, 0.1),
-    //     nentry("num3 [unit:f]", 60, 0, 127, 0.1),
-    //     vbargraph("vbar3", 0, 127)
-    // );
+        // smallhbox3 = hgroup("small box 3",
+        //     vslider("vslider9 [unit:Hz]", 60, 0, 127, 0.1),
+        //     vslider("vslider10 [unit:m]", 60, 0, 127, 0.1),
+        //     vslider("knob6[style:knob]", 60, 0, 127, 0.1),
+        //     nentry("num3 [unit:f]", 60, 0, 127, 0.1),
+        //     vbargraph("vbar3", 0, 127)
+        // );
 
-    // subhbox1 = hgroup("sub box 1",
-    //     smallhbox2,
-    //     smallhbox3
-    // );
+        // subhbox1 = hgroup("sub box 1",
+        //     smallhbox2,
+        //     smallhbox3
+        // );
 
-    // vmisc = vgroup("vmisc",
-    //     vslider("vslider4 [unit:Hz]", 60, 0, 127, 0.1),
-    //     button("button"),
-    //     hslider("hslider [unit:Hz]", 60, 0, 127, 0.1),
-    //     smallhbox1,
-    //     subhbox1,
-    //     hbargraph("hbar", 0, 127)
-    // );
+        // vmisc = vgroup("vmisc",
+        //     vslider("vslider4 [unit:Hz]", 60, 0, 127, 0.1),
+        //     button("button"),
+        //     hslider("hslider [unit:Hz]", 60, 0, 127, 0.1),
+        //     smallhbox1,
+        //     subhbox1,
+        //     hbargraph("hbar", 0, 127)
+        // );
 
-    // hmisc = hgroup("hmisc",
-    //     vslider("vslider4 [unit:f]", 60, 0, 127, 0.1),
-    //     button("button"),
-    //     hslider("hslider", 60, 0, 127, 0.1),
-    //     nentry("num [unit:f]", 60, 0, 127, 0.1),
-    //     (63.5 : vbargraph("vbar", 0, 127)),
-    //     (42.42 : hbargraph("hbar", 0, 127))
-    // );
+        // hmisc = hgroup("hmisc",
+        //     vslider("vslider4 [unit:f]", 60, 0, 127, 0.1),
+        //     button("button"),
+        //     hslider("hslider", 60, 0, 127, 0.1),
+        //     nentry("num [unit:f]", 60, 0, 127, 0.1),
+        //     (63.5 : vbargraph("vbar", 0, 127)),
+        //     (42.42 : hbargraph("hbar", 0, 127))
+        // );
 
-    // //------------------------- Process --------------------------------
+        // //------------------------- Process --------------------------------
 
-    // process = tgroup("grp 1",
-    //     vbox,
-    //     sliders,
-    //     knobs,
-    //     vmisc,
-    //     hmisc);)#");
+        // process = tgroup("grp 1",
+        //     vbox,
+        //     sliders,
+        //     knobs,
+        //     vmisc,
+        //     hmisc);)#");
 
-protected:
-    void Render() const override;
-};
-
-struct Audio : TabsWindow {
-    using TabsWindow::TabsWindow;
+    protected:
+        void Render() const override;
+    };
 
     // Corresponds to `ma_device`.
     struct Device : UIStateMember {
@@ -452,6 +452,7 @@ struct Audio : TabsWindow {
 
     Prop(Device, Device);
     Prop(Graph, Graph);
+    Prop(Faust, Faust);
 
 protected:
     void Render() const override;
@@ -1001,10 +1002,10 @@ UIMember(
                     Menu(
                         "Faust",
                         {
-                            Menu("Editor", {Faust.Editor, Faust.Editor.Metrics}),
-                            Faust.Graph,
-                            Faust.Params,
-                            Faust.Log,
+                            Menu("Editor", {Audio.Faust.Editor, Audio.Faust.Editor.Metrics}),
+                            Audio.Faust.Graph,
+                            Audio.Faust.Params,
+                            Audio.Faust.Log,
                         }
                     ),
                     Audio,
@@ -1029,7 +1030,6 @@ UIMember(
     Prop(fg::Style, Style);
     Prop(Audio, Audio);
     Prop(ApplicationSettings, ApplicationSettings);
-    Prop(Faust, Faust);
     Prop(UIProcess, UiProcess);
     Prop(FileDialog, FileDialog);
     Prop(Info, Info);

@@ -507,6 +507,19 @@ void Drawable::Draw() const {
     //    PopID();
 }
 
+void UIStateMember::DrawWindows() const {
+    for (const auto *child : Children) {
+        if (const auto *window_child = dynamic_cast<const Window *>(child)) {
+            window_child->Draw();
+        }
+    }
+    for (const auto *child : Children) {
+        if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
+            ui_child->DrawWindows();
+        }
+    }
+}
+
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void StateMember::HelpMarker(const bool after) const {
     if (Help.empty()) return;
@@ -559,11 +572,11 @@ void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
 
-void TabsWindow::Render() const {
+void TabsWindow::Render(const std::set<ID> &exclude) const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
             if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
-                if (ui_child != &Visible && BeginTabItem(child->ImGuiLabel.c_str())) {
+                if (!exclude.contains(ui_child->Id) && ui_child != &Visible && BeginTabItem(child->ImGuiLabel.c_str())) {
                     ui_child->Draw();
                     EndTabItem();
                 }
@@ -571,6 +584,11 @@ void TabsWindow::Render() const {
         }
         EndTabBar();
     }
+}
+
+void TabsWindow::Render() const {
+    static const std::set<ID> exclude = {};
+    TabsWindow::Render(exclude);
 }
 
 Menu::Menu(string_view label, const vector<const Item> items) : Label(label), Items(std::move(items)) {}
@@ -649,14 +667,14 @@ void State::Render() const {
         Audio.Dock(settings_node_id);
         ApplicationSettings.Dock(settings_node_id);
 
-        Faust.Editor.Dock(faust_editor_node_id);
-        Faust.Editor.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
-        Faust.Graph.Dock(faust_tools_node_id);
-        Faust.Params.Dock(faust_tools_node_id);
+        Audio.Faust.Editor.Dock(faust_editor_node_id);
+        Audio.Faust.Editor.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
+        Audio.Faust.Graph.Dock(faust_tools_node_id);
+        Audio.Faust.Params.Dock(faust_tools_node_id);
 
         DebugLog.Dock(debug_node_id);
         StackTool.Dock(debug_node_id);
-        Faust.Log.Dock(debug_node_id);
+        Audio.Faust.Log.Dock(debug_node_id);
         StateViewer.Dock(debug_node_id);
         StateMemoryEditor.Dock(debug_node_id);
         StatePathUpdateFrequency.Dock(debug_node_id);
@@ -674,11 +692,16 @@ void State::Render() const {
         DebugLog.SelectTab(); // not visible by default anymore
     }
 
+    // Draw non-window children.
     for (const auto *child : Children) {
         if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
-            ui_child->Draw();
+            if (!dynamic_cast<const Window *>(child)) {
+                ui_child->Draw();
+            }
         }
     }
+    // Recursively draw all windows.
+    DrawWindows();
 }
 
 // Copy of ImGui version, which is not defined publicly
@@ -1879,19 +1902,13 @@ void StackTool::Render() const {
     ShowStackToolWindow();
 }
 
-void Faust::FaustLog::Render() const {
+void Audio::Faust::FaustLog::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
     Error.Draw();
     PopStyleColor();
 }
 
-void Faust::Render() const {
-    Editor.Draw();
-    Editor.Metrics.Draw();
-    Graph.Draw();
-    Params.Draw();
-    Log.Draw();
-}
+void Audio::Faust::Render() const {}
 
 Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateMember(parent, path_segment, name_help) {

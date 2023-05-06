@@ -98,6 +98,7 @@ protected:
 
 struct UIStateMember : StateMember, Drawable {
     using StateMember::StateMember;
+    void DrawWindows() const; // Recursively draw all windows in the state tree. Note that non-window members can contain windows.
 };
 
 #define UIMember(MemberName, ...)           \

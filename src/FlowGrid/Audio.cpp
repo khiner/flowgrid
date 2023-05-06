@@ -137,7 +137,7 @@ void Audio::Uninit() const {
 
 void Audio::Render() const {
     Update();
-    TabsWindow::Render();
+    TabsWindow::Render({Faust.Id}); // Exclude the Faust tab.
 }
 
 namespace FaustContext {
@@ -155,7 +155,7 @@ static void Init() {
 
     static int num_inputs, num_outputs;
     static string error_msg;
-    const Box box = DSPToBoxes("FlowGrid", s.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+    const Box box = DSPToBoxes("FlowGrid", s.Audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
 
     static llvm_dsp_factory *dsp_factory;
     if (box && error_msg.empty()) {
@@ -174,7 +174,7 @@ static void Init() {
         }
     }
 
-    const auto &ErrorLog = s.Faust.Log.Error;
+    const auto &ErrorLog = s.Audio.Faust.Log.Error;
     if (!error_msg.empty()) q(SetValue{ErrorLog.Path, error_msg});
     else if (ErrorLog) q(SetValue{ErrorLog.Path, ""});
 
@@ -196,17 +196,17 @@ static void Uninit() {
 }
 
 static bool NeedsRestart() {
-    static string PreviousFaustCode = s.Faust.Code;
+    static string PreviousFaustCode = s.Audio.Faust.Code;
 
-    const bool needs_restart = s.Faust.Code != PreviousFaustCode;
-    PreviousFaustCode = s.Faust.Code;
+    const bool needs_restart = s.Audio.Faust.Code != PreviousFaustCode;
+    PreviousFaustCode = s.Audio.Faust.Code;
     return needs_restart;
 }
 } // namespace FaustContext
 
 void Audio::Update() const {
     // Faust setup is only dependent on the faust code.
-    const bool is_faust_initialized = s.UiProcess.Running && s.Faust.Code && !s.Faust.Log.Error;
+    const bool is_faust_initialized = s.UiProcess.Running && s.Audio.Faust.Code && !s.Audio.Faust.Log.Error;
     const bool faust_needs_restart = FaustContext::NeedsRestart(); // Don't inline! Must run during every update.
     if (!FaustContext::Dsp && is_faust_initialized) {
         FaustContext::Init();

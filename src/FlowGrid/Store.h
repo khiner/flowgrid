@@ -33,6 +33,10 @@ void Set(const StatePath &, const vector<Primitive> &, Count row_count, Transien
 
 Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);
 
+namespace store {
+void OnApplicationStateInitialized();
+}
+
 // TODO these are actually defined in `App.cpp`, because of circular dependencies.
 template<IsPrimitive T>
 struct Vector : Field::Base {

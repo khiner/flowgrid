@@ -20,6 +20,10 @@ struct Record {
 static vector<Record> Records;
 
 StoreHistory::StoreHistory(const Store &store) {
+    Reset(store);
+}
+
+void StoreHistory::Reset(const Store &store) {
     Records.clear();
     Records.push_back({Clock::now(), store, {}});
 }

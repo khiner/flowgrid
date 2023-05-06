@@ -62,3 +62,11 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &Base
 
     return {ops, BasePath};
 }
+
+TransientStore InitStore{};
+Store ApplicationStore{};
+
+void store::OnApplicationStateInitialized() {
+    ApplicationStore = InitStore.persistent(); // Create the local canonical store, initially containing the full application state constructed by `State`.
+    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
+}

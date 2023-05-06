@@ -22,6 +22,7 @@ struct StoreHistory {
         vector<ImU64> Values;
     };
 
+    StoreHistory() = default;
     StoreHistory(const Store &);
     ~StoreHistory() = default;
 

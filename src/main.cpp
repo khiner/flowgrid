@@ -3,22 +3,19 @@
 #include "FlowGrid/StoreHistory.h"
 
 #include "imgui.h"
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 #include <filesystem>
 
 #include <range/v3/view/map.hpp>
 
 // Initialize global extern variables.
-TransientStore InitStore{};
 const State ApplicationState{};
-Store ApplicationStore{InitStore.persistent()}; // Create the local canonical store, initially containing the full application state constructed by `State`.
-StoreHistory History{AppStore};
-UIContext UiContext{};
 const State &s = ApplicationState; // Create the read-only state reference global.
+UIContext UiContext{};
+StoreHistory History{};
 
 int main(int, const char **) {
-    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
+    store::OnApplicationStateInitialized();
+    History.Reset(AppStore);
 
     // Ensure all store values set during initialization are reflected in cached field/collection values.
     for (auto *field : ranges::views::values(Base::WithPath)) field->Update();

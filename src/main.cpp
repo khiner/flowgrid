@@ -10,6 +10,8 @@
 // Initialize global extern variables.
 const State ApplicationState{};
 const State &s = ApplicationState; // Create the read-only state reference global.
+const Audio &audio = s.Audio;
+
 UIContext UiContext{};
 StoreHistory History{};
 

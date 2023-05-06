@@ -2,7 +2,7 @@
 #include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
-#include "App.h"
+#include "Audio.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "UI/Faust/FaustGraph.h"
@@ -142,7 +142,7 @@ void Audio::Render() const {
 
 namespace FaustContext {
 static dsp *Dsp = nullptr;
-static unique_ptr<FaustParams> Ui;
+static std::unique_ptr<FaustParams> Ui;
 
 static void Init() {
     createLibContext();
@@ -155,7 +155,7 @@ static void Init() {
 
     static int num_inputs, num_outputs;
     static string error_msg;
-    const Box box = DSPToBoxes("FlowGrid", s.Audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+    const Box box = DSPToBoxes("FlowGrid", audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
 
     static llvm_dsp_factory *dsp_factory;
     if (box && error_msg.empty()) {
@@ -168,13 +168,13 @@ static void Init() {
         Dsp = dsp_factory->createDSPInstance();
         if (!Dsp) error_msg = "Could not create Faust DSP.";
         else {
-            Ui = make_unique<FaustParams>();
+            Ui = std::make_unique<FaustParams>();
             Dsp->buildUserInterface(Ui.get());
             // `Dsp->Init` happens in the Faust graph node.
         }
     }
 
-    const auto &ErrorLog = s.Audio.Faust.Log.Error;
+    const auto &ErrorLog = audio.Faust.Log.Error;
     if (!error_msg.empty()) q(SetValue{ErrorLog.Path, error_msg});
     else if (ErrorLog) q(SetValue{ErrorLog.Path, ""});
 
@@ -196,17 +196,19 @@ static void Uninit() {
 }
 
 static bool NeedsRestart() {
-    static string PreviousFaustCode = s.Audio.Faust.Code;
+    static string PreviousFaustCode = audio.Faust.Code;
 
-    const bool needs_restart = s.Audio.Faust.Code != PreviousFaustCode;
-    PreviousFaustCode = s.Audio.Faust.Code;
+    const bool needs_restart = audio.Faust.Code != PreviousFaustCode;
+    PreviousFaustCode = audio.Faust.Code;
     return needs_restart;
 }
 } // namespace FaustContext
 
 void Audio::Update() const {
     // Faust setup is only dependent on the faust code.
-    const bool is_faust_initialized = s.UiProcess.Running && s.Audio.Faust.Code && !s.Audio.Faust.Log.Error;
+    // TODO now that we're not dependent on global App.h state, we need to find a way to destroy the Faust context when the app closes.
+    // const bool is_faust_initialized = s.UiProcess.Running && Faust.Code && !Faust.Log.Error;
+    const bool is_faust_initialized = Faust.Code && !Faust.Log.Error;
     const bool faust_needs_restart = FaustContext::NeedsRestart(); // Don't inline! Must run during every update.
     if (!FaustContext::Dsp && is_faust_initialized) {
         FaustContext::Init();
@@ -598,7 +600,7 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
 void Audio::Graph::FaustNode::DoInit() const {
     if (!FaustContext::Dsp) return;
 
-    FaustContext::Dsp->init(s.Audio.Device.SampleRate);
+    FaustContext::Dsp->init(audio.Device.SampleRate);
     const Count in_channels = FaustContext::Dsp->getNumInputs();
     const Count out_channels = FaustContext::Dsp->getNumOutputs();
     if (in_channels == 0 && out_channels == 0) return;
@@ -620,12 +622,15 @@ void Audio::Graph::FaustNode::DoInit() const {
 }
 bool Audio::Graph::FaustNode::NeedsRestart() const {
     static dsp *PreviousDsp = FaustContext::Dsp;
-    static U32 PreviousSampleRate = s.Audio.Device.SampleRate;
+    static U32 PreviousSampleRate = audio.Device.SampleRate;
 
-    const bool needs_restart = FaustContext::Dsp != PreviousDsp || s.Audio.Device.SampleRate != PreviousSampleRate;
+    const bool needs_restart = FaustContext::Dsp != PreviousDsp || audio.Device.SampleRate != PreviousSampleRate;
     PreviousDsp = FaustContext::Dsp;
-    PreviousSampleRate = s.Audio.Device.SampleRate;
+    PreviousSampleRate = audio.Device.SampleRate;
 
     return needs_restart;
 }
-// todo Graph::RenderConnections defined in `State.cpp` because of dependency resolution order weirdness.
+
+// todo next up: Migrate all remaining `Audio` method definitions from `App.cpp` to here
+//   This requires a solution for getting global `Style` here, either by extracting it from `App`,
+//   or breaking it out into separate style members owned by their domain parents, e.g. `Audio::Style`.

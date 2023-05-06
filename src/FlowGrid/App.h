@@ -734,7 +734,6 @@ struct Style : TabsWindow {
                 ArrowSize.Y,
                 InverterRadius,
             };
-            const Field::Entries DefaultLayoutEntries = LayoutFields | transform([](const PrimitiveBase &field) { return Field::Entry(field, field.GetInitial()); }) | to<const Field::Entries>;
 
             void ColorsDark(TransientStore &store) const;
             void ColorsClassic(TransientStore &store) const;

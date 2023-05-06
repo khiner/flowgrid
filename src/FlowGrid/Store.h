@@ -35,7 +35,9 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &Base
 
 namespace store {
 void OnApplicationStateInitialized();
-}
+
+Primitive Get(const StatePath &);
+} // namespace store
 
 // TODO these are actually defined in `App.cpp`, because of circular dependencies.
 template<IsPrimitive T>

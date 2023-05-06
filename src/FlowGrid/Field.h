@@ -31,7 +31,6 @@ struct PrimitiveBase : Base {
     PrimitiveBase(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
-    Primitive GetInitial() const; // Returns the value in the initialization state store.
 };
 
 template<IsPrimitive T>

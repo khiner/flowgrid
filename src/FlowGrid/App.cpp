@@ -162,8 +162,7 @@ PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view na
     Set(*this, value, InitStore);
 }
 
-Primitive PrimitiveBase::Get() const { return AppStore.at(Path); }
-Primitive PrimitiveBase::GetInitial() const { return InitStore.at(Path); }
+Primitive PrimitiveBase::Get() const { return store::Get(Path); }
 
 void Bool::Toggle() const { q(ToggleValue{Path}); }
 
@@ -1348,6 +1347,7 @@ Style::ImPlotStyle::ImPlotColors::ImPlotColors(StateMember *parent, string_view 
     : Colors(parent, path_segment, name_help, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::FlowGridStyle::Graph::LayoutFlowGrid(TransientStore &store) const {
+    static const auto DefaultLayoutEntries = LayoutFields | transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | to<const Field::Entries>;
     Set(DefaultLayoutEntries, store);
 }
 void Style::FlowGridStyle::Graph::LayoutFaust(TransientStore &store) const {

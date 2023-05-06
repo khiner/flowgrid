@@ -6,6 +6,18 @@
 
 #include "Actions.h"
 
+TransientStore InitStore{};
+Store ApplicationStore{};
+
+namespace store {
+void OnApplicationStateInitialized() {
+    ApplicationStore = InitStore.persistent(); // Create the local canonical store, initially containing the full application state constructed by `State`.
+    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
+}
+
+Primitive Get(const StatePath &path) { return InitStore.empty() ? AppStore.at(path) : InitStore.at(path); }
+} // namespace store
+
 // Transient modifiers
 void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
 void Set(const StoreEntries &values, TransientStore &store) {
@@ -61,12 +73,4 @@ Patch CreatePatch(const Store &before, const Store &after, const StatePath &Base
     );
 
     return {ops, BasePath};
-}
-
-TransientStore InitStore{};
-Store ApplicationStore{};
-
-void store::OnApplicationStateInitialized() {
-    ApplicationStore = InitStore.persistent(); // Create the local canonical store, initially containing the full application state constructed by `State`.
-    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
 }

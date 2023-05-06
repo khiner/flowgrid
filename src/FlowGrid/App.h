@@ -6,8 +6,6 @@
 #include <range/v3/view/filter.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "Actions.h"
-#include "Store.h"
 #include "WindowMember.h"
 
 /**

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Actions.h" // Windows have menus, which can perform actions.
-#include "Field.h"
+#include "Store.h"
 
 struct Menu : Drawable {
     using Item = std::variant<

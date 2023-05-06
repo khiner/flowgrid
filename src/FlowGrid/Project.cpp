@@ -101,16 +101,16 @@ void State::Update(const StateAction &action, TransientStore &store) const {
         },
         [&](const SetGraphColorStyle &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.Graph.ColorsDark(store);
-                case 1: return Style.FlowGrid.Graph.ColorsLight(store);
-                case 2: return Style.FlowGrid.Graph.ColorsClassic(store);
-                case 3: return Style.FlowGrid.Graph.ColorsFaust(store);
+                case 0: return Audio.Faust.Graph.Style.ColorsDark(store);
+                case 1: return Audio.Faust.Graph.Style.ColorsLight(store);
+                case 2: return Audio.Faust.Graph.Style.ColorsClassic(store);
+                case 3: return Audio.Faust.Graph.Style.ColorsFaust(store);
             }
         },
         [&](const SetGraphLayoutStyle &a) {
             switch (a.id) {
-                case 0: return Style.FlowGrid.Graph.LayoutFlowGrid(store);
-                case 1: return Style.FlowGrid.Graph.LayoutFaust(store);
+                case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid(store);
+                case 1: return Audio.Faust.Graph.Style.LayoutFaust(store);
             }
         },
         [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), store); },

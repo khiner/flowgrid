@@ -24,7 +24,10 @@ struct MenuItemDrawable {
 };
 
 struct ImColor;
+struct ImVec2;
+struct ImVec4;
 using ImGuiColorEditFlags = int;
+using ImGuiSliderFlags = int;
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
@@ -194,6 +197,33 @@ private:
     vector<T> Value;
 };
 
+struct Colors : UIStateMember {
+    // An arbitrary transparent color is used to mark colors as "auto".
+    // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
+    // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
+    static constexpr U32 AutoColor = 0X00010101;
+
+    Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
+    ~Colors();
+
+    static U32 ConvertFloat4ToU32(const ImVec4 &value);
+    static ImVec4 ConvertU32ToFloat4(const U32 value);
+
+    Count Size() const;
+    U32 operator[](Count) const;
+
+    void Set(const vector<ImVec4> &, TransientStore &) const;
+    void Set(const vector<std::pair<int, ImVec4>> &, TransientStore &) const;
+
+protected:
+    void Render() const override;
+
+private:
+    inline const UInt *At(Count) const;
+
+    bool AllowAuto;
+};
+
 // Vector of vectors. Inner vectors need not have the same length.
 template<IsPrimitive T>
 struct Vector2D : Base {
@@ -249,6 +279,31 @@ void OnApplicationStateInitialized();
 
 Primitive Get(const StatePath &);
 } // namespace store
+
+struct Vec2 : UIStateMember {
+    // `fmt` defaults to ImGui slider default, which is "%.3f"
+    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
+
+    operator ImVec2() const;
+
+    Field::Float X, Y;
+    const char *Format;
+
+protected:
+    virtual void Render(ImGuiSliderFlags) const;
+    void Render() const override;
+};
+
+struct Vec2Linked : Vec2 {
+    using Vec2::Vec2;
+    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
+
+    Prop(Field::Bool, Linked, true);
+
+protected:
+    void Render(ImGuiSliderFlags) const override;
+    void Render() const override;
+};
 
 extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.
 extern Store ApplicationStore;

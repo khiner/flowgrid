@@ -960,23 +960,6 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     ctx->SettingsDirty = false;
 }
 
-const char *Style::FlowGridStyle::Graph::GetColorName(FlowGridGraphCol idx) {
-    switch (idx) {
-        case FlowGridGraphCol_Bg: return "GraphBg";
-        case FlowGridGraphCol_DecorateStroke: return "GraphDecorateStroke";
-        case FlowGridGraphCol_GroupStroke: return "GraphGroupStroke";
-        case FlowGridGraphCol_Line: return "GraphLine";
-        case FlowGridGraphCol_Link: return "GraphLink";
-        case FlowGridGraphCol_Normal: return "GraphNormal";
-        case FlowGridGraphCol_Ui: return "GraphUi";
-        case FlowGridGraphCol_Slot: return "GraphSlot";
-        case FlowGridGraphCol_Number: return "GraphNumber";
-        case FlowGridGraphCol_Inverter: return "GraphInverter";
-        case FlowGridGraphCol_OrientationMark: return "GraphOrientationMark";
-        default: return "Unknown";
-    }
-}
-
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {
         case FlowGridCol_GestureIndicator: return "GestureIndicator";
@@ -1212,11 +1195,6 @@ Style::FlowGridStyle::FlowGridStyle(StateMember *parent, string_view path_segmen
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(InitStore);
 }
-Style::FlowGridStyle::Graph::Graph(StateMember *parent, string_view path_segment, string_view name_help)
-    : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(InitStore);
-    LayoutFlowGrid(InitStore);
-}
 
 void Style::ImGuiStyle::ColorsDark(TransientStore &store) const {
     ImGui::StyleColorsDark(&ColorPresetBuffer[0]);
@@ -1283,87 +1261,6 @@ void Style::FlowGridStyle::ColorsClassic(TransientStore &store) const {
     );
 }
 
-void Style::FlowGridStyle::Graph::ColorsDark(TransientStore &store) const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {0.06, 0.06, 0.06, 0.94}},
-            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
-            {FlowGridGraphCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
-            {FlowGridGraphCol_Line, {0.61, 0.61, 0.61, 1}},
-            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
-            {FlowGridGraphCol_Inverter, {1, 1, 1, 1}},
-            {FlowGridGraphCol_OrientationMark, {1, 1, 1, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
-    );
-}
-void Style::FlowGridStyle::Graph::ColorsClassic(TransientStore &store) const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {0, 0, 0, 0.85}},
-            {FlowGridGraphCol_Text, {0.9, 0.9, 0.9, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
-            {FlowGridGraphCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
-            {FlowGridGraphCol_Line, {1, 1, 1, 1}},
-            {FlowGridGraphCol_Link, {0.35, 0.4, 0.61, 0.62}},
-            {FlowGridGraphCol_Inverter, {0.9, 0.9, 0.9, 1}},
-            {FlowGridGraphCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
-    );
-}
-void Style::FlowGridStyle::Graph::ColorsLight(TransientStore &store) const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {0.94, 0.94, 0.94, 1}},
-            {FlowGridGraphCol_Text, {0, 0, 0, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0, 0, 0, 0.3}},
-            {FlowGridGraphCol_GroupStroke, {0, 0, 0, 0.3}},
-            {FlowGridGraphCol_Line, {0.39, 0.39, 0.39, 1}},
-            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
-            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
-            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
-    );
-}
-void Style::FlowGridStyle::Graph::ColorsFaust(TransientStore &store) const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {1, 1, 1, 1}},
-            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
-            {FlowGridGraphCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
-            {FlowGridGraphCol_Line, {0, 0, 0, 1}},
-            {FlowGridGraphCol_Link, {0, 0.2, 0.4, 1}},
-            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
-            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
-    );
-}
-
 #include <range/v3/core.hpp>
 #include <range/v3/view/transform.hpp>
 
@@ -1371,44 +1268,6 @@ Style::ImGuiStyle::ImGuiColors::ImGuiColors(StateMember *parent, string_view pat
     : Colors(parent, path_segment, name_help, ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
 Style::ImPlotStyle::ImPlotColors::ImPlotColors(StateMember *parent, string_view path_segment, string_view name_help)
     : Colors(parent, path_segment, name_help, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
-
-void Style::FlowGridStyle::Graph::LayoutFlowGrid(TransientStore &store) const {
-    static const auto DefaultLayoutEntries = LayoutFields | ranges::views::transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | ranges::to<const Field::Entries>;
-    Set(DefaultLayoutEntries, store);
-}
-void Style::FlowGridStyle::Graph::LayoutFaust(TransientStore &store) const {
-    Set(
-        {
-            {SequentialConnectionZigzag, true},
-            {OrientationMark, true},
-            {DecorateRootNode, true},
-            {DecorateMargin.X, 10},
-            {DecorateMargin.Y, 10},
-            {DecoratePadding.X, 10},
-            {DecoratePadding.Y, 10},
-            {DecorateLineWidth, 1},
-            {DecorateCornerRadius, 0},
-            {GroupMargin.X, 10},
-            {GroupMargin.Y, 10},
-            {GroupPadding.X, 10},
-            {GroupPadding.Y, 10},
-            {GroupLineWidth, 1},
-            {GroupCornerRadius, 0},
-            {BoxCornerRadius, 0},
-            {BinaryHorizontalGapRatio, 0.25f},
-            {WireWidth, 1},
-            {WireGap, 16},
-            {NodeMargin.X, 8},
-            {NodeMargin.Y, 8},
-            {NodePadding.X, 8},
-            {NodePadding.Y, 0},
-            {ArrowSize.X, 3},
-            {ArrowSize.Y, 2},
-            {InverterRadius, 3},
-        },
-        store
-    );
-}
 
 Colors::Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
     : UIStateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
@@ -1665,51 +1524,6 @@ void Style::FlowGridStyle::Matrix::Render() const {
     LabelSize.Draw();
 }
 
-void Style::FlowGridStyle::Graph::Render() const {
-    FoldComplexity.Draw();
-    const bool scale_fill = ScaleFillHeight;
-    ScaleFillHeight.Draw();
-    if (scale_fill) BeginDisabled();
-    Scale.Draw();
-    if (scale_fill) {
-        SameLine();
-        TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
-        EndDisabled();
-    }
-    Direction.Draw();
-    OrientationMark.Draw();
-    if (OrientationMark) {
-        SameLine();
-        SetNextItemWidth(GetContentRegionAvail().x * 0.5f);
-        OrientationMarkRadius.Draw();
-    }
-    RouteFrame.Draw();
-    SequentialConnectionZigzag.Draw();
-    Separator();
-    const bool decorate_folded = DecorateRootNode;
-    DecorateRootNode.Draw();
-    if (!decorate_folded) BeginDisabled();
-    DecorateMargin.Draw();
-    DecoratePadding.Draw();
-    DecorateLineWidth.Draw();
-    DecorateCornerRadius.Draw();
-    if (!decorate_folded) EndDisabled();
-    Separator();
-    GroupMargin.Draw();
-    GroupPadding.Draw();
-    GroupLineWidth.Draw();
-    GroupCornerRadius.Draw();
-    Separator();
-    NodeMargin.Draw();
-    NodePadding.Draw();
-    BoxCornerRadius.Draw();
-    BinaryHorizontalGapRatio.Draw();
-    WireGap.Draw();
-    WireWidth.Draw();
-    ArrowSize.Draw();
-    InverterRadius.Draw();
-}
-
 void Style::FlowGridStyle::Params::Render() const {
     HeaderTitles.Draw();
     MinHorizontalItemWidth.Draw();
@@ -1736,7 +1550,7 @@ void Style::FlowGridStyle::Render() const {
             EndTabItem();
         }
         if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Graph.Draw();
+            s.Audio.Faust.Graph.Style.Draw();
             EndTabItem();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {

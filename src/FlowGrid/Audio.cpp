@@ -2,6 +2,9 @@
 #include "Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
+#include <range/v3/core.hpp>
+#include <range/v3/view/transform.hpp>
+
 #include "Audio.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
@@ -12,6 +15,197 @@
 #include "miniaudio.h"
 
 #include "imgui.h"
+
+using namespace ImGui;
+
+// Graph style
+
+Audio::Faust::FaustGraph::Style::Style(StateMember *parent, string_view path_segment, string_view name_help)
+    : UIStateMember(parent, path_segment, name_help) {
+    ColorsDark(InitStore);
+    LayoutFlowGrid(InitStore);
+}
+
+const char *Audio::Faust::FaustGraph::Style::GetColorName(FlowGridGraphCol idx) {
+    switch (idx) {
+        case FlowGridGraphCol_Bg: return "GraphBg";
+        case FlowGridGraphCol_DecorateStroke: return "GraphDecorateStroke";
+        case FlowGridGraphCol_GroupStroke: return "GraphGroupStroke";
+        case FlowGridGraphCol_Line: return "GraphLine";
+        case FlowGridGraphCol_Link: return "GraphLink";
+        case FlowGridGraphCol_Normal: return "GraphNormal";
+        case FlowGridGraphCol_Ui: return "GraphUi";
+        case FlowGridGraphCol_Slot: return "GraphSlot";
+        case FlowGridGraphCol_Number: return "GraphNumber";
+        case FlowGridGraphCol_Inverter: return "GraphInverter";
+        case FlowGridGraphCol_OrientationMark: return "GraphOrientationMark";
+        default: return "Unknown";
+    }
+}
+
+void Audio::Faust::FaustGraph::Style::ColorsDark(TransientStore &store) const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {0.06, 0.06, 0.06, 0.94}},
+            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridGraphCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridGraphCol_Line, {0.61, 0.61, 0.61, 1}},
+            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridGraphCol_Inverter, {1, 1, 1, 1}},
+            {FlowGridGraphCol_OrientationMark, {1, 1, 1, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        store
+    );
+}
+void Audio::Faust::FaustGraph::Style::ColorsClassic(TransientStore &store) const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {0, 0, 0, 0.85}},
+            {FlowGridGraphCol_Text, {0.9, 0.9, 0.9, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridGraphCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridGraphCol_Line, {1, 1, 1, 1}},
+            {FlowGridGraphCol_Link, {0.35, 0.4, 0.61, 0.62}},
+            {FlowGridGraphCol_Inverter, {0.9, 0.9, 0.9, 1}},
+            {FlowGridGraphCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        store
+    );
+}
+void Audio::Faust::FaustGraph::Style::ColorsLight(TransientStore &store) const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {0.94, 0.94, 0.94, 1}},
+            {FlowGridGraphCol_Text, {0, 0, 0, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0, 0, 0, 0.3}},
+            {FlowGridGraphCol_GroupStroke, {0, 0, 0, 0.3}},
+            {FlowGridGraphCol_Line, {0.39, 0.39, 0.39, 1}},
+            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        store
+    );
+}
+void Audio::Faust::FaustGraph::Style::ColorsFaust(TransientStore &store) const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {1, 1, 1, 1}},
+            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridGraphCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridGraphCol_Line, {0, 0, 0, 1}},
+            {FlowGridGraphCol_Link, {0, 0.2, 0.4, 1}},
+            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        },
+        store
+    );
+}
+
+void Audio::Faust::FaustGraph::Style::LayoutFlowGrid(TransientStore &store) const {
+    static const auto DefaultLayoutEntries = LayoutFields | ranges::views::transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | ranges::to<const Field::Entries>;
+    Set(DefaultLayoutEntries, store);
+}
+void Audio::Faust::FaustGraph::Style::LayoutFaust(TransientStore &store) const {
+    Set(
+        {
+            {SequentialConnectionZigzag, true},
+            {OrientationMark, true},
+            {DecorateRootNode, true},
+            {DecorateMargin.X, 10},
+            {DecorateMargin.Y, 10},
+            {DecoratePadding.X, 10},
+            {DecoratePadding.Y, 10},
+            {DecorateLineWidth, 1},
+            {DecorateCornerRadius, 0},
+            {GroupMargin.X, 10},
+            {GroupMargin.Y, 10},
+            {GroupPadding.X, 10},
+            {GroupPadding.Y, 10},
+            {GroupLineWidth, 1},
+            {GroupCornerRadius, 0},
+            {BoxCornerRadius, 0},
+            {BinaryHorizontalGapRatio, 0.25f},
+            {WireWidth, 1},
+            {WireGap, 16},
+            {NodeMargin.X, 8},
+            {NodeMargin.Y, 8},
+            {NodePadding.X, 8},
+            {NodePadding.Y, 0},
+            {ArrowSize.X, 3},
+            {ArrowSize.Y, 2},
+            {InverterRadius, 3},
+        },
+        store
+    );
+}
+
+void Audio::Faust::FaustGraph::Style::Render() const {
+    FoldComplexity.Draw();
+    const bool scale_fill = ScaleFillHeight;
+    ScaleFillHeight.Draw();
+    if (scale_fill) BeginDisabled();
+    Scale.Draw();
+    if (scale_fill) {
+        SameLine();
+        TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
+        EndDisabled();
+    }
+    Direction.Draw();
+    OrientationMark.Draw();
+    if (OrientationMark) {
+        SameLine();
+        SetNextItemWidth(GetContentRegionAvail().x * 0.5f);
+        OrientationMarkRadius.Draw();
+    }
+    RouteFrame.Draw();
+    SequentialConnectionZigzag.Draw();
+    Separator();
+    const bool decorate_folded = DecorateRootNode;
+    DecorateRootNode.Draw();
+    if (!decorate_folded) BeginDisabled();
+    DecorateMargin.Draw();
+    DecoratePadding.Draw();
+    DecorateLineWidth.Draw();
+    DecorateCornerRadius.Draw();
+    if (!decorate_folded) EndDisabled();
+    Separator();
+    GroupMargin.Draw();
+    GroupPadding.Draw();
+    GroupLineWidth.Draw();
+    GroupCornerRadius.Draw();
+    Separator();
+    NodeMargin.Draw();
+    NodePadding.Draw();
+    BoxCornerRadius.Draw();
+    BinaryHorizontalGapRatio.Draw();
+    WireGap.Draw();
+    WireWidth.Draw();
+    ArrowSize.Draw();
+    InverterRadius.Draw();
+}
 
 // todo implement for r8brain resampler
 // todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
@@ -338,8 +532,6 @@ void Audio::Device::Init() const {
 void Audio::Device::Update() const {
     if (IsStarted()) ma_device_set_master_volume(&MaDevice, Volume);
 }
-
-using namespace ImGui;
 
 void Audio::Device::Render() const {
     On.Draw();

@@ -19,23 +19,11 @@ using namespace nlohmann;
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
 using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
 
-struct ImVec2;
-struct ImVec4;
 using ImGuiID = unsigned int;
 using ImGuiTableFlags = int;
-using ImGuiSliderFlags = int;
 
 // Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
 // Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.
-enum Dir_ {
-    Dir_None = -1,
-    Dir_Left = 0,
-    Dir_Right = 1,
-    Dir_Up = 2,
-    Dir_Down = 3,
-    Dir_COUNT
-};
-
 enum SliderFlags_ {
     SliderFlags_None = 0,
     SliderFlags_AlwaysClamp = 1 << 4, // Clamp value to min/max bounds when input manually with CTRL+Click. By default CTRL+Click allows going out of bounds.
@@ -70,33 +58,6 @@ enum TableFlags_ {
 using TableFlags = int;
 
 ImGuiTableFlags TableFlagsToImGui(TableFlags);
-
-struct Colors : UIStateMember {
-    // An arbitrary transparent color is used to mark colors as "auto".
-    // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
-    // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
-    static constexpr U32 AutoColor = 0X00010101;
-
-    Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
-    ~Colors();
-
-    static U32 ConvertFloat4ToU32(const ImVec4 &value);
-    static ImVec4 ConvertU32ToFloat4(const U32 value);
-
-    Count Size() const;
-    U32 operator[](Count) const;
-
-    void Set(const vector<ImVec4> &, TransientStore &) const;
-    void Set(const vector<pair<int, ImVec4>> &, TransientStore &) const;
-
-protected:
-    void Render() const override;
-
-private:
-    inline const UInt *At(Count) const;
-
-    bool AllowAuto;
-};
 
 inline static const vector<Flags::Item> TableFlagItems{
     "Resizable?Enable resizing columns",
@@ -157,50 +118,6 @@ enum FlowGridCol_ {
     FlowGridCol_COUNT
 };
 using FlowGridCol = int;
-
-enum FlowGridGraphCol_ {
-    FlowGridGraphCol_Bg, // ImGuiCol_WindowBg
-    FlowGridGraphCol_Text, // ImGuiCol_Text
-    FlowGridGraphCol_DecorateStroke, // ImGuiCol_Border
-    FlowGridGraphCol_GroupStroke, // ImGuiCol_Border
-    FlowGridGraphCol_Line, // ImGuiCol_PlotLines
-    FlowGridGraphCol_Link, // ImGuiCol_Button
-    FlowGridGraphCol_Inverter, // ImGuiCol_Text
-    FlowGridGraphCol_OrientationMark, // ImGuiCol_Text
-    // Box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
-    FlowGridGraphCol_Normal,
-    FlowGridGraphCol_Ui,
-    FlowGridGraphCol_Slot,
-    FlowGridGraphCol_Number,
-
-    FlowGridGraphCol_COUNT
-};
-using FlowGridGraphCol = int;
-
-struct Vec2 : UIStateMember {
-    // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
-
-    operator ImVec2() const;
-
-    Float X, Y;
-    const char *Format;
-
-protected:
-    virtual void Render(ImGuiSliderFlags) const;
-    void Render() const override;
-};
-
-struct Vec2Linked : Vec2 {
-    using Vec2::Vec2;
-    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
-
-    Prop(Bool, Linked, true);
-
-protected:
-    void Render(ImGuiSliderFlags) const override;
-    void Render() const override;
-};
 
 struct Demo : TabsWindow {
     Demo(StateMember *parent, string_view path_segment, string_view name_help);
@@ -273,86 +190,6 @@ struct Style : TabsWindow {
             Prop_(Float, LabelSize, "?The space provided for the label, as a multiple of line height.\n(Use Style->ImGui->InnerItemSpacing->X for spacing between labels and cells.)", 6, 3, 8);
         );
 
-        UIMember_(
-            Graph,
-
-            Prop_(
-                UInt, FoldComplexity,
-                "?Number of boxes within a graph before folding into a sub-graph.\n"
-                "Setting to zero disables folding altogether, for a fully-expanded graph.",
-                3, 0, 20
-            );
-            Prop_(Bool, ScaleFillHeight, "?Automatically scale to fill the full height of the graph window, keeping the same aspect ratio.");
-            Prop(Float, Scale, 1, 0.1, 5);
-            Prop(Enum, Direction, {"Left", "Right"}, Dir_Right);
-            Prop(Bool, RouteFrame);
-            Prop(Bool, SequentialConnectionZigzag); // `false` uses diagonal lines instead of zigzags instead of zigzags
-            Prop(Bool, OrientationMark);
-            Prop(Float, OrientationMarkRadius, 1.5, 0.5, 3);
-
-            Prop(Bool, DecorateRootNode, true);
-            Prop(Vec2Linked, DecorateMargin, {10, 10}, 0, 20);
-            Prop(Vec2Linked, DecoratePadding, {10, 10}, 0, 20);
-            Prop(Float, DecorateLineWidth, 1, 1, 4);
-            Prop(Float, DecorateCornerRadius, 0, 0, 10);
-
-            Prop(Vec2Linked, GroupMargin, {8, 8}, 0, 20);
-            Prop(Vec2Linked, GroupPadding, {8, 8}, 0, 20);
-            Prop(Float, GroupLineWidth, 2, 1, 4);
-            Prop(Float, GroupCornerRadius, 5, 0, 10);
-
-            Prop(Vec2Linked, NodeMargin, {8, 8}, 0, 20);
-            Prop(Vec2Linked, NodePadding, {8, 0}, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
-
-            Prop(Float, BoxCornerRadius, 4, 0, 10);
-            Prop(Float, BinaryHorizontalGapRatio, 0.25, 0, 1);
-            Prop(Float, WireWidth, 1, 0.5, 4);
-            Prop(Float, WireGap, 16, 10, 20);
-            Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
-            Prop(Float, InverterRadius, 3, 1, 5);
-            Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
-
-            const vector<std::reference_wrapper<PrimitiveBase>> LayoutFields{
-                SequentialConnectionZigzag,
-                OrientationMark,
-                OrientationMarkRadius,
-                DecorateRootNode,
-                DecorateMargin.X,
-                DecorateMargin.Y,
-                DecoratePadding.X,
-                DecoratePadding.Y,
-                DecorateLineWidth,
-                DecorateCornerRadius,
-                GroupMargin.X,
-                GroupMargin.Y,
-                GroupPadding.X,
-                GroupPadding.Y,
-                GroupLineWidth,
-                GroupCornerRadius,
-                BoxCornerRadius,
-                BinaryHorizontalGapRatio,
-                WireWidth,
-                WireGap,
-                NodeMargin.X,
-                NodeMargin.Y,
-                NodePadding.X,
-                NodePadding.Y,
-                ArrowSize.X,
-                ArrowSize.Y,
-                InverterRadius,
-            };
-
-            void ColorsDark(TransientStore &store) const;
-            void ColorsClassic(TransientStore &store) const;
-            void ColorsLight(TransientStore &store) const;
-            void ColorsFaust(TransientStore &store) const; // Color Faust graphs the same way Faust does when it renders to SVG.
-
-            void LayoutFlowGrid(TransientStore &store) const;
-            void LayoutFaust(TransientStore &store) const; // Layout Faust graphs the same way Faust does when it renders to SVG.
-
-            static const char *GetColorName(FlowGridGraphCol idx);
-        );
-
         UIMember(
             Params,
             Prop(Bool, HeaderTitles, true);
@@ -377,7 +214,6 @@ struct Style : TabsWindow {
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
         Prop(Matrix, Matrix);
-        Prop(Graph, Graph);
         Prop(Params, Params);
         Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 

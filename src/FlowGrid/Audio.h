@@ -15,6 +15,15 @@ constexpr int IO_Count = 2;
 
 string to_string(IO io, bool shorten = false);
 
+enum Dir_ {
+    Dir_None = -1,
+    Dir_Left = 0,
+    Dir_Right = 1,
+    Dir_Up = 2,
+    Dir_Down = 3,
+    Dir_COUNT
+};
+
 enum FaustGraphHoverFlags_ {
     FaustGraphHoverFlags_None = 0,
     FaustGraphHoverFlags_ShowRect = 1 << 0,
@@ -23,6 +32,29 @@ enum FaustGraphHoverFlags_ {
     FaustGraphHoverFlags_ShowChildChannels = 1 << 3,
 };
 using FaustGraphHoverFlags = int;
+
+// Graph
+
+enum FlowGridGraphCol_ {
+    FlowGridGraphCol_Bg, // ImGuiCol_WindowBg
+    FlowGridGraphCol_Text, // ImGuiCol_Text
+    FlowGridGraphCol_DecorateStroke, // ImGuiCol_Border
+    FlowGridGraphCol_GroupStroke, // ImGuiCol_Border
+    FlowGridGraphCol_Line, // ImGuiCol_PlotLines
+    FlowGridGraphCol_Link, // ImGuiCol_Button
+    FlowGridGraphCol_Inverter, // ImGuiCol_Text
+    FlowGridGraphCol_OrientationMark, // ImGuiCol_Text
+    // Box fill colors of various types. todo design these colors for Dark/Classic/Light profiles
+    FlowGridGraphCol_Normal,
+    FlowGridGraphCol_Ui,
+    FlowGridGraphCol_Slot,
+    FlowGridGraphCol_Number,
+
+    FlowGridGraphCol_COUNT
+};
+using FlowGridGraphCol = int;
+
+// Params
 
 enum ParamsWidthSizingPolicy_ {
     ParamsWidthSizingPolicy_StretchToFill, // If a table contains only fixed-width items, allow columns to stretch to fill available width.
@@ -53,6 +85,86 @@ struct Audio : TabsWindow {
                 Menu("View", {Settings.HoverFlags}),
             }),
 
+            UIMember_(
+                Style,
+
+                Prop_(
+                    UInt, FoldComplexity,
+                    "?Number of boxes within a graph before folding into a sub-graph.\n"
+                    "Setting to zero disables folding altogether, for a fully-expanded graph.",
+                    3, 0, 20
+                );
+                Prop_(Bool, ScaleFillHeight, "?Automatically scale to fill the full height of the graph window, keeping the same aspect ratio.");
+                Prop(Float, Scale, 1, 0.1, 5);
+                Prop(Enum, Direction, {"Left", "Right"}, Dir_Right);
+                Prop(Bool, RouteFrame);
+                Prop(Bool, SequentialConnectionZigzag); // `false` uses diagonal lines instead of zigzags instead of zigzags
+                Prop(Bool, OrientationMark);
+                Prop(Float, OrientationMarkRadius, 1.5, 0.5, 3);
+
+                Prop(Bool, DecorateRootNode, true);
+                Prop(Vec2Linked, DecorateMargin, {10, 10}, 0, 20);
+                Prop(Vec2Linked, DecoratePadding, {10, 10}, 0, 20);
+                Prop(Float, DecorateLineWidth, 1, 1, 4);
+                Prop(Float, DecorateCornerRadius, 0, 0, 10);
+
+                Prop(Vec2Linked, GroupMargin, {8, 8}, 0, 20);
+                Prop(Vec2Linked, GroupPadding, {8, 8}, 0, 20);
+                Prop(Float, GroupLineWidth, 2, 1, 4);
+                Prop(Float, GroupCornerRadius, 5, 0, 10);
+
+                Prop(Vec2Linked, NodeMargin, {8, 8}, 0, 20);
+                Prop(Vec2Linked, NodePadding, {8, 0}, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
+
+                Prop(Float, BoxCornerRadius, 4, 0, 10);
+                Prop(Float, BinaryHorizontalGapRatio, 0.25, 0, 1);
+                Prop(Float, WireWidth, 1, 0.5, 4);
+                Prop(Float, WireGap, 16, 10, 20);
+                Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
+                Prop(Float, InverterRadius, 3, 1, 5);
+                Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
+
+                const vector<std::reference_wrapper<PrimitiveBase>> LayoutFields{
+                    SequentialConnectionZigzag,
+                    OrientationMark,
+                    OrientationMarkRadius,
+                    DecorateRootNode,
+                    DecorateMargin.X,
+                    DecorateMargin.Y,
+                    DecoratePadding.X,
+                    DecoratePadding.Y,
+                    DecorateLineWidth,
+                    DecorateCornerRadius,
+                    GroupMargin.X,
+                    GroupMargin.Y,
+                    GroupPadding.X,
+                    GroupPadding.Y,
+                    GroupLineWidth,
+                    GroupCornerRadius,
+                    BoxCornerRadius,
+                    BinaryHorizontalGapRatio,
+                    WireWidth,
+                    WireGap,
+                    NodeMargin.X,
+                    NodeMargin.Y,
+                    NodePadding.X,
+                    NodePadding.Y,
+                    ArrowSize.X,
+                    ArrowSize.Y,
+                    InverterRadius,
+                };
+
+                void ColorsDark(TransientStore &store) const;
+                void ColorsClassic(TransientStore &store) const;
+                void ColorsLight(TransientStore &store) const;
+                void ColorsFaust(TransientStore &store) const; // Color Faust graphs the same way Faust does when it renders to SVG.
+
+                void LayoutFlowGrid(TransientStore &store) const;
+                void LayoutFaust(TransientStore &store) const; // Layout Faust graphs the same way Faust does when it renders to SVG.
+
+                static const char *GetColorName(FlowGridGraphCol idx);
+            );
+
             Member(
                 GraphSettings,
                 Prop_(
@@ -65,7 +177,9 @@ struct Audio : TabsWindow {
                     FaustGraphHoverFlags_None
                 )
             );
+
             Prop(GraphSettings, Settings);
+            Prop(Style, Style);
         );
 
         WindowMember(FaustParams);

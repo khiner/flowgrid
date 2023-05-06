@@ -30,7 +30,7 @@ enum GraphOrientation {
     GraphReverse
 };
 
-static inline auto &Style() { return s.Style.FlowGrid.Graph; }
+static inline auto &Style() { return audio.Faust.Graph.Style; }
 
 static inline float GetScale();
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
@@ -837,7 +837,7 @@ Both `GroupNode` and `DecorateNode` render a grouping border around the provided
 
 # Respected layout properties
 
-Each property can be changed in `Style.FlowGrid.Graph.(Group|Decorate){PropertyName}`.
+Each property can be changed in `Audio.Faust.Graph.Style.(Group|Decorate){PropertyName}`.
 
 * Margin (`Vec2`):
   - Adds to total size.
@@ -1226,8 +1226,8 @@ void Audio::Faust::FaustGraph::Render() const {
 
     if (FocusedNodeStack.empty()) return;
 
-    if (Style().FoldComplexity != FoldComplexity) {
-        FoldComplexity = Style().FoldComplexity;
+    if (Style.FoldComplexity != FoldComplexity) {
+        FoldComplexity = Style.FoldComplexity;
         OnBoxChange(RootNode->FaustTree);
     }
 
@@ -1247,11 +1247,11 @@ void Audio::Faust::FaustGraph::Render() const {
     focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
 
-    if (!Style().ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
+    if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     if (Node::WithId.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
     GetCurrentWindow()->FontWindowScale = Scale(1);
-    GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style().Colors[FlowGridGraphCol_Bg]);
+    GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 
     ImGuiDevice device;
     focused->Draw(device);

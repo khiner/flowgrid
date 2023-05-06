@@ -160,13 +160,16 @@ std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
     return {{mod_flags, key}};
 }
 
+#include <range/v3/core.hpp>
+#include <range/v3/view/transform.hpp>
+
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
 // todo Find/implement a `BidirectionalMap` and use it here.
-const auto KeyMap = action::ShortcutForId | transform([](const auto &entry) {
+const auto KeyMap = action::ShortcutForId | ranges::views::transform([](const auto &entry) {
                         const auto &[action_id, shortcut] = entry;
                         return pair(*ParseShortcut(shortcut), action_id);
                     }) |
-    to<std::map>;
+    ranges::to<std::map>;
 
 bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
     const auto &[mod, key] = key_shortcut;

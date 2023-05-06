@@ -452,8 +452,10 @@ void Audio::Graph::Init() const {
     Nodes.Init();
     vector<Primitive> connections{};
     Count dest_count = 0;
-    for (const auto *dest_node : Nodes.DestinationNodes()) {
-        for (const auto *source_node : Nodes.SourceNodes()) {
+    for (const auto *dest_node : Nodes) {
+        if (!dest_node->IsDestination()) continue;
+        for (const auto *source_node : Nodes) {
+            if (!source_node->IsSource()) continue;
             const bool default_connected =
                 (source_node == &Nodes.Input && dest_node == &Nodes.Faust) ||
                 (source_node == &Nodes.Faust && dest_node == &Nodes.Output);
@@ -469,10 +471,12 @@ void Audio::Graph::Update() const {
 
     // Setting up busses is idempotent.
     Count source_i = 0;
-    for (const Node *source_node : Nodes.SourceNodes()) {
+    for (const Node *source_node : Nodes) {
+        if (!source_node->IsSource()) continue;
         ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
         Count dest_i = 0;
-        for (const Node *dest_node : Nodes.DestinationNodes()) {
+        for (const Node *dest_node : Nodes) {
+            if (!dest_node->IsDestination()) continue;
             if (Connections(dest_i, source_i)) {
                 ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
             }

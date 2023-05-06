@@ -2,9 +2,6 @@
 
 #include "nlohmann/json_fwd.hpp"
 #include <format>
-#include <range/v3/core.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/transform.hpp>
 
 #include "WindowMember.h"
 
@@ -16,10 +13,8 @@
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
-namespace views = ranges::views;
 using namespace nlohmann;
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
-using ranges::to, views::transform;
 using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
 
 struct ImVec2;
@@ -382,6 +377,9 @@ struct Audio : TabsWindow {
             Count InputChannelCount(Count bus) const;
             Count OutputChannelCount(Count bus) const;
 
+            bool IsSource() const { return OutputBusCount() > 0; }
+            bool IsDestination() const { return InputBusCount() > 0; }
+
             void Init() const; // Add MA node.
             void Update() const; // Update MA node based on current settings (e.g. volume).
             void Uninit() const; // Remove MA node.
@@ -420,17 +418,8 @@ struct Audio : TabsWindow {
                 Iterator(auto it) : vector<StateMember *>::const_iterator(it) {}
                 const Node *operator*() const { return dynamic_cast<const Node *>(vector<StateMember *>::const_iterator::operator*()); }
             };
-            auto begin() const { return Iterator(Children.cbegin()); }
-            auto end() const { return Iterator(Children.cend()); }
-
-            auto SourceNodes() const {
-                return Children | transform([](const auto *child) { return dynamic_cast<const Node *>(child); }) |
-                    views::filter([](const Node *node) { return node->OutputBusCount() > 0; });
-            }
-            auto DestinationNodes() const {
-                return Children | transform([](const auto *child) { return dynamic_cast<const Node *>(child); }) |
-                    views::filter([](const Node *node) { return node->InputBusCount() > 0; });
-            }
+            Iterator begin() const { return Children.cbegin(); }
+            Iterator end() const { return Children.cend(); }
 
             void Init() const;
             void Update() const;

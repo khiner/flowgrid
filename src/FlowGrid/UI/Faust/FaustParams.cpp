@@ -2,7 +2,9 @@
 
 #include <range/v3/algorithm/any_of.hpp>
 #include <range/v3/algorithm/max.hpp>
+#include <range/v3/core.hpp>
 #include <range/v3/numeric/accumulate.hpp>
+#include <range/v3/view/transform.hpp>
 
 #include <imgui_internal.h>
 
@@ -13,6 +15,9 @@ using namespace ImGui;
 using ItemType = FaustParams::ItemType;
 using enum FaustParams::ItemType;
 using std::min, std::max;
+
+namespace views = ranges::views;
+using ranges::to, views::transform;
 
 FaustParams *interface;
 

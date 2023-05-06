@@ -1341,13 +1341,16 @@ void Style::FlowGridStyle::Graph::ColorsFaust(TransientStore &store) const {
     );
 }
 
+#include <range/v3/core.hpp>
+#include <range/v3/view/transform.hpp>
+
 Style::ImGuiStyle::ImGuiColors::ImGuiColors(StateMember *parent, string_view path_segment, string_view name_help)
     : Colors(parent, path_segment, name_help, ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
 Style::ImPlotStyle::ImPlotColors::ImPlotColors(StateMember *parent, string_view path_segment, string_view name_help)
     : Colors(parent, path_segment, name_help, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::FlowGridStyle::Graph::LayoutFlowGrid(TransientStore &store) const {
-    static const auto DefaultLayoutEntries = LayoutFields | transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | to<const Field::Entries>;
+    static const auto DefaultLayoutEntries = LayoutFields | ranges::views::transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | ranges::to<const Field::Entries>;
     Set(DefaultLayoutEntries, store);
 }
 void Style::FlowGridStyle::Graph::LayoutFaust(TransientStore &store) const {
@@ -1907,7 +1910,9 @@ void Audio::Graph::RenderConnections() const {
     BeginGroup();
     // Draw the source channel labels.
     Count source_count = 0;
-    for (const auto *source_node : Nodes.SourceNodes()) {
+    for (const auto *source_node : Nodes) {
+        if (!source_node->IsSource()) continue;
+
         const char *label = source_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
 
@@ -1925,7 +1930,9 @@ void Audio::Graph::RenderConnections() const {
 
     // Draw the destination channel labels and mixer cells.
     Count dest_i = 0;
-    for (const auto *dest_node : Nodes.DestinationNodes()) {
+    for (const auto *dest_node : Nodes) {
+        if (!dest_node->IsDestination()) continue;
+
         const char *label = dest_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
 

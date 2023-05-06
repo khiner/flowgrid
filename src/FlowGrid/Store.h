@@ -7,16 +7,10 @@
 struct Patch;
 
 namespace immer {
-namespace detail {
-namespace hamts {
-using bits_t = std::uint32_t;
-} // namespace hamts
-} // namespace detail
-
-template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, detail::hamts::bits_t B>
+template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, std::uint32_t B>
 class map;
 
-template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, detail::hamts::bits_t B>
+template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, std::uint32_t B>
 class map_transient;
 } // namespace immer
 

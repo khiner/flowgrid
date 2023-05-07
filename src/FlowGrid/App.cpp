@@ -4,8 +4,6 @@
 #include "StoreHistory.h"
 
 #include "date.h"
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -16,10 +14,13 @@
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "FileDialog/FileDialogDemo.h"
-#include "UI/Faust/FaustGraph.h"
+#include "immer/map.hpp"
+#include "immer/map_transient.hpp"
 
+#include "FileDialog/FileDialogDemo.h"
 #include "Helper/String.h"
+#include "UI/Faust/FaustGraph.h"
+#include "UI/Widgets.h"
 
 using namespace ImGui;
 using namespace fg;

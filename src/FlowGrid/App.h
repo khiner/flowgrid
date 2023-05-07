@@ -84,7 +84,7 @@ WindowMember_(
         Menu({}), // Need multiple elements to disambiguate vector-of-variants construction from variant construction.
     }),
     enum LabelMode{Annotated, Raw};
-    Prop_(Enum, LabelMode, "?The raw JSON state doesn't store keys for all items.\n"
+    Prop_(Enum, LabelMode, "?The raw dog JSON state doesn't store keys for all items.\n"
                            "For example, the main `ui.style.colors` state is a list.\n\n"
                            "'Annotated' mode shows (highlighted) labels for such state items.\n"
                            "'Raw' mode shows the state exactly as it is in the raw JSON state.",

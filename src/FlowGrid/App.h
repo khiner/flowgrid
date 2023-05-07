@@ -14,59 +14,12 @@ using namespace nlohmann;
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
 using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
 
-using ImGuiTableFlags = int;
-
 // Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
 // Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.
 enum SliderFlags_ {
     SliderFlags_None = 0,
     SliderFlags_AlwaysClamp = 1 << 4, // Clamp value to min/max bounds when input manually with CTRL+Click. By default CTRL+Click allows going out of bounds.
     SliderFlags_Logarithmic = 1 << 5, // Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
-};
-
-// Subset of `ImGuiTableFlags`.
-// Unlike the enums above, this one is not a copy of an ImGui enum.
-// They can be converted between each other with `TableFlagsToImGui`.
-// todo 'Condensed' preset, with NoHostExtendX, NoBordersInBody, NoPadOuterX
-enum TableFlags_ {
-    TableFlags_None = 0,
-    // Features
-    TableFlags_Resizable = 1 << 0,
-    TableFlags_Reorderable = 1 << 1,
-    TableFlags_Hideable = 1 << 2,
-    TableFlags_Sortable = 1 << 3,
-    TableFlags_ContextMenuInBody = 1 << 4,
-    // Borders
-    TableFlags_BordersInnerH = 1 << 5,
-    TableFlags_BordersOuterH = 1 << 6,
-    TableFlags_BordersInnerV = 1 << 7,
-    TableFlags_BordersOuterV = 1 << 8,
-    TableFlags_Borders = TableFlags_BordersInnerH | TableFlags_BordersOuterH | TableFlags_BordersInnerV | TableFlags_BordersOuterV,
-    TableFlags_NoBordersInBody = 1 << 9,
-    // Padding
-    TableFlags_PadOuterX = 1 << 10,
-    TableFlags_NoPadOuterX = 1 << 11,
-    TableFlags_NoPadInnerX = 1 << 12,
-};
-
-using TableFlags = int;
-
-ImGuiTableFlags TableFlagsToImGui(TableFlags);
-
-inline static const vector<Flags::Item> TableFlagItems{
-    "Resizable?Enable resizing columns",
-    "Reorderable?Enable reordering columns in header row",
-    "Hideable?Enable hiding/disabling columns in context menu",
-    "Sortable?Enable sorting",
-    "ContextMenuInBody?Right-click on columns body/contents will display table context menu. By default it is available in headers row.",
-    "BordersInnerH?Draw horizontal borders between rows",
-    "BordersOuterH?Draw horizontal borders at the top and bottom",
-    "BordersInnerV?Draw vertical borders between columns",
-    "BordersOuterV?Draw vertical borders on the left and right sides",
-    "NoBordersInBody?Disable vertical borders in columns Body (borders will always appear in Headers)",
-    "PadOuterX?Default if 'BordersOuterV' is on. Enable outermost padding. Generally desirable if you have headers.",
-    "NoPadOuterX?Default if 'BordersOuterV' is off. Disable outermost padding.",
-    "NoPadInnerX?Disable inner padding between columns (double inner padding if 'BordersOuterV' is on, single inner padding if 'BordersOuterV' is off)",
 };
 
 WindowMember(
@@ -143,31 +96,8 @@ struct Style : TabsWindow {
             Prop_(Float, LabelSize, "?The space provided for the label, as a multiple of line height.\n(Use Style->ImGui->InnerItemSpacing->X for spacing between labels and cells.)", 6, 3, 8);
         );
 
-        UIMember(
-            Params,
-            Prop(Bool, HeaderTitles, true);
-            // In frame-height units:
-            Prop(Float, MinHorizontalItemWidth, 4, 2, 8);
-            Prop(Float, MaxHorizontalItemWidth, 16, 10, 24);
-            Prop(Float, MinVerticalItemHeight, 4, 2, 8);
-            Prop(Float, MinKnobItemSize, 3, 2, 6);
-
-            Prop(Enum, AlignmentHorizontal, {"Left", "Middle", "Right"}, HJustify_Middle);
-            Prop(Enum, AlignmentVertical, {"Top", "Middle", "Bottom"}, VJustify_Middle);
-            Prop(Flags, TableFlags, TableFlagItems, TableFlags_Borders | TableFlags_Reorderable | TableFlags_Hideable);
-            Prop_(
-                Enum, WidthSizingPolicy,
-                "?StretchFlexibleOnly: If a table contains only fixed-width items, it won't stretch to fill available width.\n"
-                "StretchToFill: If a table contains only fixed-width items, allow columns to stretch to fill available width.\n"
-                "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide items).",
-                {"StretchToFill", "StretchFlexibleOnly", "Balanced"},
-                ParamsWidthSizingPolicy_StretchFlexibleOnly
-            )
-        );
-
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
         Prop(Matrix, Matrix);
-        Prop(Params, Params);
         Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 
         void ColorsDark(TransientStore &store) const;

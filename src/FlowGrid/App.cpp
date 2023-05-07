@@ -29,33 +29,6 @@ using namespace action;
 vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
-string to_string(const IO io, const bool shorten) {
-    switch (io) {
-        case IO_In: return shorten ? "in" : "input";
-        case IO_Out: return shorten ? "out" : "output";
-        case IO_None: return "none";
-    }
-}
-
-ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
-    ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingStretchProp;
-    if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
-    if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
-    if (flags & TableFlags_Hideable) imgui_flags |= ImGuiTableFlags_Hideable;
-    if (flags & TableFlags_Sortable) imgui_flags |= ImGuiTableFlags_Sortable;
-    if (flags & TableFlags_ContextMenuInBody) imgui_flags |= ImGuiTableFlags_ContextMenuInBody;
-    if (flags & TableFlags_BordersInnerH) imgui_flags |= ImGuiTableFlags_BordersInnerH;
-    if (flags & TableFlags_BordersOuterH) imgui_flags |= ImGuiTableFlags_BordersOuterH;
-    if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
-    if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
-    if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
-    if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
-    if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
-    if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
-
-    return imgui_flags;
-}
-
 //-----------------------------------------------------------------------------
 // [SECTION] Draw helpers
 //-----------------------------------------------------------------------------
@@ -1446,19 +1419,6 @@ void Style::FlowGridStyle::Matrix::Render() const {
     LabelSize.Draw();
 }
 
-void Style::FlowGridStyle::Params::Render() const {
-    HeaderTitles.Draw();
-    MinHorizontalItemWidth.Draw();
-    MaxHorizontalItemWidth.Draw();
-    MinVerticalItemHeight.Draw();
-    MinKnobItemSize.Draw();
-    AlignmentHorizontal.Draw();
-    AlignmentVertical.Draw();
-    Spacing();
-    WidthSizingPolicy.Draw();
-    TableFlags.Draw();
-}
-
 void Style::FlowGridStyle::Render() const {
     static int colors_idx = -1, graph_colors_idx = -1, graph_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
@@ -1476,7 +1436,7 @@ void Style::FlowGridStyle::Render() const {
             EndTabItem();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Params.Draw();
+            s.Audio.Faust.Params.Style.Draw();
             EndTabItem();
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
@@ -1642,19 +1602,6 @@ void DebugLog::Render() const {
 }
 void StackTool::Render() const {
     ShowStackToolWindow();
-}
-
-void Audio::Faust::FaustLog::Render() const {
-    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    Error.Draw();
-    PopStyleColor();
-}
-
-void Audio::Faust::Render() const {}
-
-Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
-    : UIStateMember(parent, path_segment, name_help) {
-    ::Set(On, on, InitStore);
 }
 
 void Audio::Graph::RenderConnections() const {

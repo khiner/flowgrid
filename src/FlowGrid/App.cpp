@@ -1413,12 +1413,6 @@ void Style::ImPlotStyle::Render() const {
     }
 }
 
-void Style::FlowGridStyle::Matrix::Render() const {
-    CellSize.Draw();
-    CellGap.Draw();
-    LabelSize.Draw();
-}
-
 void Style::FlowGridStyle::Render() const {
     static int colors_idx = -1, graph_colors_idx = -1, graph_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
@@ -1428,15 +1422,15 @@ void Style::FlowGridStyle::Render() const {
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Matrix.Draw();
+            audio.Graph.Style.Matrix.Draw();
             EndTabItem();
         }
         if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            s.Audio.Faust.Graph.Style.Draw();
+            audio.Faust.Graph.Style.Draw();
             EndTabItem();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            s.Audio.Faust.Params.Style.Draw();
+            audio.Faust.Params.Style.Draw();
             EndTabItem();
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
@@ -1605,7 +1599,7 @@ void StackTool::Render() const {
 }
 
 void Audio::Graph::RenderConnections() const {
-    const auto &style = s.Style.FlowGrid.Matrix;
+    const auto &style = audio.Graph.Style.Matrix;
     const float cell_size = style.CellSize * GetTextLineHeight();
     const float cell_gap = style.CellGap;
     const float label_size = style.LabelSize * GetTextLineHeight(); // Does not include padding.

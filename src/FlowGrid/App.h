@@ -88,16 +88,7 @@ struct Style : TabsWindow {
     UIMember_(
         FlowGridStyle,
 
-        UIMember(
-            Matrix,
-
-            Prop_(Float, CellSize, "?The size of each matrix cell, as a multiple of line height.", 1, 1, 3);
-            Prop_(Float, CellGap, "?The gap between matrix cells.", 1, 0, 10);
-            Prop_(Float, LabelSize, "?The space provided for the label, as a multiple of line height.\n(Use Style->ImGui->InnerItemSpacing->X for spacing between labels and cells.)", 6, 3, 8);
-        );
-
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
-        Prop(Matrix, Matrix);
         Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 
         void ColorsDark(TransientStore &store) const;

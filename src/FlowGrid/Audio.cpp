@@ -247,6 +247,12 @@ void Audio::Faust::FaustParams::Style::Render() const {
     TableFlags.Draw();
 }
 
+void Audio::Graph::Style::Matrix::Render() const {
+    CellSize.Draw();
+    CellGap.Draw();
+    LabelSize.Draw();
+}
+
 // todo implement for r8brain resampler
 // todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
 //   Can I still use duplex mode in this case?

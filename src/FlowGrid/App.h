@@ -3,8 +3,6 @@
 #include "nlohmann/json_fwd.hpp"
 #include <format>
 
-#include "WindowMember.h"
-
 #include "Audio.h"
 
 /**
@@ -16,7 +14,6 @@ using namespace nlohmann;
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
 using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
 
-using ImGuiID = unsigned int;
 using ImGuiTableFlags = int;
 
 // Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
@@ -132,24 +129,6 @@ struct Metrics : TabsWindow {
 
 // Namespace needed because Audio imports `CoreAudio.h`, which imports `CoreAudioTypes->MacTypes`, which has a `Style` type without a namespace.
 namespace FlowGrid {
-void HelpMarker(const char *help); // Like the one defined in `imgui_demo.cpp`
-
-enum JsonTreeNodeFlags_ {
-    JsonTreeNodeFlags_None = 0,
-    JsonTreeNodeFlags_Highlighted = 1 << 0,
-    JsonTreeNodeFlags_Disabled = 1 << 1,
-    JsonTreeNodeFlags_DefaultOpen = 1 << 2,
-};
-using JsonTreeNodeFlags = int;
-
-bool JsonTreeNode(string_view label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr);
-
-// If `label` is empty, `JsonTree` will simply show the provided json `value` (object/array/raw value), with no nesting.
-// For a non-empty `label`:
-//   * If the provided `value` is an array or object, it will show as a nested `JsonTreeNode` with `label` as its parent.
-//   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
-void JsonTree(string_view label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
-
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
 

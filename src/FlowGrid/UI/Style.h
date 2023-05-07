@@ -2,8 +2,9 @@
 
 #include <string>
 
+#include "../Scalar.h"
+
 using std::string;
-using U32 = unsigned int;
 struct ImVec2;
 
 enum FlowGridCol_ {

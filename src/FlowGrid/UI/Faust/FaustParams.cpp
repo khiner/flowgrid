@@ -9,7 +9,7 @@
 #include <imgui_internal.h>
 
 #include "../../App.h"
-#include "../Knob.h"
+#include "../Widgets.h"
 
 using namespace ImGui;
 using ItemType = FaustParams::ItemType;
@@ -341,7 +341,7 @@ void DrawUiItem(const FaustParams::Item &item, const char *label, const float su
             auto value = float(*item.zone);
             KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
             const int steps = item.step == 0 ? 0 : int((item.max - item.min) / item.step);
-            if (Knobs::Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
+            if (Knob(item.label.c_str(), &value, float(item.min), float(item.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
                 *item.zone = Real(value);
             }
         } else if (type == ItemType_HRadioButtons || type == ItemType_VRadioButtons) {

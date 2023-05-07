@@ -6,6 +6,7 @@
 #include "../Helper/File.h"
 #include "../Project.h" // Only used for extension constants.
 #include "../StateJson.h"
+#include "../UI/Widgets.h"
 
 #include <imgui_internal.h>
 

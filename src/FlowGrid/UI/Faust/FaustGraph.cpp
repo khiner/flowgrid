@@ -12,7 +12,7 @@
 
 #include "imgui_internal.h"
 
-#include "../../App.h"
+#include "../../Audio.h"
 #include "../../Helper/File.h"
 #include "../../Helper/String.h"
 #include "../../Helper/basen.h"
@@ -419,7 +419,7 @@ struct Node {
         if (B) B->Draw(device);
 
         if (flags & InteractionFlags_Hovered) {
-            const auto &flags = s.Audio.Faust.Graph.Settings.HoverFlags;
+            const auto &flags = audio.Faust.Graph.Settings.HoverFlags;
             // todo get abs pos by traversing through ancestors
             if (flags & FaustGraphHoverFlags_ShowRect) DrawRect(device);
             if (flags & FaustGraphHoverFlags_ShowType) DrawType(device);

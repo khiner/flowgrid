@@ -5,6 +5,9 @@
 #include "Actions.h" // Windows have menus, which can perform actions.
 #include "Store.h"
 
+namespace FlowGrid {}
+namespace fg = FlowGrid;
+
 struct Menu : Drawable {
     using Item = std::variant<
         const Menu,

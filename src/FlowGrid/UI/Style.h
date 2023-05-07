@@ -2,10 +2,34 @@
 
 #include <string>
 
+namespace FlowGrid {}
+namespace fg = FlowGrid;
+
 using std::string;
 using U32 = unsigned int;
-
 struct ImVec2;
+
+enum FlowGridCol_ {
+    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
+    FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
+    // Params colors.
+    FlowGridCol_ParamsBg, // ImGuiCol_FrameBg with less alpha
+
+    FlowGridCol_COUNT
+};
+using FlowGridCol = int;
+
+enum InteractionFlags_ {
+    InteractionFlags_None = 0,
+    InteractionFlags_Hovered = 1 << 0,
+    InteractionFlags_Held = 1 << 1,
+    InteractionFlags_Clicked = 1 << 2,
+};
+using InteractionFlags = int;
+
+namespace FlowGrid {
+InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id); // Basically `ImGui::InvisibleButton`, but supporting hover/held testing.
+}
 
 // Uses same argument ordering as CSS.
 struct Padding {

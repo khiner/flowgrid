@@ -12,9 +12,6 @@
  * An immutable reference to the single source-of-truth application state `const State &s` is defined at the bottom of this file.
  */
 
-namespace FlowGrid {}
-namespace fg = FlowGrid;
-
 using namespace nlohmann;
 using action::ActionMoment, action::Gesture, action::Gestures, action::StateActionMoment;
 using std::pair, std::make_unique, std::unique_ptr, std::unordered_map;
@@ -109,16 +106,6 @@ WindowMember(
     Prop(Bool, Raw)
 );
 
-enum FlowGridCol_ {
-    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
-    FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
-    // Params colors.
-    FlowGridCol_ParamsBg, // ImGuiCol_FrameBg with less alpha
-
-    FlowGridCol_COUNT
-};
-using FlowGridCol = int;
-
 struct Demo : TabsWindow {
     Demo(StateMember *parent, string_view path_segment, string_view name_help);
 
@@ -143,22 +130,9 @@ struct Metrics : TabsWindow {
     Prop(ImPlotMetrics, ImPlot);
 };
 
-#include "UI/Style.h"
-#include "UI/UI.h"
-
-enum InteractionFlags_ {
-    InteractionFlags_None = 0,
-    InteractionFlags_Hovered = 1 << 0,
-    InteractionFlags_Held = 1 << 1,
-    InteractionFlags_Clicked = 1 << 2,
-};
-using InteractionFlags = int;
-
 // Namespace needed because Audio imports `CoreAudio.h`, which imports `CoreAudioTypes->MacTypes`, which has a `Style` type without a namespace.
 namespace FlowGrid {
 void HelpMarker(const char *help); // Like the one defined in `imgui_demo.cpp`
-
-InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id); // Basically `ImGui::InvisibleButton`, but supporting hover/held testing.
 
 enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_None = 0,

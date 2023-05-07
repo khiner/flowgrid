@@ -41,27 +41,6 @@ void HelpMarker(const char *help) {
     }
 }
 
-InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id) {
-    auto *window = GetCurrentWindow();
-    if (window->SkipItems) return false;
-
-    const auto imgui_id = window->GetID(id);
-    const auto size = CalcItemSize(size_arg, 0.0f, 0.0f);
-    const auto &cursor = GetCursorScreenPos();
-    const ImRect rect{cursor, cursor + size};
-    if (!ItemAdd(rect, imgui_id)) return false;
-
-    InteractionFlags flags = InteractionFlags_None;
-    static bool hovered, held;
-    if (ButtonBehavior(rect, imgui_id, &hovered, &held, ImGuiButtonFlags_AllowItemOverlap)) {
-        flags |= InteractionFlags_Clicked;
-    }
-    if (hovered) flags |= InteractionFlags_Hovered;
-    if (held) flags |= InteractionFlags_Held;
-
-    return flags;
-}
-
 bool JsonTreeNode(string_view label_view, JsonTreeNodeFlags flags, const char *id) {
     const auto label = string(label_view);
     const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
@@ -212,7 +191,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : Value;
 
     PushID(ImGuiLabel.c_str());
-    InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
+    fg::InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
     SetItemAllowOverlap();
 
     // todo use auto for FG colors (link to ImGui colors)

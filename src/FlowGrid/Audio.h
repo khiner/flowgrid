@@ -2,6 +2,9 @@
 
 #include "WindowMember.h"
 
+#include "UI/Style.h"
+#include "UI/UI.h"
+
 // Starting at `-1` allows for using `IO` types as array indices.
 enum IO_ {
     IO_None = -1,

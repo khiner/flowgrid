@@ -23,6 +23,7 @@ string to_string(const IO io, const bool shorten) {
         case IO_In: return shorten ? "in" : "input";
         case IO_Out: return shorten ? "out" : "output";
         case IO_None: return "none";
+        default: return "unknown";
     }
 }
 
@@ -848,8 +849,9 @@ void Audio::Graph::FaustNode::DoInit() const {
 
     static ma_node_config config;
     config = ma_node_config_init();
-    config.pInputChannels = in_channels > 0 ? (U32[]){in_channels} : nullptr; // One input bus with N channels, or zero input busses.
-    config.pOutputChannels = out_channels > 0 ? (U32[]){out_channels} : nullptr; // One output bus with M channels, or zero output busses.
+
+    config.pInputChannels = &in_channels; // One input bus with N channels.
+    config.pOutputChannels = &out_channels; // One output bus with M channels.
     config.vtable = &vtable;
 
     static ma_node_base node{};

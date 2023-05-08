@@ -388,20 +388,22 @@ static std::unique_ptr<FaustParams> Ui;
 static void Init() {
     createLibContext();
 
-    int argc = 0;
-    const char **argv = new const char *[8];
-    argv[argc++] = "-I";
-    argv[argc++] = fs::relative("../lib/faust/libraries").c_str();
-    if (std::is_same_v<Sample, double>) argv[argc++] = "-double";
+    const string libraries_path = fs::relative("../lib/faust/libraries").string();
+    vector<const char *> argv;
+    argv.reserve(8);
+    argv.push_back("-I");
+    argv.push_back(libraries_path.c_str());
+    if (std::is_same_v<Sample, double>) argv.push_back("-double");
 
+    const int argc = argv.size();
     static int num_inputs, num_outputs;
     static string error_msg;
-    const Box box = DSPToBoxes("FlowGrid", audio.Faust.Code, argc, argv, &num_inputs, &num_outputs, error_msg);
+    const Box box = DSPToBoxes("FlowGrid", audio.Faust.Code, argc, argv.data(), &num_inputs, &num_outputs, error_msg);
 
     static llvm_dsp_factory *dsp_factory;
     if (box && error_msg.empty()) {
         static const int optimize_level = -1;
-        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv, "", error_msg, optimize_level);
+        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv.data(), "", error_msg, optimize_level);
     }
     if (!box && error_msg.empty()) error_msg = "`DSPToBoxes` returned no error but did not produce a result.";
 

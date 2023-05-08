@@ -1,10 +1,10 @@
 #include "StateMember.h"
 
-#include "Helper/String.h"
-#include "UI/Widgets.h"
-
 #include "imgui_internal.h" // Only needed for `ImHashStr`.
 #include <format>
+
+#include "Helper/String.h"
+#include "UI/Widgets.h"
 
 using namespace StringHelper;
 

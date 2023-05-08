@@ -1,6 +1,6 @@
 #include "../TextEditor/TextEditor.h"
 
-#include "../../App.h"
+#include "../../Audio.h"
 
 static const Menu FileMenu = {"File", {ShowOpenFaustFileDialog{}, ShowSaveFaustFileDialog{}}};
 
@@ -62,11 +62,11 @@ void Audio::Faust::FaustEditor::Render() const {
 
     const auto text = editor.GetText();
     if (editor.TextChanged) {
-        q(SetValue{s.Audio.Faust.Code.Path, text});
-    } else if (s.Audio.Faust.Code != text) {
+        q(SetValue{audio.Faust.Code.Path, text});
+    } else if (audio.Faust.Code != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
         //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.
-        editor.SetText(s.Audio.Faust.Code);
+        editor.SetText(audio.Faust.Code);
     }
 }
 

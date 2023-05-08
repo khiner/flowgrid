@@ -1,6 +1,7 @@
 #include "StateMember.h"
 
 #include "Helper/String.h"
+#include "UI/Widgets.h"
 
 #include "imgui_internal.h" // Only needed for `ImHashStr`.
 #include <format>
@@ -23,4 +24,21 @@ StateMember::StateMember(StateMember *parent, string_view path_segment, string_v
 
 StateMember::~StateMember() {
     WithId.erase(Id);
+}
+
+// Currently, `Draw` is not used for anything except wrapping around `Render`.
+// Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
+void StateMember::HelpMarker(const bool after) const {
+    if (Help.empty()) return;
+
+    if (after) ImGui::SameLine();
+    fg::HelpMarker(Help.c_str());
+    if (!after) ImGui::SameLine();
+}
+
+// Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
+void Drawable::Draw() const {
+    //    PushID(ImGuiLabel.c_str());
+    Render();
+    //    PopID();
 }

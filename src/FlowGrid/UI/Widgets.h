@@ -9,6 +9,7 @@ using namespace nlohmann;
 struct ImVec2;
 
 namespace FlowGrid {}
+namespace fg = FlowGrid;
 
 enum InteractionFlags_ {
     InteractionFlags_None = 0,

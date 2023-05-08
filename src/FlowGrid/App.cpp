@@ -1,52 +1,11 @@
-#include "AppPreferences.h"
-#include "Project.h"
-#include "StateJson.h"
-#include "StoreHistory.h"
+#include "WindowMember.h"
 
-#include "date.h"
-#include <format>
-#include <fstream>
 #include <iostream>
-
-#include "imgui.h"
-#include "imgui_memory_editor.h"
-#include "implot.h"
-#include "implot_internal.h"
 
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
-#include "FileDialog/FileDialogDemo.h"
-#include "Helper/String.h"
-#include "UI/Faust/FaustGraph.h"
-#include "UI/Widgets.h"
-
-using namespace ImGui;
-using namespace fg;
-using namespace action;
-
-vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
-vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
-
-//-----------------------------------------------------------------------------
-// [SECTION] Draw helpers
-//-----------------------------------------------------------------------------
-
-ImRect RowItemRect() {
-    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
-}
-
-ImRect RowItemRatioRect(float ratio) {
-    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
-}
-
-void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
-    const auto &rect = RowItemRect();
-    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
-}
-
+namespace Field {
 template<IsPrimitive T> StatePath Vector<T>::PathAt(const Count i) const { return Path / to_string(i); }
 template<IsPrimitive T> Count Vector<T>::Size() const { return Value.size(); }
 template<IsPrimitive T> T Vector<T>::operator[](const Count i) const { return Value[i]; }
@@ -58,7 +17,6 @@ void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
         store.set(PathAt(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
         i++;
     }
-
     while (store.count(PathAt(i))) {
         store.erase(PathAt(i));
         i++;
@@ -66,7 +24,7 @@ void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
 }
 
 template<IsPrimitive T>
-void Vector<T>::Set(const vector<pair<int, T>> &values, TransientStore &store) const {
+void Vector<T>::Set(const vector<std::pair<int, T>> &values, TransientStore &store) const {
     for (const auto &[i, value] : values) store.set(PathAt(i), value);
 }
 
@@ -145,8 +103,18 @@ void Matrix<T>::Update() {
         }
     }
 }
+} // namespace Field
 
-Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value, float min, float max, const char *fmt)
+#include "imgui.h"
+#include "imgui_memory_editor.h"
+#include "implot.h"
+#include "implot_internal.h"
+
+#include "UI/UI.h"
+
+using namespace ImGui;
+
+Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)
     : UIStateMember(parent, path_segment, name_help),
       X(this, "X", "", value.first, min, max), Y(this, "Y", "", value.second, min, max), Format(fmt) {}
 
@@ -162,7 +130,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
 
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
-Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const pair<float, float> &value, float min, float max, bool linked, const char *fmt)
+Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
     Set(Linked, linked, InitStore);
 }
@@ -192,31 +160,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
 
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 
-void Info::Render() const {
-    const auto hovered_id = GetHoveredID();
-    if (!hovered_id) return;
-
-    PushTextWrapPos(0);
-    if (StateMember::WithId.contains(hovered_id)) {
-        const auto *member = StateMember::WithId.at(hovered_id);
-        const string help = member->Help.empty() ? std::format("No info available for \"{}\".", member->Name) : member->Help;
-        TextUnformatted(help.c_str());
-    } else if (Box box = GetHoveredBox(hovered_id)) {
-        TextUnformatted(GetTreeInfo(box).c_str());
-    }
-    PopTextWrapPos();
-}
+#include "App.h"
 
 void State::UIProcess::Render() const {}
-
-void OpenRecentProject::MenuItem() const {
-    if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
-        for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
-        }
-        EndMenu();
-    }
-}
 
 void State::Render() const {
     MainMenu.Draw();
@@ -528,6 +474,11 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     ctx->SettingsDirty = false;
 }
 
+vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
+vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
+
+using namespace fg;
+
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {
         case FlowGridCol_GestureIndicator: return "GestureIndicator";
@@ -630,6 +581,23 @@ void State::Apply(const UIContext::Flags flags) const {
 //-----------------------------------------------------------------------------
 // [SECTION] State windows
 //-----------------------------------------------------------------------------
+
+#include "Helper/String.h"
+#include "Project.h"
+#include "StateJson.h"
+#include "StoreHistory.h"
+#include "UI/Widgets.h"
+
+ImRect RowItemRatioRect(float ratio) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
+}
+
+void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    const ImRect &rect = {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
+    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
+}
 
 // TODO option to indicate relative update-recency
 void StateViewer::StateJsonTree(string_view key, const json &value, const StatePath &path) const {
@@ -1050,6 +1018,19 @@ void Style::FlowGridStyle::Render() const {
 // [SECTION] Other windows
 //-----------------------------------------------------------------------------
 
+#include "AppPreferences.h"
+
+void OpenRecentProject::MenuItem() const {
+    if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
+        for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
+            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(OpenProject{recently_opened_path});
+        }
+        EndMenu();
+    }
+}
+
+#include "date.h"
+
 void ApplicationSettings::Render() const {
     int value = int(History.Index);
     if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(SetHistoryIndex{value});
@@ -1079,10 +1060,6 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
         },
         store
     );
-}
-
-void Demo::FileDialogDemo::Render() const {
-    IGFD::ShowDemoWindow();
 }
 
 void ShowGesture(const Gesture &gesture) {
@@ -1204,6 +1181,23 @@ void StackTool::Render() const {
     ShowStackToolWindow();
 }
 
+#include "UI/Faust/FaustGraph.h"
+
+void Info::Render() const {
+    const auto hovered_id = GetHoveredID();
+    if (!hovered_id) return;
+
+    PushTextWrapPos(0);
+    if (StateMember::WithId.contains(hovered_id)) {
+        const auto *member = StateMember::WithId.at(hovered_id);
+        const string help = member->Help.empty() ? std::format("No info available for \"{}\".", member->Name) : member->Help;
+        TextUnformatted(help.c_str());
+    } else if (Box box = GetHoveredBox(hovered_id)) {
+        TextUnformatted(GetTreeInfo(box).c_str());
+    }
+    PopTextWrapPos();
+}
+
 void Audio::Graph::RenderConnections() const {
     const auto &style = audio.Graph.Style.Matrix;
     const float cell_size = style.CellSize * GetTextLineHeight();
@@ -1263,4 +1257,10 @@ void Audio::Graph::RenderConnections() const {
         dest_i++;
     }
     EndGroup();
+}
+
+#include "FileDialog/FileDialogDemo.h"
+
+void Demo::FileDialogDemo::Render() const {
+    IGFD::ShowDemoWindow();
 }

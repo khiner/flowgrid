@@ -435,7 +435,7 @@ UIMember(
     Prop(Demo, Demo);
     Prop(Metrics, Metrics);
     Prop(StackTool, StackTool);
-    Prop(DebugLog, DebugLog);
+    Prop(::DebugLog, DebugLog);
 
     Prop(StateViewer, StateViewer);
     Prop(StateMemoryEditor, StateMemoryEditor);

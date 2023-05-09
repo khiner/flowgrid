@@ -1208,9 +1208,3 @@ void Audio::Graph::RenderConnections() const {
     }
     EndGroup();
 }
-
-#include "FileDialog/FileDialogDemo.h"
-
-void Demo::FileDialogDemo::Render() const {
-    IGFD::ShowDemoWindow();
-}

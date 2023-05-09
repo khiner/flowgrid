@@ -4,6 +4,7 @@
 #include <format>
 
 #include "Audio/Audio.h"
+#include "FileDialog/FileDialog.h"
 #include "ImGuiSettings.h"
 
 /**
@@ -62,11 +63,10 @@ struct Demo : TabsWindow {
 
     UIMember(ImGuiDemo);
     UIMember(ImPlotDemo);
-    UIMember(FileDialogDemo);
 
     Prop(ImGuiDemo, ImGui);
     Prop(ImPlotDemo, ImPlot);
-    Prop(FileDialogDemo, FileDialog);
+    Prop(FileDialog::Demo, FileDialog);
 };
 
 struct Metrics : TabsWindow {
@@ -256,34 +256,6 @@ struct Style : TabsWindow {
 WindowMember(Info);
 WindowMember(StackTool);
 WindowMember(DebugLog);
-
-using ImGuiFileDialogFlags = int;
-// Copied from `ImGuiFileDialog` source with a different name to avoid redefinition. Brittle but we can avoid an include this way.
-constexpr ImGuiFileDialogFlags FileDialogFlags_ConfirmOverwrite = 1 << 0;
-constexpr ImGuiFileDialogFlags FileDialogFlags_Modal = 1 << 9;
-constexpr ImGuiFileDialogFlags FileDialogFlags_Default = FileDialogFlags_ConfirmOverwrite | FileDialogFlags_Modal;
-
-struct FileDialogData {
-    string title = "Choose file", filters, file_path = ".", default_file_name;
-    bool save_mode = false;
-    int max_num_selections = 1;
-    ImGuiFileDialogFlags flags = FileDialogFlags_Default;
-};
-
-// `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-UIMember(
-    FileDialog,
-    void Set(const FileDialogData &data, TransientStore &) const;
-
-    Prop(Bool, Visible);
-    Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
-    Prop(Int, MaxNumSelections, 1);
-    Prop(Int, Flags, FileDialogFlags_Default);
-    Prop(String, Title, "Choose file");
-    Prop(String, Filters);
-    Prop(String, FilePath, ".");
-    Prop(String, DefaultFileName);
-);
 
 //-----------------------------------------------------------------------------
 // [SECTION] Main application `State`

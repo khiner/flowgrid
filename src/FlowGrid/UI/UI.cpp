@@ -11,7 +11,7 @@
 
 #include "../App.h"
 
-#include "../FileDialog/FileDialogDemo.h"
+#include "../FileDialog/FileDialog.h"
 #include "../Helper/String.h"
 
 #ifdef TRACING_ENABLED

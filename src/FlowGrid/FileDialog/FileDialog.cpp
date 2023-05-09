@@ -1,6 +1,7 @@
 #include <sstream>
 
-#include "FileDialogDemo.h"
+#include "FileDialog.h"
+
 #include "ImGuiFileDialog.h"
 
 #include "../Helper/File.h"
@@ -88,7 +89,39 @@ void IGFD::InitializeDemo() {
 
 void OpenDialog(const FileDialogData &data) { q(OpenFileDialog{json(data).dump()}); }
 
-void IGFD::ShowDemoWindow() {
+void FileDialog::Render() const {
+    if (!Visible) return Dialog->Close();
+
+    static const string DialogKey = "FileDialog";
+    // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
+    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
+
+    const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
+    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
+        q(CloseFileDialog{}, true);
+        if (Dialog->IsOk()) {
+            const fs::path &file_path = Dialog->GetFilePathName();
+            const string &extension = file_path.extension();
+            if (Project::AllProjectExtensions.find(extension) != Project::AllProjectExtensions.end()) {
+                // TODO provide an option to save with undo state.
+                //   This file format would be a json list of diffs.
+                //   The file would generally be larger, and the load time would be slower,
+                //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
+                //   with full undo/redo history/position/etc.!
+                if (SaveMode) q(SaveProject{file_path});
+                else q(OpenProject{file_path});
+            } else if (extension == FaustDspFileExtension) {
+                if (SaveMode) q(SaveFaustFile{file_path});
+                else q(OpenFaustFile{file_path});
+            } else {
+                // todo need a way to tell it's the svg-save case
+                if (SaveMode) q(SaveFaustSvgFile{file_path});
+            }
+        }
+    }
+}
+
+void FileDialog::Demo::Render() const {
 #ifdef USE_EXPLORATION_BY_KEYS
     static float flash_attenuation_sec = 1.f;
     if (Button("R##resetflashlifetime")) {
@@ -177,7 +210,7 @@ void IGFD::ShowDemoWindow() {
 
     // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
     const auto &selections = Dialog->GetSelection();
-    static vector<pair<string, string>> selection = {};
+    static vector<std::pair<string, string>> selection = {};
     selection.clear();
     for (const auto &sel : selections) selection.emplace_back(sel.first, sel.second);
 
@@ -188,7 +221,7 @@ void IGFD::ShowDemoWindow() {
     {
         TextUnformatted(std::format("FilePathName: {}", FilePathName).c_str());
         TextUnformatted(std::format("FilePath: {}", file_path).c_str());
-        TextUnformatted(std::format("Filters: {}", string(s.FileDialog.Filters)).c_str());
+        TextUnformatted(std::format("Filters: {}", Dialog->GetCurrentFilter()).c_str());
         TextUnformatted(std::format("UserDatas: {}", user_data).c_str());
         TextUnformatted("Selection: ");
         Indent();
@@ -235,36 +268,4 @@ void IGFD::CleanupDemo() {
     Dialog->RemoveBookmark("Current dir");
     FileIO::write("bookmarks_1.conf", Dialog->SerializeBookmarks());
 #endif
-}
-
-void FileDialog::Render() const {
-    if (!Visible) return Dialog->Close();
-
-    static const string DialogKey = "FileDialog";
-    // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
-    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
-
-    const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
-    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-        q(CloseFileDialog{}, true);
-        if (Dialog->IsOk()) {
-            const fs::path &file_path = Dialog->GetFilePathName();
-            const string &extension = file_path.extension();
-            if (Project::AllProjectExtensions.find(extension) != Project::AllProjectExtensions.end()) {
-                // TODO provide an option to save with undo state.
-                //   This file format would be a json list of diffs.
-                //   The file would generally be larger, and the load time would be slower,
-                //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
-                //   with full undo/redo history/position/etc.!
-                if (SaveMode) q(SaveProject{file_path});
-                else q(OpenProject{file_path});
-            } else if (extension == FaustDspFileExtension) {
-                if (SaveMode) q(SaveFaustFile{file_path});
-                else q(OpenFaustFile{file_path});
-            } else {
-                // todo need a way to tell it's the svg-save case
-                if (SaveMode) q(SaveFaustSvgFile{file_path});
-            }
-        }
-    }
 }

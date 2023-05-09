@@ -441,9 +441,10 @@ void State::Apply(const UIContext::Flags flags) const {
 // [SECTION] State windows
 //-----------------------------------------------------------------------------
 
+#include "nlohmann/json.hpp"
+
 #include "Helper/String.h"
 #include "Project.h"
-#include "StateJson.h"
 #include "StoreHistory.h"
 #include "UI/Widgets.h"
 
@@ -1007,6 +1008,8 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
     );
 }
 
+#include "StateJson.h" // todo `ActionsJson.h`
+
 void ShowGesture(const Gesture &gesture) {
     for (Count action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &[action, time] = gesture[action_index];
@@ -1019,6 +1022,8 @@ void ShowGesture(const Gesture &gesture) {
         );
     }
 }
+
+#include "PrimitiveJson.h"
 
 void Metrics::FlowGridMetrics::Render() const {
     {

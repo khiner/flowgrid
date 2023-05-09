@@ -16,9 +16,6 @@ template<typename Clock, typename Duration> struct adl_serializer<std::chrono::t
     static void from_json(const json &, std::chrono::time_point<Clock, Duration> &);
 };
 
-void to_json(json &, const Primitive &);
-void from_json(const json &, Primitive &);
-
 DeclareJsonType(StatePath);
 DeclareJsonType(StateAction);
 DeclareJsonType(ProjectAction);

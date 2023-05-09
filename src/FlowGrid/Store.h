@@ -1,11 +1,9 @@
 #pragma once
 
-#include <immer/memory_policy.hpp>
-#include <unordered_map>
-
 #include "StateMember.h"
+#include "StoreTypes.h"
 
-using std::vector;
+#include <immer/memory_policy.hpp>
 
 namespace immer {
 template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, std::uint32_t B>
@@ -18,6 +16,8 @@ class map_transient;
 const auto immer_default_bits = 5;
 using Store = immer::map<StatePath, Primitive, StatePathHash, std::equal_to<StatePath>, immer::default_memory_policy, immer_default_bits>;
 using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash, std::equal_to<StatePath>, immer::default_memory_policy, immer_default_bits>;
+
+using std::vector;
 
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;

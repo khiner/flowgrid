@@ -34,6 +34,18 @@ using U64 = ImU64;
 
 using Count = U32;
 
+/**
+An ID is used to uniquely identify something.
+
+**Notable usage:**
+`StateMember::Id` reflects the state member's `StatePath Path`, using `ImHashStr` to calculate its own `Id` using its parent's `Id` as a seed.
+In the same way, each segment in `StateMember::Path` is calculated by appending its own `PathSegment` to its parent's `Path`.
+This exactly reflects the way ImGui calculates its window/tab/dockspace/etc. ID calculation.
+A drawable `UIStateMember` uses its `ID` (which is also an `ImGuiID`) as the ID for the top-level `ImGui` widget rendered during its `Draw` call.
+This results in the nice property that we can find any `UIStateMember` instance by calling `StateMember::WithId.contains(ImGui::GetHoveredID())` any time during a `UIStateMember::Draw`.
+ */
+using ID = ImGuiID;
+
 #include <string>
 
 static constexpr std::string to_string(U32 value) noexcept { return std::to_string(int(value)); }

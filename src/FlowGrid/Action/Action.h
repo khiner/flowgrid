@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StoreTypes.h"
+#include "../StoreTypes.h"
 
 using std::vector;
 
@@ -169,7 +169,7 @@ template<ID I = 0> Action Create(ID index) {
     else return index == 0 ? Action{std::in_place_index<I>} : Create<I + 1>(index - 1);
 }
 
-#include "../Boost/mp11/mp_find.h"
+#include "../../Boost/mp11/mp_find.h"
 
 // E.g. `ActionID action_id = id<action_type>`
 // An action's ID is its index in the `Action` variant.

@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "Actions.h" // Windows have menus, which can perform actions.
+#include "Action/Action.h" // Windows have menus, which can perform actions.
 #include "Store.h"
 
 namespace FlowGrid {}

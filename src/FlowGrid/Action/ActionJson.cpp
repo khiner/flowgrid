@@ -1,6 +1,6 @@
-#include "ActionsJson.h"
+#include "ActionJson.h"
 
-#include "PrimitiveJson.h"
+#include "../PrimitiveJson.h"
 
 namespace nlohmann {
 NLOHMANN_JSON_SERIALIZE_ENUM(

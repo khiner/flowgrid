@@ -160,7 +160,7 @@ void SetCurrentProjectPath(const fs::path &path) {
     Preferences.OnProjectOpened(path);
 }
 
-#include "ActionsJson.h"
+#include "Action/ActionJson.h"
 #include "Audio/Faust/FaustGraph.h"
 #include "PrimitiveJson.h"
 
@@ -239,7 +239,7 @@ bool Project::SaveProject(const fs::path &path) {
 }
 
 // todo there's some weird circular dependency type thing going on here.
-//   I should be able to define this inside `Project.h` and not include `Actions.h` here,
+//   I should be able to define this inside `Project.h` and not include `Action.h` here,
 //   but when I do, it compiles but with invisible issues around `Match` not working with `ProjectAction`.
 // static void ApplyAction(const ProjectAction &);
 static void ApplyAction(const ProjectAction &action) {

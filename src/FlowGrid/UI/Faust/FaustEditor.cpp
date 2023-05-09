@@ -1,6 +1,6 @@
 #include "../TextEditor/TextEditor.h"
 
-#include "../../Audio.h"
+#include "../../Audio/Audio.h"
 
 static const Menu FileMenu = {"File", {ShowOpenFaustFileDialog{}, ShowSaveFaustFileDialog{}}};
 

@@ -3,7 +3,7 @@
 #include "nlohmann/json_fwd.hpp"
 #include <format>
 
-#include "Audio.h"
+#include "Audio/Audio.h"
 
 /**
  * This class defines the main `State`, which fully describes the application at any point in time.

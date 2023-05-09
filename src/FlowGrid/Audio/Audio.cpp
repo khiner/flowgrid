@@ -1,15 +1,15 @@
 // #include "CDSPResampler.h"
-#include "Helper/Sample.h" // Must be included before any Faust includes
+#include "../Helper/Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
 #include <range/v3/core.hpp>
 #include <range/v3/view/transform.hpp>
 
+#include "../Helper/File.h"
+#include "../Helper/String.h"
+#include "../UI/Faust/FaustGraph.h"
+#include "../UI/Faust/FaustParams.h"
 #include "Audio.h"
-#include "Helper/File.h"
-#include "Helper/String.h"
-#include "UI/Faust/FaustGraph.h"
-#include "UI/Faust/FaustParams.h"
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"

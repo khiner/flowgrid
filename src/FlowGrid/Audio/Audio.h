@@ -1,9 +1,9 @@
 #pragma once
 
-#include "WindowMember.h"
+#include "../WindowMember.h"
 
-#include "UI/Styling.h"
-#include "UI/UI.h"
+#include "../UI/Styling.h"
+#include "../UI/UI.h"
 
 // Starting at `-1` allows for using `IO` types as array indices.
 enum IO_ {

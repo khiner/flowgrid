@@ -1,7 +1,8 @@
-#include "StateJson.h"
+#include "ActionsJson.h"
 
 #include "PrimitiveJson.h"
 
+namespace nlohmann {
 NLOHMANN_JSON_SERIALIZE_ENUM(
     PatchOp::Type,
     {
@@ -10,21 +11,19 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
         {PatchOp::Type::Replace, "replace"},
     }
 );
-
 // Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
 StateAction CreateStateAction(ID index, const json &j) {
-    if constexpr (I >= std::variant_size_v<StateAction>) throw std::runtime_error{"StateAction index " + to_string(I + index) + " out of bounds"};
+    if constexpr (I >= std::variant_size_v<StateAction>) throw std::runtime_error{"StateAction index " + ::to_string(I + index) + " out of bounds"};
     else return index == 0 ? j.get<std::variant_alternative_t<I, StateAction>>() : CreateStateAction<I + 1>(index - 1, j);
 }
 template<ID I = 0>
 ProjectAction CreateProjectAction(ID index, const json &j) {
-    if constexpr (I >= std::variant_size_v<ProjectAction>) throw std::runtime_error{"ProjectAction index " + to_string(I + index) + " out of bounds"};
+    if constexpr (I >= std::variant_size_v<ProjectAction>) throw std::runtime_error{"ProjectAction index " + ::to_string(I + index) + " out of bounds"};
     else return index == 0 ? j.get<std::variant_alternative_t<I, ProjectAction>>() : CreateProjectAction<I + 1>(index - 1, j);
 }
 
-namespace nlohmann {
 // Convert `std::chrono::time_point`s to/from JSON.
 // From https://github.com/nlohmann/json/issues/2159#issuecomment-638104529
 template<typename Clock, typename Duration>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "App.h"
+#include "Actions.h"
 
 #include "nlohmann/json.hpp"
 
@@ -19,8 +19,6 @@ template<typename Clock, typename Duration> struct adl_serializer<std::chrono::t
 DeclareJsonType(StatePath);
 DeclareJsonType(StateAction);
 DeclareJsonType(ProjectAction);
-
-DeclareJsonType(Store);
 
 DeclareJsonType(PatchOp);
 DeclareJsonType(Patch);

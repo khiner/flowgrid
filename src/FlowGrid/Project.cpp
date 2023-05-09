@@ -7,12 +7,9 @@
 #include <range/v3/view/map.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "AppPreferences.h"
-#include "Audio/Faust/FaustGraph.h"
+#include "App.h"
 #include "FileDialog/FileDialogDataJson.h"
 #include "Helper/File.h"
-#include "PrimitiveJson.h"
-#include "StateJson.h"
 #include "StoreHistory.h"
 
 namespace views = ranges::views;
@@ -30,27 +27,6 @@ inline static const fs::path DefaultProjectPath = InternalPath / ("default" + Ex
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
-
-namespace nlohmann {
-inline void to_json(json &j, const Store &store) {
-    for (const auto &[key, value] : store) {
-        j[json::json_pointer(key.string())] = value;
-    }
-}
-} // namespace nlohmann
-
-// `from_json` defined out of `nlohmann`, to be called manually.
-// This avoids getting a reference arg to a default-constructed, non-transient `Store` instance.
-Store store_from_json(const json &j) {
-    const auto &flattened = j.flatten();
-    StoreEntries entries(flattened.size());
-    int item_index = 0;
-    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
-
-    TransientStore store;
-    for (const auto &[path, value] : entries) store.set(path, value);
-    return store.persistent();
-}
 
 void State::Update(const StateAction &action, TransientStore &store) const {
     Match(
@@ -128,13 +104,6 @@ void Project::SaveCurrentProject() {
     if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
 }
 
-json Project::GetProjectJson(const Format format) {
-    switch (format) {
-        case StateFormat: return AppStore;
-        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
-    }
-}
-
 void Project::Init() {
     CurrentProjectPath = {};
     ProjectHasChanges = false;
@@ -183,10 +152,44 @@ Patch Project::SetStore(const Store &store) {
     return patch;
 }
 
+#include "AppPreferences.h"
+
 void SetCurrentProjectPath(const fs::path &path) {
     ProjectHasChanges = false;
     CurrentProjectPath = path;
     Preferences.OnProjectOpened(path);
+}
+
+#include "ActionsJson.h"
+#include "Audio/Faust/FaustGraph.h"
+#include "PrimitiveJson.h"
+
+namespace nlohmann {
+inline void to_json(json &j, const Store &store) {
+    for (const auto &[key, value] : store) {
+        j[json::json_pointer(key.string())] = value;
+    }
+}
+} // namespace nlohmann
+
+// `from_json` defined out of `nlohmann`, to be called manually.
+// This avoids getting a reference arg to a default-constructed, non-transient `Store` instance.
+Store store_from_json(const json &j) {
+    const auto &flattened = j.flatten();
+    StoreEntries entries(flattened.size());
+    int item_index = 0;
+    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
+
+    TransientStore store;
+    for (const auto &[path, value] : entries) store.set(path, value);
+    return store.persistent();
+}
+
+json Project::GetProjectJson(const Format format) {
+    switch (format) {
+        case StateFormat: return AppStore;
+        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
+    }
 }
 
 void Project::OpenProject(const fs::path &path) {

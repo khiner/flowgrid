@@ -8,8 +8,8 @@
 
 #include <imgui_internal.h>
 
-#include "../../App.h"
 #include "../../UI/Widgets.h"
+#include "../Audio.h"
 
 using namespace ImGui;
 using namespace fg;

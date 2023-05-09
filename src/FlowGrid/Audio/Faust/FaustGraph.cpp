@@ -334,10 +334,6 @@ static string GetTreeName(Tree tree) {
 
 static string GetBoxType(Box t);
 
-string GetTreeInfo(Tree tree) {
-    return GetBoxType(tree);
-}
-
 // Hex address (without the '0x' prefix)
 static string UniqueId(const void *instance) { return std::format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
@@ -1193,6 +1189,12 @@ string GetBoxType(Box t) {
 static std::optional<GroupNode> RootNode{}; // This node is drawn every frame if present.
 static GroupNode CreateRootNode(Tree t) { return {NodeType_Decorate, t, Tree2NodeInner(t)}; }
 
+string GetBoxInfo(unsigned int id) {
+    const auto *node = Node::WithId[id];
+    if (!node) return "";
+    return GetBoxType(node->FaustTree); // Just type for now.
+}
+
 void OnBoxChange(Box box) {
     IsTreePureRouting.clear();
     FocusedNodeStack = {};
@@ -1217,10 +1219,7 @@ void SaveBoxSvg(string_view path) {
     node.WriteSvg(path);
 }
 
-Box GetHoveredBox(ID imgui_id) {
-    const Node *node = Node::WithId[imgui_id];
-    return node ? node->FaustTree : nullptr;
-}
+bool IsBoxHovered(ID imgui_id) { return Node::WithId[imgui_id] != nullptr; }
 
 void Audio::Faust::FaustGraph::Render() const {
     if (!RootNode) {

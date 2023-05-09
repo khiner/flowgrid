@@ -7,5 +7,5 @@ typedef CTree *Tree;
 void OnBoxChange(Box);
 void SaveBoxSvg(std::string_view path);
 
-Box GetHoveredBox(unsigned int imgui_id);
-string GetTreeInfo(Tree);
+bool IsBoxHovered(unsigned int imgui_id);
+string GetBoxInfo(unsigned int imgui_id);

@@ -1140,8 +1140,8 @@ void Info::Render() const {
         const auto *member = StateMember::WithId.at(hovered_id);
         const string help = member->Help.empty() ? std::format("No info available for \"{}\".", member->Name) : member->Help;
         TextUnformatted(help.c_str());
-    } else if (Box box = GetHoveredBox(hovered_id)) {
-        TextUnformatted(GetTreeInfo(box).c_str());
+    } else if (IsBoxHovered(hovered_id)) {
+        TextUnformatted(GetBoxInfo(hovered_id).c_str());
     }
     PopTextWrapPos();
 }

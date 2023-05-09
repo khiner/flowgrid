@@ -12,6 +12,8 @@
 #include "../Widgets.h"
 
 using namespace ImGui;
+using namespace fg;
+
 using ItemType = FaustParams::ItemType;
 using enum FaustParams::ItemType;
 using std::min, std::max;
@@ -20,127 +22,6 @@ namespace views = ranges::views;
 using ranges::to, views::transform;
 
 FaustParams *interface;
-
-// todo flag for value text to follow the value like `ImGui::ProgressBar`
-enum ValueBarFlags_ {
-    ValueBarFlags_None = 0,
-    ValueBarFlags_Vertical = 1 << 0,
-    ValueBarFlags_ReadOnly = 1 << 1,
-    ValueBarFlags_NoTitle = 1 << 2,
-};
-using ValueBarFlags = int;
-
-// When `ReadOnly` is set, this is similar to `ImGui::ProgressBar`, but it has a horizontal/vertical switch,
-// and the value text doesn't follow the value position (it stays in the middle).
-// If `ReadOnly` is not set, this delegates to `SliderFloat`/`VSliderFloat`, but renders the value & label independently.
-// Horizontal labels are placed to the right of the rect.
-// Vertical labels are placed below the rect, respecting the passed in alignment.
-// `size` is the rectangle size.
-// Assumes the current cursor position is at the desired top-left of the rectangle.
-// Assumes the current item width has been set to the desired rectangle width (not including label width).
-bool ValueBar(const char *label, float *value, const float rect_height, const float min_value = 0, const float max_value = 1, const ValueBarFlags flags = ValueBarFlags_None, const HJustify h_justify = HJustify_Middle) {
-    const float rect_width = CalcItemWidth();
-    const ImVec2 &size = {rect_width, rect_height};
-    const auto &style = GetStyle();
-    const bool is_h = !(flags & ValueBarFlags_Vertical);
-    const bool has_title = !(flags & ValueBarFlags_NoTitle);
-    const auto &draw_list = GetWindowDrawList();
-
-    PushID(label);
-    BeginGroup();
-
-    const auto cursor = GetCursorPos();
-    if (has_title && !is_h) {
-        const float label_w = CalcTextSize(label).x;
-        SetCursorPosX(cursor.x + CalcAlignedX(h_justify, label_w, rect_width, true));
-        TextUnformatted(label);
-    }
-    const auto &rect_pos = GetCursorScreenPos();
-
-    bool changed = false;
-    if (flags & ValueBarFlags_ReadOnly) {
-        const float fraction = (*value - min_value) / max_value;
-        RenderFrame(rect_pos, rect_pos + size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
-        draw_list->AddRectFilled(
-            rect_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
-            rect_pos + size * ImVec2{is_h ? fraction : 1, 1},
-            GetColorU32(ImGuiCol_PlotHistogram),
-            style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
-        );
-        Dummy(size);
-    } else {
-        // Draw ImGui widget without value or label text.
-        const string id = std::format("##{}", label);
-        changed = is_h ? SliderFloat(id.c_str(), value, min_value, max_value, "") : VSliderFloat(id.c_str(), size, value, min_value, max_value, "");
-    }
-
-    const string value_text = std::format("{:.2f}", *value);
-    const float value_text_w = CalcTextSize(value_text.c_str()).x;
-    const float value_text_x = CalcAlignedX(is_h ? HJustify_Middle : h_justify, value_text_w, rect_width);
-    draw_list->AddText(rect_pos + ImVec2{value_text_x, (size.y - GetFontSize()) / 2}, GetColorU32(ImGuiCol_Text), value_text.c_str());
-
-    if (has_title && is_h) {
-        SameLine();
-        TextUnformatted(label);
-    }
-
-    EndGroup();
-    PopID();
-
-    return !(flags & ValueBarFlags_ReadOnly) && changed; // Read-only value bars never change.
-}
-
-enum RadioButtonsFlags_ {
-    RadioButtonsFlags_None = 0,
-    RadioButtonsFlags_Vertical = 1 << 0,
-    RadioButtonsFlags_NoTitle = 1 << 1,
-};
-using RadioButtonsFlags = int;
-
-static float CalcRadioChoiceWidth(const string &choice_name) {
-    return CalcTextSize(choice_name).x + GetStyle().ItemInnerSpacing.x + GetFrameHeight();
-}
-
-// When `ReadOnly` is set, this is similar to `ImGui::ProgressBar`, but it has a horizontal/vertical switch,
-// and the value text doesn't follow the value position (it stays in the middle).
-// If `ReadOnly` is not set, this delegates to `SliderFloat`/`VSliderFloat`, but renders the value & label independently.
-// Horizontal labels are placed to the right of the rect.
-// Vertical labels are placed below the rect, respecting the passed in alignment.
-// `size` is the rectangle size.
-// Assumes the current cursor position is either the desired top-left of the rectangle (or the beginning of the label for a vertical bar with a title).
-// Assumes the current item width has been set to the desired rectangle width (not including label width).
-bool RadioButtons(const char *label, float *value, const FaustParams::NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Justify justify = {HJustify_Middle, VJustify_Middle}) {
-    PushID(label);
-    BeginGroup();
-
-    const auto &style = GetStyle();
-    const bool is_h = !(flags & RadioButtonsFlags_Vertical);
-    const float item_width = CalcItemWidth();
-    if (!(flags & RadioButtonsFlags_NoTitle)) {
-        const float label_width = CalcTextSize(label).x;
-        ImVec2 label_pos = GetCursorScreenPos() + (is_h ? ImVec2{0, style.FramePadding.y} : ImVec2{CalcAlignedX(justify.h, label_width, item_width), 0});
-        RenderText(label_pos, label);
-        Dummy({label_width, GetFrameHeight()});
-    }
-
-    bool changed = false;
-    for (int i = 0; i < int(names_and_values.names.size()); i++) {
-        const string &choice_name = names_and_values.names[i];
-        const Real choice_value = names_and_values.values[i];
-        const float choice_width = CalcRadioChoiceWidth(choice_name);
-        if (!is_h) SetCursorPosX(GetCursorPosX() + CalcAlignedX(justify.h, choice_width, item_width));
-        else SameLine(0, style.ItemInnerSpacing.x);
-
-        if (RadioButton(choice_name.c_str(), *value == choice_value)) {
-            *value = float(choice_value);
-            changed = true;
-        }
-    }
-    EndGroup();
-    PopID();
-
-    return changed;
-}
 
 static bool IsWidthExpandable(const ItemType type) {
     return type == ItemType_HGroup || type == ItemType_VGroup || type == ItemType_TGroup || type == ItemType_NumEntry || type == ItemType_HSlider || type == ItemType_HBargraph;

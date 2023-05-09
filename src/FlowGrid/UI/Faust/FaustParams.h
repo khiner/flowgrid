@@ -11,6 +11,7 @@
 #include "faust/gui/UI.h"
 
 #include "../../Helper/Sample.h" // Must be included before any Faust includes
+#include "../NamesAndValues.h"
 
 using std::string, std::string_view, std::vector, std::map;
 using Real = Sample;
@@ -58,10 +59,6 @@ public:
         const Real init, step; // Only meaningful for sliders and num-entries.
         const char *tooltip;
         vector<Item> items; // Only populated for container items (groups)
-    };
-    struct NamesAndValues {
-        vector<string> names{};
-        vector<double> values{};
     };
 
     void openHorizontalBox(const char *label) override {

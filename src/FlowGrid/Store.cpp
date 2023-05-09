@@ -362,7 +362,7 @@ void Colors::Set(const vector<ImVec4> &values, TransientStore &transient) const 
         ::Set(*At(i), ConvertFloat4ToU32(values[i]), transient);
     }
 }
-void Colors::Set(const vector<pair<int, ImVec4>> &entries, TransientStore &transient) const {
+void Colors::Set(const vector<std::pair<int, ImVec4>> &entries, TransientStore &transient) const {
     for (const auto &[i, v] : entries) {
         ::Set(*At(i), ConvertFloat4ToU32(v), transient);
     }

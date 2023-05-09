@@ -17,6 +17,7 @@ float CalcAlignedY(const VJustify v_justify, const float inner_h, const float ou
 
 ImVec2 CalcTextSize(const string &text) { return CalcTextSize(text.c_str()); }
 
+// todo very inefficient
 string Ellipsify(string copy, const float max_width) {
     while (CalcTextSize(copy).x > max_width && copy.length() > 4) copy.replace(copy.end() - 4, copy.end(), "...");
     return copy;

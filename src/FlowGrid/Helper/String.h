@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-using std::pair, std::string, std::string_view, std::vector;
+using std::string, std::string_view, std::vector;
 using namespace std::string_literals;
 namespace views = ranges::views;
 using ranges::to;
@@ -25,8 +25,8 @@ static constexpr string Lowercase(string copy) {
 }
 
 // Only matches first occurrence (assumes at most one match per match word).
-static constexpr vector<pair<size_t, size_t>> FindRangesMatching(string_view str, const vector<string> &match_words) {
-    vector<pair<size_t, size_t>> matching_ranges;
+static constexpr vector<std::pair<size_t, size_t>> FindRangesMatching(string_view str, const vector<string> &match_words) {
+    vector<std::pair<size_t, size_t>> matching_ranges;
     for (const auto &match_word : match_words) {
         size_t found = str.find(match_word);
         if (found != string::npos) matching_ranges.emplace_back(found, found + match_word.size());
@@ -87,14 +87,14 @@ static constexpr string Replace(string subject, const char search, string_view r
 // Split the string on '?'.
 // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
 // todo don't split on escaped '\?'
-static inline pair<string_view, string_view> ParseHelpText(string_view str) {
+static inline std::pair<string_view, string_view> ParseHelpText(string_view str) {
     const auto help_split = str.find_first_of('?');
     const bool found = help_split != string::npos;
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
 }
 
-static inline void Split(const string &text, const char *delims, vector<string> &tokens) {
-    tokens.clear();
+static inline vector<string> Split(const string &text, const char *delims) {
+    vector<string> tokens;
     size_t start = text.find_first_not_of(delims), end;
     while ((end = text.find_first_of(delims, start)) != string::npos) {
         tokens.push_back(text.substr(start, end - start));
@@ -103,6 +103,7 @@ static inline void Split(const string &text, const char *delims, vector<string> 
     if (start != string::npos) {
         tokens.push_back(text.substr(start));
     }
+    return tokens;
 }
 
 } // namespace StringHelper

@@ -139,7 +139,7 @@ private:
     void addUiItem(const ItemType type, const char *label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
         activeGroup().items.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
         const int index = int(ui.items.size() - 1);
-        string path = buildPath(label);
+        const string path = buildPath(label);
         fFullPaths.push_back(path);
         index_for_path[path] = index;
         index_for_label[label] = index;

@@ -20,7 +20,7 @@
 
 using namespace ImGui;
 using std::min, std::max;
-using std::unordered_map;
+using std::pair, std::unordered_map;
 
 enum DeviceType {
     DeviceType_ImGui,

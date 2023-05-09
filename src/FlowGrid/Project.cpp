@@ -5,10 +5,10 @@
 #include "immer/map_transient.hpp"
 
 #include "AppPreferences.h"
+#include "Audio/Faust/FaustGraph.h"
 #include "Helper/File.h"
 #include "StateJson.h"
 #include "StoreHistory.h"
-#include "UI/Faust/FaustGraph.h"
 
 #include <range/v3/core.hpp>
 #include <range/v3/view/join.hpp>

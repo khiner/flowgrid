@@ -9,7 +9,7 @@
 #include <imgui_internal.h>
 
 #include "../../App.h"
-#include "../Widgets.h"
+#include "../../UI/Widgets.h"
 
 using namespace ImGui;
 using namespace fg;

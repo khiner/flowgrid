@@ -1,4 +1,4 @@
-#include "../TextEditor/TextEditor.h"
+#include "../../TextEditor/TextEditor.h"
 
 #include "../../Audio/Audio.h"
 

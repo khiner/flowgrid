@@ -1181,7 +1181,7 @@ void StackTool::Render() const {
     ShowStackToolWindow();
 }
 
-#include "UI/Faust/FaustGraph.h"
+#include "Audio/Faust/FaustGraph.h"
 
 void Info::Render() const {
     const auto hovered_id = GetHoveredID();

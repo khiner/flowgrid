@@ -429,6 +429,155 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
 vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
+void State::Apply(const UIContext::Flags flags) const {
+    if (flags == UIContext::Flags_None) return;
+
+    if (flags & UIContext::Flags_ImGuiSettings) ImGuiSettings.Apply(UiContext.ImGui);
+    if (flags & UIContext::Flags_ImGuiStyle) Style.ImGui.Apply(UiContext.ImGui);
+    if (flags & UIContext::Flags_ImPlotStyle) Style.ImPlot.Apply(UiContext.ImPlot);
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] State windows
+//-----------------------------------------------------------------------------
+
+#include "Helper/String.h"
+#include "Project.h"
+#include "StateJson.h"
+#include "StoreHistory.h"
+#include "UI/Widgets.h"
+
+ImRect RowItemRatioRect(float ratio) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
+}
+
+void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    const ImRect &rect = {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
+    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
+}
+
+// TODO option to indicate relative update-recency
+void StateViewer::StateJsonTree(string_view key, const json &value, const StatePath &path) const {
+    const string leaf_name = path == RootPath ? path.string() : path.filename().string();
+    const auto &parent_path = path == RootPath ? path : path.parent_path();
+    const bool is_array_item = StringHelper::IsInteger(leaf_name);
+    const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
+    const bool is_imgui_color = parent_path == s.Style.ImGui.Colors.Path;
+    const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
+    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
+    const string label = LabelMode == Annotated ?
+        (is_imgui_color        ? s.Style.ImGui.Colors.Child(array_index)->Name :
+             is_implot_color   ? s.Style.ImPlot.Colors.Child(array_index)->Name :
+             is_flowgrid_color ? s.Style.FlowGrid.Colors.Child(array_index)->Name :
+             is_array_item     ? leaf_name :
+                                 string(key)) :
+        string(key);
+
+    if (AutoSelect) {
+        const auto &updated_paths = History.LatestUpdatedPaths;
+        const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
+        const bool was_recently_updated = std::find_if(updated_paths.begin(), updated_paths.end(), is_ancestor_path) != updated_paths.end();
+        SetNextItemOpen(was_recently_updated);
+    }
+
+    // Flash background color of nodes when its corresponding path updates.
+    const auto &latest_update_time = History.LatestUpdateTime(path);
+    if (latest_update_time) {
+        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
+        ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
+        flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
+        FillRowItemBg(flash_color);
+    }
+
+    JsonTreeNodeFlags flags = JsonTreeNodeFlags_None;
+    if (LabelMode == Annotated && (is_imgui_color || is_implot_color || is_flowgrid_color)) flags |= JsonTreeNodeFlags_Highlighted;
+    if (AutoSelect) flags |= JsonTreeNodeFlags_Disabled;
+
+    // The rest below is structurally identical to `fg::Widgets::JsonTree`.
+    // Couldn't find an easy/clean way to inject the above into each recursive call.
+    if (value.is_null()) {
+        TextUnformatted(label.c_str());
+    } else if (value.is_object()) {
+        if (fg::JsonTreeNode(label, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
+            for (auto it = value.begin(); it != value.end(); ++it) {
+                StateJsonTree(it.key(), *it, path / it.key());
+            }
+            TreePop();
+        }
+    } else if (value.is_array()) {
+        if (fg::JsonTreeNode(label, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
+            Count i = 0;
+            for (const auto &it : value) {
+                StateJsonTree(to_string(i), it, path / to_string(i));
+                i++;
+            }
+            TreePop();
+        }
+    } else {
+        Text("%s: %s", label.c_str(), value.dump().c_str());
+    }
+}
+
+void StateViewer::Render() const {
+    StateJsonTree("State", Project::GetProjectJson());
+}
+
+void StateMemoryEditor::Render() const {
+    static MemoryEditor memory_editor;
+    static bool first_render{true};
+    if (first_render) {
+        memory_editor.OptShowDataPreview = true;
+        //        memory_editor.WriteFn = ...; todo write_state_bytes action
+        first_render = false;
+    }
+
+    const void *mem_data{&s};
+    memory_editor.DrawContents(mem_data, sizeof(s));
+}
+
+void StatePathUpdateFrequency::Render() const {
+    auto [labels, values] = History.StatePathUpdateFrequencyPlottable();
+    if (labels.empty()) {
+        Text("No state updates yet.");
+        return;
+    }
+
+    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
+
+        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
+        // todo fix in ImPlot
+        if (labels.size() == 1) labels.emplace_back("");
+
+        // todo add an axis flag to exclude non-integer ticks
+        // todo add an axis flag to show last tick
+        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
+        static const char *ItemLabels[] = {"Committed updates", "Active updates"};
+        const int item_count = !History.ActiveGesture.empty() ? 2 : 1;
+        const int group_count = int(values.size()) / item_count;
+        ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
+
+        ImPlot::EndPlot();
+    }
+}
+
+void ProjectPreview::Render() const {
+    Format.Draw();
+    Raw.Draw();
+
+    Separator();
+
+    const json project_json = Project::GetProjectJson(Project::Format(int(Format)));
+    if (Raw) TextUnformatted(project_json.dump(4).c_str());
+    else fg::JsonTree("", project_json, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], JsonTreeNodeFlags_DefaultOpen);
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] Style editors
+//-----------------------------------------------------------------------------
+
 using namespace fg;
 
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
@@ -521,155 +670,6 @@ void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
-void State::Apply(const UIContext::Flags flags) const {
-    if (flags == UIContext::Flags_None) return;
-
-    if (flags & UIContext::Flags_ImGuiSettings) ImGuiSettings.Apply(UiContext.ImGui);
-    if (flags & UIContext::Flags_ImGuiStyle) Style.ImGui.Apply(UiContext.ImGui);
-    if (flags & UIContext::Flags_ImPlotStyle) Style.ImPlot.Apply(UiContext.ImPlot);
-}
-
-//-----------------------------------------------------------------------------
-// [SECTION] State windows
-//-----------------------------------------------------------------------------
-
-#include "Helper/String.h"
-#include "Project.h"
-#include "StateJson.h"
-#include "StoreHistory.h"
-#include "UI/Widgets.h"
-
-ImRect RowItemRatioRect(float ratio) {
-    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
-}
-
-void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
-    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
-    const ImRect &rect = {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
-    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
-}
-
-// TODO option to indicate relative update-recency
-void StateViewer::StateJsonTree(string_view key, const json &value, const StatePath &path) const {
-    const string leaf_name = path == RootPath ? path.string() : path.filename().string();
-    const auto &parent_path = path == RootPath ? path : path.parent_path();
-    const bool is_array_item = StringHelper::IsInteger(leaf_name);
-    const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
-    const bool is_imgui_color = parent_path == s.Style.ImGui.Colors.Path;
-    const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
-    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
-    const string label = LabelMode == Annotated ?
-        (is_imgui_color        ? s.Style.ImGui.Colors.Child(array_index)->Name :
-             is_implot_color   ? s.Style.ImPlot.Colors.Child(array_index)->Name :
-             is_flowgrid_color ? s.Style.FlowGrid.Colors.Child(array_index)->Name :
-             is_array_item     ? leaf_name :
-                                 string(key)) :
-        string(key);
-
-    if (AutoSelect) {
-        const auto &updated_paths = History.LatestUpdatedPaths;
-        const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
-        const bool was_recently_updated = std::find_if(updated_paths.begin(), updated_paths.end(), is_ancestor_path) != updated_paths.end();
-        SetNextItemOpen(was_recently_updated);
-    }
-
-    // Flash background color of nodes when its corresponding path updates.
-    const auto &latest_update_time = History.LatestUpdateTime(path);
-    if (latest_update_time) {
-        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
-        ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
-        flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
-        FillRowItemBg(flash_color);
-    }
-
-    JsonTreeNodeFlags flags = JsonTreeNodeFlags_None;
-    if (LabelMode == Annotated && (is_imgui_color || is_implot_color || is_flowgrid_color)) flags |= JsonTreeNodeFlags_Highlighted;
-    if (AutoSelect) flags |= JsonTreeNodeFlags_Disabled;
-
-    // The rest below is structurally identical to `fg::Widgets::JsonTree`.
-    // Couldn't find an easy/clean way to inject the above into each recursive call.
-    if (value.is_null()) {
-        TextUnformatted(label.c_str());
-    } else if (value.is_object()) {
-        if (JsonTreeNode(label, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
-            for (auto it = value.begin(); it != value.end(); ++it) {
-                StateJsonTree(it.key(), *it, path / it.key());
-            }
-            TreePop();
-        }
-    } else if (value.is_array()) {
-        if (JsonTreeNode(label, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
-            Count i = 0;
-            for (const auto &it : value) {
-                StateJsonTree(to_string(i), it, path / to_string(i));
-                i++;
-            }
-            TreePop();
-        }
-    } else {
-        Text("%s: %s", label.c_str(), value.dump().c_str());
-    }
-}
-
-void StateViewer::Render() const {
-    StateJsonTree("State", Project::GetProjectJson());
-}
-
-void StateMemoryEditor::Render() const {
-    static MemoryEditor memory_editor;
-    static bool first_render{true};
-    if (first_render) {
-        memory_editor.OptShowDataPreview = true;
-        //        memory_editor.WriteFn = ...; todo write_state_bytes action
-        first_render = false;
-    }
-
-    const void *mem_data{&s};
-    memory_editor.DrawContents(mem_data, sizeof(s));
-}
-
-void StatePathUpdateFrequency::Render() const {
-    auto [labels, values] = History.StatePathUpdateFrequencyPlottable();
-    if (labels.empty()) {
-        Text("No state updates yet.");
-        return;
-    }
-
-    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
-        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
-
-        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
-        // todo fix in ImPlot
-        if (labels.size() == 1) labels.emplace_back("");
-
-        // todo add an axis flag to exclude non-integer ticks
-        // todo add an axis flag to show last tick
-        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
-        static const char *ItemLabels[] = {"Committed updates", "Active updates"};
-        const int item_count = !History.ActiveGesture.empty() ? 2 : 1;
-        const int group_count = int(values.size()) / item_count;
-        ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
-
-        ImPlot::EndPlot();
-    }
-}
-
-void ProjectPreview::Render() const {
-    Format.Draw();
-    Raw.Draw();
-
-    Separator();
-
-    const json project_json = Project::GetProjectJson(Project::Format(int(Format)));
-    if (Raw) TextUnformatted(project_json.dump(4).c_str());
-    else fg::JsonTree("", project_json, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], JsonTreeNodeFlags_DefaultOpen);
-}
-
-//-----------------------------------------------------------------------------
-// [SECTION] Style editors
-//-----------------------------------------------------------------------------
-
 Style::ImGuiStyle::ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
     ColorsDark(InitStore);
@@ -744,9 +744,6 @@ void Style::FlowGridStyle::ColorsClassic(TransientStore &store) const {
         store
     );
 }
-
-#include <range/v3/core.hpp>
-#include <range/v3/view/transform.hpp>
 
 Style::ImGuiStyle::ImGuiColors::ImGuiColors(StateMember *parent, string_view path_segment, string_view name_help)
     : Colors(parent, path_segment, name_help, ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}

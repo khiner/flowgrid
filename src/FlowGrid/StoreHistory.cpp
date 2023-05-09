@@ -142,3 +142,5 @@ void StoreHistory::SetIndex(Count new_index) {
     }
     GestureUpdateTimesForPath.clear();
 }
+
+StoreHistory History{};

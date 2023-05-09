@@ -26,7 +26,7 @@ struct Project {
 
     static void RunQueuedActions(bool force_finalize_gesture = false);
 
-    static void Clear();
+    static void Init();
 
     // Main setter to modify the canonical application state store.
     // _All_ store assignments happen via this method.

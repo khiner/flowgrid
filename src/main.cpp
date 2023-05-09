@@ -1,11 +1,8 @@
 #include "FlowGrid/App.h"
 #include "FlowGrid/Project.h"
-#include "FlowGrid/StoreHistory.h"
 
 #include "imgui.h"
 #include <filesystem>
-
-#include <range/v3/view/map.hpp>
 
 // Initialize global extern variables.
 const State ApplicationState{};
@@ -13,14 +10,10 @@ const State &s = ApplicationState; // Create the read-only state reference globa
 const Audio &audio = s.Audio;
 
 UIContext UiContext{};
-StoreHistory History{};
 
 int main(int, const char **) {
     store::OnApplicationStateInitialized();
-    History.Reset(AppStore);
-
-    // Ensure all store values set during initialization are reflected in cached field/collection values.
-    for (auto *field : ranges::views::values(Base::WithPath)) field->Update();
+    Project::Init(); // Start project.
 
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
@@ -35,7 +28,7 @@ int main(int, const char **) {
         Project::RunQueuedActions(true);
     }
 
-    Project::Clear(); // Make sure we don't start with any undo state.
+    Project::Init(); // Make sure we don't start with any undo state.
     Project::SaveEmptyProject(); // Keep the canonical "empty" project up-to-date.
 
     while (s.UiProcess.Running) {

@@ -1,19 +1,17 @@
 #include "Project.h"
 
-#include "blockingconcurrentqueue.h"
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
+#include <range/v3/core.hpp>
+#include <range/v3/view/join.hpp>
+#include <range/v3/view/map.hpp>
+#include <range/v3/view/transform.hpp>
 
 #include "AppPreferences.h"
 #include "Audio/Faust/FaustGraph.h"
 #include "Helper/File.h"
 #include "StateJson.h"
 #include "StoreHistory.h"
-
-#include <range/v3/core.hpp>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
 
 namespace views = ranges::views;
 using ranges::to, views::transform;
@@ -135,7 +133,7 @@ json Project::GetProjectJson(const Format format) {
     }
 }
 
-void Project::Clear() {
+void Project::Init() {
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {ApplicationStore};
@@ -193,7 +191,7 @@ void Project::OpenProject(const fs::path &path) {
     const auto format = GetProjectFormat(path);
     if (!format) return; // TODO log
 
-    Clear();
+    Init();
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
@@ -234,6 +232,7 @@ bool Project::SaveProject(const fs::path &path) {
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
     return true;
 }
+
 // todo there's some weird circular dependency type thing going on here.
 //   I should be able to define this inside `Project.h` and not include `Actions.h` here,
 //   but when I do, it compiles but with invisible issues around `Match` not working with `ProjectAction`.
@@ -279,7 +278,29 @@ static void ApplyAction(const ProjectAction &action) {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
-static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue; // NOLINT(cppcoreguidelines-interfaces-global-init)
+bool ActionAllowed(const ActionID id) {
+    switch (id) {
+        case action::id<Actions::Undo>: return History.CanUndo();
+        case action::id<Actions::Redo>: return History.CanRedo();
+        case action::id<Actions::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
+        case action::id<Actions::SaveProject>:
+        case action::id<Actions::SaveDefaultProject>: return !History.Empty();
+        case action::id<Actions::ShowSaveProjectDialog>:
+            // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
+        case action::id<Actions::SaveCurrentProject>: return ProjectHasChanges;
+        case action::id<Actions::OpenFileDialog>: return !s.FileDialog.Visible;
+        case action::id<Actions::CloseFileDialog>: return s.FileDialog.Visible;
+        default: return true;
+    }
+}
+bool ActionAllowed(const Action &action) { return ActionAllowed(action::GetId(action)); }
+bool ActionAllowed(const EmptyAction &action) {
+    return std::visit([&](Action &&a) { return ActionAllowed(a); }, action);
+}
+
+#include "blockingconcurrentqueue.h"
+
+inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void Project::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
@@ -320,26 +341,6 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         History.UpdateGesturePaths(state_actions, SetStore(transient.persistent()));
     }
     if (finalize) History.FinalizeGesture();
-}
-
-bool ActionAllowed(const ActionID id) {
-    switch (id) {
-        case action::id<Actions::Undo>: return History.CanUndo();
-        case action::id<Actions::Redo>: return History.CanRedo();
-        case action::id<Actions::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
-        case action::id<Actions::SaveProject>:
-        case action::id<Actions::SaveDefaultProject>: return !History.Empty();
-        case action::id<Actions::ShowSaveProjectDialog>:
-            // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
-        case action::id<Actions::SaveCurrentProject>: return ProjectHasChanges;
-        case action::id<Actions::OpenFileDialog>: return !s.FileDialog.Visible;
-        case action::id<Actions::CloseFileDialog>: return s.FileDialog.Visible;
-        default: return true;
-    }
-}
-bool ActionAllowed(const Action &action) { return ActionAllowed(action::GetId(action)); }
-bool ActionAllowed(const EmptyAction &action) {
-    return std::visit([&](Action &&a) { return ActionAllowed(a); }, action);
 }
 
 bool q(Action &&action, bool flush) {

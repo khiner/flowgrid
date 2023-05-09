@@ -26,7 +26,6 @@ DeclareJsonType(PatchOp);
 DeclareJsonType(Patch);
 DeclareJsonType(StatePatch);
 
-DeclareJsonType(FileDialogData);
 } // namespace nlohmann
 
 namespace Actions {

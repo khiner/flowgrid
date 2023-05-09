@@ -106,8 +106,6 @@ JsonType(PatchOp, Op, Value, Old);
 JsonType(Patch, Ops, BasePath);
 JsonType(StatePatch, Patch, Time);
 
-JsonType(FileDialogData, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags);
-
 } // namespace nlohmann
 
 namespace Actions {

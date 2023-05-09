@@ -9,6 +9,7 @@
 
 #include "AppPreferences.h"
 #include "Audio/Faust/FaustGraph.h"
+#include "FileDialog/FileDialogDataJson.h"
 #include "Helper/File.h"
 #include "PrimitiveJson.h"
 #include "StateJson.h"

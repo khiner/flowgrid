@@ -1,12 +1,12 @@
 #include <sstream>
 
 #include "FileDialog.h"
+#include "FileDialogDataJson.h"
 
 #include "ImGuiFileDialog.h"
 
 #include "../Helper/File.h"
 #include "../Project.h" // Only used for extension constants.
-#include "../StateJson.h"
 #include "../UI/Widgets.h"
 
 #include <imgui_internal.h>
@@ -62,7 +62,7 @@ void IGFD::InitializeDemo() {
     icons_config.DstFont = GetDefaultFont();
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
-    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * fg::Style::ImGuiStyle::FontAtlasScale, &icons_config, IconRanges);
+    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * FontAtlasScale, &icons_config, IconRanges);
 
     // Singleton access
     Dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex

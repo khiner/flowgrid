@@ -105,11 +105,10 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
     // - Read 'docs/FONTS.md' for more instructions and details.
-    const static float atlas_scale = Style::ImGuiStyle::FontAtlasScale;
-    io.FontGlobalScale = s.Style.ImGui.FontScale / atlas_scale;
-    ui_context.Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * atlas_scale);
-    ui_context.Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * atlas_scale);
-    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * atlas_scale);
+    io.FontGlobalScale = s.Style.ImGui.FontScale / FontAtlasScale;
+    ui_context.Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
+    ui_context.Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
+    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * FontAtlasScale);
     return ui_context;
 }
 
@@ -223,7 +222,7 @@ void TickUi() {
         PrevFontIndex = s.Style.ImGui.FontIndex;
     }
     if (PrevFontScale != s.Style.ImGui.FontScale) {
-        GetIO().FontGlobalScale = s.Style.ImGui.FontScale / Style::ImGuiStyle::FontAtlasScale;
+        GetIO().FontGlobalScale = s.Style.ImGui.FontScale / FontAtlasScale;
         PrevFontScale = s.Style.ImGui.FontScale;
     }
 

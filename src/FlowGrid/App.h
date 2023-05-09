@@ -113,8 +113,6 @@ struct Style : TabsWindow {
         void ColorsLight(TransientStore &) const;
         void ColorsClassic(TransientStore &) const;
 
-        static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
-
         // See `ImGui::ImGuiStyle` for field descriptions.
         // Initial values copied from `ImGui::ImGuiStyle()` default constructor.
         // Ranges copied from `ImGui::StyleEditor`.

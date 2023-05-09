@@ -405,4 +405,50 @@ void Colors::Render() const {
     EndChild();
     EndTabItem();
 }
+
+Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)
+    : UIStateMember(parent, path_segment, name_help),
+      X(this, "X", "", value.first, min, max), Y(this, "Y", "", value.second, min, max), Format(fmt) {}
+
+Vec2::operator ImVec2() const { return {X, Y}; }
+
+void Vec2::Render(ImGuiSliderFlags flags) const {
+    ImVec2 values = *this;
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
+    UiContext.WidgetGestured();
+    if (edited) q(SetValues{{{X.Path, values.x}, {Y.Path, values.y}}});
+    HelpMarker();
+}
+
+void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
+
+Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
+    : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
+    Set(Linked, linked, InitStore);
+}
+
+void Vec2Linked::Render(ImGuiSliderFlags flags) const {
+    PushID(ImGuiLabel.c_str());
+    if (Linked.CheckedDraw()) {
+        // Linking sets the max value to the min value.
+        if (X < Y) q(SetValue{Y.Path, X});
+        else if (Y < X) q(SetValue{X.Path, Y});
+    }
+    PopID();
+    SameLine();
+    ImVec2 values = *this;
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
+    UiContext.WidgetGestured();
+    if (edited) {
+        if (Linked) {
+            const float changed_value = values.x != X ? values.x : values.y;
+            q(SetValues{{{X.Path, changed_value}, {Y.Path, changed_value}}});
+        } else {
+            q(SetValues{{{X.Path, values.x}, {Y.Path, values.y}}});
+        }
+    }
+    HelpMarker();
+}
+
+void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 } // namespace Field

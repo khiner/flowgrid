@@ -261,25 +261,6 @@ private:
 using Entry = std::pair<const Base &, Primitive>;
 using Entries = std::vector<Entry>;
 
-} // namespace Field
-
-struct Patch;
-
-// Store setters
-void Set(const Field::Base &, const Primitive &, TransientStore &);
-void Set(const StoreEntries &, TransientStore &);
-void Set(const Field::Entries &, TransientStore &);
-void Set(const StatePath &, const vector<Primitive> &, TransientStore &);
-void Set(const StatePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
-
-Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);
-
-namespace store {
-void OnApplicationStateInitialized();
-
-Primitive Get(const StatePath &);
-} // namespace store
-
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
@@ -304,6 +285,24 @@ protected:
     void Render(ImGuiSliderFlags) const override;
     void Render() const override;
 };
+} // namespace Field
+
+struct Patch;
+
+// Store setters
+void Set(const Field::Base &, const Primitive &, TransientStore &);
+void Set(const StoreEntries &, TransientStore &);
+void Set(const Field::Entries &, TransientStore &);
+void Set(const StatePath &, const vector<Primitive> &, TransientStore &);
+void Set(const StatePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
+
+Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);
+
+namespace store {
+void OnApplicationStateInitialized();
+
+Primitive Get(const StatePath &);
+} // namespace store
 
 extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.
 extern Store ApplicationStore;

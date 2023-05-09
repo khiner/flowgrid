@@ -145,7 +145,7 @@ const std::map<string, ImGuiModFlags> ModKeys{
 // Handles any number of mods, along with any single non-mod character.
 // Example: 'shift+cmd+s'
 // **Case-sensitive. `shortcut` must be lowercase.**
-std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
+static constexpr std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
     const vector<string> tokens = StringHelper::Split(shortcut, "+");
     if (tokens.empty()) return {};
 

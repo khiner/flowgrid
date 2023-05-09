@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include <range/v3/algorithm/contains.hpp>
+#include <range/v3/core.hpp>
 #include <range/v3/view/map.hpp>
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/take_while.hpp>
@@ -21,6 +22,9 @@
 using namespace ImGui;
 using std::min, std::max;
 using std::pair, std::unordered_map;
+
+namespace views = ranges::views;
+using ranges::to;
 
 enum DeviceType {
     DeviceType_ImGui,

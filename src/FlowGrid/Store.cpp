@@ -3,6 +3,7 @@
 #include "immer/algorithm.hpp"
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
+#include <range/v3/core.hpp>
 
 #include "Actions.h"
 
@@ -253,7 +254,7 @@ void Float::Render() const {
 }
 
 void Enum::Render() const {
-    Render(views::ints(0, int(Names.size())) | to<vector>); // todo if I stick with this pattern, cache.
+    Render(ranges::views::ints(0, int(Names.size())) | ranges::to<vector>); // todo if I stick with this pattern, cache.
 }
 void Enum::Render(const vector<int> &options) const {
     if (options.empty()) return;

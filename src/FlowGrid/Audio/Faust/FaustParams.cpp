@@ -177,7 +177,7 @@ void DrawUiItem(const FaustParams::Item &item, const char *label, const float su
                     for (const auto &child : children) {
                         if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
                         TableNextColumn();
-                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, s.Style.FlowGrid.Colors[FlowGridCol_ParamsBg]);
+                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, GetColorU32(ImGuiCol_TitleBgActive, 0.1f));
                         const string child_label = child.type == ItemType_Button || !is_h || !params_style.HeaderTitles ? child.label : "";
                         DrawUiItem(child, child_label.c_str(), suggested_item_height);
                     }

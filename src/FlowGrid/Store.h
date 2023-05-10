@@ -309,5 +309,4 @@ void ApplyPatch(const Patch &, TransientStore &);
 } // namespace store
 
 extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.
-extern Store ApplicationStore;
-inline static const Store &AppStore = ApplicationStore; // Global read-only accessor for the canonical application store instance.
+extern const Store &AppStore; // Global read-only accessor for the canonical application store instance.

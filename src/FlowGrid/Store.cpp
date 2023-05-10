@@ -10,6 +10,7 @@
 
 TransientStore InitStore{};
 Store ApplicationStore{};
+const Store &AppStore = ApplicationStore;
 
 namespace store {
 void OnApplicationStateInitialized() {

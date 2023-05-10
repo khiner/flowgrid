@@ -95,9 +95,8 @@ inline void to_json(json &j, const Store &store) {
 }
 } // namespace nlohmann
 
-// `from_json` defined out of `nlohmann`, to be called manually.
-// This avoids getting a reference arg to a default-constructed, non-transient `Store` instance.
-Store store_from_json(const json &j) {
+// Not using `nlohmann::from_json` pattern to avoid getting a reference to a default-constructed, non-transient `Store` instance.
+Store to_store(const json &j) {
     const auto &flattened = j.flatten();
     StoreEntries entries(flattened.size());
     int item_index = 0;
@@ -123,7 +122,7 @@ void Project::OpenProject(const fs::path &path) {
 
     const json project = json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        SetStore(store_from_json(project));
+        SetStore(to_store(project));
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 

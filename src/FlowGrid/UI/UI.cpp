@@ -5,7 +5,6 @@
 
 #include "imgui_impl_opengl3.h" // TODO vulkan
 #include "imgui_impl_sdl3.h"
-#include "immer/map.hpp"
 #include "nlohmann/json.hpp"
 
 #include <SDL3/SDL.h>
@@ -239,8 +238,7 @@ void TickUi(const Drawable &app) {
     if (io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
-        Store new_store = imgui_settings.Set(UiContext.ImGui);
-        const auto &patch = CreatePatch(AppStore, new_store, imgui_settings.Path);
+        const auto &patch = imgui_settings.CreatePatch(UiContext.ImGui);
         if (!patch.Empty()) q(ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }

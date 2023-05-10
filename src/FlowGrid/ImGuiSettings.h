@@ -82,10 +82,12 @@ Member(
 Member(
     ImGuiSettings,
 
-    Store Set(ImGuiContext *ctx) const;
-    // Inverse of above constructor. `imgui_context.settings = this`
-    // Should behave just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
-    //  in this struct instead of the serialized .ini text format.
+    // Create a patch resulting from applying the current ImGui context.
+    Patch CreatePatch(ImGuiContext *ctx) const;
+
+    // `Apply` is basically `imgui_context.settings = this`.
+    // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
+    // in this struct instead of the serialized `.ini` text format.
     void Apply(ImGuiContext *ctx) const;
 
     Prop(DockNodeSettings, Nodes);

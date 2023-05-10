@@ -287,8 +287,6 @@ protected:
 };
 } // namespace Field
 
-struct Patch;
-
 // Store setters
 void Set(const Field::Base &, const Primitive &, TransientStore &);
 void Set(const StoreEntries &, TransientStore &);

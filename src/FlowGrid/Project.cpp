@@ -15,39 +15,13 @@
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
-bool Project::IsUserProjectPath(const fs::path &path) {
-    return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
-        fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
-}
-
-void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
-void Project::SaveCurrentProject() {
-    if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
-}
-
-void Project::Init() {
-    CurrentProjectPath = {};
-    ProjectHasChanges = false;
-    History = {ApplicationStore};
-    UiContext.IsWidgetGesturing = false;
-}
-
-std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
-    const string &ext = path.extension();
-    if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
-    return {};
-}
-
-void Project::SetHistoryIndex(Count index) {
-    History.SetIndex(index);
-    SetStore(History.CurrentStore());
-}
-
-Patch Project::SetStore(const Store &store) {
+// Main setter to modify the canonical application state store.
+// _All_ store assignments happen via this method.
+Patch SetStore(const Store &store) {
     const auto &patch = store::CreatePatch(AppStore, store);
     if (patch.Empty()) return {};
 
-    ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
+    store::Set(store);
     History.LatestUpdatedPaths = patch.Ops | views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;
 
@@ -71,6 +45,34 @@ Patch Project::SetStore(const Store &store) {
     for (auto *modified_field : modified_fields) modified_field->Update();
 
     return patch;
+}
+
+void SetHistoryIndex(Count index) {
+    History.SetIndex(index);
+    SetStore(History.CurrentStore());
+}
+
+bool Project::IsUserProjectPath(const fs::path &path) {
+    return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
+        fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
+}
+
+void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
+void Project::SaveCurrentProject() {
+    if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
+}
+
+void Project::Init() {
+    CurrentProjectPath = {};
+    ProjectHasChanges = false;
+    History = {AppStore};
+    UiContext.IsWidgetGesturing = false;
+}
+
+std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
+    const string &ext = path.extension();
+    if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
+    return {};
 }
 
 #include "AppPreferences.h"
@@ -139,7 +141,7 @@ void Project::OpenProject(const fs::path &path) {
             for (const auto &[partial_path, op] : patch.Ops) History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
         }
         SetStore(transient.persistent());
-        SetHistoryIndex(project["index"]);
+        ::SetHistoryIndex(project["index"]);
     }
 
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
@@ -190,13 +192,13 @@ static void ApplyAction(const ProjectAction &action) {
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
             if (History.Index == History.Size() - 1) {
                 if (!History.ActiveGesture.empty()) History.FinalizeGesture();
-                Project::SetHistoryIndex(History.Index - 1);
+                ::SetHistoryIndex(History.Index - 1);
             } else {
-                Project::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
+                ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
             }
         },
-        [&](const Actions::Redo &) { Project::SetHistoryIndex(History.Index + 1); },
-        [&](const Actions::SetHistoryIndex &a) { Project::SetHistoryIndex(a.index); },
+        [&](const Actions::Redo &) { ::SetHistoryIndex(History.Index + 1); },
+        [&](const Actions::SetHistoryIndex &a) { ::SetHistoryIndex(a.index); },
     );
 }
 
@@ -243,9 +245,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
-        if (std::holds_alternative<Actions::SaveCurrentProject>(action) && !CurrentProjectPath) {
-            action = Actions::ShowSaveProjectDialog{};
-        }
+        if (std::holds_alternative<Actions::SaveCurrentProject>(action) && !CurrentProjectPath) action = Actions::ShowSaveProjectDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
         force_finalize_gesture |= std::holds_alternative<ToggleValue>(action);
 
@@ -271,6 +271,6 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
 bool q(Action &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
-    if (flush) Project::RunQueuedActions(true); // ... unless the `flush` flag is provided, in which case we just finalize the gesture now.
+    if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
     return true;
 }

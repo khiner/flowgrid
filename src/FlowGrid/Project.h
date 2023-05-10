@@ -1,11 +1,15 @@
 #pragma once
 
 #include "nlohmann/json_fwd.hpp"
+#include <__filesystem/path.h>
 
 #include "ProjectConstants.h"
-#include "Store.h"
+
+namespace fs = std::filesystem;
 
 struct Project {
+    static void Init();
+
     static bool IsUserProjectPath(const fs::path &);
 
     static nlohmann::json GetProjectJson(ProjectFormat format = StateFormat);
@@ -15,12 +19,4 @@ struct Project {
     static void SaveCurrentProject();
 
     static void RunQueuedActions(bool force_finalize_gesture = false);
-
-    static void Init();
-
-    // Main setter to modify the canonical application state store.
-    // _All_ store assignments happen via this method.
-    static Patch SetStore(const Store &);
-
-    static void SetHistoryIndex(Count);
 };

@@ -299,6 +299,10 @@ void Set(const Field::Entries &, TransientStore &);
 void Set(const StorePath &, const vector<Primitive> &, TransientStore &);
 void Set(const StorePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
 
+// Overwrite the main application store.
+// This is the only place `ApplicationStore` is modified.
+void Set(const Store &);
+
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath = RootPath);
 void ApplyPatch(const Patch &, TransientStore &);
 

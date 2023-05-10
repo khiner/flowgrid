@@ -86,6 +86,10 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
         row++;
     }
 }
+
+void Set(const Store &store) {
+    ApplicationStore = store;
+}
 } // namespace store
 
 #include "imgui.h"

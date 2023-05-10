@@ -154,10 +154,10 @@ void Audio::Faust::FaustGraph::Style::ColorsFaust(TransientStore &store) const {
 
 void Audio::Faust::FaustGraph::Style::LayoutFlowGrid(TransientStore &store) const {
     static const auto DefaultLayoutEntries = LayoutFields | ranges::views::transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | ranges::to<const Field::Entries>;
-    Set(DefaultLayoutEntries, store);
+    store::Set(DefaultLayoutEntries, store);
 }
 void Audio::Faust::FaustGraph::Style::LayoutFaust(TransientStore &store) const {
-    Set(
+    store::Set(
         {
             {SequentialConnectionZigzag, true},
             {OrientationMark, true},
@@ -887,5 +887,5 @@ void Audio::Faust::Render() const {}
 
 Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateMember(parent, path_segment, name_help) {
-    ::Set(On, on, InitStore);
+    store::Set(On, on, InitStore);
 }

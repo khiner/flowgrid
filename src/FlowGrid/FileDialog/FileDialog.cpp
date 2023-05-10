@@ -88,7 +88,7 @@ void IGFD::InitializeDemo() {
 }
 
 void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
-    ::Set(
+    store::Set(
         {
             {Visible, true},
             {Title, data.title},

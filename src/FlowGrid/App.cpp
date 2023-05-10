@@ -118,14 +118,14 @@ void Matrix<T>::Update() {
 void State::Update(const StateAction &action, TransientStore &store) const {
     Match(
         action,
-        [&store](const SetValue &a) { ::Set(a.path, a.value, store); },
-        [&store](const SetValues &a) { ::Set(a.values, store); },
-        [&store](const SetVector &a) { ::Set(a.path, a.value, store); },
-        [&store](const SetMatrix &a) { ::Set(a.path, a.data, a.row_count, store); },
-        [&store](const ToggleValue &a) { ::Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
+        [&store](const SetValue &a) { store::Set(a.path, a.value, store); },
+        [&store](const SetValues &a) { store::Set(a.values, store); },
+        [&store](const SetVector &a) { store::Set(a.path, a.value, store); },
+        [&store](const SetMatrix &a) { store::Set(a.path, a.data, a.row_count, store); },
+        [&store](const ToggleValue &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
         [&store](const ApplyPatch &a) { store::ApplyPatch(a.patch, store); },
         [&](const OpenFileDialog &a) { FileDialog.Set(json::parse(a.dialog_json), store); },
-        [&](const CloseFileDialog &) { Set(FileDialog.Visible, false, store); },
+        [&](const CloseFileDialog &) { store::Set(FileDialog.Visible, false, store); },
         [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, store); },
         [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, store); },
         [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, store); },
@@ -169,8 +169,8 @@ void State::Update(const StateAction &action, TransientStore &store) const {
                 case 1: return Audio.Faust.Graph.Style.LayoutFaust(store);
             }
         },
-        [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), store); },
-        [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
+        [&](const OpenFaustFile &a) { store::Set(Audio.Faust.Code, FileIO::read(a.path), store); },
+        [&](const CloseApplication &) { store::Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
     );
 }
 

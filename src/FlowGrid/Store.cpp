@@ -48,8 +48,6 @@ void ApplyPatch(const Patch &patch, TransientStore &store) {
     }
 }
 
-} // namespace store
-
 // Transient modifiers
 void Set(const StorePath &path, const Primitive &value, TransientStore &store) { store.set(path, value); }
 void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
@@ -88,6 +86,7 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
         row++;
     }
 }
+} // namespace store
 
 #include "imgui.h"
 #include "implot.h"
@@ -158,7 +157,7 @@ Flags::Item::Item(const char *name_and_help) {
 
 namespace Field {
 PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value) : Base(parent, id, name_help) {
-    Set(*this, value, InitStore);
+    store::Set(*this, value, InitStore);
 }
 
 Primitive PrimitiveBase::Get() const { return store::Get(Path); }
@@ -373,12 +372,12 @@ const UInt *Colors::At(Count i) const { return dynamic_cast<const UInt *>(Childr
 U32 Colors::operator[](Count i) const { return *At(i); };
 void Colors::Set(const vector<ImVec4> &values, TransientStore &transient) const {
     for (Count i = 0; i < values.size(); i++) {
-        ::Set(*At(i), ConvertFloat4ToU32(values[i]), transient);
+        store::Set(*At(i), ConvertFloat4ToU32(values[i]), transient);
     }
 }
 void Colors::Set(const vector<std::pair<int, ImVec4>> &entries, TransientStore &transient) const {
     for (const auto &[i, v] : entries) {
-        ::Set(*At(i), ConvertFloat4ToU32(v), transient);
+        store::Set(*At(i), ConvertFloat4ToU32(v), transient);
     }
 }
 
@@ -437,7 +436,7 @@ void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
 Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
-    Set(Linked, linked, InitStore);
+    store::Set(Linked, linked, InitStore);
 }
 
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {

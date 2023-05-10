@@ -130,22 +130,22 @@ void Style::ImGuiStyle::ColorsClassic(TransientStore &store) const {
 void Style::ImPlotStyle::ColorsAuto(TransientStore &store) const {
     ImPlot::StyleColorsAuto(&ColorPresetBuffer[0]);
     Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 0.25f, store);
+    store::Set(MinorAlpha, 0.25f, store);
 }
 void Style::ImPlotStyle::ColorsDark(TransientStore &store) const {
     ImPlot::StyleColorsDark(&ColorPresetBuffer[0]);
     Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 0.25f, store);
+    store::Set(MinorAlpha, 0.25f, store);
 }
 void Style::ImPlotStyle::ColorsLight(TransientStore &store) const {
     ImPlot::StyleColorsLight(&ColorPresetBuffer[0]);
     Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 1, store);
+    store::Set(MinorAlpha, 1, store);
 }
 void Style::ImPlotStyle::ColorsClassic(TransientStore &store) const {
     ImPlot::StyleColorsClassic(&ColorPresetBuffer[0]);
     Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 0.5f, store);
+    store::Set(MinorAlpha, 0.5f, store);
 }
 
 void Style::FlowGridStyle::ColorsDark(TransientStore &store) const {

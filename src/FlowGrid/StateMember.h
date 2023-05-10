@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Primitive.h"
+#include "UI/Drawable.h"
 
 using std::string_view;
 
@@ -88,13 +89,6 @@ todo Try out replacing semicolon separators by e.g. commas.
         using StateMember::StateMember; \
         __VA_ARGS__;                    \
     };
-
-struct Drawable {
-    virtual void Draw() const; // Wraps around the internal `Render` function.
-
-protected:
-    virtual void Render() const = 0;
-};
 
 struct UIStateMember : StateMember, Drawable {
     using StateMember::StateMember;

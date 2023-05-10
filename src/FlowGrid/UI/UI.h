@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Drawable.h"
+
 struct ImGuiContext;
 struct ImPlotContext;
 struct ImFont;
@@ -29,7 +31,7 @@ struct UIContext {
 };
 
 UIContext CreateUi();
-void TickUi();
+void TickUi(const Drawable &app);
 void DestroyUi();
 
 extern UIContext UiContext; // Created in `main.cpp`

@@ -9,6 +9,7 @@ const State ApplicationState{};
 const State &s = ApplicationState; // Create the read-only state reference global.
 const fg::Style &fg::style = s.Style;
 const Audio &audio = s.Audio;
+const ImGuiSettings &imgui_settings = s.ImGuiSettings;
 
 UIContext UiContext{};
 
@@ -22,10 +23,10 @@ int main(int, const char **) {
 
     {
         // Relying on these imperatively-run side effects up front is not great.
-        TickUi(); // Rendering the first frame has side effects like creating dockspaces & windows.
+        TickUi(s); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the application state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        TickUi(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        TickUi(); // Another one seems to be needed to update selected tabs? (I think this happens when changes during initilization change scroll position or somesuch.)
+        TickUi(s); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        TickUi(s); // Another one seems to be needed to update selected tabs? (I think this happens when changes during initilization change scroll position or somesuch.)
         Project::RunQueuedActions(true);
     }
 
@@ -33,7 +34,7 @@ int main(int, const char **) {
     Project::SaveEmptyProject(); // Keep the canonical "empty" project up-to-date.
 
     while (s.UiProcess.Running) {
-        TickUi();
+        TickUi(s);
         Project::RunQueuedActions();
     }
 

@@ -92,3 +92,5 @@ Member(
     Prop(WindowSettings, Windows);
     Prop(TableSettings, Tables);
 );
+
+extern const ImGuiSettings &imgui_settings;

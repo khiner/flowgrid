@@ -1,3 +1,5 @@
+#include "UI.h"
+
 #include "imgui.h"
 #include "implot.h"
 
@@ -9,7 +11,8 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 
-#include "../App.h"
+#include "../ImGuiSettings.h"
+#include "../Style.h"
 
 #include "../FileDialog/FileDialog.h"
 #include "../Helper/String.h"
@@ -186,7 +189,7 @@ UIContext CreateUi() {
 }
 
 // Main UI tick function
-void TickUi() {
+void TickUi(const Drawable &app) {
     static int PrevFontIndex = 0;
     static float PrevFontScale = 1.0;
 
@@ -205,9 +208,12 @@ void TickUi() {
     }
 
     // Check if new UI settings need to be applied.
-    if (UiContext.ApplyFlags != UIContext::Flags_None) {
-        s.Apply(UiContext.ApplyFlags);
-        UiContext.ApplyFlags = UIContext::Flags_None;
+    auto &flags = UiContext.ApplyFlags;
+    if (flags != UIContext::Flags_None) {
+        if (flags & UIContext::Flags_ImGuiSettings) imgui_settings.Apply(UiContext.ImGui);
+        if (flags & UIContext::Flags_ImGuiStyle) style.ImGui.Apply(UiContext.ImGui);
+        if (flags & UIContext::Flags_ImPlotStyle) style.ImPlot.Apply(UiContext.ImPlot);
+        flags = UIContext::Flags_None;
     }
 
     for (const auto &[shortcut, action_id] : KeyMap) {
@@ -217,7 +223,7 @@ void TickUi() {
     }
 
     PrepareFrame();
-    if (style.ImGui.FontIndex != PrevFontIndex) {
+    if (PrevFontIndex != style.ImGui.FontIndex) {
         GetIO().FontDefault = GetIO().Fonts->Fonts[style.ImGui.FontIndex];
         PrevFontIndex = style.ImGui.FontIndex;
     }
@@ -226,15 +232,15 @@ void TickUi() {
         PrevFontScale = style.ImGui.FontScale;
     }
 
-    s.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
+    app.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
     RenderFrame(RenderContext);
 
     auto &io = GetIO();
     if (io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
-        Store new_store = s.ImGuiSettings.Set(UiContext.ImGui);
-        const auto &patch = CreatePatch(AppStore, new_store, s.ImGuiSettings.Path);
+        Store new_store = imgui_settings.Set(UiContext.ImGui);
+        const auto &patch = CreatePatch(AppStore, new_store, imgui_settings.Path);
         if (!patch.Empty()) q(ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }

@@ -113,7 +113,6 @@ UIMember(
         true};
 
     void Update(const StateAction &, TransientStore &) const;
-    void Apply(UIContext::Flags) const;
 
     WindowMember_(
         UIProcess,

@@ -118,19 +118,12 @@ void Matrix<T>::Update() {
 void State::Update(const StateAction &action, TransientStore &store) const {
     Match(
         action,
-        [&store](const SetValue &a) { store.set(a.path, a.value); },
+        [&store](const SetValue &a) { ::Set(a.path, a.value, store); },
         [&store](const SetValues &a) { ::Set(a.values, store); },
         [&store](const SetVector &a) { ::Set(a.path, a.value, store); },
         [&store](const SetMatrix &a) { ::Set(a.path, a.data, a.row_count, store); },
-        [&store](const ToggleValue &a) { store.set(a.path, !std::get<bool>(AppStore.at(a.path))); },
-        [&store](const ApplyPatch &a) {
-            const auto &patch = a.patch;
-            for (const auto &[partial_path, op] : patch.Ops) {
-                const auto &path = patch.BasePath / partial_path;
-                if (op.Op == AddOp || op.Op == ReplaceOp) store.set(path, *op.Value);
-                else if (op.Op == RemoveOp) store.erase(path);
-            }
-        },
+        [&store](const ToggleValue &a) { ::Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
+        [&store](const ApplyPatch &a) { store::ApplyPatch(a.patch, store); },
         [&](const OpenFileDialog &a) { FileDialog.Set(json::parse(a.dialog_json), store); },
         [&](const CloseFileDialog &) { Set(FileDialog.Visible, false, store); },
         [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, store); },
@@ -481,7 +474,7 @@ Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) const {
     Windows.Set(ctx->SettingsWindows, store);
     Tables.Set(ctx->SettingsTables, store);
 
-    return ::CreatePatch(AppStore, store.persistent(), Path);
+    return store::CreatePatch(AppStore, store.persistent(), Path);
 }
 
 void ImGuiSettings::Apply(ImGuiContext *ctx) const {

@@ -20,9 +20,38 @@ void OnApplicationStateInitialized() {
 }
 
 Primitive Get(const StorePath &path) { return InitStore.empty() ? AppStore.at(path) : InitStore.at(path); }
+
+Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath) {
+    PatchOps ops{};
+    diff(
+        before,
+        after,
+        [&](auto const &added_element) {
+            ops[added_element.first.lexically_relative(BasePath)] = {AddOp, added_element.second, {}};
+        },
+        [&](auto const &removed_element) {
+            ops[removed_element.first.lexically_relative(BasePath)] = {RemoveOp, {}, removed_element.second};
+        },
+        [&](auto const &old_element, auto const &new_element) {
+            ops[old_element.first.lexically_relative(BasePath)] = {ReplaceOp, new_element.second, old_element.second};
+        }
+    );
+
+    return {ops, BasePath};
+}
+
+void ApplyPatch(const Patch &patch, TransientStore &store) {
+    for (const auto &[partial_path, op] : patch.Ops) {
+        const auto &path = patch.BasePath / partial_path;
+        if (op.Op == AddOp || op.Op == ReplaceOp) store.set(path, *op.Value);
+        else if (op.Op == RemoveOp) store.erase(path);
+    }
+}
+
 } // namespace store
 
 // Transient modifiers
+void Set(const StorePath &path, const Primitive &value, TransientStore &store) { store.set(path, value); }
 void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store.set(field.Path, value); }
 void Set(const StoreEntries &values, TransientStore &store) {
     for (const auto &[path, value] : values) store.set(path, value);
@@ -58,25 +87,6 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
         while (store.count(path / to_string(row) / to_string(col))) store.erase(path / to_string(row) / to_string(col++));
         row++;
     }
-}
-
-Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath) {
-    PatchOps ops{};
-    diff(
-        before,
-        after,
-        [&](auto const &added_element) {
-            ops[added_element.first.lexically_relative(BasePath)] = {AddOp, added_element.second, {}};
-        },
-        [&](auto const &removed_element) {
-            ops[removed_element.first.lexically_relative(BasePath)] = {RemoveOp, {}, removed_element.second};
-        },
-        [&](auto const &old_element, auto const &new_element) {
-            ops[old_element.first.lexically_relative(BasePath)] = {ReplaceOp, new_element.second, old_element.second};
-        }
-    );
-
-    return {ops, BasePath};
 }
 
 #include "imgui.h"

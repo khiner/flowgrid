@@ -288,18 +288,21 @@ protected:
 } // namespace Field
 
 // Store setters
+void Set(const StorePath &, const Primitive &, TransientStore &);
 void Set(const Field::Base &, const Primitive &, TransientStore &);
 void Set(const StoreEntries &, TransientStore &);
 void Set(const Field::Entries &, TransientStore &);
 void Set(const StorePath &, const vector<Primitive> &, TransientStore &);
 void Set(const StorePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
 
-Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath = RootPath);
-
 namespace store {
 void OnApplicationStateInitialized();
 
 Primitive Get(const StorePath &);
+
+void ApplyPatch(const Patch &, TransientStore &);
+Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath = RootPath);
+
 } // namespace store
 
 extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.

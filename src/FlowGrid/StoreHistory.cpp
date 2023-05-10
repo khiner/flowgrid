@@ -39,7 +39,7 @@ bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || Index > 0;
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 const Store &StoreHistory::CurrentStore() const { return Records[Index].Store; }
-Patch StoreHistory::CreatePatch(Count index) const { return ::CreatePatch(Records[index - 1].Store, Records[index].Store); }
+Patch StoreHistory::CreatePatch(Count index) const { return store::CreatePatch(Records[index - 1].Store, Records[index].Store); }
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
     const auto &[time, store, gesture] = Records[index];
@@ -68,7 +68,7 @@ void StoreHistory::FinalizeGesture() {
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;
 
-    const auto &patch = ::CreatePatch(AppStore, Records[Index].Store);
+    const auto &patch = store::CreatePatch(AppStore, Records[Index].Store);
     if (patch.Empty()) return;
 
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history

@@ -44,7 +44,7 @@ void Project::SetHistoryIndex(Count index) {
 }
 
 Patch Project::SetStore(const Store &store) {
-    const auto &patch = CreatePatch(AppStore, store);
+    const auto &patch = store::CreatePatch(AppStore, store);
     if (patch.Empty()) return {};
 
     ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
@@ -133,7 +133,7 @@ void Project::OpenProject(const fs::path &path) {
                 s.Update(action_moment.first, transient);
             }
             const auto after_store = transient.persistent();
-            const auto &patch = CreatePatch(before_store, after_store);
+            const auto &patch = store::CreatePatch(before_store, after_store);
             const auto &gesture_time = gesture.back().second;
             History.Add(gesture_time, after_store, gesture); // todo save/load gesture commit times
             for (const auto &[partial_path, op] : patch.Ops) History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);

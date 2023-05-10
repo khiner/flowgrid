@@ -12,19 +12,6 @@
 #include "Helper/File.h"
 #include "StoreHistory.h"
 
-namespace views = ranges::views;
-using ranges::to, views::transform;
-
-inline static const std::map<Project::Format, string> ExtensionForProjectFormat{{Project::StateFormat, ".fls"}, {Project::ActionFormat, ".fla"}};
-inline static const auto ProjectFormatForExtension = ExtensionForProjectFormat | transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();
-const auto Project::AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
-inline static const string AllProjectExtensionsDelimited = Project::AllProjectExtensions | views::join(',') | to<string>;
-
-inline static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(Project::StateFormat));
-// The default project is a user-created project that loads on app start, instead of the empty project.
-// As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-inline static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(Project::ActionFormat));
-
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
@@ -111,7 +98,7 @@ void Project::Init() {
     UiContext.IsWidgetGesturing = false;
 }
 
-std::optional<Project::Format> GetProjectFormat(const fs::path &path) {
+std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();
     if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
     return {};
@@ -127,7 +114,7 @@ Patch Project::SetStore(const Store &store) {
     if (patch.Empty()) return {};
 
     ApplicationStore = store; // This is the only place `ApplicationStore` is modified.
-    History.LatestUpdatedPaths = patch.Ops | transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
+    History.LatestUpdatedPaths = patch.Ops | views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;
 
     static std::set<Base *> modified_fields;
@@ -143,7 +130,7 @@ Patch Project::SetStore(const Store &store) {
 
         // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        if (path.string().rfind(s.ImGuiSettings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
         else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiStyle;
         else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
     }
@@ -185,7 +172,7 @@ Store store_from_json(const json &j) {
     return store.persistent();
 }
 
-json Project::GetProjectJson(const Format format) {
+json Project::GetProjectJson(const ProjectFormat format) {
     switch (format) {
         case StateFormat: return AppStore;
         case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};

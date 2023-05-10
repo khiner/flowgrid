@@ -1,24 +1,14 @@
 #pragma once
 
 #include "nlohmann/json_fwd.hpp"
-#include <set>
 
+#include "ProjectConstants.h"
 #include "Store.h"
 
-inline static const fs::path InternalPath = ".flowgrid";
-inline static const string FaustDspFileExtension = ".dsp";
-
 struct Project {
-    enum Format {
-        StateFormat,
-        ActionFormat
-    };
-
-    static const std::set<string> AllProjectExtensions;
-
     static bool IsUserProjectPath(const fs::path &);
 
-    static nlohmann::json GetProjectJson(Format format = StateFormat);
+    static nlohmann::json GetProjectJson(ProjectFormat format = StateFormat);
     static void SaveEmptyProject();
     static void OpenProject(const fs::path &);
     static bool SaveProject(const fs::path &);

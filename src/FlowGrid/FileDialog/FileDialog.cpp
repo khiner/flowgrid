@@ -6,7 +6,7 @@
 #include "ImGuiFileDialog.h"
 
 #include "../Helper/File.h"
-#include "../Project.h" // Only used for extension constants.
+#include "../ProjectConstants.h"
 #include "../UI/Widgets.h"
 
 #include <imgui_internal.h>
@@ -118,7 +118,7 @@ void FileDialog::Render() const {
         if (Dialog->IsOk()) {
             const fs::path &file_path = Dialog->GetFilePathName();
             const string &extension = file_path.extension();
-            if (Project::AllProjectExtensions.find(extension) != Project::AllProjectExtensions.end()) {
+            if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
                 // TODO provide an option to save with undo state.
                 //   This file format would be a json list of diffs.
                 //   The file would generally be larger, and the load time would be slower,

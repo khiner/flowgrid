@@ -563,7 +563,7 @@ void ProjectPreview::Render() const {
 
     Separator();
 
-    const json project_json = Project::GetProjectJson(Project::Format(int(Format)));
+    const json project_json = Project::GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else JsonTree("", project_json, style.FlowGrid.Colors[FlowGridCol_HighlightText], JsonTreeNodeFlags_DefaultOpen);
 }

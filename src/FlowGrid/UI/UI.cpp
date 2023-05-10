@@ -105,7 +105,7 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
     // - Read 'docs/FONTS.md' for more instructions and details.
-    io.FontGlobalScale = s.Style.ImGui.FontScale / FontAtlasScale;
+    io.FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
     ui_context.Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
     ui_context.Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
     io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * FontAtlasScale);
@@ -217,13 +217,13 @@ void TickUi() {
     }
 
     PrepareFrame();
-    if (s.Style.ImGui.FontIndex != PrevFontIndex) {
-        GetIO().FontDefault = GetIO().Fonts->Fonts[s.Style.ImGui.FontIndex];
-        PrevFontIndex = s.Style.ImGui.FontIndex;
+    if (style.ImGui.FontIndex != PrevFontIndex) {
+        GetIO().FontDefault = GetIO().Fonts->Fonts[style.ImGui.FontIndex];
+        PrevFontIndex = style.ImGui.FontIndex;
     }
-    if (PrevFontScale != s.Style.ImGui.FontScale) {
-        GetIO().FontGlobalScale = s.Style.ImGui.FontScale / FontAtlasScale;
-        PrevFontScale = s.Style.ImGui.FontScale;
+    if (PrevFontScale != style.ImGui.FontScale) {
+        GetIO().FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
+        PrevFontScale = style.ImGui.FontScale;
     }
 
     s.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.

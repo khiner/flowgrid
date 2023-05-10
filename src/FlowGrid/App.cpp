@@ -106,7 +106,7 @@ void Matrix<T>::Update() {
 } // namespace Field
 
 #include "imgui.h"
-#include "imgui_memory_editor.h"
+#include "imgui_internal.h"
 #include "implot.h"
 #include "implot_internal.h"
 
@@ -426,9 +426,6 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
     ctx->SettingsDirty = false;
 }
 
-vector<ImVec4> fg::Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
-vector<ImVec4> fg::Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
-
 void State::Apply(const UIContext::Flags flags) const {
     if (flags == UIContext::Flags_None) return;
 
@@ -453,7 +450,9 @@ ImRect RowItemRatioRect(float ratio) {
     return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
 }
 
-void FillRowItemBg(const U32 col = s.Style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
+using namespace FlowGrid;
+
+void FillRowItemBg(const U32 col = style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
     const ImRect &rect = {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
     GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
@@ -465,13 +464,13 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
     const auto &parent_path = path == RootPath ? path : path.parent_path();
     const bool is_array_item = StringHelper::IsInteger(leaf_name);
     const int array_index = is_array_item ? std::stoi(leaf_name) : -1;
-    const bool is_imgui_color = parent_path == s.Style.ImGui.Colors.Path;
-    const bool is_implot_color = parent_path == s.Style.ImPlot.Colors.Path;
-    const bool is_flowgrid_color = parent_path == s.Style.FlowGrid.Colors.Path;
+    const bool is_imgui_color = parent_path == style.ImGui.Colors.Path;
+    const bool is_implot_color = parent_path == style.ImPlot.Colors.Path;
+    const bool is_flowgrid_color = parent_path == style.FlowGrid.Colors.Path;
     const string label = LabelMode == Annotated ?
-        (is_imgui_color        ? s.Style.ImGui.Colors.Child(array_index)->Name :
-             is_implot_color   ? s.Style.ImPlot.Colors.Child(array_index)->Name :
-             is_flowgrid_color ? s.Style.FlowGrid.Colors.Child(array_index)->Name :
+        (is_imgui_color        ? style.ImGui.Colors.Child(array_index)->Name :
+             is_implot_color   ? style.ImPlot.Colors.Child(array_index)->Name :
+             is_flowgrid_color ? style.FlowGrid.Colors.Child(array_index)->Name :
              is_array_item     ? leaf_name :
                                  string(key)) :
         string(key);
@@ -486,8 +485,8 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
     // Flash background color of nodes when its corresponding path updates.
     const auto &latest_update_time = History.LatestUpdateTime(path);
     if (latest_update_time) {
-        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / s.Style.FlowGrid.FlashDurationSec;
-        ImColor flash_color = s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
+        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / style.FlowGrid.FlashDurationSec;
+        ImColor flash_color = style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
@@ -501,14 +500,14 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
     if (value.is_null()) {
         TextUnformatted(label.c_str());
     } else if (value.is_object()) {
-        if (fg::JsonTreeNode(label, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
+        if (JsonTreeNode(label, style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 StateJsonTree(it.key(), *it, path / it.key());
             }
             TreePop();
         }
     } else if (value.is_array()) {
-        if (fg::JsonTreeNode(label, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
+        if (JsonTreeNode(label, style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
             Count i = 0;
             for (const auto &it : value) {
                 StateJsonTree(to_string(i), it, path / to_string(i));
@@ -524,6 +523,8 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StateP
 void StateViewer::Render() const {
     StateJsonTree("State", Project::GetProjectJson());
 }
+
+#include "imgui_memory_editor.h"
 
 void StateMemoryEditor::Render() const {
     static MemoryEditor memory_editor;
@@ -572,365 +573,7 @@ void ProjectPreview::Render() const {
 
     const json project_json = Project::GetProjectJson(Project::Format(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
-    else fg::JsonTree("", project_json, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText], JsonTreeNodeFlags_DefaultOpen);
-}
-
-//-----------------------------------------------------------------------------
-// [SECTION] Style editors
-//-----------------------------------------------------------------------------
-
-using namespace fg;
-
-const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
-    switch (idx) {
-        case FlowGridCol_GestureIndicator: return "GestureIndicator";
-        case FlowGridCol_HighlightText: return "HighlightText";
-        default: return "Unknown";
-    }
-}
-
-void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
-    auto &style = ctx->Style;
-    style.Alpha = Alpha;
-    style.DisabledAlpha = DisabledAlpha;
-    style.WindowPadding = WindowPadding;
-    style.WindowRounding = WindowRounding;
-    style.WindowBorderSize = WindowBorderSize;
-    style.WindowMinSize = WindowMinSize;
-    style.WindowTitleAlign = WindowTitleAlign;
-    style.WindowMenuButtonPosition = WindowMenuButtonPosition;
-    style.ChildRounding = ChildRounding;
-    style.ChildBorderSize = ChildBorderSize;
-    style.PopupRounding = PopupRounding;
-    style.PopupBorderSize = PopupBorderSize;
-    style.FramePadding = FramePadding;
-    style.FrameRounding = FrameRounding;
-    style.FrameBorderSize = FrameBorderSize;
-    style.ItemSpacing = ItemSpacing;
-    style.ItemInnerSpacing = ItemInnerSpacing;
-    style.CellPadding = CellPadding;
-    style.TouchExtraPadding = TouchExtraPadding;
-    style.IndentSpacing = IndentSpacing;
-    style.ColumnsMinSpacing = ColumnsMinSpacing;
-    style.ScrollbarSize = ScrollbarSize;
-    style.ScrollbarRounding = ScrollbarRounding;
-    style.GrabMinSize = GrabMinSize;
-    style.GrabRounding = GrabRounding;
-    style.LogSliderDeadzone = LogSliderDeadzone;
-    style.TabRounding = TabRounding;
-    style.TabBorderSize = TabBorderSize;
-    style.TabMinWidthForCloseButton = TabMinWidthForCloseButton;
-    style.ColorButtonPosition = ColorButtonPosition;
-    style.ButtonTextAlign = ButtonTextAlign;
-    style.SelectableTextAlign = SelectableTextAlign;
-    style.DisplayWindowPadding = DisplayWindowPadding;
-    style.DisplaySafeAreaPadding = DisplaySafeAreaPadding;
-    style.MouseCursorScale = MouseCursorScale;
-    style.AntiAliasedLines = AntiAliasedLines;
-    style.AntiAliasedLinesUseTex = AntiAliasedLinesUseTex;
-    style.AntiAliasedFill = AntiAliasedFill;
-    style.CurveTessellationTol = CurveTessellationTol;
-    style.CircleTessellationMaxError = CircleTessellationMaxError;
-    for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = ColorConvertU32ToFloat4(Colors[i]);
-}
-
-void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
-    auto &style = ctx->Style;
-    style.LineWeight = LineWeight;
-    style.Marker = Marker;
-    style.MarkerSize = MarkerSize;
-    style.MarkerWeight = MarkerWeight;
-    style.FillAlpha = FillAlpha;
-    style.ErrorBarSize = ErrorBarSize;
-    style.ErrorBarWeight = ErrorBarWeight;
-    style.DigitalBitHeight = DigitalBitHeight;
-    style.DigitalBitGap = DigitalBitGap;
-    style.PlotBorderSize = PlotBorderSize;
-    style.MinorAlpha = MinorAlpha;
-    style.MajorTickLen = MajorTickLen;
-    style.MinorTickLen = MinorTickLen;
-    style.MajorTickSize = MajorTickSize;
-    style.MinorTickSize = MinorTickSize;
-    style.MajorGridSize = MajorGridSize;
-    style.MinorGridSize = MinorGridSize;
-    style.PlotPadding = PlotPadding;
-    style.LabelPadding = LabelPadding;
-    style.LegendPadding = LegendPadding;
-    style.LegendInnerPadding = LegendInnerPadding;
-    style.LegendSpacing = LegendSpacing;
-    style.MousePosPadding = MousePosPadding;
-    style.AnnotationPadding = AnnotationPadding;
-    style.FitPadding = FitPadding;
-    style.PlotDefaultSize = PlotDefaultSize;
-    style.PlotMinSize = PlotMinSize;
-    style.Colormap = ImPlotColormap_Deep; // todo configurable
-    style.UseLocalTime = UseLocalTime;
-    style.UseISO8601 = UseISO8601;
-    style.Use24HourClock = Use24HourClock;
-    for (int i = 0; i < ImPlotCol_COUNT; i++) style.Colors[i] = Colors::ConvertU32ToFloat4(Colors[i]);
-    ImPlot::BustItemCache();
-}
-
-Style::ImGuiStyle::ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help)
-    : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(InitStore);
-}
-Style::ImPlotStyle::ImPlotStyle(StateMember *parent, string_view path_segment, string_view name_help)
-    : UIStateMember(parent, path_segment, name_help) {
-    ColorsAuto(InitStore);
-}
-Style::FlowGridStyle::FlowGridStyle(StateMember *parent, string_view path_segment, string_view name_help)
-    : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(InitStore);
-}
-
-void Style::ImGuiStyle::ColorsDark(TransientStore &store) const {
-    ImGui::StyleColorsDark(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-}
-void Style::ImGuiStyle::ColorsLight(TransientStore &store) const {
-    ImGui::StyleColorsLight(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-}
-void Style::ImGuiStyle::ColorsClassic(TransientStore &store) const {
-    ImGui::StyleColorsClassic(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-}
-
-void Style::ImPlotStyle::ColorsAuto(TransientStore &store) const {
-    ImPlot::StyleColorsAuto(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 0.25f, store);
-}
-void Style::ImPlotStyle::ColorsDark(TransientStore &store) const {
-    ImPlot::StyleColorsDark(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 0.25f, store);
-}
-void Style::ImPlotStyle::ColorsLight(TransientStore &store) const {
-    ImPlot::StyleColorsLight(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 1, store);
-}
-void Style::ImPlotStyle::ColorsClassic(TransientStore &store) const {
-    ImPlot::StyleColorsClassic(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    Set(MinorAlpha, 0.5f, store);
-}
-
-void Style::FlowGridStyle::ColorsDark(TransientStore &store) const {
-    Colors.Set(
-        {
-            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        },
-        store
-    );
-}
-void Style::FlowGridStyle::ColorsLight(TransientStore &store) const {
-    Colors.Set(
-        {
-            {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
-            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        },
-        store
-    );
-}
-void Style::FlowGridStyle::ColorsClassic(TransientStore &store) const {
-    Colors.Set(
-        {
-            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        },
-        store
-    );
-}
-
-Style::ImGuiStyle::ImGuiColors::ImGuiColors(StateMember *parent, string_view path_segment, string_view name_help)
-    : Colors(parent, path_segment, name_help, ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
-Style::ImPlotStyle::ImPlotColors::ImPlotColors(StateMember *parent, string_view path_segment, string_view name_help)
-    : Colors(parent, path_segment, name_help, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
-
-void Style::ImGuiStyle::Render() const {
-    static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(SetImGuiColorStyle{style_idx});
-
-    const auto &io = GetIO();
-    const auto *font_current = GetFont();
-    if (BeginCombo("Fonts", font_current->GetDebugName())) {
-        for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
-            const auto *font = io.Fonts->Fonts[n];
-            PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) q(SetValue{FontIndex.Path, n});
-            PopID();
-        }
-        EndCombo();
-    }
-
-    // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
-    {
-        bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) q(SetValue{WindowBorderSize.Path, border ? 1 : 0});
-    }
-    SameLine();
-    {
-        bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) q(SetValue{FrameBorderSize.Path, border ? 1 : 0});
-    }
-    SameLine();
-    {
-        bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) q(SetValue{PopupBorderSize.Path, border ? 1 : 0});
-    }
-
-    Separator();
-
-    if (BeginTabBar("", ImGuiTabBarFlags_None)) {
-        if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Text("Main");
-            WindowPadding.Draw();
-            FramePadding.Draw();
-            CellPadding.Draw();
-            ItemSpacing.Draw();
-            ItemInnerSpacing.Draw();
-            TouchExtraPadding.Draw();
-            IndentSpacing.Draw();
-            ScrollbarSize.Draw();
-            GrabMinSize.Draw();
-
-            Text("Borders");
-            WindowBorderSize.Draw();
-            ChildBorderSize.Draw();
-            PopupBorderSize.Draw();
-            FrameBorderSize.Draw();
-            TabBorderSize.Draw();
-
-            Text("Rounding");
-            WindowRounding.Draw();
-            ChildRounding.Draw();
-            FrameRounding.Draw();
-            PopupRounding.Draw();
-            ScrollbarRounding.Draw();
-            GrabRounding.Draw();
-            LogSliderDeadzone.Draw();
-            TabRounding.Draw();
-
-            Text("Alignment");
-            WindowTitleAlign.Draw();
-            WindowMenuButtonPosition.Draw();
-            ColorButtonPosition.Draw();
-            ButtonTextAlign.Draw();
-            SelectableTextAlign.Draw();
-
-            Text("Safe Area Padding");
-            DisplaySafeAreaPadding.Draw();
-
-            EndTabItem();
-        }
-        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Colors.Draw();
-        }
-        if (BeginTabItem("Fonts")) {
-            ShowFontAtlas(io.Fonts);
-
-            PushItemWidth(GetFontSize() * 8);
-            FontScale.Draw();
-            PopItemWidth();
-
-            EndTabItem();
-        }
-        if (BeginTabItem("Rendering", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            AntiAliasedLines.Draw();
-            AntiAliasedLinesUseTex.Draw();
-            AntiAliasedFill.Draw();
-            PushItemWidth(GetFontSize() * 8);
-            CurveTessellationTol.Draw();
-
-            // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-            CircleTessellationMaxError.Draw();
-            if (IsItemActive()) {
-                SetNextWindowPos(GetCursorScreenPos());
-                BeginTooltip();
-                TextUnformatted("(R = radius, N = number of segments)");
-                Spacing();
-                ImDrawList *draw_list = GetWindowDrawList();
-                const float min_widget_width = CalcTextSize("N: MMM\nR: MMM").x;
-                for (int n = 0; n < 8; n++) {
-                    const float RAD_MIN = 5, RAD_MAX = 70;
-                    const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * float(n) / 7.0f;
-
-                    BeginGroup();
-
-                    Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
-
-                    const float canvas_width = std::max(min_widget_width, rad * 2);
-                    draw_list->AddCircle(GetCursorScreenPos() + ImVec2{floorf(canvas_width * 0.5f), floorf(RAD_MAX)}, rad, GetColorU32(ImGuiCol_Text));
-                    Dummy({canvas_width, RAD_MAX * 2});
-
-                    EndGroup();
-                    SameLine();
-                }
-                EndTooltip();
-            }
-            SameLine();
-            HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
-
-            Alpha.Draw();
-            DisabledAlpha.Draw();
-            PopItemWidth();
-
-            EndTabItem();
-        }
-
-        EndTabBar();
-    }
-}
-
-void Style::ImPlotStyle::Render() const {
-    static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) q(SetImPlotColorStyle{style_idx});
-
-    if (BeginTabBar("")) {
-        if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Text("Item Styling");
-            LineWeight.Draw();
-            MarkerSize.Draw();
-            MarkerWeight.Draw();
-            FillAlpha.Draw();
-            ErrorBarSize.Draw();
-            ErrorBarWeight.Draw();
-            DigitalBitHeight.Draw();
-            DigitalBitGap.Draw();
-
-            Text("Plot Styling");
-            PlotBorderSize.Draw();
-            MinorAlpha.Draw();
-            MajorTickLen.Draw();
-            MinorTickLen.Draw();
-            MajorTickSize.Draw();
-            MinorTickSize.Draw();
-            MajorGridSize.Draw();
-            MinorGridSize.Draw();
-            PlotDefaultSize.Draw();
-            PlotMinSize.Draw();
-
-            Text("Plot Padding");
-            PlotPadding.Draw();
-            LabelPadding.Draw();
-            LegendPadding.Draw();
-            LegendInnerPadding.Draw();
-            LegendSpacing.Draw();
-            MousePosPadding.Draw();
-            AnnotationPadding.Draw();
-            FitPadding.Draw();
-
-            EndTabItem();
-        }
-        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Colors.Draw();
-        }
-        EndTabBar();
-    }
+    else JsonTree("", project_json, style.FlowGrid.Colors[FlowGridCol_HighlightText], JsonTreeNodeFlags_DefaultOpen);
 }
 
 void Style::FlowGridStyle::Render() const {
@@ -960,10 +603,6 @@ void Style::FlowGridStyle::Render() const {
     }
 }
 
-//-----------------------------------------------------------------------------
-// [SECTION] Other windows
-//-----------------------------------------------------------------------------
-
 #include "AppPreferences.h"
 
 void OpenRecentProject::MenuItem() const {
@@ -992,21 +631,6 @@ void Demo::ImGuiDemo::Render() const {
 void Demo::ImPlotDemo::Render() const {
     ImPlot::ShowDemoWindow();
 }
-void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
-    ::Set(
-        {
-            {Visible, true},
-            {Title, data.title},
-            {Filters, data.filters},
-            {FilePath, data.file_path},
-            {DefaultFileName, data.default_file_name},
-            {SaveMode, data.save_mode},
-            {MaxNumSelections, data.max_num_selections},
-            {Flags, data.flags},
-        },
-        store
-    );
-}
 
 #include "Action/ActionJson.h"
 
@@ -1016,7 +640,7 @@ void ShowGesture(const Gesture &gesture) {
         JsonTree(
             std::format("{}: {}", action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()),
             json(action)[1],
-            s.Style.FlowGrid.Colors[FlowGridCol_HighlightText],
+            style.FlowGrid.Colors[FlowGridCol_HighlightText],
             JsonTreeNodeFlags_None,
             to_string(action_index).c_str()
         );
@@ -1033,7 +657,7 @@ void Metrics::FlowGridMetrics::Render() const {
         if (ActiveGesturePresent || widget_gesturing) {
             // Gesture completion progress bar
             const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec(s.ApplicationSettings.GestureDurationSec) / s.ApplicationSettings.GestureDurationSec);
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, s.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
             const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
             if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -1080,7 +704,7 @@ void Metrics::FlowGridMetrics::Render() const {
                         TreePop();
                     }
                     if (TreeNode("State")) {
-                        JsonTree("", store_record, s.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+                        JsonTree("", store_record, style.FlowGrid.Colors[FlowGridCol_HighlightText]);
                         TreePop();
                     }
                     TreePop();
@@ -1167,7 +791,7 @@ void Audio::Graph::RenderConnections() const {
         const string ellipsified_label = Ellipsify(string(label), label_size);
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_count, -max_label_w});
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, source_node->ImGuiLabel.c_str());
+        const auto label_interaction_flags = InvisibleButton({cell_size, max_label_w}, source_node->ImGuiLabel.c_str());
         ImPlot::AddTextVertical(
             GetWindowDrawList(),
             grid_top_left + ImVec2{(cell_size + cell_gap) * source_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
@@ -1187,7 +811,7 @@ void Audio::Graph::RenderConnections() const {
         const string ellipsified_label = Ellipsify(string(label), label_size);
 
         SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * dest_i});
-        const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, dest_node->ImGuiLabel.c_str());
+        const auto label_interaction_flags = InvisibleButton({max_label_w, cell_size}, dest_node->ImGuiLabel.c_str());
         const float label_w = CalcTextSize(ellipsified_label.c_str()).x;
         SetCursorPos(GetCursorPos() + ImVec2{max_label_w - label_w - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
         TextUnformatted(ellipsified_label.c_str());
@@ -1197,7 +821,7 @@ void Audio::Graph::RenderConnections() const {
         for (Count source_i = 0; source_i < source_count; source_i++) {
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
-            const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
+            const auto flags = InvisibleButton({cell_size, cell_size}, "Cell");
             if (flags & InteractionFlags_Clicked) q(SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)});
 
             const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));

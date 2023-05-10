@@ -87,6 +87,22 @@ void IGFD::InitializeDemo() {
 #endif
 }
 
+void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
+    ::Set(
+        {
+            {Visible, true},
+            {Title, data.title},
+            {Filters, data.filters},
+            {FilePath, data.file_path},
+            {DefaultFileName, data.default_file_name},
+            {SaveMode, data.save_mode},
+            {MaxNumSelections, data.max_num_selections},
+            {Flags, data.flags},
+        },
+        store
+    );
+}
+
 void OpenDialog(const FileDialogData &data) { q(OpenFileDialog{json(data).dump()}); }
 
 void FileDialog::Render() const {

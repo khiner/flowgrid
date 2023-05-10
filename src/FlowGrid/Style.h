@@ -2,6 +2,11 @@
 
 #include "WindowMember.h"
 
+#include "UI/Styling.h"
+
+struct ImGuiContext;
+struct ImPlotContext;
+
 // Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
 // Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.
 enum SliderFlags_ {
@@ -178,4 +183,6 @@ struct Style : TabsWindow {
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
     Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
 };
+
+extern const Style &style;
 } // namespace FlowGrid

@@ -9,6 +9,15 @@ static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up textur
 using std::string;
 struct ImVec2;
 
+enum Dir_ {
+    Dir_None = -1,
+    Dir_Left = 0,
+    Dir_Right = 1,
+    Dir_Up = 2,
+    Dir_Down = 3,
+    Dir_COUNT
+};
+
 enum FlowGridCol_ {
     FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered

@@ -18,15 +18,6 @@ constexpr int IO_Count = 2;
 
 string to_string(IO io, bool shorten = false);
 
-enum Dir_ {
-    Dir_None = -1,
-    Dir_Left = 0,
-    Dir_Right = 1,
-    Dir_Up = 2,
-    Dir_Down = 3,
-    Dir_COUNT
-};
-
 enum FaustGraphHoverFlags_ {
     FaustGraphHoverFlags_None = 0,
     FaustGraphHoverFlags_ShowRect = 1 << 0,

@@ -111,6 +111,75 @@ void Matrix<T>::Update() {
 #include "implot_internal.h"
 
 #include "App.h"
+#include "FileDialog/FileDialogDataJson.h"
+#include "Helper/File.h"
+#include "ProjectConstants.h"
+
+void State::Update(const StateAction &action, TransientStore &store) const {
+    Match(
+        action,
+        [&store](const SetValue &a) { store.set(a.path, a.value); },
+        [&store](const SetValues &a) { ::Set(a.values, store); },
+        [&store](const SetVector &a) { ::Set(a.path, a.value, store); },
+        [&store](const SetMatrix &a) { ::Set(a.path, a.data, a.row_count, store); },
+        [&store](const ToggleValue &a) { store.set(a.path, !std::get<bool>(AppStore.at(a.path))); },
+        [&store](const ApplyPatch &a) {
+            const auto &patch = a.patch;
+            for (const auto &[partial_path, op] : patch.Ops) {
+                const auto &path = patch.BasePath / partial_path;
+                if (op.Op == AddOp || op.Op == ReplaceOp) store.set(path, *op.Value);
+                else if (op.Op == RemoveOp) store.erase(path);
+            }
+        },
+        [&](const OpenFileDialog &a) { FileDialog.Set(json::parse(a.dialog_json), store); },
+        [&](const CloseFileDialog &) { Set(FileDialog.Visible, false, store); },
+        [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, store); },
+        [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, store); },
+        [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, store); },
+        [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, store); },
+        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}, store); },
+
+        // todo enum types instead of raw integers
+        [&](const SetImGuiColorStyle &a) {
+            switch (a.id) {
+                case 0: return Style.ImGui.ColorsDark(store);
+                case 1: return Style.ImGui.ColorsLight(store);
+                case 2: return Style.ImGui.ColorsClassic(store);
+            }
+        },
+        [&](const SetImPlotColorStyle &a) {
+            switch (a.id) {
+                case 0: return Style.ImPlot.ColorsAuto(store);
+                case 1: return Style.ImPlot.ColorsDark(store);
+                case 2: return Style.ImPlot.ColorsLight(store);
+                case 3: return Style.ImPlot.ColorsClassic(store);
+            }
+        },
+        [&](const SetFlowGridColorStyle &a) {
+            switch (a.id) {
+                case 0: return Style.FlowGrid.ColorsDark(store);
+                case 1: return Style.FlowGrid.ColorsLight(store);
+                case 2: return Style.FlowGrid.ColorsClassic(store);
+            }
+        },
+        [&](const SetGraphColorStyle &a) {
+            switch (a.id) {
+                case 0: return Audio.Faust.Graph.Style.ColorsDark(store);
+                case 1: return Audio.Faust.Graph.Style.ColorsLight(store);
+                case 2: return Audio.Faust.Graph.Style.ColorsClassic(store);
+                case 3: return Audio.Faust.Graph.Style.ColorsFaust(store);
+            }
+        },
+        [&](const SetGraphLayoutStyle &a) {
+            switch (a.id) {
+                case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid(store);
+                case 1: return Audio.Faust.Graph.Style.LayoutFaust(store);
+            }
+        },
+        [&](const OpenFaustFile &a) { Set(Audio.Faust.Code, FileIO::read(a.path), store); },
+        [&](const CloseApplication &) { Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
+    );
+}
 
 using namespace ImGui;
 

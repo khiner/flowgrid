@@ -99,7 +99,7 @@ Store store_from_json(const json &j) {
     const auto &flattened = j.flatten();
     StoreEntries entries(flattened.size());
     int item_index = 0;
-    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StatePath(key), Primitive(value)};
+    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
 
     TransientStore store;
     for (const auto &[path, value] : entries) store.set(path, value);

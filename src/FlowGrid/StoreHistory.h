@@ -29,8 +29,8 @@ struct StoreHistory {
     void Reset(const Store &);
 
     void UpdateGesturePaths(const Gesture &, const Patch &);
-    Plottable StatePathUpdateFrequencyPlottable() const;
-    std::optional<TimePoint> LatestUpdateTime(const StatePath &path) const;
+    Plottable StorePathUpdateFrequencyPlottable() const;
+    std::optional<TimePoint> LatestUpdateTime(const StorePath &path) const;
 
     void FinalizeGesture();
     void SetIndex(Count);
@@ -50,11 +50,11 @@ struct StoreHistory {
 
     Count Index{0};
     Gesture ActiveGesture{}; // uncompressed, uncommitted
-    vector<StatePath> LatestUpdatedPaths{};
-    std::unordered_map<StatePath, vector<TimePoint>, StatePathHash> CommittedUpdateTimesForPath{};
+    vector<StorePath> LatestUpdatedPaths{};
+    std::unordered_map<StorePath, vector<TimePoint>, StorePathHash> CommittedUpdateTimesForPath{};
 
 private:
-    std::unordered_map<StatePath, vector<TimePoint>, StatePathHash> GestureUpdateTimesForPath{};
+    std::unordered_map<StorePath, vector<TimePoint>, StorePathHash> GestureUpdateTimesForPath{};
 };
 
 extern StoreHistory History; // One store checkpoint for every gesture.

@@ -11,7 +11,7 @@ using namespace StringHelper;
 StateMember::StateMember(StateMember *parent, string_view path_segment, std::pair<string_view, string_view> name_help)
     : Parent(parent),
       PathSegment(path_segment),
-      Path(Parent && !PathSegment.empty() ? (Parent->Path / PathSegment) : (Parent ? Parent->Path : (!PathSegment.empty() ? StatePath(PathSegment) : RootPath))),
+      Path(Parent && !PathSegment.empty() ? (Parent->Path / PathSegment) : (Parent ? Parent->Path : (!PathSegment.empty() ? StorePath(PathSegment) : RootPath))),
       Name(name_help.first.empty() ? PathSegment.empty() ? "" : PascalToSentenceCase(PathSegment) : name_help.first),
       Help(name_help.second),
       ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathSegment)),

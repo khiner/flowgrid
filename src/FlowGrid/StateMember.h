@@ -22,7 +22,7 @@ struct StateMember {
     const StateMember *Parent;
     std::vector<StateMember *> Children{};
     const string PathSegment;
-    const StatePath Path;
+    const StorePath Path;
     const string Name, Help, ImGuiLabel;
     const ID Id;
 

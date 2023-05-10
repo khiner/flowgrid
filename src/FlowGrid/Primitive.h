@@ -23,6 +23,6 @@ struct IsVariantMember<T, std::variant<ALL_T...>>
 template<typename T>
 concept IsPrimitive = IsVariantMember<T, Primitive>::value;
 
-using StatePath = std::filesystem::path;
+using StorePath = std::filesystem::path;
 
-inline static const StatePath RootPath{"/"};
+inline static const StorePath RootPath{"/"};

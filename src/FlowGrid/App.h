@@ -36,11 +36,11 @@ WindowMember_(
                             "State menu items can only be opened or closed manually if auto-select is disabled.",
           true);
 
-    void StateJsonTree(string_view key, const json &value, const StatePath &path = RootPath) const;
+    void StateJsonTree(string_view key, const json &value, const StorePath &path = RootPath) const;
 );
 
 WindowMember_(StateMemoryEditor, WindowFlags_NoScrollbar);
-WindowMember(StatePathUpdateFrequency);
+WindowMember(StorePathUpdateFrequency);
 
 WindowMember(
     ProjectPreview,
@@ -93,7 +93,7 @@ UIMember(
             Menu(
                 "Windows",
                 {
-                    Menu("Debug", {DebugLog, StackTool, StateViewer, StatePathUpdateFrequency, StateMemoryEditor, ProjectPreview}),
+                    Menu("Debug", {DebugLog, StackTool, StateViewer, StorePathUpdateFrequency, StateMemoryEditor, ProjectPreview}),
                     Menu(
                         "Faust",
                         {
@@ -135,7 +135,7 @@ UIMember(
 
     Prop(StateViewer, StateViewer);
     Prop(StateMemoryEditor, StateMemoryEditor);
-    Prop(StatePathUpdateFrequency, StatePathUpdateFrequency);
+    Prop(StorePathUpdateFrequency, StorePathUpdateFrequency);
     Prop(ProjectPreview, ProjectPreview);
 );
 

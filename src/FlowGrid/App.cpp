@@ -6,7 +6,7 @@
 #include "immer/map_transient.hpp"
 
 namespace Field {
-template<IsPrimitive T> StatePath Vector<T>::PathAt(const Count i) const { return Path / to_string(i); }
+template<IsPrimitive T> StorePath Vector<T>::PathAt(const Count i) const { return Path / to_string(i); }
 template<IsPrimitive T> Count Vector<T>::Size() const { return Value.size(); }
 template<IsPrimitive T> T Vector<T>::operator[](const Count i) const { return Value[i]; }
 
@@ -40,7 +40,7 @@ void Vector<T>::Update() {
     Value.resize(i);
 }
 
-template<IsPrimitive T> StatePath Vector2D<T>::PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
+template<IsPrimitive T> StorePath Vector2D<T>::PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
 template<IsPrimitive T> Count Vector2D<T>::Size() const { return Value.size(); };
 template<IsPrimitive T> Count Vector2D<T>::Size(Count i) const { return Value[i].size(); };
 template<IsPrimitive T> T Vector2D<T>::operator()(Count i, Count j) const { return Value[i][j]; }
@@ -83,7 +83,7 @@ void Vector2D<T>::Update() {
     Value.resize(i);
 }
 template<IsPrimitive T>
-StatePath Matrix<T>::PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
+StorePath Matrix<T>::PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
 template<IsPrimitive T> Count Matrix<T>::Rows() const { return RowCount; }
 template<IsPrimitive T> Count Matrix<T>::Cols() const { return ColCount; }
 template<IsPrimitive T> T Matrix<T>::operator()(const Count row, const Count col) const { return Data[row * ColCount + col]; }
@@ -212,7 +212,7 @@ void State::Render() const {
         Audio.Faust.Log.Dock(debug_node_id);
         StateViewer.Dock(debug_node_id);
         StateMemoryEditor.Dock(debug_node_id);
-        StatePathUpdateFrequency.Dock(debug_node_id);
+        StorePathUpdateFrequency.Dock(debug_node_id);
         ProjectPreview.Dock(debug_node_id);
 
         Metrics.Dock(utilities_node_id);
@@ -520,7 +520,7 @@ void FillRowItemBg(const U32 col = style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
 }
 
 // TODO option to indicate relative update-recency
-void StateViewer::StateJsonTree(string_view key, const json &value, const StatePath &path) const {
+void StateViewer::StateJsonTree(string_view key, const json &value, const StorePath &path) const {
     const string leaf_name = path == RootPath ? path.string() : path.filename().string();
     const auto &parent_path = path == RootPath ? path : path.parent_path();
     const bool is_array_item = StringHelper::IsInteger(leaf_name);
@@ -600,8 +600,8 @@ void StateMemoryEditor::Render() const {
     memory_editor.DrawContents(mem_data, sizeof(s));
 }
 
-void StatePathUpdateFrequency::Render() const {
-    auto [labels, values] = History.StatePathUpdateFrequencyPlottable();
+void StorePathUpdateFrequency::Render() const {
+    auto [labels, values] = History.StorePathUpdateFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;

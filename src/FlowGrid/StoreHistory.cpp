@@ -82,14 +82,14 @@ void StoreHistory::UpdateGesturePaths(const Gesture &gesture, const Patch &patch
     for (const auto &[partial_path, op] : patch.Ops) GestureUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
-std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StatePath &path) const {
+std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StorePath &path) const {
     if (GestureUpdateTimesForPath.contains(path)) return GestureUpdateTimesForPath.at(path).back();
     if (CommittedUpdateTimesForPath.contains(path)) return CommittedUpdateTimesForPath.at(path).back();
     return {};
 }
 
-StoreHistory::Plottable StoreHistory::StatePathUpdateFrequencyPlottable() const {
-    const std::set<StatePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<std::set>;
+StoreHistory::Plottable StoreHistory::StorePathUpdateFrequencyPlottable() const {
+    const std::set<StorePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<std::set>;
     if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();

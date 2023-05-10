@@ -36,8 +36,8 @@ void adl_serializer<std::chrono::time_point<Clock, Duration>>::from_json(const j
     tp = std::chrono::time_point<Clock, Duration>{duration};
 }
 
-void to_json(json &j, const StatePath &path) { j = path.string(); }
-void from_json(const json &j, StatePath &path) { path = StatePath(j.get<std::string>()); }
+void to_json(json &j, const StorePath &path) { j = path.string(); }
+void from_json(const json &j, StorePath &path) { path = StorePath(j.get<std::string>()); }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
 void to_json(json &j, const StateAction &value) {

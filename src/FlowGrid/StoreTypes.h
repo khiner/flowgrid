@@ -7,11 +7,11 @@
 
 namespace fs = std::filesystem;
 
-using StoreEntry = std::pair<StatePath, Primitive>;
+using StoreEntry = std::pair<StorePath, Primitive>;
 using StoreEntries = std::vector<StoreEntry>;
 
-struct StatePathHash {
-    auto operator()(const StatePath &p) const noexcept { return fs::hash_value(p); }
+struct StorePathHash {
+    auto operator()(const StorePath &p) const noexcept { return fs::hash_value(p); }
 };
 
 struct PatchOp {
@@ -26,7 +26,7 @@ struct PatchOp {
     std::optional<Primitive> Old{}; // Present for remove/replace
 };
 
-using PatchOps = std::unordered_map<StatePath, PatchOp, StatePathHash>;
+using PatchOps = std::unordered_map<StorePath, PatchOp, StorePathHash>;
 
 static constexpr auto AddOp = PatchOp::Type::Add;
 static constexpr auto RemoveOp = PatchOp::Type::Remove;
@@ -34,7 +34,7 @@ static constexpr auto ReplaceOp = PatchOp::Type::Replace;
 
 struct Patch {
     PatchOps Ops;
-    StatePath BasePath{RootPath};
+    StorePath BasePath{RootPath};
 
     bool Empty() const noexcept { return Ops.empty(); }
 };

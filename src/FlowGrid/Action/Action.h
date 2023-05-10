@@ -63,23 +63,23 @@ struct ShowSaveProjectDialog {};
 struct CloseApplication {};
 
 struct SetValue {
-    StatePath path;
+    StorePath path;
     Primitive value;
 };
 struct SetValues {
     StoreEntries values;
 };
 struct SetVector {
-    StatePath path;
+    StorePath path;
     vector<Primitive> value;
 };
 struct SetMatrix {
-    StatePath path;
+    StorePath path;
     vector<Primitive> data;
     Count row_count; // Column count derived from `data.size() / row_count`.
 };
 struct ToggleValue {
-    StatePath path;
+    StorePath path;
 };
 struct ApplyPatch {
     Patch patch;

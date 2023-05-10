@@ -14,8 +14,8 @@ class map_transient;
 } // namespace immer
 
 const auto immer_default_bits = 5;
-using Store = immer::map<StatePath, Primitive, StatePathHash, std::equal_to<StatePath>, immer::default_memory_policy, immer_default_bits>;
-using TransientStore = immer::map_transient<StatePath, Primitive, StatePathHash, std::equal_to<StatePath>, immer::default_memory_policy, immer_default_bits>;
+using Store = immer::map<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;
+using TransientStore = immer::map_transient<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;
 
 using std::vector;
 
@@ -33,7 +33,7 @@ using ImGuiSliderFlags = int;
 namespace Field {
 
 struct Base : UIStateMember {
-    inline static std::unordered_map<StatePath, Base *, StatePathHash> WithPath; // Find any field by its path.
+    inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
 
     Base(StateMember *parent, string_view path_segment, string_view name_help);
     ~Base();
@@ -185,7 +185,7 @@ template<IsPrimitive T>
 struct Vector : Base {
     using Base::Base;
 
-    StatePath PathAt(const Count i) const;
+    StorePath PathAt(const Count i) const;
     Count Size() const;
     T operator[](const Count i) const;
     void Set(const vector<T> &, TransientStore &) const;
@@ -229,7 +229,7 @@ template<IsPrimitive T>
 struct Vector2D : Base {
     using Base::Base;
 
-    StatePath PathAt(const Count i, const Count j) const;
+    StorePath PathAt(const Count i, const Count j) const;
     Count Size() const; // Number of outer vectors
     Count Size(Count i) const; // Size of inner vector at index `i`
 
@@ -246,7 +246,7 @@ template<IsPrimitive T>
 struct Matrix : Base {
     using Base::Base;
 
-    StatePath PathAt(const Count row, const Count col) const;
+    StorePath PathAt(const Count row, const Count col) const;
     Count Rows() const;
     Count Cols() const;
     T operator()(const Count row, const Count col) const;
@@ -293,15 +293,15 @@ struct Patch;
 void Set(const Field::Base &, const Primitive &, TransientStore &);
 void Set(const StoreEntries &, TransientStore &);
 void Set(const Field::Entries &, TransientStore &);
-void Set(const StatePath &, const vector<Primitive> &, TransientStore &);
-void Set(const StatePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
+void Set(const StorePath &, const vector<Primitive> &, TransientStore &);
+void Set(const StorePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
 
-Patch CreatePatch(const Store &before, const Store &after, const StatePath &BasePath = RootPath);
+Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath = RootPath);
 
 namespace store {
 void OnApplicationStateInitialized();
 
-Primitive Get(const StatePath &);
+Primitive Get(const StorePath &);
 } // namespace store
 
 extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.

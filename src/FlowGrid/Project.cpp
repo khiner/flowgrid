@@ -95,6 +95,8 @@ inline void to_json(json &j, const Store &store) {
 }
 } // namespace nlohmann
 
+using namespace nlohmann;
+
 // Not using `nlohmann::from_json` pattern to avoid getting a reference to a default-constructed, non-transient `Store` instance.
 Store to_store(const json &j) {
     const auto &flattened = j.flatten();

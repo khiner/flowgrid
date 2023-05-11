@@ -115,6 +115,8 @@ void Matrix<T>::Update() {
 #include "Helper/File.h"
 #include "ProjectConstants.h"
 
+using namespace nlohmann;
+
 void State::Update(const StateAction &action, TransientStore &store) const {
     Match(
         action,
@@ -206,7 +208,7 @@ void State::Render() const {
 
         Debug.StateViewer.Dock(debug_node_id);
         Debug.ProjectPreview.Dock(debug_node_id);
-        Debug.StateMemoryEditor.Dock(debug_node_id);
+        // Debug.StateMemoryEditor.Dock(debug_node_id);
         Debug.StorePathUpdateFrequency.Dock(debug_node_id);
         Debug.DebugLog.Dock(debug_node_id);
         Debug.StackTool.Dock(debug_node_id);
@@ -235,8 +237,6 @@ void State::Render() const {
     // Recursively draw all windows.
     DrawWindows();
 }
-
-void Debug::Render() const {}
 
 constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
 constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >> 16), S16(U32(packed) & 0xffff)}; }
@@ -520,7 +520,7 @@ void FillRowItemBg(const U32 col = style.ImGui.Colors[ImGuiCol_FrameBgActive]) {
 }
 
 // TODO option to indicate relative update-recency
-void StateViewer::StateJsonTree(string_view key, const json &value, const StorePath &path) const {
+void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const StorePath &path) const {
     const string leaf_name = path == RootPath ? path.string() : path.filename().string();
     const auto &parent_path = path == RootPath ? path : path.parent_path();
     const bool is_array_item = StringHelper::IsInteger(leaf_name);
@@ -581,49 +581,8 @@ void StateViewer::StateJsonTree(string_view key, const json &value, const StoreP
     }
 }
 
-void StateViewer::Render() const {
+void Debug::StateViewer::Render() const {
     StateJsonTree("State", Project::GetProjectJson());
-}
-
-#include "imgui_memory_editor.h"
-
-void StateMemoryEditor::Render() const {
-    static MemoryEditor memory_editor;
-    static bool first_render{true};
-    if (first_render) {
-        memory_editor.OptShowDataPreview = true;
-        //        memory_editor.WriteFn = ...; todo write_state_bytes action
-        first_render = false;
-    }
-
-    const void *mem_data{&s};
-    memory_editor.DrawContents(mem_data, sizeof(s));
-}
-
-void StorePathUpdateFrequency::Render() const {
-    auto [labels, values] = History.StorePathUpdateFrequencyPlottable();
-    if (labels.empty()) {
-        Text("No state updates yet.");
-        return;
-    }
-
-    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
-        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
-
-        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
-        // todo fix in ImPlot
-        if (labels.size() == 1) labels.emplace_back("");
-
-        // todo add an axis flag to exclude non-integer ticks
-        // todo add an axis flag to show last tick
-        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
-        static const char *ItemLabels[] = {"Committed updates", "Active updates"};
-        const int item_count = !History.ActiveGesture.empty() ? 2 : 1;
-        const int group_count = int(values.size()) / item_count;
-        ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
-
-        ImPlot::EndPlot();
-    }
 }
 
 void Debug::ProjectPreview::Render() const {
@@ -805,15 +764,6 @@ void Metrics::FlowGridMetrics::Render() const {
         HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
                    "Thus, it's important to keep action data small.");
     }
-}
-void Metrics::ImGuiMetrics::Render() const { ShowMetricsWindow(); }
-void Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
-
-void DebugLog::Render() const {
-    ShowDebugLogWindow();
-}
-void StackTool::Render() const {
-    ShowStackToolWindow();
 }
 
 #include "Audio/Faust/FaustGraph.h"

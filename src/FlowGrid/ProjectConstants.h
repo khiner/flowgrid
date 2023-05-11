@@ -9,24 +9,21 @@
 #include <set>
 #include <string>
 
+#include "Store/StoreJsonFormat.h"
+
 namespace views = ranges::views;
 using ranges::to;
-
-enum ProjectFormat {
-    StateFormat,
-    ActionFormat
-};
 
 inline static const std::filesystem::path InternalPath = ".flowgrid";
 inline static const std::string FaustDspFileExtension = ".dsp";
 
-inline static const std::map<ProjectFormat, std::string> ExtensionForProjectFormat{{ProjectFormat::StateFormat, ".fls"}, {ProjectFormat::ActionFormat, ".fla"}};
-inline static const auto ProjectFormatForExtension = ExtensionForProjectFormat | views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();
+inline static const std::map<StoreJsonFormat, std::string> ExtensionForStoreJsonFormat{{StoreJsonFormat::StateFormat, ".fls"}, {StoreJsonFormat::ActionFormat, ".fla"}};
+inline static const auto StoreJsonFormatForExtension = ExtensionForStoreJsonFormat | views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();
 
-inline static const std::set<std::string> AllProjectExtensions = views::keys(ProjectFormatForExtension) | to<std::set>;
+inline static const std::set<std::string> AllProjectExtensions = views::keys(StoreJsonFormatForExtension) | to<std::set>;
 inline static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<std::string>;
 
-inline static const std::filesystem::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectFormat.at(ProjectFormat::StateFormat));
+inline static const std::filesystem::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForStoreJsonFormat.at(StoreJsonFormat::StateFormat));
 // The default project is a user-created project that loads on app start, instead of the empty project.
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-inline static const std::filesystem::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectFormat.at(ProjectFormat::ActionFormat));
+inline static const std::filesystem::path DefaultProjectPath = InternalPath / ("default" + ExtensionForStoreJsonFormat.at(StoreJsonFormat::ActionFormat));

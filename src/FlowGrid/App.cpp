@@ -499,10 +499,7 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
 // [SECTION] State windows
 //-----------------------------------------------------------------------------
 
-#include "nlohmann/json.hpp"
-
 #include "Helper/String.h"
-#include "Project.h"
 #include "Store/StoreHistory.h"
 #include "UI/Widgets.h"
 
@@ -581,8 +578,10 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
     }
 }
 
+#include "Store/StoreJson.h"
+
 void Debug::StateViewer::Render() const {
-    StateJsonTree("State", Project::GetProjectJson());
+    StateJsonTree("State", GetStoreJson());
 }
 
 void Debug::ProjectPreview::Render() const {
@@ -591,7 +590,7 @@ void Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    const json project_json = Project::GetProjectJson(ProjectFormat(int(Format)));
+    const json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else JsonTree("", project_json, style.FlowGrid.Colors[FlowGridCol_HighlightText], JsonTreeNodeFlags_DefaultOpen);
 }

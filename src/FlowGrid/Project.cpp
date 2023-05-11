@@ -69,9 +69,9 @@ void Project::Init() {
     UiContext.IsWidgetGesturing = false;
 }
 
-std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
+std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
     const string &ext = path.extension();
-    if (ProjectFormatForExtension.contains(ext)) return ProjectFormatForExtension.at(ext);
+    if (StoreJsonFormatForExtension.contains(ext)) return StoreJsonFormatForExtension.at(ext);
     return {};
 }
 
@@ -83,52 +83,21 @@ void SetCurrentProjectPath(const fs::path &path) {
     Preferences.OnProjectOpened(path);
 }
 
-#include "Action/ActionJson.h"
-#include "Audio/Faust/FaustGraph.h"
-#include "PrimitiveJson.h"
-
-namespace nlohmann {
-inline void to_json(json &j, const Store &store) {
-    for (const auto &[key, value] : store) {
-        j[json::json_pointer(key.string())] = value;
-    }
-}
-} // namespace nlohmann
-
-using namespace nlohmann;
-
-// Not using `nlohmann::from_json` pattern to avoid getting a reference to a default-constructed, non-transient `Store` instance.
-Store to_store(const json &j) {
-    const auto &flattened = j.flatten();
-    StoreEntries entries(flattened.size());
-    int item_index = 0;
-    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
-
-    TransientStore store;
-    for (const auto &[path, value] : entries) store.set(path, value);
-    return store.persistent();
-}
-
-json Project::GetProjectJson(const ProjectFormat format) {
-    switch (format) {
-        case StateFormat: return AppStore;
-        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
-    }
-}
+#include "Store/StoreJson.h"
 
 void Project::OpenProject(const fs::path &path) {
-    const auto format = GetProjectFormat(path);
+    const auto format = GetStoreJsonFormat(path);
     if (!format) return; // TODO log
 
     Init();
 
-    const json project = json::parse(FileIO::read(path));
+    const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        SetStore(to_store(project));
+        SetStore(JsonToStore(project));
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 
-        const Gestures gestures = project["gestures"];
+        const auto &[gestures, index] = JsonToGestures(project);
         auto transient = AppStore.transient();
         for (const auto &gesture : gestures) {
             const auto before_store = transient.persistent();
@@ -139,10 +108,12 @@ void Project::OpenProject(const fs::path &path) {
             const auto &patch = store::CreatePatch(before_store, after_store);
             const auto &gesture_time = gesture.back().second;
             History.Add(gesture_time, after_store, gesture); // todo save/load gesture commit times
-            for (const auto &[partial_path, op] : patch.Ops) History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+            for (const auto &[partial_path, op] : patch.Ops) {
+                History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+            }
         }
         SetStore(transient.persistent());
-        ::SetHistoryIndex(project["index"]);
+        ::SetHistoryIndex(index);
     }
 
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
@@ -152,15 +123,17 @@ bool Project::SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ActionAllowed(action::id<Actions::SaveCurrentProject>)) return false;
 
-    const auto format = GetProjectFormat(path);
+    const auto format = GetStoreJsonFormat(path);
     if (!format) return false; // TODO log
 
     History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
-    if (!FileIO::write(path, GetProjectJson(*format).dump())) return false; // TODO log
+    if (!FileIO::write(path, GetStoreJson(*format).dump())) return false; // TODO log
 
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
     return true;
 }
+
+#include "Audio/Faust/FaustGraph.h"
 
 // todo there's some weird circular dependency type thing going on here.
 //   I should be able to define this inside `Project.h` and not include `Action.h` here,

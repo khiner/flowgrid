@@ -2,6 +2,8 @@
 
 #include "WindowMember.h"
 
+struct ImVec4;
+
 struct Colors : UIStateMember {
     Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
     ~Colors();

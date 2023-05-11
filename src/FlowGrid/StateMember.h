@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "Primitive.h"
+#include "StoreTypes.h"
 #include "UI/Drawable.h"
 
 using std::string_view;
@@ -30,6 +31,17 @@ protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 };
+
+namespace Field {
+struct Base : StateMember {
+    inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
+
+    Base(StateMember *parent, string_view path_segment, string_view name_help);
+    ~Base();
+
+    virtual void Update() = 0;
+};
+} // namespace Field
 
 /**
 Convenience macros for compactly defining `StateMember` types and their properties.

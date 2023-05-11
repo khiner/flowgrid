@@ -42,3 +42,12 @@ void Drawable::Draw() const {
     Render();
     //    PopID();
 }
+
+namespace Field {
+Base::Base(StateMember *parent, string_view path_segment, string_view name_help) : StateMember(parent, path_segment, name_help) {
+    WithPath[Path] = this;
+}
+Base::~Base() {
+    WithPath.erase(Path);
+}
+} // namespace Field

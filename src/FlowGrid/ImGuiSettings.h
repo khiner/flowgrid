@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Store.h"
 #include "WindowMember.h"
 
 template<typename T> struct ImChunkStream;

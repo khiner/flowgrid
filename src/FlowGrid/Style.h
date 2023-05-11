@@ -5,6 +5,7 @@
 
 struct ImGuiContext;
 struct ImPlotContext;
+struct ImVec4;
 
 // Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
 // Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.

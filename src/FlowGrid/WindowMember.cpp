@@ -2,6 +2,8 @@
 
 #include "imgui_internal.h"
 
+#include "Store.h"
+
 void UIStateMember::DrawWindows() const {
     for (const auto *child : Children) {
         if (const auto *window_child = dynamic_cast<const Window *>(child)) {

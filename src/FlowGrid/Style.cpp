@@ -1,5 +1,7 @@
 #include "Style.h"
 
+#include "Store.h"
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"

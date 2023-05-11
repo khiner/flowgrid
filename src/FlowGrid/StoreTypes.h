@@ -45,3 +45,17 @@ struct StatePatch {
 };
 
 string to_string(PatchOp::Type);
+
+#include <immer/memory_policy.hpp>
+
+namespace immer {
+template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, std::uint32_t B>
+class map;
+
+template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, std::uint32_t B>
+class map_transient;
+} // namespace immer
+
+const auto immer_default_bits = 5;
+using Store = immer::map<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;
+using TransientStore = immer::map_transient<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;

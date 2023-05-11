@@ -1,6 +1,6 @@
 #include "Style.h"
 
-#include "Store/Store.h"
+#include "Store/StoreTypes.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"

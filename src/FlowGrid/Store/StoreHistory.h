@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Action/Action.h"
-#include "Store.h"
 
 enum Direction {
     Forward,

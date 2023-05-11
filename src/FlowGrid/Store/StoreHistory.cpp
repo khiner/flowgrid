@@ -8,6 +8,8 @@
 #include <range/v3/view/transform.hpp>
 #include <set>
 
+#include "Store.h"
+
 namespace views = ranges::views;
 using ranges::to, views::transform;
 

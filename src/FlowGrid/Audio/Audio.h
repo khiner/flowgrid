@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Store.h"
+#include "../Store/Store.h"
 #include "../WindowMember.h"
 
 #include "../Colors.h"

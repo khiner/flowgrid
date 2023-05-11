@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "Primitive.h"
-#include "StoreTypes.h"
+#include "Store/StoreTypes.h"
 #include "UI/Drawable.h"
 
 using std::string_view;

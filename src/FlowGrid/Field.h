@@ -1,7 +1,7 @@
 #pragma once
 
 #include "StateMember.h"
-#include "StoreTypes.h"
+#include "Store/StoreTypes.h"
 
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;

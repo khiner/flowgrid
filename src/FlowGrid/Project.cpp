@@ -10,7 +10,7 @@
 #include "App.h"
 #include "FileDialog/FileDialogDataJson.h"
 #include "Helper/File.h"
-#include "StoreHistory.h"
+#include "Store/StoreHistory.h"
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};

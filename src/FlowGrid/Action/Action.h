@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../StoreTypes.h"
+#include "../Store/StoreTypes.h"
 
 using std::vector;
 

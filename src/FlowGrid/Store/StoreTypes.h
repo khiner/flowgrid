@@ -2,8 +2,8 @@
 
 #include <unordered_map>
 
-#include "Helper/Time.h"
-#include "Primitive.h"
+#include "../Helper/Time.h"
+#include "../Primitive.h"
 
 namespace fs = std::filesystem;
 

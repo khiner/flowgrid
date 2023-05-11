@@ -1,4 +1,4 @@
-#include "Store.h"
+#include "Store/Store.h"
 
 #include <iostream>
 
@@ -503,7 +503,7 @@ void ImGuiSettings::Apply(ImGuiContext *ctx) const {
 
 #include "Helper/String.h"
 #include "Project.h"
-#include "StoreHistory.h"
+#include "Store/StoreHistory.h"
 #include "UI/Widgets.h"
 
 ImRect RowItemRatioRect(float ratio) {

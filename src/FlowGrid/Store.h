@@ -31,26 +31,74 @@ using ImGuiSliderFlags = int;
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
-struct Base : UIStateMember {
+struct Base : StateMember {
     inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
 
     Base(StateMember *parent, string_view path_segment, string_view name_help);
     ~Base();
 
     virtual void Update() = 0;
-
-protected:
-    void Render() const override {}
 };
 
-using Entry = std::pair<const Base &, Primitive>;
-using Entries = std::vector<Entry>;
+// TODO methods for these non-primitive fields are actually defined in `App.cpp`, because of circular dependencies.
+template<IsPrimitive T>
+struct Vector : Base {
+    using Base::Base;
 
-struct PrimitiveBase : Base {
+    StorePath PathAt(const Count i) const;
+    Count Size() const;
+    T operator[](const Count i) const;
+    void Set(const vector<T> &, TransientStore &) const;
+    void Set(const vector<std::pair<int, T>> &, TransientStore &) const;
+
+    void Update() override;
+
+private:
+    vector<T> Value;
+};
+
+// Vector of vectors. Inner vectors need not have the same length.
+template<IsPrimitive T>
+struct Vector2D : Base {
+    using Base::Base;
+
+    StorePath PathAt(const Count i, const Count j) const;
+    Count Size() const; // Number of outer vectors
+    Count Size(Count i) const; // Size of inner vector at index `i`
+
+    T operator()(Count i, Count j) const;
+    void Set(const vector<vector<T>> &, TransientStore &) const;
+
+    void Update() override;
+
+private:
+    vector<vector<T>> Value;
+};
+
+template<IsPrimitive T>
+struct Matrix : Base {
+    using Base::Base;
+
+    StorePath PathAt(const Count row, const Count col) const;
+    Count Rows() const;
+    Count Cols() const;
+    T operator()(const Count row, const Count col) const;
+
+    void Update() override;
+
+private:
+    Count RowCount, ColCount;
+    vector<T> Data;
+};
+
+struct PrimitiveBase : Base, Drawable {
     PrimitiveBase(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
 };
+
+using Entry = std::pair<const PrimitiveBase &, Primitive>;
+using Entries = std::vector<Entry>;
 
 template<IsPrimitive T>
 struct TypedBase : PrimitiveBase {
@@ -182,21 +230,29 @@ private:
     void Render() const override;
 };
 
-// TODO these are actually defined in `App.cpp`, because of circular dependencies.
-template<IsPrimitive T>
-struct Vector : Base {
-    using Base::Base;
+struct Vec2 : UIStateMember {
+    // `fmt` defaults to ImGui slider default, which is "%.3f"
+    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 
-    StorePath PathAt(const Count i) const;
-    Count Size() const;
-    T operator[](const Count i) const;
-    void Set(const vector<T> &, TransientStore &) const;
-    void Set(const vector<std::pair<int, T>> &, TransientStore &) const;
+    operator ImVec2() const;
 
-    void Update() override;
+    Float X, Y;
+    const char *Format;
 
-private:
-    vector<T> Value;
+protected:
+    virtual void Render(ImGuiSliderFlags) const;
+    void Render() const override;
+};
+
+struct Vec2Linked : Vec2 {
+    using Vec2::Vec2;
+    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
+
+    Prop(Bool, Linked, true);
+
+protected:
+    void Render(ImGuiSliderFlags) const override;
+    void Render() const override;
 };
 
 struct Colors : UIStateMember {
@@ -224,65 +280,6 @@ private:
     inline const UInt *At(Count) const;
 
     bool AllowAuto;
-};
-
-// Vector of vectors. Inner vectors need not have the same length.
-template<IsPrimitive T>
-struct Vector2D : Base {
-    using Base::Base;
-
-    StorePath PathAt(const Count i, const Count j) const;
-    Count Size() const; // Number of outer vectors
-    Count Size(Count i) const; // Size of inner vector at index `i`
-
-    T operator()(Count i, Count j) const;
-    void Set(const vector<vector<T>> &, TransientStore &) const;
-
-    void Update() override;
-
-private:
-    vector<vector<T>> Value;
-};
-
-template<IsPrimitive T>
-struct Matrix : Base {
-    using Base::Base;
-
-    StorePath PathAt(const Count row, const Count col) const;
-    Count Rows() const;
-    Count Cols() const;
-    T operator()(const Count row, const Count col) const;
-
-    void Update() override;
-
-private:
-    Count RowCount, ColCount;
-    vector<T> Data;
-};
-
-struct Vec2 : UIStateMember {
-    // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
-
-    operator ImVec2() const;
-
-    Float X, Y;
-    const char *Format;
-
-protected:
-    virtual void Render(ImGuiSliderFlags) const;
-    void Render() const override;
-};
-
-struct Vec2Linked : Vec2 {
-    using Vec2::Vec2;
-    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
-
-    Prop(Bool, Linked, true);
-
-protected:
-    void Render(ImGuiSliderFlags) const override;
-    void Render() const override;
 };
 } // namespace Field
 

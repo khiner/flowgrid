@@ -106,7 +106,7 @@ void Set(const Store &store) {
 using namespace ImGui;
 
 namespace Field {
-Base::Base(StateMember *parent, string_view path_segment, string_view name_help) : UIStateMember(parent, path_segment, name_help) {
+Base::Base(StateMember *parent, string_view path_segment, string_view name_help) : StateMember(parent, path_segment, name_help) {
     WithPath[Path] = this;
 }
 Base::~Base() {

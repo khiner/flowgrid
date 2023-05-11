@@ -60,7 +60,7 @@ void TabsWindow::Render(const std::set<ID> &exclude) const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
             if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
-                if (!exclude.contains(ui_child->Id) && ui_child != &Visible && BeginTabItem(child->ImGuiLabel.c_str())) {
+                if (!exclude.contains(ui_child->Id) && ui_child->Id != Visible.Id && BeginTabItem(child->ImGuiLabel.c_str())) {
                     ui_child->Draw();
                     EndTabItem();
                 }

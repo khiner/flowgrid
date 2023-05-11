@@ -1,7 +1,6 @@
 #pragma once
 
-#include "WindowMember.h"
-
+#include "Colors.h"
 #include "UI/Styling.h"
 
 struct ImGuiContext;
@@ -15,7 +14,6 @@ enum SliderFlags_ {
     SliderFlags_Logarithmic = 1 << 5, // Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
 };
 
-// Namespace needed because Audio imports `CoreAudio.h`, which imports `CoreAudioTypes->MacTypes`, which has a `Style` type without a namespace.
 namespace FlowGrid {
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;

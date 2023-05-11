@@ -139,6 +139,11 @@ struct UInt : TypedBase<U32> {
 
     const U32 Min, Max;
 
+    // An arbitrary transparent color is used to mark colors as "auto".
+    // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
+    // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
+    static constexpr U32 AutoColor = 0X00010101;
+
 private:
     void Render() const override;
     string ValueName(const U32 value) const;
@@ -253,33 +258,6 @@ struct Vec2Linked : Vec2 {
 protected:
     void Render(ImGuiSliderFlags) const override;
     void Render() const override;
-};
-
-struct Colors : UIStateMember {
-    // An arbitrary transparent color is used to mark colors as "auto".
-    // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
-    // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
-    static constexpr U32 AutoColor = 0X00010101;
-
-    Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
-    ~Colors();
-
-    static U32 ConvertFloat4ToU32(const ImVec4 &value);
-    static ImVec4 ConvertU32ToFloat4(const U32 value);
-
-    Count Size() const;
-    U32 operator[](Count) const;
-
-    void Set(const vector<ImVec4> &, TransientStore &) const;
-    void Set(const vector<std::pair<int, ImVec4>> &, TransientStore &) const;
-
-protected:
-    void Render() const override;
-
-private:
-    inline const UInt *At(Count) const;
-
-    bool AllowAuto;
 };
 } // namespace Field
 

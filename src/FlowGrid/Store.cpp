@@ -209,7 +209,7 @@ void UInt::Render(const vector<U32> &options) const {
 
 void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     const Count i = std::stoi(PathSegment); // Assuming color is a member of a vector here.
-    const bool is_auto = allow_auto && Value == Colors::AutoColor;
+    const bool is_auto = allow_auto && Value == AutoColor;
     const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : Value;
 
     PushID(ImGuiLabel.c_str());
@@ -219,7 +219,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     // todo use auto for FG colors (link to ImGui colors)
     if (allow_auto) {
         if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-        if (Button("Auto")) q(SetValue{Path, is_auto ? mapped_value : Colors::AutoColor});
+        if (Button("Auto")) q(SetValue{Path, is_auto ? mapped_value : AutoColor});
         if (!is_auto) PopStyleVar();
         SameLine();
     }
@@ -352,73 +352,6 @@ void String::Render(const vector<string> &options) const {
         EndCombo();
     }
     HelpMarker();
-}
-
-Colors::Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
-    : UIStateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
-    for (Count i = 0; i < size; i++) {
-        new UInt(this, to_string(i), get_color_name(i)); // Adds to `Children` as a side-effect.
-    }
-}
-Colors::~Colors() {
-    const Count size = Size();
-    for (int i = size - 1; i >= 0; i--) {
-        delete Children[i];
-    }
-}
-
-U32 Colors::ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
-ImVec4 Colors::ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
-Count Colors::Size() const { return Children.size(); }
-
-const UInt *Colors::At(Count i) const { return dynamic_cast<const UInt *>(Children[i]); }
-U32 Colors::operator[](Count i) const { return *At(i); };
-void Colors::Set(const vector<ImVec4> &values, TransientStore &transient) const {
-    for (Count i = 0; i < values.size(); i++) {
-        store::Set(*At(i), ConvertFloat4ToU32(values[i]), transient);
-    }
-}
-void Colors::Set(const vector<std::pair<int, ImVec4>> &entries, TransientStore &transient) const {
-    for (const auto &[i, v] : entries) {
-        store::Set(*At(i), ConvertFloat4ToU32(v), transient);
-    }
-}
-
-void Colors::Render() const {
-    static ImGuiTextFilter filter;
-    filter.Draw("Filter colors", GetFontSize() * 16);
-
-    static ImGuiColorEditFlags flags = 0;
-    if (RadioButton("Opaque", flags == ImGuiColorEditFlags_None)) flags = ImGuiColorEditFlags_None;
-    SameLine();
-    if (RadioButton("Alpha", flags == ImGuiColorEditFlags_AlphaPreview)) flags = ImGuiColorEditFlags_AlphaPreview;
-    SameLine();
-    if (RadioButton("Both", flags == ImGuiColorEditFlags_AlphaPreviewHalf)) flags = ImGuiColorEditFlags_AlphaPreviewHalf;
-    SameLine();
-    fg::HelpMarker("In the color list:\n"
-                   "Left-click on color square to open color picker.\n"
-                   "Right-click to open edit options menu.");
-
-    BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
-    PushItemWidth(-160);
-
-    for (const auto *child : Children) {
-        const auto *child_color = dynamic_cast<const UInt *>(child);
-        if (filter.PassFilter(child->Name.c_str())) {
-            child_color->ColorEdit4(flags, AllowAuto);
-        }
-    }
-    if (AllowAuto) {
-        Separator();
-        PushTextWrapPos(0);
-        Text("Colors that are set to Auto will be automatically deduced from your ImGui style or the current ImPlot colormap.\n"
-             "If you want to style individual plot items, use Push/PopStyleColor around its function.");
-        PopTextWrapPos();
-    }
-
-    PopItemWidth();
-    EndChild();
-    EndTabItem();
 }
 
 Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)

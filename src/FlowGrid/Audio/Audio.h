@@ -2,6 +2,7 @@
 
 #include "../WindowMember.h"
 
+#include "../Colors.h"
 #include "../UI/Styling.h"
 #include "../UI/UI.h"
 

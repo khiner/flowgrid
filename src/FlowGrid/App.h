@@ -19,6 +19,39 @@ WindowMember(
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
 );
 
+struct Demo : TabsWindow {
+    Demo(StateMember *parent, string_view path_segment, string_view name_help);
+
+    UIMember(ImGuiDemo);
+    UIMember(ImPlotDemo);
+
+    Prop(ImGuiDemo, ImGui);
+    Prop(ImPlotDemo, ImPlot);
+    Prop(FileDialog::Demo, FileDialog);
+};
+
+//-----------------------------------------------------------------------------
+// [SECTION] Main application `State`
+//-----------------------------------------------------------------------------
+struct OpenRecentProject : MenuItemDrawable {
+    void MenuItem() const override;
+};
+
+struct Metrics : TabsWindow {
+    using TabsWindow::TabsWindow;
+
+    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true));
+    UIMember(ImGuiMetrics);
+    UIMember(ImPlotMetrics);
+
+    Prop(FlowGridMetrics, FlowGrid);
+    Prop(ImGuiMetrics, ImGui);
+    Prop(ImPlotMetrics, ImPlot);
+};
+
+WindowMember(Info);
+WindowMember(StackTool);
+WindowMember(DebugLog);
 WindowMember_(
     StateViewer,
     Menu({
@@ -42,45 +75,23 @@ WindowMember_(
 WindowMember_(StateMemoryEditor, WindowFlags_NoScrollbar);
 WindowMember(StorePathUpdateFrequency);
 
-WindowMember(
-    ProjectPreview,
-    Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
-    Prop(Bool, Raw)
+UIMember(
+    Debug,
+
+    WindowMember(
+        ProjectPreview,
+        Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
+        Prop(Bool, Raw)
+    );
+
+    Prop(StateViewer, StateViewer);
+    Prop(ProjectPreview, ProjectPreview);
+    Prop(StateMemoryEditor, StateMemoryEditor);
+    Prop(StorePathUpdateFrequency, StorePathUpdateFrequency);
+    Prop(::DebugLog, DebugLog);
+    Prop(StackTool, StackTool);
+    Prop(Metrics, Metrics);
 );
-
-struct Demo : TabsWindow {
-    Demo(StateMember *parent, string_view path_segment, string_view name_help);
-
-    UIMember(ImGuiDemo);
-    UIMember(ImPlotDemo);
-
-    Prop(ImGuiDemo, ImGui);
-    Prop(ImPlotDemo, ImPlot);
-    Prop(FileDialog::Demo, FileDialog);
-};
-
-struct Metrics : TabsWindow {
-    using TabsWindow::TabsWindow;
-
-    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true));
-    UIMember(ImGuiMetrics);
-    UIMember(ImPlotMetrics);
-
-    Prop(FlowGridMetrics, FlowGrid);
-    Prop(ImGuiMetrics, ImGui);
-    Prop(ImPlotMetrics, ImPlot);
-};
-
-WindowMember(Info);
-WindowMember(StackTool);
-WindowMember(DebugLog);
-
-//-----------------------------------------------------------------------------
-// [SECTION] Main application `State`
-//-----------------------------------------------------------------------------
-struct OpenRecentProject : MenuItemDrawable {
-    void MenuItem() const override;
-};
 
 UIMember(
     State,
@@ -93,7 +104,6 @@ UIMember(
             Menu(
                 "Windows",
                 {
-                    Menu("Debug", {DebugLog, StackTool, StateViewer, StorePathUpdateFrequency, StateMemoryEditor, ProjectPreview}),
                     Menu(
                         "Faust",
                         {
@@ -104,9 +114,12 @@ UIMember(
                         }
                     ),
                     Audio,
-                    Metrics,
                     Style,
                     Demo,
+                    Menu(
+                        "Debug",
+                        {Debug.Metrics, Debug.DebugLog, Debug.StackTool, Debug.StateViewer, Debug.StorePathUpdateFrequency, Debug.StateMemoryEditor, Debug.ProjectPreview}
+                    ),
                 }
             ),
         },
@@ -129,14 +142,7 @@ UIMember(
     Prop(Info, Info);
 
     Prop(Demo, Demo);
-    Prop(Metrics, Metrics);
-    Prop(StackTool, StackTool);
-    Prop(::DebugLog, DebugLog);
-
-    Prop(StateViewer, StateViewer);
-    Prop(StateMemoryEditor, StateMemoryEditor);
-    Prop(StorePathUpdateFrequency, StorePathUpdateFrequency);
-    Prop(ProjectPreview, ProjectPreview);
+    Prop(Debug, Debug);
 );
 
 /**

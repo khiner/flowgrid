@@ -60,9 +60,12 @@ void Set(const StorePath &path, const vector<Primitive> &values, TransientStore 
         store.set(path / to_string(i), values[i]);
         i++;
     }
-
-    while (store.count(path / to_string(i))) store.erase(path / to_string(i++));
+    while (store.count(path / to_string(i))) {
+        store.erase(path / to_string(i));
+        i++;
+    }
 }
+
 void Set(const StorePath &path, const vector<Primitive> &data, const Count row_count, TransientStore &store) {
     assert(data.size() % row_count == 0);
     const Count col_count = data.size() / row_count;
@@ -73,13 +76,19 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
             store.set(path / to_string(row) / to_string(col), data[row * col_count + col]);
             col++;
         }
-        while (store.count(path / to_string(row) / to_string(col))) store.erase(path / to_string(row) / to_string(col++));
+        while (store.count(path / to_string(row) / to_string(col))) {
+            store.erase(path / to_string(row) / to_string(col));
+            col++;
+        }
         row++;
     }
 
     while (store.count(path / to_string(row) / to_string(0))) {
         Count col = 0;
-        while (store.count(path / to_string(row) / to_string(col))) store.erase(path / to_string(row) / to_string(col++));
+        while (store.count(path / to_string(row) / to_string(col))) {
+            store.erase(path / to_string(row) / to_string(col));
+            col++;
+        }
         row++;
     }
 }

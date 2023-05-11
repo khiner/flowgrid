@@ -185,10 +185,13 @@ void State::Render() const {
     auto dockspace_id = DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;
     if (frame_count == 1) {
-        auto sidebar_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.15f, nullptr, &dockspace_id);
-        auto settings_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.3f, nullptr, &dockspace_id);
+        auto settings_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);
         auto utilities_node_id = DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.5f, nullptr, &settings_node_id);
+
         auto debug_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.3f, nullptr, &dockspace_id);
+        auto metrics_node_id = DockBuilderSplitNode(debug_node_id, ImGuiDir_Right, 0.35f, nullptr, &debug_node_id);
+
+        auto info_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.2f, nullptr, &dockspace_id);
         auto faust_tools_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.5f, nullptr, &dockspace_id);
         auto faust_editor_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.7f, nullptr, &dockspace_id);
 
@@ -197,27 +200,28 @@ void State::Render() const {
 
         Audio.Faust.Editor.Dock(faust_editor_node_id);
         Audio.Faust.Editor.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
+        Audio.Faust.Log.Dock(faust_tools_node_id);
         Audio.Faust.Graph.Dock(faust_tools_node_id);
         Audio.Faust.Params.Dock(faust_tools_node_id);
 
-        DebugLog.Dock(debug_node_id);
-        StackTool.Dock(debug_node_id);
-        Audio.Faust.Log.Dock(debug_node_id);
-        StateViewer.Dock(debug_node_id);
-        StateMemoryEditor.Dock(debug_node_id);
-        StorePathUpdateFrequency.Dock(debug_node_id);
-        ProjectPreview.Dock(debug_node_id);
+        Debug.StateViewer.Dock(debug_node_id);
+        Debug.ProjectPreview.Dock(debug_node_id);
+        Debug.StateMemoryEditor.Dock(debug_node_id);
+        Debug.StorePathUpdateFrequency.Dock(debug_node_id);
+        Debug.DebugLog.Dock(debug_node_id);
+        Debug.StackTool.Dock(debug_node_id);
+        Debug.Metrics.Dock(metrics_node_id);
 
-        Metrics.Dock(utilities_node_id);
         Style.Dock(utilities_node_id);
         Demo.Dock(utilities_node_id);
 
-        Info.Dock(sidebar_node_id);
+        Info.Dock(info_node_id);
     } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
+        Style.SelectTab();
         Audio.SelectTab();
-        Metrics.SelectTab();
-        DebugLog.SelectTab(); // not visible by default anymore
+        Audio.Faust.Graph.SelectTab();
+        Debug.StateViewer.SelectTab(); // not visible by default anymore
     }
 
     // Draw non-window children.
@@ -231,6 +235,8 @@ void State::Render() const {
     // Recursively draw all windows.
     DrawWindows();
 }
+
+void Debug::Render() const {}
 
 constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
 constexpr ImVec2ih UnpackImVec2ih(const U32 packed) { return {S16(U32(packed) >> 16), S16(U32(packed) & 0xffff)}; }
@@ -620,7 +626,7 @@ void StorePathUpdateFrequency::Render() const {
     }
 }
 
-void ProjectPreview::Render() const {
+void Debug::ProjectPreview::Render() const {
     Format.Draw();
     Raw.Draw();
 

@@ -31,7 +31,6 @@ using ImGuiSliderFlags = int;
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Field {
-
 struct Base : UIStateMember {
     inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
 
@@ -43,6 +42,9 @@ struct Base : UIStateMember {
 protected:
     void Render() const override {}
 };
+
+using Entry = std::pair<const Base &, Primitive>;
+using Entries = std::vector<Entry>;
 
 struct PrimitiveBase : Base {
     PrimitiveBase(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
@@ -258,16 +260,13 @@ private:
     vector<T> Data;
 };
 
-using Entry = std::pair<const Base &, Primitive>;
-using Entries = std::vector<Entry>;
-
 struct Vec2 : UIStateMember {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 
     operator ImVec2() const;
 
-    Field::Float X, Y;
+    Float X, Y;
     const char *Format;
 
 protected:
@@ -279,7 +278,7 @@ struct Vec2Linked : Vec2 {
     using Vec2::Vec2;
     Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
-    Prop(Field::Bool, Linked, true);
+    Prop(Bool, Linked, true);
 
 protected:
     void Render(ImGuiSliderFlags) const override;

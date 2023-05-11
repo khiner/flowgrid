@@ -158,9 +158,7 @@ Flags::Item::Item(const char *name_and_help) {
     Name = name;
     Help = help;
 }
-} // namespace Field
 
-namespace Field {
 PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value) : Base(parent, id, name_help) {
     store::Set(*this, value, InitStore);
 }

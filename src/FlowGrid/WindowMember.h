@@ -3,7 +3,7 @@
 #include <set>
 
 #include "Action/Action.h" // Windows have menus, which can perform actions.
-#include "Store.h"
+#include "Store.h" // todo only depends on fields. break fields out of store again into a separate header, and combine Store and StoreHistory into a single header.
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;

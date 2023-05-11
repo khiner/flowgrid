@@ -227,6 +227,7 @@ bool ActionAllowed(const EmptyAction &action) {
 
 #include "blockingconcurrentqueue.h"
 
+using action::ActionMoment, action::StateActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void Project::RunQueuedActions(bool force_finalize_gesture) {

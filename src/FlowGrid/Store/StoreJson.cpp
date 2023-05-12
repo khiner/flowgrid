@@ -10,7 +10,7 @@
 #include "immer/map_transient.hpp"
 
 namespace nlohmann {
-inline void to_json(json &j, const Store &store) {
+void to_json(json &j, const Store &store) {
     for (const auto &[key, value] : store) {
         j[json::json_pointer(key.string())] = value;
     }

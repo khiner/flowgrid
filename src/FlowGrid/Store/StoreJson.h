@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nlohmann/json_fwd.hpp"
+#include "nlohmann/json.hpp"
 
 #include "StoreJsonFormat.h"
 #include "StoreTypes.h"
@@ -11,6 +11,10 @@ struct GesturesProject {
     const action::Gestures gestures;
     const Count index;
 };
+
+namespace nlohmann {
+void to_json(json &, const Store &);
+} // namespace nlohmann
 
 Store JsonToStore(const nlohmann::json &);
 GesturesProject JsonToGestures(const nlohmann::json &);

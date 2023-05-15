@@ -6,6 +6,8 @@
 
 #include "imgui_internal.h"
 
+#include "../Style.h"
+
 using namespace ImGui;
 
 namespace FlowGrid {
@@ -151,8 +153,8 @@ bool RadioButtons(const char *label, float *value, const NamesAndValues &names_a
     return changed;
 }
 
-// todo after fg style is moved into its own file, use that instead of taking the highlight color as a parameter
-bool JsonTreeNode(std::string_view label_view, const ImU32 highlight_color, JsonTreeNodeFlags flags, const char *id) {
+bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const char *id) {
+    const ImU32 highlight_color = style.FlowGrid.Colors[FlowGridCol_HighlightText];
     const auto label = string(label_view);
     const bool highlighted = (flags & JsonTreeNodeFlags_Highlighted);
     const bool disabled = flags & JsonTreeNodeFlags_Disabled;
@@ -167,22 +169,22 @@ bool JsonTreeNode(std::string_view label_view, const ImU32 highlight_color, Json
     return is_open;
 }
 
-void JsonTree(std::string_view label_view, const json &value, const ImU32 highlight_color, JsonTreeNodeFlags flags, const char *id) {
+void JsonTree(std::string_view label_view, const json &value, JsonTreeNodeFlags flags, const char *id) {
     const auto label = string(label_view);
     if (value.is_null()) {
         TextUnformatted(label.empty() ? "(null)" : label.c_str());
     } else if (value.is_object()) {
-        if (label.empty() || JsonTreeNode(label, highlight_color, flags, id)) {
+        if (label.empty() || JsonTreeNode(label, flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
-                JsonTree(it.key(), *it, highlight_color, flags);
+                JsonTree(it.key(), *it, flags);
             }
             if (!label.empty()) TreePop();
         }
     } else if (value.is_array()) {
-        if (label.empty() || JsonTreeNode(label, highlight_color, flags, id)) {
+        if (label.empty() || JsonTreeNode(label, flags, id)) {
             Count i = 0;
             for (const auto &it : value) {
-                JsonTree(to_string(i), it, highlight_color, flags);
+                JsonTree(to_string(i), it, flags);
                 i++;
             }
             if (!label.empty()) TreePop();

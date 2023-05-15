@@ -558,14 +558,14 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
     if (value.is_null()) {
         TextUnformatted(label.c_str());
     } else if (value.is_object()) {
-        if (JsonTreeNode(label, style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
+        if (JsonTreeNode(label, flags)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 StateJsonTree(it.key(), *it, path / it.key());
             }
             TreePop();
         }
     } else if (value.is_array()) {
-        if (JsonTreeNode(label, style.FlowGrid.Colors[FlowGridCol_HighlightText], flags)) {
+        if (JsonTreeNode(label, flags)) {
             Count i = 0;
             for (const auto &it : value) {
                 StateJsonTree(to_string(i), it, path / to_string(i));
@@ -592,7 +592,7 @@ void Debug::ProjectPreview::Render() const {
 
     const json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
-    else JsonTree("", project_json, style.FlowGrid.Colors[FlowGridCol_HighlightText], JsonTreeNodeFlags_DefaultOpen);
+    else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
 
 void Style::FlowGridStyle::Render() const {
@@ -659,7 +659,6 @@ void ShowGesture(const Gesture &gesture) {
         JsonTree(
             std::format("{}: {}", action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()),
             json(action)[1],
-            style.FlowGrid.Colors[FlowGridCol_HighlightText],
             JsonTreeNodeFlags_None,
             to_string(action_index).c_str()
         );
@@ -723,7 +722,7 @@ void Metrics::FlowGridMetrics::Render() const {
                         TreePop();
                     }
                     if (TreeNode("State")) {
-                        JsonTree("", store_record, style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+                        JsonTree("", store_record);
                         TreePop();
                     }
                     TreePop();

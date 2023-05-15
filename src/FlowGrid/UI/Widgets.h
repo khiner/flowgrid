@@ -101,6 +101,6 @@ float CalcRadioChoiceWidth(const string &choice_name);
 // For a non-empty `label`:
 //   * If the provided `value` is an array or object, it will show as a nested `JsonTreeNode` with `label` as its parent.
 //   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
-void JsonTree(std::string_view label, const json &value, const ImU32 highight_color, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
-bool JsonTreeNode(std::string_view label, const ImU32 highight_color, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr);
+void JsonTree(std::string_view label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
+bool JsonTreeNode(std::string_view label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr);
 } // namespace FlowGrid

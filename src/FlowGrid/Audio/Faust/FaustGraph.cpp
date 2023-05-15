@@ -869,11 +869,11 @@ struct GroupNode : Node {
         : Node(tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
 
     void DoPlaceSize(const DeviceType) override {
-        Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() + GetFontSize()};
+        Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() * 2 + GetFontSize()};
     }
     void DoPlace(const DeviceType type) override {
         if (!ShouldDecorate()) return A->Place(type, {0, 0}, Orientation);
-        A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), GetFontSize()}, Orientation);
+        A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), LineWidth() + GetFontSize() / 2}, Orientation);
     }
     void Render(Device &device, InteractionFlags) const override {
         if (ShouldDecorate()) {

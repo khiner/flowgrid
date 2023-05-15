@@ -891,13 +891,14 @@ struct GroupNode : Node {
         const auto &offset = Margin() + Padding() + LineWidth();
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            const float arrow_width = Type == NodeType_Group || in ? 0.f : Style().ArrowSize.X;
+            const bool has_arrow = Type == NodeType_Decorate && !in;
+            const float arrow_width = has_arrow ? Style().ArrowSize.X : 0.f;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
-                const ImVec2 &a = {in ? -offset.x : (Size - offset).x, channel_point.y};
+                const ImVec2 &a = {in ? 0 : (Size - offset).x, channel_point.y};
                 const ImVec2 &b = {in ? offset.x : Size.x - arrow_width, channel_point.y};
                 if (ShouldDecorate()) device.Line(a, b);
-                if (Type == NodeType_Decorate && !in) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
+                if (has_arrow) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
             }
         }
     }

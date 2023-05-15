@@ -174,7 +174,7 @@ void JsonTree(std::string_view label_view, const json &value, const ImU32 highli
     } else if (value.is_object()) {
         if (label.empty() || JsonTreeNode(label, highlight_color, flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
-                JsonTree(it.key(), *it, flags, highlight_color);
+                JsonTree(it.key(), *it, highlight_color, flags);
             }
             if (!label.empty()) TreePop();
         }

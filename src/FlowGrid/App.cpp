@@ -574,7 +574,7 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
             TreePop();
         }
     } else {
-        Text("%s: %s", label.c_str(), value.dump().c_str());
+        JsonTreeNode(label, flags, nullptr, value.dump().c_str());
     }
 }
 

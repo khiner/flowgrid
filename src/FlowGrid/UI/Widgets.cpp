@@ -153,19 +153,27 @@ bool RadioButtons(const char *label, float *value, const NamesAndValues &names_a
     return changed;
 }
 
-bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const char *id) {
-    const ImU32 highlight_color = style.FlowGrid.Colors[FlowGridCol_HighlightText];
+bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const char *id, const char *value) {
     const auto label = string(label_view);
-    const bool highlighted = (flags & JsonTreeNodeFlags_Highlighted);
+    const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
     const bool disabled = flags & JsonTreeNodeFlags_Disabled;
     const ImGuiTreeNodeFlags imgui_flags = flags & JsonTreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
 
+    bool is_open = false;
     if (disabled) BeginDisabled();
-    if (highlighted) PushStyleColor(ImGuiCol_Text, highlight_color);
-    const bool is_open = id ? TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : TreeNodeEx(label.c_str(), imgui_flags);
+    if (highlighted) PushStyleColor(ImGuiCol_Text, style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+    if (value == nullptr) {
+        is_open = id ? TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : TreeNodeEx(label.c_str(), imgui_flags);
+    } else if (!label.empty()) {
+        Text("%s: ", label.c_str()); // Render leaf label/value as raw text.
+    }
     if (highlighted) PopStyleColor();
     if (disabled) EndDisabled();
 
+    if (value != nullptr) {
+        SameLine();
+        TextUnformatted(value);
+    }
     return is_open;
 }
 
@@ -190,8 +198,7 @@ void JsonTree(std::string_view label_view, const json &value, JsonTreeNodeFlags 
             if (!label.empty()) TreePop();
         }
     } else {
-        if (label.empty()) TextUnformatted(value.dump().c_str());
-        else Text("%s: %s", label.c_str(), value.dump().c_str());
+        JsonTreeNode(label, flags, id, value.dump().c_str());
     }
 }
 

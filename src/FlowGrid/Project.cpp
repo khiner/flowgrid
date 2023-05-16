@@ -102,7 +102,7 @@ void Project::OpenProject(const fs::path &path) {
         for (const auto &gesture : gestures) {
             const auto before_store = transient.persistent();
             for (const auto &action_moment : gesture) {
-                s.Update(action_moment.first, transient);
+                s.Apply(action_moment.first, transient);
             }
             const auto after_store = transient.persistent();
             const auto &patch = store::CreatePatch(before_store, after_store);
@@ -230,7 +230,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
                 ApplyAction(a);
             },
             [&](const StateAction &a) {
-                s.Update(a, transient);
+                s.Apply(a, transient);
                 state_actions.emplace_back(a, action_moment.second);
             },
         );

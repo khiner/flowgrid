@@ -103,7 +103,7 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
     );
 }
 
-void FileDialog::Update(const FileDialogAction &action, TransientStore &store) const {
+void FileDialog::Apply(const FileDialogAction &action, TransientStore &store) const {
     Match(
         action,
         [&](const OpenFileDialog &a) { this->Set(json::parse(a.dialog_json), store); },

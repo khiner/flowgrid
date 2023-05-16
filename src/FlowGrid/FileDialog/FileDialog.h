@@ -8,7 +8,7 @@
 UIMember(
     FileDialog,
 
-    void Update(const FileDialogAction &, TransientStore &) const;
+    void Apply(const FileDialogAction &, TransientStore &) const;
     void Set(const FileDialogData &, TransientStore &) const;
 
     UIMember(Demo);

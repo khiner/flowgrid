@@ -119,7 +119,7 @@ using namespace nlohmann;
 
 // todo should be in `Store`, but first need to separate out the core action stuff so `Store.h` can include `Action/Core.h` and define its own actions.
 namespace store {
-void Update(const StoreAction &action, TransientStore &store) {
+void Apply(const StoreAction &action, TransientStore &store) {
     Match(
         action,
         [&store](const SetValue &a) { Set(a.path, a.value, store); },
@@ -132,11 +132,11 @@ void Update(const StoreAction &action, TransientStore &store) {
 }
 } // namespace store
 
-void State::Update(const StateAction &action, TransientStore &store) const {
+void State::Apply(const StateAction &action, TransientStore &store) const {
     Match(
         action,
-        [&store](const StoreAction &a) { store::Update(a, store); },
-        [&](const FileDialogAction &a) { FileDialog.Update(a, store); },
+        [&store](const StoreAction &a) { store::Apply(a, store); },
+        [&](const FileDialogAction &a) { FileDialog.Apply(a, store); },
         [&](const StyleAction &a) {
             Match(
                 a,

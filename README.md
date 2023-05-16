@@ -47,6 +47,13 @@ using Primitive = std::variant<bool, unsigned int, int, float, string>;
 
 `Field`s also provide state metadata, conversion & rendering methods, and behave syntactically like the `Primitive`s they wrap.
 
+Here are some high-level architecture design goals:
+- Store the source-of-truth application state in a single `struct` with global read access.
+- Perform all actions that affect the application state in one place.
+- Provide global read access to all application runtime state.
+- Make _everything_ undo/redo-able.
+- Where it makes sense, treat the UI as a pure function of the application state.
+
 ## Application docs
 
 ### Project files
@@ -218,36 +225,6 @@ $ git pull --rebase upstream {branch} # `upstream` points to the original repo. 
 $ ... # Resolve any conflicts & test
 $ git push --force
 ```
-
-### Current development goals
-
-So far, I'm basically trying to mash together some great libraries.
-Here are some of my current development thoughts/goals, roughly broken up into abstract/concrete:
-
-#### Abstract development goals
-
-- **Keep it as simple as I possibly can.**
-- Focus on making it fun to use _and create_ the application.
-- Spend more time up front getting the foundation right (simple, transparent, flexible, powerful).
-- Keep (re-)build times low.
-- At this early stage, my main application goal is to _facilitate the development of the app_.
-  - Invest early in things like adding debugging capabilities.
-  - Make the application state and context transparent and easily modifiable.
-  - Provide performance & debug metrics in real-time.
-- Let myself optimize.
-  In computers, fast things are good and always more fun than slow things.
-- Prioritize learning over development velocity.
-  Dig into, and take ownership over, low-level concerns where appropriate.
-  Feed curiosity.
-  Bias towards reinventing wheels over accepting bloated/overly-complex dependencies that do too much.
-
-#### Concrete development goals
-
-- Store the source-of-truth application state in a single `struct` with global read access.
-- Perform all actions that affect the application state in one place.
-- Provide global read access to all application runtime state.
-- Make _everything_ undo/redo-able.
-- As much as possible, make the UI a pure function of the application state.
 
 ## License
 

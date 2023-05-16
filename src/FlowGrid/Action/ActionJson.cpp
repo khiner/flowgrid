@@ -52,18 +52,6 @@ void from_json(const json &j, StatefulAction &value) {
     auto id = j[0].get<ActionID>();
     value = CreateStatefulAction(id, j[1]);
 }
-void to_json(json &j, const ProjectAction &value) {
-    std::visit(
-        [&](auto &&inner_value) {
-            j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
-        },
-        value
-    );
-}
-void from_json(const json &j, ProjectAction &value) {
-    auto id = j[0].get<ActionID>();
-    value = CreateProjectAction(id, j[1]);
-}
 
 // This boilerplate is for handling `std::optional` values.
 // From https://github.com/nlohmann/json/issues/1749#issuecomment-1099890282

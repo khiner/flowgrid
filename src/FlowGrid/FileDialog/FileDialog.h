@@ -8,9 +8,10 @@
 UIMember(
     FileDialog,
 
-    UIMember(Demo);
+    void Update(const FileDialogAction &, TransientStore &) const;
+    void Set(const FileDialogData &, TransientStore &) const;
 
-    void Set(const FileDialogData &data, TransientStore &) const;
+    UIMember(Demo);
 
     Prop(Bool, Visible);
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.

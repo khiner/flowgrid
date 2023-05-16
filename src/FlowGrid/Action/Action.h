@@ -27,14 +27,24 @@ template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
 #define Match(Variant, ...) std::visit(visitor{__VA_ARGS__}, Variant);
 
 // Utility to flatten two variants together into one variant.
-// From https://stackoverflow.com/a/59251342/780425
-// E.g. Combine<Variant1, Variant2>
-template<typename Var1, typename Var2> struct Combine;
-template<typename... Ts1, typename... Ts2> struct Combine<std::variant<Ts1...>, std::variant<Ts2...>> {
-    using type = std::variant<Ts1..., Ts2...>;
+// Based on https://stackoverflow.com/a/59251342/780425, but adds support for > 2 variants using template recursion.
+// E.g. Combine<Variant1, Variant2, Variant3>
+template<typename... Vars>
+struct Combine;
+
+template<typename Var1>
+struct Combine<Var1> {
+    using type = Var1;
+};
+
+template<typename... Ts1, typename... Ts2, typename... Vars>
+struct Combine<std::variant<Ts1...>, std::variant<Ts2...>, Vars...> {
+    using type = typename Combine<std::variant<Ts1..., Ts2...>, Vars...>::type;
 };
 
 namespace Actions {
+using ActionID = ID;
+
 struct Undo {};
 struct Redo {};
 struct SetHistoryIndex {
@@ -48,10 +58,6 @@ struct OpenEmptyProject {};
 struct OpenDefaultProject {};
 
 struct ShowOpenProjectDialog {};
-struct OpenFileDialog {
-    string dialog_json;
-}; // Storing as JSON string instead of the raw struct to reduce variant size. (Raw struct is 120 bytes.)
-struct CloseFileDialog {};
 
 struct SaveProject {
     string path;
@@ -113,6 +119,11 @@ struct OpenFaustFile {
 struct SaveFaustSvgFile {
     string path;
 };
+
+struct OpenFileDialog {
+    string dialog_json;
+}; // Storing as JSON string instead of the raw struct to reduce variant size. (Raw struct is 120 bytes.)
+struct CloseFileDialog {};
 } // namespace Actions
 
 using namespace Actions;
@@ -124,20 +135,20 @@ using ProjectAction = std::variant<
     Undo, Redo, SetHistoryIndex,
     OpenProject, OpenEmptyProject, OpenDefaultProject,
     SaveProject, SaveDefaultProject, SaveCurrentProject, SaveFaustFile, SaveFaustSvgFile>;
-using StateAction = std::variant<
-    OpenFileDialog, CloseFileDialog,
-    ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog,
-    OpenFaustFile,
 
-    SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch,
+// Actions that apply directly to the store.
+using StoreAction = std::variant<SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch>;
 
-    SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle,
-    SetGraphLayoutStyle,
+// Domain actions (todo move to their respective domain files).
+using FileDialogAction = std::variant<OpenFileDialog, CloseFileDialog>;
+using StyleAction = std::variant<SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle, SetGraphLayoutStyle>;
 
+using OtherStateAction = std::variant<
+    ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog, OpenFaustFile,
     CloseApplication>;
 
+using StateAction = Combine<StoreAction, FileDialogAction, StyleAction, OtherStateAction>::type;
 using Action = Combine<ProjectAction, StateAction>::type;
-using ActionID = ID;
 
 // All actions that don't have any member data.
 using EmptyAction = std::variant<

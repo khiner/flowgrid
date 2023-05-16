@@ -232,14 +232,15 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
             [&](const StateAction &a) {
                 s.Update(a, transient);
                 state_actions.emplace_back(a, action_moment.second);
-            }
+            },
         );
     }
 
     const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(s.ApplicationSettings.GestureDurationSec) <= 0);
     if (!state_actions.empty()) {
+        const auto &patch = SetStore(transient.persistent());
         History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());
-        History.UpdateGesturePaths(state_actions, SetStore(transient.persistent()));
+        History.UpdateGesturePaths(state_actions, patch);
     }
     if (finalize) History.FinalizeGesture();
 }

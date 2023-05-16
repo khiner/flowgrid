@@ -117,60 +117,74 @@ void Matrix<T>::Update() {
 
 using namespace nlohmann;
 
+// todo should be in `Store`, but first need to separate out the core action stuff so `Store.h` can include `Action/Core.h` and define its own actions.
+namespace store {
+void Update(const StoreAction &action, TransientStore &store) {
+    Match(
+        action,
+        [&store](const SetValue &a) { Set(a.path, a.value, store); },
+        [&store](const SetValues &a) { Set(a.values, store); },
+        [&store](const SetVector &a) { Set(a.path, a.value, store); },
+        [&store](const SetMatrix &a) { Set(a.path, a.data, a.row_count, store); },
+        [&store](const ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
+        [&store](const Actions::ApplyPatch &a) { ApplyPatch(a.patch, store); },
+    );
+}
+} // namespace store
+
 void State::Update(const StateAction &action, TransientStore &store) const {
     Match(
         action,
-        [&store](const SetValue &a) { store::Set(a.path, a.value, store); },
-        [&store](const SetValues &a) { store::Set(a.values, store); },
-        [&store](const SetVector &a) { store::Set(a.path, a.value, store); },
-        [&store](const SetMatrix &a) { store::Set(a.path, a.data, a.row_count, store); },
-        [&store](const ToggleValue &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
-        [&store](const ApplyPatch &a) { store::ApplyPatch(a.patch, store); },
-        [&](const OpenFileDialog &a) { FileDialog.Set(json::parse(a.dialog_json), store); },
-        [&](const CloseFileDialog &) { store::Set(FileDialog.Visible, false, store); },
+        [&store](const StoreAction &a) { store::Update(a, store); },
+        [&](const FileDialogAction &a) { FileDialog.Update(a, store); },
+        [&](const StyleAction &a) {
+            Match(
+                a,
+                // todo enum types instead of raw integers
+                [&](const SetImGuiColorStyle &a) {
+                    switch (a.id) {
+                        case 0: return Style.ImGui.ColorsDark(store);
+                        case 1: return Style.ImGui.ColorsLight(store);
+                        case 2: return Style.ImGui.ColorsClassic(store);
+                    }
+                },
+                [&](const SetImPlotColorStyle &a) {
+                    switch (a.id) {
+                        case 0: return Style.ImPlot.ColorsAuto(store);
+                        case 1: return Style.ImPlot.ColorsDark(store);
+                        case 2: return Style.ImPlot.ColorsLight(store);
+                        case 3: return Style.ImPlot.ColorsClassic(store);
+                    }
+                },
+                [&](const SetFlowGridColorStyle &a) {
+                    switch (a.id) {
+                        case 0: return Style.FlowGrid.ColorsDark(store);
+                        case 1: return Style.FlowGrid.ColorsLight(store);
+                        case 2: return Style.FlowGrid.ColorsClassic(store);
+                    }
+                },
+                [&](const SetGraphColorStyle &a) {
+                    switch (a.id) {
+                        case 0: return Audio.Faust.Graph.Style.ColorsDark(store);
+                        case 1: return Audio.Faust.Graph.Style.ColorsLight(store);
+                        case 2: return Audio.Faust.Graph.Style.ColorsClassic(store);
+                        case 3: return Audio.Faust.Graph.Style.ColorsFaust(store);
+                    }
+                },
+                [&](const SetGraphLayoutStyle &a) {
+                    switch (a.id) {
+                        case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid(store);
+                        case 1: return Audio.Faust.Graph.Style.LayoutFaust(store);
+                    }
+                },
+            );
+        },
         [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, store); },
         [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, store); },
         [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, store); },
         [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, store); },
         [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}, store); },
 
-        // todo enum types instead of raw integers
-        [&](const SetImGuiColorStyle &a) {
-            switch (a.id) {
-                case 0: return Style.ImGui.ColorsDark(store);
-                case 1: return Style.ImGui.ColorsLight(store);
-                case 2: return Style.ImGui.ColorsClassic(store);
-            }
-        },
-        [&](const SetImPlotColorStyle &a) {
-            switch (a.id) {
-                case 0: return Style.ImPlot.ColorsAuto(store);
-                case 1: return Style.ImPlot.ColorsDark(store);
-                case 2: return Style.ImPlot.ColorsLight(store);
-                case 3: return Style.ImPlot.ColorsClassic(store);
-            }
-        },
-        [&](const SetFlowGridColorStyle &a) {
-            switch (a.id) {
-                case 0: return Style.FlowGrid.ColorsDark(store);
-                case 1: return Style.FlowGrid.ColorsLight(store);
-                case 2: return Style.FlowGrid.ColorsClassic(store);
-            }
-        },
-        [&](const SetGraphColorStyle &a) {
-            switch (a.id) {
-                case 0: return Audio.Faust.Graph.Style.ColorsDark(store);
-                case 1: return Audio.Faust.Graph.Style.ColorsLight(store);
-                case 2: return Audio.Faust.Graph.Style.ColorsClassic(store);
-                case 3: return Audio.Faust.Graph.Style.ColorsFaust(store);
-            }
-        },
-        [&](const SetGraphLayoutStyle &a) {
-            switch (a.id) {
-                case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid(store);
-                case 1: return Audio.Faust.Graph.Style.LayoutFaust(store);
-            }
-        },
         [&](const OpenFaustFile &a) { store::Set(Audio.Faust.Code, FileIO::read(a.path), store); },
         [&](const CloseApplication &) { store::Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
     );

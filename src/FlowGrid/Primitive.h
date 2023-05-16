@@ -1,6 +1,5 @@
 #pragma once
 
-#include <__filesystem/path.h>
 #include <concepts>
 #include <string>
 #include <variant>
@@ -22,7 +21,3 @@ struct IsVariantMember<T, std::variant<ALL_T...>>
 
 template<typename T>
 concept IsPrimitive = IsVariantMember<T, Primitive>::value;
-
-using StorePath = std::filesystem::path;
-
-inline static const StorePath RootPath{"/"};

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "StateMember.h"
-#include "Store/StoreTypes.h"
 
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;
@@ -181,6 +180,8 @@ protected:
     void Render() const override;
 };
 } // namespace Field
+
+#include "Store/StoreFwd.h"
 
 namespace store {
 void Set(const Field::Base &, const Primitive &, TransientStore &);

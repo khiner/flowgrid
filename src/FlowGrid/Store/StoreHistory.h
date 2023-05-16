@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Action/Action.h"
+#include "StoreFwd.h"
 
 enum Direction {
     Forward,
@@ -17,8 +18,8 @@ struct StoreHistory {
     };
 
     struct Plottable {
-        vector<const char *> Labels;
-        vector<ImU64> Values;
+        std::vector<const char *> Labels;
+        std::vector<ImU64> Values;
     };
 
     StoreHistory() = default;
@@ -49,11 +50,11 @@ struct StoreHistory {
 
     Count Index{0};
     Gesture ActiveGesture{}; // uncompressed, uncommitted
-    vector<StorePath> LatestUpdatedPaths{};
-    std::unordered_map<StorePath, vector<TimePoint>, StorePathHash> CommittedUpdateTimesForPath{};
+    std::vector<StorePath> LatestUpdatedPaths{};
+    std::unordered_map<StorePath, std::vector<TimePoint>, StorePathHash> CommittedUpdateTimesForPath{};
 
 private:
-    std::unordered_map<StorePath, vector<TimePoint>, StorePathHash> GestureUpdateTimesForPath{};
+    std::unordered_map<StorePath, std::vector<TimePoint>, StorePathHash> GestureUpdateTimesForPath{};
 };
 
 extern StoreHistory History; // One store checkpoint for every gesture.

@@ -88,7 +88,7 @@ std::variant<StatefulAction, bool> Merge(const StatefulAction &a, const Stateful
             return false;
         }
         case id<SetValues>: {
-            if (same_type) return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<vector>};
+            if (same_type) return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<std::vector>};
             return false;
         }
         case id<SetVector>: {

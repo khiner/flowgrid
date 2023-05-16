@@ -1,8 +1,7 @@
 #pragma once
 
+#include "../Helper/Variant.h"
 #include "../Store/StoreTypes.h"
-
-using std::vector;
 
 /**
 An `Action` is an immutable representation of a user interaction event.
@@ -15,32 +14,6 @@ An `Action` is a `std::variant`, which can hold any type, and thus must be large
 - Note that adding static members does not increase the size of the parent `Action` variant.
   (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
-
-// Utility to make a variant visitor out of lambdas, using the "overloaded pattern" described
-// [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
-template<class... Ts> struct visitor : Ts... {
-    using Ts::operator()...;
-};
-template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
-
-// E.g. Match(action, [](const ProjectAction &a) { ... }, [](const StatefulAction &a) { ... });
-#define Match(Variant, ...) std::visit(visitor{__VA_ARGS__}, Variant);
-
-// Utility to flatten two variants together into one variant.
-// Based on https://stackoverflow.com/a/59251342/780425, but adds support for > 2 variants using template recursion.
-// E.g. Combine<Variant1, Variant2, Variant3>
-template<typename... Vars>
-struct Combine;
-
-template<typename Var1>
-struct Combine<Var1> {
-    using type = Var1;
-};
-
-template<typename... Ts1, typename... Ts2, typename... Vars>
-struct Combine<std::variant<Ts1...>, std::variant<Ts2...>, Vars...> {
-    using type = typename Combine<std::variant<Ts1..., Ts2...>, Vars...>::type;
-};
 
 namespace Actions {
 struct Undo {};
@@ -75,11 +48,11 @@ struct SetValues {
 };
 struct SetVector {
     StorePath path;
-    vector<Primitive> value;
+    std::vector<Primitive> value;
 };
 struct SetMatrix {
     StorePath path;
-    vector<Primitive> data;
+    std::vector<Primitive> data;
     Count row_count; // Column count derived from `data.size() / row_count`.
 };
 struct ToggleValue {
@@ -168,8 +141,8 @@ using EmptyAction = std::variant<
 
 using ActionMoment = std::pair<Action, TimePoint>;
 using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
-using Gesture = vector<StatefulActionMoment>;
-using Gestures = vector<Gesture>;
+using Gesture = std::vector<StatefulActionMoment>;
+using Gestures = std::vector<Gesture>;
 
 // Default-construct an action by its variant index (which is also its `ID`).
 // Adapted from: https://stackoverflow.com/a/60567091/780425

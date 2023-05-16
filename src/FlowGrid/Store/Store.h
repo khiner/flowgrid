@@ -1,7 +1,8 @@
 #pragma once
 
+#include "StoreFwd.h"
+
 #include "../StateMember.h"
-#include "StoreTypes.h"
 
 using std::vector;
 

@@ -35,7 +35,7 @@ struct Style : TabsWindow {
     struct ImGuiStyle : UIStateMember {
         ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help = "");
 
-        static vector<ImVec4> ColorPresetBuffer;
+        static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImGuiColors : Colors {
             ImGuiColors(StateMember *parent, string_view path_segment, string_view name_help);
@@ -118,7 +118,7 @@ struct Style : TabsWindow {
     struct ImPlotStyle : UIStateMember {
         ImPlotStyle(StateMember *parent, string_view path_segment, string_view name_help = "");
 
-        static vector<ImVec4> ColorPresetBuffer;
+        static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImPlotColors : Colors {
             ImPlotColors(StateMember *parent, string_view path_segment, string_view name_help);

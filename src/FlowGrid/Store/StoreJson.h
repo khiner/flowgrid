@@ -2,8 +2,8 @@
 
 #include "nlohmann/json.hpp"
 
+#include "StoreFwd.h"
 #include "StoreJsonFormat.h"
-#include "StoreTypes.h"
 
 #include "../Action/Action.h"
 

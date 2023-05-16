@@ -2,7 +2,7 @@
 
 #include "imgui_internal.h"
 
-#include "Store/StoreTypes.h"
+#include "Store/StoreFwd.h"
 
 void UIStateMember::DrawWindows() const {
     for (const auto *child : Children) {
@@ -77,9 +77,9 @@ void TabsWindow::Render() const {
     TabsWindow::Render(exclude);
 }
 
-Menu::Menu(string_view label, const vector<const Item> items) : Label(label), Items(std::move(items)) {}
-Menu::Menu(const vector<const Item> items) : Menu("", std::move(items)) {}
-Menu::Menu(const vector<const Item> items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
+Menu::Menu(string_view label, const std::vector<const Item> items) : Label(label), Items(std::move(items)) {}
+Menu::Menu(const std::vector<const Item> items) : Menu("", std::move(items)) {}
+Menu::Menu(const std::vector<const Item> items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
 void Menu::Render() const {
     if (Items.empty()) return;

@@ -2,6 +2,7 @@
 
 #include "FileDialogData.h"
 
+#include "../Store/StoreFwd.h"
 #include "../WindowMember.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.

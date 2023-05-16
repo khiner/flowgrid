@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Store/StoreFwd.h"
 #include "WindowMember.h"
 
 struct ImVec4;
@@ -14,8 +15,8 @@ struct Colors : UIStateMember {
     Count Size() const;
     U32 operator[](Count) const;
 
-    void Set(const vector<ImVec4> &, TransientStore &) const;
-    void Set(const vector<std::pair<int, ImVec4>> &, TransientStore &) const;
+    void Set(const std::vector<ImVec4> &, TransientStore &) const;
+    void Set(const std::vector<std::pair<int, ImVec4>> &, TransientStore &) const;
 
 protected:
     void Render() const override;

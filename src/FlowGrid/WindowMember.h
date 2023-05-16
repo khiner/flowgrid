@@ -14,12 +14,12 @@ struct Menu : Drawable {
         const std::reference_wrapper<MenuItemDrawable>,
         const action::EmptyAction>;
 
-    Menu(string_view label, const vector<const Item> items);
-    explicit Menu(const vector<const Item> items);
-    Menu(const vector<const Item> items, const bool is_main);
+    Menu(string_view label, const std::vector<const Item> items);
+    explicit Menu(const std::vector<const Item> items);
+    Menu(const std::vector<const Item> items, const bool is_main);
 
     const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
-    const vector<const Item> Items;
+    const std::vector<const Item> Items;
     const bool IsMain{false};
 
 protected:

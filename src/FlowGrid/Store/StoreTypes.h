@@ -1,11 +1,19 @@
 #pragma once
 
+// Store-related types like path/entry/patch.
+// Basically all store-related types except the actual `Store` and `TransientStore` types, which are in `StoreFwd.h`.
+
 #include <unordered_map>
+#include <vector>
 
 #include "../Helper/Time.h"
 #include "../Primitive.h"
 
+#include <__filesystem/path.h>
+
 namespace fs = std::filesystem;
+using StorePath = std::filesystem::path;
+inline static const StorePath RootPath{"/"};
 
 using StoreEntry = std::pair<StorePath, Primitive>;
 using StoreEntries = std::vector<StoreEntry>;
@@ -45,20 +53,3 @@ struct StatePatch {
 };
 
 string to_string(PatchOp::Type);
-
-#include <immer/memory_policy.hpp>
-
-namespace immer {
-template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, std::uint32_t B>
-class map;
-
-template<typename K, typename T, typename Hash, typename Equal, typename MemoryPolicy, std::uint32_t B>
-class map_transient;
-} // namespace immer
-
-const auto immer_default_bits = 5;
-using Store = immer::map<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;
-using TransientStore = immer::map_transient<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;
-
-extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.
-extern const Store &AppStore; // Global read-only accessor for the canonical application store instance.

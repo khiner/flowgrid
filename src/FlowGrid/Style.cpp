@@ -1,15 +1,13 @@
 #include "Style.h"
 
-#include "Store/StoreTypes.h"
-
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"
 #include "implot_internal.h"
 
 namespace FlowGrid {
-vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
-vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
+std::vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
+std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
 using namespace ImGui;
 

@@ -49,7 +49,7 @@ void to_json(json &j, const StatefulAction &value) {
     );
 }
 void from_json(const json &j, StatefulAction &value) {
-    auto id = j[0].get<ActionID>();
+    auto id = j[0].get<ID>();
     value = CreateStatefulAction(id, j[1]);
 }
 

@@ -180,7 +180,7 @@ static void ApplyAction(const ProjectAction &action) {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
-bool ActionAllowed(const ActionID id) {
+bool ActionAllowed(const ID id) {
     switch (id) {
         case action::id<Actions::Undo>: return History.CanUndo();
         case action::id<Actions::Redo>: return History.CanRedo();

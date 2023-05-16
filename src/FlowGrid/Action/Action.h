@@ -43,8 +43,6 @@ struct Combine<std::variant<Ts1...>, std::variant<Ts2...>, Vars...> {
 };
 
 namespace Actions {
-using ActionID = ID;
-
 struct Undo {};
 struct Redo {};
 struct SetHistoryIndex {
@@ -183,16 +181,16 @@ template<ID I = 0> Action Create(ID index) {
 
 #include "../../Boost/mp11/mp_find.h"
 
-// E.g. `ActionID action_id = id<action_type>`
+// E.g. `ID action_id = id<action_type>`
 // An action's ID is its index in the `Action` variant.
 // Down the road, this means `Action` would need to be append-only (no order changes) for backwards compatibility.
 // Not worried about that right now, since it should be easy enough to replace with some UUID system later.
 // Index is simplest.
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
-template<typename T> constexpr ActionID id = mp_find<Action, T>::value;
+template<typename T> constexpr ID id = mp_find<Action, T>::value;
 
-// Note: ActionID here is index within `Action` variant, not the `EmptyAction` variant.
-inline static const std::unordered_map<ActionID, string> ShortcutForId = {
+// Note: ID here is index within `Action` variant, not the `EmptyAction` variant.
+inline static const std::unordered_map<ID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},
     {id<Redo>, "shift+cmd+z"},
     {id<OpenEmptyProject>, "cmd+n"},
@@ -202,8 +200,8 @@ inline static const std::unordered_map<ActionID, string> ShortcutForId = {
     {id<ShowSaveProjectDialog>, "shift+cmd+s"},
 };
 
-constexpr ActionID GetId(const Action &action) { return action.index(); }
-constexpr ActionID GetId(const StatefulAction &action) { return action.index(); }
+constexpr ID GetId(const Action &action) { return action.index(); }
+constexpr ID GetId(const StatefulAction &action) { return action.index(); }
 
 string GetName(const ProjectAction &action);
 string GetName(const StatefulAction &action);

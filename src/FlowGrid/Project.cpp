@@ -139,7 +139,7 @@ bool Project::SaveProject(const fs::path &path) {
 //   I should be able to define this inside `Project.h` and not include `Action.h` here,
 //   but when I do, it compiles but with invisible issues around `Match` not working with `ProjectAction`.
 // static void ApplyAction(const ProjectAction &);
-static void ApplyAction(const ProjectAction &action) {
+static void ApplyAction(const action::ProjectAction &action) {
     Match(
         action,
         // Handle actions that don't directly update state.
@@ -195,9 +195,9 @@ bool ActionAllowed(const ID id) {
         default: return true;
     }
 }
-bool ActionAllowed(const Action &action) { return ActionAllowed(action::GetId(action)); }
-bool ActionAllowed(const EmptyAction &action) {
-    return std::visit([&](Action &&a) { return ActionAllowed(a); }, action);
+bool ActionAllowed(const action::Action &action) { return ActionAllowed(action::GetId(action)); }
+bool ActionAllowed(const action::EmptyAction &action) {
+    return std::visit([&](action::Action &&a) { return ActionAllowed(a); }, action);
 }
 
 #include "blockingconcurrentqueue.h"
@@ -222,14 +222,14 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
         if (std::holds_alternative<Actions::SaveCurrentProject>(action) && !CurrentProjectPath) action = Actions::ShowSaveProjectDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<ToggleValue>(action);
+        force_finalize_gesture |= std::holds_alternative<Actions::ToggleValue>(action);
 
         Match(
             action,
-            [&](const ProjectAction &a) {
+            [&](const action::ProjectAction &a) {
                 ApplyAction(a);
             },
-            [&](const StatefulAction &a) {
+            [&](const action::StatefulAction &a) {
                 s.Apply(a, transient);
                 state_actions.emplace_back(a, action_moment.second);
             },
@@ -245,7 +245,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
     if (finalize) History.FinalizeGesture();
 }
 
-bool q(Action &&action, bool flush) {
+bool q(action::Action &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
     return true;

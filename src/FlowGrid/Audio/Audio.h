@@ -124,7 +124,7 @@ struct Audio : TabsWindow {
         WindowMember_(
             FaustGraph,
             Menu({
-                Menu("File", {ShowSaveFaustSvgFileDialog{}}),
+                Menu("File", {Actions::ShowSaveFaustSvgFileDialog{}}),
                 Menu("View", {Settings.HoverFlags}),
             }),
 

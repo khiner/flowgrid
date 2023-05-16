@@ -36,13 +36,13 @@ WindowMember(Info);
 UIMember(
     State,
 
-    void Apply(const StatefulAction &, TransientStore &) const;
+    void Apply(const action::StatefulAction &, TransientStore &) const;
 
     OpenRecentProject open_recent_project{};
     const Menu MainMenu{
         {
-            Menu("File", {OpenEmptyProject{}, ShowOpenProjectDialog{}, open_recent_project, OpenDefaultProject{}, SaveCurrentProject{}, SaveDefaultProject{}}),
-            Menu("Edit", {Undo{}, Redo{}}),
+            Menu("File", {Actions::OpenEmptyProject{}, Actions::ShowOpenProjectDialog{}, open_recent_project, Actions::OpenDefaultProject{}, Actions::SaveCurrentProject{}, Actions::SaveDefaultProject{}}),
+            Menu("Edit", {Actions::Undo{}, Actions::Redo{}}),
             Menu(
                 "Windows",
                 {

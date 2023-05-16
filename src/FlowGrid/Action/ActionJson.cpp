@@ -14,14 +14,14 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 // Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
-StatefulAction CreateStatefulAction(ID index, const json &j) {
-    if constexpr (I >= std::variant_size_v<StatefulAction>) throw std::runtime_error{"StatefulAction index " + ::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? j.get<std::variant_alternative_t<I, StatefulAction>>() : CreateStatefulAction<I + 1>(index - 1, j);
+action::StatefulAction CreateStatefulAction(ID index, const json &j) {
+    if constexpr (I >= std::variant_size_v<action::StatefulAction>) throw std::runtime_error{"StatefulAction index " + ::to_string(I + index) + " out of bounds"};
+    else return index == 0 ? j.get<std::variant_alternative_t<I, action::StatefulAction>>() : CreateStatefulAction<I + 1>(index - 1, j);
 }
 template<ID I = 0>
-ProjectAction CreateProjectAction(ID index, const json &j) {
-    if constexpr (I >= std::variant_size_v<ProjectAction>) throw std::runtime_error{"ProjectAction index " + ::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? j.get<std::variant_alternative_t<I, ProjectAction>>() : CreateProjectAction<I + 1>(index - 1, j);
+action::ProjectAction CreateProjectAction(ID index, const json &j) {
+    if constexpr (I >= std::variant_size_v<action::ProjectAction>) throw std::runtime_error{"ProjectAction index " + ::to_string(I + index) + " out of bounds"};
+    else return index == 0 ? j.get<std::variant_alternative_t<I, action::ProjectAction>>() : CreateProjectAction<I + 1>(index - 1, j);
 }
 
 // Convert `std::chrono::time_point`s to/from JSON.
@@ -40,7 +40,7 @@ void to_json(json &j, const StorePath &path) { j = path.string(); }
 void from_json(const json &j, StorePath &path) { path = StorePath(j.get<std::string>()); }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
-void to_json(json &j, const StatefulAction &value) {
+void to_json(json &j, const action::StatefulAction &value) {
     std::visit(
         [&](auto &&inner_value) {
             j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
@@ -48,7 +48,7 @@ void to_json(json &j, const StatefulAction &value) {
         value
     );
 }
-void from_json(const json &j, StatefulAction &value) {
+void from_json(const json &j, action::StatefulAction &value) {
     auto id = j[0].get<ID>();
     value = CreateStatefulAction(id, j[1]);
 }

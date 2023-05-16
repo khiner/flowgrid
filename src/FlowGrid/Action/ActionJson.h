@@ -17,7 +17,7 @@ template<typename Clock, typename Duration> struct adl_serializer<std::chrono::t
 };
 
 DeclareJsonType(StorePath);
-DeclareJsonType(StatefulAction);
+DeclareJsonType(action::StatefulAction);
 
 DeclareJsonType(PatchOp);
 DeclareJsonType(Patch);

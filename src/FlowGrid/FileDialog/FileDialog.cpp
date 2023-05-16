@@ -103,7 +103,8 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
     );
 }
 
-void FileDialog::Apply(const FileDialogAction &action, TransientStore &store) const {
+void FileDialog::Apply(const action::FileDialogAction &action, TransientStore &store) const {
+    using namespace Actions;
     Match(
         action,
         [&](const OpenFileDialog &a) { this->Set(json::parse(a.dialog_json), store); },
@@ -111,9 +112,11 @@ void FileDialog::Apply(const FileDialogAction &action, TransientStore &store) co
     );
 }
 
-static void OpenDialog(const FileDialogData &data) { q(OpenFileDialog{json(data).dump()}); }
+static void OpenDialog(const FileDialogData &data) { q(Actions::OpenFileDialog{json(data).dump()}); }
 
 void FileDialog::Render() const {
+    using namespace Actions;
+
     if (!Visible) return Dialog->Close();
 
     static const string DialogKey = "FileDialog";

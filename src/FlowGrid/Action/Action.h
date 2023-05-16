@@ -124,6 +124,7 @@ struct OpenFileDialog {
 struct CloseFileDialog {};
 } // namespace Actions
 
+namespace action {
 using namespace Actions;
 
 using ProjectAction = std::variant<
@@ -164,8 +165,6 @@ using EmptyAction = std::variant<
     ShowOpenFaustFileDialog,
     ShowSaveFaustFileDialog,
     ShowSaveFaustSvgFileDialog>;
-
-namespace action {
 
 using ActionMoment = std::pair<Action, TimePoint>;
 using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
@@ -216,9 +215,9 @@ Gesture MergeGesture(const Gesture &);
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
  Defined in `Project.cpp`.
 */
-bool q(Action &&a, bool flush = false);
+bool q(action::Action &&a, bool flush = false);
 
 // These are also defined in `Project.cpp`.
 bool ActionAllowed(ID);
-bool ActionAllowed(const Action &);
-bool ActionAllowed(const EmptyAction &);
+bool ActionAllowed(const action::Action &);
+bool ActionAllowed(const action::EmptyAction &);

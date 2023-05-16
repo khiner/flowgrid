@@ -202,12 +202,12 @@ bool ActionAllowed(const EmptyAction &action) {
 
 #include "blockingconcurrentqueue.h"
 
-using action::ActionMoment, action::StateActionMoment;
+using action::ActionMoment, action::StatefulActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void Project::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
-    static vector<StateActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
+    static vector<StatefulActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     state_actions.clear();
 
     auto transient = AppStore.transient();
@@ -229,7 +229,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
             [&](const ProjectAction &a) {
                 ApplyAction(a);
             },
-            [&](const StateAction &a) {
+            [&](const StatefulAction &a) {
                 s.Apply(a, transient);
                 state_actions.emplace_back(a, action_moment.second);
             },

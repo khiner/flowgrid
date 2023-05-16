@@ -61,7 +61,7 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
  One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
  For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
 */
-std::variant<StateAction, bool> Merge(const StateAction &a, const StateAction &b) {
+std::variant<StatefulAction, bool> Merge(const StatefulAction &a, const StatefulAction &b) {
     const ID a_id = GetId(a);
     const ID b_id = GetId(b);
     const bool same_type = a_id == b_id;
@@ -122,12 +122,12 @@ Gesture MergeGesture(const Gesture &gesture) {
     Gesture merged_gesture; // Mutable return value
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
-    std::optional<const StateActionMoment> active;
+    std::optional<const StatefulActionMoment> active;
     for (Count i = 0; i < gesture.size(); i++) {
         if (!active) active.emplace(gesture[i]);
         const auto &a = *active;
         const auto &b = gesture[i + 1];
-        std::variant<StateAction, bool> merge_result = Merge(a.first, b.first);
+        std::variant<StatefulAction, bool> merge_result = Merge(a.first, b.first);
         Match(
             merge_result,
             [&](const bool cancel_out) {
@@ -135,7 +135,7 @@ Gesture MergeGesture(const Gesture &gesture) {
                 else merged_gesture.emplace_back(a); //
                 active.reset(); // No merge in either case. Move on to try compressing the next action.
             },
-            [&](const StateAction &merged_action) {
+            [&](const StatefulAction &merged_action) {
                 active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
             },
         );
@@ -164,7 +164,7 @@ string GetName(const ProjectAction &action) {
     );
 }
 
-string GetName(const StateAction &action) {
+string GetName(const StatefulAction &action) {
     return Match(
         action,
         [](const OpenFaustFile &) { return "Open Faust file"s; },
@@ -207,7 +207,7 @@ string GetMenuLabel(const EmptyAction &action) {
         [](const ShowSaveFaustFileDialog &) { return "Save DSP as..."s; },
         [](const ShowSaveFaustSvgFileDialog &) { return "Export SVG"s; },
         [](const ProjectAction &a) { return GetName(a); },
-        [](const StateAction &a) { return GetName(a); },
+        [](const StatefulAction &a) { return GetName(a); },
     );
 }
 } // namespace action

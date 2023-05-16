@@ -132,7 +132,7 @@ void Apply(const StoreAction &action, TransientStore &store) {
 }
 } // namespace store
 
-void State::Apply(const StateAction &action, TransientStore &store) const {
+void State::Apply(const StatefulAction &action, TransientStore &store) const {
     Match(
         action,
         [&store](const StoreAction &a) { store::Apply(a, store); },

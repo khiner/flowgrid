@@ -36,7 +36,7 @@ WindowMember(Info);
 UIMember(
     State,
 
-    void Apply(const StateAction &, TransientStore &) const;
+    void Apply(const StatefulAction &, TransientStore &) const;
 
     OpenRecentProject open_recent_project{};
     const Menu MainMenu{

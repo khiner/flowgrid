@@ -23,7 +23,7 @@ template<class... Ts> struct visitor : Ts... {
 };
 template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
 
-// E.g. Match(action, [](const ProjectAction &a) { ... }, [](const StateAction &a) { ... });
+// E.g. Match(action, [](const ProjectAction &a) { ... }, [](const StatefulAction &a) { ... });
 #define Match(Variant, ...) std::visit(visitor{__VA_ARGS__}, Variant);
 
 // Utility to flatten two variants together into one variant.
@@ -128,9 +128,6 @@ struct CloseFileDialog {};
 
 using namespace Actions;
 
-// Actions that don't directly update state.
-// These don't get added to the action/gesture history, since they result in side effects that don't change values in the main state store.
-// These are not saved in a FlowGridAction (.fga) project.
 using ProjectAction = std::variant<
     Undo, Redo, SetHistoryIndex,
     OpenProject, OpenEmptyProject, OpenDefaultProject,
@@ -143,12 +140,16 @@ using StoreAction = std::variant<SetValue, SetValues, SetVector, SetMatrix, Togg
 using FileDialogAction = std::variant<OpenFileDialog, CloseFileDialog>;
 using StyleAction = std::variant<SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle, SetGraphLayoutStyle>;
 
-using OtherStateAction = std::variant<
+using OtherAction = std::variant<
     ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog, OpenFaustFile,
     CloseApplication>;
 
-using StateAction = Combine<StoreAction, FileDialogAction, StyleAction, OtherStateAction>::type;
-using Action = Combine<ProjectAction, StateAction>::type;
+// All actions.
+using Action = Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
+
+// Actions that update state (as opposed to actions that only have non-state-updating side effects, like saving a file).
+// These get added to the gesture history, and are saved in a `.fga` (FlowGridAction) project.
+using StatefulAction = Combine<StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
 
 // All actions that don't have any member data.
 using EmptyAction = std::variant<
@@ -169,8 +170,8 @@ using EmptyAction = std::variant<
 namespace action {
 
 using ActionMoment = std::pair<Action, TimePoint>;
-using StateActionMoment = std::pair<StateAction, TimePoint>;
-using Gesture = vector<StateActionMoment>;
+using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
+using Gesture = vector<StatefulActionMoment>;
 using Gestures = vector<Gesture>;
 
 // Default-construct an action by its variant index (which is also its `ID`).
@@ -202,10 +203,10 @@ inline static const std::unordered_map<ActionID, string> ShortcutForId = {
 };
 
 constexpr ActionID GetId(const Action &action) { return action.index(); }
-constexpr ActionID GetId(const StateAction &action) { return action.index(); }
+constexpr ActionID GetId(const StatefulAction &action) { return action.index(); }
 
 string GetName(const ProjectAction &action);
-string GetName(const StateAction &action);
+string GetName(const StatefulAction &action);
 string GetShortcut(const EmptyAction &);
 string GetMenuLabel(const EmptyAction &);
 Gesture MergeGesture(const Gesture &);

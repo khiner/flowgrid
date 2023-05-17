@@ -95,22 +95,6 @@ using Action = Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction
 // These get added to the gesture history, and are saved in a `.fga` (FlowGridAction) project.
 using StatefulAction = Combine<StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
 
-// All actions that don't have any member data.
-using EmptyAction = std::variant<
-    Undo,
-    Redo,
-    OpenEmptyProject,
-    OpenDefaultProject,
-    ShowOpenProjectDialog,
-    CloseFileDialog,
-    SaveCurrentProject,
-    SaveDefaultProject,
-    ShowSaveProjectDialog,
-    CloseApplication,
-    ShowOpenFaustFileDialog,
-    ShowSaveFaustFileDialog,
-    ShowSaveFaustSvgFileDialog>;
-
 using ActionMoment = std::pair<Action, TimePoint>;
 using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
 using Gesture = std::vector<StatefulActionMoment>;
@@ -133,7 +117,6 @@ template<ID I = 0> Action Create(ID index) {
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
 template<typename T> constexpr ID id = mp_find<Action, T>::value;
 
-// Note: ID here is index within `Action` variant, not the `EmptyAction` variant.
 inline static const std::unordered_map<ID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},
     {id<Redo>, "shift+cmd+z"},
@@ -149,8 +132,8 @@ constexpr ID GetId(const StatefulAction &action) { return action.index(); }
 
 string GetName(const ProjectAction &action);
 string GetName(const StatefulAction &action);
-string GetShortcut(const EmptyAction &);
-string GetMenuLabel(const EmptyAction &);
+string GetShortcut(const Action &);
+string GetMenuLabel(const Action &);
 Gesture MergeGesture(const Gesture &);
 } // namespace action
 
@@ -165,4 +148,3 @@ bool q(action::Action &&a, bool flush = false);
 // These are also defined in `Project.cpp`.
 bool ActionAllowed(ID);
 bool ActionAllowed(const action::Action &);
-bool ActionAllowed(const action::EmptyAction &);

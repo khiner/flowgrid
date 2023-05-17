@@ -11,6 +11,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
         {PatchOp::Type::Replace, "replace"},
     }
 );
+
 // Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>

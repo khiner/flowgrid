@@ -196,9 +196,6 @@ bool ActionAllowed(const ID id) {
     }
 }
 bool ActionAllowed(const action::Action &action) { return ActionAllowed(action::GetId(action)); }
-bool ActionAllowed(const action::EmptyAction &action) {
-    return std::visit([&](action::Action &&a) { return ActionAllowed(a); }, action);
-}
 
 #include "blockingconcurrentqueue.h"
 

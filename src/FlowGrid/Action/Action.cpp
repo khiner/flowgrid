@@ -150,13 +150,13 @@ string GetName(const StatefulAction &action) {
     return std::visit([](auto &&a) { return GetName<std::decay_t<decltype(a)>>(); }, action);
 }
 
-string GetShortcut(const EmptyAction &action) {
+string GetShortcut(const Action &action) {
     const ID id = std::visit([](const Action &&a) { return GetId(a); }, action);
     return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
 }
 
 // An action's menu label is its name, except for a few exceptions.
-string GetMenuLabel(const EmptyAction &action) {
+string GetMenuLabel(const Action &action) {
     return Match(
         action,
         [](const ShowOpenProjectDialog &) { return "Open project"s; },

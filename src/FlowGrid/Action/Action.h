@@ -3,6 +3,25 @@
 #include "../Helper/Variant.h"
 #include "../Store/StoreTypes.h"
 
+#define DefineAction(ActionName, ...)                      \
+    struct ActionName {                                    \
+        inline const static std::string Name{#ActionName}; \
+        __VA_ARGS__;                                       \
+    };
+
+namespace action {
+template<typename T>
+concept Actionable = requires() {
+    { T::Name } -> std::same_as<const std::string>;
+    // { T::Id } -> std::same_as<const std::string>;
+};
+
+// E.g. `action::GetName<MyAction>()`
+template<Actionable T> std::string GetName() { return T::Name; }
+
+// template<Actionable T> std::string GetId() { return T::Id; }
+} // namespace action
+
 /**
 An `Action` is an immutable representation of a user interaction event.
 Each action stores all information needed to apply the action to a `Store` instance.
@@ -16,85 +35,37 @@ An `Action` is a `std::variant`, which can hold any type, and thus must be large
 */
 
 namespace Actions {
-struct Undo {};
-struct Redo {};
-struct SetHistoryIndex {
-    int index;
-};
-
-struct OpenProject {
-    string path;
-};
-struct OpenEmptyProject {};
-struct OpenDefaultProject {};
-
-struct ShowOpenProjectDialog {};
-
-struct SaveProject {
-    string path;
-};
-struct SaveCurrentProject {};
-struct SaveDefaultProject {};
-struct ShowSaveProjectDialog {};
-
-struct CloseApplication {};
-
-struct SetValue {
-    StorePath path;
-    Primitive value;
-};
-struct SetValues {
-    StoreEntries values;
-};
-struct SetVector {
-    StorePath path;
-    std::vector<Primitive> value;
-};
-struct SetMatrix {
-    StorePath path;
-    std::vector<Primitive> data;
-    Count row_count; // Column count derived from `data.size() / row_count`.
-};
-struct ToggleValue {
-    StorePath path;
-};
-struct ApplyPatch {
-    Patch patch;
-};
-
-struct SetImGuiColorStyle {
-    int id;
-};
-struct SetImPlotColorStyle {
-    int id;
-};
-struct SetFlowGridColorStyle {
-    int id;
-};
-struct SetGraphColorStyle {
-    int id;
-};
-struct SetGraphLayoutStyle {
-    int id;
-};
-
-struct ShowOpenFaustFileDialog {};
-struct ShowSaveFaustFileDialog {};
-struct ShowSaveFaustSvgFileDialog {};
-struct SaveFaustFile {
-    string path;
-};
-struct OpenFaustFile {
-    string path;
-};
-struct SaveFaustSvgFile {
-    string path;
-};
-
-struct OpenFileDialog {
-    string dialog_json;
-}; // Storing as JSON string instead of the raw struct to reduce variant size. (Raw struct is 120 bytes.)
-struct CloseFileDialog {};
+DefineAction(Undo);
+DefineAction(Redo);
+DefineAction(SetHistoryIndex, int index;);
+DefineAction(OpenProject, std::string path;);
+DefineAction(OpenEmptyProject);
+DefineAction(OpenDefaultProject);
+DefineAction(ShowOpenProjectDialog);
+DefineAction(SaveProject, std::string path;);
+DefineAction(SaveCurrentProject);
+DefineAction(SaveDefaultProject);
+DefineAction(ShowSaveProjectDialog);
+DefineAction(CloseApplication);
+DefineAction(SetValue, StorePath path; Primitive value;);
+DefineAction(SetValues, StoreEntries values;);
+DefineAction(SetVector, StorePath path; std::vector<Primitive> value;);
+DefineAction(SetMatrix, StorePath path; std::vector<Primitive> data; Count row_count;);
+DefineAction(ToggleValue, StorePath path;);
+DefineAction(ApplyPatch, Patch patch;);
+DefineAction(SetImGuiColorStyle, int id;);
+DefineAction(SetImPlotColorStyle, int id;);
+DefineAction(SetFlowGridColorStyle, int id;);
+DefineAction(SetGraphColorStyle, int id;);
+DefineAction(SetGraphLayoutStyle, int id;);
+DefineAction(ShowOpenFaustFileDialog);
+DefineAction(ShowSaveFaustFileDialog);
+DefineAction(ShowSaveFaustSvgFileDialog);
+DefineAction(SaveFaustFile, std::string path;);
+DefineAction(OpenFaustFile, std::string path;);
+DefineAction(SaveFaustSvgFile, std::string path;);
+DefineAction(OpenFileDialog, std::string dialog_json;);
+DefineAction(CloseFileDialog);
 } // namespace Actions
 
 namespace action {

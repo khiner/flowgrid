@@ -4,8 +4,6 @@
 #include "imgui.h"
 #include <filesystem>
 
-#include <iostream>
-
 // Initialize global extern variables.
 const State ApplicationState{};
 const State &s = ApplicationState; // Create the read-only state reference global.
@@ -40,7 +38,6 @@ int main(int, const char **) {
         Project::RunQueuedActions();
     }
 
-    std::cout << Actions::OpenProject::Name << '\n';
     DestroyUi();
 
     return 0;

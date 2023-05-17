@@ -3,8 +3,6 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
 
-#include "../Helper/String.h"
-
 using namespace action;
 using ranges::to;
 namespace views = ranges::views;
@@ -145,49 +143,11 @@ Gesture MergeGesture(const Gesture &gesture) {
     return merged_gesture;
 }
 
-#define Name(action_var_name) StringHelper::PascalToSentenceCase(#action_var_name)
-
 string GetName(const ProjectAction &action) {
-    return Match(
-        action,
-        [](const Undo &) { return Name(Undo); },
-        [](const Redo &) { return Name(Redo); },
-        [](const SetHistoryIndex &) { return Name(SetHistoryIndex); },
-        [](const OpenProject &) { return Name(OpenProject); },
-        [](const OpenEmptyProject &) { return Name(OpenEmptyProject); },
-        [](const OpenDefaultProject &) { return Name(OpenDefaultProject); },
-        [](const SaveProject &) { return Name(SaveProject); },
-        [](const SaveDefaultProject &) { return Name(SaveDefaultProject); },
-        [](const SaveCurrentProject &) { return Name(SaveCurrentProject); },
-        [](const SaveFaustFile &) { return "Save Faust file"s; },
-        [](const SaveFaustSvgFile &) { return "Save Faust SVG file"s; },
-    );
+    return std::visit([](auto &&a) { return GetName<std::decay_t<decltype(a)>>(); }, action);
 }
-
 string GetName(const StatefulAction &action) {
-    return Match(
-        action,
-        [](const OpenFaustFile &) { return "Open Faust file"s; },
-        [](const ShowOpenFaustFileDialog &) { return "Show open Faust file dialog"s; },
-        [](const ShowSaveFaustFileDialog &) { return "Show save Faust file dialog"s; },
-        [](const ShowSaveFaustSvgFileDialog &) { return "Show save Faust SVG file dialog"s; },
-        [](const SetImGuiColorStyle &) { return "Set ImGui color style"s; },
-        [](const SetImPlotColorStyle &) { return "Set ImPlot color style"s; },
-        [](const SetFlowGridColorStyle &) { return "Set FlowGrid color style"s; },
-        [](const SetGraphColorStyle &) { return Name(SetGraphColorStyle); },
-        [](const SetGraphLayoutStyle &) { return Name(SetGraphLayoutStyle); },
-        [](const OpenFileDialog &) { return Name(OpenFileDialog); },
-        [](const CloseFileDialog &) { return Name(CloseFileDialog); },
-        [](const ShowOpenProjectDialog &) { return Name(ShowOpenProjectDialog); },
-        [](const ShowSaveProjectDialog &) { return Name(ShowSaveProjectDialog); },
-        [](const SetValue &) { return Name(SetValue); },
-        [](const SetValues &) { return Name(SetValues); },
-        [](const SetVector &) { return Name(SetVector); },
-        [](const SetMatrix &) { return Name(SetMatrix); },
-        [](const ToggleValue &) { return Name(ToggleValue); },
-        [](const ApplyPatch &) { return Name(ApplyPatch); },
-        [](const CloseApplication &) { return Name(CloseApplication); },
-    );
+    return std::visit([](auto &&a) { return GetName<std::decay_t<decltype(a)>>(); }, action);
 }
 
 string GetShortcut(const EmptyAction &action) {

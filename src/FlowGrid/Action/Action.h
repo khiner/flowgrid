@@ -1,18 +1,19 @@
 #pragma once
 
+#include "../Helper/String.h"
 #include "../Helper/Variant.h"
 #include "../Store/StoreTypes.h"
 
-#define DefineAction(ActionName, ...)                      \
-    struct ActionName {                                    \
-        inline const static std::string Name{#ActionName}; \
-        __VA_ARGS__;                                       \
+#define DefineAction(ActionName, ...)                                                          \
+    struct ActionName {                                                                        \
+        inline const static std::string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
+        __VA_ARGS__;                                                                           \
     };
 
 namespace action {
 template<typename T>
 concept Actionable = requires() {
-    { T::Name } -> std::same_as<const std::string>;
+    { T::Name } -> std::same_as<const std::string &>;
     // { T::Id } -> std::same_as<const std::string>;
 };
 

@@ -80,15 +80,9 @@ template<typename T> constexpr void extended_from_json(const char *key, const js
 #define ExtendedToJson(v1) extended_to_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
 #define ExtendedFromJson(v1) extended_from_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
 
-#define ExtendedToJson(v1) extended_to_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
-#define ExtendedFromJson(v1) extended_from_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
-
-#define JsonType(Type, ...)                                                                                                                               \
-    void to_json(nlohmann::json &nlohmann_json_j, const Type &nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedToJson, __VA_ARGS__)) } \
-    void from_json(const nlohmann::json &nlohmann_json_j, Type &nlohmann_json_t) { NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedFromJson, __VA_ARGS__)) }
-#define EmptyJsonType(Type)                         \
-    void to_json(nlohmann::json &, const Type &) {} \
-    void from_json(const nlohmann::json &, Type &) {}
+#define JsonType(Type, ...)                                                                                                                                                                   \
+    void to_json(nlohmann::json &__VA_OPT__(nlohmann_json_j), const Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedToJson, __VA_ARGS__))) } \
+    void from_json(const nlohmann::json &__VA_OPT__(nlohmann_json_j), Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedFromJson, __VA_ARGS__))) }
 
 JsonType(PatchOp, Op, Value, Old);
 JsonType(Patch, Ops, BasePath);
@@ -97,19 +91,19 @@ JsonType(StatePatch, Patch, Time);
 } // namespace nlohmann
 
 namespace Actions {
-EmptyJsonType(Undo);
-EmptyJsonType(Redo);
-EmptyJsonType(OpenEmptyProject);
-EmptyJsonType(OpenDefaultProject);
-EmptyJsonType(ShowOpenProjectDialog);
-EmptyJsonType(CloseFileDialog);
-EmptyJsonType(SaveCurrentProject);
-EmptyJsonType(SaveDefaultProject);
-EmptyJsonType(ShowSaveProjectDialog);
-EmptyJsonType(CloseApplication);
-EmptyJsonType(ShowOpenFaustFileDialog);
-EmptyJsonType(ShowSaveFaustFileDialog);
-EmptyJsonType(ShowSaveFaustSvgFileDialog);
+JsonType(Undo);
+JsonType(Redo);
+JsonType(OpenEmptyProject);
+JsonType(OpenDefaultProject);
+JsonType(ShowOpenProjectDialog);
+JsonType(CloseFileDialog);
+JsonType(SaveCurrentProject);
+JsonType(SaveDefaultProject);
+JsonType(ShowSaveProjectDialog);
+JsonType(CloseApplication);
+JsonType(ShowOpenFaustFileDialog);
+JsonType(ShowSaveFaustFileDialog);
+JsonType(ShowSaveFaustSvgFileDialog);
 
 JsonType(SetHistoryIndex, index);
 JsonType(OpenProject, path);

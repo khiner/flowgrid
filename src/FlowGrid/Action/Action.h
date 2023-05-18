@@ -129,15 +129,11 @@ template<ID I = 0> Any Create(ID index) {
     else return index == 0 ? Any{std::in_place_index<I>} : Create<I + 1>(index - 1);
 }
 
-#include "../../Boost/mp11/mp_find.h"
-
-// E.g. `ID action_id = id<action_type>`
+// Usage: `ID action_id = action::id<ActionType>`
 // An action's ID is its index in the `Action::Any` variant.
 // Down the road, this means `Action::Any` would need to be append-only (no order changes) for backwards compatibility.
-// Not worried about that right now, since it should be easy enough to replace with some UUID system later.
-// Index is simplest.
-// Mp11 approach from: https://stackoverflow.com/a/66386518/780425
-template<typename T> constexpr ID id = mp_find<Any, T>::value;
+// I plan on replacing this with a path-based UUID system, similar to `StateMember`.
+template<typename T> constexpr ID id = VariantIndex<T, Any>::value;
 
 inline static const std::unordered_map<ID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},

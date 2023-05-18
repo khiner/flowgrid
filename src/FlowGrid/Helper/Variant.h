@@ -35,3 +35,24 @@ struct IsVariantMember;
 template<typename T, typename... ALL_T>
 struct IsVariantMember<T, std::variant<ALL_T...>>
     : public std::disjunction<std::is_same<T, ALL_T>...> {};
+
+/**
+Get variant index by type.
+Example usage:
+```
+    template<typename T> constexpr size_t SomeVariantId = VariantIndex<T, SomeVariantType>::value;
+    size_t id = SomeVariantId<SomeVariantMemberType>;
+```
+
+How I got here:
+ * - Found suggestion to use `mp_find` to find variant index by type [here](https://stackoverflow.com/a/66386518/780425).
+ * - Started with a minimal standalone copy of Boost's `mp_find`, from relevant parts of https://github.com/boostorg/mp11/blob/develop/include/boost/mp11/algorithm.hpp.
+ * - Coaxed GPT-4 to help simplify and modernize it, which removed more than half the lines, as well as the dependency on `type_traits` and `cstddef` :)
+*/
+template<typename T, typename Var> struct VariantIndex;
+template<typename T, typename... Ts> struct VariantIndex<T, std::variant<T, Ts...>> {
+    static constexpr size_t value = 0;
+};
+template<typename T, typename U, typename... Ts> struct VariantIndex<T, std::variant<U, Ts...>> {
+    static constexpr size_t value = 1 + VariantIndex<T, std::variant<Ts...>>::value;
+};

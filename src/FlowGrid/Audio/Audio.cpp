@@ -418,8 +418,8 @@ static void Init() {
     }
 
     const auto &ErrorLog = audio.Faust.Log.Error;
-    if (!error_msg.empty()) q(Actions::SetValue{ErrorLog.Path, error_msg});
-    else if (ErrorLog) q(Actions::SetValue{ErrorLog.Path, ""});
+    if (!error_msg.empty()) q(action::SetValue{ErrorLog.Path, error_msg});
+    else if (ErrorLog) q(action::SetValue{ErrorLog.Path, ""});
 
     OnBoxChange(box);
     OnUiChange(Ui.get());
@@ -575,7 +575,7 @@ void Audio::Device::Init() const {
     if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, MaDevice.capture.format);
     if (MaDevice.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, MaDevice.playback.format);
     if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
-    if (!initial_settings.empty()) q(Actions::SetValues{initial_settings}, true);
+    if (!initial_settings.empty()) q(action::SetValues{initial_settings}, true);
 }
 
 void Audio::Device::Update() const {
@@ -706,7 +706,7 @@ void Audio::Graph::Init() const {
         }
         dest_count++;
     }
-    q(Actions::SetMatrix{Connections.Path, connections, dest_count}, true);
+    q(action::SetMatrix{Connections.Path, connections, dest_count}, true);
 }
 
 void Audio::Graph::Update() const {

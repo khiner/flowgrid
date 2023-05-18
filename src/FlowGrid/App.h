@@ -41,8 +41,8 @@ UIMember(
     OpenRecentProject open_recent_project{};
     const Menu MainMenu{
         {
-            Menu("File", {Actions::OpenEmptyProject{}, Actions::ShowOpenProjectDialog{}, open_recent_project, Actions::OpenDefaultProject{}, Actions::SaveCurrentProject{}, Actions::SaveDefaultProject{}}),
-            Menu("Edit", {Actions::Undo{}, Actions::Redo{}}),
+            Menu("File", {action::OpenEmptyProject{}, action::ShowOpenProjectDialog{}, open_recent_project, action::OpenDefaultProject{}, action::SaveCurrentProject{}, action::SaveDefaultProject{}}),
+            Menu("Edit", {action::Undo{}, action::Redo{}}),
             Menu(
                 "Windows",
                 {

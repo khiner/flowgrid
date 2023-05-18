@@ -202,7 +202,7 @@ void TickUi(const Drawable &app) {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if (event.type == SDL_EVENT_QUIT ||
             (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
-            q(Actions::CloseApplication{}, true);
+            q(action::CloseApplication{}, true);
         }
     }
 
@@ -239,7 +239,7 @@ void TickUi(const Drawable &app) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         const auto &patch = imgui_settings.CreatePatch(UiContext.ImGui);
-        if (!patch.Empty()) q(Actions::ApplyPatch{patch});
+        if (!patch.Empty()) q(action::ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }
 #ifdef TRACING_ENABLED

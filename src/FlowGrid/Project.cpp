@@ -155,7 +155,7 @@ void Project::OpenProject(const fs::path &path) {
 
 bool Project::SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
-    if (is_current_project && !ActionAllowed(action::id<Actions::SaveCurrentProject>)) return false;
+    if (is_current_project && !ActionAllowed(action::id<action::SaveCurrentProject>)) return false;
 
     const auto format = GetStoreJsonFormat(path);
     if (!format) return false; // TODO log
@@ -179,18 +179,18 @@ static void ApplyAction(const action::ProjectAction &action) {
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Actions::OpenEmptyProject &) { Project::OpenProject(EmptyProjectPath); },
-        [&](const Actions::OpenProject &a) { Project::OpenProject(a.path); },
-        [&](const Actions::OpenDefaultProject &) { Project::OpenProject(DefaultProjectPath); },
+        [&](const action::OpenEmptyProject &) { Project::OpenProject(EmptyProjectPath); },
+        [&](const action::OpenProject &a) { Project::OpenProject(a.path); },
+        [&](const action::OpenDefaultProject &) { Project::OpenProject(DefaultProjectPath); },
 
-        [&](const Actions::SaveProject &a) { Project::SaveProject(a.path); },
-        [&](const Actions::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
-        [&](const Actions::SaveCurrentProject &) { Project::SaveCurrentProject(); },
-        [&](const Actions::SaveFaustFile &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
-        [](const Actions::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
+        [&](const action::SaveProject &a) { Project::SaveProject(a.path); },
+        [&](const action::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
+        [&](const action::SaveCurrentProject &) { Project::SaveCurrentProject(); },
+        [&](const action::SaveFaustFile &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
+        [](const action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 
         // `History.Index`-changing actions:
-        [&](const Actions::Undo &) {
+        [&](const action::Undo &) {
             if (History.Empty()) return;
 
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
@@ -205,8 +205,8 @@ static void ApplyAction(const action::ProjectAction &action) {
                 ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
             }
         },
-        [&](const Actions::Redo &) { ::SetHistoryIndex(History.Index + 1); },
-        [&](const Actions::SetHistoryIndex &a) { ::SetHistoryIndex(a.index); },
+        [&](const action::Redo &) { ::SetHistoryIndex(History.Index + 1); },
+        [&](const action::SetHistoryIndex &a) { ::SetHistoryIndex(a.index); },
     );
 }
 
@@ -216,16 +216,16 @@ static void ApplyAction(const action::ProjectAction &action) {
 
 bool ActionAllowed(const ID id) {
     switch (id) {
-        case action::id<Actions::Undo>: return History.CanUndo();
-        case action::id<Actions::Redo>: return History.CanRedo();
-        case action::id<Actions::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
-        case action::id<Actions::SaveProject>:
-        case action::id<Actions::SaveDefaultProject>: return !History.Empty();
-        case action::id<Actions::ShowSaveProjectDialog>:
+        case action::id<action::Undo>: return History.CanUndo();
+        case action::id<action::Redo>: return History.CanRedo();
+        case action::id<action::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
+        case action::id<action::SaveProject>:
+        case action::id<action::SaveDefaultProject>: return !History.Empty();
+        case action::id<action::ShowSaveProjectDialog>:
             // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
-        case action::id<Actions::SaveCurrentProject>: return ProjectHasChanges;
-        case action::id<Actions::OpenFileDialog>: return !s.FileDialog.Visible;
-        case action::id<Actions::CloseFileDialog>: return s.FileDialog.Visible;
+        case action::id<action::SaveCurrentProject>: return ProjectHasChanges;
+        case action::id<action::OpenFileDialog>: return !s.FileDialog.Visible;
+        case action::id<action::CloseFileDialog>: return s.FileDialog.Visible;
         default: return true;
     }
 }
@@ -251,9 +251,9 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
-        if (std::holds_alternative<Actions::SaveCurrentProject>(action) && !CurrentProjectPath) action = Actions::ShowSaveProjectDialog{};
+        if (std::holds_alternative<action::SaveCurrentProject>(action) && !CurrentProjectPath) action = action::ShowSaveProjectDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<Actions::ToggleValue>(action);
+        force_finalize_gesture |= std::holds_alternative<action::ToggleValue>(action);
 
         Match(
             action,

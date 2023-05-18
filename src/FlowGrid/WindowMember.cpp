@@ -43,7 +43,7 @@ void Window::Draw() const {
     }
     End();
 
-    if (Visible && !open) q(Actions::SetValue{Visible.Path, false});
+    if (Visible && !open) q(action::SetValue{Visible.Path, false});
 }
 
 void Window::Dock(ID node_id) const {
@@ -51,7 +51,7 @@ void Window::Dock(ID node_id) const {
 }
 
 void Window::MenuItem() const {
-    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(Actions::ToggleValue{Visible.Path});
+    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(action::ToggleValue{Visible.Path});
 }
 
 void Window::SelectTab() const {

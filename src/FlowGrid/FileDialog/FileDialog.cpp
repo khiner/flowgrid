@@ -104,7 +104,7 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
 }
 
 void FileDialog::Apply(const action::FileDialogAction &action, TransientStore &store) const {
-    using namespace Actions;
+    using namespace action;
     Match(
         action,
         [&](const OpenFileDialog &a) { this->Set(json::parse(a.dialog_json), store); },
@@ -112,10 +112,10 @@ void FileDialog::Apply(const action::FileDialogAction &action, TransientStore &s
     );
 }
 
-static void OpenDialog(const FileDialogData &data) { q(Actions::OpenFileDialog{json(data).dump()}); }
+static void OpenDialog(const FileDialogData &data) { q(action::OpenFileDialog{json(data).dump()}); }
 
 void FileDialog::Render() const {
-    using namespace Actions;
+    using namespace action;
 
     if (!Visible) return Dialog->Close();
 

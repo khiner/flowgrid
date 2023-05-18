@@ -120,7 +120,7 @@ using namespace nlohmann;
 // todo should be in `Store`, but first need to separate out the core action stuff so `Store.h` can include `Action/Core.h` and define its own actions.
 namespace store {
 void Apply(const action::StoreAction &action, TransientStore &store) {
-    using namespace Actions;
+    using namespace action;
     Match(
         action,
         [&store](const SetValue &a) { Set(a.path, a.value, store); },
@@ -128,13 +128,13 @@ void Apply(const action::StoreAction &action, TransientStore &store) {
         [&store](const SetVector &a) { Set(a.path, a.value, store); },
         [&store](const SetMatrix &a) { Set(a.path, a.data, a.row_count, store); },
         [&store](const ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
-        [&store](const Actions::ApplyPatch &a) { ApplyPatch(a.patch, store); },
+        [&store](const action::ApplyPatch &a) { ApplyPatch(a.patch, store); },
     );
 }
 } // namespace store
 
 void State::Apply(const action::StatefulAction &action, TransientStore &store) const {
-    using namespace Actions;
+    using namespace action;
     Match(
         action,
         [&store](const action::StoreAction &a) { store::Apply(a, store); },
@@ -610,7 +610,7 @@ void ShowGesture(const Gesture &gesture) {
 }
 
 void Style::FlowGridStyle::Render() const {
-    using namespace Actions;
+    using namespace action;
 
     static int colors_idx = -1, graph_colors_idx = -1, graph_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
@@ -643,7 +643,7 @@ void Style::FlowGridStyle::Render() const {
 void OpenRecentProject::MenuItem() const {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(Actions::OpenProject{recently_opened_path});
+            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(action::OpenProject{recently_opened_path});
         }
         EndMenu();
     }
@@ -651,7 +651,7 @@ void OpenRecentProject::MenuItem() const {
 
 void ApplicationSettings::Render() const {
     int value = int(History.Index);
-    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(Actions::SetHistoryIndex{value});
+    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(action::SetHistoryIndex{value});
     GestureDurationSec.Draw();
 }
 
@@ -831,7 +831,7 @@ void Audio::Graph::RenderConnections() const {
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
             const auto flags = InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) q(Actions::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)});
+            if (flags & InteractionFlags_Clicked) q(action::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)});
 
             const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));

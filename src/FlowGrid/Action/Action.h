@@ -39,9 +39,7 @@ concept Actionable = requires() {
 template<Actionable T> std::string GetName() { return T::Name; }
 
 // template<Actionable T> std::string GetId() { return T::Id; }
-} // namespace action
 
-namespace Actions {
 DefineAction(Undo);
 DefineAction(Redo);
 DefineAction(SetHistoryIndex, int index;);
@@ -95,10 +93,6 @@ Json(SetFlowGridColorStyle, id);
 Json(SetGraphColorStyle, id);
 Json(SetGraphLayoutStyle, id);
 Json(OpenFaustFile, path);
-} // namespace Actions
-
-namespace action {
-using namespace Actions;
 
 using ProjectAction = std::variant<
     Undo, Redo, SetHistoryIndex,

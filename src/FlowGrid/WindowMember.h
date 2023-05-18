@@ -12,7 +12,7 @@ struct Menu : Drawable {
     using Item = std::variant<
         const Menu,
         const std::reference_wrapper<MenuItemDrawable>,
-        const action::Any>;
+        const Action::Any>;
 
     Menu(string_view label, const std::vector<const Item> items);
     explicit Menu(const std::vector<const Item> items);

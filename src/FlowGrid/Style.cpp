@@ -182,7 +182,7 @@ Style::ImPlotStyle::ImPlotColors::ImPlotColors(StateMember *parent, string_view 
     : Colors(parent, path_segment, name_help, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::ImGuiStyle::Render() const {
-    using namespace action;
+    using namespace Action;
 
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(SetImGuiColorStyle{style_idx});
@@ -319,7 +319,7 @@ void Style::ImGuiStyle::Render() const {
 }
 
 void Style::ImPlotStyle::Render() const {
-    using namespace action;
+    using namespace Action;
 
     static int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) q(SetImPlotColorStyle{style_idx});

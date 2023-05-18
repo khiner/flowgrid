@@ -14,9 +14,9 @@
 /**
 An action is an immutable representation of a user interaction event.
 Each action stores all information needed to apply the action to a `Store` instance.
-An `ActionMoment` is a combination of any action (`action::Any`) and the `TimePoint` at which the action happened.
+An `ActionMoment` is a combination of any action (`Action::Any`) and the `TimePoint` at which the action happened.
 
-Actions are grouped into `std::variant`s, and thus the byte size of `action::Any` is large enough to hold its biggest type.
+Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any` is large enough to hold its biggest type.
 - For actions holding very large structured data, using a JSON string is a good approach to keep the size low
   (at the expense of losing type safety and storing the string contents in heap memory).
 - Note that adding static members does not increase the size of the variant(s) it belongs to.
@@ -28,14 +28,14 @@ Actions are grouped into `std::variant`s, and thus the byte size of `action::Any
         __VA_ARGS__;                                                                           \
     };
 
-namespace action {
+namespace Action {
 template<typename T>
 concept Actionable = requires() {
     { T::Name } -> std::same_as<const std::string &>;
     // { T::Id } -> std::same_as<const std::string>;
 };
 
-// E.g. `action::GetName<MyAction>()`
+// E.g. `Action::GetName<MyAction>()`
 template<Actionable T> std::string GetName() { return T::Name; }
 
 // template<Actionable T> std::string GetId() { return T::Id; }
@@ -133,8 +133,8 @@ template<ID I = 0> Any Create(ID index) {
 #include "../../Boost/mp11/mp_find.h"
 
 // E.g. `ID action_id = id<action_type>`
-// An action's ID is its index in the `action::Any` variant.
-// Down the road, this means `action::Any` would need to be append-only (no order changes) for backwards compatibility.
+// An action's ID is its index in the `Action::Any` variant.
+// Down the road, this means `Action::Any` would need to be append-only (no order changes) for backwards compatibility.
 // Not worried about that right now, since it should be easy enough to replace with some UUID system later.
 // Index is simplest.
 // Mp11 approach from: https://stackoverflow.com/a/66386518/780425
@@ -158,7 +158,7 @@ string GetName(const StatefulAction &action);
 string GetShortcut(const Any &);
 string GetMenuLabel(const Any &);
 Gesture MergeGesture(const Gesture &);
-} // namespace action
+} // namespace Action
 
 /**
  This is the main action-queue method.
@@ -166,12 +166,12 @@ Gesture MergeGesture(const Gesture &);
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
  Defined in `Project.cpp`.
 */
-bool q(action::Any &&a, bool flush = false);
+bool q(Action::Any &&a, bool flush = false);
 
 // These are also defined in `Project.cpp`.
 bool ActionAllowed(ID);
-bool ActionAllowed(const action::Any &);
+bool ActionAllowed(const Action::Any &);
 
 namespace nlohmann {
-DeclareJson(action::StatefulAction);
+DeclareJson(Action::StatefulAction);
 } // namespace nlohmann

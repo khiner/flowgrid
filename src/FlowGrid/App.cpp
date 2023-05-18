@@ -119,8 +119,8 @@ using namespace nlohmann;
 
 // todo should be in `Store`, but first need to separate out the core action stuff so `Store.h` can include `Action/Core.h` and define its own actions.
 namespace store {
-void Apply(const action::StoreAction &action, TransientStore &store) {
-    using namespace action;
+void Apply(const Action::StoreAction &action, TransientStore &store) {
+    using namespace Action;
     Match(
         action,
         [&store](const SetValue &a) { Set(a.path, a.value, store); },
@@ -128,18 +128,18 @@ void Apply(const action::StoreAction &action, TransientStore &store) {
         [&store](const SetVector &a) { Set(a.path, a.value, store); },
         [&store](const SetMatrix &a) { Set(a.path, a.data, a.row_count, store); },
         [&store](const ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
-        [&store](const action::ApplyPatch &a) { ApplyPatch(a.patch, store); },
+        [&store](const Action::ApplyPatch &a) { ApplyPatch(a.patch, store); },
     );
 }
 } // namespace store
 
-void State::Apply(const action::StatefulAction &action, TransientStore &store) const {
-    using namespace action;
+void State::Apply(const Action::StatefulAction &action, TransientStore &store) const {
+    using namespace Action;
     Match(
         action,
-        [&store](const action::StoreAction &a) { store::Apply(a, store); },
-        [&](const action::FileDialogAction &a) { FileDialog.Apply(a, store); },
-        [&](const action::StyleAction &a) {
+        [&store](const Action::StoreAction &a) { store::Apply(a, store); },
+        [&](const Action::FileDialogAction &a) { FileDialog.Apply(a, store); },
+        [&](const Action::StyleAction &a) {
             Match(
                 a,
                 // todo enum types instead of raw integers
@@ -601,7 +601,7 @@ void ShowGesture(const Gesture &gesture) {
     for (Count action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &[action, time] = gesture[action_index];
         JsonTree(
-            std::format("{}: {}", action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()),
+            std::format("{}: {}", Action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()),
             json(action)[1],
             JsonTreeNodeFlags_None,
             to_string(action_index).c_str()
@@ -610,7 +610,7 @@ void ShowGesture(const Gesture &gesture) {
 }
 
 void Style::FlowGridStyle::Render() const {
-    using namespace action;
+    using namespace Action;
 
     static int colors_idx = -1, graph_colors_idx = -1, graph_layout_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
@@ -643,7 +643,7 @@ void Style::FlowGridStyle::Render() const {
 void OpenRecentProject::MenuItem() const {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(action::OpenProject{recently_opened_path});
+            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(Action::OpenProject{recently_opened_path});
         }
         EndMenu();
     }
@@ -651,7 +651,7 @@ void OpenRecentProject::MenuItem() const {
 
 void ApplicationSettings::Render() const {
     int value = int(History.Index);
-    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(action::SetHistoryIndex{value});
+    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(Action::SetHistoryIndex{value});
     GestureDurationSec.Draw();
 }
 
@@ -756,7 +756,7 @@ void Metrics::FlowGridMetrics::Render() const {
     Separator();
     {
         // Various internals
-        Text("Action variant size: %lu bytes", sizeof(action::StatefulAction));
+        Text("Action variant size: %lu bytes", sizeof(Action::StatefulAction));
         Text("Primitive variant size: %lu bytes", sizeof(Primitive));
         SameLine();
         HelpMarker("All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
@@ -831,7 +831,7 @@ void Audio::Graph::RenderConnections() const {
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
             const auto flags = InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) q(action::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)});
+            if (flags & InteractionFlags_Clicked) q(Action::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)});
 
             const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));

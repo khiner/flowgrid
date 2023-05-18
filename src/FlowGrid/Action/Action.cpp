@@ -3,7 +3,7 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
 
-using namespace action;
+using namespace Action;
 using ranges::to;
 namespace views = ranges::views;
 
@@ -115,7 +115,7 @@ std::variant<StatefulAction, bool> Merge(const StatefulAction &a, const Stateful
     }
 }
 
-namespace action {
+namespace Action {
 Gesture MergeGesture(const Gesture &gesture) {
     Gesture merged_gesture; // Mutable return value
     // `active` keeps track of which action we're merging into.
@@ -170,19 +170,19 @@ string GetMenuLabel(const Any &action) {
         [](const StatefulAction &a) { return GetName(a); },
     );
 }
-} // namespace action
+} // namespace Action
 
 namespace nlohmann {
 // Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0>
-action::StatefulAction CreateAction(ID index, const json &j) {
-    if constexpr (I >= std::variant_size_v<action::StatefulAction>) throw std::runtime_error{"StatefulAction index " + ::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? j.get<std::variant_alternative_t<I, action::StatefulAction>>() : CreateAction<I + 1>(index - 1, j);
+Action::StatefulAction CreateAction(ID index, const json &j) {
+    if constexpr (I >= std::variant_size_v<Action::StatefulAction>) throw std::runtime_error{"StatefulAction index " + ::to_string(I + index) + " out of bounds"};
+    else return index == 0 ? j.get<std::variant_alternative_t<I, Action::StatefulAction>>() : CreateAction<I + 1>(index - 1, j);
 }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
-void to_json(json &j, const action::StatefulAction &value) {
+void to_json(json &j, const Action::StatefulAction &value) {
     std::visit(
         [&](auto &&inner_value) {
             j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
@@ -190,7 +190,7 @@ void to_json(json &j, const action::StatefulAction &value) {
         value
     );
 }
-void from_json(const json &j, action::StatefulAction &value) {
+void from_json(const json &j, Action::StatefulAction &value) {
     auto id = j[0].get<ID>();
     value = CreateAction(id, j[1]);
 }

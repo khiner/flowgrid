@@ -43,7 +43,7 @@ void Window::Draw() const {
     }
     End();
 
-    if (Visible && !open) q(action::SetValue{Visible.Path, false});
+    if (Visible && !open) q(Action::SetValue{Visible.Path, false});
 }
 
 void Window::Dock(ID node_id) const {
@@ -51,7 +51,7 @@ void Window::Dock(ID node_id) const {
 }
 
 void Window::MenuItem() const {
-    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(action::ToggleValue{Visible.Path});
+    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) q(Action::ToggleValue{Visible.Path});
 }
 
 void Window::SelectTab() const {
@@ -95,9 +95,9 @@ void Menu::Render() const {
                 [](const MenuItemDrawable &drawable) {
                     drawable.MenuItem();
                 },
-                [](const action::Any &action) {
-                    const string menu_label = action::GetMenuLabel(action);
-                    const string shortcut = action::GetShortcut(action);
+                [](const Action::Any &action) {
+                    const string menu_label = Action::GetMenuLabel(action);
+                    const string shortcut = Action::GetShortcut(action);
                     if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, ActionAllowed(action))) {
                         Match(action, [](const auto &a) { q(a); });
                     }

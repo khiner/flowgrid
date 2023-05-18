@@ -14,7 +14,7 @@
 #include "UI/Widgets.h"
 
 using namespace ImGui;
-using namespace action;
+using namespace Action;
 
 using std::vector;
 

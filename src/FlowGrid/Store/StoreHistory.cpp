@@ -65,7 +65,7 @@ float StoreHistory::GestureTimeRemainingSec(float gesture_duration_sec) const {
 void StoreHistory::FinalizeGesture() {
     if (ActiveGesture.empty()) return;
 
-    const auto merged_gesture = action::MergeGesture(ActiveGesture);
+    const auto merged_gesture = Action::MergeGesture(ActiveGesture);
     ActiveGesture.clear();
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;

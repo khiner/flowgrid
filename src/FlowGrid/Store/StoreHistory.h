@@ -8,7 +8,7 @@ enum Direction {
     Reverse
 };
 
-using action::Gesture, action::Gestures;
+using Action::Gesture, Action::Gestures;
 
 struct StoreHistory {
     struct ReferenceRecord {

@@ -76,7 +76,7 @@ std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
 #include "Store/StoreJson.h"
 
 struct GesturesProject {
-    const action::Gestures gestures;
+    const Action::Gestures gestures;
     const Count index;
 };
 
@@ -155,7 +155,7 @@ void Project::OpenProject(const fs::path &path) {
 
 bool Project::SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
-    if (is_current_project && !ActionAllowed(action::id<action::SaveCurrentProject>)) return false;
+    if (is_current_project && !ActionAllowed(Action::id<Action::SaveCurrentProject>)) return false;
 
     const auto format = GetStoreJsonFormat(path);
     if (!format) return false; // TODO log
@@ -173,24 +173,24 @@ bool Project::SaveProject(const fs::path &path) {
 //   I should be able to define this inside `Project.h` and not include `Action.h` here,
 //   but when I do, it compiles but with invisible issues around `Match` not working with `ProjectAction`.
 // static void ApplyAction(const ProjectAction &);
-static void ApplyAction(const action::ProjectAction &action) {
+static void ApplyAction(const Action::ProjectAction &action) {
     Match(
         action,
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const action::OpenEmptyProject &) { Project::OpenProject(EmptyProjectPath); },
-        [&](const action::OpenProject &a) { Project::OpenProject(a.path); },
-        [&](const action::OpenDefaultProject &) { Project::OpenProject(DefaultProjectPath); },
+        [&](const Action::OpenEmptyProject &) { Project::OpenProject(EmptyProjectPath); },
+        [&](const Action::OpenProject &a) { Project::OpenProject(a.path); },
+        [&](const Action::OpenDefaultProject &) { Project::OpenProject(DefaultProjectPath); },
 
-        [&](const action::SaveProject &a) { Project::SaveProject(a.path); },
-        [&](const action::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
-        [&](const action::SaveCurrentProject &) { Project::SaveCurrentProject(); },
-        [&](const action::SaveFaustFile &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
-        [](const action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
+        [&](const Action::SaveProject &a) { Project::SaveProject(a.path); },
+        [&](const Action::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
+        [&](const Action::SaveCurrentProject &) { Project::SaveCurrentProject(); },
+        [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
+        [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 
         // `History.Index`-changing actions:
-        [&](const action::Undo &) {
+        [&](const Action::Undo &) {
             if (History.Empty()) return;
 
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
@@ -205,8 +205,8 @@ static void ApplyAction(const action::ProjectAction &action) {
                 ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
             }
         },
-        [&](const action::Redo &) { ::SetHistoryIndex(History.Index + 1); },
-        [&](const action::SetHistoryIndex &a) { ::SetHistoryIndex(a.index); },
+        [&](const Action::Redo &) { ::SetHistoryIndex(History.Index + 1); },
+        [&](const Action::SetHistoryIndex &a) { ::SetHistoryIndex(a.index); },
     );
 }
 
@@ -216,24 +216,24 @@ static void ApplyAction(const action::ProjectAction &action) {
 
 bool ActionAllowed(const ID id) {
     switch (id) {
-        case action::id<action::Undo>: return History.CanUndo();
-        case action::id<action::Redo>: return History.CanRedo();
-        case action::id<action::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
-        case action::id<action::SaveProject>:
-        case action::id<action::SaveDefaultProject>: return !History.Empty();
-        case action::id<action::ShowSaveProjectDialog>:
+        case Action::id<Action::Undo>: return History.CanUndo();
+        case Action::id<Action::Redo>: return History.CanRedo();
+        case Action::id<Action::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
+        case Action::id<Action::SaveProject>:
+        case Action::id<Action::SaveDefaultProject>: return !History.Empty();
+        case Action::id<Action::ShowSaveProjectDialog>:
             // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
-        case action::id<action::SaveCurrentProject>: return ProjectHasChanges;
-        case action::id<action::OpenFileDialog>: return !s.FileDialog.Visible;
-        case action::id<action::CloseFileDialog>: return s.FileDialog.Visible;
+        case Action::id<Action::SaveCurrentProject>: return ProjectHasChanges;
+        case Action::id<Action::OpenFileDialog>: return !s.FileDialog.Visible;
+        case Action::id<Action::CloseFileDialog>: return s.FileDialog.Visible;
         default: return true;
     }
 }
-bool ActionAllowed(const action::Any &action) { return ActionAllowed(action::GetId(action)); }
+bool ActionAllowed(const Action::Any &action) { return ActionAllowed(Action::GetId(action)); }
 
 #include "blockingconcurrentqueue.h"
 
-using action::ActionMoment, action::StatefulActionMoment;
+using Action::ActionMoment, Action::StatefulActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void Project::RunQueuedActions(bool force_finalize_gesture) {
@@ -251,16 +251,16 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
-        if (std::holds_alternative<action::SaveCurrentProject>(action) && !CurrentProjectPath) action = action::ShowSaveProjectDialog{};
+        if (std::holds_alternative<Action::SaveCurrentProject>(action) && !CurrentProjectPath) action = Action::ShowSaveProjectDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<action::ToggleValue>(action);
+        force_finalize_gesture |= std::holds_alternative<Action::ToggleValue>(action);
 
         Match(
             action,
-            [&](const action::ProjectAction &a) {
+            [&](const Action::ProjectAction &a) {
                 ApplyAction(a);
             },
-            [&](const action::StatefulAction &a) {
+            [&](const Action::StatefulAction &a) {
                 s.Apply(a, transient);
                 state_actions.emplace_back(a, action_moment.second);
             },
@@ -276,7 +276,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
     if (finalize) History.FinalizeGesture();
 }
 
-bool q(action::Any &&action, bool flush) {
+bool q(Action::Any &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
     return true;

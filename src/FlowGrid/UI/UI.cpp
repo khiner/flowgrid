@@ -164,7 +164,7 @@ static constexpr std::optional<KeyShortcut> ParseShortcut(const string &shortcut
 
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
 // todo Find/implement a `BidirectionalMap` and use it here.
-const auto KeyMap = action::ShortcutForId | ranges::views::transform([](const auto &entry) {
+const auto KeyMap = Action::ShortcutForId | ranges::views::transform([](const auto &entry) {
                         const auto &[action_id, shortcut] = entry;
                         return std::pair(*ParseShortcut(shortcut), action_id);
                     }) |
@@ -202,7 +202,7 @@ void TickUi(const Drawable &app) {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if (event.type == SDL_EVENT_QUIT ||
             (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
-            q(action::CloseApplication{}, true);
+            q(Action::CloseApplication{}, true);
         }
     }
 
@@ -217,7 +217,7 @@ void TickUi(const Drawable &app) {
 
     for (const auto &[shortcut, action_id] : KeyMap) {
         if (IsShortcutPressed(shortcut) && ActionAllowed(action_id)) {
-            q(action::Create(action_id)); // Default-construct the action and queue it.
+            q(Action::Create(action_id)); // Default-construct the action and queue it.
         }
     }
 
@@ -239,7 +239,7 @@ void TickUi(const Drawable &app) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         const auto &patch = imgui_settings.CreatePatch(UiContext.ImGui);
-        if (!patch.Empty()) q(action::ApplyPatch{patch});
+        if (!patch.Empty()) q(Action::ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }
 #ifdef TRACING_ENABLED

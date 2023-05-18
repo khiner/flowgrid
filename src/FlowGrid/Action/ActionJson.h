@@ -9,20 +9,17 @@
     void from_json(const nlohmann::json &, Type &);
 
 namespace nlohmann {
-// Convert `std::chrono::time_point`s to/from JSON.
-// Based on https://github.com/nlohmann/json/issues/2159#issuecomment-638104529
 template<typename Clock, typename Duration> struct adl_serializer<std::chrono::time_point<Clock, Duration>> {
     static void to_json(json &, const std::chrono::time_point<Clock, Duration> &);
     static void from_json(const json &, std::chrono::time_point<Clock, Duration> &);
 };
+} // namespace nlohmann
 
+namespace nlohmann {
 DeclareJsonType(StorePath);
-DeclareJsonType(action::StatefulAction);
-
 DeclareJsonType(PatchOp);
 DeclareJsonType(Patch);
 DeclareJsonType(StatePatch);
-
 } // namespace nlohmann
 
 namespace Actions {
@@ -59,3 +56,7 @@ DeclareJsonType(SaveFaustFile);
 DeclareJsonType(OpenFaustFile);
 DeclareJsonType(SaveFaustSvgFile);
 } // namespace Actions
+
+namespace nlohmann {
+DeclareJsonType(action::StatefulAction);
+} // namespace nlohmann

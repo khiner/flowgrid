@@ -229,7 +229,7 @@ bool ActionAllowed(const ID id) {
         default: return true;
     }
 }
-bool ActionAllowed(const action::Action &action) { return ActionAllowed(action::GetId(action)); }
+bool ActionAllowed(const action::Any &action) { return ActionAllowed(action::GetId(action)); }
 
 #include "blockingconcurrentqueue.h"
 
@@ -276,7 +276,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
     if (finalize) History.FinalizeGesture();
 }
 
-bool q(action::Action &&action, bool flush) {
+bool q(action::Any &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
     return true;

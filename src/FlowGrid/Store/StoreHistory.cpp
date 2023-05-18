@@ -16,7 +16,7 @@ using ranges::to, views::transform;
 struct Record {
     const TimePoint Committed;
     const Store Store; // The store as it was at `Committed` time
-    const Gesture Gesture; // Compressed gesture (list of `ActionMoment`s) that caused the store change
+    const Gesture Gesture; // Compressed gesture (list of action/timestamp pairs) that caused the store change
 };
 
 static vector<Record> Records;

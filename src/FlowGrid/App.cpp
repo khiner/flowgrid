@@ -756,11 +756,11 @@ void Metrics::FlowGridMetrics::Render() const {
     Separator();
     {
         // Various internals
-        Text("Action variant size: %lu bytes", sizeof(action::Action));
+        Text("Action variant size: %lu bytes", sizeof(action::StatefulAction));
         Text("Primitive variant size: %lu bytes", sizeof(Primitive));
         SameLine();
-        HelpMarker("All actions are internally stored in an `std::variant`, which must be large enough to hold its largest type. "
-                   "Thus, it's important to keep action data small.");
+        HelpMarker("All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
+                   "Thus, it's important to keep action data minimal.");
     }
 }
 

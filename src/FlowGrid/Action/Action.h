@@ -1,5 +1,4 @@
 // next up:
-//   - Maybe like the `Prop(...)` macro? Takes a data type and a name, defines the
 // - improve action IDs
 //   - actions all get a path in addition to their name (start with all at root, but will be heirarchical soon)
 //   - `ID` type generated from path, like `StateMember`:
@@ -75,24 +74,15 @@ DefineAction(SaveFaustSvgFile, std::string path;);
 DefineAction(OpenFileDialog, std::string dialog_json;);
 DefineAction(CloseFileDialog);
 
-Json(Undo);
-Json(Redo);
-Json(OpenEmptyProject);
-Json(OpenDefaultProject);
+// Define json converters for stateful actions (ones that can be saved to a project)
 Json(ShowOpenProjectDialog);
 Json(CloseFileDialog);
-Json(SaveCurrentProject);
-Json(SaveDefaultProject);
 Json(ShowSaveProjectDialog);
 Json(CloseApplication);
 Json(ShowOpenFaustFileDialog);
 Json(ShowSaveFaustFileDialog);
 Json(ShowSaveFaustSvgFileDialog);
-
-Json(SetHistoryIndex, index);
-Json(OpenProject, path);
 Json(OpenFileDialog, dialog_json);
-Json(SaveProject, path);
 Json(SetValue, path, value);
 Json(SetValues, values);
 Json(SetVector, path, value);
@@ -104,9 +94,7 @@ Json(SetImPlotColorStyle, id);
 Json(SetFlowGridColorStyle, id);
 Json(SetGraphColorStyle, id);
 Json(SetGraphLayoutStyle, id);
-Json(SaveFaustFile, path);
 Json(OpenFaustFile, path);
-Json(SaveFaustSvgFile, path);
 } // namespace Actions
 
 namespace action {

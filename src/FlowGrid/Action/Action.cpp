@@ -172,7 +172,6 @@ string GetMenuLabel(const Action &action) {
 }
 } // namespace action
 
-
 namespace nlohmann {
 // Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
@@ -196,4 +195,3 @@ void from_json(const json &j, action::StatefulAction &value) {
     value = CreateAction(id, j[1]);
 }
 } // namespace nlohmann
-

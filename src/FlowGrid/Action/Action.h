@@ -1,9 +1,28 @@
+// next up:
+//   - Maybe like the `Prop(...)` macro? Takes a data type and a name, defines the
+// - improve action IDs
+//   - actions all get a path in addition to their name (start with all at root, but will be heirarchical soon)
+//   - `ID` type generated from path, like `StateMember`:
+//     `Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0))`
+// - Add `Help` string (also like StateMember)
+// Move all action declaration & `Apply` handling to domain files.
 #pragma once
 
 #include "../Helper/String.h"
 #include "../Helper/Variant.h"
-#include "../Store/StoreTypes.h"
+#include "../Store/StoreTypesJson.h"
 
+/**
+An `Action` is an immutable representation of a user interaction event.
+Each action stores all information needed to apply the action to a `Store` instance.
+An `ActionMoment` contains an `Action` and the `TimePoint` at which the action happened.
+
+An `Action` is a `std::variant`, which can hold any type, and thus must be large enough to hold its largest type.
+- For actions holding very large structured data, using a JSON string is a good approach to keep the `Action` size down
+  (at the expense of losing type safety and storing the string contents in heap memory).
+- Note that adding static members does not increase the size of the parent `Action` variant.
+  (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
+*/
 #define DefineAction(ActionName, ...)                                                          \
     struct ActionName {                                                                        \
         inline const static std::string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
@@ -22,18 +41,6 @@ template<Actionable T> std::string GetName() { return T::Name; }
 
 // template<Actionable T> std::string GetId() { return T::Id; }
 } // namespace action
-
-/**
-An `Action` is an immutable representation of a user interaction event.
-Each action stores all information needed to apply the action to a `Store` instance.
-An `ActionMoment` contains an `Action` and the `TimePoint` at which the action happened.
-
-An `Action` is a `std::variant`, which can hold any type, and thus must be large enough to hold its largest type.
-- For actions holding very large structured data, using a JSON string is a good approach to keep the `Action` size down
-  (at the expense of losing type safety and storing the string contents in heap memory).
-- Note that adding static members does not increase the size of the parent `Action` variant.
-  (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
-*/
 
 namespace Actions {
 DefineAction(Undo);
@@ -67,6 +74,39 @@ DefineAction(OpenFaustFile, std::string path;);
 DefineAction(SaveFaustSvgFile, std::string path;);
 DefineAction(OpenFileDialog, std::string dialog_json;);
 DefineAction(CloseFileDialog);
+
+Json(Undo);
+Json(Redo);
+Json(OpenEmptyProject);
+Json(OpenDefaultProject);
+Json(ShowOpenProjectDialog);
+Json(CloseFileDialog);
+Json(SaveCurrentProject);
+Json(SaveDefaultProject);
+Json(ShowSaveProjectDialog);
+Json(CloseApplication);
+Json(ShowOpenFaustFileDialog);
+Json(ShowSaveFaustFileDialog);
+Json(ShowSaveFaustSvgFileDialog);
+
+Json(SetHistoryIndex, index);
+Json(OpenProject, path);
+Json(OpenFileDialog, dialog_json);
+Json(SaveProject, path);
+Json(SetValue, path, value);
+Json(SetValues, values);
+Json(SetVector, path, value);
+Json(SetMatrix, path, data, row_count);
+Json(ToggleValue, path);
+Json(ApplyPatch, patch);
+Json(SetImGuiColorStyle, id);
+Json(SetImPlotColorStyle, id);
+Json(SetFlowGridColorStyle, id);
+Json(SetGraphColorStyle, id);
+Json(SetGraphLayoutStyle, id);
+Json(SaveFaustFile, path);
+Json(OpenFaustFile, path);
+Json(SaveFaustSvgFile, path);
 } // namespace Actions
 
 namespace action {
@@ -88,13 +128,14 @@ using OtherAction = std::variant<
     ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog, OpenFaustFile,
     CloseApplication>;
 
-// All actions.
-using Action = Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
-
 // Actions that update state (as opposed to actions that only have non-state-updating side effects, like saving a file).
 // These get added to the gesture history, and are saved in a `.fga` (FlowGridAction) project.
 using StatefulAction = Combine<StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
 
+// All actions.
+using Action = Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
+
+// Composite action types.
 using ActionMoment = std::pair<Action, TimePoint>;
 using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
 using Gesture = std::vector<StatefulActionMoment>;
@@ -148,3 +189,7 @@ bool q(action::Action &&a, bool flush = false);
 // These are also defined in `Project.cpp`.
 bool ActionAllowed(ID);
 bool ActionAllowed(const action::Action &);
+
+namespace nlohmann {
+DeclareJson(action::StatefulAction);
+} // namespace nlohmann

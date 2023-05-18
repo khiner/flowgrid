@@ -595,20 +595,18 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
 }
 
 #include "Store/StoreJson.h"
+#include "date.h"
 
-void Debug::StateViewer::Render() const {
-    StateJsonTree("State", GetStoreJson());
-}
-
-void Debug::ProjectPreview::Render() const {
-    Format.Draw();
-    Raw.Draw();
-
-    Separator();
-
-    const json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
-    if (Raw) TextUnformatted(project_json.dump(4).c_str());
-    else JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
+void ShowGesture(const Gesture &gesture) {
+    for (Count action_index = 0; action_index < gesture.size(); action_index++) {
+        const auto &[action, time] = gesture[action_index];
+        JsonTree(
+            std::format("{}: {}", action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()),
+            json(action)[1],
+            JsonTreeNodeFlags_None,
+            to_string(action_index).c_str()
+        );
+    }
 }
 
 void Style::FlowGridStyle::Render() const {
@@ -651,8 +649,6 @@ void OpenRecentProject::MenuItem() const {
     }
 }
 
-#include "date.h"
-
 void ApplicationSettings::Render() const {
     int value = int(History.Index);
     if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(Actions::SetHistoryIndex{value});
@@ -667,20 +663,6 @@ void Demo::ImGuiDemo::Render() const {
 }
 void Demo::ImPlotDemo::Render() const {
     ImPlot::ShowDemoWindow();
-}
-
-#include "Action/ActionJson.h"
-
-void ShowGesture(const Gesture &gesture) {
-    for (Count action_index = 0; action_index < gesture.size(); action_index++) {
-        const auto &[action, time] = gesture[action_index];
-        JsonTree(
-            std::format("{}: {}", action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()),
-            json(action)[1],
-            JsonTreeNodeFlags_None,
-            to_string(action_index).c_str()
-        );
-    }
 }
 
 #include "PrimitiveJson.h"

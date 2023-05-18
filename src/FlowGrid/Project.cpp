@@ -3,8 +3,6 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 #include <range/v3/core.hpp>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/map.hpp>
 #include <range/v3/view/transform.hpp>
 
 #include "App.h"
@@ -75,6 +73,44 @@ std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
     return {};
 }
 
+#include "Store/StoreJson.h"
+
+struct GesturesProject {
+    const action::Gestures gestures;
+    const Count index;
+};
+
+GesturesProject JsonToGestures(const nlohmann::json &j) {
+    return {j["gestures"], j["index"]};
+}
+
+nlohmann::json GetStoreJson(const StoreJsonFormat format) {
+    switch (format) {
+        case StateFormat: return AppStore;
+        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
+    }
+}
+
+#include "UI/Widgets.h"
+#include "imgui.h"
+
+using namespace ImGui;
+
+void Debug::StateViewer::Render() const {
+    StateJsonTree("State", GetStoreJson(StateFormat));
+}
+
+void Debug::ProjectPreview::Render() const {
+    Format.Draw();
+    Raw.Draw();
+
+    Separator();
+
+    const nlohmann::json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
+    if (Raw) TextUnformatted(project_json.dump(4).c_str());
+    else fg::JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
+}
+
 #include "AppPreferences.h"
 
 void SetCurrentProjectPath(const fs::path &path) {
@@ -82,8 +118,6 @@ void SetCurrentProjectPath(const fs::path &path) {
     CurrentProjectPath = path;
     Preferences.OnProjectOpened(path);
 }
-
-#include "Store/StoreJson.h"
 
 void Project::OpenProject(const fs::path &path) {
     const auto format = GetStoreJsonFormat(path);

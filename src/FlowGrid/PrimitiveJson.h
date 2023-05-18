@@ -11,4 +11,4 @@ void to_json(json &, const Primitive &);
 void from_json(const json &, Primitive &);
 } // namespace nlohmann
 
-string to_string(const Primitive &); // Implementation depends on json definitions.
+std::string to_string(const Primitive &); // Implementation depends on json definitions.

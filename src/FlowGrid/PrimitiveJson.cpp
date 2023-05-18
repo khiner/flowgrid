@@ -2,6 +2,8 @@
 
 #include <format>
 
+using std::string;
+
 namespace nlohmann {
 void to_json(json &j, const Primitive &value) {
     if (std::holds_alternative<U32>(value)) {

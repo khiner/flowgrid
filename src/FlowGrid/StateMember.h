@@ -8,7 +8,7 @@
 #include "Store/StoreTypes.h"
 #include "UI/Drawable.h"
 
-using std::string_view;
+using std::string, std::string_view;
 
 struct StateMember {
     inline static std::unordered_map<ID, StateMember *> WithId; // Access any state member by its ID.

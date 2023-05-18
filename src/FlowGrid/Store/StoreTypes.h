@@ -52,4 +52,4 @@ struct StatePatch {
     TimePoint Time{};
 };
 
-string to_string(PatchOp::Type);
+std::string to_string(PatchOp::Type);

@@ -22,13 +22,13 @@ Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any
 - Note that adding static members does not increase the size of the variant(s) it belongs to.
   (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
-#define DefineAction(ActionName, ...)                                                          \
+namespace Action {
+#define Define(ActionName, ...)                                                                \
     struct ActionName {                                                                        \
         inline const static std::string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
         __VA_ARGS__;                                                                           \
     };
 
-namespace Action {
 template<typename T>
 concept Actionable = requires() {
     { T::Name } -> std::same_as<const std::string &>;
@@ -40,37 +40,37 @@ template<Actionable T> std::string GetName() { return T::Name; }
 
 // template<Actionable T> std::string GetId() { return T::Id; }
 
-DefineAction(Undo);
-DefineAction(Redo);
-DefineAction(SetHistoryIndex, int index;);
-DefineAction(OpenProject, std::string path;);
-DefineAction(OpenEmptyProject);
-DefineAction(OpenDefaultProject);
-DefineAction(ShowOpenProjectDialog);
-DefineAction(SaveProject, std::string path;);
-DefineAction(SaveCurrentProject);
-DefineAction(SaveDefaultProject);
-DefineAction(ShowSaveProjectDialog);
-DefineAction(CloseApplication);
-DefineAction(SetValue, StorePath path; Primitive value;);
-DefineAction(SetValues, StoreEntries values;);
-DefineAction(SetVector, StorePath path; std::vector<Primitive> value;);
-DefineAction(SetMatrix, StorePath path; std::vector<Primitive> data; Count row_count;);
-DefineAction(ToggleValue, StorePath path;);
-DefineAction(ApplyPatch, Patch patch;);
-DefineAction(SetImGuiColorStyle, int id;);
-DefineAction(SetImPlotColorStyle, int id;);
-DefineAction(SetFlowGridColorStyle, int id;);
-DefineAction(SetGraphColorStyle, int id;);
-DefineAction(SetGraphLayoutStyle, int id;);
-DefineAction(ShowOpenFaustFileDialog);
-DefineAction(ShowSaveFaustFileDialog);
-DefineAction(ShowSaveFaustSvgFileDialog);
-DefineAction(SaveFaustFile, std::string path;);
-DefineAction(OpenFaustFile, std::string path;);
-DefineAction(SaveFaustSvgFile, std::string path;);
-DefineAction(OpenFileDialog, std::string dialog_json;);
-DefineAction(CloseFileDialog);
+Define(Undo);
+Define(Redo);
+Define(SetHistoryIndex, int index;);
+Define(OpenProject, std::string path;);
+Define(OpenEmptyProject);
+Define(OpenDefaultProject);
+Define(ShowOpenProjectDialog);
+Define(SaveProject, std::string path;);
+Define(SaveCurrentProject);
+Define(SaveDefaultProject);
+Define(ShowSaveProjectDialog);
+Define(CloseApplication);
+Define(SetValue, StorePath path; Primitive value;);
+Define(SetValues, StoreEntries values;);
+Define(SetVector, StorePath path; std::vector<Primitive> value;);
+Define(SetMatrix, StorePath path; std::vector<Primitive> data; Count row_count;);
+Define(ToggleValue, StorePath path;);
+Define(ApplyPatch, Patch patch;);
+Define(SetImGuiColorStyle, int id;);
+Define(SetImPlotColorStyle, int id;);
+Define(SetFlowGridColorStyle, int id;);
+Define(SetGraphColorStyle, int id;);
+Define(SetGraphLayoutStyle, int id;);
+Define(ShowOpenFaustFileDialog);
+Define(ShowSaveFaustFileDialog);
+Define(ShowSaveFaustSvgFileDialog);
+Define(SaveFaustFile, std::string path;);
+Define(OpenFaustFile, std::string path;);
+Define(SaveFaustSvgFile, std::string path;);
+Define(OpenFileDialog, std::string dialog_json;);
+Define(CloseFileDialog);
 
 // Define json converters for stateful actions (ones that can be saved to a project)
 Json(ShowOpenProjectDialog);

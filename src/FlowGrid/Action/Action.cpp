@@ -185,13 +185,14 @@ T variant_from_json(size_t index, const json &j) {
 void to_json(json &j, const Action::StatefulAction &value) {
     std::visit(
         [&](auto &&inner_value) {
-            j = {value.index(), std::forward<decltype(inner_value)>(inner_value)};
+            j = {inner_value.Name, std::forward<decltype(inner_value)>(inner_value)};
         },
         value
     );
 }
 void from_json(const json &j, Action::StatefulAction &value) {
-    const auto index = j[0].get<size_t>();
+    const auto name = j[0].get<string>();
+    const auto index = Action::StatefulNameToIndex[name];
     value = variant_from_json<Action::StatefulAction>(index, j[1]);
 }
 } // namespace nlohmann

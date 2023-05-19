@@ -22,31 +22,41 @@ Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any
   (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
 namespace Action {
-#define Define(ActionName, ...)                                                                \
-    struct ActionName {                                                                        \
-        inline static const std::string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
-        __VA_ARGS__;                                                                           \
+#define Define(ActionName, ...)                                                           \
+    struct ActionName {                                                                   \
+        inline static const string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
+        __VA_ARGS__;                                                                      \
     };
 
 template<typename T>
 concept Actionable = requires() {
-    { T::Name } -> std::same_as<const std::string &>;
-    // { T::Id } -> std::same_as<const std::string>;
+    { T::Name } -> std::same_as<const string &>;
 };
 
 // E.g. `Action::GetName<MyAction>()`
-template<Actionable T> std::string GetName() { return T::Name; }
+template<Actionable T> string GetName() { return T::Name; }
 
-// template<Actionable T> std::string GetId() { return T::Id; }
+// Helper struct to initialize maps of `Actionable` names to their variant indices.
+template<typename VariantType, size_t I = 0> struct CreateNameToIndexMap {
+    using T = std::variant_alternative_t<I, VariantType>;
+    static_assert(Actionable<T>, "`NameToIndexMap` must be called with a variant holding `Actionable` types.");
+
+    static void Init(std::unordered_map<string, size_t> &name_to_index) {
+        name_to_index[T::Name] = I;
+        if constexpr (I + 1 < std::variant_size_v<VariantType>) {
+            CreateNameToIndexMap<VariantType, I + 1>::Init(name_to_index);
+        }
+    }
+};
 
 Define(Undo);
 Define(Redo);
 Define(SetHistoryIndex, int index;);
-Define(OpenProject, std::string path;);
+Define(OpenProject, string path;);
 Define(OpenEmptyProject);
 Define(OpenDefaultProject);
 Define(ShowOpenProjectDialog);
-Define(SaveProject, std::string path;);
+Define(SaveProject, string path;);
 Define(SaveCurrentProject);
 Define(SaveDefaultProject);
 Define(ShowSaveProjectDialog);
@@ -65,10 +75,10 @@ Define(SetGraphLayoutStyle, int id;);
 Define(ShowOpenFaustFileDialog);
 Define(ShowSaveFaustFileDialog);
 Define(ShowSaveFaustSvgFileDialog);
-Define(SaveFaustFile, std::string path;);
-Define(OpenFaustFile, std::string path;);
-Define(SaveFaustSvgFile, std::string path;);
-Define(OpenFileDialog, std::string dialog_json;);
+Define(SaveFaustFile, string path;);
+Define(OpenFaustFile, string path;);
+Define(SaveFaustSvgFile, string path;);
+Define(OpenFileDialog, string dialog_json;);
 Define(CloseFileDialog);
 
 // Define json converters for stateful actions (ones that can be saved to a project)
@@ -122,6 +132,14 @@ using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
 using Gesture = std::vector<StatefulActionMoment>;
 using Gestures = std::vector<Gesture>;
 
+// Create map of stateful action names to indices.
+// Force initialization to happen before `main()` is called.
+inline std::unordered_map<string, size_t> StatefulNameToIndex;
+inline const bool MapInitialized = [] {
+    CreateNameToIndexMap<StatefulAction>::Init(StatefulNameToIndex);
+    return true;
+}();
+
 // Default-construct an action by its variant index (which is also its `ID`).
 // Adapted from: https://stackoverflow.com/a/60567091/780425
 template<ID I = 0> Any Create(ID index) {
@@ -130,9 +148,9 @@ template<ID I = 0> Any Create(ID index) {
 }
 
 // Usage: `ID action_id = action::id<ActionType>`
-// An action's ID is its index in the `Action::Any` variant.
-// Down the road, this means `Action::Any` would need to be append-only (no order changes) for backwards compatibility.
-// I plan on replacing this with a path-based UUID system, similar to `StateMember`.
+// An action's ID is its index in the `StatefulAction` variant.
+// Note that action JSON serialization is keyed by the action _name_, not its index/ID,
+// and thus action-formatted projects are still valid regardless of the declaration order of actions within the `StatefulAction` struct.
 template<typename T> constexpr ID id = VariantIndex<T, Any>::value;
 
 inline static const std::unordered_map<ID, string> ShortcutForId = {
@@ -161,7 +179,7 @@ Gesture MergeGesture(const Gesture &);
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
  Defined in `Project.cpp`.
 */
-bool q(Action::Any &&a, bool flush = false);
+bool q(Action::Any &&, bool flush = false);
 
 // These are also defined in `Project.cpp`.
 bool ActionAllowed(ID);

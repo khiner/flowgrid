@@ -186,7 +186,7 @@ static void ApplyAction(const Action::ProjectAction &action) {
         [&](const Action::SaveProject &a) { Project::SaveProject(a.path); },
         [&](const Action::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
         [&](const Action::SaveCurrentProject &) { Project::SaveCurrentProject(); },
-        [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, s.Audio.Faust.Code); },
+        [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, audio.Faust.Code); },
         [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 
         // `History.Index`-changing actions:
@@ -214,15 +214,11 @@ static void ApplyAction(const Action::ProjectAction &action) {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
-bool Action::Undo::Allowed() { return History.CanUndo(); }
-bool Action::Redo::Allowed() { return History.CanRedo(); }
-bool Action::OpenDefaultProject::Allowed() { return fs::exists(DefaultProjectPath); }
-bool Action::SaveProject::Allowed() { return !History.Empty(); }
-bool Action::SaveDefaultProject::Allowed() { return !History.Empty(); }
-bool Action::ShowSaveProjectDialog::Allowed() { return ProjectHasChanges; }
-bool Action::SaveCurrentProject::Allowed() { return ProjectHasChanges; }
-bool Action::OpenFileDialog::Allowed() { return !s.FileDialog.Visible; }
-bool Action::CloseFileDialog::Allowed() { return s.FileDialog.Visible; }
+namespace Action {
+bool OpenDefaultProject::Allowed() { return fs::exists(DefaultProjectPath); }
+bool ShowSaveProjectDialog::Allowed() { return ProjectHasChanges; }
+bool SaveCurrentProject::Allowed() { return ProjectHasChanges; }
+} // namespace Action
 
 #include "blockingconcurrentqueue.h"
 

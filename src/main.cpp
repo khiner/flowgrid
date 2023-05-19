@@ -10,6 +10,7 @@ const State &s = ApplicationState; // Create the read-only state reference globa
 const fg::Style &fg::style = s.Style;
 const Audio &audio = s.Audio;
 const ImGuiSettings &imgui_settings = s.ImGuiSettings;
+const FileDialog &file_dialog = s.FileDialog;
 
 UIContext UiContext{};
 

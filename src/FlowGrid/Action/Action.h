@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Actionable.h"
 #include "../Store/StoreTypesJson.h"
+#include "Actionable.h"
 
 namespace Action {
 DefineContextual(Undo);

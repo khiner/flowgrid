@@ -87,6 +87,11 @@ void IGFD::InitializeDemo() {
 #endif
 }
 
+namespace Action {
+bool OpenFileDialog::Allowed() { return !file_dialog.Visible; }
+bool CloseFileDialog::Allowed() { return file_dialog.Visible; }
+} // namespace Action
+
 void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
     store::Set(
         {

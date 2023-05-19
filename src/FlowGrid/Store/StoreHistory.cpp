@@ -145,4 +145,11 @@ void StoreHistory::SetIndex(Count new_index) {
     GestureUpdateTimesForPath.clear();
 }
 
+namespace Action {
+bool Undo::Allowed() { return History.CanUndo(); }
+bool Redo::Allowed() { return History.CanRedo(); }
+bool SaveProject::Allowed() { return !History.Empty(); }
+bool SaveDefaultProject::Allowed() { return !History.Empty(); }
+} // namespace Action
+
 StoreHistory History{};

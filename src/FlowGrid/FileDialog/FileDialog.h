@@ -31,3 +31,5 @@ namespace IGFD {
 void InitializeDemo();
 void CleanupDemo();
 } // namespace IGFD
+
+extern const FileDialog &file_dialog;

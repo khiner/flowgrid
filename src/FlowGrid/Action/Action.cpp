@@ -173,12 +173,12 @@ string GetMenuLabel(const Any &action) {
 } // namespace Action
 
 namespace nlohmann {
-// Construct an action by its variant index (which is also its `ID`) and optional JSON representation (not required for empty actions).
+// Default-construct a variant from its index and JSON representation.
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
-template<ID I = 0>
-Action::StatefulAction CreateAction(ID index, const json &j) {
-    if constexpr (I >= std::variant_size_v<Action::StatefulAction>) throw std::runtime_error{"StatefulAction index " + ::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? j.get<std::variant_alternative_t<I, Action::StatefulAction>>() : CreateAction<I + 1>(index - 1, j);
+template<typename T, size_t I = 0>
+T variant_from_json(size_t index, const json &j) {
+    if constexpr (I >= std::variant_size_v<T>) throw std::runtime_error{"Variant index " + ::to_string(I + index) + " out of bounds"};
+    else return index == 0 ? j.get<std::variant_alternative_t<I, T>>() : variant_from_json<T, I + 1>(index - 1, j);
 }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
@@ -191,7 +191,7 @@ void to_json(json &j, const Action::StatefulAction &value) {
     );
 }
 void from_json(const json &j, Action::StatefulAction &value) {
-    auto id = j[0].get<ID>();
-    value = CreateAction(id, j[1]);
+    const auto index = j[0].get<size_t>();
+    value = variant_from_json<Action::StatefulAction>(index, j[1]);
 }
 } // namespace nlohmann

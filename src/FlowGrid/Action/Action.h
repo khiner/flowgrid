@@ -24,7 +24,7 @@ Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any
 namespace Action {
 #define Define(ActionName, ...)                                                                \
     struct ActionName {                                                                        \
-        inline const static std::string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
+        inline static const std::string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
         __VA_ARGS__;                                                                           \
     };
 
@@ -148,8 +148,8 @@ inline static const std::unordered_map<ID, string> ShortcutForId = {
 constexpr ID GetId(const Any &action) { return action.index(); }
 constexpr ID GetId(const StatefulAction &action) { return action.index(); }
 
-string GetName(const ProjectAction &action);
-string GetName(const StatefulAction &action);
+string GetName(const ProjectAction &);
+string GetName(const StatefulAction &);
 string GetShortcut(const Any &);
 string GetMenuLabel(const Any &);
 Gesture MergeGesture(const Gesture &);

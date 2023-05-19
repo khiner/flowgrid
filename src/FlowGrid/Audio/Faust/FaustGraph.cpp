@@ -456,7 +456,7 @@ struct Node {
         device.Rect(*this, {.FillColor = BgColor, .StrokeColor = BorderColor, .StrokeWidth = 1});
     }
     void DrawType(Device &device) const {
-        const static float padding = 2;
+        static const float padding = 2;
         const auto &label = std::format("{}: {}", BoxTypeLabel, Descendents);
         device.Rect({{0, 0}, CalcTextSize(label) + padding * 2}, {.FillColor = TypeLabelBgColor});
         device.Text({padding, padding}, label, {.Color = TypeTextColor, .Justify = {HJustify_Left, VJustify_Top}});

@@ -173,7 +173,7 @@ string GetMenuLabel(const Any &action) {
 } // namespace Action
 
 namespace nlohmann {
-// Default-construct a variant from its index and JSON representation.
+// Construct a variant from its index and JSON representation.
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
 template<typename T, size_t I = 0>
 T variant_from_json(size_t index, const json &j) {

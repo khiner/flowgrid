@@ -2008,7 +2008,7 @@ void TextEditor::AddCursorForNextOccurrence() {
 }
 
 const TextEditor::PaletteT &TextEditor::GetDarkPalette() {
-    const static PaletteT p = {{
+    static const PaletteT p = {{
         0xb0b0b0ff, // Default
         0x569cd6ff, // Keyword
         0x00ff00ff, // Number
@@ -2036,7 +2036,7 @@ const TextEditor::PaletteT &TextEditor::GetDarkPalette() {
 }
 
 const TextEditor::PaletteT &TextEditor::GetMarianaPalette() {
-    const static PaletteT p = {{
+    static const PaletteT p = {{
         0xffffffff, // Default
         0xc695c6ff, // Keyword
         0xf9ae58ff, // Number
@@ -2064,7 +2064,7 @@ const TextEditor::PaletteT &TextEditor::GetMarianaPalette() {
 }
 
 const TextEditor::PaletteT &TextEditor::GetLightPalette() {
-    const static PaletteT p = {{
+    static const PaletteT p = {{
         0x404040ff, // None
         0x060cffff, // Keyword
         0x008000ff, // Number
@@ -2092,7 +2092,7 @@ const TextEditor::PaletteT &TextEditor::GetLightPalette() {
 }
 
 const TextEditor::PaletteT &TextEditor::GetRetroBluePalette() {
-    const static PaletteT p = {{
+    static const PaletteT p = {{
         0xffff00ff, // None
         0x00ffffff, // Keyword
         0x00ff00ff, // Number

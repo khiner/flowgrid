@@ -28,6 +28,15 @@ namespace Action {
 #define Define(ActionName, ...)                                                           \
     struct ActionName {                                                                   \
         inline static const string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
+        inline static bool Allowed() { return true; }                                     \
+        __VA_ARGS__;                                                                      \
+    };
+
+// Override `Allowed()` to return `false` if the action is not allowed in the current state.
+#define DefineContextual(ActionName, ...)                                                 \
+    struct ActionName {                                                                   \
+        inline static const string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
+        static bool Allowed();                                                            \
         __VA_ARGS__;                                                                      \
     };
 

@@ -4,17 +4,17 @@
 #include "../Store/StoreTypesJson.h"
 
 namespace Action {
-Define(Undo);
-Define(Redo);
+DefineContextual(Undo);
+DefineContextual(Redo);
 Define(SetHistoryIndex, int index;);
 Define(OpenProject, string path;);
 Define(OpenEmptyProject);
-Define(OpenDefaultProject);
+DefineContextual(OpenDefaultProject);
 Define(ShowOpenProjectDialog);
-Define(SaveProject, string path;);
-Define(SaveCurrentProject);
-Define(SaveDefaultProject);
-Define(ShowSaveProjectDialog);
+DefineContextual(SaveProject, string path;);
+DefineContextual(SaveCurrentProject);
+DefineContextual(SaveDefaultProject);
+DefineContextual(ShowSaveProjectDialog);
 Define(CloseApplication);
 Define(SetValue, StorePath path; Primitive value;);
 Define(SetValues, StoreEntries values;);
@@ -33,8 +33,8 @@ Define(ShowSaveFaustSvgFileDialog);
 Define(SaveFaustFile, string path;);
 Define(OpenFaustFile, string path;);
 Define(SaveFaustSvgFile, string path;);
-Define(OpenFileDialog, string dialog_json;);
-Define(CloseFileDialog);
+DefineContextual(OpenFileDialog, string dialog_json;);
+DefineContextual(CloseFileDialog);
 
 // Define json converters for stateful actions (ones that can be saved to a project)
 Json(ShowOpenProjectDialog);
@@ -114,6 +114,7 @@ inline static const std::unordered_map<ID, string> ShortcutForId = {
 constexpr ID GetId(const Any &action) { return action.index(); }
 constexpr ID GetId(const StatefulAction &action) { return action.index(); }
 
+bool IsAllowed(const Any &);
 string GetName(const StatefulAction &);
 string GetShortcut(const Any &);
 string GetMenuLabel(const Any &);
@@ -126,11 +127,7 @@ Gesture MergeGesture(const Gesture &);
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
  Defined in `Project.cpp`.
 */
-bool q(Action::Any &&, bool flush = false);
-
-// These are also defined in `Project.cpp`.
-bool ActionAllowed(ID);
-bool ActionAllowed(const Action::Any &);
+bool q(const Action::Any &&, bool flush = false);
 
 namespace nlohmann {
 DeclareJson(Action::StatefulAction);

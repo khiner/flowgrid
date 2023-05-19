@@ -155,7 +155,7 @@ void Project::OpenProject(const fs::path &path) {
 
 bool Project::SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
-    if (is_current_project && !ActionAllowed(Action::id<Action::SaveCurrentProject>)) return false;
+    if (is_current_project && !Action::SaveCurrentProject::Allowed()) return false;
 
     const auto format = GetStoreJsonFormat(path);
     if (!format) return false; // TODO log
@@ -214,22 +214,15 @@ static void ApplyAction(const Action::ProjectAction &action) {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
-bool ActionAllowed(const ID id) {
-    switch (id) {
-        case Action::id<Action::Undo>: return History.CanUndo();
-        case Action::id<Action::Redo>: return History.CanRedo();
-        case Action::id<Action::OpenDefaultProject>: return fs::exists(DefaultProjectPath);
-        case Action::id<Action::SaveProject>:
-        case Action::id<Action::SaveDefaultProject>: return !History.Empty();
-        case Action::id<Action::ShowSaveProjectDialog>:
-            // If there is no current project, `SaveCurrentProject` will be transformed into a `ShowSaveProjectDialog`.
-        case Action::id<Action::SaveCurrentProject>: return ProjectHasChanges;
-        case Action::id<Action::OpenFileDialog>: return !s.FileDialog.Visible;
-        case Action::id<Action::CloseFileDialog>: return s.FileDialog.Visible;
-        default: return true;
-    }
-}
-bool ActionAllowed(const Action::Any &action) { return ActionAllowed(Action::GetId(action)); }
+bool Action::Undo::Allowed() { return History.CanUndo(); }
+bool Action::Redo::Allowed() { return History.CanRedo(); }
+bool Action::OpenDefaultProject::Allowed() { return fs::exists(DefaultProjectPath); }
+bool Action::SaveProject::Allowed() { return !History.Empty(); }
+bool Action::SaveDefaultProject::Allowed() { return !History.Empty(); }
+bool Action::ShowSaveProjectDialog::Allowed() { return ProjectHasChanges; }
+bool Action::SaveCurrentProject::Allowed() { return ProjectHasChanges; }
+bool Action::OpenFileDialog::Allowed() { return !s.FileDialog.Visible; }
+bool Action::CloseFileDialog::Allowed() { return s.FileDialog.Visible; }
 
 #include "blockingconcurrentqueue.h"
 
@@ -247,7 +240,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
         auto &[action, _] = action_moment;
-        if (!ActionAllowed(action)) continue;
+        if (!Action::IsAllowed(action)) continue;
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
@@ -276,7 +269,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
     if (finalize) History.FinalizeGesture();
 }
 
-bool q(Action::Any &&action, bool flush) {
+bool q(const Action::Any &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
     return true;

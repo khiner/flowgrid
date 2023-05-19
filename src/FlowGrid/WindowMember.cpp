@@ -98,7 +98,7 @@ void Menu::Render() const {
                 [](const Action::Any &action) {
                     const string menu_label = Action::GetMenuLabel(action);
                     const string shortcut = Action::GetShortcut(action);
-                    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, ActionAllowed(action))) {
+                    if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, Action::IsAllowed(action))) {
                         Match(action, [](const auto &a) { q(a); });
                     }
                 },

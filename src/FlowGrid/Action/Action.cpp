@@ -143,10 +143,12 @@ Gesture MergeGesture(const Gesture &gesture) {
     return merged_gesture;
 }
 
+bool IsAllowed(const Any &action) {
+    return std::visit([](auto &&a) { return a.Allowed(); }, action);
+}
 string GetName(const StatefulAction &action) {
     return std::visit([](auto &&a) { return GetName<std::decay_t<decltype(a)>>(); }, action);
 }
-
 string GetShortcut(const Any &action) {
     const auto id = GetId(action);
     return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";

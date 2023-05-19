@@ -143,15 +143,12 @@ Gesture MergeGesture(const Gesture &gesture) {
     return merged_gesture;
 }
 
-string GetName(const ProjectAction &action) {
-    return std::visit([](auto &&a) { return GetName<std::decay_t<decltype(a)>>(); }, action);
-}
 string GetName(const StatefulAction &action) {
     return std::visit([](auto &&a) { return GetName<std::decay_t<decltype(a)>>(); }, action);
 }
 
 string GetShortcut(const Any &action) {
-    const ID id = std::visit([](const Any &&a) { return GetId(a); }, action);
+    const auto id = GetId(action);
     return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
 }
 
@@ -166,8 +163,7 @@ string GetMenuLabel(const Any &action) {
         [](const ShowOpenFaustFileDialog &) { return "Open DSP file"s; },
         [](const ShowSaveFaustFileDialog &) { return "Save DSP as..."s; },
         [](const ShowSaveFaustSvgFileDialog &) { return "Export SVG"s; },
-        [](const ProjectAction &a) { return GetName(a); },
-        [](const StatefulAction &a) { return GetName(a); },
+        [](const auto &a) { return GetName<std::decay_t<decltype(a)>>(); },
     );
 }
 } // namespace Action

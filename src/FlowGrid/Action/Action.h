@@ -140,13 +140,6 @@ inline const bool MapInitialized = [] {
     return true;
 }();
 
-// Default-construct an action by its variant index (which is also its `ID`).
-// Adapted from: https://stackoverflow.com/a/60567091/780425
-template<ID I = 0> Any Create(ID index) {
-    if constexpr (I >= std::variant_size_v<Any>) throw std::runtime_error{"Action index " + to_string(I + index) + " out of bounds"};
-    else return index == 0 ? Any{std::in_place_index<I>} : Create<I + 1>(index - 1);
-}
-
 // Usage: `ID action_id = action::id<ActionType>`
 // An action's ID is its index in the `StatefulAction` variant.
 // Note that action JSON serialization is keyed by the action _name_, not its index/ID,

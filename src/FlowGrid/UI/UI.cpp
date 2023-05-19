@@ -217,7 +217,7 @@ void TickUi(const Drawable &app) {
 
     for (const auto &[shortcut, action_id] : KeyMap) {
         if (IsShortcutPressed(shortcut) && ActionAllowed(action_id)) {
-            q(Action::Create(action_id)); // Default-construct the action and queue it.
+            q(CreateVariant<Action::Any>(action_id)); // Default-construct the action and queue it.
         }
     }
 

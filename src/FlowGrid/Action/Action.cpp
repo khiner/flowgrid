@@ -3,6 +3,7 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
 
+using namespace std::string_literals;
 using namespace Action;
 using ranges::to;
 namespace views = ranges::views;
@@ -183,7 +184,7 @@ T variant_from_json(size_t index, const json &j) {
 void to_json(json &j, const Action::StatefulAction &value) {
     std::visit(
         [&](auto &&inner_value) {
-            j = {inner_value.Name, std::forward<decltype(inner_value)>(inner_value)};
+            j = {GetName(inner_value), std::forward<decltype(inner_value)>(inner_value)};
         },
         value
     );

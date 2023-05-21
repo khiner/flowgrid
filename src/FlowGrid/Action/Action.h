@@ -3,6 +3,8 @@
 #include "../Store/StoreTypesJson.h"
 #include "Actionable.h"
 
+using std::string;
+
 namespace Action {
 DefineContextual(Undo);
 DefineContextual(Redo);

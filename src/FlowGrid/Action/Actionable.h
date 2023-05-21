@@ -1,6 +1,8 @@
 #pragma once
 
 #include <concepts>
+#include <string>
+#include <string_view>
 #include <variant>
 
 // next up:
@@ -10,8 +12,6 @@
 //     `Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0))`
 // - Add `Help` string (also like StateMember)
 // Move all action declaration & `Apply` handling to domain files.
-
-#include "../Helper/String.h"
 
 /**
 An action is an immutable representation of a user interaction event.
@@ -25,36 +25,48 @@ Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any
   (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
 namespace Action {
-#define Define(ActionName, ...)                                                           \
-    struct ActionName {                                                                   \
-        inline static const string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
-        inline static bool Allowed() { return true; }                                     \
-        __VA_ARGS__;                                                                      \
+
+struct Meta {
+    Meta(std::string_view name);
+
+    const std::string Name; // Human-readable name.
+    // todo
+    // const string PathSegment;
+    // const StorePath Path;
+    // const string Help, ImGuiLabel;
+    // const ID Id;
+};
+
+#define Define(ActionName, ...)                       \
+    struct ActionName {                               \
+        inline static const Meta _Meta{#ActionName};  \
+        inline static bool Allowed() { return true; } \
+        __VA_ARGS__;                                  \
     };
 
 // Override `Allowed()` to return `false` if the action is not allowed in the current state.
-#define DefineContextual(ActionName, ...)                                                 \
-    struct ActionName {                                                                   \
-        inline static const string Name{StringHelper::PascalToSentenceCase(#ActionName)}; \
-        static bool Allowed();                                                            \
-        __VA_ARGS__;                                                                      \
+#define DefineContextual(ActionName, ...)            \
+    struct ActionName {                              \
+        inline static const Meta _Meta{#ActionName}; \
+        static bool Allowed();                       \
+        __VA_ARGS__;                                 \
     };
 
 template<typename T>
 concept Actionable = requires() {
-    { T::Name } -> std::same_as<const string &>;
+    { T::_Meta } -> std::same_as<const Meta &>;
 };
 
 // E.g. `Action::GetName<MyAction>()`
-template<Actionable T> string GetName() { return T::Name; }
+template<Actionable T> std::string GetName() { return T::_Meta.Name; }
 
 // Helper struct to initialize maps of `Actionable` names to their variant indices.
 template<typename VariantType, size_t I = 0> struct CreateNameToIndexMap {
     using T = std::variant_alternative_t<I, VariantType>;
     static_assert(Actionable<T>, "`NameToIndexMap` must be called with a variant holding `Actionable` types.");
 
-    static void Init(std::unordered_map<string, size_t> &name_to_index) {
-        name_to_index[T::Name] = I;
+    static void Init(std::unordered_map<std::string, size_t> &name_to_index) {
+        name_to_index[GetName<T>()] = I;
         if constexpr (I + 1 < std::variant_size_v<VariantType>) {
             CreateNameToIndexMap<VariantType, I + 1>::Init(name_to_index);
         }

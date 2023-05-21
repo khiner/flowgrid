@@ -6,6 +6,8 @@
 using std::string;
 
 namespace Action {
+using namespace Actionable;
+
 DefineContextual(Undo);
 DefineContextual(Redo);
 Define(SetHistoryIndex, int index;);
@@ -60,28 +62,28 @@ Json(SetGraphColorStyle, id);
 Json(SetGraphLayoutStyle, id);
 Json(OpenFaustFile, path);
 
-using ProjectAction = std::variant<
+using ProjectAction = ActionVariant<
     Undo, Redo, SetHistoryIndex,
     OpenProject, OpenEmptyProject, OpenDefaultProject,
     SaveProject, SaveDefaultProject, SaveCurrentProject, SaveFaustFile, SaveFaustSvgFile>;
 
 // Actions that apply directly to the store.
-using StoreAction = std::variant<SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch>;
+using StoreAction = ActionVariant<SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch>;
 
 // Domain actions (todo move to their respective domain files).
-using FileDialogAction = std::variant<OpenFileDialog, CloseFileDialog>;
-using StyleAction = std::variant<SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle, SetGraphLayoutStyle>;
+using FileDialogAction = ActionVariant<OpenFileDialog, CloseFileDialog>;
+using StyleAction = ActionVariant<SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle, SetGraphColorStyle, SetGraphLayoutStyle>;
 
-using OtherAction = std::variant<
+using OtherAction = ActionVariant<
     ShowOpenProjectDialog, ShowSaveProjectDialog, ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, ShowSaveFaustSvgFileDialog, OpenFaustFile,
     CloseApplication>;
 
 // Actions that update state (as opposed to actions that only have non-state-updating side effects, like saving a file).
 // These get added to the gesture history, and are saved in a `.fga` (FlowGridAction) project.
-using StatefulAction = Variant::Combine<StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
+using StatefulAction = Combine<StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
 
 // All actions.
-using Any = Variant::Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
+using Any = Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
 
 // Composite action types.
 using ActionMoment = std::pair<Any, TimePoint>;
@@ -89,19 +91,11 @@ using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
 using Gesture = std::vector<StatefulActionMoment>;
 using Gestures = std::vector<Gesture>;
 
-// Create map of stateful action names to indices.
-// Force initialization to happen before `main()` is called.
-inline std::unordered_map<string, size_t> StatefulNameToIndex;
-inline const bool MapInitialized = [] {
-    CreateNameToIndexMap<StatefulAction>::Init(StatefulNameToIndex);
-    return true;
-}();
-
 // Usage: `ID action_id = action::id<ActionType>`
 // An action's ID is its index in the `StatefulAction` variant.
 // Note that action JSON serialization is keyed by the action _name_, not its index/ID,
 // and thus action-formatted projects are still valid regardless of the declaration order of actions within the `StatefulAction` struct.
-template<typename T> constexpr ID id = Variant::Index<T, Any>::value;
+template<typename T> constexpr ID id = Actionable::Index<T, Any>::value;
 
 inline static const std::unordered_map<ID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},
@@ -113,11 +107,6 @@ inline static const std::unordered_map<ID, string> ShortcutForId = {
     {id<ShowSaveProjectDialog>, "shift+cmd+s"},
 };
 
-constexpr ID GetId(const Any &action) { return action.index(); }
-constexpr ID GetId(const StatefulAction &action) { return action.index(); }
-
-bool IsAllowed(const Any &);
-string GetName(const StatefulAction &);
 string GetShortcut(const Any &);
 string GetMenuLabel(const Any &);
 Gesture MergeGesture(const Gesture &);

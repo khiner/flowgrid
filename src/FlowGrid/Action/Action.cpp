@@ -61,8 +61,8 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
  For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
 */
 std::variant<StatefulAction, bool> Merge(const StatefulAction &a, const StatefulAction &b) {
-    const ID a_id = GetId(a);
-    const ID b_id = GetId(b);
+    const ID a_id = a.GetId();
+    const ID b_id = b.GetId();
     const bool same_type = a_id == b_id;
 
     switch (a_id) {
@@ -144,14 +144,8 @@ Gesture MergeGesture(const Gesture &gesture) {
     return merged_gesture;
 }
 
-bool IsAllowed(const Any &action) {
-    return std::visit([](auto &&a) { return a.Allowed(); }, action);
-}
-string GetName(const StatefulAction &action) {
-    return std::visit([](auto &&a) { return GetName<std::decay_t<decltype(a)>>(); }, action);
-}
 string GetShortcut(const Any &action) {
-    const auto id = GetId(action);
+    const auto id = action.GetId();
     return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
 }
 
@@ -166,7 +160,7 @@ string GetMenuLabel(const Any &action) {
         [](const ShowOpenFaustFileDialog &) { return "Open DSP file"s; },
         [](const ShowSaveFaustFileDialog &) { return "Save DSP as..."s; },
         [](const ShowSaveFaustSvgFileDialog &) { return "Export SVG"s; },
-        [](const auto &a) { return GetName<std::decay_t<decltype(a)>>(); },
+        [&action](const auto &) { return action.GetName(); },
     );
 }
 } // namespace Action
@@ -176,22 +170,21 @@ namespace nlohmann {
 // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
 template<typename T, size_t I = 0>
 T variant_from_json(size_t index, const json &j) {
-    if constexpr (I >= std::variant_size_v<T>) throw std::runtime_error{"Variant index " + ::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? j.get<std::variant_alternative_t<I, T>>() : variant_from_json<T, I + 1>(index - 1, j);
+    using variant_t = typename T::variant_t; // Use the underlying variant type
+
+    if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + ::to_string(I + index) + " out of bounds"};
+    else return index == 0 ? j.get<std::variant_alternative_t<I, variant_t>>() : variant_from_json<T, I + 1>(index - 1, j);
 }
 
 // Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
-void to_json(json &j, const Action::StatefulAction &value) {
-    std::visit(
-        [&](auto &&inner_value) {
-            j = {GetName(inner_value), std::forward<decltype(inner_value)>(inner_value)};
-        },
-        value
-    );
+void to_json(json &j, const Action::StatefulAction &action) {
+    const auto &name = action.GetName();
+    std::visit([&j, &name](auto &&a) { j = {name, a}; }, action);
 }
+
 void from_json(const json &j, Action::StatefulAction &value) {
     const auto name = j[0].get<string>();
-    const auto index = Action::StatefulNameToIndex[name];
+    const auto index = Action::StatefulAction::NameToIndex[name];
     value = variant_from_json<Action::StatefulAction>(index, j[1]);
 }
 } // namespace nlohmann

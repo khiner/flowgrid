@@ -14,7 +14,7 @@ template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
 #define Match(Variant, ...) std::visit(visitor{__VA_ARGS__}, Variant);
 
 namespace Variant {
-// Utility to flatten two variants together into one variant.
+// Utility to flatten two or more variants together into one variant.
 // Based on https://stackoverflow.com/a/59251342/780425, but adds support for > 2 variants using template recursion.
 // E.g. `Variant::Combine<Variant1, Variant2, Variant3>`
 template<typename... Vars> struct Combine;
@@ -44,11 +44,4 @@ template<typename T, typename... Ts> struct Index<T, std::variant<T, Ts...>> {
 template<typename T, typename U, typename... Ts> struct Index<T, std::variant<U, Ts...>> {
     static constexpr size_t value = 1 + Index<T, std::variant<Ts...>>::value;
 };
-
-// Default-construct a variant member by its index.
-// Adapted from: https://stackoverflow.com/a/60567091/780425
-template<typename Var, size_t I = 0> Var Create(size_t index) {
-    if constexpr (I >= std::variant_size_v<Var>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? Var{std::in_place_index<I>} : Create<Var, I + 1>(index - 1);
-}
 } // namespace Variant

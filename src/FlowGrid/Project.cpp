@@ -236,7 +236,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
         auto &[action, _] = action_moment;
-        if (!Action::IsAllowed(action)) continue;
+        if (!action.IsAllowed()) continue;
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:

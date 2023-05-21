@@ -601,7 +601,7 @@ void ShowGesture(const Gesture &gesture) {
     for (Count action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &[action, time] = gesture[action_index];
         JsonTree(
-            std::format("{}: {}", Action::GetName(action), date::format("%Y-%m-%d %T", time).c_str()),
+            std::format("{}: {}", action.GetName(), date::format("%Y-%m-%d %T", time).c_str()),
             json(action)[1],
             JsonTreeNodeFlags_None,
             to_string(action_index).c_str()

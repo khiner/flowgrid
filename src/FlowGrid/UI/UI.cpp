@@ -217,7 +217,7 @@ void TickUi(const Drawable &app) {
 
     for (const auto &[shortcut, action_id] : KeyMap) {
         if (IsShortcutPressed(shortcut)) {
-            const auto action = CreateVariant<Action::Any>(action_id);
+            const auto action = Variant::Create<Action::Any>(action_id);
             if (Action::IsAllowed(action)) {
                 q(std::move(action));
             }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+#include <string>
 #include <variant>
 
 // Utility to visit a variant with lambdas, using the "overloaded pattern" described
@@ -11,9 +13,10 @@ template<class... Ts> struct visitor : Ts... {
 template<class... Ts> visitor(Ts...) -> visitor<Ts...>;
 #define Match(Variant, ...) std::visit(visitor{__VA_ARGS__}, Variant);
 
+namespace Variant {
 // Utility to flatten two variants together into one variant.
 // Based on https://stackoverflow.com/a/59251342/780425, but adds support for > 2 variants using template recursion.
-// E.g. `Combine<Variant1, Variant2, Variant3>`
+// E.g. `Variant::Combine<Variant1, Variant2, Variant3>`
 template<typename... Vars> struct Combine;
 template<typename Var> struct Combine<Var> {
     using type = Var;
@@ -22,35 +25,30 @@ template<typename... Ts1, typename... Ts2, typename... Vars> struct Combine<std:
     using type = typename Combine<std::variant<Ts1..., Ts2...>, Vars...>::type;
 };
 
-// `IsVariantMember` is based on https://stackoverflow.com/a/45892305/780425.
-template<typename T, typename Var> struct IsVariantMember;
-template<typename T, typename... Ts> struct IsVariantMember<T, std::variant<Ts...>>
+// `Variant::IsMember` is based on https://stackoverflow.com/a/45892305/780425.
+template<typename T, typename Var> struct IsMember;
+template<typename T, typename... Ts> struct IsMember<T, std::variant<Ts...>>
     : public std::disjunction<std::is_same<T, Ts>...> {};
 
 /**
-Get variant index by type.
-Example usage:
+Get variant index by type. Example usage:
 ```
-    template<typename T> constexpr size_t SomeVariantId = VariantIndex<T, SomeVariantType>::value;
-    size_t id = SomeVariantId<SomeVariantMemberType>;
+    template<typename T> constexpr size_t SomeVariantIndex = Variant::Index<T, SomeVariantType>::value;
+    constexpr size_t id = SomeVariantIndex<SomeVariantMemberType>;
 ```
-
-How I got here:
- * - Found suggestion to use `mp_find` to find variant index by type [here](https://stackoverflow.com/a/66386518/780425).
- * - Started with a minimal standalone copy of Boost's `mp_find`, from relevant parts of https://github.com/boostorg/mp11/blob/develop/include/boost/mp11/algorithm.hpp.
- * - Coaxed GPT-4 to help simplify and modernize it, which removed more than half the lines, as well as the dependency on `type_traits` and `cstddef` :)
 */
-template<typename T, typename Var> struct VariantIndex;
-template<typename T, typename... Ts> struct VariantIndex<T, std::variant<T, Ts...>> {
+template<typename T, typename Var> struct Index;
+template<typename T, typename... Ts> struct Index<T, std::variant<T, Ts...>> {
     static constexpr size_t value = 0;
 };
-template<typename T, typename U, typename... Ts> struct VariantIndex<T, std::variant<U, Ts...>> {
-    static constexpr size_t value = 1 + VariantIndex<T, std::variant<Ts...>>::value;
+template<typename T, typename U, typename... Ts> struct Index<T, std::variant<U, Ts...>> {
+    static constexpr size_t value = 1 + Index<T, std::variant<Ts...>>::value;
 };
 
 // Default-construct a variant member by its index.
 // Adapted from: https://stackoverflow.com/a/60567091/780425
-template<typename Var, size_t I = 0> Var CreateVariant(size_t index) {
+template<typename Var, size_t I = 0> Var Create(size_t index) {
     if constexpr (I >= std::variant_size_v<Var>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? Var{std::in_place_index<I>} : CreateVariant<Var, I + 1>(index - 1);
+    else return index == 0 ? Var{std::in_place_index<I>} : Create<Var, I + 1>(index - 1);
 }
+} // namespace Variant

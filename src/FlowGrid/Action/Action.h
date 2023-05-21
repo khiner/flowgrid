@@ -78,10 +78,10 @@ using OtherAction = std::variant<
 
 // Actions that update state (as opposed to actions that only have non-state-updating side effects, like saving a file).
 // These get added to the gesture history, and are saved in a `.fga` (FlowGridAction) project.
-using StatefulAction = Combine<StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
+using StatefulAction = Variant::Combine<StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
 
 // All actions.
-using Any = Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
+using Any = Variant::Combine<ProjectAction, StoreAction, FileDialogAction, StyleAction, OtherAction>::type;
 
 // Composite action types.
 using ActionMoment = std::pair<Any, TimePoint>;
@@ -101,7 +101,7 @@ inline const bool MapInitialized = [] {
 // An action's ID is its index in the `StatefulAction` variant.
 // Note that action JSON serialization is keyed by the action _name_, not its index/ID,
 // and thus action-formatted projects are still valid regardless of the declaration order of actions within the `StatefulAction` struct.
-template<typename T> constexpr ID id = VariantIndex<T, Any>::value;
+template<typename T> constexpr ID id = Variant::Index<T, Any>::value;
 
 inline static const std::unordered_map<ID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},

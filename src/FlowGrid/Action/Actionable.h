@@ -5,6 +5,8 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "nlohmann/json.hpp"
+
 #include "../Helper/Variant.h"
 
 // next up:
@@ -81,7 +83,7 @@ struct ActionVariant : std::variant<T...> {
 
     static inline auto NameToIndex = CreateNameToIndex();
 
-    unsigned int GetId() const { return this->index(); }
+    size_t GetId() const { return this->index(); }
 
     const std::string &GetName() const {
         return Call([](auto &a) -> const std::string & { return a._Meta.Name; });
@@ -94,6 +96,26 @@ struct ActionVariant : std::variant<T...> {
     static ActionVariant Create(size_t index) {
         if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
         else return index == 0 ? ActionVariant{std::in_place_index<I>} : Create<I + 1>(index - 1);
+    }
+
+    // Construct a variant from its index and JSON representation.
+    // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
+    template<size_t I = 0>
+    static ActionVariant Create(size_t index, const nlohmann::json &j) {
+        if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
+        else return index == 0 ? j.get<std::variant_alternative_t<I, variant_t>>() : Create<I + 1>(index - 1, j);
+    }
+
+    // Serialize actions as two-element arrays, [name, value].
+    // Value element can possibly be null.
+    // Assumes all actions define json converters.
+    inline void to_json(nlohmann::json &j) const {
+        Call([&j](auto &a) { j = {a._Meta.Name, a}; });
+    }
+    inline static void from_json(const nlohmann::json &j, ActionVariant &value) {
+        const auto name = j[0].get<std::string>();
+        const auto index = NameToIndex[name];
+        value = Create(index, j[1]);
     }
 
 private:

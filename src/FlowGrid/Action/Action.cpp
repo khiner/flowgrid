@@ -166,25 +166,10 @@ string GetMenuLabel(const Any &action) {
 } // namespace Action
 
 namespace nlohmann {
-// Construct a variant from its index and JSON representation.
-// Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
-template<typename T, size_t I = 0>
-T variant_from_json(size_t index, const json &j) {
-    using variant_t = typename T::variant_t; // Use the underlying variant type
-
-    if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + ::to_string(I + index) + " out of bounds"};
-    else return index == 0 ? j.get<std::variant_alternative_t<I, variant_t>>() : variant_from_json<T, I + 1>(index - 1, j);
-}
-
-// Serialize actions as two-element arrays, [index, value]. Value element can possibly be null.
 void to_json(json &j, const Action::StatefulAction &action) {
-    const auto &name = action.GetName();
-    std::visit([&j, &name](auto &&a) { j = {name, a}; }, action);
+    action.to_json(j);
 }
-
-void from_json(const json &j, Action::StatefulAction &value) {
-    const auto name = j[0].get<string>();
-    const auto index = Action::StatefulAction::NameToIndex[name];
-    value = variant_from_json<Action::StatefulAction>(index, j[1]);
+void from_json(const json &j, Action::StatefulAction &action) {
+    Action::StatefulAction::from_json(j, action);
 }
 } // namespace nlohmann

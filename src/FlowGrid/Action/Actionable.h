@@ -32,9 +32,10 @@ Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any
 namespace Actionable {
 
 struct Metadata {
-    Metadata(std::string_view name);
+    Metadata(std::string_view name, std::string_view menu_label = "");
 
     const std::string Name; // Human-readable name.
+    const std::string MenuLabel; // Defaults to `Name`.
     // todo
     // const string PathSegment;
     // const StorePath Path;
@@ -42,19 +43,19 @@ struct Metadata {
     // const ID Id;
 };
 
-#define Define(ActionName, ...)                          \
-    struct ActionName {                                  \
-        inline static const Metadata _Meta{#ActionName}; \
-        inline static bool Allowed() { return true; }    \
-        __VA_ARGS__;                                     \
+#define Define(ActionName, menu_label, ...)                          \
+    struct ActionName {                                              \
+        inline static const Metadata _Meta{#ActionName, menu_label}; \
+        inline static bool Allowed() { return true; }                \
+        __VA_ARGS__;                                                 \
     };
 
 // Override `Allowed()` to return `false` if the action is not allowed in the current state.
-#define DefineContextual(ActionName, ...)                \
-    struct ActionName {                                  \
-        inline static const Metadata _Meta{#ActionName}; \
-        static bool Allowed();                           \
-        __VA_ARGS__;                                     \
+#define DefineContextual(ActionName, menu_label, ...)                \
+    struct ActionName {                                              \
+        inline static const Metadata _Meta{#ActionName, menu_label}; \
+        static bool Allowed();                                       \
+        __VA_ARGS__;                                                 \
     };
 
 template<typename T>
@@ -85,6 +86,9 @@ struct ActionVariant : std::variant<T...> {
 
     const std::string &GetName() const {
         return Call([](auto &a) -> const std::string & { return a._Meta.Name; });
+    }
+    const std::string &GetMenuLabel() const {
+        return Call([](auto &a) -> const std::string & { return a._Meta.MenuLabel; });
     }
     bool IsAllowed() const {
         return Call([](auto &a) { return a.Allowed(); });

@@ -149,20 +149,6 @@ string GetShortcut(const Any &action) {
     return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
 }
 
-// An action's menu label is its name, except for a few exceptions.
-string GetMenuLabel(const Any &action) {
-    return Match(
-        action,
-        [](const ShowOpenProjectDialog &) { return "Open project"s; },
-        [](const OpenEmptyProject &) { return "New project"s; },
-        [](const SaveCurrentProject &) { return "Save project"s; },
-        [](const ShowSaveProjectDialog &) { return "Save project as..."s; },
-        [](const ShowOpenFaustFileDialog &) { return "Open DSP file"s; },
-        [](const ShowSaveFaustFileDialog &) { return "Save DSP as..."s; },
-        [](const ShowSaveFaustSvgFileDialog &) { return "Export SVG"s; },
-        [&action](const auto &) { return action.GetName(); },
-    );
-}
 } // namespace Action
 
 namespace nlohmann {

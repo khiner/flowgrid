@@ -8,37 +8,37 @@ using std::string;
 namespace Action {
 using namespace Actionable;
 
-DefineContextual(Undo);
-DefineContextual(Redo);
-Define(SetHistoryIndex, int index;);
-Define(OpenProject, string path;);
-Define(OpenEmptyProject);
-DefineContextual(OpenDefaultProject);
-Define(ShowOpenProjectDialog);
-DefineContextual(SaveProject, string path;);
-DefineContextual(SaveCurrentProject);
-DefineContextual(SaveDefaultProject);
-DefineContextual(ShowSaveProjectDialog);
-Define(CloseApplication);
-Define(SetValue, StorePath path; Primitive value;);
-Define(SetValues, StoreEntries values;);
-Define(SetVector, StorePath path; std::vector<Primitive> value;);
-Define(SetMatrix, StorePath path; std::vector<Primitive> data; Count row_count;);
-Define(ToggleValue, StorePath path;);
-Define(ApplyPatch, Patch patch;);
-Define(SetImGuiColorStyle, int id;);
-Define(SetImPlotColorStyle, int id;);
-Define(SetFlowGridColorStyle, int id;);
-Define(SetGraphColorStyle, int id;);
-Define(SetGraphLayoutStyle, int id;);
-Define(ShowOpenFaustFileDialog);
-Define(ShowSaveFaustFileDialog);
-Define(ShowSaveFaustSvgFileDialog);
-Define(SaveFaustFile, string path;);
-Define(OpenFaustFile, string path;);
-Define(SaveFaustSvgFile, string path;);
-DefineContextual(OpenFileDialog, string dialog_json;);
-DefineContextual(CloseFileDialog);
+DefineContextual(Undo, "");
+DefineContextual(Redo, "");
+Define(SetHistoryIndex, "", int index;);
+Define(OpenProject, "", string path;);
+Define(OpenEmptyProject, "New project");
+DefineContextual(OpenDefaultProject, "");
+Define(ShowOpenProjectDialog, "Open project");
+DefineContextual(SaveProject, "", string path;);
+DefineContextual(SaveCurrentProject, "Save project");
+DefineContextual(SaveDefaultProject, "");
+DefineContextual(ShowSaveProjectDialog, "Save project as...");
+Define(CloseApplication, "");
+Define(SetValue, "", StorePath path; Primitive value;);
+Define(SetValues, "", StoreEntries values;);
+Define(SetVector, "", StorePath path; std::vector<Primitive> value;);
+Define(SetMatrix, "", StorePath path; std::vector<Primitive> data; Count row_count;);
+Define(ToggleValue, "", StorePath path;);
+Define(ApplyPatch, "", Patch patch;);
+Define(SetImGuiColorStyle, "", int id;);
+Define(SetImPlotColorStyle, "", int id;);
+Define(SetFlowGridColorStyle, "", int id;);
+Define(SetGraphColorStyle, "", int id;);
+Define(SetGraphLayoutStyle, "", int id;);
+Define(ShowOpenFaustFileDialog, "Open DSP file");
+Define(ShowSaveFaustFileDialog, "Save DSP as...");
+Define(ShowSaveFaustSvgFileDialog, "Export SVG");
+Define(SaveFaustFile, "", string path;);
+Define(OpenFaustFile, "", string path;);
+Define(SaveFaustSvgFile, "", string path;);
+DefineContextual(OpenFileDialog, "", string dialog_json;);
+DefineContextual(CloseFileDialog, "");
 
 // Define json converters for stateful actions (ones that can be saved to a project)
 Json(ShowOpenProjectDialog);
@@ -108,7 +108,6 @@ inline static const std::unordered_map<ID, string> ShortcutForId = {
 };
 
 string GetShortcut(const Any &);
-string GetMenuLabel(const Any &);
 Gesture MergeGesture(const Gesture &);
 } // namespace Action
 

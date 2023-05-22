@@ -95,7 +95,7 @@ using Gestures = std::vector<Gesture>;
 // An action's ID is its index in the `StatefulAction` variant.
 // Note that action JSON serialization is keyed by the action _name_, not its index/ID,
 // and thus action-formatted projects are still valid regardless of the declaration order of actions within the `StatefulAction` struct.
-template<typename T> constexpr ID id = Actionable::Index<T, Any>::value;
+template<typename T> constexpr ID id = Any::Index<T>::value;
 
 inline static const std::unordered_map<ID, string> ShortcutForId = {
     {id<Undo>, "cmd+z"},

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <concepts>
 #include <string>
 #include <string_view>
@@ -89,6 +90,15 @@ struct ActionVariant : std::variant<T...> {
         return Call([](auto &a) { return a.Allowed(); });
     }
 
+    template<typename MemberType, size_t I = 0>
+    struct Index {
+        static constexpr size_t value = std::is_same_v<MemberType, std::variant_alternative_t<I, variant_t>> ? I : Index<MemberType, I + 1>::value;
+    };
+    template<typename MemberType>
+    struct Index<MemberType, std::variant_size_v<variant_t>> {
+        static constexpr size_t value = -1; // Type not found.
+    };
+
     template<size_t I = 0>
     static ActionVariant Create(size_t index) {
         if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
@@ -130,14 +140,5 @@ template<typename Var> struct Combine<Var> {
 };
 template<typename... Ts1, typename... Ts2, typename... Vars> struct Combine<ActionVariant<Ts1...>, ActionVariant<Ts2...>, Vars...> {
     using type = typename Combine<ActionVariant<Ts1..., Ts2...>, Vars...>::type;
-};
-
-/**
-Get action variant index by type.
-E.g. `template<typename T> constexpr size_t id = Actionable::Index<T, ActionVariant1>::value;`
-*/
-template<typename T, typename Var> struct Index;
-template<typename T, typename... Ts> struct Index<T, ActionVariant<Ts...>> {
-    static constexpr size_t value = Variant::Index<T, typename ActionVariant<Ts...>::variant_t>::value;
 };
 } // namespace Actionable

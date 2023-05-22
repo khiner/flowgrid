@@ -48,6 +48,10 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
     return merged;
 }
 
+// Convenience template for getting the ID (index) of a stateful action.
+// Usage: `ID stateful_action_id = id<StatefulActionType>`
+template<typename T> constexpr ID id = StatefulAction::Index<T>::value;
+
 /**
  Provided actions are assumed to be chronologically consecutive.
 

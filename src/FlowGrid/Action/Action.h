@@ -91,12 +91,6 @@ using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
 using Gesture = std::vector<StatefulActionMoment>;
 using Gestures = std::vector<Gesture>;
 
-// Usage: `ID action_id = action::id<ActionType>`
-// An action's ID is its index in the `StatefulAction` variant.
-// Note that action JSON serialization is keyed by the action _name_, not its index/ID,
-// and thus action-formatted projects are still valid regardless of the declaration order of actions within the `StatefulAction` struct.
-template<typename T> constexpr ID id = Any::Index<T>::value;
-
 Gesture MergeGesture(const Gesture &);
 } // namespace Action
 

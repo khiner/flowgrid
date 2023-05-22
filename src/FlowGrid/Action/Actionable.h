@@ -61,9 +61,6 @@ concept IsActionable = requires() {
     { T::_Meta } -> std::same_as<const Metadata &>;
 };
 
-template<typename MemberType, typename VariantType>
-concept IsMember = Variant::IsMember<MemberType, VariantType>::value;
-
 template<typename... T>
     requires(IsActionable<T> && ...)
 struct ActionVariant : std::variant<T...> {
@@ -123,9 +120,6 @@ private:
     template<typename Callable> decltype(auto) Call(Callable func) const {
         return std::visit([func](auto &action) -> decltype(auto) { return func(action); }, *this);
     }
-
-    // Keeping this around as an example of how to define a function templated on an owned member type.
-    // template<IsMember<variant_t> MemberType> static const Metadata &GetMeta() { return MemberType::_Meta; }
 };
 
 // Utility to flatten two or more `ActionVariant`s together into one variant.

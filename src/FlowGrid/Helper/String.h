@@ -52,9 +52,4 @@ std::vector<string> Split(const string &text, const char *delims);
 inline static const std::vector<string> SkipWords{"FlowGrid", "ImGui", "ImPlot", "Faust"};
 inline static const std::vector<string> AllCapsWords{"Id", "Svg", "Dsp"};
 string PascalToSentenceCase(string_view str, const std::vector<string> &skip_words = SkipWords, const std::vector<string> &all_caps_words = AllCapsWords);
-
-// Split the string on '?'.
-// If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
-// todo don't split on escaped '\?'
-std::pair<string_view, string_view> ParseHelpText(string_view str);
 } // namespace StringHelper

@@ -6,13 +6,17 @@
 #include "Helper/String.h"
 #include "UI/Widgets.h"
 
-using namespace StringHelper;
+std::pair<string_view, string_view> ParseHelpText(string_view str) {
+    const auto help_split = str.find_first_of('?');
+    const bool found = help_split != string::npos;
+    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
+}
 
 StateMember::StateMember(StateMember *parent, string_view path_segment, std::pair<string_view, string_view> name_help)
     : Parent(parent),
       PathSegment(path_segment),
       Path(Parent && !PathSegment.empty() ? (Parent->Path / PathSegment) : (Parent ? Parent->Path : (!PathSegment.empty() ? StorePath(PathSegment) : RootPath))),
-      Name(name_help.first.empty() ? PathSegment.empty() ? "" : PascalToSentenceCase(PathSegment) : name_help.first),
+      Name(name_help.first.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : name_help.first),
       Help(name_help.second),
       ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathSegment)),
       Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0)) {
@@ -20,7 +24,8 @@ StateMember::StateMember(StateMember *parent, string_view path_segment, std::pai
     WithId[Id] = this;
 }
 
-StateMember::StateMember(StateMember *parent, string_view path_segment, string_view name_help) : StateMember(parent, path_segment, ParseHelpText(name_help)) {}
+StateMember::StateMember(StateMember *parent, string_view path_segment, string_view name_help)
+    : StateMember(parent, path_segment, ParseHelpText(name_help)) {}
 
 StateMember::~StateMember() {
     WithId.erase(Id);

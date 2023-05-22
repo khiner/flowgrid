@@ -164,16 +164,11 @@ static constexpr std::optional<KeyShortcut> ParseShortcut(const string &shortcut
 
 // Transforming `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
 // todo Find/implement a `BidirectionalMap` and use it here.
-const auto KeyMap = Action::ShortcutForId | ranges::views::transform([](const auto &entry) {
+const auto KeyMap = Action::Any::IndexToShortcut | ranges::views::transform([](const auto &entry) {
                         const auto &[action_id, shortcut] = entry;
                         return std::pair(*ParseShortcut(shortcut), action_id);
                     }) |
     ranges::to<std::map>;
-
-bool IsShortcutPressed(const KeyShortcut &key_shortcut) {
-    const auto &[mod, key] = key_shortcut;
-    return mod == GetIO().KeyMods && IsKeyPressed(GetKeyIndex(key));
-}
 
 RenderContext RenderContext;
 
@@ -215,8 +210,10 @@ void TickUi(const Drawable &app) {
         flags = UIContext::Flags_None;
     }
 
+    auto &io = GetIO();
     for (const auto &[shortcut, action_id] : KeyMap) {
-        if (IsShortcutPressed(shortcut)) {
+        const auto &[mod, key] = shortcut;
+        if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(key))) {
             const auto action = Action::Any::Create(action_id);
             if (action.IsAllowed()) {
                 q(std::move(action));
@@ -226,18 +223,17 @@ void TickUi(const Drawable &app) {
 
     PrepareFrame();
     if (PrevFontIndex != style.ImGui.FontIndex) {
-        GetIO().FontDefault = GetIO().Fonts->Fonts[style.ImGui.FontIndex];
+        io.FontDefault = io.Fonts->Fonts[style.ImGui.FontIndex];
         PrevFontIndex = style.ImGui.FontIndex;
     }
     if (PrevFontScale != style.ImGui.FontScale) {
-        GetIO().FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
+        io.FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
         PrevFontScale = style.ImGui.FontScale;
     }
 
     app.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
     RenderFrame(RenderContext);
 
-    auto &io = GetIO();
     if (io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).

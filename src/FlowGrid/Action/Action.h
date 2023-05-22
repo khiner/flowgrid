@@ -8,17 +8,17 @@ using std::string;
 namespace Action {
 using namespace Actionable;
 
-DefineContextual(Undo, "");
-DefineContextual(Redo, "");
+DefineContextual(Undo, "@cmd+z");
+DefineContextual(Redo, "@shift+cmd+z");
 Define(SetHistoryIndex, "", int index;);
 Define(OpenProject, "", string path;);
-Define(OpenEmptyProject, "New project");
-DefineContextual(OpenDefaultProject, "");
-Define(ShowOpenProjectDialog, "Open project");
+Define(OpenEmptyProject, "~New project@cmd+n");
+DefineContextual(OpenDefaultProject, "@shift+cmd+o");
+Define(ShowOpenProjectDialog, "~Open project@cmd+o");
 DefineContextual(SaveProject, "", string path;);
-DefineContextual(SaveCurrentProject, "Save project");
+DefineContextual(SaveCurrentProject, "~Save project@cmd+s");
 DefineContextual(SaveDefaultProject, "");
-DefineContextual(ShowSaveProjectDialog, "Save project as...");
+DefineContextual(ShowSaveProjectDialog, "~Save project as...@shift+cmd+s");
 Define(CloseApplication, "");
 Define(SetValue, "", StorePath path; Primitive value;);
 Define(SetValues, "", StoreEntries values;);
@@ -31,9 +31,9 @@ Define(SetImPlotColorStyle, "", int id;);
 Define(SetFlowGridColorStyle, "", int id;);
 Define(SetGraphColorStyle, "", int id;);
 Define(SetGraphLayoutStyle, "", int id;);
-Define(ShowOpenFaustFileDialog, "Open DSP file");
-Define(ShowSaveFaustFileDialog, "Save DSP as...");
-Define(ShowSaveFaustSvgFileDialog, "Export SVG");
+Define(ShowOpenFaustFileDialog, "~Open DSP file");
+Define(ShowSaveFaustFileDialog, "~Save DSP as...");
+Define(ShowSaveFaustSvgFileDialog, "~Export SVG");
 Define(SaveFaustFile, "", string path;);
 Define(OpenFaustFile, "", string path;);
 Define(SaveFaustSvgFile, "", string path;);
@@ -97,17 +97,6 @@ using Gestures = std::vector<Gesture>;
 // and thus action-formatted projects are still valid regardless of the declaration order of actions within the `StatefulAction` struct.
 template<typename T> constexpr ID id = Any::Index<T>::value;
 
-inline static const std::unordered_map<ID, string> ShortcutForId = {
-    {id<Undo>, "cmd+z"},
-    {id<Redo>, "shift+cmd+z"},
-    {id<OpenEmptyProject>, "cmd+n"},
-    {id<ShowOpenProjectDialog>, "cmd+o"},
-    {id<OpenDefaultProject>, "shift+cmd+o"},
-    {id<SaveCurrentProject>, "cmd+s"},
-    {id<ShowSaveProjectDialog>, "shift+cmd+s"},
-};
-
-string GetShortcut(const Any &);
 Gesture MergeGesture(const Gesture &);
 } // namespace Action
 

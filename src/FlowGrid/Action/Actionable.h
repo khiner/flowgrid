@@ -32,30 +32,35 @@ Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any
 namespace Actionable {
 
 struct Metadata {
-    Metadata(std::string_view name, std::string_view menu_label = "");
+    // `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required)
+    Metadata(std::string_view name, std::string_view meta_str = "");
 
     const std::string Name; // Human-readable name.
     const std::string MenuLabel; // Defaults to `Name`.
+    const std::string Shortcut;
     // todo
     // const string PathSegment;
     // const StorePath Path;
     // const string Help, ImGuiLabel;
     // const ID Id;
+
+private:
+    Metadata(std::string_view name, std::pair<std::string, std::string> menu_label_shortcut);
 };
 
-#define Define(ActionName, menu_label, ...)                          \
-    struct ActionName {                                              \
-        inline static const Metadata _Meta{#ActionName, menu_label}; \
-        inline static bool Allowed() { return true; }                \
-        __VA_ARGS__;                                                 \
+#define Define(ActionName, meta_str, ...)                          \
+    struct ActionName {                                            \
+        inline static const Metadata _Meta{#ActionName, meta_str}; \
+        inline static bool Allowed() { return true; }              \
+        __VA_ARGS__;                                               \
     };
 
 // Override `Allowed()` to return `false` if the action is not allowed in the current state.
-#define DefineContextual(ActionName, menu_label, ...)                \
-    struct ActionName {                                              \
-        inline static const Metadata _Meta{#ActionName, menu_label}; \
-        static bool Allowed();                                       \
-        __VA_ARGS__;                                                 \
+#define DefineContextual(ActionName, meta_str, ...)                \
+    struct ActionName {                                            \
+        inline static const Metadata _Meta{#ActionName, meta_str}; \
+        static bool Allowed();                                     \
+        __VA_ARGS__;                                               \
     };
 
 template<typename T>
@@ -79,8 +84,21 @@ struct ActionVariant : std::variant<T...> {
         }
         return std::unordered_map<std::string, size_t>{};
     }
-
     static inline auto NameToIndex = CreateNameToIndex();
+
+    template<size_t I = 0>
+    static auto CreateIndexToShortcut() {
+        if constexpr (I < std::variant_size_v<variant_t>) {
+            using MemberType = std::variant_alternative_t<I, variant_t>;
+            auto map = CreateIndexToShortcut<I + 1>();
+            if (!MemberType::_Meta.Shortcut.empty()) {
+                map[I] = MemberType::_Meta.Shortcut;
+            }
+            return map;
+        }
+        return std::unordered_map<size_t, std::string>{};
+    }
+    static inline auto IndexToShortcut = CreateIndexToShortcut();
 
     size_t GetId() const { return this->index(); }
 
@@ -90,6 +108,11 @@ struct ActionVariant : std::variant<T...> {
     const std::string &GetMenuLabel() const {
         return Call([](auto &a) -> const std::string & { return a._Meta.MenuLabel; });
     }
+    std::string GetShortcut() const {
+        const auto id = GetId();
+        return IndexToShortcut.contains(id) ? IndexToShortcut.at(id) : "";
+    }
+
     bool IsAllowed() const {
         return Call([](auto &a) { return a.Allowed(); });
     }

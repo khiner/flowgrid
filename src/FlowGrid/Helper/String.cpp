@@ -53,13 +53,4 @@ string PascalToSentenceCase(string_view str, const vector<string> &skip_words, c
     }
     return sentence_case;
 }
-
-// Split the string on '?'.
-// If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
-// todo don't split on escaped '\?'
-std::pair<string_view, string_view> ParseHelpText(string_view str) {
-    const auto help_split = str.find_first_of('?');
-    const bool found = help_split != string::npos;
-    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
-}
 } // namespace StringHelper

@@ -8,7 +8,6 @@
 #include <range/v3/view/iota.hpp>
 
 #include "Action/Action.h"
-#include "Helper/String.h"
 #include "Store/Store.h"
 #include "UI/UI.h"
 #include "UI/Widgets.h"
@@ -60,7 +59,7 @@ Flags::Flags(StateMember *parent, string_view path_segment, string_view name_hel
     : TypedBase(parent, path_segment, name_help, value), Items(std::move(items)) {}
 
 Flags::Item::Item(const char *name_and_help) {
-    const auto &[name, help] = StringHelper::ParseHelpText(name_and_help);
+    const auto &[name, help] = ParseHelpText(name_and_help);
     Name = name;
     Help = help;
 }

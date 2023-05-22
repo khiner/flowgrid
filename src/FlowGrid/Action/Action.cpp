@@ -143,12 +143,6 @@ Gesture MergeGesture(const Gesture &gesture) {
 
     return merged_gesture;
 }
-
-string GetShortcut(const Any &action) {
-    const auto id = action.GetId();
-    return ShortcutForId.contains(id) ? ShortcutForId.at(id) : "";
-}
-
 } // namespace Action
 
 namespace nlohmann {

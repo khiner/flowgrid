@@ -10,6 +10,11 @@
 
 using std::string, std::string_view;
 
+// Split the string on '?'.
+// If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
+// todo don't split on escaped '\?'
+std::pair<string_view, string_view> ParseHelpText(string_view str);
+
 struct StateMember {
     inline static std::unordered_map<ID, StateMember *> WithId; // Access any state member by its ID.
 

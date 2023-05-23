@@ -96,7 +96,7 @@ using Gestures = std::vector<Gesture>;
  This is the main action-queue method.
  Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
- Defined in `Project.cpp`.
+ Defined in `App.cpp`.
 */
 bool q(const Action::Any &&, bool flush = false);
 

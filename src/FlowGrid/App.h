@@ -86,6 +86,12 @@ UIMember(
     Prop(Debug, Debug);
 );
 
+struct Project {
+    static void Init();
+    static void SaveEmptyProject();
+    static void RunQueuedActions(bool force_finalize_gesture = false);
+};
+
 /**
 Declare global read-only accessor for the canonical state instance `s`.
 

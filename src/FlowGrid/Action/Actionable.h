@@ -48,19 +48,17 @@ private:
     Metadata(std::string_view name, std::pair<std::string, std::string> menu_label_shortcut);
 };
 
-#define Define(ActionName, meta_str, ...)                          \
-    struct ActionName {                                            \
-        inline static const Metadata _Meta{#ActionName, meta_str}; \
-        inline static bool Allowed() { return true; }              \
-        __VA_ARGS__;                                               \
-    };
+#define ALLOWED_FUNCTION_0 \
+    inline static bool Allowed() { return true; }
 
-// Override `Allowed()` to return `false` if the action is not allowed in the current state.
-#define DefineContextual(ActionName, meta_str, ...)                \
-    struct ActionName {                                            \
-        inline static const Metadata _Meta{#ActionName, meta_str}; \
-        static bool Allowed();                                     \
-        __VA_ARGS__;                                               \
+#define ALLOWED_FUNCTION_1 static bool Allowed();
+
+// Pass `is_contextual = true` and override `{ActionType}::Allowed()` to return `false` if the action is not allowed in the current state.
+#define Define(ActionType, is_contextual, meta_str, ...)           \
+    struct ActionType {                                            \
+        inline static const Metadata _Meta{#ActionType, meta_str}; \
+        ALLOWED_FUNCTION_##is_contextual                           \
+            __VA_ARGS__;                                           \
     };
 
 template<typename T>

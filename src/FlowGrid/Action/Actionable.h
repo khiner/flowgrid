@@ -85,8 +85,7 @@ concept IsActionable = requires() {
     { T::_Meta } -> std::same_as<const Metadata &>;
 };
 
-template<typename... T>
-    requires(IsActionable<T> && ...)
+template<IsActionable... T>
 struct ActionVariant : std::variant<T...> {
     using variant_t = std::variant<T...>; // Alias to the base variant type.
     using variant_t::variant; // Inherit the base variant's constructors.

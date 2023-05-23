@@ -28,13 +28,13 @@ Patch CreatePatch(const Store &before, const Store &after, const StorePath &Base
         before,
         after,
         [&](auto const &added_element) {
-            ops[added_element.first.lexically_relative(BasePath)] = {AddOp, added_element.second, {}};
+            ops[added_element.first.lexically_relative(BasePath)] = {PatchOp::Type::Add, added_element.second, {}};
         },
         [&](auto const &removed_element) {
-            ops[removed_element.first.lexically_relative(BasePath)] = {RemoveOp, {}, removed_element.second};
+            ops[removed_element.first.lexically_relative(BasePath)] = {PatchOp::Type::Remove, {}, removed_element.second};
         },
         [&](auto const &old_element, auto const &new_element) {
-            ops[old_element.first.lexically_relative(BasePath)] = {ReplaceOp, new_element.second, old_element.second};
+            ops[old_element.first.lexically_relative(BasePath)] = {PatchOp::Type::Replace, new_element.second, old_element.second};
         }
     );
 
@@ -44,8 +44,8 @@ Patch CreatePatch(const Store &before, const Store &after, const StorePath &Base
 void ApplyPatch(const Patch &patch, TransientStore &store) {
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
-        if (op.Op == AddOp || op.Op == ReplaceOp) store.set(path, *op.Value);
-        else if (op.Op == RemoveOp) store.erase(path);
+        if (op.Op == PatchOp::Type::Add || op.Op == PatchOp::Type::Replace) store.set(path, *op.Value);
+        else if (op.Op == PatchOp::Type::Remove) store.erase(path);
     }
 }
 

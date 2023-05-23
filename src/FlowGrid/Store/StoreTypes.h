@@ -34,11 +34,10 @@ struct PatchOp {
     std::optional<Primitive> Old{}; // Present for remove/replace
 };
 
-using PatchOps = std::unordered_map<StorePath, PatchOp, StorePathHash>;
+std::string to_string(PatchOp::Type);
 
-static constexpr auto AddOp = PatchOp::Type::Add;
-static constexpr auto RemoveOp = PatchOp::Type::Remove;
-static constexpr auto ReplaceOp = PatchOp::Type::Replace;
+using PatchOps = std::unordered_map<StorePath, PatchOp, StorePathHash>;
+PatchOps Merge(const PatchOps &a, const PatchOps &b);
 
 struct Patch {
     PatchOps Ops;
@@ -51,5 +50,3 @@ struct StatePatch {
     Patch Patch{};
     TimePoint Time{};
 };
-
-std::string to_string(PatchOp::Type);

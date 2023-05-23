@@ -52,71 +52,38 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
 // Usage: `ID stateful_action_id = id<StatefulActionType>`
 template<typename T> constexpr ID id = StatefulAction::Index<T>::value;
 
-/**
- Provided actions are assumed to be chronologically consecutive.
-
- Cases:
- * `b` can be merged into `a`: return the merged action
- * `b` cancels out `a` (e.g. two consecutive boolean toggles on the same value): return `true`
- * `b` cannot be merged into `a`: return `false`
-
- Only handling cases where merges can be determined from two consecutive actions.
- One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
- For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
-*/
-std::variant<StatefulAction, bool> Merge(const StatefulAction &a, const StatefulAction &b) {
-    const ID a_id = a.GetId();
-    if (a_id != b.GetId()) return false;
-
-    switch (a_id) {
-        case id<OpenFileDialog>:
-        case id<CloseFileDialog>:
-        case id<ShowOpenProjectDialog>:
-        case id<ShowSaveProjectDialog>:
-        case id<CloseApplication>:
-        case id<SetImGuiColorStyle>:
-        case id<SetImPlotColorStyle>:
-        case id<SetFlowGridColorStyle>:
-        case id<SetGraphColorStyle>:
-        case id<SetGraphLayoutStyle>:
-        case id<ShowOpenFaustFileDialog>:
-        case id<ShowSaveFaustFileDialog>: {
-            return b;
-        }
-        case id<OpenFaustFile>:
-        case id<SetValue>: {
-            if (std::get<SetValue>(a).path == std::get<SetValue>(b).path) return b;
-            return false;
-        }
-        case id<SetValues>: {
-            return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<std::vector>};
-        }
-        case id<SetVector>: {
-            if (std::get<SetVector>(a).path == std::get<SetVector>(a).path) return b;
-            return false;
-        }
-        case id<SetMatrix>: {
-            if (std::get<SetMatrix>(a).path == std::get<SetMatrix>(a).path) return b;
-            return false;
-        }
-        case id<ToggleValue>: return std::get<ToggleValue>(a).path == std::get<ToggleValue>(b).path;
-        case id<ApplyPatch>: {
-            const auto &_a = std::get<ApplyPatch>(a);
-            const auto &_b = std::get<ApplyPatch>(b);
-            // Keep patch actions affecting different base state-paths separate,
-            // since actions affecting different state bases are likely semantically different.
-            const auto &ops = Merge(_a.patch.Ops, _b.patch.Ops);
-            if (ops.empty()) return true;
-            if (_a.patch.BasePath == _b.patch.BasePath) return ApplyPatch{ops, _b.patch.BasePath};
-            return false;
-        }
-        default: return false;
-    }
+std::variant<OpenFaustFile, bool> OpenFaustFile::Merge(const OpenFaustFile &other) const {
+    if (path == other.path) return other;
+    return false;
+}
+std::variant<SetValue, bool> SetValue::Merge(const SetValue &other) const {
+    if (path == other.path) return other;
+    return false;
+}
+std::variant<SetValues, bool> SetValues::Merge(const SetValues &other) const {
+    return SetValues{views::concat(values, other.values) | to<std::vector>};
+}
+std::variant<SetVector, bool> SetVector::Merge(const SetVector &other) const {
+    if (path == other.path) return other;
+    return false;
+}
+std::variant<SetMatrix, bool> SetMatrix::Merge(const SetMatrix &other) const {
+    if (path == other.path) return other;
+    return false;
+}
+std::variant<ApplyPatch, bool> ApplyPatch::Merge(const ApplyPatch &other) const {
+    // Keep patch actions affecting different base state-paths separate,
+    // since actions affecting different state bases are likely semantically different.
+    const auto &ops = ::Merge(patch.Ops, other.patch.Ops);
+    if (ops.empty()) return true;
+    if (patch.BasePath == other.patch.BasePath) return ApplyPatch{ops, other.patch.BasePath};
+    return false;
 }
 
 namespace Action {
 Gesture MergeGesture(const Gesture &gesture) {
     Gesture merged_gesture; // Mutable return value
+
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
     std::optional<const StatefulActionMoment> active;
@@ -124,7 +91,7 @@ Gesture MergeGesture(const Gesture &gesture) {
         if (!active) active.emplace(gesture[i]);
         const auto &a = *active;
         const auto &b = gesture[i + 1];
-        std::variant<StatefulAction, bool> merge_result = Merge(a.first, b.first);
+        const auto merge_result = a.first.Merge(b.first);
         Match(
             merge_result,
             [&](const bool cancel_out) {

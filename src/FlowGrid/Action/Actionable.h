@@ -53,12 +53,31 @@ private:
 
 #define ALLOWED_FUNCTION_1 static bool Allowed();
 
+/**
+ Provided actions are assumed to be chronologically consecutive.
+
+ Cases:
+ * `b` can be merged into `a`: return the merged action
+ * `b` cancels out `a` (e.g. two consecutive boolean toggles on the same value): return `true`
+ * `b` cannot be merged into `a`: return `false`
+
+ Only handling cases where merges can be determined from two consecutive actions.
+ One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
+ For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
+*/
+#define MergeFunctionNone(ActionType) \
+    inline std::variant<ActionType, bool> Merge(const ActionType &) const { return false; }
+#define MergeFunctionSame(ActionType) \
+    inline std::variant<ActionType, bool> Merge(const ActionType &other) const { return other; }
+#define MergeFunctionCustom(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
+
 // Pass `is_contextual = true` and override `{ActionType}::Allowed()` to return `false` if the action is not allowed in the current state.
-#define Define(ActionType, is_contextual, meta_str, ...)           \
-    struct ActionType {                                            \
-        inline static const Metadata _Meta{#ActionType, meta_str}; \
-        ALLOWED_FUNCTION_##is_contextual                           \
-            __VA_ARGS__;                                           \
+#define Define(ActionType, is_contextual, merge_type, meta_str, ...) \
+    struct ActionType {                                              \
+        inline static const Metadata _Meta{#ActionType, meta_str};   \
+        ALLOWED_FUNCTION_##is_contextual                             \
+            MergeFunction##merge_type(ActionType)                    \
+                __VA_ARGS__;                                         \
     };
 
 template<typename T>
@@ -113,6 +132,16 @@ struct ActionVariant : std::variant<T...> {
 
     bool IsAllowed() const {
         return Call([](auto &a) { return a.Allowed(); });
+    }
+
+    using MergeResult = std::variant<ActionVariant, bool>;
+    MergeResult Merge(const ActionVariant &other) const {
+        if (GetId() != other.GetId()) return false;
+        return Call([&other](auto &a) {
+            const auto &result = a.Merge(std::get<std::decay_t<decltype(a)>>(other));
+            if (std::holds_alternative<bool>(result)) return MergeResult(std::get<bool>(result));
+            return MergeResult(ActionVariant{std::get<std::decay_t<decltype(a)>>(result)});
+        });
     }
 
     template<typename MemberType, size_t I = 0>

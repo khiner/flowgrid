@@ -242,6 +242,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
         if (std::holds_alternative<Action::SaveCurrentProject>(action) && !CurrentProjectPath) action = Action::ShowSaveProjectDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
+        // todo I think we don't need this, since this is handled in merge?
         force_finalize_gesture |= std::holds_alternative<Action::ToggleValue>(action);
 
         Match(

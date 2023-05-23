@@ -48,10 +48,6 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
     return merged;
 }
 
-// Convenience template for getting the ID (index) of a stateful action.
-// Usage: `ID stateful_action_id = id<StatefulActionType>`
-template<typename T> constexpr ID id = StatefulAction::Index<T>::value;
-
 std::variant<OpenFaustFile, bool> OpenFaustFile::Merge(const OpenFaustFile &other) const {
     if (path == other.path) return other;
     return false;

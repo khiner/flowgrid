@@ -90,8 +90,6 @@ using ActionMoment = std::pair<Any, TimePoint>;
 using StatefulActionMoment = std::pair<StatefulAction, TimePoint>;
 using Gesture = std::vector<StatefulActionMoment>;
 using Gestures = std::vector<Gesture>;
-
-Gesture MergeGesture(const Gesture &);
 } // namespace Action
 
 /**

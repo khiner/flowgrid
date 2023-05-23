@@ -62,10 +62,38 @@ float StoreHistory::GestureTimeRemainingSec(float gesture_duration_sec) const {
     return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - GestureStartTime()).count());
 }
 
+static Gesture MergeGesture(const Gesture &gesture) {
+    Gesture merged_gesture; // Mutable return value
+
+    // `active` keeps track of which action we're merging into.
+    // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
+    std::optional<const Action::StatefulActionMoment> active;
+    for (Count i = 0; i < gesture.size(); i++) {
+        if (!active) active.emplace(gesture[i]);
+        const auto &a = *active;
+        const auto &b = gesture[i + 1];
+        const auto merge_result = a.first.Merge(b.first);
+        Match(
+            merge_result,
+            [&](const bool cancel_out) {
+                if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
+                else merged_gesture.emplace_back(a); //
+                active.reset(); // No merge in either case. Move on to try compressing the next action.
+            },
+            [&](const Action::StatefulAction &merged_action) {
+                active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
+            },
+        );
+    }
+    if (active) merged_gesture.emplace_back(*active);
+
+    return merged_gesture;
+}
+
 void StoreHistory::FinalizeGesture() {
     if (ActiveGesture.empty()) return;
 
-    const auto merged_gesture = Action::MergeGesture(ActiveGesture);
+    const auto merged_gesture = MergeGesture(ActiveGesture);
     ActiveGesture.clear();
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;

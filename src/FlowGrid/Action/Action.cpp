@@ -66,8 +66,7 @@ template<typename T> constexpr ID id = StatefulAction::Index<T>::value;
 */
 std::variant<StatefulAction, bool> Merge(const StatefulAction &a, const StatefulAction &b) {
     const ID a_id = a.GetId();
-    const ID b_id = b.GetId();
-    const bool same_type = a_id == b_id;
+    if (a_id != b.GetId()) return false;
 
     switch (a_id) {
         case id<OpenFileDialog>:
@@ -82,38 +81,33 @@ std::variant<StatefulAction, bool> Merge(const StatefulAction &a, const Stateful
         case id<SetGraphLayoutStyle>:
         case id<ShowOpenFaustFileDialog>:
         case id<ShowSaveFaustFileDialog>: {
-            if (same_type) return b;
-            return false;
+            return b;
         }
         case id<OpenFaustFile>:
         case id<SetValue>: {
-            if (same_type && std::get<SetValue>(a).path == std::get<SetValue>(b).path) return b;
+            if (std::get<SetValue>(a).path == std::get<SetValue>(b).path) return b;
             return false;
         }
         case id<SetValues>: {
-            if (same_type) return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<std::vector>};
-            return false;
+            return SetValues{views::concat(std::get<SetValues>(a).values, std::get<SetValues>(b).values) | to<std::vector>};
         }
         case id<SetVector>: {
-            if (same_type && std::get<SetVector>(a).path == std::get<SetVector>(a).path) return b;
+            if (std::get<SetVector>(a).path == std::get<SetVector>(a).path) return b;
             return false;
         }
         case id<SetMatrix>: {
-            if (same_type && std::get<SetMatrix>(a).path == std::get<SetMatrix>(a).path) return b;
+            if (std::get<SetMatrix>(a).path == std::get<SetMatrix>(a).path) return b;
             return false;
         }
-        case id<ToggleValue>: return same_type && std::get<ToggleValue>(a).path == std::get<ToggleValue>(b).path;
+        case id<ToggleValue>: return std::get<ToggleValue>(a).path == std::get<ToggleValue>(b).path;
         case id<ApplyPatch>: {
-            if (same_type) {
-                const auto &_a = std::get<ApplyPatch>(a);
-                const auto &_b = std::get<ApplyPatch>(b);
-                // Keep patch actions affecting different base state-paths separate,
-                // since actions affecting different state bases are likely semantically different.
-                const auto &ops = Merge(_a.patch.Ops, _b.patch.Ops);
-                if (ops.empty()) return true;
-                if (_a.patch.BasePath == _b.patch.BasePath) return ApplyPatch{ops, _b.patch.BasePath};
-                return false;
-            }
+            const auto &_a = std::get<ApplyPatch>(a);
+            const auto &_b = std::get<ApplyPatch>(b);
+            // Keep patch actions affecting different base state-paths separate,
+            // since actions affecting different state bases are likely semantically different.
+            const auto &ops = Merge(_a.patch.Ops, _b.patch.Ops);
+            if (ops.empty()) return true;
+            if (_a.patch.BasePath == _b.patch.BasePath) return ApplyPatch{ops, _b.patch.BasePath};
             return false;
         }
         default: return false;

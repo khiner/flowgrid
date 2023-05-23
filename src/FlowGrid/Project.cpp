@@ -6,12 +6,64 @@
 #include <range/v3/view/transform.hpp>
 
 #include "App.h"
+#include "AppPreferences.h"
 #include "FileDialog/FileDialogDataJson.h"
 #include "Helper/File.h"
+#include "ProjectConstants.h"
 #include "Store/StoreHistory.h"
+#include "Store/StoreJson.h"
+
+struct GesturesProject {
+    const Action::Gestures gestures;
+    const Count index;
+};
+
+GesturesProject JsonToGestures(const nlohmann::json &j) {
+    return {j["gestures"], j["index"]};
+}
+
+nlohmann::json GetStoreJson(const StoreJsonFormat format) {
+    switch (format) {
+        case StateFormat: return AppStore;
+        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
+    }
+}
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
+
+void SetCurrentProjectPath(const fs::path &path) {
+    ProjectHasChanges = false;
+    CurrentProjectPath = path;
+    Preferences.OnProjectOpened(path);
+}
+
+static bool IsUserProjectPath(const fs::path &path) {
+    return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
+        fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
+}
+
+std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
+    const string &ext = path.extension();
+    if (StoreJsonFormatForExtension.contains(ext)) return StoreJsonFormatForExtension.at(ext);
+    return {};
+}
+
+bool SaveProject(const fs::path &path) {
+    const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
+    if (is_current_project && !Action::SaveCurrentProject::Allowed()) return false;
+
+    const auto format = GetStoreJsonFormat(path);
+    if (!format) return false; // TODO log
+
+    History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
+    if (!FileIO::write(path, GetStoreJson(*format).dump())) return false; // TODO log
+
+    if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
+    return true;
+}
+
+void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
 
 // Main setter to modify the canonical application state store.
 // _All_ store assignments happen via this method.
@@ -50,45 +102,11 @@ void SetHistoryIndex(Count index) {
     SetStore(History.CurrentStore());
 }
 
-bool Project::IsUserProjectPath(const fs::path &path) {
-    return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
-        fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
-}
-
-void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
-void Project::SaveCurrentProject() {
-    if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
-}
-
 void Project::Init() {
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {AppStore};
     UiContext.IsWidgetGesturing = false;
-}
-
-std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
-    const string &ext = path.extension();
-    if (StoreJsonFormatForExtension.contains(ext)) return StoreJsonFormatForExtension.at(ext);
-    return {};
-}
-
-#include "Store/StoreJson.h"
-
-struct GesturesProject {
-    const Action::Gestures gestures;
-    const Count index;
-};
-
-GesturesProject JsonToGestures(const nlohmann::json &j) {
-    return {j["gestures"], j["index"]};
-}
-
-nlohmann::json GetStoreJson(const StoreJsonFormat format) {
-    switch (format) {
-        case StateFormat: return AppStore;
-        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
-    }
 }
 
 #include "UI/Widgets.h"
@@ -111,19 +129,11 @@ void Debug::ProjectPreview::Render() const {
     else fg::JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
 
-#include "AppPreferences.h"
-
-void SetCurrentProjectPath(const fs::path &path) {
-    ProjectHasChanges = false;
-    CurrentProjectPath = path;
-    Preferences.OnProjectOpened(path);
-}
-
-void Project::OpenProject(const fs::path &path) {
+void OpenProject(const fs::path &path) {
     const auto format = GetStoreJsonFormat(path);
     if (!format) return; // TODO log
 
-    Init();
+    Project::Init();
 
     const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
     if (format == StateFormat) {
@@ -153,20 +163,6 @@ void Project::OpenProject(const fs::path &path) {
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
 }
 
-bool Project::SaveProject(const fs::path &path) {
-    const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
-    if (is_current_project && !Action::SaveCurrentProject::Allowed()) return false;
-
-    const auto format = GetStoreJsonFormat(path);
-    if (!format) return false; // TODO log
-
-    History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
-    if (!FileIO::write(path, GetStoreJson(*format).dump())) return false; // TODO log
-
-    if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
-    return true;
-}
-
 #include "Audio/Faust/FaustGraph.h"
 
 // todo there's some weird circular dependency type thing going on here.
@@ -179,13 +175,15 @@ static void ApplyAction(const Action::ProjectAction &action) {
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
-        [&](const Action::OpenEmptyProject &) { Project::OpenProject(EmptyProjectPath); },
-        [&](const Action::OpenProject &a) { Project::OpenProject(a.path); },
-        [&](const Action::OpenDefaultProject &) { Project::OpenProject(DefaultProjectPath); },
+        [&](const Action::OpenEmptyProject &) { ::OpenProject(EmptyProjectPath); },
+        [&](const Action::OpenProject &a) { ::OpenProject(a.path); },
+        [&](const Action::OpenDefaultProject &) { ::OpenProject(DefaultProjectPath); },
 
-        [&](const Action::SaveProject &a) { Project::SaveProject(a.path); },
-        [&](const Action::SaveDefaultProject &) { Project::SaveProject(DefaultProjectPath); },
-        [&](const Action::SaveCurrentProject &) { Project::SaveCurrentProject(); },
+        [&](const Action::SaveProject &a) { ::SaveProject(a.path); },
+        [&](const Action::SaveDefaultProject &) { ::SaveProject(DefaultProjectPath); },
+        [&](const Action::SaveCurrentProject &) {
+            if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
+        },
         [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, audio.Faust.Code); },
         [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 

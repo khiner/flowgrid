@@ -1011,6 +1011,47 @@ bool SaveCurrentProject::Allowed() { return ProjectHasChanges; }
 using Action::ActionMoment, Action::StatefulActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
+void Apply(const Action::Any &action, TransientStore &store) {
+    Match(
+        action,
+        [&](const Action::StatefulAction &a) {
+            s.Apply(a, store);
+        },
+        // Handle actions that don't directly update state.
+        // These options don't get added to the action/gesture history, since they only have non-application side effects,
+        // and we don't want them replayed when loading a saved `.fga` project.
+        [&](const Action::OpenEmptyProject &) { OpenProject(EmptyProjectPath); },
+        [&](const Action::OpenProject &a) { OpenProject(a.path); },
+        [&](const Action::OpenDefaultProject &) { OpenProject(DefaultProjectPath); },
+
+        [&](const Action::SaveProject &a) { SaveProject(a.path); },
+        [&](const Action::SaveDefaultProject &) { SaveProject(DefaultProjectPath); },
+        [&](const Action::SaveCurrentProject &) {
+            if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
+        },
+        [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, audio.Faust.Code); },
+        [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
+
+        // `History.Index`-changing actions:
+        [&](const Action::Undo &) {
+            if (History.Empty()) return;
+
+            // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
+            // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
+            // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
+            // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
+            // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
+            if (History.Index == History.Size() - 1) {
+                if (!History.ActiveGesture.empty()) History.FinalizeGesture();
+                ::SetHistoryIndex(History.Index - 1);
+            } else {
+                ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
+            }
+        },
+        [&](const Action::Redo &) { SetHistoryIndex(History.Index + 1); },
+        [&](const Action::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+    );
+}
 void Project::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
     static vector<StatefulActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
@@ -1032,48 +1073,12 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         Match(
             action,
-            [&](const Action::StatefulAction &a) {
-                s.Apply(a, transient);
-                state_actions.emplace_back(a, action_moment.second);
-            },
-            // Handle actions that don't directly update state.
-            // These options don't get added to the action/gesture history, since they only have non-application side effects,
-            // and we don't want them replayed when loading a saved `.fga` project.
-            [&](const Action::OpenEmptyProject &) { OpenProject(EmptyProjectPath); },
-            [&](const Action::OpenProject &a) { OpenProject(a.path); },
-            [&](const Action::OpenDefaultProject &) { OpenProject(DefaultProjectPath); },
-
-            [&](const Action::SaveProject &a) { SaveProject(a.path); },
-            [&](const Action::SaveDefaultProject &) { SaveProject(DefaultProjectPath); },
-            [&](const Action::SaveCurrentProject &) {
-                if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
-            },
-            [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, audio.Faust.Code); },
-            [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
-
-            // `History.Index`-changing actions:
-            [&](const Action::Undo &) {
-                if (History.Empty()) return;
-
-                // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
-                // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
-                // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
-                // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
-                // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
-                if (History.Index == History.Size() - 1) {
-                    if (!History.ActiveGesture.empty()) History.FinalizeGesture();
-                    ::SetHistoryIndex(History.Index - 1);
-                } else {
-                    ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
-                }
-            },
-            [&](const Action::Redo &) { SetHistoryIndex(History.Index + 1); },
-            [&](const Action::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+            [&](const Action::StatefulAction &a) { state_actions.emplace_back(a, action_moment.second); },
+            // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
+            [&](const Action::NonStatefulAction &) {},
         );
 
-        // if (action.IsSavable()) {
-        //     state_actions.emplace_back(action, action_moment.second);
-        // }
+        Apply(action, transient);
     }
 
     const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(s.ApplicationSettings.GestureDurationSec) <= 0);

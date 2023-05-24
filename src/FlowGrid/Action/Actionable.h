@@ -87,9 +87,11 @@ concept IsActionable = requires() {
     { T::IsSavable } -> std::same_as<const bool &>;
 };
 
-template<IsActionable T>
-struct IsSavable {
+template<IsActionable T> struct IsSavable {
     static constexpr bool value = T::IsSavable;
+};
+template<IsActionable T> struct NonSavable {
+    static constexpr bool value = !T::IsSavable;
 };
 
 template<IsActionable... T>

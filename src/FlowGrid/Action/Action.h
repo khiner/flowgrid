@@ -99,6 +99,7 @@ using Any = ActionVariant<
     CloseFileDialog>;
 
 using StatefulAction = Actionable::Filter<Actionable::IsSavable, Any>::type;
+using NonStatefulAction = Actionable::Filter<Actionable::NonSavable, Any>::type;
 
 // Domain actions (todo move to their respective domain files).
 using StoreAction = ActionVariant<SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch>;

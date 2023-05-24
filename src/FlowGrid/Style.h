@@ -25,9 +25,9 @@ struct Style : TabsWindow {
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
         Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 
-        void ColorsDark(TransientStore &store) const;
-        void ColorsLight(TransientStore &store) const;
-        void ColorsClassic(TransientStore &store) const;
+        void ColorsDark() const;
+        void ColorsLight() const;
+        void ColorsClassic() const;
 
         static const char *GetColorName(FlowGridCol idx);
     );
@@ -42,9 +42,9 @@ struct Style : TabsWindow {
         };
 
         void Apply(ImGuiContext *ctx) const;
-        void ColorsDark(TransientStore &) const;
-        void ColorsLight(TransientStore &) const;
-        void ColorsClassic(TransientStore &) const;
+        void ColorsDark() const;
+        void ColorsLight() const;
+        void ColorsClassic() const;
 
         // See `ImGui::ImGuiStyle` for field descriptions.
         // Initial values copied from `ImGui::ImGuiStyle()` default constructor.
@@ -125,10 +125,10 @@ struct Style : TabsWindow {
         };
 
         void Apply(ImPlotContext *ctx) const;
-        void ColorsAuto(TransientStore &store) const;
-        void ColorsDark(TransientStore &store) const;
-        void ColorsLight(TransientStore &store) const;
-        void ColorsClassic(TransientStore &store) const;
+        void ColorsAuto() const;
+        void ColorsDark() const;
+        void ColorsLight() const;
+        void ColorsClassic() const;
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.

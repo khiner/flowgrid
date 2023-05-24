@@ -103,76 +103,73 @@ void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
 
 Style::ImGuiStyle::ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(InitStore);
+    ColorsDark();
 }
 Style::ImPlotStyle::ImPlotStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsAuto(InitStore);
+    ColorsAuto();
 }
 Style::FlowGridStyle::FlowGridStyle(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(InitStore);
+    ColorsDark();
 }
 
-void Style::ImGuiStyle::ColorsDark(TransientStore &store) const {
+void Style::ImGuiStyle::ColorsDark() const {
     ImGui::StyleColorsDark(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
+    Colors.Set(ColorPresetBuffer);
 }
-void Style::ImGuiStyle::ColorsLight(TransientStore &store) const {
+void Style::ImGuiStyle::ColorsLight() const {
     ImGui::StyleColorsLight(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
+    Colors.Set(ColorPresetBuffer);
 }
-void Style::ImGuiStyle::ColorsClassic(TransientStore &store) const {
+void Style::ImGuiStyle::ColorsClassic() const {
     ImGui::StyleColorsClassic(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
+    Colors.Set(ColorPresetBuffer);
 }
 
-void Style::ImPlotStyle::ColorsAuto(TransientStore &store) const {
+void Style::ImPlotStyle::ColorsAuto() const {
     ImPlot::StyleColorsAuto(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    store::Set(MinorAlpha, 0.25f, store);
+    Colors.Set(ColorPresetBuffer);
+    store::Set(MinorAlpha, 0.25f);
 }
-void Style::ImPlotStyle::ColorsDark(TransientStore &store) const {
+void Style::ImPlotStyle::ColorsDark() const {
     ImPlot::StyleColorsDark(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    store::Set(MinorAlpha, 0.25f, store);
+    Colors.Set(ColorPresetBuffer);
+    store::Set(MinorAlpha, 0.25f);
 }
-void Style::ImPlotStyle::ColorsLight(TransientStore &store) const {
+void Style::ImPlotStyle::ColorsLight() const {
     ImPlot::StyleColorsLight(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    store::Set(MinorAlpha, 1, store);
+    Colors.Set(ColorPresetBuffer);
+    store::Set(MinorAlpha, 1);
 }
-void Style::ImPlotStyle::ColorsClassic(TransientStore &store) const {
+void Style::ImPlotStyle::ColorsClassic() const {
     ImPlot::StyleColorsClassic(&ColorPresetBuffer[0]);
-    Colors.Set(ColorPresetBuffer, store);
-    store::Set(MinorAlpha, 0.5f, store);
+    Colors.Set(ColorPresetBuffer);
+    store::Set(MinorAlpha, 0.5f);
 }
 
-void Style::FlowGridStyle::ColorsDark(TransientStore &store) const {
+void Style::FlowGridStyle::ColorsDark() const {
     Colors.Set(
         {
             {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        },
-        store
+        }
     );
 }
-void Style::FlowGridStyle::ColorsLight(TransientStore &store) const {
+void Style::FlowGridStyle::ColorsLight() const {
     Colors.Set(
         {
             {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        },
-        store
+        }
     );
 }
-void Style::FlowGridStyle::ColorsClassic(TransientStore &store) const {
+void Style::FlowGridStyle::ColorsClassic() const {
     Colors.Set(
         {
             {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-        },
-        store
+        }
     );
 }
 

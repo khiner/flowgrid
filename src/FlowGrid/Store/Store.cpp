@@ -8,19 +8,46 @@
 
 #include "../Action/Action.h"
 
-TransientStore InitStore{};
 Store ApplicationStore{};
 const Store &AppStore = ApplicationStore;
 
 namespace store {
+
+bool IsTransient = true; // Use transient store for initialization.
+
+bool IsTransientMode() { return IsTransient; }
+
+TransientStore Transient{};
+
 void OnApplicationStateInitialized() {
-    ApplicationStore = InitStore.persistent(); // Create the global canonical store, initially containing the full application state constructed by `State`.
-    InitStore = {}; // Transient store only used for `State` construction, so we can clear it to save memory.
+    // Create the global canonical store, initially containing the full application state constructed by `State`.
+    EndTransient(true);
     // Ensure all store values set during initialization are reflected in cached field/collection values.
     for (auto *field : ranges::views::values(Field::Base::WithPath)) field->Update();
 }
 
-Primitive Get(const StorePath &path) { return InitStore.empty() ? AppStore.at(path) : InitStore.at(path); }
+void BeginTransient() {
+    if (IsTransient) return;
+
+    Transient = AppStore.transient();
+    IsTransient = true;
+}
+const Store EndTransient(bool commit) {
+    if (!IsTransient) return AppStore;
+
+    const Store new_store = Transient.persistent();
+    if (commit) Set(new_store);
+    Transient = {};
+    IsTransient = false;
+
+    return new_store;
+}
+
+TransientStore &GetTransient() { return Transient; }
+Store GetPersistent() { return Transient.persistent(); }
+
+Primitive Get(const StorePath &path) { return IsTransient ? Transient.at(path) : AppStore.at(path); }
+Count CountAt(const StorePath &path) { return IsTransient ? Transient.count(path) : AppStore.count(path); }
 
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath) {
     PatchOps ops{};
@@ -41,7 +68,8 @@ Patch CreatePatch(const Store &before, const Store &after, const StorePath &Base
     return {ops, BasePath};
 }
 
-void ApplyPatch(const Patch &patch, TransientStore &store) {
+void ApplyPatch(const Patch &patch) {
+    auto &store = Transient;
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
         if (op.Op == PatchOp::Type::Add || op.Op == PatchOp::Type::Replace) store.set(path, *op.Value);
@@ -50,11 +78,17 @@ void ApplyPatch(const Patch &patch, TransientStore &store) {
 }
 
 // Transient modifiers
-void Set(const StorePath &path, const Primitive &value, TransientStore &store) { store.set(path, value); }
-void Set(const StoreEntries &values, TransientStore &store) {
+void Set(const StorePath &path, const Primitive &value) {
+    auto &store = Transient;
+    store.set(path, value);
+}
+
+void Set(const StoreEntries &values) {
+    auto &store = Transient;
     for (const auto &[path, value] : values) store.set(path, value);
 }
-void Set(const StorePath &path, const vector<Primitive> &values, TransientStore &store) {
+void Set(const StorePath &path, const vector<Primitive> &values) {
+    auto &store = Transient;
     Count i = 0;
     while (i < values.size()) {
         store.set(path / to_string(i), values[i]);
@@ -66,8 +100,9 @@ void Set(const StorePath &path, const vector<Primitive> &values, TransientStore 
     }
 }
 
-void Set(const StorePath &path, const vector<Primitive> &data, const Count row_count, TransientStore &store) {
+void Set(const StorePath &path, const vector<Primitive> &data, const Count row_count) {
     assert(data.size() % row_count == 0);
+    auto &store = Transient;
     const Count col_count = data.size() / row_count;
     Count row = 0;
     while (row < row_count) {
@@ -91,6 +126,11 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
         }
         row++;
     }
+}
+
+void Erase(const StorePath &path) {
+    auto &store = Transient;
+    store.erase(path);
 }
 
 void Set(const Store &store) {

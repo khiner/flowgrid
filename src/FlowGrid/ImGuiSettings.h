@@ -20,7 +20,7 @@ struct ImGuiTableSettings;
 Member(
     DockNodeSettings,
 
-    void Set(const ImVector<ImGuiDockNodeSettings> &, TransientStore &) const;
+    void Set(const ImVector<ImGuiDockNodeSettings> &) const;
     void Apply(ImGuiContext *) const;
 
     Prop(Vector<ID>, NodeId);
@@ -38,7 +38,7 @@ Member(
 Member(
     WindowSettings,
 
-    void Set(ImChunkStream<ImGuiWindowSettings> &, TransientStore &) const;
+    void Set(ImChunkStream<ImGuiWindowSettings> &) const;
     void Apply(ImGuiContext *) const;
 
     Prop(Vector<ID>, Id);
@@ -68,7 +68,7 @@ Member(
 Member(
     TableSettings,
 
-    void Set(ImChunkStream<ImGuiTableSettings> &, TransientStore &store) const;
+    void Set(ImChunkStream<ImGuiTableSettings> &) const;
     void Apply(ImGuiContext *) const;
 
     Prop(Vector<ImGuiID>, ID);

@@ -50,8 +50,8 @@ ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
 
 Audio::Faust::FaustGraph::Style::Style(StateMember *parent, string_view path_segment, string_view name_help)
     : UIStateMember(parent, path_segment, name_help) {
-    ColorsDark(InitStore);
-    LayoutFlowGrid(InitStore);
+    ColorsDark();
+    LayoutFlowGrid();
 }
 
 const char *Audio::Faust::FaustGraph::Style::GetColorName(FlowGridGraphCol idx) {
@@ -71,7 +71,7 @@ const char *Audio::Faust::FaustGraph::Style::GetColorName(FlowGridGraphCol idx) 
     }
 }
 
-void Audio::Faust::FaustGraph::Style::ColorsDark(TransientStore &store) const {
+void Audio::Faust::FaustGraph::Style::ColorsDark() const {
     Colors.Set(
         {
             {FlowGridGraphCol_Bg, {0.06, 0.06, 0.06, 0.94}},
@@ -87,11 +87,10 @@ void Audio::Faust::FaustGraph::Style::ColorsDark(TransientStore &store) const {
             {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
             {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
+        }
     );
 }
-void Audio::Faust::FaustGraph::Style::ColorsClassic(TransientStore &store) const {
+void Audio::Faust::FaustGraph::Style::ColorsClassic() const {
     Colors.Set(
         {
             {FlowGridGraphCol_Bg, {0, 0, 0, 0.85}},
@@ -107,11 +106,10 @@ void Audio::Faust::FaustGraph::Style::ColorsClassic(TransientStore &store) const
             {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
             {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
+        }
     );
 }
-void Audio::Faust::FaustGraph::Style::ColorsLight(TransientStore &store) const {
+void Audio::Faust::FaustGraph::Style::ColorsLight() const {
     Colors.Set(
         {
             {FlowGridGraphCol_Bg, {0.94, 0.94, 0.94, 1}},
@@ -127,11 +125,10 @@ void Audio::Faust::FaustGraph::Style::ColorsLight(TransientStore &store) const {
             {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
             {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
+        }
     );
 }
-void Audio::Faust::FaustGraph::Style::ColorsFaust(TransientStore &store) const {
+void Audio::Faust::FaustGraph::Style::ColorsFaust() const {
     Colors.Set(
         {
             {FlowGridGraphCol_Bg, {1, 1, 1, 1}},
@@ -147,16 +144,15 @@ void Audio::Faust::FaustGraph::Style::ColorsFaust(TransientStore &store) const {
             {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
             {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
             {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        },
-        store
+        }
     );
 }
 
-void Audio::Faust::FaustGraph::Style::LayoutFlowGrid(TransientStore &store) const {
+void Audio::Faust::FaustGraph::Style::LayoutFlowGrid() const {
     static const auto DefaultLayoutEntries = LayoutFields | ranges::views::transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | ranges::to<const Field::Entries>;
-    store::Set(DefaultLayoutEntries, store);
+    store::Set(DefaultLayoutEntries);
 }
-void Audio::Faust::FaustGraph::Style::LayoutFaust(TransientStore &store) const {
+void Audio::Faust::FaustGraph::Style::LayoutFaust() const {
     store::Set(
         {
             {SequentialConnectionZigzag, true},
@@ -185,8 +181,7 @@ void Audio::Faust::FaustGraph::Style::LayoutFaust(TransientStore &store) const {
             {ArrowSize.X, 3},
             {ArrowSize.Y, 2},
             {InverterRadius, 3},
-        },
-        store
+        }
     );
 }
 
@@ -887,5 +882,5 @@ void Audio::Faust::Render() const {}
 
 Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateMember(parent, path_segment, name_help) {
-    store::Set(On, on, InitStore);
+    store::Set(On, on);
 }

@@ -15,8 +15,8 @@ struct Colors : UIStateMember {
     Count Size() const;
     U32 operator[](Count) const;
 
-    void Set(const std::vector<ImVec4> &, TransientStore &) const;
-    void Set(const std::vector<std::pair<int, ImVec4>> &, TransientStore &) const;
+    void Set(const std::vector<ImVec4> &) const;
+    void Set(const std::vector<std::pair<int, ImVec4>> &) const;
 
 protected:
     void Render() const override;

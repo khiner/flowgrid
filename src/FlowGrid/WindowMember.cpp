@@ -19,7 +19,7 @@ void UIStateMember::DrawWindows() const {
 
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const bool visible)
     : UIStateMember(parent, path_segment, name_help) {
-    store::Set(Visible, visible, InitStore);
+    store::Set(Visible, visible);
 }
 Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
     : UIStateMember(parent, path_segment, name_help), WindowFlags(flags) {}

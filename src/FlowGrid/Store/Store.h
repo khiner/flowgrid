@@ -17,8 +17,8 @@ struct Vector : Base {
     StorePath PathAt(const Count i) const;
     Count Size() const;
     T operator[](const Count i) const;
-    void Set(const vector<T> &, TransientStore &) const;
-    void Set(const vector<std::pair<int, T>> &, TransientStore &) const;
+    void Set(const vector<T> &) const;
+    void Set(const vector<std::pair<int, T>> &) const;
 
     void Update() override;
 
@@ -36,7 +36,7 @@ struct Vector2D : Base {
     Count Size(Count i) const; // Size of inner vector at index `i`
 
     T operator()(Count i, Count j) const;
-    void Set(const vector<vector<T>> &, TransientStore &) const;
+    void Set(const vector<vector<T>> &) const;
 
     void Update() override;
 
@@ -64,18 +64,27 @@ private:
 namespace store {
 void OnApplicationStateInitialized();
 
-Primitive Get(const StorePath &);
+void BeginTransient();
+const Store EndTransient(bool commit = true);
+TransientStore &GetTransient(); // xxx temporary until all sets are done internally.
+bool IsTransientMode();
+Store GetPersistent();
 
-void Set(const StorePath &, const Primitive &, TransientStore &);
-void Set(const StoreEntries &, TransientStore &);
-void Set(const StorePath &, const vector<Primitive> &, TransientStore &);
-void Set(const StorePath &, const vector<Primitive> &, Count row_count, TransientStore &); // For `SetMatrix` action.
+Primitive Get(const StorePath &);
+Count CountAt(const StorePath &);
+
+void Set(const StorePath &, const Primitive &);
+void Set(const StoreEntries &);
+void Set(const StorePath &, const vector<Primitive> &);
+void Set(const StorePath &, const vector<Primitive> &, Count row_count); // For `SetMatrix` action.
+
+void Erase(const StorePath &);
 
 // Overwrite the main application store.
 // This is the only place `ApplicationStore` is modified.
 void Set(const Store &);
 
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath = RootPath);
-void ApplyPatch(const Patch &, TransientStore &);
+void ApplyPatch(const Patch &);
 
 } // namespace store

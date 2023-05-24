@@ -184,6 +184,6 @@ protected:
 #include "Store/StoreFwd.h"
 
 namespace store {
-void Set(const Field::Base &, const Primitive &, TransientStore &);
-void Set(const Field::Entries &, TransientStore &);
+void Set(const Field::Base &, const Primitive &);
+void Set(const Field::Entries &);
 } // namespace store

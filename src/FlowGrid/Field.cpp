@@ -65,7 +65,7 @@ Flags::Item::Item(const char *name_and_help) {
 }
 
 PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value) : Base(parent, id, name_help) {
-    store::Set(*this, value, InitStore);
+    store::Set(*this, value);
 }
 
 Primitive PrimitiveBase::Get() const { return store::Get(Path); }
@@ -277,7 +277,7 @@ void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
 Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
-    store::Set(Linked, linked, InitStore);
+    store::Set(Linked, linked);
 }
 
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
@@ -307,8 +307,8 @@ void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 } // namespace Field
 
 namespace store {
-void Set(const Field::Base &field, const Primitive &value, TransientStore &store) { store::Set(field.Path, value, store); }
-void Set(const Field::Entries &values, TransientStore &store) {
-    for (const auto &[field, value] : values) store::Set(field.Path, value, store);
+void Set(const Field::Base &field, const Primitive &value) { store::Set(field.Path, value); }
+void Set(const Field::Entries &values) {
+    for (const auto &[field, value] : values) store::Set(field.Path, value);
 }
 } // namespace store

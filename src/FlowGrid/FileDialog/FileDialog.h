@@ -9,8 +9,8 @@
 UIMember(
     FileDialog,
 
-    void Apply(const Action::FileDialogAction &, TransientStore &) const;
-    void Set(const FileDialogData &, TransientStore &) const;
+    void Apply(const Action::FileDialogAction &) const;
+    void Set(const FileDialogData &) const;
 
     UIMember(Demo);
 

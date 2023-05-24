@@ -92,7 +92,7 @@ bool OpenFileDialog::Allowed() { return !file_dialog.Visible; }
 bool CloseFileDialog::Allowed() { return file_dialog.Visible; }
 } // namespace Action
 
-void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
+void FileDialog::Set(const FileDialogData &data) const {
     store::Set(
         {
             {Visible, true},
@@ -103,17 +103,16 @@ void FileDialog::Set(const FileDialogData &data, TransientStore &store) const {
             {SaveMode, data.save_mode},
             {MaxNumSelections, data.max_num_selections},
             {Flags, data.flags},
-        },
-        store
+        }
     );
 }
 
-void FileDialog::Apply(const Action::FileDialogAction &action, TransientStore &store) const {
+void FileDialog::Apply(const Action::FileDialogAction &action) const {
     using namespace Action;
     Match(
         action,
-        [&](const OpenFileDialog &a) { this->Set(json::parse(a.dialog_json), store); },
-        [&](const CloseFileDialog &) { store::Set(Visible, false, store); },
+        [&](const OpenFileDialog &a) { this->Set(json::parse(a.dialog_json)); },
+        [&](const CloseFileDialog &) { store::Set(Visible, false); },
     );
 }
 

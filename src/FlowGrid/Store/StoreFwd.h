@@ -18,5 +18,4 @@ const auto immer_default_bits = 5;
 using Store = immer::map<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;
 using TransientStore = immer::map_transient<StorePath, Primitive, StorePathHash, std::equal_to<StorePath>, immer::default_memory_policy, immer_default_bits>;
 
-extern TransientStore InitStore; // Used in `StateMember` constructors to initialize the store.
 extern const Store &AppStore; // Global read-only accessor for the canonical application store instance.

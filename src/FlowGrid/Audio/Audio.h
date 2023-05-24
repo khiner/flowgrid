@@ -197,13 +197,13 @@ struct Audio : TabsWindow {
                     InverterRadius,
                 };
 
-                void ColorsDark(TransientStore &store) const;
-                void ColorsClassic(TransientStore &store) const;
-                void ColorsLight(TransientStore &store) const;
-                void ColorsFaust(TransientStore &store) const; // Color Faust graphs the same way Faust does when it renders to SVG.
+                void ColorsDark() const;
+                void ColorsClassic() const;
+                void ColorsLight() const;
+                void ColorsFaust() const; // Color Faust graphs the same way Faust does when it renders to SVG.
 
-                void LayoutFlowGrid(TransientStore &store) const;
-                void LayoutFaust(TransientStore &store) const; // Layout Faust graphs the same way Faust does when it renders to SVG.
+                void LayoutFlowGrid() const;
+                void LayoutFaust() const; // Layout Faust graphs the same way Faust does when it renders to SVG.
 
                 static const char *GetColorName(FlowGridGraphCol idx);
             );

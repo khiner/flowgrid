@@ -11,28 +11,28 @@ template<IsPrimitive T> Count Vector<T>::Size() const { return Value.size(); }
 template<IsPrimitive T> T Vector<T>::operator[](const Count i) const { return Value[i]; }
 
 template<IsPrimitive T>
-void Vector<T>::Set(const vector<T> &values, TransientStore &store) const {
+void Vector<T>::Set(const vector<T> &values) const {
     Count i = 0;
     while (i < values.size()) {
-        store.set(PathAt(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
+        store::Set(PathAt(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
         i++;
     }
-    while (store.count(PathAt(i))) {
-        store.erase(PathAt(i));
+    while (store::CountAt(PathAt(i))) {
+        store::Erase(PathAt(i));
         i++;
     }
 }
 
 template<IsPrimitive T>
-void Vector<T>::Set(const vector<std::pair<int, T>> &values, TransientStore &store) const {
-    for (const auto &[i, value] : values) store.set(PathAt(i), value);
+void Vector<T>::Set(const vector<std::pair<int, T>> &values) const {
+    for (const auto &[i, value] : values) store::Set(PathAt(i), value);
 }
 
 template<IsPrimitive T>
 void Vector<T>::Update() {
     Count i = 0;
     while (AppStore.count(PathAt(i))) {
-        const T value = std::get<T>(AppStore.at(PathAt(i)));
+        const T value = std::get<T>(store::Get(PathAt(i)));
         if (Value.size() == i) Value.push_back(value);
         else Value[i] = value;
         i++;
@@ -46,21 +46,21 @@ template<IsPrimitive T> Count Vector2D<T>::Size(Count i) const { return Value[i]
 template<IsPrimitive T> T Vector2D<T>::operator()(Count i, Count j) const { return Value[i][j]; }
 
 template<IsPrimitive T>
-void Vector2D<T>::Set(const vector<vector<T>> &values, TransientStore &store) const {
+void Vector2D<T>::Set(const vector<vector<T>> &values) const {
     Count i = 0;
     while (i < values.size()) {
         Count j = 0;
         while (j < values[i].size()) {
-            store.set(PathAt(i, j), T(values[i][j]));
+            store::Set(PathAt(i, j), T(values[i][j]));
             j++;
         }
-        while (store.count(PathAt(i, j))) store.erase(PathAt(i, j++));
+        while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
         i++;
     }
 
-    while (store.count(PathAt(i, 0))) {
+    while (store::CountAt(PathAt(i, 0))) {
         Count j = 0;
-        while (store.count(PathAt(i, j))) store.erase(PathAt(i, j++));
+        while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
         i++;
     }
 }
@@ -72,7 +72,7 @@ void Vector2D<T>::Update() {
         if (Value.size() == i) Value.push_back({});
         Count j = 0;
         while (AppStore.count(PathAt(i, j))) {
-            const T value = std::get<T>(AppStore.at(PathAt(i, j)));
+            const T value = std::get<T>(store::Get(PathAt(i, j)));
             if (Value[i].size() == j) Value[i].push_back(value);
             else Value[i][j] = value;
             j++;
@@ -91,15 +91,15 @@ template<IsPrimitive T> T Matrix<T>::operator()(const Count row, const Count col
 template<IsPrimitive T>
 void Matrix<T>::Update() {
     Count row_count = 0, col_count = 0;
-    while (AppStore.count(PathAt(row_count, 0))) { row_count++; }
-    while (AppStore.count(PathAt(row_count - 1, col_count))) { col_count++; }
+    while (store::CountAt(PathAt(row_count, 0))) { row_count++; }
+    while (store::CountAt(PathAt(row_count - 1, col_count))) { col_count++; }
     RowCount = row_count;
     ColCount = col_count;
     Data.resize(RowCount * ColCount);
 
     for (Count row = 0; row < RowCount; row++) {
         for (Count col = 0; col < ColCount; col++) {
-            Data[row * ColCount + col] = std::get<T>(AppStore.at(PathAt(row, col)));
+            Data[row * ColCount + col] = std::get<T>(store::Get(PathAt(row, col)));
         }
     }
 }
@@ -119,76 +119,76 @@ using namespace nlohmann;
 
 // todo should be in `Store`, but first need to separate out the core action stuff so `Store.h` can include `Action/Core.h` and define its own actions.
 namespace store {
-void Apply(const Action::StoreAction &action, TransientStore &store) {
+void Apply(const Action::StoreAction &action) {
     using namespace Action;
     Match(
         action,
-        [&store](const SetValue &a) { Set(a.path, a.value, store); },
-        [&store](const SetValues &a) { Set(a.values, store); },
-        [&store](const SetVector &a) { Set(a.path, a.value, store); },
-        [&store](const SetMatrix &a) { Set(a.path, a.data, a.row_count, store); },
-        [&store](const ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path)), store); },
-        [&store](const Action::ApplyPatch &a) { ApplyPatch(a.patch, store); },
+        [](const SetValue &a) { Set(a.path, a.value); },
+        [](const SetValues &a) { Set(a.values); },
+        [](const SetVector &a) { Set(a.path, a.value); },
+        [](const SetMatrix &a) { Set(a.path, a.data, a.row_count); },
+        [](const ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path))); },
+        [](const Action::ApplyPatch &a) { ApplyPatch(a.patch); },
     );
 }
 } // namespace store
 
-void State::Apply(const Action::StatefulAction &action, TransientStore &store) const {
+void State::Apply(const Action::StatefulAction &action) const {
     using namespace Action;
     Match(
         action,
-        [&store](const Action::StoreAction &a) { store::Apply(a, store); },
-        [&](const Action::FileDialogAction &a) { FileDialog.Apply(a, store); },
+        [](const Action::StoreAction &a) { store::Apply(a); },
+        [&](const Action::FileDialogAction &a) { FileDialog.Apply(a); },
         [&](const Action::StyleAction &a) {
             Match(
                 a,
                 // todo enum types instead of raw integers
                 [&](const SetImGuiColorStyle &a) {
                     switch (a.id) {
-                        case 0: return Style.ImGui.ColorsDark(store);
-                        case 1: return Style.ImGui.ColorsLight(store);
-                        case 2: return Style.ImGui.ColorsClassic(store);
+                        case 0: return Style.ImGui.ColorsDark();
+                        case 1: return Style.ImGui.ColorsLight();
+                        case 2: return Style.ImGui.ColorsClassic();
                     }
                 },
                 [&](const SetImPlotColorStyle &a) {
                     switch (a.id) {
-                        case 0: return Style.ImPlot.ColorsAuto(store);
-                        case 1: return Style.ImPlot.ColorsDark(store);
-                        case 2: return Style.ImPlot.ColorsLight(store);
-                        case 3: return Style.ImPlot.ColorsClassic(store);
+                        case 0: return Style.ImPlot.ColorsAuto();
+                        case 1: return Style.ImPlot.ColorsDark();
+                        case 2: return Style.ImPlot.ColorsLight();
+                        case 3: return Style.ImPlot.ColorsClassic();
                     }
                 },
                 [&](const SetFlowGridColorStyle &a) {
                     switch (a.id) {
-                        case 0: return Style.FlowGrid.ColorsDark(store);
-                        case 1: return Style.FlowGrid.ColorsLight(store);
-                        case 2: return Style.FlowGrid.ColorsClassic(store);
+                        case 0: return Style.FlowGrid.ColorsDark();
+                        case 1: return Style.FlowGrid.ColorsLight();
+                        case 2: return Style.FlowGrid.ColorsClassic();
                     }
                 },
                 [&](const SetGraphColorStyle &a) {
                     switch (a.id) {
-                        case 0: return Audio.Faust.Graph.Style.ColorsDark(store);
-                        case 1: return Audio.Faust.Graph.Style.ColorsLight(store);
-                        case 2: return Audio.Faust.Graph.Style.ColorsClassic(store);
-                        case 3: return Audio.Faust.Graph.Style.ColorsFaust(store);
+                        case 0: return Audio.Faust.Graph.Style.ColorsDark();
+                        case 1: return Audio.Faust.Graph.Style.ColorsLight();
+                        case 2: return Audio.Faust.Graph.Style.ColorsClassic();
+                        case 3: return Audio.Faust.Graph.Style.ColorsFaust();
                     }
                 },
                 [&](const SetGraphLayoutStyle &a) {
                     switch (a.id) {
-                        case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid(store);
-                        case 1: return Audio.Faust.Graph.Style.LayoutFaust(store);
+                        case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid();
+                        case 1: return Audio.Faust.Graph.Style.LayoutFaust();
                     }
                 },
             );
         },
-        [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}, store); },
-        [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}, store); },
-        [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}, store); },
-        [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}, store); },
-        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}, store); },
+        [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
+        [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+        [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
+        [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
+        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
 
-        [&](const OpenFaustFile &a) { store::Set(Audio.Faust.Code, FileIO::read(a.path), store); },
-        [&](const CloseApplication &) { store::Set({{UiProcess.Running, false}, {Audio.Device.On, false}}, store); },
+        [&](const OpenFaustFile &a) { store::Set(Audio.Faust.Code, FileIO::read(a.path)); },
+        [&](const CloseApplication &) { store::Set({{UiProcess.Running, false}, {Audio.Device.On, false}}); },
     );
 }
 
@@ -271,7 +271,7 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih SizeRef;
 };
 
-void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, TransientStore &store) const {
+void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss) const {
     const Count size = dss.Size;
     vector<ID> node_id(size), parent_node_id(size), parent_window_id(size), selected_tab_id(size);
     vector<int> split_axis(size), depth(size), flags(size);
@@ -289,16 +289,16 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss, Transient
         sz[i] = PackImVec2ih(ds.Size);
         sz_ref[i] = PackImVec2ih(ds.SizeRef);
     }
-    NodeId.Set(node_id, store);
-    ParentNodeId.Set(parent_node_id, store);
-    ParentWindowId.Set(parent_window_id, store);
-    SelectedTabId.Set(selected_tab_id, store);
-    SplitAxis.Set(split_axis, store);
-    Depth.Set(depth, store);
-    Flags.Set(flags, store);
-    Pos.Set(pos, store);
-    Size.Set(sz, store);
-    SizeRef.Set(sz_ref, store);
+    NodeId.Set(node_id);
+    ParentNodeId.Set(parent_node_id);
+    ParentWindowId.Set(parent_window_id);
+    SelectedTabId.Set(selected_tab_id);
+    SplitAxis.Set(split_axis);
+    Depth.Set(depth);
+    Flags.Set(flags);
+    Pos.Set(pos);
+    Size.Set(sz);
+    SizeRef.Set(sz_ref);
 }
 void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
@@ -319,7 +319,7 @@ void DockNodeSettings::Apply(ImGuiContext *ctx) const {
     }
 }
 
-void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore &store) const {
+void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss) const {
     vector<ID> id, class_id, viewport_id, dock_id;
     vector<int> dock_order;
     vector<U32> pos, sz, viewport_pos;
@@ -335,15 +335,15 @@ void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss, TransientStore
         viewport_pos.push_back(PackImVec2ih(ws->ViewportPos));
         collapsed.push_back(ws->Collapsed);
     }
-    Id.Set(id, store);
-    ClassId.Set(class_id, store);
-    ViewportId.Set(viewport_id, store);
-    DockId.Set(dock_id, store);
-    DockOrder.Set(dock_order, store);
-    Pos.Set(pos, store);
-    Size.Set(sz, store);
-    ViewportPos.Set(viewport_pos, store);
-    Collapsed.Set(collapsed, store);
+    Id.Set(id);
+    ClassId.Set(class_id);
+    ViewportId.Set(viewport_id);
+    DockId.Set(dock_id);
+    DockOrder.Set(dock_order);
+    Pos.Set(pos);
+    Size.Set(sz);
+    ViewportPos.Set(viewport_pos);
+    Collapsed.Set(collapsed);
 }
 
 // See `imgui.cpp::ApplyWindowSettings`
@@ -375,7 +375,7 @@ void WindowSettings::Apply(ImGuiContext *) const {
     }
 }
 
-void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &store) const {
+void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) const {
     // Table settings
     vector<ImGuiID> id;
     vector<int> save_flags;
@@ -422,21 +422,20 @@ void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss, TransientStore &
         }
     }
 
-    ID.Set(id, store);
-    SaveFlags.Set(save_flags, store);
-    RefScale.Set(ref_scale, store);
-    ColumnsCount.Set(columns_counts, store);
-    ColumnsCountMax.Set(columns_count_max, store);
-    WantApply.Set(want_apply, store);
-
-    Columns.WidthOrWeight.Set(width_or_weight, store);
-    Columns.UserID.Set(user_id, store);
-    Columns.Index.Set(index, store);
-    Columns.DisplayOrder.Set(display_order, store);
-    Columns.SortOrder.Set(sort_order, store);
-    Columns.SortDirection.Set(sort_direction, store);
-    Columns.IsEnabled.Set(is_enabled, store);
-    Columns.IsStretch.Set(is_stretch, store);
+    ID.Set(id);
+    SaveFlags.Set(save_flags);
+    RefScale.Set(ref_scale);
+    ColumnsCount.Set(columns_counts);
+    ColumnsCountMax.Set(columns_count_max);
+    WantApply.Set(want_apply);
+    Columns.WidthOrWeight.Set(width_or_weight);
+    Columns.UserID.Set(user_id);
+    Columns.Index.Set(index);
+    Columns.DisplayOrder.Set(display_order);
+    Columns.SortOrder.Set(sort_order);
+    Columns.SortDirection.Set(sort_direction);
+    Columns.IsEnabled.Set(is_enabled);
+    Columns.IsStretch.Set(is_stretch);
 }
 
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
@@ -491,12 +490,12 @@ void TableSettings::Apply(ImGuiContext *) const {
 Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) const {
     SaveIniSettingsToMemory(); // Populate the `Settings` context members.
 
-    auto store = AppStore.transient();
-    Nodes.Set(ctx->DockContext.NodesSettings, store);
-    Windows.Set(ctx->SettingsWindows, store);
-    Tables.Set(ctx->SettingsTables, store);
+    store::BeginTransient();
+    Nodes.Set(ctx->DockContext.NodesSettings);
+    Windows.Set(ctx->SettingsWindows);
+    Tables.Set(ctx->SettingsTables);
 
-    return store::CreatePatch(AppStore, store.persistent(), Path);
+    return store::CreatePatch(AppStore, store::EndTransient(false), Path);
 }
 
 void ImGuiSettings::Apply(ImGuiContext *ctx) const {
@@ -936,6 +935,7 @@ void SetHistoryIndex(Count index) {
 }
 
 void Project::Init() {
+    store::EndTransient(); // Make sure the store is not in transient mode when initializing a project.
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {AppStore};
@@ -975,13 +975,13 @@ void OpenProject(const fs::path &path) {
         OpenProject(EmptyProjectPath);
 
         const auto &[gestures, index] = JsonToGestures(project);
-        auto transient = AppStore.transient();
+        store::BeginTransient();
         for (const auto &gesture : gestures) {
-            const auto before_store = transient.persistent();
+            const auto before_store = store::GetPersistent();
             for (const auto &action_moment : gesture) {
-                s.Apply(action_moment.first, transient);
+                s.Apply(action_moment.first);
             }
-            const auto after_store = transient.persistent();
+            const auto after_store = store::GetPersistent();
             const auto &patch = store::CreatePatch(before_store, after_store);
             const auto &gesture_time = gesture.back().second;
             History.Add(gesture_time, after_store, gesture); // todo save/load gesture commit times
@@ -989,7 +989,7 @@ void OpenProject(const fs::path &path) {
                 History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
             }
         }
-        SetStore(transient.persistent());
+        SetStore(store::EndTransient(false));
         ::SetHistoryIndex(index);
     }
 
@@ -1011,12 +1011,9 @@ bool SaveCurrentProject::Allowed() { return ProjectHasChanges; }
 using Action::ActionMoment, Action::StatefulActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
-void Apply(const Action::Any &action, TransientStore &store) {
+void Apply(const Action::NonStatefulAction &action) {
     Match(
         action,
-        [&](const Action::StatefulAction &a) {
-            s.Apply(a, store);
-        },
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
@@ -1052,12 +1049,12 @@ void Apply(const Action::Any &action, TransientStore &store) {
         [&](const Action::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
     );
 }
+
 void Project::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
     static vector<StatefulActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     state_actions.clear();
 
-    auto transient = AppStore.transient();
     while (ActionQueue.try_dequeue(action_moment)) {
         // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
@@ -1073,19 +1070,27 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         Match(
             action,
-            [&](const Action::StatefulAction &a) { state_actions.emplace_back(a, action_moment.second); },
+            [&](const Action::StatefulAction &a) {
+                store::BeginTransient(); // Idempotent.
+                s.Apply(a);
+                state_actions.emplace_back(a, action_moment.second);
+            },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
-            [&](const Action::NonStatefulAction &) {},
+            [&](const Action::NonStatefulAction &a) {
+                // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
+                if (store::IsTransientMode()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
+                Apply(a);
+            },
         );
-
-        Apply(action, transient);
     }
 
     const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(s.ApplicationSettings.GestureDurationSec) <= 0);
     if (!state_actions.empty()) {
-        const auto &patch = SetStore(transient.persistent());
+        const auto &patch = SetStore(store::EndTransient(false));
         History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());
         History.UpdateGesturePaths(state_actions, patch);
+    } else {
+        store::EndTransient(false);
     }
     if (finalize) History.FinalizeGesture();
 }

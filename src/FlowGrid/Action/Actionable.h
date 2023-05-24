@@ -41,7 +41,6 @@ struct Metadata {
     const std::string Name; // Human-readable name.
     const std::string MenuLabel; // Defaults to `Name`.
     const std::string Shortcut;
-    const bool Savable; // Whether to save the action to the undo stack.
 
     // todo
     // const string PathSegment;
@@ -52,7 +51,6 @@ struct Metadata {
 private:
     struct Parsed {
         const std::string MenuLabel, Shortcut;
-        const bool Savable;
     };
     Parsed ParseMetadata(std::string_view meta_str);
     Metadata(std::string_view name, Parsed parsed);
@@ -63,36 +61,35 @@ private:
 
 #define ALLOWED_FUNCTION_1 static bool Allowed();
 
-/**
- Provided actions are assumed to be chronologically consecutive.
-
- Cases:
- * `b` can be merged into `a`: return the merged action
- * `b` cancels out `a` (e.g. two consecutive boolean toggles on the same value): return `true`
- * `b` cannot be merged into `a`: return `false`
-
- Only handling cases where merges can be determined from two consecutive actions.
- One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
- For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
-*/
-#define MergeFunctionNone(ActionType) \
+// Use `Merge` for actions that can be merged with any other action of the same type.
+// Use `NoMerge` for actions that cannot be merged with any other action.
+// Use `CustomMerge` to override the `Merge` function with a custom implementation.
+#define MergeType_NoMerge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &) const { return false; }
-#define MergeFunctionSame(ActionType) \
+#define MergeType_Merge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &other) const { return other; }
-#define MergeFunctionCustom(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
+#define MergeType_CustomMerge(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
 
-// Pass `is_contextual = true` and override `{ActionType}::Allowed()` to return `false` if the action is not allowed in the current state.
-#define Define(ActionType, is_contextual, merge_type, meta_str, ...) \
-    struct ActionType {                                              \
-        inline static const Metadata _Meta{#ActionType, meta_str};   \
-        ALLOWED_FUNCTION_##is_contextual                             \
-            MergeFunction##merge_type(ActionType)                    \
-                __VA_ARGS__;                                         \
+// Pass `is_contextual = 1` and override `{ActionType}::Allowed()` to return `false` if the action is not allowed in the current state.
+// Pas `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
+#define Define(ActionType, is_savable, is_contextual, merge_type, meta_str, ...) \
+    struct ActionType {                                                          \
+        inline static const Metadata _Meta{#ActionType, meta_str};               \
+        static constexpr bool IsSavable = is_savable;                            \
+        ALLOWED_FUNCTION_##is_contextual                                         \
+            MergeType_##merge_type(ActionType)                                   \
+                __VA_ARGS__;                                                     \
     };
 
 template<typename T>
 concept IsActionable = requires() {
     { T::_Meta } -> std::same_as<const Metadata &>;
+    { T::IsSavable } -> std::same_as<const bool &>;
+};
+
+template<IsActionable T>
+struct IsSavable {
+    static constexpr bool value = T::IsSavable;
 };
 
 template<IsActionable... T>
@@ -100,6 +97,8 @@ struct ActionVariant : std::variant<T...> {
     using variant_t = std::variant<T...>; // Alias to the base variant type.
     using variant_t::variant; // Inherit the base variant's constructors.
 
+    // Note that even though these maps are declared to be instantiated for each `ActionVariant` type,
+    // the compiler only instantiates them for the types with references to the map.
     template<size_t I = 0>
     static auto CreateNameToIndex() {
         if constexpr (I < std::variant_size_v<variant_t>) {
@@ -146,6 +145,18 @@ struct ActionVariant : std::variant<T...> {
         return Call([](auto &a) { return a._Meta.Savable; });
     }
 
+    /**
+     Provided actions are assumed to be chronologically consecutive.
+
+     Cases:
+     * `b` can be merged into `a`: return the merged action
+     * `b` cancels out `a` (e.g. two consecutive boolean toggles on the same value): return `true`
+     * `b` cannot be merged into `a`: return `false`
+
+     Only handling cases where merges can be determined from two consecutive actions.
+     One could imagine cases where an idempotent cycle could be determined only from > 2 actions.
+     For example, incrementing modulo N would require N consecutive increments to determine that they could all be cancelled out.
+    */
     using MergeResult = std::variant<ActionVariant, bool>;
     MergeResult Merge(const ActionVariant &other) const {
         if (GetId() != other.GetId()) return false;
@@ -196,6 +207,15 @@ template<typename Var> struct Combine<Var> {
     using type = Var;
 };
 template<typename... Ts1, typename... Ts2, typename... Vars> struct Combine<ActionVariant<Ts1...>, ActionVariant<Ts2...>, Vars...> {
-    using type = typename Combine<ActionVariant<Ts1..., Ts2...>, Vars...>::type;
+    using type = Combine<ActionVariant<Ts1..., Ts2...>, Vars...>::type;
+};
+
+// Utility to filter an `ActionVariant` by a predicate.
+// E.g. `using StatefulAction = Actionable::Filter<Actionable::IsSavable, Any>::type;`
+template<template<typename> class Predicate, typename Var> struct Filter;
+template<template<typename> class Predicate, typename... Types> struct Filter<Predicate, Actionable::ActionVariant<Types...>> {
+    template<typename Type>
+    using ConditionalAdd = std::conditional_t<Predicate<Type>::value, Actionable::ActionVariant<Type>, Actionable::ActionVariant<>>;
+    using type = Actionable::Combine<ConditionalAdd<Types>...>::type;
 };
 } // namespace Actionable

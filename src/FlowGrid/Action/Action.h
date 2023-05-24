@@ -8,37 +8,37 @@ using std::string;
 namespace Action {
 using namespace Actionable;
 
-Define(Undo, 1, None, "!@cmd+z");
-Define(Redo, 1, None, "!@shift+cmd+z");
-Define(SetHistoryIndex, 0, None, "!", int index;);
-Define(OpenProject, 0, None, "!", string path;);
-Define(OpenEmptyProject, 0, None, "!~New project@cmd+n");
-Define(OpenDefaultProject, 1, None, "!@shift+cmd+o");
-Define(SaveProject, 1, None, "!", string path;);
-Define(SaveDefaultProject, 1, None, "!");
-Define(SaveCurrentProject, 1, None, "!~Save project@cmd+s");
-Define(ShowOpenProjectDialog, 0, Same, "~Open project@cmd+o");
-Define(ShowSaveProjectDialog, 1, Same, "~Save project as...@shift+cmd+s");
-Define(CloseApplication, 0, Same, "");
-Define(ToggleValue, 0, None, "", StorePath path;);
-Define(SetValue, 0, Custom, "", StorePath path; Primitive value;);
-Define(SetValues, 0, Custom, "", StoreEntries values;);
-Define(SetVector, 0, Custom, "", StorePath path; std::vector<Primitive> value;);
-Define(SetMatrix, 0, Custom, "", StorePath path; std::vector<Primitive> data; Count row_count;);
-Define(ApplyPatch, 0, Custom, "", Patch patch;);
-Define(SetImGuiColorStyle, 0, Same, "", int id;);
-Define(SetImPlotColorStyle, 0, Same, "", int id;);
-Define(SetFlowGridColorStyle, 0, Same, "", int id;);
-Define(SetGraphColorStyle, 0, Same, "", int id;);
-Define(SetGraphLayoutStyle, 0, Same, "", int id;);
-Define(ShowOpenFaustFileDialog, 0, Same, "~Open DSP file");
-Define(ShowSaveFaustFileDialog, 0, Same, "~Save DSP as...");
-Define(ShowSaveFaustSvgFileDialog, 0, Same, "~Export SVG");
-Define(SaveFaustFile, 0, None, "!", string path;);
-Define(OpenFaustFile, 0, Custom, "", string path;);
-Define(SaveFaustSvgFile, 0, None, "!", string path;);
-Define(OpenFileDialog, 1, Same, "", string dialog_json;);
-Define(CloseFileDialog, 1, Same, "");
+Define(Undo, 0, 1, NoMerge, "@cmd+z");
+Define(Redo, 0, 1, NoMerge, "@shift+cmd+z");
+Define(SetHistoryIndex, 0, 0, NoMerge, "", int index;);
+Define(OpenProject, 0, 0, NoMerge, "", string path;);
+Define(OpenEmptyProject, 0, 0, NoMerge, "~New project@cmd+n");
+Define(OpenDefaultProject, 0, 1, NoMerge, "@shift+cmd+o");
+Define(SaveProject, 0, 1, NoMerge, "", string path;);
+Define(SaveDefaultProject, 0, 1, NoMerge, "");
+Define(SaveCurrentProject, 0, 1, NoMerge, "~Save project@cmd+s");
+Define(ShowOpenProjectDialog, 1, 0, Merge, "~Open project@cmd+o");
+Define(ShowSaveProjectDialog, 1, 1, Merge, "~Save project as...@shift+cmd+s");
+Define(CloseApplication, 1, 0, Merge, "");
+Define(ToggleValue, 1, 0, NoMerge, "", StorePath path;);
+Define(SetValue, 1, 0, CustomMerge, "", StorePath path; Primitive value;);
+Define(SetValues, 1, 0, CustomMerge, "", StoreEntries values;);
+Define(SetVector, 1, 0, CustomMerge, "", StorePath path; std::vector<Primitive> value;);
+Define(SetMatrix, 1, 0, CustomMerge, "", StorePath path; std::vector<Primitive> data; Count row_count;);
+Define(ApplyPatch, 1, 0, CustomMerge, "", Patch patch;);
+Define(SetImGuiColorStyle, 1, 0, Merge, "", int id;);
+Define(SetImPlotColorStyle, 1, 0, Merge, "", int id;);
+Define(SetFlowGridColorStyle, 1, 0, Merge, "", int id;);
+Define(SetGraphColorStyle, 1, 0, Merge, "", int id;);
+Define(SetGraphLayoutStyle, 1, 0, Merge, "", int id;);
+Define(ShowOpenFaustFileDialog, 1, 0, Merge, "~Open DSP file");
+Define(ShowSaveFaustFileDialog, 1, 0, Merge, "~Save DSP as...");
+Define(ShowSaveFaustSvgFileDialog, 1, 0, Merge, "~Export SVG");
+Define(SaveFaustFile, 0, 0, NoMerge, "", string path;);
+Define(OpenFaustFile, 1, 0, CustomMerge, "", string path;);
+Define(SaveFaustSvgFile, 0, 0, NoMerge, "", string path;);
+Define(OpenFileDialog, 1, 1, Merge, "", string dialog_json;);
+Define(CloseFileDialog, 1, 1, Merge, "");
 
 // Define json converters for stateful actions (ones that can be saved to a project)
 // todo should be done for all actions that are `Saveable`.
@@ -98,28 +98,7 @@ using Any = ActionVariant<
     OpenFileDialog,
     CloseFileDialog>;
 
-// todo construct programatically based on `Any` and `Saveable`.
-using StatefulAction = ActionVariant<
-    ShowOpenProjectDialog,
-    CloseFileDialog,
-    ShowSaveProjectDialog,
-    CloseApplication,
-    ShowOpenFaustFileDialog,
-    ShowSaveFaustFileDialog,
-    ShowSaveFaustSvgFileDialog,
-    OpenFileDialog,
-    SetValue,
-    SetValues,
-    SetVector,
-    SetMatrix,
-    ToggleValue,
-    ApplyPatch,
-    SetImGuiColorStyle,
-    SetImPlotColorStyle,
-    SetFlowGridColorStyle,
-    SetGraphColorStyle,
-    SetGraphLayoutStyle,
-    OpenFaustFile>;
+using StatefulAction = Actionable::Filter<Actionable::IsSavable, Any>::type;
 
 // Domain actions (todo move to their respective domain files).
 using StoreAction = ActionVariant<SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch>;

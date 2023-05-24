@@ -71,7 +71,7 @@ private:
 #define MergeType_CustomMerge(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
 
 // Pass `is_contextual = 1` and override `{ActionType}::Allowed()` to return `false` if the action is not allowed in the current state.
-// Pas `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
+// Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
 #define Define(ActionType, is_savable, is_contextual, merge_type, meta_str, ...) \
     struct ActionType {                                                          \
         inline static const Metadata _Meta{#ActionType, meta_str};               \

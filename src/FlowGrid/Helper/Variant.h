@@ -4,7 +4,7 @@
 
 // Utility to visit a variant with lambdas, using the "overloaded pattern" described
 // [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
-// E.g. `Match(action, [](const ProjectAction &a) { ... }, [](const StatefulAction &a) { ... });`
+// E.g. `Match(variant_instance, [](const VariantType1 &v) { ... }, [](const VariantType2 &v) { ... });`
 template<class... Ts> struct visitor : Ts... {
     using Ts::operator()...;
 };

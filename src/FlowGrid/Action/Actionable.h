@@ -33,11 +33,16 @@ namespace Actionable {
 
 struct Metadata {
     // `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required)
+    // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
+    // (or added to the gesture history, or saved in a `.fga` (FlowGridAction) project).
+    // This is used for actions with only non-state-updating side effects, like saving a file.
     Metadata(std::string_view name, std::string_view meta_str = "");
 
     const std::string Name; // Human-readable name.
     const std::string MenuLabel; // Defaults to `Name`.
     const std::string Shortcut;
+    const bool Savable; // Whether to save the action to the undo stack.
+
     // todo
     // const string PathSegment;
     // const StorePath Path;
@@ -45,7 +50,12 @@ struct Metadata {
     // const ID Id;
 
 private:
-    Metadata(std::string_view name, std::pair<std::string, std::string> menu_label_shortcut);
+    struct Parsed {
+        const std::string MenuLabel, Shortcut;
+        const bool Savable;
+    };
+    Parsed ParseMetadata(std::string_view meta_str);
+    Metadata(std::string_view name, Parsed parsed);
 };
 
 #define ALLOWED_FUNCTION_0 \
@@ -131,6 +141,9 @@ struct ActionVariant : std::variant<T...> {
 
     bool IsAllowed() const {
         return Call([](auto &a) { return a.Allowed(); });
+    }
+    bool IsSavable() const {
+        return Call([](auto &a) { return a._Meta.Savable; });
     }
 
     using MergeResult = std::variant<ActionVariant, bool>;

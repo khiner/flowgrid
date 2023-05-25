@@ -1,117 +1,12 @@
 #include "Store/Store.h"
 
+#include "App.h"
+
 #include <iostream>
 
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
-namespace Field {
-template<IsPrimitive T> StorePath Vector<T>::PathAt(const Count i) const { return Path / to_string(i); }
-template<IsPrimitive T> Count Vector<T>::Size() const { return Value.size(); }
-template<IsPrimitive T> T Vector<T>::operator[](const Count i) const { return Value[i]; }
-
-template<IsPrimitive T>
-void Vector<T>::Set(const vector<T> &values) const {
-    Count i = 0;
-    while (i < values.size()) {
-        store::Set(PathAt(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
-        i++;
-    }
-    while (store::CountAt(PathAt(i))) {
-        store::Erase(PathAt(i));
-        i++;
-    }
-}
-
-template<IsPrimitive T>
-void Vector<T>::Set(const vector<std::pair<int, T>> &values) const {
-    for (const auto &[i, value] : values) store::Set(PathAt(i), value);
-}
-
-template<IsPrimitive T>
-void Vector<T>::Update() {
-    Count i = 0;
-    while (AppStore.count(PathAt(i))) {
-        const T value = std::get<T>(store::Get(PathAt(i)));
-        if (Value.size() == i) Value.push_back(value);
-        else Value[i] = value;
-        i++;
-    }
-    Value.resize(i);
-}
-
-template<IsPrimitive T> StorePath Vector2D<T>::PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
-template<IsPrimitive T> Count Vector2D<T>::Size() const { return Value.size(); };
-template<IsPrimitive T> Count Vector2D<T>::Size(Count i) const { return Value[i].size(); };
-template<IsPrimitive T> T Vector2D<T>::operator()(Count i, Count j) const { return Value[i][j]; }
-
-template<IsPrimitive T>
-void Vector2D<T>::Set(const vector<vector<T>> &values) const {
-    Count i = 0;
-    while (i < values.size()) {
-        Count j = 0;
-        while (j < values[i].size()) {
-            store::Set(PathAt(i, j), T(values[i][j]));
-            j++;
-        }
-        while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
-        i++;
-    }
-
-    while (store::CountAt(PathAt(i, 0))) {
-        Count j = 0;
-        while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
-        i++;
-    }
-}
-
-template<IsPrimitive T>
-void Vector2D<T>::Update() {
-    Count i = 0;
-    while (AppStore.count(PathAt(i, 0))) {
-        if (Value.size() == i) Value.push_back({});
-        Count j = 0;
-        while (AppStore.count(PathAt(i, j))) {
-            const T value = std::get<T>(store::Get(PathAt(i, j)));
-            if (Value[i].size() == j) Value[i].push_back(value);
-            else Value[i][j] = value;
-            j++;
-        }
-        Value[i].resize(j);
-        i++;
-    }
-    Value.resize(i);
-}
-template<IsPrimitive T>
-StorePath Matrix<T>::PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
-template<IsPrimitive T> Count Matrix<T>::Rows() const { return RowCount; }
-template<IsPrimitive T> Count Matrix<T>::Cols() const { return ColCount; }
-template<IsPrimitive T> T Matrix<T>::operator()(const Count row, const Count col) const { return Data[row * ColCount + col]; }
-
-template<IsPrimitive T>
-void Matrix<T>::Update() {
-    Count row_count = 0, col_count = 0;
-    while (store::CountAt(PathAt(row_count, 0))) { row_count++; }
-    while (store::CountAt(PathAt(row_count - 1, col_count))) { col_count++; }
-    RowCount = row_count;
-    ColCount = col_count;
-    Data.resize(RowCount * ColCount);
-
-    for (Count row = 0; row < RowCount; row++) {
-        for (Count col = 0; col < ColCount; col++) {
-            Data[row * ColCount + col] = std::get<T>(store::Get(PathAt(row, col)));
-        }
-    }
-}
-} // namespace Field
-
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "implot.h"
-#include "implot_internal.h"
-
-#include "App.h"
-#include "FileDialog/FileDialogDataJson.h"
 #include "Helper/File.h"
 #include "ProjectConstants.h"
 
@@ -191,6 +86,11 @@ void State::Apply(const Action::StatefulAction &action) const {
         [&](const CloseApplication &) { store::Set({{UiProcess.Running, false}, {Audio.Device.On, false}}); },
     );
 }
+
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "implot.h"
+#include "implot_internal.h"
 
 using namespace ImGui;
 

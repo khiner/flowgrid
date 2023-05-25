@@ -179,6 +179,57 @@ protected:
     void Render(ImGuiSliderFlags) const override;
     void Render() const override;
 };
+
+template<IsPrimitive T>
+struct Vector : Base {
+    using Base::Base;
+
+    StorePath PathAt(const Count i) const { return Path / to_string(i); }
+    Count Size() const { return Value.size(); }
+    T operator[](const Count i) const { return Value[i]; }
+
+    void Set(const std::vector<T> &) const;
+    void Set(const std::vector<std::pair<int, T>> &) const;
+
+    void Update() override;
+
+private:
+    std::vector<T> Value;
+};
+
+// Vector of vectors. Inner vectors need not have the same length.
+template<IsPrimitive T>
+struct Vector2D : Base {
+    using Base::Base;
+
+    StorePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
+    Count Size() const { return Value.size(); }; // Number of outer vectors
+    Count Size(Count i) const { return Value[i].size(); }; // Size of inner vector at index `i`
+    T operator()(Count i, Count j) const { return Value[i][j]; }
+
+    void Set(const std::vector<std::vector<T>> &) const;
+
+    void Update() override;
+
+private:
+    std::vector<std::vector<T>> Value;
+};
+
+template<IsPrimitive T>
+struct Matrix : Base {
+    using Base::Base;
+
+    StorePath PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
+    Count Rows() const { return RowCount; }
+    Count Cols() const { return ColCount; }
+    T operator()(const Count row, const Count col) const { return Data[row * ColCount + col]; }
+
+    void Update() override;
+
+private:
+    Count RowCount, ColCount;
+    std::vector<T> Data;
+};
 } // namespace Field
 
 #include "Store/StoreFwd.h"

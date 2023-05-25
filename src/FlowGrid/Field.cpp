@@ -304,6 +304,103 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
 }
 
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
+
+template<IsPrimitive T>
+void Vector<T>::Set(const vector<T> &values) const {
+    Count i = 0;
+    while (i < values.size()) {
+        store::Set(PathAt(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
+        i++;
+    }
+    while (store::CountAt(PathAt(i))) {
+        store::Erase(PathAt(i));
+        i++;
+    }
+}
+
+template<IsPrimitive T>
+void Vector<T>::Set(const vector<std::pair<int, T>> &values) const {
+    for (const auto &[i, value] : values) store::Set(PathAt(i), value);
+}
+
+template<IsPrimitive T>
+void Vector<T>::Update() {
+    Count i = 0;
+    while (store::CountAt(PathAt(i))) {
+        const T value = std::get<T>(store::Get(PathAt(i)));
+        if (Value.size() == i) Value.push_back(value);
+        else Value[i] = value;
+        i++;
+    }
+    Value.resize(i);
+}
+
+template<IsPrimitive T>
+void Vector2D<T>::Set(const vector<vector<T>> &values) const {
+    Count i = 0;
+    while (i < values.size()) {
+        Count j = 0;
+        while (j < values[i].size()) {
+            store::Set(PathAt(i, j), T(values[i][j]));
+            j++;
+        }
+        while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
+        i++;
+    }
+
+    while (store::CountAt(PathAt(i, 0))) {
+        Count j = 0;
+        while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
+        i++;
+    }
+}
+
+template<IsPrimitive T>
+void Vector2D<T>::Update() {
+    Count i = 0;
+    while (store::CountAt(PathAt(i, 0))) {
+        if (Value.size() == i) Value.push_back({});
+        Count j = 0;
+        while (store::CountAt(PathAt(i, j))) {
+            const T value = std::get<T>(store::Get(PathAt(i, j)));
+            if (Value[i].size() == j) Value[i].push_back(value);
+            else Value[i][j] = value;
+            j++;
+        }
+        Value[i].resize(j);
+        i++;
+    }
+    Value.resize(i);
+}
+
+template<IsPrimitive T>
+void Matrix<T>::Update() {
+    Count row_count = 0, col_count = 0;
+    while (store::CountAt(PathAt(row_count, 0))) { row_count++; }
+    while (store::CountAt(PathAt(row_count - 1, col_count))) { col_count++; }
+    RowCount = row_count;
+    ColCount = col_count;
+    Data.resize(RowCount * ColCount);
+
+    for (Count row = 0; row < RowCount; row++) {
+        for (Count col = 0; col < ColCount; col++) {
+            Data[row * ColCount + col] = std::get<T>(store::Get(PathAt(row, col)));
+        }
+    }
+}
+
+// Explicit instantiations (boo).
+template struct Vector<bool>;
+template struct Vector<int>;
+template struct Vector<U32>;
+template struct Vector<float>;
+
+template struct Vector2D<bool>;
+template struct Vector2D<int>;
+template struct Vector2D<U32>;
+template struct Vector2D<float>;
+
+template struct Matrix<bool>;
 } // namespace Field
 
 namespace store {

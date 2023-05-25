@@ -29,7 +29,9 @@ void Erase(const StorePath &);
 // This is the only place `ApplicationStore` is modified.
 void Set(const Store &);
 
-Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath = RootPath);
+Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path = RootPath);
+Patch CreatePatch(const StorePath &base_path = RootPath); // Create a patch from the current transient store (stops transient mode).
+
 void ApplyPatch(const Patch &);
 
 } // namespace store

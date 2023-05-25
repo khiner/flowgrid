@@ -49,23 +49,27 @@ Store GetPersistent() { return Transient.persistent(); }
 Primitive Get(const StorePath &path) { return IsTransient ? Transient.at(path) : AppStore.at(path); }
 Count CountAt(const StorePath &path) { return IsTransient ? Transient.count(path) : AppStore.count(path); }
 
-Patch CreatePatch(const Store &before, const Store &after, const StorePath &BasePath) {
+Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path) {
     PatchOps ops{};
     diff(
         before,
         after,
         [&](auto const &added_element) {
-            ops[added_element.first.lexically_relative(BasePath)] = {PatchOp::Type::Add, added_element.second, {}};
+            ops[added_element.first.lexically_relative(base_path)] = {PatchOp::Type::Add, added_element.second, {}};
         },
         [&](auto const &removed_element) {
-            ops[removed_element.first.lexically_relative(BasePath)] = {PatchOp::Type::Remove, {}, removed_element.second};
+            ops[removed_element.first.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, removed_element.second};
         },
         [&](auto const &old_element, auto const &new_element) {
-            ops[old_element.first.lexically_relative(BasePath)] = {PatchOp::Type::Replace, new_element.second, old_element.second};
+            ops[old_element.first.lexically_relative(base_path)] = {PatchOp::Type::Replace, new_element.second, old_element.second};
         }
     );
 
-    return {ops, BasePath};
+    return {ops, base_path};
+}
+
+Patch CreatePatch(const StorePath &base_path) {
+    return CreatePatch(AppStore, store::EndTransient(false), base_path);
 }
 
 void ApplyPatch(const Patch &patch) {

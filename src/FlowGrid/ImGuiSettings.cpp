@@ -163,7 +163,9 @@ void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) const {
 
         for (int column_index = 0; column_index < columns_count; column_index++) {
             const auto &cs = ts.GetColumnSettings()[column_index];
-            width_or_weight.back()[column_index] = cs.WidthOrWeight;
+            // todo these nans show up when we start with a default layout showing a table and then switch the tab so that the table is hidden.
+            //   should probably handle this more robustly.
+            width_or_weight.back()[column_index] = std::isnan(cs.WidthOrWeight) ? 0 : cs.WidthOrWeight;
             user_id.back()[column_index] = cs.UserID;
             index.back()[column_index] = cs.Index;
             display_order.back()[column_index] = cs.DisplayOrder;

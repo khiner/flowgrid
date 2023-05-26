@@ -12,22 +12,6 @@
 
 using namespace nlohmann;
 
-// todo should be in `Store`, but first need to separate out the core action stuff so `Store.h` can include `Action/Core.h` and define its own actions.
-namespace store {
-void Apply(const Action::StoreAction &action) {
-    using namespace Action;
-    Match(
-        action,
-        [](const SetValue &a) { Set(a.path, a.value); },
-        [](const SetValues &a) { Set(a.values); },
-        [](const SetVector &a) { Set(a.path, a.value); },
-        [](const SetMatrix &a) { Set(a.path, a.data, a.row_count); },
-        [](const ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path))); },
-        [](const Action::ApplyPatch &a) { ApplyPatch(a.patch); },
-    );
-}
-} // namespace store
-
 void State::Apply(const Action::StatefulAction &action) const {
     using namespace Action;
     Match(

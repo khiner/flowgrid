@@ -2,12 +2,15 @@
 
 #include "StoreFwd.h"
 
+#include "../Action/Action.h"
 #include "../StateMember.h"
 
 using std::vector;
 
 namespace store {
 void OnApplicationStateInitialized();
+
+void Apply(const Action::StoreAction &);
 
 void BeginTransient();
 const Store EndTransient(bool commit = true);

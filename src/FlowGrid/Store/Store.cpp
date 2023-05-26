@@ -6,12 +6,23 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "../Action/Action.h"
 
 Store ApplicationStore{};
 const Store &AppStore = ApplicationStore;
 
 namespace store {
+void Apply(const Action::StoreAction &action) {
+    using namespace Action;
+    Match(
+        action,
+        [](const SetValue &a) { Set(a.path, a.value); },
+        [](const SetValues &a) { Set(a.values); },
+        [](const SetVector &a) { Set(a.path, a.value); },
+        [](const SetMatrix &a) { Set(a.path, a.data, a.row_count); },
+        [](const ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path))); },
+        [](const Action::ApplyPatch &a) { ApplyPatch(a.patch); },
+    );
+}
 
 bool IsTransient = true; // Use transient store for initialization.
 

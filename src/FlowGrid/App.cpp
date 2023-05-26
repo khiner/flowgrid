@@ -206,8 +206,6 @@ void Demo::ImPlotDemo::Render() const {
     ImPlot::ShowDemoWindow();
 }
 
-#include "PrimitiveJson.h"
-
 void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
@@ -326,19 +324,10 @@ void Info::Render() const {
 // [SECTION] Project
 //-----------------------------------------------------------------------------
 
-struct GesturesProject {
-    const Action::Gestures gestures;
-    const Count index;
-};
-
-GesturesProject JsonToGestures(const nlohmann::json &j) {
-    return {j["gestures"], j["index"]};
-}
-
 nlohmann::json GetStoreJson(const StoreJsonFormat format) {
     switch (format) {
         case StateFormat: return AppStore;
-        case ActionFormat: return {{"gestures", History.Gestures()}, {"index", History.Index}};
+        case ActionFormat: return History.GetIndexedGestures();
     }
 }
 
@@ -429,7 +418,7 @@ void Project::Init() {
 using namespace ImGui;
 
 void Debug::StateViewer::Render() const {
-    StateJsonTree("State", GetStoreJson(StateFormat));
+    StateJsonTree("State", AppStore);
 }
 
 void Debug::ProjectPreview::Render() const {
@@ -455,14 +444,14 @@ void OpenProject(const fs::path &path) {
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 
-        const auto &[gestures, index] = JsonToGestures(project);
+        const StoreHistory::IndexedGestures indexed_gestures = project;
         store::BeginTransient();
-        for (const auto &gesture : gestures) {
+        for (const auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture) s.Apply(action_moment.first);
             History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
         }
         SetStore(store::EndTransient(false));
-        ::SetHistoryIndex(index);
+        ::SetHistoryIndex(indexed_gestures.Index);
     }
 
     if (IsUserProjectPath(path)) SetCurrentProjectPath(path);

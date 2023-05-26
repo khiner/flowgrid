@@ -15,8 +15,8 @@ using ranges::to, views::transform;
 
 struct Record {
     const TimePoint Committed;
-    const Store Store; // The store as it was at `Committed` time
-    const Gesture Gesture; // Compressed gesture (list of action/timestamp pairs) that caused the store change
+    const Store Store;
+    const Gesture Gesture;
 };
 
 static vector<Record> Records;
@@ -57,10 +57,12 @@ StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
     return {time, store, gesture};
 }
 
-Gestures StoreHistory::Gestures() const {
-    return Records | transform([](const auto &record) { return record.Gesture; }) |
+StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
+    const Gestures gestures = Records | transform([](const auto &record) { return record.Gesture; }) |
         views::filter([](const auto &gesture) { return !gesture.empty(); }) | to<vector>; // First gesture is expected to be empty.
+    return {gestures, Index};
 }
+
 TimePoint StoreHistory::GestureStartTime() const {
     if (ActiveGesture.empty()) return {};
     return ActiveGesture.back().second;
@@ -72,7 +74,7 @@ float StoreHistory::GestureTimeRemainingSec(float gesture_duration_sec) const {
 }
 
 static Gesture MergeGesture(const Gesture &gesture) {
-    Gesture merged_gesture; // Mutable return value
+    Gesture merged_gesture; // Mutable return value.
 
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
@@ -90,7 +92,8 @@ static Gesture MergeGesture(const Gesture &gesture) {
                 active.reset(); // No merge in either case. Move on to try compressing the next action.
             },
             [&](const Action::StatefulAction &merged_action) {
-                active.emplace(merged_action, b.second); // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
+                // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
+                active.emplace(merged_action, b.second);
             },
         );
     }

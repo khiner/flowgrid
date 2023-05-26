@@ -401,7 +401,7 @@ void Project::Init() {
     store::EndTransient(); // Make sure the store is not in transient mode when initializing a project.
     CurrentProjectPath = {};
     ProjectHasChanges = false;
-    History = {AppStore};
+    History = {};
     UiContext.IsWidgetGesturing = false;
 }
 

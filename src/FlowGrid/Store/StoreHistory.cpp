@@ -21,13 +21,13 @@ struct Record {
 
 static vector<Record> Records;
 
-StoreHistory::StoreHistory(const Store &store) {
-    Reset(store);
-}
-
-void StoreHistory::Reset(const Store &store) {
+StoreHistory::StoreHistory() {
     Records.clear();
-    Records.push_back({Clock::now(), store, {}});
+    Records.push_back({Clock::now(), AppStore, {}});
+}
+StoreHistory::~StoreHistory() {
+    // Not clearing records here because the destructor for the old singleton instance is called after the new instance is constructed.
+    // This is fine, since `Records` should have the same lifetime as the application.
 }
 
 void StoreHistory::Add(TimePoint time, const Store &store, const Gesture &gesture) {

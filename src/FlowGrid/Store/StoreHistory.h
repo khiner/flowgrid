@@ -29,11 +29,8 @@ struct StoreHistory {
         std::vector<ImU64> Values;
     };
 
-    StoreHistory() = default;
-    StoreHistory(const Store &);
-    ~StoreHistory() = default;
-
-    void Reset(const Store &);
+    StoreHistory();
+    ~StoreHistory();
 
     void UpdateGesturePaths(const Gesture &, const Patch &);
     Plottable StorePathUpdateFrequencyPlottable() const;

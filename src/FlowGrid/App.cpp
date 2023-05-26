@@ -324,13 +324,6 @@ void Info::Render() const {
 // [SECTION] Project
 //-----------------------------------------------------------------------------
 
-nlohmann::json GetStoreJson(const StoreJsonFormat format) {
-    switch (format) {
-        case StateFormat: return AppStore;
-        case ActionFormat: return History.GetIndexedGestures();
-    }
-}
-
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 

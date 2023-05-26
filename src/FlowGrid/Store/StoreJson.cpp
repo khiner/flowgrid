@@ -1,5 +1,6 @@
 #include "StoreJson.h"
 #include "StoreTypesJson.h"
+#include "StoreHistory.h"
 
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
@@ -21,4 +22,11 @@ Store JsonToStore(const nlohmann::json &j) {
     TransientStore store;
     for (const auto &[path, value] : entries) store.set(path, value);
     return store.persistent();
+}
+
+nlohmann::json GetStoreJson(const StoreJsonFormat format) {
+    switch (format) {
+        case StateFormat: return AppStore;
+        case ActionFormat: return History.GetIndexedGestures();
+    }
 }

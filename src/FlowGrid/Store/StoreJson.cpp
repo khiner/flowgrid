@@ -1,6 +1,6 @@
 #include "StoreJson.h"
-#include "StoreTypesJson.h"
 #include "StoreHistory.h"
+#include "StoreTypesJson.h"
 
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"

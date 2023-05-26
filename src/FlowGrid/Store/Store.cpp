@@ -78,6 +78,10 @@ Patch CreatePatch(const Store &before, const Store &after, const StorePath &base
     return {ops, base_path};
 }
 
+Patch CreatePatch(const Store &store, const StorePath &base_path) {
+    return CreatePatch(AppStore, store, base_path);
+}
+
 Patch CreatePatch(const StorePath &base_path) {
     return CreatePatch(AppStore, store::EndTransient(false), base_path);
 }

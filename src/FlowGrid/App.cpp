@@ -363,7 +363,7 @@ void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
 // Main setter to modify the canonical application state store.
 // _All_ store assignments happen via this method.
 Patch SetStore(const Store &store) {
-    const auto &patch = store::CreatePatch(AppStore, store);
+    const auto &patch = store::CreatePatch(store);
     if (patch.Empty()) return {};
 
     store::Set(store);
@@ -409,21 +409,6 @@ void Project::Init() {
 #include "imgui.h"
 
 using namespace ImGui;
-
-void Debug::StateViewer::Render() const {
-    StateJsonTree("State", AppStore);
-}
-
-void Debug::ProjectPreview::Render() const {
-    Format.Draw();
-    Raw.Draw();
-
-    Separator();
-
-    const nlohmann::json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
-    if (Raw) TextUnformatted(project_json.dump(4).c_str());
-    else fg::JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
-}
 
 void OpenProject(const fs::path &path) {
     const auto format = GetStoreJsonFormat(path);

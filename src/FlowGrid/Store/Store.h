@@ -32,8 +32,12 @@ void Erase(const StorePath &);
 // This is the only place `ApplicationStore` is modified.
 void Set(const Store &);
 
+// Create a patch comparing the provided stores.
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path = RootPath);
-Patch CreatePatch(const StorePath &base_path = RootPath); // Create a patch from the current transient store (stops transient mode).
+// Create a patch comparing the provided store with the current persistent store.
+Patch CreatePatch(const Store &, const StorePath &base_path = RootPath);
+// Create a patch comparing the current transient store with the current persistent store. (Stops transient mode.)
+Patch CreatePatch(const StorePath &base_path = RootPath);
 
 void ApplyPatch(const Patch &);
 

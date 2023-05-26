@@ -113,6 +113,23 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
     }
 }
 
+#include "Store/StoreJson.h"
+
+void Debug::StateViewer::Render() const {
+    StateJsonTree("State", GetStoreJson(StateFormat));
+}
+
+void Debug::ProjectPreview::Render() const {
+    Format.Draw();
+    Raw.Draw();
+
+    Separator();
+
+    const nlohmann::json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
+    if (Raw) TextUnformatted(project_json.dump(4).c_str());
+    else fg::JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
+}
+
 // #include "imgui_memory_editor.h"
 
 // todo need to rethink this with the store system

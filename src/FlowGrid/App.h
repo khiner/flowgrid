@@ -5,16 +5,12 @@
 #include "FileDialog/FileDialog.h"
 #include "ImGuiSettings.h"
 #include "Style.h"
+#include "Settings.h"
 
 /**
  * This class defines the main `State`, which fully describes the application at any point in time.
  * An immutable reference to the single source-of-truth application state `const State &s` is defined at the bottom of this file.
  */
-
-WindowMember(
-    ApplicationSettings,
-    Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
-);
 
 struct Demo : TabsWindow {
     Demo(StateMember *parent, string_view path_segment, string_view name_help);
@@ -77,7 +73,7 @@ UIMember(
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(fg::Style, Style);
     Prop(Audio, Audio);
-    Prop(ApplicationSettings, ApplicationSettings);
+    Prop(ApplicationSettings, Settings);
     Prop(UIProcess, UiProcess);
     Prop(FileDialog, FileDialog);
     Prop(Info, Info);

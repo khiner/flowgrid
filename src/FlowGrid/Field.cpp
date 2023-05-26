@@ -64,7 +64,8 @@ Flags::Item::Item(const char *name_and_help) {
     Help = help;
 }
 
-PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value) : Base(parent, id, name_help) {
+PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value)
+    : Base(parent, id, name_help) {
     store::Set(*this, value);
 }
 

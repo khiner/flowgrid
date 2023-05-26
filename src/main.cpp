@@ -11,6 +11,7 @@ const fg::Style &fg::style = s.Style;
 const Audio &audio = s.Audio;
 const ImGuiSettings &imgui_settings = s.ImGuiSettings;
 const FileDialog &file_dialog = s.FileDialog;
+const ApplicationSettings &application_settings = s.Settings;
 
 UIContext UiContext{};
 

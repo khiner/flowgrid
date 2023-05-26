@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 
 #include "Helper/File.h"
 #include "ProjectConstants.h"
@@ -98,7 +97,7 @@ void State::Render() const {
         auto faust_editor_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.7f, nullptr, &dockspace_id);
 
         Audio.Dock(settings_node_id);
-        ApplicationSettings.Dock(settings_node_id);
+        Settings.Dock(settings_node_id);
 
         Audio.Faust.Editor.Dock(faust_editor_node_id);
         Audio.Faust.Editor.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
@@ -144,21 +143,8 @@ void State::Render() const {
 #include "Store/StoreHistory.h"
 #include "Store/StoreJson.h"
 #include "UI/Widgets.h"
-#include "date.h"
 
 using namespace FlowGrid;
-
-void ShowGesture(const Gesture &gesture) {
-    for (Count action_index = 0; action_index < gesture.size(); action_index++) {
-        const auto &[action, time] = gesture[action_index];
-        JsonTree(
-            std::format("{}: {}", action.GetName(), date::format("%Y-%m-%d %T", time).c_str()),
-            json(action)[1],
-            JsonTreeNodeFlags_None,
-            to_string(action_index).c_str()
-        );
-    }
-}
 
 #include "AppPreferences.h"
 
@@ -171,12 +157,6 @@ void OpenRecentProject::MenuItem() const {
     }
 }
 
-void ApplicationSettings::Render() const {
-    int value = int(History.Index);
-    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(Action::SetHistoryIndex{value});
-    GestureDurationSec.Draw();
-}
-
 Demo::Demo(StateMember *parent, string_view path_segment, string_view name_help)
     : TabsWindow(parent, path_segment, name_help, ImGuiWindowFlags_MenuBar) {}
 
@@ -185,103 +165,6 @@ void Demo::ImGuiDemo::Render() const {
 }
 void Demo::ImPlotDemo::Render() const {
     ImPlot::ShowDemoWindow();
-}
-
-void Metrics::FlowGridMetrics::Render() const {
-    {
-        // Active (uncompressed) gesture
-        const bool widget_gesturing = UiContext.IsWidgetGesturing;
-        const bool ActiveGesturePresent = !History.ActiveGesture.empty();
-        if (ActiveGesturePresent || widget_gesturing) {
-            // Gesture completion progress bar
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec(s.ApplicationSettings.GestureDurationSec) / s.ApplicationSettings.GestureDurationSec);
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
-
-            const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
-            if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (widget_gesturing) FillRowItemBg(style.ImGui.Colors[ImGuiCol_FrameBgActive]);
-                else BeginDisabled();
-                Text("Widget gesture: %s", widget_gesturing ? "true" : "false");
-                if (!widget_gesturing) EndDisabled();
-
-                if (ActiveGesturePresent) ShowGesture(History.ActiveGesture);
-                else Text("No actions yet");
-                TreePop();
-            }
-        } else {
-            BeginDisabled();
-            Text("No active gesture");
-            EndDisabled();
-        }
-    }
-    Separator();
-    {
-        const bool no_history = History.Empty();
-        if (no_history) BeginDisabled();
-        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", History.Size() - 1, History.Index)) {
-            for (Count i = 1; i < History.Size(); i++) {
-                if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[committed, store_record, gesture] = History.RecordAt(i);
-                    BulletText("Committed: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
-                    if (TreeNode("Patch")) {
-                        // We compute patches as we need them rather than memoizing them.
-                        const auto &patch = History.CreatePatch(i);
-                        for (const auto &[partial_path, op] : patch.Ops) {
-                            const auto &path = patch.BasePath / partial_path;
-                            if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                                BulletText("Op: %s", to_string(op.Op).c_str());
-                                if (op.Value) BulletText("Value: %s", to_string(*op.Value).c_str());
-                                if (op.Old) BulletText("Old value: %s", to_string(*op.Old).c_str());
-                                TreePop();
-                            }
-                        }
-                        TreePop();
-                    }
-                    if (TreeNode("Gesture")) {
-                        ShowGesture(gesture);
-                        TreePop();
-                    }
-                    if (TreeNode("State")) {
-                        JsonTree("", store_record);
-                        TreePop();
-                    }
-                    TreePop();
-                }
-            }
-            TreePop();
-        }
-        if (no_history) EndDisabled();
-    }
-    Separator();
-    {
-        // Preferences
-        const bool has_RecentlyOpenedPaths = !Preferences.RecentlyOpenedPaths.empty();
-        if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
-            if (SmallButton("Clear")) Preferences.Clear();
-            SameLine();
-            ShowRelativePaths.Draw();
-
-            if (!has_RecentlyOpenedPaths) BeginDisabled();
-            if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
-                for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-                    BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
-                }
-                TreePop();
-            }
-            if (!has_RecentlyOpenedPaths) EndDisabled();
-
-            TreePop();
-        }
-    }
-    Separator();
-    {
-        // Various internals
-        Text("Action variant size: %lu bytes", sizeof(Action::StatefulAction));
-        Text("Primitive variant size: %lu bytes", sizeof(Primitive));
-        SameLine();
-        HelpMarker("All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
-                   "Thus, it's important to keep action data minimal.");
-    }
 }
 
 #include "Audio/Faust/FaustGraph.h"
@@ -308,15 +191,23 @@ void Info::Render() const {
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
+namespace Action {
+bool OpenDefaultProject::Allowed() { return fs::exists(DefaultProjectPath); }
+bool ShowSaveProjectDialog::Allowed() { return ProjectHasChanges; }
+bool SaveCurrentProject::Allowed() { return ProjectHasChanges; }
+} // namespace Action
+
+bool IsUserProjectPath(const fs::path &path) {
+    return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
+        fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
+}
+
 void SetCurrentProjectPath(const fs::path &path) {
+    if (!IsUserProjectPath(path)) return;
+
     ProjectHasChanges = false;
     CurrentProjectPath = path;
     Preferences.OnProjectOpened(path);
-}
-
-static bool IsUserProjectPath(const fs::path &path) {
-    return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
-        fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
 }
 
 std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
@@ -335,7 +226,7 @@ bool SaveProject(const fs::path &path) {
     History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
     if (!FileIO::write(path, GetStoreJson(*format).dump())) return false; // TODO log
 
-    if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
+    SetCurrentProjectPath(path);
     return true;
 }
 
@@ -386,11 +277,6 @@ void Project::Init() {
     UiContext.IsWidgetGesturing = false;
 }
 
-#include "UI/Widgets.h"
-#include "imgui.h"
-
-using namespace ImGui;
-
 void OpenProject(const fs::path &path) {
     const auto format = GetStoreJsonFormat(path);
     if (!format) return; // TODO log
@@ -413,23 +299,8 @@ void OpenProject(const fs::path &path) {
         ::SetHistoryIndex(indexed_gestures.Index);
     }
 
-    if (IsUserProjectPath(path)) SetCurrentProjectPath(path);
+    SetCurrentProjectPath(path);
 }
-
-//-----------------------------------------------------------------------------
-// [SECTION] Action queueing
-//-----------------------------------------------------------------------------
-
-namespace Action {
-bool OpenDefaultProject::Allowed() { return fs::exists(DefaultProjectPath); }
-bool ShowSaveProjectDialog::Allowed() { return ProjectHasChanges; }
-bool SaveCurrentProject::Allowed() { return ProjectHasChanges; }
-} // namespace Action
-
-#include "blockingconcurrentqueue.h"
-
-using Action::ActionMoment, Action::StatefulActionMoment;
-inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void Apply(const Action::NonStatefulAction &action) {
     Match(
@@ -470,6 +341,15 @@ void Apply(const Action::NonStatefulAction &action) {
     );
 }
 
+//-----------------------------------------------------------------------------
+// [SECTION] Action queueing
+//-----------------------------------------------------------------------------
+
+#include "blockingconcurrentqueue.h"
+
+using Action::ActionMoment, Action::StatefulActionMoment;
+inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
+
 void Project::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
     static vector<StatefulActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
@@ -504,7 +384,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         );
     }
 
-    const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(s.ApplicationSettings.GestureDurationSec) <= 0);
+    const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!state_actions.empty()) {
         const auto &patch = SetStore(store::EndTransient(false));
         History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());

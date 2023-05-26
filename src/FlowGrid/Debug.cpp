@@ -1,11 +1,13 @@
 #include "Debug.h"
 
+#include "date.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "implot.h"
 
 #include "Helper/String.h"
 #include "Store/StoreHistory.h"
+#include "Store/StoreJson.h"
 #include "Style.h"
 #include "UI/Widgets.h"
 
@@ -113,8 +115,6 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
     }
 }
 
-#include "Store/StoreJson.h"
-
 void Debug::StateViewer::Render() const {
     StateJsonTree("State", GetStoreJson(StateFormat));
 }
@@ -128,6 +128,123 @@ void Debug::ProjectPreview::Render() const {
     const nlohmann::json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else fg::JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
+}
+
+void ShowGesture(const Gesture &gesture) {
+    for (Count action_index = 0; action_index < gesture.size(); action_index++) {
+        const auto &[action, time] = gesture[action_index];
+        JsonTree(
+            std::format("{}: {}", action.GetName(), date::format("%Y-%m-%d %T", time).c_str()),
+            json(action)[1],
+            JsonTreeNodeFlags_None,
+            to_string(action_index).c_str()
+        );
+    }
+}
+
+#include "AppPreferences.h"
+#include "Settings.h"
+#include "UI/UI.h"
+
+// todo This is only needed since there's no `to_json(StoreHistory::RecordReference)`.
+#include "immer/map.hpp"
+
+void Metrics::FlowGridMetrics::Render() const {
+    {
+        // Active (uncompressed) gesture
+        const bool widget_gesturing = UiContext.IsWidgetGesturing;
+        const bool ActiveGesturePresent = !History.ActiveGesture.empty();
+        if (ActiveGesturePresent || widget_gesturing) {
+            // Gesture completion progress bar
+            const float gesture_duration_sec = application_settings.GestureDurationSec;
+            const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec(gesture_duration_sec) / gesture_duration_sec);
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
+
+            const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
+            if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (widget_gesturing) FillRowItemBg(style.ImGui.Colors[ImGuiCol_FrameBgActive]);
+                else BeginDisabled();
+                Text("Widget gesture: %s", widget_gesturing ? "true" : "false");
+                if (!widget_gesturing) EndDisabled();
+
+                if (ActiveGesturePresent) ShowGesture(History.ActiveGesture);
+                else Text("No actions yet");
+                TreePop();
+            }
+        } else {
+            BeginDisabled();
+            Text("No active gesture");
+            EndDisabled();
+        }
+    }
+    Separator();
+    {
+        const bool no_history = History.Empty();
+        if (no_history) BeginDisabled();
+        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", History.Size() - 1, History.Index)) {
+            for (Count i = 1; i < History.Size(); i++) {
+                if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    const auto &[committed, store_record, gesture] = History.RecordAt(i);
+                    BulletText("Committed: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
+                    if (TreeNode("Patch")) {
+                        // We compute patches as we need them rather than memoizing them.
+                        const auto &patch = History.CreatePatch(i);
+                        for (const auto &[partial_path, op] : patch.Ops) {
+                            const auto &path = patch.BasePath / partial_path;
+                            if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                                BulletText("Op: %s", to_string(op.Op).c_str());
+                                if (op.Value) BulletText("Value: %s", to_string(*op.Value).c_str());
+                                if (op.Old) BulletText("Old value: %s", to_string(*op.Old).c_str());
+                                TreePop();
+                            }
+                        }
+                        TreePop();
+                    }
+                    if (TreeNode("Gesture")) {
+                        ShowGesture(gesture);
+                        TreePop();
+                    }
+                    if (TreeNode("State")) {
+                        JsonTree("", store_record);
+                        TreePop();
+                    }
+                    TreePop();
+                }
+            }
+            TreePop();
+        }
+        if (no_history) EndDisabled();
+    }
+    Separator();
+    {
+        // Preferences
+        const bool has_RecentlyOpenedPaths = !Preferences.RecentlyOpenedPaths.empty();
+        if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (SmallButton("Clear")) Preferences.Clear();
+            SameLine();
+            ShowRelativePaths.Draw();
+
+            if (!has_RecentlyOpenedPaths) BeginDisabled();
+            if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
+                for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
+                    BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                }
+                TreePop();
+            }
+            if (!has_RecentlyOpenedPaths) EndDisabled();
+
+            TreePop();
+        }
+    }
+    Separator();
+    {
+        // Various internals
+        Text("Action variant size: %lu bytes", sizeof(Action::StatefulAction));
+        Text("Primitive variant size: %lu bytes", sizeof(Primitive));
+        SameLine();
+        HelpMarker("All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
+                   "Thus, it's important to keep action data minimal.");
+    }
 }
 
 // #include "imgui_memory_editor.h"

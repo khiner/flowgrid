@@ -6,7 +6,6 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/map.hpp>
 
-
 Store ApplicationStore{};
 const Store &AppStore = ApplicationStore;
 

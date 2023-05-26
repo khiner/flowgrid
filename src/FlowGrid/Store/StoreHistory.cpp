@@ -31,8 +31,17 @@ void StoreHistory::Reset(const Store &store) {
 }
 
 void StoreHistory::Add(TimePoint time, const Store &store, const Gesture &gesture) {
+    while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
     Records.push_back({time, store, gesture});
     Index = Size() - 1;
+    const auto &patch = CreatePatch(Index);
+    if (patch.Empty()) {
+        Records.pop_back();
+        Index--;
+    } else {
+        const auto &gesture_time = gesture.back().second;
+        for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+    }
 }
 
 Count StoreHistory::Size() const { return Records.size(); }
@@ -98,13 +107,7 @@ void StoreHistory::FinalizeGesture() {
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;
 
-    const auto &patch = store::CreatePatch(AppStore, Records[Index].Store);
-    if (patch.Empty()) return;
-
-    while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
     Add(Clock::now(), AppStore, merged_gesture);
-    const auto &gesture_time = merged_gesture.back().second;
-    for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
 void StoreHistory::UpdateGesturePaths(const Gesture &gesture, const Patch &patch) {

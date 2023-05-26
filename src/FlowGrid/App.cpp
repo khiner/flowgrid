@@ -141,8 +141,8 @@ void State::Render() const {
 //-----------------------------------------------------------------------------
 // [SECTION] State windows
 //-----------------------------------------------------------------------------
-#include "Store/StoreJson.h"
 #include "Store/StoreHistory.h"
+#include "Store/StoreJson.h"
 #include "UI/Widgets.h"
 #include "date.h"
 
@@ -458,17 +458,8 @@ void OpenProject(const fs::path &path) {
         const auto &[gestures, index] = JsonToGestures(project);
         store::BeginTransient();
         for (const auto &gesture : gestures) {
-            const auto before_store = store::GetPersistent();
-            for (const auto &action_moment : gesture) {
-                s.Apply(action_moment.first);
-            }
-            const auto after_store = store::GetPersistent();
-            const auto &patch = store::CreatePatch(before_store, after_store);
-            const auto &gesture_time = gesture.back().second;
-            History.Add(gesture_time, after_store, gesture); // todo save/load gesture commit times
-            for (const auto &[partial_path, op] : patch.Ops) {
-                History.CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
-            }
+            for (const auto &action_moment : gesture) s.Apply(action_moment.first);
+            History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
         }
         SetStore(store::EndTransient(false));
         ::SetHistoryIndex(index);

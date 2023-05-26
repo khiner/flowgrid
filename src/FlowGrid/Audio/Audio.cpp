@@ -890,7 +890,7 @@ Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_v
 }
 
 void Audio::Graph::RenderConnections() const {
-    const auto &style = audio.Graph.Style.Matrix;
+    const auto &style = Style.Matrix;
     const float cell_size = style.CellSize * GetTextLineHeight();
     const float cell_gap = style.CellGap;
     const float label_size = style.LabelSize * GetTextLineHeight(); // Does not include padding.
@@ -948,4 +948,28 @@ void Audio::Graph::RenderConnections() const {
         dest_i++;
     }
     EndGroup();
+}
+
+void Audio::Style::Render() const {
+    using namespace Action;
+
+    static int graph_colors_idx = -1, graph_layout_idx = -1;
+    if (Combo("Graph colors", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(SetGraphColorStyle{graph_colors_idx});
+    if (Combo("Graph layout", &graph_layout_idx, "FlowGrid\0Faust\0")) q(SetGraphLayoutStyle{graph_layout_idx});
+
+    if (BeginTabBar("Style")) {
+        if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            audio.Graph.Style.Matrix.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            audio.Faust.Graph.Style.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            audio.Faust.Params.Style.Draw();
+            EndTabItem();
+        }
+        EndTabBar();
+    }
 }

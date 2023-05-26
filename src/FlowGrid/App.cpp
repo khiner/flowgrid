@@ -254,23 +254,13 @@ void ShowGesture(const Gesture &gesture) {
 void Style::FlowGridStyle::Render() const {
     using namespace Action;
 
-    static int colors_idx = -1, graph_colors_idx = -1, graph_layout_idx = -1;
+    static int colors_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
-    if (Combo("Graph colors", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(SetGraphColorStyle{graph_colors_idx});
-    if (Combo("Graph layout", &graph_layout_idx, "FlowGrid\0Faust\0")) q(SetGraphLayoutStyle{graph_layout_idx});
     FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {
-        if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Graph.Style.Matrix.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.Graph.Style.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.Params.Style.Draw();
+        if (BeginTabItem("Audio", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            audio.Style.Draw();
             EndTabItem();
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {

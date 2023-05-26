@@ -109,6 +109,9 @@ using ParamsWidthSizingPolicy = int;
 struct Audio : TabsWindow {
     using TabsWindow::TabsWindow;
 
+    void Update() const;
+    bool NeedsRestart() const;
+
     struct Faust : UIStateMember {
         using UIStateMember::UIStateMember;
 
@@ -502,12 +505,12 @@ struct Audio : TabsWindow {
         void RenderConnections() const;
     };
 
-    void Update() const;
-    bool NeedsRestart() const;
+    UIMember(Style);
 
     Prop(Device, Device);
     Prop(Graph, Graph);
     Prop(Faust, Faust);
+    Prop(Style, Style);
 
 protected:
     void Render() const override;

@@ -8,6 +8,7 @@ static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up textur
 
 using std::string;
 struct ImVec2;
+struct ImRect;
 
 enum Dir_ {
     Dir_None = -1,
@@ -82,3 +83,6 @@ ImVec2 CalcTextSize(const string &text);
 
 // There's `RenderTextEllipsis` in `imgui_internal`, but it's way too complex and scary.
 string Ellipsify(string copy, float max_width);
+
+ImRect RowItemRatioRect(float ratio);
+void FillRowItemBg(const U32 col);

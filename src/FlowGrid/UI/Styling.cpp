@@ -22,3 +22,13 @@ string Ellipsify(string copy, const float max_width) {
     while (CalcTextSize(copy).x > max_width && copy.length() > 4) copy.replace(copy.end() - 4, copy.end(), "...");
     return copy;
 }
+
+ImRect RowItemRatioRect(float ratio) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
+}
+void FillRowItemBg(const U32 col) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    const ImRect &rect = {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
+    GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);
+}

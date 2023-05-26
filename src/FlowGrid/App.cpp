@@ -160,25 +160,6 @@ void ShowGesture(const Gesture &gesture) {
     }
 }
 
-void Style::FlowGridStyle::Render() const {
-    using namespace Action;
-
-    static int colors_idx = -1;
-    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
-    FlashDurationSec.Draw();
-
-    if (BeginTabBar("")) {
-        if (BeginTabItem("Audio", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Style.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Colors.Draw();
-        }
-        EndTabBar();
-    }
-}
-
 #include "AppPreferences.h"
 
 void OpenRecentProject::MenuItem() const {

@@ -1,5 +1,7 @@
 #include "Colors.h"
 
+#include "UI/Widgets.h"
+
 #include "imgui.h"
 
 using namespace ImGui;
@@ -49,9 +51,9 @@ void Colors::Render() const {
     SameLine();
     if (RadioButton("Both", flags == ImGuiColorEditFlags_AlphaPreviewHalf)) flags = ImGuiColorEditFlags_AlphaPreviewHalf;
     SameLine();
-    HelpMarker("In the color list:\n"
-               "Left-click on color square to open color picker.\n"
-               "Right-click to open edit options menu.");
+    fg::HelpMarker("In the color list:\n"
+                   "Left-click on color square to open color picker.\n"
+                   "Right-click to open edit options menu.");
 
     BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
     PushItemWidth(-160);
@@ -72,5 +74,4 @@ void Colors::Render() const {
 
     PopItemWidth();
     EndChild();
-    EndTabItem();
 }

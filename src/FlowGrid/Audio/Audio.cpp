@@ -60,17 +60,18 @@ Audio::Faust::FaustGraph::Style::Style(StateMember *parent, string_view path_seg
 
 const char *Audio::Faust::FaustGraph::Style::GetColorName(FlowGridGraphCol idx) {
     switch (idx) {
-        case FlowGridGraphCol_Bg: return "GraphBg";
-        case FlowGridGraphCol_DecorateStroke: return "GraphDecorateStroke";
-        case FlowGridGraphCol_GroupStroke: return "GraphGroupStroke";
-        case FlowGridGraphCol_Line: return "GraphLine";
-        case FlowGridGraphCol_Link: return "GraphLink";
-        case FlowGridGraphCol_Normal: return "GraphNormal";
-        case FlowGridGraphCol_Ui: return "GraphUi";
-        case FlowGridGraphCol_Slot: return "GraphSlot";
-        case FlowGridGraphCol_Number: return "GraphNumber";
-        case FlowGridGraphCol_Inverter: return "GraphInverter";
-        case FlowGridGraphCol_OrientationMark: return "GraphOrientationMark";
+        case FlowGridGraphCol_Bg: return "Background";
+        case FlowGridGraphCol_Text: return "Text";
+        case FlowGridGraphCol_DecorateStroke: return "DecorateStroke";
+        case FlowGridGraphCol_GroupStroke: return "GroupStroke";
+        case FlowGridGraphCol_Line: return "Line";
+        case FlowGridGraphCol_Link: return "Link";
+        case FlowGridGraphCol_Inverter: return "Inverter";
+        case FlowGridGraphCol_OrientationMark: return "OrientationMark";
+        case FlowGridGraphCol_Normal: return "Normal";
+        case FlowGridGraphCol_Ui: return "Ui";
+        case FlowGridGraphCol_Slot: return "Slot";
+        case FlowGridGraphCol_Number: return "Number";
         default: return "Unknown";
     }
 }
@@ -190,48 +191,64 @@ void Audio::Faust::FaustGraph::Style::LayoutFaust() const {
 }
 
 void Audio::Faust::FaustGraph::Style::Render() const {
-    FoldComplexity.Draw();
-    const bool scale_fill = ScaleFillHeight;
-    ScaleFillHeight.Draw();
-    if (scale_fill) BeginDisabled();
-    Scale.Draw();
-    if (scale_fill) {
-        SameLine();
-        TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
-        EndDisabled();
+    if (BeginTabBar(ImGuiLabel.c_str(), ImGuiTabBarFlags_None)) {
+        if (BeginTabItem("Layout")) {
+            static int graph_layout_idx = -1;
+            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) q(Action::SetGraphLayoutStyle{graph_layout_idx});
+
+            FoldComplexity.Draw();
+            const bool scale_fill = ScaleFillHeight;
+            ScaleFillHeight.Draw();
+            if (scale_fill) BeginDisabled();
+            Scale.Draw();
+            if (scale_fill) {
+                SameLine();
+                TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
+                EndDisabled();
+            }
+            Direction.Draw();
+            OrientationMark.Draw();
+            if (OrientationMark) {
+                SameLine();
+                SetNextItemWidth(GetContentRegionAvail().x * 0.5f);
+                OrientationMarkRadius.Draw();
+            }
+            RouteFrame.Draw();
+            SequentialConnectionZigzag.Draw();
+            Separator();
+            const bool decorate_folded = DecorateRootNode;
+            DecorateRootNode.Draw();
+            if (!decorate_folded) BeginDisabled();
+            DecorateMargin.Draw();
+            DecoratePadding.Draw();
+            DecorateLineWidth.Draw();
+            DecorateCornerRadius.Draw();
+            if (!decorate_folded) EndDisabled();
+            Separator();
+            GroupMargin.Draw();
+            GroupPadding.Draw();
+            GroupLineWidth.Draw();
+            GroupCornerRadius.Draw();
+            Separator();
+            NodeMargin.Draw();
+            NodePadding.Draw();
+            BoxCornerRadius.Draw();
+            BinaryHorizontalGapRatio.Draw();
+            WireGap.Draw();
+            WireWidth.Draw();
+            ArrowSize.Draw();
+            InverterRadius.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem(Colors.ImGuiLabel.c_str())) {
+            static int graph_colors_idx = -1;
+            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(Action::SetGraphColorStyle{graph_colors_idx});
+
+            Colors.Draw();
+            EndTabItem();
+        }
+        EndTabBar();
     }
-    Direction.Draw();
-    OrientationMark.Draw();
-    if (OrientationMark) {
-        SameLine();
-        SetNextItemWidth(GetContentRegionAvail().x * 0.5f);
-        OrientationMarkRadius.Draw();
-    }
-    RouteFrame.Draw();
-    SequentialConnectionZigzag.Draw();
-    Separator();
-    const bool decorate_folded = DecorateRootNode;
-    DecorateRootNode.Draw();
-    if (!decorate_folded) BeginDisabled();
-    DecorateMargin.Draw();
-    DecoratePadding.Draw();
-    DecorateLineWidth.Draw();
-    DecorateCornerRadius.Draw();
-    if (!decorate_folded) EndDisabled();
-    Separator();
-    GroupMargin.Draw();
-    GroupPadding.Draw();
-    GroupLineWidth.Draw();
-    GroupCornerRadius.Draw();
-    Separator();
-    NodeMargin.Draw();
-    NodePadding.Draw();
-    BoxCornerRadius.Draw();
-    BinaryHorizontalGapRatio.Draw();
-    WireGap.Draw();
-    WireWidth.Draw();
-    ArrowSize.Draw();
-    InverterRadius.Draw();
 }
 
 void Audio::Faust::FaustParams::Style::Render() const {
@@ -951,12 +968,6 @@ void Audio::Graph::RenderConnections() const {
 }
 
 void Audio::Style::Render() const {
-    using namespace Action;
-
-    static int graph_colors_idx = -1, graph_layout_idx = -1;
-    if (Combo("Graph colors", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(SetGraphColorStyle{graph_colors_idx});
-    if (Combo("Graph layout", &graph_layout_idx, "FlowGrid\0Faust\0")) q(SetGraphLayoutStyle{graph_layout_idx});
-
     if (BeginTabBar("Style")) {
         if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
             audio.Graph.Style.Matrix.Draw();

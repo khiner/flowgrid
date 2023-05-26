@@ -22,9 +22,6 @@ enum Dir_ {
 enum FlowGridCol_ {
     FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
     FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
-    // Params colors.
-    FlowGridCol_ParamsBg, // ImGuiCol_FrameBg with less alpha
-
     FlowGridCol_COUNT
 };
 using FlowGridCol = int;

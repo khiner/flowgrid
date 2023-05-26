@@ -258,6 +258,7 @@ void Style::ImGuiStyle::Render() const {
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
             Colors.Draw();
+            EndTabItem();
         }
         if (BeginTabItem("Fonts")) {
             ShowFontAtlas(io.Fonts);
@@ -359,6 +360,23 @@ void Style::ImPlotStyle::Render() const {
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
             Colors.Draw();
+            EndTabItem();
+        }
+        EndTabBar();
+    }
+}
+
+void Style::FlowGridStyle::Render() const {
+    using namespace Action;
+
+    static int colors_idx = -1;
+    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
+    FlashDurationSec.Draw();
+
+    if (BeginTabBar("")) {
+        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Colors.Draw();
+            EndTabItem();
         }
         EndTabBar();
     }

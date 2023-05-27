@@ -3,7 +3,7 @@
 #include "StoreFwd.h"
 
 #include "Core/Action/Action.h"
-#include "Core/Stateful/StateMember.h"
+#include "Core/Stateful/Stateful.h"
 
 using std::vector;
 

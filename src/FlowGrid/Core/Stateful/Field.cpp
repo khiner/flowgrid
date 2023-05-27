@@ -17,24 +17,24 @@ using namespace Action;
 
 using std::vector;
 
-namespace Field {
-UInt::UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value, U32 min, U32 max)
+namespace Stateful::Field {
+UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, U32 value, U32 min, U32 max)
     : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
-UInt::UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value)
+UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value)
     : TypedBase(parent, path_segment, name_help, value), Min(0), Max(100), GetName(std::move(get_name)) {}
 UInt::operator bool() const { return Value; }
 UInt::operator int() const { return Value; }
 UInt::operator ImColor() const { return Value; }
 string UInt::ValueName(const U32 value) const { return GetName ? (*GetName)(value) : to_string(value); }
 
-Int::Int(StateMember *parent, string_view path_segment, string_view name_help, int value, int min, int max)
+Int::Int(Stateful::Base *parent, string_view path_segment, string_view name_help, int value, int min, int max)
     : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
 Int::operator bool() const { return Value; }
 Int::operator short() const { return Value; }
 Int::operator char() const { return Value; }
 Int::operator S8() const { return Value; }
 
-Float::Float(StateMember *parent, string_view path_segment, string_view name_help, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
+Float::Float(Stateful::Base *parent, string_view path_segment, string_view name_help, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
     : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
 // todo instead of overriding `Update` to handle ints, try ensuring floats are written to the store.
@@ -44,18 +44,18 @@ void Float::Update() {
     else Value = std::get<float>(PrimitiveValue);
 }
 
-String::String(StateMember *parent, string_view path_segment, string_view name_help, string_view value)
+String::String(Stateful::Base *parent, string_view path_segment, string_view name_help, string_view value)
     : TypedBase(parent, path_segment, name_help, string(value)) {}
 String::operator bool() const { return !Value.empty(); }
 String::operator string_view() const { return Value; }
 
-Enum::Enum(StateMember *parent, string_view path_segment, string_view name_help, vector<string> names, int value)
+Enum::Enum(Stateful::Base *parent, string_view path_segment, string_view name_help, vector<string> names, int value)
     : TypedBase(parent, path_segment, name_help, value), Names(std::move(names)) {}
-Enum::Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value)
+Enum::Enum(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value)
     : TypedBase(parent, path_segment, name_help, value), Names({}), GetName(std::move(get_name)) {}
 string Enum::OptionName(const int option) const { return GetName ? (*GetName)(option) : Names[option]; }
 
-Flags::Flags(StateMember *parent, string_view path_segment, string_view name_help, vector<Item> items, int value)
+Flags::Flags(Stateful::Base *parent, string_view path_segment, string_view name_help, vector<Item> items, int value)
     : TypedBase(parent, path_segment, name_help, value), Items(std::move(items)) {}
 
 Flags::Item::Item(const char *name_and_help) {
@@ -64,7 +64,7 @@ Flags::Item::Item(const char *name_and_help) {
     Help = help;
 }
 
-PrimitiveBase::PrimitiveBase(StateMember *parent, string_view id, string_view name_help, Primitive value)
+PrimitiveBase::PrimitiveBase(Stateful::Base *parent, string_view id, string_view name_help, Primitive value)
     : Base(parent, id, name_help) {
     store::Set(*this, value);
 }
@@ -260,8 +260,8 @@ void String::Render(const vector<string> &options) const {
     HelpMarker();
 }
 
-Vec2::Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)
-    : UIStateMember(parent, path_segment, name_help),
+Vec2::Vec2(Stateful::Base *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)
+    : UIStateful(parent, path_segment, name_help),
       X(this, "X", "", value.first, min, max), Y(this, "Y", "", value.second, min, max), Format(fmt) {}
 
 Vec2::operator ImVec2() const { return {X, Y}; }
@@ -276,7 +276,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
 
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
-Vec2Linked::Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
+Vec2Linked::Vec2Linked(Stateful::Base *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
     store::Set(Linked, linked);
 }
@@ -402,11 +402,11 @@ template struct Vector2D<U32>;
 template struct Vector2D<float>;
 
 template struct Matrix<bool>;
-} // namespace Field
+} // namespace Stateful::Field
 
 namespace store {
-void Set(const Field::Base &field, const Primitive &value) { store::Set(field.Path, value); }
-void Set(const Field::Entries &values) {
+void Set(const Stateful::Field::Base &field, const Primitive &value) { store::Set(field.Path, value); }
+void Set(const Stateful::Field::Entries &values) {
     for (const auto &[field, value] : values) store::Set(field.Path, value);
 }
 } // namespace store

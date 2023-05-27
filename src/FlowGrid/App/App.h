@@ -18,7 +18,7 @@ struct OpenRecentProject : MenuItemDrawable {
     void MenuItem() const override;
 };
 
-UIMember(
+DefineUI(
     State,
 
     void Apply(const Action::StatefulAction &) const;

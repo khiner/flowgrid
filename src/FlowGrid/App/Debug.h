@@ -1,25 +1,25 @@
 #pragma once
 
-#include "Core/Stateful/WindowMember.h"
+#include "Core/Stateful/Window.h"
 
 #include "nlohmann/json_fwd.hpp"
 
 struct Metrics : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    UIMember(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true));
-    UIMember(ImGuiMetrics);
-    UIMember(ImPlotMetrics);
+    DefineUI(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true));
+    DefineUI(ImGuiMetrics);
+    DefineUI(ImPlotMetrics);
 
     Prop(FlowGridMetrics, FlowGrid);
     Prop(ImGuiMetrics, ImGui);
     Prop(ImPlotMetrics, ImPlot);
 };
 
-UIMember(
+DefineUI(
     Debug,
 
-    WindowMember_(
+    DefineWindow_(
         StateViewer,
         Menu({
             Menu("Settings", {AutoSelect, LabelMode}),
@@ -39,17 +39,17 @@ UIMember(
         void StateJsonTree(string_view key, const nlohmann::json &value, const StorePath &path = RootPath) const;
     );
 
-    WindowMember(
+    DefineWindow(
         ProjectPreview,
         Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
         Prop(Bool, Raw)
     );
 
-    // WindowMember_(StateMemoryEditor, WindowFlags_NoScrollbar);
-    WindowMember(StorePathUpdateFrequency);
+    // DefineWindow_(StateMemoryEditor, WindowFlags_NoScrollbar);
+    DefineWindow(StorePathUpdateFrequency);
 
-    WindowMember(DebugLog);
-    WindowMember(StackTool);
+    DefineWindow(DebugLog);
+    DefineWindow(StackTool);
 
     Prop(StateViewer, StateViewer);
     Prop(ProjectPreview, ProjectPreview);

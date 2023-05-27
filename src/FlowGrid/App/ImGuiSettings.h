@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Stateful/WindowMember.h"
+#include "Core/Stateful/Window.h"
 #include "Core/Store/Store.h"
 
 template<typename T> struct ImChunkStream;
@@ -11,13 +11,13 @@ struct ImGuiDockNodeSettings;
 struct ImGuiWindowSettings;
 struct ImGuiTableSettings;
 
-// These Dock/Window/Table settings are `StateMember` duplicates of those in `imgui.cpp`.
+// These Dock/Window/Table settings are `Stateful` duplicates of those in `imgui.cpp`.
 // They are stored here a structs-of-arrays (vs. arrays-of-structs)
 // todo These will show up counter-intuitively in the json state viewers.
 //  Use Raw/Formatted settings in state viewers to:
 //  * convert structs-of-arrays to arrays-of-structs,
 //  * unpack positions/sizes
-Member(
+DefineStateful(
     DockNodeSettings,
 
     void Set(const ImVector<ImGuiDockNodeSettings> &) const;
@@ -35,7 +35,7 @@ Member(
     Prop(Vector<U32>, SizeRef); // Packed ImVec2ih
 );
 
-Member(
+DefineStateful(
     WindowSettings,
 
     void Set(ImChunkStream<ImGuiWindowSettings> &) const;
@@ -52,7 +52,7 @@ Member(
     Prop(Vector<bool>, Collapsed);
 );
 
-Member(
+DefineStateful(
     TableColumnSettings,
     // [table_index][column_index]
     Prop(Vector2D<float>, WidthOrWeight);
@@ -65,7 +65,7 @@ Member(
     Prop(Vector2D<bool>, IsStretch);
 );
 
-Member(
+DefineStateful(
     TableSettings,
 
     void Set(ImChunkStream<ImGuiTableSettings> &) const;
@@ -80,7 +80,7 @@ Member(
     Prop(TableColumnSettings, Columns);
 );
 
-Member(
+DefineStateful(
     ImGuiSettings,
 
     // Create a patch resulting from applying the current ImGui context.

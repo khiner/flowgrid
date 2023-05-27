@@ -37,14 +37,15 @@ enum WindowFlags_ {
     WindowFlags_MenuBar = 1 << 10,
 };
 
-using namespace Field;
+using namespace Stateful::Field;
 
-struct Window : UIStateMember, MenuItemDrawable {
-    using UIStateMember::UIStateMember;
+namespace Stateful {
+struct Window : UIStateful, MenuItemDrawable {
+    using UIStateful::UIStateful;
 
-    Window(StateMember *parent, string_view path_segment, string_view name_help, bool visible);
-    Window(StateMember *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
-    Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu);
+    Window(Stateful::Base *parent, string_view path_segment, string_view name_help, bool visible);
+    Window(Stateful::Base *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
+    Window(Stateful::Base *parent, string_view path_segment, string_view name_help, Menu menu);
 
     ImGuiWindow &FindImGuiWindow() const;
     void Draw() const override;
@@ -57,29 +58,30 @@ struct Window : UIStateMember, MenuItemDrawable {
     const Menu WindowMenu{{}};
     const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 };
+} // namespace Stateful
 
-#define WindowMember(MemberName, ...) \
-    struct MemberName : Window {      \
-        using Window::Window;         \
-        __VA_ARGS__;                  \
-                                      \
-    protected:                        \
-        void Render() const override; \
+#define DefineWindow(TypeName, ...)      \
+    struct TypeName : Stateful::Window { \
+        using Stateful::Window::Window;    \
+        __VA_ARGS__;                       \
+                                           \
+    protected:                             \
+        void Render() const override;      \
     };
 
-#define WindowMember_(MemberName, VisibleOrMenu, ...)                                         \
-    struct MemberName : Window {                                                              \
-        MemberName(StateMember *parent, string_view path_segment, string_view name_help = "") \
-            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}                     \
-        __VA_ARGS__;                                                                          \
-                                                                                              \
-    protected:                                                                                \
-        void Render() const override;                                                         \
+#define DefineWindow_(TypeName, VisibleOrMenu, ...)                                            \
+    struct TypeName : Stateful::Window {                                                       \
+        TypeName(Stateful::Base *parent, string_view path_segment, string_view name_help = "") \
+            : Stateful::Window(parent, path_segment, name_help, (VisibleOrMenu)) {}              \
+        __VA_ARGS__;                                                                             \
+                                                                                                 \
+    protected:                                                                                   \
+        void Render() const override;                                                            \
     };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.
 // The controct we're signing up for is to implement `void TabsWindow::Render() const`.
-WindowMember(
+DefineWindow(
     TabsWindow,
 
     protected

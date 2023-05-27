@@ -10,8 +10,8 @@ using namespace ImGui;
 // Copied from `implot.h`.
 #define IMPLOT_AUTO_COL ImVec4(0, 0, 0, -1)
 
-Colors::Colors(StateMember *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
-    : UIStateMember(parent, path_segment, name_help), AllowAuto(allow_auto) {
+Colors::Colors(Stateful::Base *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
+    : UIStateful(parent, path_segment, name_help), AllowAuto(allow_auto) {
     for (Count i = 0; i < size; i++) {
         new UInt(this, to_string(i), get_color_name(i)); // Adds to `Children` as a side-effect.
     }

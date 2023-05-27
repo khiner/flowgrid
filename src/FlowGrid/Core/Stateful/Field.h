@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StateMember.h"
+#include "Stateful.h"
 
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;
@@ -12,9 +12,9 @@ using ImGuiColorEditFlags = int;
 using ImGuiSliderFlags = int;
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
-namespace Field {
+namespace Stateful::Field {
 struct PrimitiveBase : Base, Drawable {
-    PrimitiveBase(StateMember *parent, string_view path_segment, string_view name_help, Primitive value);
+    PrimitiveBase(Stateful::Base *parent, string_view path_segment, string_view name_help, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
 };
@@ -24,7 +24,7 @@ using Entries = std::vector<Entry>;
 
 template<IsPrimitive T>
 struct TypedBase : PrimitiveBase {
-    TypedBase(StateMember *parent, string_view path_segment, string_view name_help, T value = {})
+    TypedBase(Stateful::Base *parent, string_view path_segment, string_view name_help, T value = {})
         : PrimitiveBase(parent, path_segment, name_help, value), Value(value) {}
 
     operator T() const { return Value; }
@@ -49,8 +49,8 @@ private:
 };
 
 struct UInt : TypedBase<U32> {
-    UInt(StateMember *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100);
-    UInt(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0);
+    UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100);
+    UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0);
 
     operator bool() const;
     operator int() const;
@@ -74,7 +74,7 @@ private:
 };
 
 struct Int : TypedBase<int> {
-    Int(StateMember *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100);
+    Int(Stateful::Base *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100);
 
     operator bool() const;
     operator short() const;
@@ -92,7 +92,7 @@ private:
 struct Float : TypedBase<float> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(
-        StateMember *parent, string_view path_segment, string_view name_help,
+        Stateful::Base *parent, string_view path_segment, string_view name_help,
         float value = 0, float min = 0, float max = 1, const char *fmt = nullptr,
         ImGuiSliderFlags flags = 0, float drag_speed = 0
     );
@@ -108,7 +108,7 @@ private:
 };
 
 struct String : TypedBase<string> {
-    String(StateMember *parent, string_view path_segment, string_view name_help, string_view value = "");
+    String(Stateful::Base *parent, string_view path_segment, string_view name_help, string_view value = "");
 
     operator bool() const;
     operator string_view() const;
@@ -120,8 +120,8 @@ private:
 };
 
 struct Enum : TypedBase<int>, MenuItemDrawable {
-    Enum(StateMember *parent, string_view path_segment, string_view name_help, std::vector<string> names, int value = 0);
-    Enum(StateMember *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0);
+    Enum(Stateful::Base *parent, string_view path_segment, string_view name_help, std::vector<string> names, int value = 0);
+    Enum(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0);
 
     void Render(const std::vector<int> &options) const;
     void MenuItem() const override;
@@ -145,7 +145,7 @@ struct Flags : TypedBase<int>, MenuItemDrawable {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(StateMember *parent, string_view path_segment, string_view name_help, std::vector<Item> items, int value = 0);
+    Flags(Stateful::Base *parent, string_view path_segment, string_view name_help, std::vector<Item> items, int value = 0);
 
     void MenuItem() const override;
 
@@ -155,9 +155,9 @@ private:
     void Render() const override;
 };
 
-struct Vec2 : UIStateMember {
+struct Vec2 : UIStateful {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
-    Vec2(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
+    Vec2(Stateful::Base *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 
     operator ImVec2() const;
 
@@ -171,7 +171,7 @@ protected:
 
 struct Vec2Linked : Vec2 {
     using Vec2::Vec2;
-    Vec2Linked(StateMember *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
+    Vec2Linked(Stateful::Base *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
 
     Prop(Bool, Linked, true);
 
@@ -230,9 +230,9 @@ private:
     Count RowCount, ColCount;
     std::vector<T> Data;
 };
-} // namespace Field
+} // namespace Stateful::Field
 
 namespace store {
-void Set(const Field::Base &, const Primitive &);
-void Set(const Field::Entries &);
+void Set(const Stateful::Field::Base &, const Primitive &);
+void Set(const Stateful::Field::Entries &);
 } // namespace store

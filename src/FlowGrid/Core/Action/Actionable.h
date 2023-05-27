@@ -13,9 +13,9 @@
 // next up:
 // - improve action IDs
 //   - actions all get a path in addition to their name (start with all at root, but will be heirarchical soon)
-//   - `ID` type generated from path, like `StateMember`:
+//   - `ID` type generated from path, like `Stateful`:
 //     `Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0))`
-// - Add `Help` string (also like StateMember)
+// - Add `Help` string (also like Stateful)
 // Move all action declaration & `Apply` handling to domain files.
 
 /**

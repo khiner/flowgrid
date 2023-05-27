@@ -5,11 +5,11 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "Helper/File.h"
-#include "Helper/String.h"
 #include "Audio.h"
 #include "Faust/FaustGraph.h"
 #include "Faust/FaustParams.h"
+#include "Helper/File.h"
+#include "Helper/String.h"
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
@@ -52,8 +52,8 @@ ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
 
 // Graph style
 
-Audio::Faust::FaustGraph::Style::Style(StateMember *parent, string_view path_segment, string_view name_help)
-    : UIStateMember(parent, path_segment, name_help) {
+Audio::Faust::FaustGraph::Style::Style(Stateful::Base *parent, string_view path_segment, string_view name_help)
+    : UIStateful(parent, path_segment, name_help) {
     ColorsDark();
     LayoutFlowGrid();
 }
@@ -154,7 +154,12 @@ void Audio::Faust::FaustGraph::Style::ColorsFaust() const {
 }
 
 void Audio::Faust::FaustGraph::Style::LayoutFlowGrid() const {
-    static const auto DefaultLayoutEntries = LayoutFields | ranges::views::transform([](const PrimitiveBase &field) { return Field::Entry(field, field.Get()); }) | ranges::to<const Field::Entries>;
+    static const auto DefaultLayoutEntries =
+        LayoutFields |
+        ranges::views::transform(
+            [](const PrimitiveBase &field) { return Stateful::Field::Entry(field, field.Get()); }
+        ) |
+        ranges::to<const Stateful::Field::Entries>;
     store::Set(DefaultLayoutEntries);
 }
 void Audio::Faust::FaustGraph::Style::LayoutFaust() const {
@@ -901,8 +906,8 @@ void Audio::Faust::FaustLog::Render() const {
 
 void Audio::Faust::Render() const {}
 
-Audio::Graph::Node::Node(StateMember *parent, string_view path_segment, string_view name_help, bool on)
-    : UIStateMember(parent, path_segment, name_help) {
+Audio::Graph::Node::Node(Stateful::Base *parent, string_view path_segment, string_view name_help, bool on)
+    : UIStateful(parent, path_segment, name_help) {
     store::Set(On, on);
 }
 

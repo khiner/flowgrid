@@ -1,16 +1,16 @@
 
 #include "App.h"
 
-#include "immer/map.hpp"
 #include "imgui_internal.h"
+#include "immer/map.hpp"
 #include "implot.h"
 
 #include "AppPreferences.h"
-#include "Helper/File.h"
-#include "ProjectConstants.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Core/Store/StoreJson.h"
+#include "Helper/File.h"
+#include "ProjectConstants.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -125,8 +125,8 @@ void State::Render() const {
 
     // Draw non-window children.
     for (const auto *child : Children) {
-        if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
-            if (!dynamic_cast<const Window *>(child)) {
+        if (const auto *ui_child = dynamic_cast<const UIStateful *>(child)) {
+            if (!dynamic_cast<const Stateful::Window *>(child)) {
                 ui_child->Draw();
             }
         }

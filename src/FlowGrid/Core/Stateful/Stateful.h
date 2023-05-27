@@ -15,18 +15,19 @@ using std::string, std::string_view;
 // todo don't split on escaped '\?'
 std::pair<string_view, string_view> ParseHelpText(string_view str);
 
-struct StateMember {
-    inline static std::unordered_map<ID, StateMember *> WithId; // Access any state member by its ID.
+namespace Stateful {
+struct Base {
+    inline static std::unordered_map<ID, Base *> WithId; // Access any state member by its ID.
 
-    StateMember(StateMember *parent = nullptr, string_view path_segment = "", string_view name_help = "");
-    StateMember(StateMember *parent, string_view path_segment, std::pair<string_view, string_view> name_help);
+    Base(Base *parent = nullptr, string_view path_segment = "", string_view name_help = "");
+    Base(Base *parent, string_view path_segment, std::pair<string_view, string_view> name_help);
 
-    virtual ~StateMember();
-    const StateMember *Child(Count i) const { return Children[i]; }
+    virtual ~Base();
+    const Base *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }
 
-    const StateMember *Parent;
-    std::vector<StateMember *> Children{};
+    const Base *Parent;
+    std::vector<Base *> Children{};
     const string PathSegment;
     const StorePath Path;
     const string Name, Help, ImGuiLabel;
@@ -38,18 +39,19 @@ protected:
 };
 
 namespace Field {
-struct Base : StateMember {
+struct Base : Stateful::Base {
     inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
 
-    Base(StateMember *parent, string_view path_segment, string_view name_help);
+    Base(Stateful::Base *parent, string_view path_segment, string_view name_help);
     ~Base();
 
     virtual void Update() = 0;
 };
 } // namespace Field
+} // namespace Stateful
 
 /**
-Convenience macros for compactly defining `StateMember` types and their properties.
+Convenience macros for compactly defining `Stateful` types and their properties.
 
 todo These will very likely be defined in a separate language once the API settles down.
   If we could hot-reload and only recompile the needed bits without restarting the app, it would accelerate development A TON.
@@ -72,10 +74,10 @@ todo Try out replacing semicolon separators by e.g. commas.
     (string with value the same as the variable name).
     - `Prop_` is the same as `Prop`, but supports overriding the displayed name & adding help text in the third arg.
     - Arguments
-      1) `PropType`: Any type deriving from `StateMember`.
+      1) `PropType`: Any type deriving from `Stateful`.
       2) `PropName` (use PascalCase) is used for:
         - The ID of the property, relative to its parent (`this` during the macro's execution).
-        - The name of the instance variable added to `this` (again, defined like any other instance variable in a `StateMember`).
+        - The name of the instance variable added to `this` (again, defined like any other instance variable in a `Stateful`).
         - The default label displayed in the UI is a 'Sentense cased' label derived from the prop's 'PascalCase' `PropName` property-id/path-segment (the second arg).
       3) `NameHelp`
         - A string with format "Label string?Help string".
@@ -85,47 +87,47 @@ todo Try out replacing semicolon separators by e.g. commas.
           - E.g. `Prop(Bool, TestAThing, "Test-a-thing?A state member for testing things")` overrides the default "Test a thing" label with a hyphenation.
           - Or, provide nothing before the '?' to add a help string without overriding the default `PropName`-derived label.
             - E.g. "?A state member for testing things."
-* Member types
-  - `Member` defines a plain old state type.
-  - `UIMember` defines a drawable state type.
-    - `UIMember_` is the same as `UIMember`, but adds a custom constructor implementation (with the same arguments).
-  - `WindowMember` defines a drawable state type whose contents are rendered to a window.
-    - `WindowMember_` is the same as `WindowMember`, but allows passing either:
+* Stateful types
+  - `DefineStateful` defines a plain old state type.
+  - `DefineUI` defines a drawable state type.
+    - `DefineUI_` is the same as `DefineUI`, but adds a custom constructor implementation (with the same arguments).
+  - `DefineWindow` defines a drawable state type whose contents are rendered to a window.
+    - `DefineWindow_` is the same as `DefineWindow`, but allows passing either:
       - a `bool` to override the default `true` visibility, or
       - a `Menu` to define the window's menu.
-    - `TabsWindow` is a `WindowMember` that renders all its props as tabs. (except the `Visible` boolean member coming from `WindowMember`).
-  - todo Refactor docking behavior out of `WindowMember` into a new `DockMember` type.
+    - `TabsWindow` is a `DefineWindow` that renders all its props as tabs. (except the `Visible` boolean member coming from `DefineWindow`).
+  - todo Refactor docking behavior out of `DefineWindow` into a new `DefineDocked` type.
 
 **/
 
 #define Prop(PropType, PropName, ...) PropType PropName{this, (#PropName), "", __VA_ARGS__};
 #define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, (#PropName), (NameHelp), __VA_ARGS__};
 
-#define Member(MemberName, ...)         \
-    struct MemberName : StateMember {   \
-        using StateMember::StateMember; \
-        __VA_ARGS__;                    \
+#define DefineStateful(TypeName, ...)  \
+    struct TypeName : Stateful::Base { \
+        using Stateful::Base::Base;    \
+        __VA_ARGS__;                   \
     };
 
-struct UIStateMember : StateMember, Drawable {
-    using StateMember::StateMember;
+struct UIStateful : Stateful::Base, Drawable {
+    using Stateful::Base::Base;
     void DrawWindows() const; // Recursively draw all windows in the state tree. Note that non-window members can contain windows.
 };
 
-#define UIMember(MemberName, ...)           \
-    struct MemberName : UIStateMember {     \
-        using UIStateMember::UIStateMember; \
-        __VA_ARGS__;                        \
-                                            \
-    protected:                              \
-        void Render() const override;       \
+#define DefineUI(TypeName, ...)       \
+    struct TypeName : UIStateful {    \
+        using UIStateful::UIStateful; \
+        __VA_ARGS__;                  \
+                                      \
+    protected:                        \
+        void Render() const override; \
     };
 
-#define UIMember_(MemberName, ...)                                                             \
-    struct MemberName : UIStateMember {                                                        \
-        MemberName(StateMember *parent, string_view path_segment, string_view name_help = ""); \
-        __VA_ARGS__;                                                                           \
-                                                                                               \
-    protected:                                                                                 \
-        void Render() const override;                                                          \
+#define DefineUI_(TypeName, ...)                                                                \
+    struct TypeName : UIStateful {                                                              \
+        TypeName(Stateful::Base *parent, string_view path_segment, string_view name_help = ""); \
+        __VA_ARGS__;                                                                            \
+                                                                                                \
+    protected:                                                                                  \
+        void Render() const override;                                                           \
     };

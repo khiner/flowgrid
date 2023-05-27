@@ -1,32 +1,33 @@
-#include "WindowMember.h"
+#include "Window.h"
 
 #include "imgui_internal.h"
 
 #include "Core/Store/StoreFwd.h"
 
-void UIStateMember::DrawWindows() const {
+void UIStateful::DrawWindows() const {
     for (const auto *child : Children) {
-        if (const auto *window_child = dynamic_cast<const Window *>(child)) {
+        if (const auto *window_child = dynamic_cast<const Stateful::Window *>(child)) {
             window_child->Draw();
         }
     }
     for (const auto *child : Children) {
-        if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
+        if (const auto *ui_child = dynamic_cast<const UIStateful *>(child)) {
             ui_child->DrawWindows();
         }
     }
 }
 
-Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const bool visible)
-    : UIStateMember(parent, path_segment, name_help) {
+using namespace ImGui;
+
+namespace Stateful {
+Window::Window(Stateful::Base *parent, string_view path_segment, string_view name_help, const bool visible)
+    : UIStateful(parent, path_segment, name_help) {
     store::Set(Visible, visible);
 }
-Window::Window(StateMember *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
-    : UIStateMember(parent, path_segment, name_help), WindowFlags(flags) {}
-Window::Window(StateMember *parent, string_view path_segment, string_view name_help, Menu menu)
-    : UIStateMember(parent, path_segment, name_help), WindowMenu{std::move(menu)} {}
-
-using namespace ImGui;
+Window::Window(Stateful::Base *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
+    : UIStateful(parent, path_segment, name_help), WindowFlags(flags) {}
+Window::Window(Stateful::Base *parent, string_view path_segment, string_view name_help, Menu menu)
+    : UIStateful(parent, path_segment, name_help), WindowMenu{std::move(menu)} {}
 
 ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }
 
@@ -57,11 +58,12 @@ void Window::MenuItem() const {
 void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
+} // namespace Stateful
 
 void TabsWindow::Render(const std::set<ID> &exclude) const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
-            if (const auto *ui_child = dynamic_cast<const UIStateMember *>(child)) {
+            if (const auto *ui_child = dynamic_cast<const UIStateful *>(child)) {
                 if (!exclude.contains(ui_child->Id) && ui_child->Id != Visible.Id && BeginTabItem(child->ImGuiLabel.c_str())) {
                     ui_child->Draw();
                     EndTabItem();

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Core/Stateful/WindowMember.h"
+#include "Core/Stateful/Window.h"
 
-WindowMember(
+DefineWindow(
     ApplicationSettings,
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
 );

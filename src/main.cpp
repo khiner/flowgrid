@@ -19,7 +19,7 @@ int main(int, const char **) {
     // Create the global canonical store, initially containing the full application state constructed by `State`.
     store::CommitTransient();
     // Ensure all store values set during initialization are reflected in cached field/collection values.
-    for (auto *field : ranges::views::values(Field::Base::WithPath)) field->Update();
+    for (auto *field : ranges::views::values(Stateful::Field::Base::WithPath)) field->Update();
 
     Project::Init(); // Start project.
 

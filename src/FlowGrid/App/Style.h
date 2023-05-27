@@ -19,7 +19,7 @@ namespace FlowGrid {
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    UIMember_(
+    DefineUI_(
         FlowGridStyle,
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
@@ -32,13 +32,13 @@ struct Style : TabsWindow {
         static const char *GetColorName(FlowGridCol idx);
     );
 
-    struct ImGuiStyle : UIStateMember {
-        ImGuiStyle(StateMember *parent, string_view path_segment, string_view name_help = "");
+    struct ImGuiStyle : UIStateful {
+        ImGuiStyle(Stateful::Base *parent, string_view path_segment, string_view name_help = "");
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImGuiColors : Colors {
-            ImGuiColors(StateMember *parent, string_view path_segment, string_view name_help);
+            ImGuiColors(Stateful::Base *parent, string_view path_segment, string_view name_help);
         };
 
         void Apply(ImGuiContext *ctx) const;
@@ -115,13 +115,13 @@ struct Style : TabsWindow {
         void Render() const override;
     };
 
-    struct ImPlotStyle : UIStateMember {
-        ImPlotStyle(StateMember *parent, string_view path_segment, string_view name_help = "");
+    struct ImPlotStyle : UIStateful {
+        ImPlotStyle(Stateful::Base *parent, string_view path_segment, string_view name_help = "");
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImPlotColors : Colors {
-            ImPlotColors(StateMember *parent, string_view path_segment, string_view name_help);
+            ImPlotColors(Stateful::Base *parent, string_view path_segment, string_view name_help);
         };
 
         void Apply(ImPlotContext *ctx) const;

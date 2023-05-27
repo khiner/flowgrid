@@ -2,17 +2,17 @@
 
 #include "FileDialogData.h"
 
-#include "Core/Stateful/WindowMember.h"
+#include "Core/Stateful/Window.h"
 #include "Core/Store/StoreFwd.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-UIMember(
+DefineUI(
     FileDialog,
 
     void Apply(const Action::FileDialogAction &) const;
     void Set(const FileDialogData &) const;
 
-    UIMember(Demo);
+    DefineUI(Demo);
 
     Prop(Bool, Visible);
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Core/Stateful/WindowMember.h"
+#include "Core/Stateful/Window.h"
 #include "FileDialog/FileDialog.h"
 
 struct Demo : TabsWindow {
-    Demo(StateMember *parent, string_view path_segment, string_view name_help);
+    Demo(Stateful::Base *parent, string_view path_segment, string_view name_help);
 
-    UIMember(ImGuiDemo);
-    UIMember(ImPlotDemo);
+    DefineUI(ImGuiDemo);
+    DefineUI(ImPlotDemo);
 
     Prop(ImGuiDemo, ImGui);
     Prop(ImPlotDemo, ImPlot);

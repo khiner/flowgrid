@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Stateful/WindowMember.h"
+#include "Core/Stateful/Window.h"
 #include "Core/Store/Store.h"
 
 #include "App/Colors.h"
@@ -112,26 +112,26 @@ struct Audio : TabsWindow {
     void Update() const;
     bool NeedsRestart() const;
 
-    struct Faust : UIStateMember {
-        using UIStateMember::UIStateMember;
+    struct Faust : UIStateful {
+        using UIStateful::UIStateful;
 
-        WindowMember_(
+        DefineWindow_(
             FaustEditor,
             WindowFlags_MenuBar,
 
-            WindowMember(Metrics);
+            DefineWindow(Metrics);
 
             Prop_(Metrics, Metrics, "Faust editor metrics");
         );
 
-        WindowMember_(
+        DefineWindow_(
             FaustGraph,
             Menu({
                 Menu("File", {Action::ShowSaveFaustSvgFileDialog{}}),
                 Menu("View", {Settings.HoverFlags}),
             }),
 
-            UIMember_(
+            DefineUI_(
                 Style,
 
                 Prop_(
@@ -211,7 +211,7 @@ struct Audio : TabsWindow {
                 static const char *GetColorName(FlowGridGraphCol idx);
             );
 
-            Member(
+            DefineStateful(
                 GraphSettings,
                 Prop_(
                     Flags, HoverFlags,
@@ -228,10 +228,10 @@ struct Audio : TabsWindow {
             Prop(Style, Style);
         );
 
-        WindowMember(
+        DefineWindow(
             FaustParams,
 
-            UIMember(
+            DefineUI(
                 Style,
                 Prop(Bool, HeaderTitles, true);
                 // In frame-height units:
@@ -256,7 +256,7 @@ struct Audio : TabsWindow {
             Prop(Style, Style);
         );
 
-        WindowMember(
+        DefineWindow(
             FaustLog,
             Prop(String, Error);
         );
@@ -374,8 +374,8 @@ struct Audio : TabsWindow {
     };
 
     // Corresponds to `ma_device`.
-    struct Device : UIStateMember {
-        using UIStateMember::UIStateMember;
+    struct Device : UIStateful {
+        using UIStateful::UIStateful;
 
         static const vector<U32> PrioritizedSampleRates;
         static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.
@@ -403,14 +403,14 @@ struct Audio : TabsWindow {
     };
 
     // Corresponds to `ma_node_graph`.
-    struct Graph : UIStateMember {
-        using UIStateMember::UIStateMember;
+    struct Graph : UIStateful {
+        using UIStateful::UIStateful;
 
         // Corresponds to `ma_node_base`.
         // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
         // This base `Node` can either be specialized or instantiated on its own.
-        struct Node : UIStateMember {
-            Node(StateMember *parent, string_view path_segment, string_view name_help = "", bool on = true);
+        struct Node : UIStateful {
+            Node(Stateful::Base *parent, string_view path_segment, string_view name_help = "", bool on = true);
 
             void Set(void *) const; // Set MA node.
             void *Get() const; // Get MA node.
@@ -452,14 +452,14 @@ struct Audio : TabsWindow {
             bool NeedsRestart() const override;
         };
 
-        struct Nodes : UIStateMember {
-            using UIStateMember::UIStateMember;
+        struct Nodes : UIStateful {
+            using UIStateful::UIStateful;
 
-            // Iterate over all children, converting each element from a `StateMember *` to a `Node *`.
+            // Iterate over all children, converting each element from a `Stateful::Base *` to a `Node *`.
             // Usage: `for (const Node *node : Nodes) ...`
-            struct Iterator : vector<StateMember *>::const_iterator {
-                Iterator(auto it) : vector<StateMember *>::const_iterator(it) {}
-                const Node *operator*() const { return dynamic_cast<const Node *>(vector<StateMember *>::const_iterator::operator*()); }
+            struct Iterator : vector<Stateful::Base *>::const_iterator {
+                Iterator(auto it) : vector<Stateful::Base *>::const_iterator(it) {}
+                const Node *operator*() const { return dynamic_cast<const Node *>(vector<Stateful::Base *>::const_iterator::operator*()); }
             };
             Iterator begin() const { return Children.cbegin(); }
             Iterator end() const { return Children.cend(); }
@@ -482,10 +482,10 @@ struct Audio : TabsWindow {
         void Update() const;
         void Uninit() const;
 
-        Member(
+        DefineStateful(
             Style,
 
-            UIMember(
+            DefineUI(
                 Matrix,
 
                 Prop_(Float, CellSize, "?The size of each matrix cell, as a multiple of line height.", 1, 1, 3);
@@ -505,7 +505,7 @@ struct Audio : TabsWindow {
         void RenderConnections() const;
     };
 
-    UIMember(Style);
+    DefineUI(Style);
 
     Prop(Device, Device);
     Prop(Graph, Graph);

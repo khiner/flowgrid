@@ -29,28 +29,27 @@ bool IsTransientMode() { return IsTransient; }
 
 TransientStore Transient{};
 
-void OnApplicationStateInitialized() {
-    // Create the global canonical store, initially containing the full application state constructed by `State`.
-    EndTransient(true);
-    // Ensure all store values set during initialization are reflected in cached field/collection values.
-    for (auto *field : ranges::views::values(Field::Base::WithPath)) field->Update();
-}
-
 void BeginTransient() {
     if (IsTransient) return;
 
     Transient = AppStore.transient();
     IsTransient = true;
 }
-const Store EndTransient(bool commit) {
+const Store EndTransient() {
     if (!IsTransient) return AppStore;
 
     const Store new_store = Transient.persistent();
-    if (commit) Set(new_store);
     Transient = {};
     IsTransient = false;
 
     return new_store;
+}
+void CommitTransient() {
+    if (!IsTransient) return;
+
+    Set(Transient.persistent());
+    Transient = {};
+    IsTransient = false;
 }
 
 TransientStore &GetTransient() { return Transient; }
@@ -83,7 +82,7 @@ Patch CreatePatch(const Store &store, const StorePath &base_path) {
 }
 
 Patch CreatePatch(const StorePath &base_path) {
-    return CreatePatch(AppStore, store::EndTransient(false), base_path);
+    return CreatePatch(AppStore, store::EndTransient(), base_path);
 }
 
 void ApplyPatch(const Patch &patch) {

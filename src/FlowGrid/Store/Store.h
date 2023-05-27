@@ -8,12 +8,11 @@
 using std::vector;
 
 namespace store {
-void OnApplicationStateInitialized();
-
 void Apply(const Action::StoreAction &);
 
 void BeginTransient();
-const Store EndTransient(bool commit = true);
+const Store EndTransient();
+void CommitTransient();
 TransientStore &GetTransient(); // xxx temporary until all sets are done internally.
 bool IsTransientMode();
 Store GetPersistent();

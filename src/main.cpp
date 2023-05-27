@@ -16,7 +16,11 @@ const ApplicationSettings &application_settings = s.Settings;
 UIContext UiContext{};
 
 int main(int, const char **) {
-    store::OnApplicationStateInitialized();
+    // Create the global canonical store, initially containing the full application state constructed by `State`.
+    store::CommitTransient();
+    // Ensure all store values set during initialization are reflected in cached field/collection values.
+    for (auto *field : ranges::views::values(Field::Base::WithPath)) field->Update();
+
     Project::Init(); // Start project.
 
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);

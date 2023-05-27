@@ -226,7 +226,7 @@ void SetHistoryIndex(Count index) {
 }
 
 void Project::Init() {
-    store::EndTransient(); // Make sure the store is not in transient mode when initializing a project.
+    store::CommitTransient(); // Make sure the store is not in transient mode when initializing a project.
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {};
@@ -251,7 +251,7 @@ void OpenProject(const fs::path &path) {
             for (const auto &action_moment : gesture) s.Apply(action_moment.first);
             History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
         }
-        SetStore(store::EndTransient(false));
+        SetStore(store::EndTransient());
         ::SetHistoryIndex(indexed_gestures.Index);
     }
 
@@ -344,11 +344,11 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
     const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!state_actions.empty()) {
-        const auto &patch = SetStore(store::EndTransient(false));
+        const auto &patch = SetStore(store::EndTransient());
         History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());
         History.UpdateGesturePaths(state_actions, patch);
     } else {
-        store::EndTransient(false);
+        store::EndTransient();
     }
     if (finalize) History.FinalizeGesture();
 }

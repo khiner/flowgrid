@@ -28,6 +28,7 @@ add_executable(${PROJECT_NAME}
 )
 
 include_directories(
+    src/FlowGrid
     ${SDL3_DIR}/include
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
@@ -58,4 +59,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL SDL3::SDL3 nlohmann_jso
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 add_definitions(-DIMGUI_DEFINE_MATH_OPERATORS) # ImVec2 & ImVec4 math operators
-add_definitions(-DCUSTOM_IMGUIFILEDIALOG_CONFIG="../../src/FlowGrid/FileDialog/Config.h") # Relative to `lib/ImGuiFileDialog`
+add_definitions(-DCUSTOM_IMGUIFILEDIALOG_CONFIG="App/FileDialog/Config.h")

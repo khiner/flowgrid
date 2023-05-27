@@ -10,11 +10,11 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 
-#include "../ImGuiSettings.h"
-#include "../Style.h"
+#include "App/ImGuiSettings.h"
+#include "App/Style.h"
 
-#include "../FileDialog/FileDialog.h"
-#include "../Helper/String.h"
+#include "App/FileDialog/FileDialog.h"
+#include "Helper/String.h"
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>

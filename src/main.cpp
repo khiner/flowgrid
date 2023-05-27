@@ -1,5 +1,5 @@
-#include "FlowGrid/App.h"
-#include "FlowGrid/ProjectConstants.h"
+#include "FlowGrid/App/App.h"
+#include "FlowGrid/App/ProjectConstants.h"
 
 #include "imgui.h"
 #include <filesystem>

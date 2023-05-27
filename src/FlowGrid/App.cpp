@@ -1,14 +1,20 @@
-#include "Store/Store.h"
 
 #include "App.h"
 
-#include <iostream>
-
 #include "immer/map.hpp"
+#include "imgui_internal.h"
+#include "implot.h"
 
+#include "AppPreferences.h"
 #include "Helper/File.h"
 #include "ProjectConstants.h"
+#include "Store/Store.h"
+#include "Store/StoreHistory.h"
+#include "Store/StoreJson.h"
+#include "UI/Widgets.h"
 
+using namespace ImGui;
+using namespace FlowGrid;
 using namespace nlohmann;
 using namespace std::string_literals;
 
@@ -71,12 +77,6 @@ void State::Apply(const Action::StatefulAction &action) const {
     );
 }
 
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "implot.h"
-
-using namespace ImGui;
-
 void State::Render() const {
     MainMenu.Draw();
 
@@ -135,17 +135,6 @@ void State::Render() const {
     DrawWindows();
 }
 
-//-----------------------------------------------------------------------------
-// [SECTION] State windows
-//-----------------------------------------------------------------------------
-#include "Store/StoreHistory.h"
-#include "Store/StoreJson.h"
-#include "UI/Widgets.h"
-
-using namespace FlowGrid;
-
-#include "AppPreferences.h"
-
 void OpenRecentProject::MenuItem() const {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
@@ -154,37 +143,6 @@ void OpenRecentProject::MenuItem() const {
         EndMenu();
     }
 }
-
-Demo::Demo(StateMember *parent, string_view path_segment, string_view name_help)
-    : TabsWindow(parent, path_segment, name_help, ImGuiWindowFlags_MenuBar) {}
-
-void Demo::ImGuiDemo::Render() const {
-    ShowDemoWindow();
-}
-void Demo::ImPlotDemo::Render() const {
-    ImPlot::ShowDemoWindow();
-}
-
-#include "Audio/Faust/FaustGraph.h"
-
-void Info::Render() const {
-    const auto hovered_id = GetHoveredID();
-    if (!hovered_id) return;
-
-    PushTextWrapPos(0);
-    if (StateMember::WithId.contains(hovered_id)) {
-        const auto *member = StateMember::WithId.at(hovered_id);
-        const string help = member->Help.empty() ? std::format("No info available for \"{}\".", member->Name) : member->Help;
-        TextUnformatted(help.c_str());
-    } else if (IsBoxHovered(hovered_id)) {
-        TextUnformatted(GetBoxInfo(hovered_id).c_str());
-    }
-    PopTextWrapPos();
-}
-
-//-----------------------------------------------------------------------------
-// [SECTION] Project
-//-----------------------------------------------------------------------------
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
@@ -300,6 +258,8 @@ void OpenProject(const fs::path &path) {
     SetCurrentProjectPath(path);
 }
 
+#include "Audio/Faust/FaustGraph.h"
+
 void Apply(const Action::NonStatefulAction &action) {
     Match(
         action,
@@ -318,7 +278,7 @@ void Apply(const Action::NonStatefulAction &action) {
         [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, audio.Faust.Code); },
         [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
 
-        // `History.Index`-changing actions:
+        // History-changing actions:
         [&](const Action::Undo &) {
             if (History.Empty()) return;
 

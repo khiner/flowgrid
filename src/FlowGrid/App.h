@@ -2,8 +2,10 @@
 
 #include "Audio/Audio.h"
 #include "Debug.h"
+#include "Demo.h"
 #include "FileDialog/FileDialog.h"
 #include "ImGuiSettings.h"
+#include "Info.h"
 #include "Settings.h"
 #include "Style.h"
 
@@ -12,22 +14,9 @@
  * An immutable reference to the single source-of-truth application state `const State &s` is defined at the bottom of this file.
  */
 
-struct Demo : TabsWindow {
-    Demo(StateMember *parent, string_view path_segment, string_view name_help);
-
-    UIMember(ImGuiDemo);
-    UIMember(ImPlotDemo);
-
-    Prop(ImGuiDemo, ImGui);
-    Prop(ImPlotDemo, ImPlot);
-    Prop(FileDialog::Demo, FileDialog);
-};
-
 struct OpenRecentProject : MenuItemDrawable {
     void MenuItem() const override;
 };
-
-WindowMember(Info);
 
 UIMember(
     State,

@@ -13,6 +13,15 @@ using ImGuiSliderFlags = int;
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Stateful::Field {
+struct Base : Stateful::Base {
+    inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
+
+    Base(Stateful::Base *parent, string_view path_segment, string_view name_help);
+    ~Base();
+
+    virtual void Update() = 0;
+};
+
 struct PrimitiveBase : Base, Drawable {
     PrimitiveBase(Stateful::Base *parent, string_view path_segment, string_view name_help, Primitive value);
 

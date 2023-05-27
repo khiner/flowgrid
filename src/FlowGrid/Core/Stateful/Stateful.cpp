@@ -41,16 +41,6 @@ void Base::HelpMarker(const bool after) const {
     fg::HelpMarker(Help.c_str());
     if (!after) ImGui::SameLine();
 }
-
-namespace Field {
-Base::Base(Stateful::Base *parent, string_view path_segment, string_view name_help)
-    : Stateful::Base(parent, path_segment, name_help) {
-    WithPath[Path] = this;
-}
-Base::~Base() {
-    WithPath.erase(Path);
-}
-} // namespace Field
 } // namespace Stateful
 
 // Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.

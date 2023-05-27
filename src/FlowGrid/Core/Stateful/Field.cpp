@@ -18,6 +18,21 @@ using namespace Action;
 using std::vector;
 
 namespace Stateful::Field {
+Base::Base(Stateful::Base *parent, string_view path_segment, string_view name_help)
+    : Stateful::Base(parent, path_segment, name_help) {
+    WithPath[Path] = this;
+}
+Base::~Base() {
+    WithPath.erase(Path);
+}
+
+PrimitiveBase::PrimitiveBase(Stateful::Base *parent, string_view id, string_view name_help, Primitive value)
+    : Base(parent, id, name_help) {
+    store::Set(*this, value);
+}
+
+Primitive PrimitiveBase::Get() const { return store::Get(Path); }
+
 UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, U32 value, U32 min, U32 max)
     : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
 UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value)
@@ -63,13 +78,6 @@ Flags::Item::Item(const char *name_and_help) {
     Name = name;
     Help = help;
 }
-
-PrimitiveBase::PrimitiveBase(Stateful::Base *parent, string_view id, string_view name_help, Primitive value)
-    : Base(parent, id, name_help) {
-    store::Set(*this, value);
-}
-
-Primitive PrimitiveBase::Get() const { return store::Get(Path); }
 
 void Bool::Toggle() const { q(ToggleValue{Path}); }
 

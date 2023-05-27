@@ -37,17 +37,6 @@ protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 };
-
-namespace Field {
-struct Base : Stateful::Base {
-    inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
-
-    Base(Stateful::Base *parent, string_view path_segment, string_view name_help);
-    ~Base();
-
-    virtual void Update() = 0;
-};
-} // namespace Field
 } // namespace Stateful
 
 /**

@@ -67,7 +67,7 @@ void State::Apply(const Action::StatefulAction &action) const {
         [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
 
         [&](const OpenFaustFile &a) { store::Set(Audio.Faust.Code, FileIO::read(a.path)); },
-        [&](const CloseApplication &) { store::Set({{UiProcess.Running, false}, {Audio.Device.On, false}}); },
+        [&](const CloseApplication &) { store::Set({{Running, false}, {Audio.Device.On, false}}); },
     );
 }
 
@@ -76,8 +76,6 @@ void State::Apply(const Action::StatefulAction &action) const {
 #include "implot.h"
 
 using namespace ImGui;
-
-void State::UIProcess::Render() const {}
 
 void State::Render() const {
     MainMenu.Draw();

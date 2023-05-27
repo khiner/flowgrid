@@ -4,8 +4,8 @@
 #include "Debug.h"
 #include "FileDialog/FileDialog.h"
 #include "ImGuiSettings.h"
-#include "Style.h"
 #include "Settings.h"
+#include "Style.h"
 
 /**
  * This class defines the main `State`, which fully describes the application at any point in time.
@@ -64,17 +64,11 @@ UIMember(
         },
         true};
 
-    WindowMember_(
-        UIProcess,
-        false,
-        Prop_(Bool, Running, std::format("?Disabling ends the {} process.\nEnabling will start the process up again.", Name), true);
-    );
-
+    Prop(Bool, Running, true);
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(fg::Style, Style);
     Prop(Audio, Audio);
     Prop(ApplicationSettings, Settings);
-    Prop(UIProcess, UiProcess);
     Prop(FileDialog, FileDialog);
     Prop(Info, Info);
 

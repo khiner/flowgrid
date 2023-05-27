@@ -466,7 +466,7 @@ static bool NeedsRestart() {
 void Audio::Update() const {
     // Faust setup is only dependent on the faust code.
     // TODO now that we're not dependent on global App.h state, we need to find a way to destroy the Faust context when the app closes.
-    // const bool is_faust_initialized = s.UiProcess.Running && Faust.Code && !Faust.Log.Error;
+    // const bool is_faust_initialized = s.Running && Faust.Code && !Faust.Log.Error;
     const bool is_faust_initialized = Faust.Code && !Faust.Log.Error;
     const bool faust_needs_restart = FaustContext::NeedsRestart(); // Don't inline! Must run during every update.
     if (!FaustContext::Dsp && is_faust_initialized) {

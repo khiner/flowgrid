@@ -23,7 +23,7 @@ bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *h
     return result;
 }
 
-void IGFD::InitializeDemo() {
+void IGFD::Init() {
     Dialog = ImGuiFileDialog::Instance();
 #ifdef USE_THUMBNAILS
     Dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void {
@@ -290,7 +290,7 @@ void FileDialog::Demo::Render() const {
     Unindent();
 }
 
-void IGFD::CleanupDemo() {
+void IGFD::Uninit() {
 #ifdef USE_THUMBNAILS
     Dialog->ManageGPUThumbnails();
 #endif

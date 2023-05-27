@@ -177,7 +177,7 @@ UIContext CreateUi() {
 
     RenderContext = CreateRenderContext();
     const auto &ui_context = CreateUiContext(RenderContext);
-    IGFD::InitializeDemo();
+    IGFD::Init();
 
     return ui_context;
 }
@@ -247,6 +247,6 @@ void TickUi(const Drawable &app) {
 }
 
 void DestroyUi() {
-    IGFD::CleanupDemo();
+    IGFD::Uninit();
     DestroyRenderContext(RenderContext);
 }

@@ -10,8 +10,8 @@
 #include "faust/gui/PathBuilder.h"
 #include "faust/gui/UI.h"
 
-#include "UI/NamesAndValues.h"
 #include "App/Audio/Sample.h" // Must be included before any Faust includes
+#include "UI/NamesAndValues.h"
 
 using std::string, std::string_view, std::vector, std::map;
 using Real = Sample;

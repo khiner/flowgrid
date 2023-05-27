@@ -31,13 +31,13 @@ Every user action that affects the application state results in the following:
   This is only a snapshot conceptually, as only a small amount of data actually needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (
   ) data structure](https://youtu.be/imrSQ82dYns).
 - Generate an `Action` instance containing all the information needed to execute the logical action.
-- Pass this action to the `State::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.
+- Pass this action to the `App::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.
 - The single canonical application store instance is overwritten with this new resultant store.
   This assignment is thread-safe.
   Due to the immutability of the canonical application store instance, readers will always see a consistent version of either the old state (before the action) or the new state (after the action).
 
-A single instance of a simple nested struct of type `State` wraps around the application store and provides hierarchically organized access, metadata (like its path in the store, or its corresponding ImGui ID), and methods for transforming or rendering the state member.
-Each leaf member of `State` is a `Field` or simple collections of `Field`s.
+A single instance of a simple nested struct of type `App` wraps around the application store and provides hierarchically organized access, metadata (like its path in the store, or its corresponding ImGui ID), and methods for applying actions to rendering its stateful members.
+Each leaf member of `App` is a `Stateful::Field` or simple collections of `Field`s.
 A `Field` is a thin wrapper around its corresponding `Primitive` value in the application store (of type `immer::map<Path, Primitive>`).
 A `Primitive` is defined as:
 
@@ -47,7 +47,7 @@ using Primitive = std::variant<bool, unsigned int, int, float, string>;
 
 `Field`s also provide state metadata, conversion & rendering methods, and behave syntactically like the `Primitive`s they wrap.
 
-Here are some high-level architecture design goals:
+Here are some high-level application architecture design goals:
 - Store the source-of-truth application state in a single `struct` with global read access.
 - Perform all actions that affect the application state in one place.
 - Provide global read access to all application runtime state.

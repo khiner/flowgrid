@@ -18,7 +18,7 @@ using namespace FlowGrid;
 using namespace nlohmann;
 using namespace std::string_literals;
 
-void State::Apply(const Action::StatefulAction &action) const {
+void App::Apply(const Action::StatefulAction &action) const {
     using namespace Action;
     Match(
         action,
@@ -77,7 +77,7 @@ void State::Apply(const Action::StatefulAction &action) const {
     );
 }
 
-void State::Render() const {
+void App::Render() const {
     MainMenu.Draw();
 
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
@@ -209,7 +209,7 @@ Patch SetStore(const Store &store) {
 
         modified_fields.emplace(modified_field->second);
 
-        // Setting `ImGuiSettings` does not require a `s.Apply` on the action, since the action will be initiated by ImGui itself,
+        // Setting `ImGuiSettings` does not require an `app.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
         if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
         else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiStyle;
@@ -248,7 +248,7 @@ void OpenProject(const fs::path &path) {
         const StoreHistory::IndexedGestures indexed_gestures = project;
         store::BeginTransient();
         for (const auto &gesture : indexed_gestures.Gestures) {
-            for (const auto &action_moment : gesture) s.Apply(action_moment.first);
+            for (const auto &action_moment : gesture) app.Apply(action_moment.first);
             History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
         }
         SetStore(store::EndTransient());
@@ -330,7 +330,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
             action,
             [&](const Action::StatefulAction &a) {
                 store::BeginTransient(); // Idempotent.
-                s.Apply(a);
+                app.Apply(a);
                 state_actions.emplace_back(a, action_moment.second);
             },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.

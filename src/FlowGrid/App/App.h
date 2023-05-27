@@ -10,8 +10,8 @@
 #include "Style.h"
 
 /**
- * This class defines the main `State`, which fully describes the application at any point in time.
- * An immutable reference to the single source-of-truth application state `const State &s` is defined at the bottom of this file.
+ * This class defines the main `App`, which fully describes the application at any point in time.
+ * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
 
 struct OpenRecentProject : MenuItemDrawable {
@@ -19,7 +19,7 @@ struct OpenRecentProject : MenuItemDrawable {
 };
 
 DefineUI(
-    State,
+    App,
 
     void Apply(const Action::StatefulAction &) const;
 
@@ -72,21 +72,21 @@ struct Project {
 };
 
 /**
-Declare global read-only accessor for the canonical state instance `s`.
+Declare global read-only accessor for the canonical state instance `app`.
 
-`s` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
+`app` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
 It provides a complete nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
 Basically, it contains all data for each state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
 (Actually, each primitive leaf value is cached on its respective `Field`, but this is a technicality - the `Store` is conceptually the source of truth.)
 
-`s` has an immutable assignment operator, which return a modified copy of the `Store` value resulting from applying the assignment to the provided `Store`.
+`app` has an immutable assignment operator, which return a modified copy of the `Store` value resulting from applying the assignment to the provided `Store`.
 (Note that this is only _conceptually_ a copy - see [Application Architecture](https://github.com/khiner/flowgrid#application-architecture) for more details.)
 
 Usage example:
 
 ```cpp
 // Get a read-only reference to the complete, current, structured audio state instance:
-const Audio &audio = s.Audio;
+const Audio &audio = app.Audio;
 ```
 */
-extern const State &s;
+extern const App &app;

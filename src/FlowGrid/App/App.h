@@ -26,8 +26,8 @@ DefineUI(
     OpenRecentProject open_recent_project{};
     const Menu MainMenu{
         {
-            Menu("File", {Action::OpenEmptyProject{}, Action::ShowOpenProjectDialog{}, open_recent_project, Action::OpenDefaultProject{}, Action::SaveCurrentProject{}, Action::SaveDefaultProject{}}),
-            Menu("Edit", {Action::Undo{}, Action::Redo{}}),
+            Menu("File", {Action::OpenEmptyProject::MenuItem, Action::ShowOpenProjectDialog::MenuItem, open_recent_project, Action::OpenDefaultProject::MenuItem, Action::SaveCurrentProject::MenuItem, Action::SaveDefaultProject::MenuItem}),
+            Menu("Edit", {Action::Undo::MenuItem, Action::Redo::MenuItem}),
             Menu(
                 "Windows",
                 {

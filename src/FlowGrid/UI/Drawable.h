@@ -6,3 +6,7 @@ struct Drawable {
 protected:
     virtual void Render() const = 0;
 };
+
+struct MenuItemDrawable {
+    virtual void MenuItem() const = 0;
+};

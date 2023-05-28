@@ -2,7 +2,7 @@
 
 #include "App/Audio/Audio.h"
 
-static const Menu FileMenu = {"File", {Action::ShowOpenFaustFileDialog{}, Action::ShowSaveFaustFileDialog{}}};
+static const Menu FileMenu = {"File", {Action::ShowOpenFaustFileDialog::MenuItem, Action::ShowSaveFaustFileDialog::MenuItem}};
 
 using namespace ImGui;
 

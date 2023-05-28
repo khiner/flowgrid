@@ -2,17 +2,21 @@
 
 #include <set>
 
-#include "Core/Action/Action.h" // Windows have menus, which can perform actions.
 #include "Field.h"
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
+template<typename T>
+concept CanDrawMenuItem = requires(const T t) {
+    { t.MenuItem() } -> std::same_as<void>;
+};
+
 struct Menu : Drawable {
     using Item = std::variant<
-        const Menu,
-        const std::reference_wrapper<MenuItemDrawable>,
-        const Action::Any>; // todo refactor to avoid using `Action::Any`.
+        Menu,
+        std::reference_wrapper<MenuItemDrawable>,
+        std::function<void()>>;
 
     Menu(string_view label, const std::vector<const Item> items);
     explicit Menu(const std::vector<const Item> items);

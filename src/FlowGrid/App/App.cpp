@@ -358,8 +358,15 @@ void q(const Action::Any &&action, bool flush) {
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
 }
 
-#define DefineQ(ActionType) \
-    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }
+#define DefineQ(ActionType)                                                            \
+    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }                \
+    void Action::ActionType::MenuItem() {                                              \
+        const string menu_label = GetMenuLabel();                                      \
+        const string shortcut = GetShortcut();                                         \
+        if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, Allowed())) { \
+            Action::ActionType{}.q();                                                  \
+        }                                                                              \
+    }
 
 DefineQ(Undo);
 DefineQ(Redo);

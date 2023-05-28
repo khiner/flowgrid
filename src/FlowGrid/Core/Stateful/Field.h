@@ -2,10 +2,6 @@
 
 #include "Stateful.h"
 
-struct MenuItemDrawable {
-    virtual void MenuItem() const = 0;
-};
-
 struct ImVec2;
 struct ImColor;
 using ImGuiColorEditFlags = int;

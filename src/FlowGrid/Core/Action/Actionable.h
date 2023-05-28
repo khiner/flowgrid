@@ -78,11 +78,16 @@ private:
  This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
  Defined in `App.cpp`.
 */
+
 #define Define(ActionType, is_savable, is_contextual, merge_type, meta_str, ...) \
     struct ActionType {                                                          \
         inline static const Metadata _Meta{#ActionType, meta_str};               \
         static constexpr bool IsSavable = is_savable;                            \
         void q(bool flush = false) const;                                        \
+        static void MenuItem();                                                  \
+        static const std::string &GetName() { return _Meta.Name; }               \
+        static const std::string &GetMenuLabel() { return _Meta.MenuLabel; }     \
+        static const std::string &GetShortcut() { return _Meta.Shortcut; }       \
         ALLOWED_FUNCTION_##is_contextual                                         \
             MergeType_##merge_type(ActionType)                                   \
                 __VA_ARGS__;                                                     \
@@ -126,7 +131,7 @@ struct ActionVariant : std::variant<T...> {
             using MemberType = std::variant_alternative_t<I, variant_t>;
             auto map = CreateIndexToShortcut<I + 1>();
             if (!MemberType::_Meta.Shortcut.empty()) {
-                map[I] = MemberType::_Meta.Shortcut;
+                map[I] = MemberType::GetShortcut();
             }
             return map;
         }
@@ -137,10 +142,10 @@ struct ActionVariant : std::variant<T...> {
     size_t GetId() const { return this->index(); }
 
     const std::string &GetName() const {
-        return Call([](auto &a) -> const std::string & { return a._Meta.Name; });
+        return Call([](auto &a) -> const std::string & { return a.GetName(); });
     }
     const std::string &GetMenuLabel() const {
-        return Call([](auto &a) -> const std::string & { return a._Meta.MenuLabel; });
+        return Call([](auto &a) -> const std::string & { return a.GetMenuLabel(); });
     }
     std::string GetShortcut() const {
         const auto id = GetId();

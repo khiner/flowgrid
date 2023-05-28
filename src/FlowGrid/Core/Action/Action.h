@@ -113,14 +113,6 @@ using Gesture = std::vector<StatefulActionMoment>;
 using Gestures = std::vector<Gesture>;
 } // namespace Action
 
-/**
- This is the main action-queue method.
- Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
- This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
- Defined in `App.cpp`.
-*/
-void q(const Action::Any &&, bool flush = false);
-
 namespace nlohmann {
 DeclareJson(Action::StatefulAction);
 } // namespace nlohmann

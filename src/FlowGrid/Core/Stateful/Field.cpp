@@ -7,7 +7,6 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/iota.hpp>
 
-#include "Core/Action/Action.h"
 #include "Core/Store/Store.h"
 #include "UI/UI.h"
 #include "UI/Widgets.h"
@@ -79,7 +78,9 @@ Flags::Item::Item(const char *name_and_help) {
     Help = help;
 }
 
-void Bool::Toggle() const { q(ToggleValue{Path}); }
+void Bool::Toggle() const {
+    ToggleValue{Path}.q();
+}
 
 void Bool::Render() const {
     bool value = Value;
@@ -103,7 +104,7 @@ void UInt::Render() const {
     U32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &Min, &Max, "%d");
     UiContext.WidgetGestured();
-    if (edited) q(SetValue{Path, value});
+    if (edited) SetValue{Path, value}.q();
     HelpMarker();
 }
 void UInt::Render(const vector<U32> &options) const {
@@ -113,7 +114,7 @@ void UInt::Render(const vector<U32> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), ValueName(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(ValueName(option).c_str(), is_selected)) q(SetValue{Path, option});
+            if (Selectable(ValueName(option).c_str(), is_selected)) SetValue{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -133,7 +134,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     // todo use auto for FG colors (link to ImGui colors)
     if (allow_auto) {
         if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-        if (Button("Auto")) q(SetValue{Path, is_auto ? mapped_value : AutoColor});
+        if (Button("Auto")) SetValue{Path, is_auto ? mapped_value : AutoColor}.q();
         if (!is_auto) PopStyleVar();
         SameLine();
     }
@@ -149,14 +150,14 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
 
     PopID();
 
-    if (changed) q(SetValue{Path, ColorConvertFloat4ToU32(value)});
+    if (changed) SetValue{Path, ColorConvertFloat4ToU32(value)}.q();
 }
 
 void Int::Render() const {
     int value = Value;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, Min, Max, "%d", ImGuiSliderFlags_None);
     UiContext.WidgetGestured();
-    if (edited) q(SetValue{Path, value});
+    if (edited) SetValue{Path, value}.q();
     HelpMarker();
 }
 void Int::Render(const vector<int> &options) const {
@@ -166,7 +167,7 @@ void Int::Render(const vector<int> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(to_string(option).c_str(), is_selected)) q(SetValue{Path, option});
+            if (Selectable(to_string(option).c_str(), is_selected)) SetValue{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -178,7 +179,7 @@ void Float::Render() const {
     float value = Value;
     const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
     UiContext.WidgetGestured();
-    if (edited) q(SetValue{Path, value});
+    if (edited) SetValue{Path, value}.q();
     HelpMarker();
 }
 
@@ -193,7 +194,7 @@ void Enum::Render(const vector<int> &options) const {
         for (int option : options) {
             const bool is_selected = option == value;
             const auto &name = OptionName(option);
-            if (Selectable(name.c_str(), is_selected)) q(SetValue{Path, option});
+            if (Selectable(name.c_str(), is_selected)) SetValue{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -206,7 +207,7 @@ void Enum::MenuItem() const {
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
-            if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) q(SetValue{Path, int(i)});
+            if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) SetValue{Path, int(i)}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
@@ -220,7 +221,7 @@ void Flags::Render() const {
             const auto &item = Items[i];
             const int option_mask = 1 << i;
             bool is_selected = option_mask & value;
-            if (Checkbox(item.Name.c_str(), &is_selected)) q(SetValue{Path, value ^ option_mask}); // Toggle bit
+            if (Checkbox(item.Name.c_str(), &is_selected)) SetValue{Path, value ^ option_mask}.q(); // Toggle bit
             if (!item.Help.empty()) {
                 SameLine();
                 fg::HelpMarker(item.Help.c_str());
@@ -242,7 +243,7 @@ void Flags::MenuItem() const {
                 fg::HelpMarker(item.Help.c_str());
                 SameLine();
             }
-            if (ImGui::MenuItem(item.Name.c_str(), nullptr, is_selected)) q(SetValue{Path, value ^ option_mask}); // Toggle bit
+            if (ImGui::MenuItem(item.Name.c_str(), nullptr, is_selected)) SetValue{Path, value ^ option_mask}.q(); // Toggle bit
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();
@@ -260,7 +261,7 @@ void String::Render(const vector<string> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option : options) {
             const bool is_selected = option == value;
-            if (Selectable(option.c_str(), is_selected)) q(SetValue{Path, option});
+            if (Selectable(option.c_str(), is_selected)) SetValue{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -278,7 +279,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
     UiContext.WidgetGestured();
-    if (edited) q(SetValues{{{X.Path, values.x}, {Y.Path, values.y}}});
+    if (edited) SetValues{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
     HelpMarker();
 }
 
@@ -293,8 +294,8 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
     if (Linked.CheckedDraw()) {
         // Linking sets the max value to the min value.
-        if (X < Y) q(SetValue{Y.Path, X});
-        else if (Y < X) q(SetValue{X.Path, Y});
+        if (X < Y) SetValue{Y.Path, X}.q();
+        else if (Y < X) SetValue{X.Path, Y}.q();
     }
     PopID();
     SameLine();
@@ -304,9 +305,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (edited) {
         if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;
-            q(SetValues{{{X.Path, changed_value}, {Y.Path, changed_value}}});
+            SetValues{{{X.Path, changed_value}, {Y.Path, changed_value}}}.q();
         } else {
-            q(SetValues{{{X.Path, values.x}, {Y.Path, values.y}}});
+            SetValues{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
         }
     }
     HelpMarker();

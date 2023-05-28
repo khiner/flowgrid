@@ -182,7 +182,7 @@ void Style::ImGuiStyle::Render() const {
     using namespace Action;
 
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) q(SetImGuiColorStyle{style_idx});
+    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) SetImGuiColorStyle{style_idx}.q();
 
     const auto &io = GetIO();
     const auto *font_current = GetFont();
@@ -190,7 +190,7 @@ void Style::ImGuiStyle::Render() const {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) q(SetValue{FontIndex.Path, n});
+            if (Selectable(font->GetDebugName(), font == font_current)) SetValue{FontIndex.Path, n}.q();
             PopID();
         }
         EndCombo();
@@ -199,17 +199,17 @@ void Style::ImGuiStyle::Render() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) q(SetValue{WindowBorderSize.Path, border ? 1 : 0});
+        if (Checkbox("WindowBorder", &border)) SetValue{WindowBorderSize.Path, border ? 1 : 0}.q();
     }
     SameLine();
     {
         bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) q(SetValue{FrameBorderSize.Path, border ? 1 : 0});
+        if (Checkbox("FrameBorder", &border)) SetValue{FrameBorderSize.Path, border ? 1 : 0}.q();
     }
     SameLine();
     {
         bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) q(SetValue{PopupBorderSize.Path, border ? 1 : 0});
+        if (Checkbox("PopupBorder", &border)) SetValue{PopupBorderSize.Path, border ? 1 : 0}.q();
     }
 
     Separator();
@@ -320,7 +320,7 @@ void Style::ImPlotStyle::Render() const {
     using namespace Action;
 
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) q(SetImPlotColorStyle{style_idx});
+    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) SetImPlotColorStyle{style_idx}.q();
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
@@ -370,7 +370,7 @@ void Style::FlowGridStyle::Render() const {
     using namespace Action;
 
     static int colors_idx = -1;
-    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) q(SetFlowGridColorStyle{colors_idx});
+    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) SetFlowGridColorStyle{colors_idx}.q();
     FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {

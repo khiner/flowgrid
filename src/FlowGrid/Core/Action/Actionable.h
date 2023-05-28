@@ -72,10 +72,17 @@ private:
 
 // Pass `is_contextual = 1` and override `{ActionType}::Allowed()` to return `false` if the action is not allowed in the current state.
 // Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
+/**
+ `q` is the main action-queue method.
+ Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
+ This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
+ Defined in `App.cpp`.
+*/
 #define Define(ActionType, is_savable, is_contextual, merge_type, meta_str, ...) \
     struct ActionType {                                                          \
         inline static const Metadata _Meta{#ActionType, meta_str};               \
         static constexpr bool IsSavable = is_savable;                            \
+        void q(bool flush = false) const;                                        \
         ALLOWED_FUNCTION_##is_contextual                                         \
             MergeType_##merge_type(ActionType)                                   \
                 __VA_ARGS__;                                                     \
@@ -145,6 +152,9 @@ struct ActionVariant : std::variant<T...> {
     }
     bool IsSavable() const {
         return Call([](auto &a) { return a._Meta.Savable; });
+    }
+    void q() const {
+        Call([](auto &a) { a.q(); });
     }
 
     /**

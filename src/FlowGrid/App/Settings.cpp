@@ -8,6 +8,6 @@ using namespace ImGui;
 
 void ApplicationSettings::Render() const {
     int value = int(History.Index);
-    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) q(Action::SetHistoryIndex{value});
+    if (SliderInt("History index", &value, 0, int(History.Size() - 1))) Action::SetHistoryIndex{value}.q();
     GestureDurationSec.Draw();
 }

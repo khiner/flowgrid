@@ -116,7 +116,7 @@ void FileDialog::Apply(const Action::FileDialogAction &action) const {
     );
 }
 
-static void OpenDialog(const FileDialogData &data) { q(Action::OpenFileDialog{json(data).dump()}); }
+static void OpenDialog(const FileDialogData &data) { Action::OpenFileDialog{json(data).dump()}.q(); }
 
 void FileDialog::Render() const {
     using namespace Action;
@@ -129,7 +129,7 @@ void FileDialog::Render() const {
 
     const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-        q(CloseFileDialog{}, true);
+        CloseFileDialog{}.q(true);
         if (Dialog->IsOk()) {
             const fs::path &file_path = Dialog->GetFilePathName();
             const string &extension = file_path.extension();
@@ -139,14 +139,14 @@ void FileDialog::Render() const {
                 //   The file would generally be larger, and the load time would be slower,
                 //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
                 //   with full undo/redo history/position/etc.!
-                if (SaveMode) q(SaveProject{file_path});
-                else q(OpenProject{file_path});
+                if (SaveMode) SaveProject{file_path}.q();
+                else OpenProject{file_path}.q();
             } else if (extension == FaustDspFileExtension) {
-                if (SaveMode) q(SaveFaustFile{file_path});
-                else q(OpenFaustFile{file_path});
+                if (SaveMode) SaveFaustFile{file_path}.q();
+                else OpenFaustFile{file_path}.q();
             } else {
                 // todo need a way to tell it's the svg-save case
-                if (SaveMode) q(SaveFaustSvgFile{file_path});
+                if (SaveMode) SaveFaustSvgFile{file_path}.q();
             }
         }
     }

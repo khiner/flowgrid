@@ -138,7 +138,7 @@ void App::Render() const {
 void OpenRecentProject::MenuItem() const {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) q(Action::OpenProject{recently_opened_path});
+            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) Action::OpenProject{recently_opened_path}.q();
         }
         EndMenu();
     }
@@ -357,3 +357,38 @@ void q(const Action::Any &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
 }
+
+#define DefineQ(ActionType) \
+    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }
+
+DefineQ(Undo);
+DefineQ(Redo);
+DefineQ(SetHistoryIndex);
+DefineQ(OpenProject);
+DefineQ(OpenEmptyProject);
+DefineQ(OpenDefaultProject);
+DefineQ(SaveProject);
+DefineQ(SaveDefaultProject);
+DefineQ(SaveCurrentProject);
+DefineQ(ShowOpenProjectDialog);
+DefineQ(ShowSaveProjectDialog);
+DefineQ(CloseApplication);
+DefineQ(ToggleValue);
+DefineQ(SetValue);
+DefineQ(SetValues);
+DefineQ(SetVector);
+DefineQ(SetMatrix);
+DefineQ(ApplyPatch);
+DefineQ(SetImGuiColorStyle);
+DefineQ(SetImPlotColorStyle);
+DefineQ(SetFlowGridColorStyle);
+DefineQ(SetGraphColorStyle);
+DefineQ(SetGraphLayoutStyle);
+DefineQ(ShowOpenFaustFileDialog);
+DefineQ(ShowSaveFaustFileDialog);
+DefineQ(ShowSaveFaustSvgFileDialog);
+DefineQ(SaveFaustFile);
+DefineQ(OpenFaustFile);
+DefineQ(SaveFaustSvgFile);
+DefineQ(OpenFileDialog);
+DefineQ(CloseFileDialog);

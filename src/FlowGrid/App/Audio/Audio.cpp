@@ -199,7 +199,7 @@ void Audio::Faust::FaustGraph::Style::Render() const {
     if (BeginTabBar(ImGuiLabel.c_str(), ImGuiTabBarFlags_None)) {
         if (BeginTabItem("Layout")) {
             static int graph_layout_idx = -1;
-            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) q(Action::SetGraphLayoutStyle{graph_layout_idx});
+            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) Action::SetGraphLayoutStyle{graph_layout_idx}.q();
 
             FoldComplexity.Draw();
             const bool scale_fill = ScaleFillHeight;
@@ -247,7 +247,7 @@ void Audio::Faust::FaustGraph::Style::Render() const {
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str())) {
             static int graph_colors_idx = -1;
-            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) q(Action::SetGraphColorStyle{graph_colors_idx});
+            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) Action::SetGraphColorStyle{graph_colors_idx}.q();
 
             Colors.Draw();
             EndTabItem();
@@ -439,8 +439,8 @@ static void Init() {
     }
 
     const auto &ErrorLog = audio.Faust.Log.Error;
-    if (!error_msg.empty()) q(Action::SetValue{ErrorLog.Path, error_msg});
-    else if (ErrorLog) q(Action::SetValue{ErrorLog.Path, ""});
+    if (!error_msg.empty()) Action::SetValue{ErrorLog.Path, error_msg}.q();
+    else if (ErrorLog) Action::SetValue{ErrorLog.Path, ""}.q();
 
     OnBoxChange(box);
     OnUiChange(Ui.get());
@@ -596,7 +596,7 @@ void Audio::Device::Init() const {
     if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, MaDevice.capture.format);
     if (MaDevice.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, MaDevice.playback.format);
     if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
-    if (!initial_settings.empty()) q(Action::SetValues{initial_settings}, true);
+    if (!initial_settings.empty()) Action::SetValues{initial_settings}.q(true);
 }
 
 void Audio::Device::Update() const {
@@ -727,7 +727,7 @@ void Audio::Graph::Init() const {
         }
         dest_count++;
     }
-    q(Action::SetMatrix{Connections.Path, connections, dest_count}, true);
+    Action::SetMatrix{Connections.Path, connections, dest_count}.q(true);
 }
 
 void Audio::Graph::Update() const {
@@ -961,7 +961,7 @@ void Audio::Graph::RenderConnections() const {
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) q(Action::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)});
+            if (flags & InteractionFlags_Clicked) Action::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)}.q();
 
             const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));

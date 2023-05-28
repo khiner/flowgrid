@@ -353,8 +353,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
     if (finalize) History.FinalizeGesture();
 }
 
-bool q(const Action::Any &&action, bool flush) {
+void q(const Action::Any &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
-    return true;
 }

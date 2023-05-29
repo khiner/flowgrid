@@ -50,21 +50,21 @@ void App::Apply(const Action::StatefulAction &action) const {
                         case 2: return Style.FlowGrid.ColorsClassic();
                     }
                 },
-                [&](const SetGraphColorStyle &a) {
-                    switch (a.id) {
-                        case 0: return Audio.Faust.Graph.Style.ColorsDark();
-                        case 1: return Audio.Faust.Graph.Style.ColorsLight();
-                        case 2: return Audio.Faust.Graph.Style.ColorsClassic();
-                        case 3: return Audio.Faust.Graph.Style.ColorsFaust();
-                    }
-                },
-                [&](const SetGraphLayoutStyle &a) {
-                    switch (a.id) {
-                        case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid();
-                        case 1: return Audio.Faust.Graph.Style.LayoutFaust();
-                    }
-                },
             );
+        },
+        [&](const SetGraphColorStyle &a) {
+            switch (a.id) {
+                case 0: return Audio.Faust.Graph.Style.ColorsDark();
+                case 1: return Audio.Faust.Graph.Style.ColorsLight();
+                case 2: return Audio.Faust.Graph.Style.ColorsClassic();
+                case 3: return Audio.Faust.Graph.Style.ColorsFaust();
+            }
+        },
+        [&](const SetGraphLayoutStyle &a) {
+            switch (a.id) {
+                case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid();
+                case 1: return Audio.Faust.Graph.Style.LayoutFaust();
+            }
         },
         [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },

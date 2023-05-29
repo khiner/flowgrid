@@ -2,7 +2,8 @@
 
 #include "StoreFwd.h"
 
-#include "Core/Action/Action.h"
+#include "StoreAction.h"
+
 #include "Core/Stateful/Stateful.h"
 
 using std::vector;

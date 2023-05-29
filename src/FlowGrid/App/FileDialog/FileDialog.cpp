@@ -8,6 +8,8 @@
 #include "App/ProjectConstants.h"
 #include "Helper/File.h"
 #include "UI/Widgets.h"
+#include "App/Audio/AudioAction.h"
+#include "App/AppAction.h"
 
 #include <imgui_internal.h>
 

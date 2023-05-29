@@ -5,7 +5,8 @@
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "Core/Action/Action.h"
+#include "Core/Store/StoreAction.h"
+#include "App/StyleAction.h"
 
 namespace FlowGrid {
 std::vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);

@@ -5,7 +5,7 @@
 #include "Core/Stateful/Window.h"
 #include "Core/Store/StoreFwd.h"
 
-#include "Core/Action/Action.h"
+#include "FileDialogAction.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
 DefineUI(

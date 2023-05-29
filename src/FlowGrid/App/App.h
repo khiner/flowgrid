@@ -9,6 +9,8 @@
 #include "Settings.h"
 #include "Style.h"
 
+#include "Core/Action/Actions.h"
+
 /**
  * This class defines the main `App`, which fully describes the application at any point in time.
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.

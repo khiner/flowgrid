@@ -6,6 +6,7 @@
 #include "App/Colors.h"
 #include "UI/Styling.h"
 #include "UI/UI.h"
+#include "AudioAction.h"
 
 // Starting at `-1` allows for using `IO` types as array indices.
 enum IO_ {

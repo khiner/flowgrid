@@ -5,6 +5,7 @@
 #include "imgui_internal.h"
 #include "implot.h"
 
+#include "Core/Action/Actions.h"
 #include "Core/Store/StoreHistory.h"
 #include "Core/Store/StoreJson.h"
 #include "Helper/String.h"

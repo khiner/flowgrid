@@ -1,13 +1,9 @@
-#include "Action.h"
+#include "StoreAction.h"
 
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
 
 namespace Action {
-std::variant<OpenFaustFile, bool> OpenFaustFile::Merge(const OpenFaustFile &other) const {
-    if (path == other.path) return other;
-    return false;
-}
 std::variant<SetValue, bool> SetValue::Merge(const SetValue &other) const {
     if (path == other.path) return other;
     return false;
@@ -32,12 +28,3 @@ std::variant<ApplyPatch, bool> ApplyPatch::Merge(const ApplyPatch &other) const 
     return false;
 }
 } // namespace Action
-
-namespace nlohmann {
-void to_json(json &j, const Action::StatefulAction &action) {
-    action.to_json(j);
-}
-void from_json(const json &j, Action::StatefulAction &action) {
-    Action::StatefulAction::from_json(j, action);
-}
-} // namespace nlohmann

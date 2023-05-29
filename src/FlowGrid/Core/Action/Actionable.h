@@ -102,7 +102,7 @@ concept IsActionable = requires() {
 template<IsActionable T> struct IsSavable {
     static constexpr bool value = T::IsSavable;
 };
-template<IsActionable T> struct NonSavable {
+template<IsActionable T> struct NotSavable {
     static constexpr bool value = !T::IsSavable;
 };
 

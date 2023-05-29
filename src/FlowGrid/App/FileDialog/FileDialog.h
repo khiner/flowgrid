@@ -19,11 +19,13 @@ DefineUI(
     Prop(Bool, Visible);
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
     Prop(Int, MaxNumSelections, 1);
-    Prop(Int, Flags, FileDialogFlags_Default);
+    Prop(Int, Flags, FileDialogFlags_Modal);
     Prop(String, Title, "Choose file");
     Prop(String, Filters);
     Prop(String, FilePath, ".");
     Prop(String, DefaultFileName);
+
+    Prop(String, SelectedFilePath);
 );
 
 // This demo code is adapted from the [ImGuiFileDialog:main branch](https://github.com/aiekick/ImGuiFileDialog/blob/master/main.cpp)

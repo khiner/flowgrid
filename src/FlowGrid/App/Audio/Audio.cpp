@@ -1,4 +1,5 @@
-// #include "CDSPResampler.h"
+#include "Audio.h"
+
 #include "Sample.h" // Must be included before any Faust includes
 #include "faust/dsp/llvm-dsp.h"
 
@@ -13,16 +14,15 @@
 #include "implot_internal.h"
 
 #include "App/FileDialog/FileDialog.h"
-#include "Audio.h"
 #include "Faust/FaustGraph.h"
 #include "Faust/FaustParams.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "UI/Widgets.h"
 
-#include "App/ProjectConstants.h" // todo only for faust file extension, but only this file will need it when we refactor file dialog accept actions.
-
 using namespace ImGui;
+
+static const std::string FaustDspFileExtension = ".dsp";
 
 string to_string(const IO io, const bool shorten) {
     switch (io) {
@@ -429,6 +429,19 @@ void Audio::Uninit() const {
 void Audio::Render() const {
     Update();
     TabsWindow::Render({Faust.Id}); // Exclude the Faust tab.
+
+    static string PrevSelectedPath = "";
+    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
+        const fs::path selected_path = string(file_dialog.SelectedFilePath);
+        const string &extension = selected_path.extension();
+        if (extension == FaustDspFileExtension) {
+            if (file_dialog.SaveMode) Action::SaveFaustFile{selected_path}.q();
+            else Action::OpenFaustFile{selected_path}.q();
+        } else if (extension == ".svg") {
+            if (file_dialog.SaveMode) Action::SaveFaustSvgFile{selected_path}.q();
+        }
+        PrevSelectedPath = selected_path;
+    }
 }
 
 namespace FaustContext {

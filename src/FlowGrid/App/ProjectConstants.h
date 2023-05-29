@@ -15,7 +15,6 @@ namespace views = ranges::views;
 using ranges::to;
 
 inline static const std::filesystem::path InternalPath = ".flowgrid";
-inline static const std::string FaustDspFileExtension = ".dsp";
 
 inline static const std::map<StoreJsonFormat, std::string> ExtensionForStoreJsonFormat{{StoreJsonFormat::StateFormat, ".fls"}, {StoreJsonFormat::ActionFormat, ".fla"}};
 inline static const auto StoreJsonFormatForExtension = ExtensionForStoreJsonFormat | views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();

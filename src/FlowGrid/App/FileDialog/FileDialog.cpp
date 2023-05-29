@@ -1,17 +1,56 @@
-#include <sstream>
-
 #include "FileDialog.h"
-#include "FileDialogDataJson.h"
-
-#include "ImGuiFileDialog.h"
-
-#include "App/ProjectConstants.h"
-#include "Helper/File.h"
-#include "UI/Widgets.h"
-#include "App/Audio/AudioAction.h"
-#include "App/AppAction.h"
 
 #include <imgui_internal.h>
+#include <range/v3/core.hpp>
+#include <range/v3/view/map.hpp>
+#include <range/v3/view/transform.hpp>
+
+#include "FileDialogDataJson.h"
+#include "Helper/File.h"
+#include "ImGuiFileDialog.h"
+#include "UI/Widgets.h"
+
+namespace views = ranges::views;
+using namespace nlohmann;
+
+namespace Action {
+bool FileDialogOpen::Allowed() { return !file_dialog.Visible; }
+bool FileDialogSelect::Allowed() { return file_dialog.Visible; }
+bool FileDialogCancel::Allowed() { return file_dialog.Visible; }
+} // namespace Action
+
+void FileDialog::Apply(const Action::FileDialogAction &action) const {
+    using namespace Action;
+    Match(
+        action,
+        [&](const FileDialogOpen &a) { this->Set(json::parse(a.dialog_json)); },
+        [&](const FileDialogSelect &a) {
+            store::Set(Visible, false);
+            store::Set(SelectedFilePath, a.file_path);
+        },
+        [&](const FileDialogCancel &) {
+            store::Set(Visible, false);
+            store::Set(SelectedFilePath, "");
+        },
+    );
+}
+
+void FileDialog::Set(const FileDialogData &data) const {
+    store::Set(
+        {
+            {Visible, true},
+            {Title, data.title},
+            {Filters, data.filters},
+            {FilePath, data.file_path},
+            {DefaultFileName, data.default_file_name},
+            {SaveMode, data.save_mode},
+            {MaxNumSelections, data.max_num_selections},
+            {Flags, data.flags},
+        }
+    );
+}
+
+static void OpenDialog(const FileDialogData &data) { Action::FileDialogOpen{json(data).dump()}.q(); }
 
 using namespace ImGui;
 
@@ -89,62 +128,19 @@ void IGFD::Init() {
 #endif
 }
 
-namespace Action {
-bool OpenFileDialog::Allowed() { return !file_dialog.Visible; }
-bool CloseFileDialog::Allowed() { return file_dialog.Visible; }
-} // namespace Action
-
-void FileDialog::Set(const FileDialogData &data) const {
-    store::Set(
-        {
-            {Visible, true},
-            {Title, data.title},
-            {Filters, data.filters},
-            {FilePath, data.file_path},
-            {DefaultFileName, data.default_file_name},
-            {SaveMode, data.save_mode},
-            {MaxNumSelections, data.max_num_selections},
-            {Flags, data.flags},
-        }
-    );
-}
-
-void FileDialog::Apply(const Action::FileDialogAction &action) const {
-    using namespace Action;
-    Match(
-        action,
-        [&](const OpenFileDialog &a) { this->Set(json::parse(a.dialog_json)); },
-        [&](const CloseFileDialog &) { store::Set(Visible, false); },
-    );
-}
-
-static void OpenDialog(const FileDialogData &data) { Action::OpenFileDialog{json(data).dump()}.q(); }
-
 void FileDialog::Render() const {
-    using namespace Action;
-
     if (!Visible) return Dialog->Close();
 
     static const string DialogKey = "FileDialog";
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
-    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, Flags);
 
-    const ImVec2 min_dialog_size = GetMainViewport()->Size / 2;
-    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, min_dialog_size)) {
-        CloseFileDialog{}.q(true);
-        if (Dialog->IsOk()) {
-            const fs::path &file_path = Dialog->GetFilePathName();
-            const string &extension = file_path.extension();
-            if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
-                if (SaveMode) SaveProject{file_path}.q();
-                else OpenProject{file_path}.q();
-            } else if (extension == FaustDspFileExtension) {
-                if (SaveMode) SaveFaustFile{file_path}.q();
-                else OpenFaustFile{file_path}.q();
-            } else {
-                if (SaveMode) SaveFaustSvgFile{file_path}.q();
-            }
-        }
+    ImGuiFileDialogFlags flags = Flags;
+    if (SaveMode) flags |= ImGuiFileDialogFlags_ConfirmOverwrite;
+    else flags &= ~ImGuiFileDialogFlags_ConfirmOverwrite;
+    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
+    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
+        if (Dialog->IsOk()) Action::FileDialogSelect{Dialog->GetFilePathName()}.q(true);
+        else Action::FileDialogCancel{}.q(true);
     }
 }
 
@@ -165,7 +161,7 @@ void FileDialog::Demo::Render() const {
 
     Separator();
 
-    static ImGuiFileDialogFlags flags = FileDialogFlags_Default;
+    static ImGuiFileDialogFlags flags = FileDialogFlags_Modal;
     {
         Text("ImGuiFileDialog flags: ");
         Indent();
@@ -235,15 +231,9 @@ void FileDialog::Demo::Render() const {
     static string file_path = Dialog->GetCurrentPath();
     static string user_data = Dialog->GetUserDatas() ? string((const char *)Dialog->GetUserDatas()) : "";
 
-    // Convert from map to vector of pairs. TODO use `ranges::view` piped transform
-    const auto &selections = Dialog->GetSelection();
-    static vector<std::pair<string, string>> selection = {};
-    selection.clear();
-    for (const auto &sel : selections) selection.emplace_back(sel.first, sel.second);
-
     Separator();
 
-    TextUnformatted("FileDialog state:\n");
+    TextUnformatted("State:\n");
     Indent();
     {
         TextUnformatted(std::format("FilePathName: {}", FilePathName).c_str());
@@ -253,26 +243,28 @@ void FileDialog::Demo::Render() const {
         TextUnformatted("Selection: ");
         Indent();
         {
-            static int selected = false;
             if (BeginTable("##GetSelection", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
                 TableSetupScrollFreeze(0, 1); // Make top row always visible
                 TableSetupColumn("File name", ImGuiTableColumnFlags_WidthStretch, -1, 0);
                 TableSetupColumn("File path name", ImGuiTableColumnFlags_WidthFixed, -1, 1);
                 TableHeadersRow();
 
+                static int selected = 0;
+                const auto &selection = Dialog->GetSelection();
+                std::vector<string> selection_keys = views::keys(selection) | ranges::to<std::vector>();
                 ImGuiListClipper clipper;
                 clipper.Begin((int)selection.size(), GetTextLineHeightWithSpacing());
                 while (clipper.Step()) {
                     for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                        const auto &sel = selection[i];
+                        const auto &selection_key = selection_keys[i];
                         TableNextRow();
                         if (TableSetColumnIndex(0)) {
                             ImGuiSelectableFlags selectableFlags = ImGuiSelectableFlags_AllowDoubleClick;
                             selectableFlags |= ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
-                            if (Selectable(sel.first.c_str(), i == selected, selectableFlags)) selected = i;
+                            if (Selectable(selection_key.c_str(), i == selected, selectableFlags)) selected = i;
                         }
                         if (TableSetColumnIndex(1)) {
-                            TextUnformatted(sel.second.c_str());
+                            TextUnformatted(selection.at(selection_key).c_str());
                         }
                     }
                 }

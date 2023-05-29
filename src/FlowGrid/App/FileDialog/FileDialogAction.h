@@ -1,16 +1,22 @@
 #pragma once
 
+#include <__filesystem/path.h>
+
 #include "Core/Action/Actionable.h"
 #include "Core/Json.h"
+
+namespace fs = std::filesystem;
 
 namespace Action {
 using namespace Actionable;
 
-Define(OpenFileDialog, 1, 1, Merge, "", std::string dialog_json;);
-Define(CloseFileDialog, 1, 1, Merge, "");
+Define(FileDialogOpen, 1, 1, Merge, "", std::string dialog_json;);
+Define(FileDialogSelect, 1, 1, NoMerge, "", fs::path file_path;);
+Define(FileDialogCancel, 1, 1, Merge, "");
 
-Json(CloseFileDialog);
-Json(OpenFileDialog, dialog_json);
+Json(FileDialogOpen, dialog_json);
+Json(FileDialogSelect, file_path);
+Json(FileDialogCancel);
 
-using FileDialogAction = ActionVariant<OpenFileDialog, CloseFileDialog>;
+using FileDialogAction = ActionVariant<FileDialogOpen, FileDialogSelect, FileDialogCancel>;
 } // namespace Action

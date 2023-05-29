@@ -85,6 +85,17 @@ void App::Render() const {
     }
     // Recursively draw all windows.
     DrawWindows();
+
+    static string PrevSelectedPath = "";
+    if (PrevSelectedPath != FileDialog.SelectedFilePath) {
+        const fs::path selected_path = string(FileDialog.SelectedFilePath);
+        const string &extension = selected_path.extension();
+        if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
+            if (FileDialog.SaveMode) Action::SaveProject{selected_path}.q();
+            else Action::OpenProject{selected_path}.q();
+        }
+        PrevSelectedPath = selected_path;
+    }
 }
 
 void App::OpenRecentProjectMenuItem() {
@@ -345,5 +356,6 @@ DefineQ(ShowSaveFaustSvgFileDialog);
 DefineQ(SaveFaustFile);
 DefineQ(OpenFaustFile);
 DefineQ(SaveFaustSvgFile);
-DefineQ(OpenFileDialog);
-DefineQ(CloseFileDialog);
+DefineQ(FileDialogOpen);
+DefineQ(FileDialogSelect);
+DefineQ(FileDialogCancel);

@@ -3,7 +3,6 @@
 
 #include "imgui_internal.h"
 #include "immer/map.hpp"
-#include "implot.h"
 
 #include "AppPreferences.h"
 #include "Core/Store/Store.h"
@@ -11,12 +10,10 @@
 #include "Core/Store/StoreJson.h"
 #include "Helper/File.h"
 #include "ProjectConstants.h"
-#include "UI/Widgets.h"
 
 using namespace ImGui;
 using namespace FlowGrid;
 using namespace nlohmann;
-using namespace std::string_literals;
 
 void App::Apply(const Action::StatefulAction &action) const {
     using namespace Action;
@@ -90,7 +87,7 @@ void App::Render() const {
     DrawWindows();
 }
 
-void OpenRecentProject::MenuItem() const {
+void App::OpenRecentProjectMenuItem() {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
             if (ImGui::MenuItem(recently_opened_path.filename().c_str())) Action::OpenProject{recently_opened_path}.q();

@@ -16,19 +16,16 @@
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
 
-struct OpenRecentProject : MenuItemDrawable {
-    void MenuItem() const override;
-};
-
 DefineUI(
     App,
 
+    static void OpenRecentProjectMenuItem();
+
     void Apply(const Action::StatefulAction &) const;
 
-    OpenRecentProject open_recent_project{};
     const Menu MainMenu{
         {
-            Menu("File", {Action::OpenEmptyProject::MenuItem, Action::ShowOpenProjectDialog::MenuItem, open_recent_project, Action::OpenDefaultProject::MenuItem, Action::SaveCurrentProject::MenuItem, Action::SaveDefaultProject::MenuItem}),
+            Menu("File", {Action::OpenEmptyProject::MenuItem, Action::ShowOpenProjectDialog::MenuItem, OpenRecentProjectMenuItem, Action::OpenDefaultProject::MenuItem, Action::SaveCurrentProject::MenuItem, Action::SaveDefaultProject::MenuItem}),
             Menu("Edit", {Action::Undo::MenuItem, Action::Redo::MenuItem}),
             Menu(
                 "Windows",

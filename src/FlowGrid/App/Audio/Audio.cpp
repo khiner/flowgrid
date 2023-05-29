@@ -5,12 +5,6 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include "Audio.h"
-#include "Faust/FaustGraph.h"
-#include "Faust/FaustParams.h"
-#include "Helper/File.h"
-#include "Helper/String.h"
-
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
@@ -18,7 +12,15 @@
 #include "implot.h"
 #include "implot_internal.h"
 
+#include "App/FileDialog/FileDialog.h"
+#include "Audio.h"
+#include "Faust/FaustGraph.h"
+#include "Faust/FaustParams.h"
+#include "Helper/File.h"
+#include "Helper/String.h"
 #include "UI/Widgets.h"
+
+#include "App/ProjectConstants.h" // todo only for faust file extension, but only this file will need it when we refactor file dialog accept actions.
 
 using namespace ImGui;
 
@@ -307,6 +309,33 @@ static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
         if (info->name == device_name) return &(info->id);
     }
     return nullptr;
+}
+
+void Audio::Apply(const Action::AudioAction &action) const {
+    using namespace Action;
+    Match(
+        action,
+        [&](const SetGraphColorStyle &a) {
+            switch (a.id) {
+                case 0: return Faust.Graph.Style.ColorsDark();
+                case 1: return Faust.Graph.Style.ColorsLight();
+                case 2: return Faust.Graph.Style.ColorsClassic();
+                case 3: return Faust.Graph.Style.ColorsFaust();
+            }
+        },
+        [&](const SetGraphLayoutStyle &a) {
+            switch (a.id) {
+                case 0: return Faust.Graph.Style.LayoutFlowGrid();
+                case 1: return Faust.Graph.Style.LayoutFaust();
+            }
+        },
+        [&](const ShowOpenFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
+        [&](const ShowSaveFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
+        [&](const ShowSaveFaustSvgFileDialog &) { file_dialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
+        [&](const OpenFaustFile &a) { store::Set(Faust.Code, FileIO::read(a.path)); },
+        [&](const SaveFaustFile &a) { FileIO::write(a.path, audio.Faust.Code); },
+        [](const SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
+    );
 }
 
 // static ma_resampler_config ResamplerConfig;

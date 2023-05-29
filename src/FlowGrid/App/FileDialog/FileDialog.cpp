@@ -136,18 +136,12 @@ void FileDialog::Render() const {
             const fs::path &file_path = Dialog->GetFilePathName();
             const string &extension = file_path.extension();
             if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
-                // TODO provide an option to save with undo state.
-                //   This file format would be a json list of diffs.
-                //   The file would generally be larger, and the load time would be slower,
-                //   but it would provide the option to save/load _exactly_ as if you'd never quit at all,
-                //   with full undo/redo history/position/etc.!
                 if (SaveMode) SaveProject{file_path}.q();
                 else OpenProject{file_path}.q();
             } else if (extension == FaustDspFileExtension) {
                 if (SaveMode) SaveFaustFile{file_path}.q();
                 else OpenFaustFile{file_path}.q();
             } else {
-                // todo need a way to tell it's the svg-save case
                 if (SaveMode) SaveFaustSvgFile{file_path}.q();
             }
         }

@@ -25,27 +25,9 @@ void App::Apply(const Action::StatefulAction &action) const {
         [](const Action::StoreAction &a) { store::Apply(a); },
         [&](const Action::FileDialogAction &a) { FileDialog.Apply(a); },
         [&](const Action::StyleAction &a) { Style.Apply(a); },
-        [&](const SetGraphColorStyle &a) {
-            switch (a.id) {
-                case 0: return Audio.Faust.Graph.Style.ColorsDark();
-                case 1: return Audio.Faust.Graph.Style.ColorsLight();
-                case 2: return Audio.Faust.Graph.Style.ColorsClassic();
-                case 3: return Audio.Faust.Graph.Style.ColorsFaust();
-            }
-        },
-        [&](const SetGraphLayoutStyle &a) {
-            switch (a.id) {
-                case 0: return Audio.Faust.Graph.Style.LayoutFlowGrid();
-                case 1: return Audio.Faust.Graph.Style.LayoutFaust();
-            }
-        },
+        [&](const Action::AudioAction &a) { Audio.Apply(a); },
         [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
-        [&](const ShowOpenFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
-        [&](const ShowSaveFaustFileDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
-        [&](const ShowSaveFaustSvgFileDialog &) { FileDialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
-
-        [&](const OpenFaustFile &a) { store::Set(Audio.Faust.Code, FileIO::read(a.path)); },
         [&](const CloseApplication &) { store::Set({{Running, false}, {Audio.Device.On, false}}); },
     );
 }
@@ -231,11 +213,10 @@ void OpenProject(const fs::path &path) {
     SetCurrentProjectPath(path);
 }
 
-#include "Audio/Faust/FaustGraph.h"
-
 void Apply(const Action::NonStatefulAction &action) {
     Match(
         action,
+        [&](const Action::AudioAction &a) { audio.Apply(a); }, // todo should just apply `Action::Any` and then handle stateful/non-stateful based on `action.Savable`
         // Handle actions that don't directly update state.
         // These options don't get added to the action/gesture history, since they only have non-application side effects,
         // and we don't want them replayed when loading a saved `.fga` project.
@@ -248,9 +229,6 @@ void Apply(const Action::NonStatefulAction &action) {
         [&](const Action::SaveCurrentProject &) {
             if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
         },
-        [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, audio.Faust.Code); },
-        [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
-
         // History-changing actions:
         [&](const Action::Undo &) {
             if (History.Empty()) return;

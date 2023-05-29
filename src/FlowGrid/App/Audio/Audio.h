@@ -110,6 +110,7 @@ using ParamsWidthSizingPolicy = int;
 struct Audio : TabsWindow {
     using TabsWindow::TabsWindow;
 
+    void Apply(const Action::AudioAction &) const;
     void Update() const;
     bool NeedsRestart() const;
 

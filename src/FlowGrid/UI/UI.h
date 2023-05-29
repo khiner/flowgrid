@@ -27,7 +27,7 @@ struct UIContext {
     Fonts Fonts{};
 
     bool IsWidgetGesturing{};
-    Flags ApplyFlags = Flags_None;
+    Flags UpdateFlags = Flags_None;
 };
 
 UIContext CreateUi();

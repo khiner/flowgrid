@@ -211,9 +211,9 @@ Patch SetStore(const Store &store) {
 
         // Setting `ImGuiSettings` does not require an `app.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
-        else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImGuiStyle;
-        else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) UiContext.ApplyFlags |= UIContext::Flags_ImPlotStyle;
+        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) UiContext.UpdateFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+        else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) UiContext.UpdateFlags |= UIContext::Flags_ImGuiStyle;
+        else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) UiContext.UpdateFlags |= UIContext::Flags_ImPlotStyle;
     }
     for (auto *modified_field : modified_fields) modified_field->Update();
 

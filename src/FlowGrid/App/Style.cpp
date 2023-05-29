@@ -5,8 +5,8 @@
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "Core/Store/StoreAction.h"
 #include "App/StyleAction.h"
+#include "Core/Store/StoreAction.h"
 
 namespace FlowGrid {
 std::vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
@@ -22,7 +22,7 @@ const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     }
 }
 
-void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
+void Style::ImGuiStyle::Update(ImGuiContext *ctx) const {
     auto &style = ctx->Style;
     style.Alpha = Alpha;
     style.DisabledAlpha = DisabledAlpha;
@@ -67,7 +67,7 @@ void Style::ImGuiStyle::Apply(ImGuiContext *ctx) const {
     for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = ColorConvertU32ToFloat4(Colors[i]);
 }
 
-void Style::ImPlotStyle::Apply(ImPlotContext *ctx) const {
+void Style::ImPlotStyle::Update(ImPlotContext *ctx) const {
     auto &style = ctx->Style;
     style.LineWeight = LineWeight;
     style.Marker = Marker;

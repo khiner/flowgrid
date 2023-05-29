@@ -41,7 +41,7 @@ struct Style : TabsWindow {
             ImGuiColors(Stateful::Base *parent, string_view path_segment, string_view name_help);
         };
 
-        void Apply(ImGuiContext *ctx) const;
+        void Update(ImGuiContext *ctx) const;
         void ColorsDark() const;
         void ColorsLight() const;
         void ColorsClassic() const;
@@ -124,7 +124,7 @@ struct Style : TabsWindow {
             ImPlotColors(Stateful::Base *parent, string_view path_segment, string_view name_help);
         };
 
-        void Apply(ImPlotContext *ctx) const;
+        void Update(ImPlotContext *ctx) const;
         void ColorsAuto() const;
         void ColorsDark() const;
         void ColorsLight() const;

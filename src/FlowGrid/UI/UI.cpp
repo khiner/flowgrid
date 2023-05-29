@@ -202,11 +202,11 @@ void TickUi(const Drawable &app) {
     }
 
     // Check if new UI settings need to be applied.
-    auto &flags = UiContext.ApplyFlags;
+    auto &flags = UiContext.UpdateFlags;
     if (flags != UIContext::Flags_None) {
-        if (flags & UIContext::Flags_ImGuiSettings) imgui_settings.Apply(UiContext.ImGui);
-        if (flags & UIContext::Flags_ImGuiStyle) style.ImGui.Apply(UiContext.ImGui);
-        if (flags & UIContext::Flags_ImPlotStyle) style.ImPlot.Apply(UiContext.ImPlot);
+        if (flags & UIContext::Flags_ImGuiSettings) imgui_settings.Update(UiContext.ImGui);
+        if (flags & UIContext::Flags_ImGuiStyle) style.ImGui.Update(UiContext.ImGui);
+        if (flags & UIContext::Flags_ImPlotStyle) style.ImPlot.Update(UiContext.ImPlot);
         flags = UIContext::Flags_None;
     }
 

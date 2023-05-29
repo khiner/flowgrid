@@ -52,7 +52,7 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss) const {
     Size.Set(sz);
     SizeRef.Set(sz_ref);
 }
-void DockNodeSettings::Apply(ImGuiContext *ctx) const {
+void DockNodeSettings::Update(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
     const auto size = NodeId.Size();
     for (Count i = 0; i < size; i++) {
@@ -99,7 +99,7 @@ void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss) const {
 }
 
 // See `imgui.cpp::ApplyWindowSettings`
-void WindowSettings::Apply(ImGuiContext *) const {
+void WindowSettings::Update(ImGuiContext *) const {
     const auto *main_viewport = GetMainViewport();
     const auto size = Id.Size();
     for (Count i = 0; i < size; i++) {
@@ -193,7 +193,7 @@ void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) const {
 }
 
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
-void TableSettings::Apply(ImGuiContext *) const {
+void TableSettings::Update(ImGuiContext *) const {
     const auto size = ID.Size();
     for (Count i = 0; i < size; i++) {
         const auto id = ID[i];
@@ -252,11 +252,11 @@ Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) const {
     return store::CreatePatch(Path);
 }
 
-void ImGuiSettings::Apply(ImGuiContext *ctx) const {
+void ImGuiSettings::Update(ImGuiContext *ctx) const {
     DockSettingsHandler_ClearAll(ctx, nullptr);
-    Windows.Apply(ctx);
-    Tables.Apply(ctx);
-    Nodes.Apply(ctx);
+    Windows.Update(ctx);
+    Tables.Update(ctx);
+    Nodes.Update(ctx);
     DockSettingsHandler_ApplyAll(ctx, nullptr);
 
     // Other housekeeping to emulate `LoadIniSettingsFromMemory`

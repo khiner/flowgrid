@@ -21,7 +21,7 @@ DefineStateful(
     DockNodeSettings,
 
     void Set(const ImVector<ImGuiDockNodeSettings> &) const;
-    void Apply(ImGuiContext *) const;
+    void Update(ImGuiContext *) const;
 
     Prop(Vector<ID>, NodeId);
     Prop(Vector<ID>, ParentNodeId);
@@ -39,7 +39,7 @@ DefineStateful(
     WindowSettings,
 
     void Set(ImChunkStream<ImGuiWindowSettings> &) const;
-    void Apply(ImGuiContext *) const;
+    void Update(ImGuiContext *) const;
 
     Prop(Vector<ID>, Id);
     Prop(Vector<ID>, ClassId);
@@ -69,7 +69,7 @@ DefineStateful(
     TableSettings,
 
     void Set(ImChunkStream<ImGuiTableSettings> &) const;
-    void Apply(ImGuiContext *) const;
+    void Update(ImGuiContext *) const;
 
     Prop(Vector<ImGuiID>, ID);
     Prop(Vector<int>, SaveFlags);
@@ -86,10 +86,10 @@ DefineStateful(
     // Create a patch resulting from applying the current ImGui context.
     Patch CreatePatch(ImGuiContext *ctx) const;
 
-    // `Apply` is basically `imgui_context.settings = this`.
+    // `Update(ctx)` is basically `imgui_context.settings = this`.
     // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized `.ini` text format.
-    void Apply(ImGuiContext *ctx) const;
+    void Update(ImGuiContext *ctx) const;
 
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);

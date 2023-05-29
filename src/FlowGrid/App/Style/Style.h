@@ -1,5 +1,6 @@
 #pragma once
 
+#include "StyleAction.h"
 #include "Colors.h"
 #include "UI/Styling.h"
 
@@ -18,6 +19,8 @@ enum SliderFlags_ {
 namespace FlowGrid {
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
+
+    void Apply(const Action::StyleAction &) const;
 
     DefineUI_(
         FlowGridStyle,

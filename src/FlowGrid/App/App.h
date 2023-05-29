@@ -7,7 +7,7 @@
 #include "ImGuiSettings.h"
 #include "Info.h"
 #include "Settings.h"
-#include "Style.h"
+#include "Style/Style.h"
 
 #include "Core/Action/Actions.h"
 

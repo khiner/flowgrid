@@ -24,34 +24,7 @@ void App::Apply(const Action::StatefulAction &action) const {
         action,
         [](const Action::StoreAction &a) { store::Apply(a); },
         [&](const Action::FileDialogAction &a) { FileDialog.Apply(a); },
-        [&](const Action::StyleAction &a) {
-            Match(
-                a,
-                // todo enum types instead of raw integers
-                [&](const SetImGuiColorStyle &a) {
-                    switch (a.id) {
-                        case 0: return Style.ImGui.ColorsDark();
-                        case 1: return Style.ImGui.ColorsLight();
-                        case 2: return Style.ImGui.ColorsClassic();
-                    }
-                },
-                [&](const SetImPlotColorStyle &a) {
-                    switch (a.id) {
-                        case 0: return Style.ImPlot.ColorsAuto();
-                        case 1: return Style.ImPlot.ColorsDark();
-                        case 2: return Style.ImPlot.ColorsLight();
-                        case 3: return Style.ImPlot.ColorsClassic();
-                    }
-                },
-                [&](const SetFlowGridColorStyle &a) {
-                    switch (a.id) {
-                        case 0: return Style.FlowGrid.ColorsDark();
-                        case 1: return Style.FlowGrid.ColorsLight();
-                        case 2: return Style.FlowGrid.ColorsClassic();
-                    }
-                },
-            );
-        },
+        [&](const Action::StyleAction &a) { Style.Apply(a); },
         [&](const SetGraphColorStyle &a) {
             switch (a.id) {
                 case 0: return Audio.Faust.Graph.Style.ColorsDark();

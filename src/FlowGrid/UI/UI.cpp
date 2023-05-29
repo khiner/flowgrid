@@ -12,7 +12,7 @@
 
 #include "App/FileDialog/FileDialog.h"
 #include "App/ImGuiSettings.h"
-#include "App/Style.h"
+#include "App/Style/Style.h"
 #include "Core/Action/Actions.h"
 #include "Helper/String.h"
 

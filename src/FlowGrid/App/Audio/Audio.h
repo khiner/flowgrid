@@ -3,7 +3,7 @@
 #include "Core/Stateful/Window.h"
 #include "Core/Store/Store.h"
 
-#include "App/Colors.h"
+#include "App/Style/Colors.h"
 #include "UI/Styling.h"
 #include "UI/UI.h"
 #include "AudioAction.h"

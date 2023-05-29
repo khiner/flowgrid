@@ -5,7 +5,6 @@
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "App/StyleAction.h"
 #include "Core/Store/StoreAction.h"
 
 namespace FlowGrid {
@@ -13,6 +12,36 @@ std::vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
 using namespace ImGui;
+
+void Style::Apply(const Action::StyleAction &action) const {
+    using namespace Action;
+    Match(
+        action,
+        // todo enum types instead of raw integers
+        [&](const SetImGuiColorStyle &a) {
+            switch (a.id) {
+                case 0: return ImGui.ColorsDark();
+                case 1: return ImGui.ColorsLight();
+                case 2: return ImGui.ColorsClassic();
+            }
+        },
+        [&](const SetImPlotColorStyle &a) {
+            switch (a.id) {
+                case 0: return ImPlot.ColorsAuto();
+                case 1: return ImPlot.ColorsDark();
+                case 2: return ImPlot.ColorsLight();
+                case 3: return ImPlot.ColorsClassic();
+            }
+        },
+        [&](const SetFlowGridColorStyle &a) {
+            switch (a.id) {
+                case 0: return FlowGrid.ColorsDark();
+                case 1: return FlowGrid.ColorsLight();
+                case 2: return FlowGrid.ColorsClassic();
+            }
+        },
+    );
+}
 
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {

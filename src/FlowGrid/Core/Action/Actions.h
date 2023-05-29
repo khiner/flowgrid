@@ -3,7 +3,7 @@
 #include "App/AppAction.h"
 #include "App/Audio/AudioAction.h"
 #include "App/FileDialog/FileDialogAction.h"
-#include "App/StyleAction.h"
+#include "App/Style/StyleAction.h"
 #include "Core/Store/StoreAction.h"
 
 namespace Action {

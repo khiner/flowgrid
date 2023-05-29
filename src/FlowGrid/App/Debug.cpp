@@ -9,7 +9,7 @@
 #include "Core/Store/StoreHistory.h"
 #include "Core/Store/StoreJson.h"
 #include "Helper/String.h"
-#include "Style.h"
+#include "App/Style/Style.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;

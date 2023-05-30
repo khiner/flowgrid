@@ -8,9 +8,9 @@
 
 namespace Action {
 // `Any` holds all action types.
-using Any = Actionable::Combine<AppAction, AudioAction, FileDialogAction, StyleAction, StoreAction>::type;
-using StatefulAction = Actionable::Filter<Actionable::IsSavable, Any>::type;
-using NonStatefulAction = Actionable::Filter<Actionable::NotSavable, Any>::type;
+using Any = Action::Combine<AppAction, AudioAction, FileDialogAction, StyleAction, StoreAction>::type;
+using StatefulAction = Action::Filter<Action::IsSavable, Any>::type;
+using NonStatefulAction = Action::Filter<Action::NotSavable, Any>::type;
 
 // Composite action types.
 using ActionMoment = std::pair<Any, TimePoint>;

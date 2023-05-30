@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Core/Action/Actionable.h"
+#include "Core/Action/Action.h"
 #include "Core/Json.h"
 
 namespace Action {
-using namespace Actionable;
 Define(SetGraphColorStyle, 1, 0, Merge, "", int id;);
 Define(SetGraphLayoutStyle, 1, 0, Merge, "", int id;);
 Define(ShowOpenFaustFileDialog, 1, 0, Merge, "~Open DSP file");

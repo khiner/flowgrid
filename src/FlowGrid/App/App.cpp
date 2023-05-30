@@ -19,10 +19,10 @@ void App::Apply(const Action::StatefulAction &action) const {
     using namespace Action;
     Match(
         action,
-        [](const Action::StoreAction &a) { store::Apply(a); },
-        [&](const Action::FileDialogAction &a) { FileDialog.Apply(a); },
-        [&](const Action::StyleAction &a) { Style.Apply(a); },
-        [&](const Action::AudioAction &a) { Audio.Apply(a); },
+        [](const StoreAction &a) { store::Apply(a); },
+        [&](const FileDialogAction &a) { FileDialog.Apply(a); },
+        [&](const StyleAction &a) { Style.Apply(a); },
+        [&](const AudioAction &a) { Audio.Apply(a); },
         [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [&](const CloseApplication &) { store::Set({{Running, false}, {Audio.Device.On, false}}); },

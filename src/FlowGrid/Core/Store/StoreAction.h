@@ -1,10 +1,9 @@
 #pragma once
 
-#include "Core/Action/Actionable.h"
+#include "Core/Action/Action.h"
 #include "StoreTypesJson.h"
 
 namespace Action {
-using namespace Actionable;
 Define(ToggleValue, 1, 0, NoMerge, "", StorePath path;);
 Define(SetValue, 1, 0, CustomMerge, "", StorePath path; Primitive value;);
 Define(SetValues, 1, 0, CustomMerge, "", StoreEntries values;);

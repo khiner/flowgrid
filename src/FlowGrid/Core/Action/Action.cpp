@@ -1,11 +1,10 @@
-#include "Actionable.h"
+#include "Action.h"
 
 #include <regex>
 
 #include "Helper/String.h"
 
-namespace Actionable {
-
+namespace Action {
 Metadata::Parsed Metadata::ParseMetadata(string_view meta_str) {
     static const std::regex pattern("(~([^@]*))?(@(.*))?");
     string meta_str_std(meta_str);
@@ -22,4 +21,4 @@ Metadata::Metadata(string_view name, Metadata::Parsed parsed)
     : Name(StringHelper::PascalToSentenceCase(name)),
       MenuLabel(parsed.MenuLabel.empty() ? Name : parsed.MenuLabel),
       Shortcut(parsed.Shortcut) {}
-} // namespace Actionable
+} // namespace Action

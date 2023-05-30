@@ -1,11 +1,9 @@
 #pragma once
 
-#include "Core/Action/Actionable.h"
+#include "Core/Action/Action.h"
 #include "Core/Json.h"
 
 namespace Action {
-using namespace Actionable;
-
 Define(Undo, 0, 1, NoMerge, "@cmd+z");
 Define(Redo, 0, 1, NoMerge, "@shift+cmd+z");
 Define(SetHistoryIndex, 0, 0, NoMerge, "", int index;);

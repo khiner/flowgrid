@@ -15,22 +15,20 @@
 //   - actions all get a path in addition to their name (start with all at root, but will be heirarchical soon)
 //   - `ID` type generated from path, like `Stateful`:
 //     `Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0))`
-// - Add `Help` string (also like Stateful)
-// Move all action declaration & `Apply` handling to domain files.
 
 /**
 An action is an immutable representation of a user interaction event.
 Each action stores all information needed to apply the action to a `Store` instance.
 An `ActionMoment` is a combination of any action (`Action::Any`) and the `TimePoint` at which the action happened.
 
-Actions are grouped into `std::variant`s, and thus the byte size of `Action::Any` is large enough to hold its biggest type.
+Actions are grouped into `ActionVariant`s, which wrap around `std::variant`.
+Thus, the byte size of `Action::Any` is large enough to hold its biggest type.
 - For actions holding very large structured data, using a JSON string is a good approach to keep the size low
   (at the expense of losing type safety and storing the string contents in heap memory).
 - Note that adding static members does not increase the size of the variant(s) it belongs to.
   (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
-namespace Actionable {
-
+namespace Action {
 struct Metadata {
     // `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required)
     // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
@@ -218,7 +216,7 @@ private:
 };
 
 // Utility to flatten two or more `ActionVariant`s together into one variant.
-// E.g. `Actionable::Combine<ActionVariant1, ActionVariant2, ActionVariant3>`
+// E.g. `Action::Combine<ActionVariant1, ActionVariant2, ActionVariant3>`
 template<typename... Vars> struct Combine;
 template<typename Var> struct Combine<Var> {
     using type = Var;
@@ -228,11 +226,11 @@ template<typename... Ts1, typename... Ts2, typename... Vars> struct Combine<Acti
 };
 
 // Utility to filter an `ActionVariant` by a predicate.
-// E.g. `using StatefulAction = Actionable::Filter<Actionable::IsSavable, Any>::type;`
+// E.g. `using StatefulAction = Action::Filter<Action::IsSavable, Any>::type;`
 template<template<typename> class Predicate, typename Var> struct Filter;
-template<template<typename> class Predicate, typename... Types> struct Filter<Predicate, Actionable::ActionVariant<Types...>> {
+template<template<typename> class Predicate, typename... Types> struct Filter<Predicate, Action::ActionVariant<Types...>> {
     template<typename Type>
-    using ConditionalAdd = std::conditional_t<Predicate<Type>::value, Actionable::ActionVariant<Type>, Actionable::ActionVariant<>>;
-    using type = Actionable::Combine<ConditionalAdd<Types>...>::type;
+    using ConditionalAdd = std::conditional_t<Predicate<Type>::value, Action::ActionVariant<Type>, Action::ActionVariant<>>;
+    using type = Action::Combine<ConditionalAdd<Types>...>::type;
 };
-} // namespace Actionable
+} // namespace Action

@@ -1,1 +1,0 @@
-find -E src -regex '.*\.(cpp|hpp|c|cc|cxx|h|hh)' -exec clang-format -style=file -i {} \;

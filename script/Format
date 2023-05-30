@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# get the script's directory
+ScriptDir="$(cd "$(dirname "${0}")" && pwd)"
+# get the project root directory, which is the parent directory of the script's directory
+ProjectRootDir="$(dirname "${ScriptDir}")" 
+
+# format code files under the project root directory
+find -E "${ProjectRootDir}/src" -regex '.*\.(cpp|hpp|c|cc|cxx|h|hh)' -exec clang-format -style=file -i {} \;

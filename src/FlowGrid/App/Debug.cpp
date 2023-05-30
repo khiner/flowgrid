@@ -5,11 +5,11 @@
 #include "imgui_internal.h"
 #include "implot.h"
 
+#include "App/Style/Style.h"
 #include "Core/Action/Actions.h"
 #include "Core/Store/StoreHistory.h"
 #include "Core/Store/StoreJson.h"
 #include "Helper/String.h"
-#include "App/Style/Style.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;

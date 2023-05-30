@@ -1,7 +1,7 @@
 #pragma once
 
-#include "StyleAction.h"
 #include "Colors.h"
+#include "StyleAction.h"
 #include "UI/Styling.h"
 
 struct ImGuiContext;

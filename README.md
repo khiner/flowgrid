@@ -48,6 +48,7 @@ using Primitive = std::variant<bool, unsigned int, int, float, string>;
 `Field`s also provide state metadata, conversion & rendering methods, and behave syntactically like the `Primitive`s they wrap.
 
 Here are some high-level application architecture design goals:
+
 - Store the source-of-truth application state in a single `struct` with global read access.
 - Perform all actions that affect the application state in one place.
 - Provide global read access to all application runtime state.
@@ -170,15 +171,7 @@ LLVM version 16+ is required to build.
 ### Formatting
 
 FlowGrid uses `clang-format` for code formatting.
-
-Use the provided [pre-commit hook](.githooks/pre-commit) to automatically format staged files for each commit.
-**Please enable this hook before contributing** by running:
-
-```sh
-git config --local core.hooksPath .githooks/
-```
-
-In addition, the `Format` script formats every source Cxx file.
+`./script/Format` formats every cxx file in `src`.
 
 ### Tracing
 

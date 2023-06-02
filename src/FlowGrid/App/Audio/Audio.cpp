@@ -341,46 +341,6 @@ void Audio::Apply(const Action::AudioAction &action) const {
 // static ma_resampler_config ResamplerConfig;
 // static ma_resampler Resampler;
 
-// todo explicit re-scan action.
-void Audio::Init() const {
-    for (const IO io : IO_All) {
-        DeviceInfos[io].clear();
-        DeviceNames[io].clear();
-    }
-
-    int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
-
-    static Count PlaybackDeviceCount, CaptureDeviceCount;
-    static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
-    result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio devices: {}", result));
-
-    for (Count i = 0; i < CaptureDeviceCount; i++) {
-        DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
-        DeviceNames[IO_In].push_back(CaptureDeviceInfos[i].name);
-    }
-    for (Count i = 0; i < PlaybackDeviceCount; i++) {
-        DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
-        DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
-    }
-
-    Device.Init();
-    Graph.Init();
-    Device.Start();
-
-    NeedsRestart(); // xxx Updates cached values as side effect.
-}
-
-void Audio::Uninit() const {
-    Device.Stop();
-    Graph.Uninit();
-    Device.Uninit();
-
-    const int result = ma_context_uninit(&AudioContext);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
-}
-
 // todo draw debug info for all devices, not just current
 //  void DrawDevices() {
 //      for (const IO io : IO_All) {
@@ -449,6 +409,8 @@ static dsp *Dsp = nullptr;
 static std::unique_ptr<FaustParams> Ui;
 
 static void Init() {
+    if (Dsp || !audio.Faust.IsReady()) return;
+
     createLibContext();
 
     const string libraries_path = fs::relative("../lib/faust/libraries").string();
@@ -508,22 +470,66 @@ static bool NeedsRestart() {
     PreviousFaustCode = audio.Faust.Code;
     return needs_restart;
 }
+
+static void Update() {
+    const bool ready = audio.Faust.IsReady();
+    const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
+    if (!Dsp && ready) {
+        Init();
+    } else if (Dsp && !ready) {
+        Uninit();
+    } else if (needs_restart) {
+        Uninit();
+        Init();
+    }
+}
 } // namespace FaustContext
 
-void Audio::Update() const {
-    // Faust setup is only dependent on the faust code.
-    // TODO now that we're not dependent on global App.h state, we need to find a way to destroy the Faust context when the app closes.
-    // const bool is_faust_initialized = app.Running && Faust.Code && !Faust.Log.Error;
-    const bool is_faust_initialized = Faust.Code && !Faust.Log.Error;
-    const bool faust_needs_restart = FaustContext::NeedsRestart(); // Don't inline! Must run during every update.
-    if (!FaustContext::Dsp && is_faust_initialized) {
-        FaustContext::Init();
-    } else if (FaustContext::Dsp && !is_faust_initialized) {
-        FaustContext::Uninit();
-    } else if (faust_needs_restart) {
-        FaustContext::Uninit();
-        FaustContext::Init();
+// todo explicit re-scan action.
+void Audio::Init() const {
+    for (const IO io : IO_All) {
+        DeviceInfos[io].clear();
+        DeviceNames[io].clear();
     }
+
+    int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
+
+    static Count PlaybackDeviceCount, CaptureDeviceCount;
+    static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
+    result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio devices: {}", result));
+
+    for (Count i = 0; i < CaptureDeviceCount; i++) {
+        DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
+        DeviceNames[IO_In].push_back(CaptureDeviceInfos[i].name);
+    }
+    for (Count i = 0; i < PlaybackDeviceCount; i++) {
+        DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
+        DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
+    }
+
+    Device.Init();
+    Graph.Init();
+    Device.Start();
+
+    FaustContext::Init();
+    NeedsRestart(); // xxx Updates cached values as side effect.
+}
+
+void Audio::Uninit() const {
+    FaustContext::Uninit();
+    Device.Stop();
+    Graph.Uninit();
+    Device.Uninit();
+
+    const int result = ma_context_uninit(&AudioContext);
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
+}
+
+
+void Audio::Update() const {
+    FaustContext::Update();
 
     const bool is_initialized = Device.IsStarted();
     const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
@@ -947,6 +953,7 @@ void Audio::Faust::FaustLog::Render() const {
 }
 
 void Audio::Faust::Render() const {}
+bool Audio::Faust::IsReady() const { return Code && !Log.Error; }
 
 Audio::Graph::Node::Node(Stateful::Base *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateful(parent, path_segment, name_help) {

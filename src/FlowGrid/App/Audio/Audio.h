@@ -111,11 +111,15 @@ struct Audio : TabsWindow {
     using TabsWindow::TabsWindow;
 
     void Apply(const Action::AudioAction &) const;
+    void Init() const;
+    void Uninit() const;
     void Update() const;
     bool NeedsRestart() const;
 
     struct Faust : UIStateful {
         using UIStateful::UIStateful;
+
+        bool IsReady() const; // Has code and no errors.
 
         DefineWindow_(
             FaustEditor,
@@ -516,8 +520,6 @@ struct Audio : TabsWindow {
 
 protected:
     void Render() const override;
-    void Init() const;
-    void Uninit() const;
 };
 
 extern const Audio &audio;

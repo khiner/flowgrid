@@ -45,6 +45,7 @@ int main(int, const char **) {
     }
 
     DestroyUi();
+    audio.Uninit();
 
     return 0;
 }

@@ -5,22 +5,10 @@
 
 #include "App/Style/Colors.h"
 #include "AudioAction.h"
+#include "AudioDevice.h"
 #include "Graph/Node/AudioGraphNode.h"
 #include "UI/Styling.h"
 #include "UI/UI.h"
-
-// Starting at `-1` allows for using `IO` types as array indices.
-enum IO_ {
-    IO_None = -1,
-    IO_In,
-    IO_Out
-};
-using IO = IO_;
-
-constexpr IO IO_All[] = {IO_In, IO_Out};
-constexpr int IO_Count = 2;
-
-string to_string(IO io, bool shorten = false);
 
 enum FaustGraphHoverFlags_ {
     FaustGraphHoverFlags_None = 0,
@@ -381,35 +369,6 @@ struct Audio : TabsWindow {
         void Render() const override;
     };
 
-    // Corresponds to `ma_device`.
-    struct Device : UIStateful {
-        using UIStateful::UIStateful;
-
-        static const vector<U32> PrioritizedSampleRates;
-        static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.
-        static const string GetSampleRateName(U32);
-
-        void Init() const;
-        void Update() const; // Update device based on current settings.
-        void Uninit() const;
-
-        void Start() const;
-        void Stop() const;
-        bool IsStarted() const;
-
-        Prop_(Bool, On, "?When the audio device is turned off, the audio graph is destroyed and no audio processing takes place.", true);
-        Prop_(Bool, Muted, "?Completely mute audio output device. All audio computation will still be performed, so this setting does not affect CPU load.", true);
-        Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
-        Prop(String, InDeviceName);
-        Prop(String, OutDeviceName);
-        Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName);
-        Prop_(Enum, OutFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName);
-        Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", GetSampleRateName);
-
-    protected:
-        void Render() const override;
-    };
-
     // Corresponds to `ma_node_graph`.
     struct Graph : UIStateful {
         using UIStateful::UIStateful;
@@ -481,7 +440,7 @@ struct Audio : TabsWindow {
 
     DefineUI(Style);
 
-    Prop(Device, Device);
+    Prop(AudioDevice, Device);
     Prop(Graph, Graph);
     Prop(Faust, Faust);
     Prop(Style, Style);

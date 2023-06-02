@@ -227,14 +227,11 @@ GPL v3 is a strong copyleft license, which basically means any copy or modificat
 
 ### Why copyleft?
 
-The audio world has lots of high quality open-source code, educational resources, libraries, and other software resources.
-However, the commercial audio software industry is also full of protected IP.
-This is a necessary strategy for the too-few companies that manage to achieve some level of financial independence in an industry where that's a hard thing to do.
+The audio world has plenty of open-source resources, but proprietary intellectual property dominates the commercial audio software industry.
 
-Choosing a permissive license allowing for closed-source commercial usage may stand to benefit more end users (musicians, artists, creators) in the short-term, since companies producing closed-source software could freely put the code right directly their products without violating copyright.
-
-I usually find it pretty easy to find the music software or hardware I need as a _music producer_.
-As a _developer_, I've found it much harder to find the resources, tooling, and methodologies I need to easily create effective new audio software.
+A permissive license allowing closed-source commercial usage may help more end users (musicians, artists, creators) in the short term, but it doesn't help developers.
+As a music producer, finding excellent software or hardware is relatively easy.
+As a developer, however, I've had a much harder time finding resources, tools, and strategies for effective audio software development.
 
 Although this project is first and foremost a creative tool, the intention and spirit is much more about hacking, learning, educating and researching than it is about producing end media products.
 For these purposes, keeping the information open is more important than making the functionality freely and widely available.

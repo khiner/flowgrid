@@ -463,17 +463,9 @@ static void Uninit() {
     destroyLibContext();
 }
 
-static bool NeedsRestart() {
-    static string PreviousFaustCode = audio.Faust.Code;
-
-    const bool needs_restart = audio.Faust.Code != PreviousFaustCode;
-    PreviousFaustCode = audio.Faust.Code;
-    return needs_restart;
-}
-
 static void Update() {
     const bool ready = audio.Faust.IsReady();
-    const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
+    const bool needs_restart = audio.Faust.NeedsRestart(); // Don't inline! Must run during every update.
     if (!Dsp && ready) {
         Init();
     } else if (Dsp && !ready) {
@@ -526,7 +518,6 @@ void Audio::Uninit() const {
     const int result = ma_context_uninit(&AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
 }
-
 
 void Audio::Update() const {
     FaustContext::Update();
@@ -783,11 +774,11 @@ void Audio::Graph::Update() const {
 
     // Setting up busses is idempotent.
     Count source_i = 0;
-    for (const Node *source_node : Nodes) {
+    for (const auto *source_node : Nodes) {
         if (!source_node->IsSource()) continue;
         ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
         Count dest_i = 0;
-        for (const Node *dest_node : Nodes) {
+        for (const auto *dest_node : Nodes) {
             if (!dest_node->IsDestination()) continue;
             if (Connections(dest_i, source_i)) {
                 ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
@@ -817,65 +808,21 @@ void Audio::Graph::Render() const {
 
 void Audio::Graph::Nodes::Init() const {
     Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
-    for (const Node *node : *this) node->Init();
+    for (const auto *node : *this) node->Init();
 }
 void Audio::Graph::Nodes::Update() const {
-    for (const Node *node : *this) node->Update();
+    for (const auto *node : *this) node->Update();
 }
 void Audio::Graph::Nodes::Uninit() const {
-    for (const Node *node : *this) node->Uninit();
+    for (const auto *node : *this) node->Uninit();
 }
 void Audio::Graph::Nodes::Render() const {
-    for (const Node *node : *this) {
+    for (const auto *node : *this) {
         if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
             node->Draw();
             TreePop();
         }
     }
-}
-
-void *Audio::Graph::Node::Get() const { return DataFor.contains(Id) ? DataFor.at(Id) : nullptr; }
-void Audio::Graph::Node::Set(ma_node *data) const {
-    if (data == nullptr) DataFor.erase(Id);
-    else DataFor[Id] = data;
-}
-
-Count Audio::Graph::Node::InputBusCount() const { return ma_node_get_input_bus_count(Get()); }
-Count Audio::Graph::Node::OutputBusCount() const { return ma_node_get_output_bus_count(Get()); }
-Count Audio::Graph::Node::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Get(), bus); }
-Count Audio::Graph::Node::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Get(), bus); }
-
-void Audio::Graph::Node::Init() const {
-    DoInit();
-    NeedsRestart(); // xxx Updates cached values as side effect.
-}
-void Audio::Graph::Node::DoInit() const {
-}
-void Audio::Graph::Node::Update() const {
-    const bool is_initialized = Get() != nullptr;
-    const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
-    if (On && !is_initialized) {
-        Init();
-    } else if (!On && is_initialized) {
-        Uninit();
-    } else if (needs_restart && is_initialized) {
-        Uninit();
-        Init();
-    }
-    if (On) ma_node_set_output_bus_volume(Get(), 0, Volume);
-}
-void Audio::Graph::Node::Uninit() const {
-    if (!Get()) return;
-
-    DoUninit();
-    Set(nullptr);
-}
-void Audio::Graph::Node::DoUninit() const {
-    ma_node_uninit(Get(), nullptr);
-}
-void Audio::Graph::Node::Render() const {
-    On.Draw();
-    Volume.Draw();
 }
 
 // Output node is already allocated by the MA graph, so we don't need to track internal data for it.
@@ -954,10 +901,12 @@ void Audio::Faust::FaustLog::Render() const {
 
 void Audio::Faust::Render() const {}
 bool Audio::Faust::IsReady() const { return Code && !Log.Error; }
+bool Audio::Faust::NeedsRestart() const {
+    static string PreviousCode = audio.Faust.Code;
 
-Audio::Graph::Node::Node(Stateful::Base *parent, string_view path_segment, string_view name_help, bool on)
-    : UIStateful(parent, path_segment, name_help) {
-    store::Set(On, on);
+    const bool needs_restart = Code != PreviousCode;
+    PreviousCode = Code;
+    return needs_restart;
 }
 
 void Audio::Graph::RenderConnections() const {

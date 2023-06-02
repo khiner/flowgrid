@@ -5,6 +5,7 @@
 
 #include "App/Style/Colors.h"
 #include "AudioAction.h"
+#include "Graph/Node/AudioGraphNode.h"
 #include "UI/Styling.h"
 #include "UI/UI.h"
 
@@ -120,6 +121,7 @@ struct Audio : TabsWindow {
         using UIStateful::UIStateful;
 
         bool IsReady() const; // Has code and no errors.
+        bool NeedsRestart() const;
 
         DefineWindow_(
             FaustEditor,
@@ -412,48 +414,14 @@ struct Audio : TabsWindow {
     struct Graph : UIStateful {
         using UIStateful::UIStateful;
 
-        // Corresponds to `ma_node_base`.
-        // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
-        // This base `Node` can either be specialized or instantiated on its own.
-        struct Node : UIStateful {
-            Node(Stateful::Base *parent, string_view path_segment, string_view name_help = "", bool on = true);
-
-            void Set(void *) const; // Set MA node.
-            void *Get() const; // Get MA node.
-
-            Count InputBusCount() const;
-            Count OutputBusCount() const;
-            Count InputChannelCount(Count bus) const;
-            Count OutputChannelCount(Count bus) const;
-
-            bool IsSource() const { return OutputBusCount() > 0; }
-            bool IsDestination() const { return InputBusCount() > 0; }
-
-            void Init() const; // Add MA node.
-            void Update() const; // Update MA node based on current settings (e.g. volume).
-            void Uninit() const; // Remove MA node.
-
-            Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.", true);
-            Prop(Float, Volume, 1.0);
-
-        protected:
-            void Render() const override;
-            virtual void DoInit() const;
-            virtual void DoUninit() const;
-            virtual bool NeedsRestart() const { return false; }; // Return `true` if node needs re-initialization due to changed state.
-
-        private:
-            inline static std::unordered_map<ID, void *> DataFor; // MA node for owning Node's ID.
-        };
-
-        struct InputNode : Node {
-            using Node::Node;
+        struct InputNode : AudioGraphNode {
+            using AudioGraphNode::AudioGraphNode;
             void DoInit() const override;
             void DoUninit() const override;
         };
 
-        struct FaustNode : Node {
-            using Node::Node;
+        struct FaustNode : AudioGraphNode {
+            using AudioGraphNode::AudioGraphNode;
             void DoInit() const override;
             bool NeedsRestart() const override;
         };
@@ -465,7 +433,7 @@ struct Audio : TabsWindow {
             // Usage: `for (const Node *node : Nodes) ...`
             struct Iterator : vector<Stateful::Base *>::const_iterator {
                 Iterator(auto it) : vector<Stateful::Base *>::const_iterator(it) {}
-                const Node *operator*() const { return dynamic_cast<const Node *>(vector<Stateful::Base *>::const_iterator::operator*()); }
+                const AudioGraphNode *operator*() const { return dynamic_cast<const AudioGraphNode *>(vector<Stateful::Base *>::const_iterator::operator*()); }
             };
             Iterator begin() const { return Children.cbegin(); }
             Iterator end() const { return Children.cend(); }
@@ -478,7 +446,7 @@ struct Audio : TabsWindow {
             // todo configurable data source
             Prop(InputNode, Input);
             Prop(FaustNode, Faust);
-            Prop(Node, Output);
+            Prop(AudioGraphNode, Output);
 
         protected:
             void Render() const override;

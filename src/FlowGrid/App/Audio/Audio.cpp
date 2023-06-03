@@ -270,12 +270,6 @@ void Audio::Faust::FaustParams::Style::Render() const {
     TableFlags.Draw();
 }
 
-void Audio::Graph::Style::Matrix::Render() const {
-    CellSize.Draw();
-    CellGap.Draw();
-    LabelSize.Draw();
-}
-
 // todo implement for r8brain resampler
 // todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
 //   Can I still use duplex mode in this case?
@@ -299,7 +293,6 @@ void Audio::Graph::Style::Matrix::Render() const {
 //     ma_resampling_backend_get_expected_output_frame_count__linear,
 //     ma_resampling_backend_reset__linear,
 // };
-
 
 void Audio::Apply(const Action::AudioAction &action) const {
     using namespace Action;
@@ -538,7 +531,7 @@ bool Audio::NeedsRestart() const {
     return needs_restart;
 }
 
-void Audio::Graph::Init() const {
+void AudioGraph::Init() const {
     NodeGraphConfig = ma_node_graph_config_init(audio.Device.InChannels);
     int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
@@ -560,7 +553,7 @@ void Audio::Graph::Init() const {
     Action::SetMatrix{Connections.Path, connections, dest_count}.q(true);
 }
 
-void Audio::Graph::Update() const {
+void AudioGraph::Update() const {
     Nodes.Update();
 
     // Setting up busses is idempotent.
@@ -579,45 +572,24 @@ void Audio::Graph::Update() const {
         source_i++;
     }
 }
-void Audio::Graph::Uninit() const {
+void AudioGraph::Uninit() const {
     Nodes.Uninit();
     // ma_node_graph_uninit(&NodeGraph, nullptr); // Graph endpoint is already uninitialized in `Nodes.Uninit`.
 }
-void Audio::Graph::Render() const {
-    if (BeginTabBar("")) {
-        if (BeginTabItem(Nodes.ImGuiLabel.c_str())) {
-            Nodes.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem("Connections")) {
-            RenderConnections();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
-}
 
-void Audio::Graph::Nodes::Init() const {
+void AudioGraph::Nodes::Init() const {
     Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
     for (const auto *node : *this) node->Init();
 }
-void Audio::Graph::Nodes::Update() const {
+void AudioGraph::Nodes::Update() const {
     for (const auto *node : *this) node->Update();
 }
-void Audio::Graph::Nodes::Uninit() const {
+void AudioGraph::Nodes::Uninit() const {
     for (const auto *node : *this) node->Uninit();
-}
-void Audio::Graph::Nodes::Render() const {
-    for (const auto *node : *this) {
-        if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            node->Draw();
-            TreePop();
-        }
-    }
 }
 
 // Output node is already allocated by the MA graph, so we don't need to track internal data for it.
-void Audio::Graph::InputNode::DoInit() const {
+void AudioGraph::InputNode::DoInit() const {
     int result = ma_audio_buffer_ref_init((ma_format) int(audio.Device.InFormat), audio.Device.InChannels, nullptr, 0, &InputBuffer);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
 
@@ -630,7 +602,7 @@ void Audio::Graph::InputNode::DoInit() const {
 
     Set(&Node);
 }
-void Audio::Graph::InputNode::DoUninit() const {
+void AudioGraph::InputNode::DoUninit() const {
     ma_data_source_node_uninit((ma_data_source_node *)Get(), nullptr);
     ma_audio_buffer_ref_uninit(&InputBuffer);
 }
@@ -645,7 +617,7 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
     (void)frame_count_in; // unused
 }
 
-void Audio::Graph::FaustNode::DoInit() const {
+void AudioGraph::FaustNode::DoInit() const {
     if (!FaustContext::Dsp) return;
 
     FaustContext::Dsp->init(audio.Device.SampleRate);
@@ -669,7 +641,7 @@ void Audio::Graph::FaustNode::DoInit() const {
 
     Set(&node);
 }
-bool Audio::Graph::FaustNode::NeedsRestart() const {
+bool AudioGraph::FaustNode::NeedsRestart() const {
     static dsp *PreviousDsp = FaustContext::Dsp;
     static U32 PreviousSampleRate = audio.Device.SampleRate;
 
@@ -679,10 +651,6 @@ bool Audio::Graph::FaustNode::NeedsRestart() const {
 
     return needs_restart;
 }
-
-// todo next up: Migrate all remaining `Audio` method definitions from `App.cpp` to here
-//   This requires a solution for getting global `Style` here, either by extracting it from `App`,
-//   or breaking it out into separate style members owned by their domain parents, e.g. `Audio::Style`.
 
 void Audio::Faust::FaustLog::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
@@ -698,67 +666,6 @@ bool Audio::Faust::NeedsRestart() const {
     const bool needs_restart = Code != PreviousCode;
     PreviousCode = Code;
     return needs_restart;
-}
-
-void Audio::Graph::RenderConnections() const {
-    const auto &style = Style.Matrix;
-    const float cell_size = style.CellSize * GetTextLineHeight();
-    const float cell_gap = style.CellGap;
-    const float label_size = style.LabelSize * GetTextLineHeight(); // Does not include padding.
-    const float label_padding = ImGui::GetStyle().ItemInnerSpacing.x;
-    const float max_label_w = label_size + 2 * label_padding;
-    const ImVec2 grid_top_left = GetCursorScreenPos() + max_label_w;
-
-    BeginGroup();
-    // Draw the source channel labels.
-    Count source_count = 0;
-    for (const auto *source_node : Nodes) {
-        if (!source_node->IsSource()) continue;
-
-        const char *label = source_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), label_size);
-
-        SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_count, -max_label_w});
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, source_node->ImGuiLabel.c_str());
-        ImPlot::AddTextVertical(
-            GetWindowDrawList(),
-            grid_top_left + ImVec2{(cell_size + cell_gap) * source_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
-            GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
-        );
-        const bool text_clipped = ellipsified_label.find("...") != string::npos;
-        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
-        source_count++;
-    }
-
-    // Draw the destination channel labels and mixer cells.
-    Count dest_i = 0;
-    for (const auto *dest_node : Nodes) {
-        if (!dest_node->IsDestination()) continue;
-
-        const char *label = dest_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), label_size);
-
-        SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * dest_i});
-        const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, dest_node->ImGuiLabel.c_str());
-        const float label_w = CalcTextSize(ellipsified_label.c_str()).x;
-        SetCursorPos(GetCursorPos() + ImVec2{max_label_w - label_w - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
-        TextUnformatted(ellipsified_label.c_str());
-        const bool text_clipped = ellipsified_label.find("...") != string::npos;
-        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
-
-        for (Count source_i = 0; source_i < source_count; source_i++) {
-            PushID(dest_i * source_count + source_i);
-            SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
-            const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) Action::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)}.q();
-
-            const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
-            RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));
-            PopID();
-        }
-        dest_i++;
-    }
-    EndGroup();
 }
 
 void Audio::Style::Render() const {

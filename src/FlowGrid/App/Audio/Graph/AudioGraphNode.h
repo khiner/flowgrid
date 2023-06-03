@@ -2,6 +2,8 @@
 
 #include "Core/Stateful/Window.h" // xxx should only need Stateful and Field.
 
+struct ma_node_graph;
+
 // Corresponds to `ma_node_base`.
 // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
 // This base `Node` can either be specialized or instantiated on its own.
@@ -19,8 +21,8 @@ struct AudioGraphNode : UIStateful {
     bool IsSource() const { return OutputBusCount() > 0; }
     bool IsDestination() const { return InputBusCount() > 0; }
 
-    void Init() const; // Add MA node.
-    void Update() const; // Update MA node based on current settings (e.g. volume).
+    void Init(ma_node_graph *) const; // Add MA node.
+    void Update(ma_node_graph *) const; // Update MA node based on current settings (e.g. volume).
     void Uninit() const; // Remove MA node.
 
     Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.", true);
@@ -28,7 +30,8 @@ struct AudioGraphNode : UIStateful {
 
 protected:
     void Render() const override;
-    virtual void DoInit() const;
+    virtual void DoInit(ma_node_graph *) const {};
+    virtual void DoUpdate() const {};
     virtual void DoUninit() const;
     virtual bool NeedsRestart() const { return false; }; // Return `true` if node needs re-initialization due to changed state.
 

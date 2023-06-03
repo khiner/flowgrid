@@ -217,3 +217,5 @@ struct Faust : UIStateful {
 protected:
     void Render() const override;
 };
+
+extern const Faust &faust;

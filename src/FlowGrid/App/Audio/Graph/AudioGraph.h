@@ -1,5 +1,6 @@
 #pragma once
 
+#include "App/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
 #include "AudioGraphNode.h"
 
 // Corresponds to `ma_node_graph`.
@@ -8,14 +9,8 @@ struct AudioGraph : UIStateful {
 
     struct InputNode : AudioGraphNode {
         using AudioGraphNode::AudioGraphNode;
-        void DoInit() const override;
+        void DoInit(ma_node_graph *) const override;
         void DoUninit() const override;
-    };
-
-    struct FaustNode : AudioGraphNode {
-        using AudioGraphNode::AudioGraphNode;
-        void DoInit() const override;
-        bool NeedsRestart() const override;
     };
 
     struct Nodes : UIStateful {

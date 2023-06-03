@@ -36,3 +36,5 @@ struct AudioDevice : UIStateful {
 protected:
     void Render() const override;
 };
+
+extern const AudioDevice &audio_device;

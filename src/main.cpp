@@ -9,7 +9,9 @@ const App Application{}; // Initialize the global application state.
 const App &app = Application; // Set the read-only app reference global.
 const fg::Style &fg::style = app.Style;
 const Audio &audio = app.Audio;
-const FaustGraph &faust_graph = app.Audio.Faust.Graph;
+const AudioDevice &audio_device = audio.Device;
+const Faust &faust = audio.Faust;
+const FaustGraph &faust_graph = faust.Graph;
 const ImGuiSettings &imgui_settings = app.ImGuiSettings;
 const FileDialog &file_dialog = app.FileDialog;
 const ApplicationSettings &application_settings = app.Settings;

@@ -136,23 +136,13 @@ void Audio::Render() const {
 
 // todo support loopback mode? (think of use cases)
 
-static ma_node_graph NodeGraph;
-static ma_node_graph_config NodeGraphConfig;
-static ma_audio_buffer_ref InputBuffer;
-
-void AudioCallback(ma_device *device, void *output, const void *input, ma_uint32 frame_count) {
-    ma_audio_buffer_ref_set_data(&InputBuffer, input, frame_count);
-    ma_node_graph_read_pcm_frames(&NodeGraph, output, frame_count, nullptr);
-    (void)device; // unused
-}
-
 // todo explicit re-scan action.
 void Audio::Init() const {
-    Device.Init(AudioCallback);
+    Device.Init(AudioGraph::AudioCallback);
     Graph.Init();
     Device.Start();
 
-    NeedsRestart(); // xxx Updates cached values as side effect.
+    Device.NeedsRestart(); // xxx Updates cached values as side effect.
 }
 
 void Audio::Uninit() const {
@@ -163,7 +153,7 @@ void Audio::Uninit() const {
 
 void Audio::Update() const {
     const bool is_initialized = Device.IsStarted();
-    const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
+    const bool needs_restart = Device.NeedsRestart(); // Don't inline! Must run during every update.
     if (Device.On && !is_initialized) {
         Init();
     } else if (!Device.On && is_initialized) {
@@ -178,106 +168,6 @@ void Audio::Update() const {
     Device.Update();
 
     if (Device.IsStarted()) Graph.Update();
-}
-
-bool Audio::NeedsRestart() const {
-    static string PreviousInDeviceName = Device.InDeviceName, PreviousOutDeviceName = Device.OutDeviceName;
-    static int PreviousInFormat = Device.InFormat, PreviousOutFormat = Device.OutFormat;
-    static U32 PreviousInChannels = Device.InChannels, PreviousOutChannels = Device.OutChannels;
-    static U32 PreviousSampleRate = Device.SampleRate;
-
-    const bool needs_restart =
-        PreviousInDeviceName != Device.InDeviceName ||
-        PreviousOutDeviceName != Device.OutDeviceName ||
-        PreviousInFormat != Device.InFormat || PreviousOutFormat != Device.OutFormat ||
-        PreviousInChannels != Device.InChannels || PreviousOutChannels != Device.OutChannels ||
-        PreviousSampleRate != Device.SampleRate;
-
-    PreviousInDeviceName = Device.InDeviceName;
-    PreviousOutDeviceName = Device.OutDeviceName;
-    PreviousInFormat = Device.InFormat;
-    PreviousOutFormat = Device.OutFormat;
-    PreviousInChannels = Device.InChannels;
-    PreviousOutChannels = Device.OutChannels;
-    PreviousSampleRate = Device.SampleRate;
-
-    return needs_restart;
-}
-
-void AudioGraph::Init() const {
-    NodeGraphConfig = ma_node_graph_config_init(audio.Device.InChannels);
-    int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
-
-    Nodes.Init();
-    vector<Primitive> connections{};
-    Count dest_count = 0;
-    for (const auto *dest_node : Nodes) {
-        if (!dest_node->IsDestination()) continue;
-        for (const auto *source_node : Nodes) {
-            if (!source_node->IsSource()) continue;
-            const bool default_connected =
-                (source_node == &Nodes.Input && dest_node == &Nodes.Faust) ||
-                (source_node == &Nodes.Faust && dest_node == &Nodes.Output);
-            connections.push_back(default_connected);
-        }
-        dest_count++;
-    }
-    Action::SetMatrix{Connections.Path, connections, dest_count}.q(true);
-}
-
-void AudioGraph::Update() const {
-    Nodes.Update();
-
-    // Setting up busses is idempotent.
-    Count source_i = 0;
-    for (const auto *source_node : Nodes) {
-        if (!source_node->IsSource()) continue;
-        ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
-        Count dest_i = 0;
-        for (const auto *dest_node : Nodes) {
-            if (!dest_node->IsDestination()) continue;
-            if (Connections(dest_i, source_i)) {
-                ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
-            }
-            dest_i++;
-        }
-        source_i++;
-    }
-}
-void AudioGraph::Uninit() const {
-    Nodes.Uninit();
-    // ma_node_graph_uninit(&NodeGraph, nullptr); // Graph endpoint is already uninitialized in `Nodes.Uninit`.
-}
-
-void AudioGraph::Nodes::Init() const {
-    Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
-    for (const auto *node : *this) node->Init(&NodeGraph);
-}
-void AudioGraph::Nodes::Update() const {
-    for (const auto *node : *this) node->Update(&NodeGraph);
-}
-void AudioGraph::Nodes::Uninit() const {
-    for (const auto *node : *this) node->Uninit();
-}
-
-// Output node is already allocated by the MA graph, so we don't need to track internal data for it.
-void AudioGraph::InputNode::DoInit(ma_node_graph *graph) const {
-    int result = ma_audio_buffer_ref_init((ma_format) int(audio.Device.InFormat), audio.Device.InChannels, nullptr, 0, &InputBuffer);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
-
-    static ma_data_source_node Node{};
-    static ma_data_source_node_config Config{};
-
-    Config = ma_data_source_node_config_init(&InputBuffer);
-    result = ma_data_source_node_init(graph, &Config, nullptr, &Node);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));
-
-    Set(&Node);
-}
-void AudioGraph::InputNode::DoUninit() const {
-    ma_data_source_node_uninit((ma_data_source_node *)Get(), nullptr);
-    ma_audio_buffer_ref_uninit(&InputBuffer);
 }
 
 using namespace ImGui;

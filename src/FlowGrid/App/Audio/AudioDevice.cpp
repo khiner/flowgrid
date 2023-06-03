@@ -119,6 +119,30 @@ void AudioDevice::Uninit() const {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
 }
 
+bool AudioDevice::NeedsRestart() const {
+    static string PreviousInDeviceName = InDeviceName, PreviousOutDeviceName = OutDeviceName;
+    static int PreviousInFormat = InFormat, PreviousOutFormat = OutFormat;
+    static U32 PreviousInChannels = InChannels, PreviousOutChannels = OutChannels;
+    static U32 PreviousSampleRate = SampleRate;
+
+    const bool needs_restart =
+        PreviousInDeviceName != InDeviceName ||
+        PreviousOutDeviceName != OutDeviceName ||
+        PreviousInFormat != InFormat || PreviousOutFormat != OutFormat ||
+        PreviousInChannels != InChannels || PreviousOutChannels != OutChannels ||
+        PreviousSampleRate != SampleRate;
+
+    PreviousInDeviceName = InDeviceName;
+    PreviousOutDeviceName = OutDeviceName;
+    PreviousInFormat = InFormat;
+    PreviousOutFormat = OutFormat;
+    PreviousInChannels = InChannels;
+    PreviousOutChannels = OutChannels;
+    PreviousSampleRate = SampleRate;
+
+    return needs_restart;
+}
+
 void AudioDevice::Start() const {
     if (IsStarted()) return;
     const int result = ma_device_start(&MaDevice);

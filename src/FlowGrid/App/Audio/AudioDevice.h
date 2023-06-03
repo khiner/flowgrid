@@ -17,6 +17,7 @@ struct AudioDevice : UIStateful {
     void Init(Callback callback) const;
     void Update() const; // Update device based on current settings.
     void Uninit() const;
+    bool NeedsRestart() const;
 
     void Start() const;
     void Stop() const;

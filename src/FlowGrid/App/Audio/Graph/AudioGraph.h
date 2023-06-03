@@ -3,9 +3,17 @@
 #include "App/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
 #include "AudioGraphNode.h"
 
+struct ma_device;
+
 // Corresponds to `ma_node_graph`.
 struct AudioGraph : UIStateful {
     using UIStateful::UIStateful;
+
+    void Init() const;
+    void Update() const;
+    void Uninit() const;
+
+    static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
 
     struct InputNode : AudioGraphNode {
         using AudioGraphNode::AudioGraphNode;
@@ -38,10 +46,6 @@ struct AudioGraph : UIStateful {
     protected:
         void Render() const override;
     };
-
-    void Init() const;
-    void Update() const;
-    void Uninit() const;
 
     DefineStateful(
         Style,

@@ -2,7 +2,7 @@
 
 #include "imgui_internal.h"
 
-#include "Audio/Faust/FaustGraph.h"
+#include "Audio/Faust/FaustBox.h"
 
 using namespace ImGui;
 

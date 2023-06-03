@@ -8,7 +8,7 @@ using namespace ImGui;
 
 static TextEditor editor;
 
-void Audio::Faust::FaustEditor::Render() const {
+void Faust::FaustEditor::Render() const {
     if (ImGui::BeginMenuBar()) {
         FileMenu.Draw();
         if (ImGui::BeginMenu("Edit")) {
@@ -70,6 +70,6 @@ void Audio::Faust::FaustEditor::Render() const {
     }
 }
 
-void Audio::Faust::FaustEditor::Metrics::Render() const {
+void Faust::FaustEditor::Metrics::Render() const {
     editor.DebugPanel();
 }

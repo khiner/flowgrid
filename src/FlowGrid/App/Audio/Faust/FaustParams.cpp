@@ -258,7 +258,7 @@ void DrawUiItem(const FaustParams::Item &item, const char *label, const float su
     }
 }
 
-void Audio::Faust::FaustParams::Render() const {
+void Faust::FaustParams::Render() const {
     if (!interface) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?
@@ -278,4 +278,17 @@ void Audio::Faust::FaustParams::Render() const {
 
 void OnUiChange(FaustParams *ui) {
     interface = ui;
+}
+
+void Faust::FaustParams::Style::Render() const {
+    HeaderTitles.Draw();
+    MinHorizontalItemWidth.Draw();
+    MaxHorizontalItemWidth.Draw();
+    MinVerticalItemHeight.Draw();
+    MinKnobItemSize.Draw();
+    AlignmentHorizontal.Draw();
+    AlignmentVertical.Draw();
+    Spacing();
+    WidthSizingPolicy.Draw();
+    TableFlags.Draw();
 }

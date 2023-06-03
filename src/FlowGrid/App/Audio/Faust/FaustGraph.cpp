@@ -1,3 +1,5 @@
+#include "FaustGraph.h"
+
 #include <sstream>
 #include <stack>
 #include <unordered_map>
@@ -13,11 +15,10 @@
 
 #include "imgui_internal.h"
 
-#include "App/Audio/Audio.h"
+#include "App/Audio/AudioIO.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
-#include "UI/Styling.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -36,7 +37,7 @@ enum GraphOrientation {
     GraphReverse
 };
 
-static inline auto &Style() { return audio.Faust.Graph.Style; }
+static inline auto &Style() { return faust_graph.Style; }
 
 static inline float GetScale();
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
@@ -421,7 +422,7 @@ struct Node {
         if (B) B->Draw(device);
 
         if (flags & InteractionFlags_Hovered) {
-            const auto &flags = audio.Faust.Graph.Settings.HoverFlags;
+            const auto &flags = faust_graph.Settings.HoverFlags;
             // todo get abs pos by traversing through ancestors
             if (flags & FaustGraphHoverFlags_ShowRect) DrawRect(device);
             if (flags & FaustGraphHoverFlags_ShowType) DrawType(device);
@@ -839,7 +840,7 @@ Both `GroupNode` and `DecorateNode` render a grouping border around the provided
 
 # Respected layout properties
 
-Each property can be changed in `Audio.Faust.Graph.Style.(Group|Decorate){PropertyName}`.
+Each property can be changed in `app.Audio.Faust.Graph.Style.(Group|Decorate){PropertyName}`.
 
 * Margin (`Vec2`):
   - Adds to total size.
@@ -1223,7 +1224,7 @@ void SaveBoxSvg(string_view path) {
 
 bool IsBoxHovered(ID imgui_id) { return Node::WithId[imgui_id] != nullptr; }
 
-void Audio::Faust::FaustGraph::Render() const {
+void FaustGraph::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?
@@ -1263,4 +1264,208 @@ void Audio::Faust::FaustGraph::Render() const {
     focused->Draw(device);
 
     EndChild();
+}
+
+FaustGraph::Style::Style(Stateful::Base *parent, string_view path_segment, string_view name_help)
+    : UIStateful(parent, path_segment, name_help) {
+    ColorsDark();
+    LayoutFlowGrid();
+}
+
+const char *FaustGraph::Style::GetColorName(FlowGridGraphCol idx) {
+    switch (idx) {
+        case FlowGridGraphCol_Bg: return "Background";
+        case FlowGridGraphCol_Text: return "Text";
+        case FlowGridGraphCol_DecorateStroke: return "DecorateStroke";
+        case FlowGridGraphCol_GroupStroke: return "GroupStroke";
+        case FlowGridGraphCol_Line: return "Line";
+        case FlowGridGraphCol_Link: return "Link";
+        case FlowGridGraphCol_Inverter: return "Inverter";
+        case FlowGridGraphCol_OrientationMark: return "OrientationMark";
+        case FlowGridGraphCol_Normal: return "Normal";
+        case FlowGridGraphCol_Ui: return "Ui";
+        case FlowGridGraphCol_Slot: return "Slot";
+        case FlowGridGraphCol_Number: return "Number";
+        default: return "Unknown";
+    }
+}
+
+void FaustGraph::Style::ColorsDark() const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {0.06, 0.06, 0.06, 0.94}},
+            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridGraphCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
+            {FlowGridGraphCol_Line, {0.61, 0.61, 0.61, 1}},
+            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridGraphCol_Inverter, {1, 1, 1, 1}},
+            {FlowGridGraphCol_OrientationMark, {1, 1, 1, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        }
+    );
+}
+void FaustGraph::Style::ColorsClassic() const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {0, 0, 0, 0.85}},
+            {FlowGridGraphCol_Text, {0.9, 0.9, 0.9, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridGraphCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
+            {FlowGridGraphCol_Line, {1, 1, 1, 1}},
+            {FlowGridGraphCol_Link, {0.35, 0.4, 0.61, 0.62}},
+            {FlowGridGraphCol_Inverter, {0.9, 0.9, 0.9, 1}},
+            {FlowGridGraphCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        }
+    );
+}
+void FaustGraph::Style::ColorsLight() const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {0.94, 0.94, 0.94, 1}},
+            {FlowGridGraphCol_Text, {0, 0, 0, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0, 0, 0, 0.3}},
+            {FlowGridGraphCol_GroupStroke, {0, 0, 0, 0.3}},
+            {FlowGridGraphCol_Line, {0.39, 0.39, 0.39, 1}},
+            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        }
+    );
+}
+void FaustGraph::Style::ColorsFaust() const {
+    Colors.Set(
+        {
+            {FlowGridGraphCol_Bg, {1, 1, 1, 1}},
+            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+            {FlowGridGraphCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridGraphCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
+            {FlowGridGraphCol_Line, {0, 0, 0, 1}},
+            {FlowGridGraphCol_Link, {0, 0.2, 0.4, 1}},
+            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
+            // Box fills
+            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+        }
+    );
+}
+
+void FaustGraph::Style::LayoutFlowGrid() const {
+    static const auto DefaultLayoutEntries =
+        LayoutFields |
+        ranges::views::transform(
+            [](const PrimitiveBase &field) { return Stateful::Field::Entry(field, field.Get()); }
+        ) |
+        ranges::to<const Stateful::Field::Entries>;
+    store::Set(DefaultLayoutEntries);
+}
+void FaustGraph::Style::LayoutFaust() const {
+    store::Set(
+        {
+            {SequentialConnectionZigzag, true},
+            {OrientationMark, true},
+            {DecorateRootNode, true},
+            {DecorateMargin.X, 10},
+            {DecorateMargin.Y, 10},
+            {DecoratePadding.X, 10},
+            {DecoratePadding.Y, 10},
+            {DecorateLineWidth, 1},
+            {DecorateCornerRadius, 0},
+            {GroupMargin.X, 10},
+            {GroupMargin.Y, 10},
+            {GroupPadding.X, 10},
+            {GroupPadding.Y, 10},
+            {GroupLineWidth, 1},
+            {GroupCornerRadius, 0},
+            {BoxCornerRadius, 0},
+            {BinaryHorizontalGapRatio, 0.25f},
+            {WireWidth, 1},
+            {WireGap, 16},
+            {NodeMargin.X, 8},
+            {NodeMargin.Y, 8},
+            {NodePadding.X, 8},
+            {NodePadding.Y, 0},
+            {ArrowSize.X, 3},
+            {ArrowSize.Y, 2},
+            {InverterRadius, 3},
+        }
+    );
+}
+
+void FaustGraph::Style::Render() const {
+    if (BeginTabBar(ImGuiLabel.c_str(), ImGuiTabBarFlags_None)) {
+        if (BeginTabItem("Layout")) {
+            static int graph_layout_idx = -1;
+            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) Action::SetGraphLayoutStyle{graph_layout_idx}.q();
+
+            FoldComplexity.Draw();
+            const bool scale_fill = ScaleFillHeight;
+            ScaleFillHeight.Draw();
+            if (scale_fill) BeginDisabled();
+            Scale.Draw();
+            if (scale_fill) {
+                SameLine();
+                TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
+                EndDisabled();
+            }
+            Direction.Draw();
+            OrientationMark.Draw();
+            if (OrientationMark) {
+                SameLine();
+                SetNextItemWidth(GetContentRegionAvail().x * 0.5f);
+                OrientationMarkRadius.Draw();
+            }
+            RouteFrame.Draw();
+            SequentialConnectionZigzag.Draw();
+            Separator();
+            const bool decorate_folded = DecorateRootNode;
+            DecorateRootNode.Draw();
+            if (!decorate_folded) BeginDisabled();
+            DecorateMargin.Draw();
+            DecoratePadding.Draw();
+            DecorateLineWidth.Draw();
+            DecorateCornerRadius.Draw();
+            if (!decorate_folded) EndDisabled();
+            Separator();
+            GroupMargin.Draw();
+            GroupPadding.Draw();
+            GroupLineWidth.Draw();
+            GroupCornerRadius.Draw();
+            Separator();
+            NodeMargin.Draw();
+            NodePadding.Draw();
+            BoxCornerRadius.Draw();
+            BinaryHorizontalGapRatio.Draw();
+            WireGap.Draw();
+            WireWidth.Draw();
+            ArrowSize.Draw();
+            InverterRadius.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem(Colors.ImGuiLabel.c_str())) {
+            static int graph_colors_idx = -1;
+            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) Action::SetGraphColorStyle{graph_colors_idx}.q();
+
+            Colors.Draw();
+            EndTabItem();
+        }
+        EndTabBar();
+    }
 }

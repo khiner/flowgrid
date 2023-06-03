@@ -36,7 +36,7 @@ static ma_device MaDevice;
 static ma_device_config DeviceConfig;
 static ma_device_info DeviceInfo;
 
-void AudioDevice::Init(AudioDevice::AudioCallback callback) const {
+void AudioDevice::Init(AudioDevice::Callback callback) const {
     int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
 

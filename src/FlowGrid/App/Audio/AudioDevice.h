@@ -23,8 +23,9 @@ struct AudioDevice : UIStateful {
     static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.
     static const string GetSampleRateName(U32);
 
-    typedef void (* AudioCallback)(ma_device* pDevice, void* pOutput, const void* pInput, Count frameCount);
-    void Init(AudioCallback callback) const;
+    using Callback = void (*)(ma_device *, void *, const void *, Count);
+
+    void Init(Callback callback) const;
     void Update() const; // Update device based on current settings.
     void Uninit() const;
 

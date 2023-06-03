@@ -403,11 +403,8 @@ static void Init() {
 
     createLibContext();
 
-    const string libraries_path = fs::relative("../lib/faust/libraries").string();
-    vector<const char *> argv;
-    argv.reserve(8);
-    argv.push_back("-I");
-    argv.push_back(libraries_path.c_str());
+    const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
+    vector<const char *> argv = {"-I", libraries_path};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
 
     const int argc = argv.size();

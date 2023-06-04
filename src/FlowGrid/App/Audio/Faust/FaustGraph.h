@@ -42,6 +42,7 @@ DefineWindow_(
     }),
 
     void Apply(const Action::FaustGraphAction &) const;
+    bool CanApply(const Action::FaustGraphAction &) const;
 
     DefineUI_(
         Style,

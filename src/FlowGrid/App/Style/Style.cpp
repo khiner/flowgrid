@@ -43,6 +43,8 @@ void Style::Apply(const Action::StyleAction &action) const {
     );
 }
 
+bool Style::CanApply(const Action::StyleAction &action) const { return true; }
+
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {
         case FlowGridCol_GestureIndicator: return "GestureIndicator";

@@ -53,11 +53,6 @@ private:
     Metadata(std::string_view name, Parsed parsed);
 };
 
-#define ALLOWED_FUNCTION_0 \
-    inline static bool IsAllowed() { return true; }
-
-#define ALLOWED_FUNCTION_1 static bool IsAllowed();
-
 // Use `Merge` for actions that can be merged with any other action of the same type.
 // Use `NoMerge` for actions that cannot be merged with any other action.
 // Use `CustomMerge` to override the `Merge` function with a custom implementation.
@@ -67,7 +62,6 @@ private:
     inline std::variant<ActionType, bool> Merge(const ActionType &other) const { return other; }
 #define MergeType_CustomMerge(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
 
-// Pass `is_contextual = 1` and override `{ActionType}::IsAllowed()` to return `false` if the action is not allowed in the current state.
 // Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
 /**
  `q` is the main action-queue method.
@@ -76,18 +70,17 @@ private:
  Defined in `App.cpp`.
 */
 
-#define Define(ActionType, is_savable, is_contextual, merge_type, meta_str, ...) \
-    struct ActionType {                                                          \
-        inline static const Metadata _Meta{#ActionType, meta_str};               \
-        static constexpr bool IsSavable = is_savable;                            \
-        void q(bool flush = false) const;                                        \
-        static void MenuItem();                                                  \
-        static const std::string &GetName() { return _Meta.Name; }               \
-        static const std::string &GetMenuLabel() { return _Meta.MenuLabel; }     \
-        static const std::string &GetShortcut() { return _Meta.Shortcut; }       \
-        ALLOWED_FUNCTION_##is_contextual                                         \
-            MergeType_##merge_type(ActionType)                                   \
-                __VA_ARGS__;                                                     \
+#define Define(ActionType, is_savable, merge_type, meta_str, ...)            \
+    struct ActionType {                                                      \
+        inline static const Metadata _Meta{#ActionType, meta_str};           \
+        static constexpr bool IsSavable = is_savable;                        \
+        void q(bool flush = false) const;                                    \
+        static void MenuItem();                                              \
+        static const std::string &GetName() { return _Meta.Name; }           \
+        static const std::string &GetMenuLabel() { return _Meta.MenuLabel; } \
+        static const std::string &GetShortcut() { return _Meta.Shortcut; }   \
+        MergeType_##merge_type(ActionType);                                  \
+        __VA_ARGS__;                                                         \
     };
 
 template<typename T>
@@ -140,9 +133,6 @@ struct ActionVariant : std::variant<T...> {
 
     const std::string &GetName() const {
         return Call([](auto &a) -> const std::string & { return a.GetName(); });
-    }
-    bool IsAllowed() const {
-        return Call([](auto &a) { return a.IsAllowed(); });
     }
     bool IsSavable() const {
         return Call([](auto &a) { return a.IsSavable; });

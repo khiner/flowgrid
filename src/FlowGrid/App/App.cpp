@@ -20,6 +20,9 @@
 
 using namespace FlowGrid;
 
+static std::optional<fs::path> CurrentProjectPath;
+static bool ProjectHasChanges{false};
+
 void App::Apply(const Action::AppAction &action) const {
     using namespace Action;
     Match(
@@ -28,6 +31,38 @@ void App::Apply(const Action::AppAction &action) const {
         [&](const FileDialogAction &a) { FileDialog.Apply(a); },
         [&](const StyleAction &a) { Style.Apply(a); },
         [&](const AudioAction &a) { Audio.Apply(a); },
+    );
+}
+
+bool App::CanApply(const Action::AppAction &action) const {
+    using namespace Action;
+    return Match(
+        action,
+        [](const StoreAction &a) { return store::CanApply(a); },
+        [&](const FileDialogAction &a) { return FileDialog.CanApply(a); },
+        [&](const StyleAction &a) { return Style.CanApply(a); },
+        [&](const AudioAction &a) { return Audio.CanApply(a); },
+    );
+}
+
+bool CanApply(const Action::Any &action) {
+    using namespace Action;
+    return Match(
+        action,
+        [&](const AppAction &a) { return app.CanApply(a); },
+        [&](const ProjectAction &a) {
+            return Match(
+                a,
+                [&](const Undo &) { return History.CanUndo(); },
+                [&](const Redo &) { return History.CanRedo(); },
+                [&](const SaveProject &) { return !History.Empty(); },
+                [&](const SaveDefaultProject &) { return !History.Empty(); },
+                [&](const ShowSaveProjectDialog &) { return ProjectHasChanges; },
+                [&](const OpenDefaultProject &) { return fs::exists(DefaultProjectPath); },
+                [&](const SaveCurrentProject &) { return ProjectHasChanges; },
+                [&](const auto &) { return true; },
+            );
+        },
     );
 }
 
@@ -74,9 +109,7 @@ void App::Render() const {
         const auto &[mod, key] = shortcut;
         if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(key))) {
             const auto action = Action::Any::Create(action_id);
-            if (action.IsAllowed()) {
-                action.q();
-            }
+            if (::CanApply(action)) action.q();
         }
     }
 
@@ -157,15 +190,6 @@ void App::OpenRecentProjectMenuItem() {
     }
 }
 
-static std::optional<fs::path> CurrentProjectPath;
-static bool ProjectHasChanges{false};
-
-namespace Action {
-bool OpenDefaultProject::IsAllowed() { return fs::exists(DefaultProjectPath); }
-bool ShowSaveProjectDialog::IsAllowed() { return ProjectHasChanges; }
-bool SaveCurrentProject::IsAllowed() { return ProjectHasChanges; }
-} // namespace Action
-
 bool IsUserProjectPath(const fs::path &path) {
     return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
         fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
@@ -187,7 +211,7 @@ std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
 
 bool SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
-    if (is_current_project && !Action::SaveCurrentProject::IsAllowed()) return false;
+    if (is_current_project && !ProjectHasChanges) return false;
 
     const auto format = GetStoreJsonFormat(path);
     if (!format) return false; // TODO log
@@ -335,7 +359,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
         auto &[action, _] = action_moment;
-        if (!action.IsAllowed()) continue;
+        if (!CanApply(action)) continue;
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
@@ -378,12 +402,12 @@ void q(const Action::Any &&action, bool flush) {
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
 }
 
-#define DefineQ(ActionType)                                                                       \
-    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }                           \
-    void Action::ActionType::MenuItem() {                                                         \
-        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, IsAllowed())) { \
-            Action::ActionType{}.q();                                                             \
-        }                                                                                         \
+#define DefineQ(ActionType)                                                                                          \
+    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }                                              \
+    void Action::ActionType::MenuItem() {                                                                            \
+        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, CanApply(Action::ActionType{}))) { \
+            Action::ActionType{}.q();                                                                                \
+        }                                                                                                            \
     }
 
 DefineQ(Undo);

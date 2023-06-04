@@ -22,6 +22,7 @@ void Apply(const Action::StoreAction &action) {
         [](const Action::ApplyPatch &a) { ApplyPatch(a.patch); },
     );
 }
+bool CanApply(const Action::StoreAction &) { return true; }
 
 bool IsTransient = true; // Use transient store for initialization.
 

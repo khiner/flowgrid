@@ -28,6 +28,8 @@ void Faust::Apply(const Action::FaustAction &action) const {
     );
 }
 
+bool Faust::CanApply(const Action::FaustAction &action) const { return true; }
+
 bool Faust::IsReady() const { return Code && !Log.Error; }
 bool Faust::NeedsRestart() const {
     static string PreviousCode = Code;

@@ -1251,6 +1251,8 @@ void FaustGraph::Apply(const Action::FaustGraphAction &action) const {
     );
 }
 
+bool FaustGraph::CanApply(const Action::FaustGraphAction &action) const { return true; }
+
 void FaustGraph::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case

@@ -63,6 +63,7 @@ struct Faust : UIStateful {
     using UIStateful::UIStateful;
 
     void Apply(const Action::FaustAction &) const;
+    bool CanApply(const Action::FaustAction &) const;
 
     bool IsReady() const; // Has code and no errors.
     bool NeedsRestart() const;

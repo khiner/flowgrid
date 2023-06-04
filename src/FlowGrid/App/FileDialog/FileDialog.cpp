@@ -13,12 +13,6 @@
 namespace views = ranges::views;
 using namespace nlohmann;
 
-namespace Action {
-bool FileDialogOpen::IsAllowed() { return !file_dialog.Visible; }
-bool FileDialogSelect::IsAllowed() { return file_dialog.Visible; }
-bool FileDialogCancel::IsAllowed() { return file_dialog.Visible; }
-} // namespace Action
-
 void FileDialog::Apply(const Action::FileDialogAction &action) const {
     using namespace Action;
     Match(
@@ -32,6 +26,16 @@ void FileDialog::Apply(const Action::FileDialogAction &action) const {
             store::Set(Visible, false);
             store::Set(SelectedFilePath, "");
         },
+    );
+}
+
+bool FileDialog::CanApply(const Action::FileDialogAction &action) const {
+    using namespace Action;
+    return Match(
+        action,
+        [](const FileDialogOpen &) { return !file_dialog.Visible; },
+        [](const FileDialogSelect &) { return bool(file_dialog.Visible); },
+        [](const FileDialogCancel &) { return bool(file_dialog.Visible); },
     );
 }
 

@@ -4,12 +4,12 @@
 #include "StoreTypesJson.h"
 
 namespace Action {
-Define(ToggleValue, 1, 0, NoMerge, "", StorePath path;);
-Define(SetValue, 1, 0, CustomMerge, "", StorePath path; Primitive value;);
-Define(SetValues, 1, 0, CustomMerge, "", StoreEntries values;);
-Define(SetVector, 1, 0, CustomMerge, "", StorePath path; std::vector<Primitive> value;);
-Define(SetMatrix, 1, 0, CustomMerge, "", StorePath path; std::vector<Primitive> data; Count row_count;);
-Define(ApplyPatch, 1, 0, CustomMerge, "", Patch patch;);
+Define(ToggleValue, 1, NoMerge, "", StorePath path;);
+Define(SetValue, 1, CustomMerge, "", StorePath path; Primitive value;);
+Define(SetValues, 1, CustomMerge, "", StoreEntries values;);
+Define(SetVector, 1, CustomMerge, "", StorePath path; std::vector<Primitive> value;);
+Define(SetMatrix, 1, CustomMerge, "", StorePath path; std::vector<Primitive> data; Count row_count;);
+Define(ApplyPatch, 1, CustomMerge, "", Patch patch;);
 
 Json(SetValue, path, value);
 Json(SetValues, values);

@@ -21,6 +21,7 @@ struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
 
     void Apply(const Action::StyleAction &) const;
+    bool CanApply(const Action::StyleAction &) const;
 
     DefineUI_(
         FlowGridStyle,

@@ -10,6 +10,7 @@ using std::vector;
 
 namespace store {
 void Apply(const Action::StoreAction &);
+bool CanApply(const Action::StoreAction &);
 
 void BeginTransient();
 const Store EndTransient();

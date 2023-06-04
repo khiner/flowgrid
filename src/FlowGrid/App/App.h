@@ -22,6 +22,7 @@ DefineUI(
     static void OpenRecentProjectMenuItem();
 
     void Apply(const Action::AppAction &) const;
+    bool CanApply(const Action::AppAction &) const;
 
     const Menu MainMenu{
         {

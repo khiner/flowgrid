@@ -29,6 +29,7 @@ int main(int, const char **) {
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
 
     UiContext = CreateUi(); // Initialize UI
+    IGFD::Init();
 
     {
         // Relying on these imperatively-run side effects up front is not great.
@@ -47,6 +48,7 @@ int main(int, const char **) {
         Project::RunQueuedActions();
     }
 
+    IGFD::Uninit();
     DestroyUi();
     audio.Uninit();
 

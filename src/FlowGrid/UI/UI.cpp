@@ -5,12 +5,10 @@
 
 #include "imgui_impl_opengl3.h" // TODO vulkan
 #include "imgui_impl_sdl3.h"
-#include "nlohmann/json.hpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 
-#include "App/FileDialog/FileDialog.h"
 #include "App/ImGuiSettings.h"
 #include "App/Style/Style.h"
 #include "Core/Action/Actions.h"
@@ -23,14 +21,15 @@
 using namespace fg;
 using namespace ImGui;
 
-struct RenderContext {
-    SDL_Window *window = nullptr;
-    SDL_GLContext gl_context{};
-    const char *glsl_version = "#version 150";
-    ImGuiIO io;
-};
+static SDL_Window *Window = nullptr;
+static SDL_GLContext GlContext{};
 
-RenderContext CreateRenderContext() {
+void UIContext::WidgetGestured() {
+    if (IsItemActivated()) IsWidgetGesturing = true;
+    if (IsItemDeactivated()) IsWidgetGesturing = false;
+}
+
+UIContext CreateUiContext() {
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
     const char *glsl_version = "#version 150";
@@ -56,38 +55,16 @@ RenderContext CreateRenderContext() {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     auto window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
 
-    RenderContext render_context;
-    render_context.window = SDL_CreateWindowWithPosition("FlowGrid", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    Window = SDL_CreateWindowWithPosition("FlowGrid", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    GlContext = SDL_GL_CreateContext(Window);
 
-    render_context.gl_context = SDL_GL_CreateContext(render_context.window);
-
-    return render_context;
-}
-
-void DestroyRenderContext(const RenderContext &rc) {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
-    DestroyContext();
-    ImPlot::DestroyContext();
-
-    SDL_GL_DeleteContext(rc.gl_context);
-    SDL_DestroyWindow(rc.window);
-    SDL_Quit();
-}
-
-void UIContext::WidgetGestured() {
-    if (IsItemActivated()) IsWidgetGesturing = true;
-    if (IsItemDeactivated()) IsWidgetGesturing = false;
-}
-
-UIContext CreateUiContext(const RenderContext &RenderContext) {
-    SDL_GL_MakeCurrent(RenderContext.window, RenderContext.gl_context);
+    SDL_GL_MakeCurrent(Window, GlContext);
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
-    auto *imgui_context = CreateContext();
-    auto *implot_context = ImPlot::CreateContext();
+    ImGui::CreateContext();
+    ImPlot::CreateContext();
 
     auto &io = GetIO();
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
@@ -98,10 +75,10 @@ UIContext CreateUiContext(const RenderContext &RenderContext) {
     // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL3_InitForOpenGL(RenderContext.window, RenderContext.gl_context);
-    ImGui_ImplOpenGL3_Init(RenderContext.glsl_version);
+    ImGui_ImplSDL3_InitForOpenGL(Window, GlContext);
+    ImGui_ImplOpenGL3_Init(glsl_version);
 
-    UIContext ui_context = {imgui_context, implot_context};
+    UIContext ui_context = {};
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
@@ -120,13 +97,14 @@ void PrepareFrame() {
     NewFrame();
 }
 
-void RenderFrame(RenderContext &rc) {
+void RenderFrame() {
     Render();
 
-    glViewport(0, 0, (int)rc.io.DisplaySize.x, (int)rc.io.DisplaySize.y);
+    const auto &io = GetIO();
+    glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(GetDrawData());
-    SDL_GL_SwapWindow(rc.window);
+    SDL_GL_SwapWindow(Window);
 }
 
 using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
@@ -170,16 +148,9 @@ const auto KeyMap = Action::Any::IndexToShortcut | ranges::views::transform([](c
                     }) |
     ranges::to<std::map>;
 
-RenderContext RenderContext;
-
 UIContext CreateUi() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) throw std::runtime_error(SDL_GetError());
-
-    RenderContext = CreateRenderContext();
-    const auto &ui_context = CreateUiContext(RenderContext);
-    IGFD::Init();
-
-    return ui_context;
+    return CreateUiContext();
 }
 
 // Main UI tick function
@@ -196,7 +167,7 @@ void TickUi(const Drawable &app) {
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if (event.type == SDL_EVENT_QUIT ||
-            (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(RenderContext.window))) {
+            (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(Window))) {
             Action::CloseApplication{}.q(true);
         }
     }
@@ -204,9 +175,9 @@ void TickUi(const Drawable &app) {
     // Check if new UI settings need to be applied.
     auto &flags = UiContext.UpdateFlags;
     if (flags != UIContext::Flags_None) {
-        if (flags & UIContext::Flags_ImGuiSettings) imgui_settings.Update(UiContext.ImGui);
-        if (flags & UIContext::Flags_ImGuiStyle) style.ImGui.Update(UiContext.ImGui);
-        if (flags & UIContext::Flags_ImPlotStyle) style.ImPlot.Update(UiContext.ImPlot);
+        if (flags & UIContext::Flags_ImGuiSettings) imgui_settings.Update(ImGui::GetCurrentContext());
+        if (flags & UIContext::Flags_ImGuiStyle) style.ImGui.Update(ImGui::GetCurrentContext());
+        if (flags & UIContext::Flags_ImPlotStyle) style.ImPlot.Update(ImPlot::GetCurrentContext());
         flags = UIContext::Flags_None;
     }
 
@@ -232,12 +203,12 @@ void TickUi(const Drawable &app) {
     }
 
     app.Draw(); // All the actual application content drawing, along with initial dockspace setup, happens in this main state `Draw()` method.
-    RenderFrame(RenderContext);
+    RenderFrame();
 
     if (io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
-        const auto &patch = imgui_settings.CreatePatch(UiContext.ImGui);
+        const auto &patch = imgui_settings.CreatePatch(ImGui::GetCurrentContext());
         if (!patch.Empty()) Action::ApplyPatch{patch}.q();
         io.WantSaveIniSettings = false;
     }
@@ -247,6 +218,12 @@ void TickUi(const Drawable &app) {
 }
 
 void DestroyUi() {
-    IGFD::Uninit();
-    DestroyRenderContext(RenderContext);
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
+    ImPlot::DestroyContext();
+
+    SDL_GL_DeleteContext(GlContext);
+    SDL_DestroyWindow(Window);
+    SDL_Quit();
 }

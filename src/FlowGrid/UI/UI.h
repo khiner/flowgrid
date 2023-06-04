@@ -2,8 +2,6 @@
 
 #include "Drawable.h"
 
-struct ImGuiContext;
-struct ImPlotContext;
 struct ImFont;
 
 struct UIContext {
@@ -22,8 +20,6 @@ struct UIContext {
 
     void WidgetGestured();
 
-    ImGuiContext *ImGui{nullptr};
-    ImPlotContext *ImPlot{nullptr};
     Fonts Fonts{};
 
     bool IsWidgetGesturing{};

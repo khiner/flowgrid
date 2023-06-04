@@ -1,9 +1,9 @@
 #pragma once
 
-#include "FaustGraphAction.h"
 #include "App/Style/Colors.h"
 #include "Core/Stateful/Window.h"
 #include "Core/Store/Store.h"
+#include "FaustGraphAction.h"
 #include "UI/Styling.h"
 
 enum FaustGraphHoverFlags_ {

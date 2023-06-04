@@ -21,7 +21,7 @@ Define(ShowSaveProjectDialog, 1, 1, Merge, "~Save project as...@shift+cmd+s");
 Json(ShowOpenProjectDialog);
 Json(ShowSaveProjectDialog);
 
-using AppAction = ActionVariant<
+using ProjectAction = ActionVariant<
     Undo, Redo, SetHistoryIndex,
     OpenProject, OpenEmptyProject, OpenDefaultProject, SaveProject, SaveDefaultProject, SaveCurrentProject, ShowOpenProjectDialog, ShowSaveProjectDialog>;
 } // namespace Action

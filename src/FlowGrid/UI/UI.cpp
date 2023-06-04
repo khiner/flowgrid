@@ -9,7 +9,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 
-#include "App/AppAction.h"
 #include "App/ImGuiSettings.h"
 #include "App/Style/Style.h"
 #include "Core/Store/StoreAction.h"

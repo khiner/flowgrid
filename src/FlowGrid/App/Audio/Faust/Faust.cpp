@@ -6,8 +6,28 @@
 #include "imgui.h"
 
 #include "App/Audio/AudioIO.h"
+#include "App/FileDialog/FileDialog.h"
+#include "Helper/File.h"
 
-void Faust::Render() const {}
+static const std::string FaustDspFileExtension = ".dsp";
+
+void Faust::Apply(const Action::FaustAction &action) const {
+    using namespace Action;
+    Match(
+        action,
+        [&](const FaustFileAction &a) {
+            Match(
+                a,
+                [&](const ShowOpenFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
+                [&](const ShowSaveFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
+                [&](const OpenFaustFile &a) { store::Set(Code, FileIO::read(a.path)); },
+                [&](const SaveFaustFile &a) { FileIO::write(a.path, Code); },
+            );
+        },
+        [&](const FaustGraphAction &a) { Graph.Apply(a); },
+    );
+}
+
 bool Faust::IsReady() const { return Code && !Log.Error; }
 bool Faust::NeedsRestart() const {
     static string PreviousCode = Code;
@@ -37,6 +57,19 @@ ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
 }
 
 using namespace ImGui;
+
+void Faust::Render() const {
+    static string PrevSelectedPath = "";
+    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
+        const fs::path selected_path = string(file_dialog.SelectedFilePath);
+        const string &extension = selected_path.extension();
+        if (extension == FaustDspFileExtension) {
+            if (file_dialog.SaveMode) Action::SaveFaustFile{selected_path}.q();
+            else Action::OpenFaustFile{selected_path}.q();
+        }
+        PrevSelectedPath = selected_path;
+    }
+}
 
 void Faust::FaustLog::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});

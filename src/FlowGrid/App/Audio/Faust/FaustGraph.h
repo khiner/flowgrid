@@ -1,6 +1,6 @@
 #pragma once
 
-#include "App/Audio/AudioAction.h"
+#include "FaustGraphAction.h"
 #include "App/Style/Colors.h"
 #include "Core/Stateful/Window.h"
 #include "Core/Store/Store.h"
@@ -40,6 +40,8 @@ DefineWindow_(
         Menu("File", {Action::ShowSaveFaustSvgFileDialog::MenuItem}),
         Menu("View", {Settings.HoverFlags}),
     }),
+
+    void Apply(const Action::FaustGraphAction &) const;
 
     DefineUI_(
         Style,

@@ -16,6 +16,7 @@
 #include "imgui_internal.h"
 
 #include "App/Audio/AudioIO.h"
+#include "App/FileDialog/FileDialog.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
@@ -27,6 +28,8 @@ using std::pair, std::unordered_map;
 
 namespace views = ranges::views;
 using ranges::to;
+
+static const string SvgFileExtension = ".svg";
 
 enum DeviceType {
     DeviceType_ImGui,
@@ -496,9 +499,9 @@ struct Node {
         if (!FaustTree) return "";
 
         const string tree_name = GetTreeName(FaustTree);
-        if (tree_name == "process") return tree_name + ".svg";
+        if (tree_name == "process") return tree_name + SvgFileExtension;
 
-        return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+std::format("-{}", Id) + ".svg";
+        return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+std::format("-{}", Id) + SvgFileExtension;
     }
 
     void WriteSvg(const fs::path &path) const {
@@ -1224,11 +1227,43 @@ void SaveBoxSvg(string_view path) {
 
 bool IsBoxHovered(ID imgui_id) { return Node::WithId[imgui_id] != nullptr; }
 
+void FaustGraph::Apply(const Action::FaustGraphAction &action) const {
+    using namespace Action;
+    Match(
+        action,
+        [&](const SetGraphColorStyle &a) {
+            switch (a.id) {
+                case 0: return Style.ColorsDark();
+                case 1: return Style.ColorsLight();
+                case 2: return Style.ColorsClassic();
+                case 3: return Style.ColorsFaust();
+            }
+        },
+        [&](const SetGraphLayoutStyle &a) {
+            switch (a.id) {
+                case 0: return Style.LayoutFlowGrid();
+                case 1: return Style.LayoutFaust();
+            }
+        },
+        // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
+        [&](const ShowSaveFaustSvgFileDialog &) { file_dialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
+        [](const SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
+    );
+}
+
 void FaustGraph::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?
         return;
+    }
+
+    static string PrevSelectedPath = "";
+    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
+        const fs::path selected_path = string(file_dialog.SelectedFilePath);
+        const string &extension = selected_path.extension();
+        if (extension == SvgFileExtension && file_dialog.SaveMode) Action::SaveFaustSvgFile{selected_path}.q();
+        PrevSelectedPath = selected_path;
     }
 
     if (FocusedNodeStack.empty()) return;

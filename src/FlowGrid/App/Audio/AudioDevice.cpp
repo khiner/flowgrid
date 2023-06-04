@@ -247,3 +247,27 @@ void AudioDevice::Render() const {
     //     TreePop();
     // }
 }
+
+// todo implement for r8brain resampler
+// todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
+//   Can I still use duplex mode in this case?
+// #include "CDSPResampler.h"
+// See https://github.com/avaneev/r8brain-free-src/issues/12 for resampling latency calculation
+// static unique_ptr<r8b::CDSPResampler24> Resampler;
+// int resampled_frames = Resampler->process(read_ptr, available_resample_read_frames, resampled_buffer);
+// Set up resampler if needed.
+// if (InStream->sample_rate != OutStream->sample_rate) {
+// Resampler = make_unique<r8b::CDSPResampler24>(InStream->sample_rate, OutStream->sample_rate, 1024); // todo can we get max frame size here?
+// }
+// static ma_resampling_backend_vtable ResamplerVTable = {
+//     ma_resampling_backend_get_heap_size__linear,
+//     ma_resampling_backend_init__linear,
+//     ma_resampling_backend_uninit__linear,
+//     ma_resampling_backend_process__linear,
+//     ma_resampling_backend_set_rate__linear,
+//     ma_resampling_backend_get_input_latency__linear,
+//     ma_resampling_backend_get_output_latency__linear,
+//     ma_resampling_backend_get_required_input_frame_count__linear,
+//     ma_resampling_backend_get_expected_output_frame_count__linear,
+//     ma_resampling_backend_reset__linear,
+// };

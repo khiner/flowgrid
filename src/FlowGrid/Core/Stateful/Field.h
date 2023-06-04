@@ -9,6 +9,8 @@ using ImGuiSliderFlags = int;
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 namespace Stateful::Field {
+inline static bool IsGesturing{};
+
 struct Base : Stateful::Base {
     inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
 

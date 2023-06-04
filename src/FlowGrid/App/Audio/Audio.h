@@ -6,7 +6,6 @@
 #include "AudioDevice.h"
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
-#include "UI/UI.h"
 
 struct Audio : TabsWindow {
     using TabsWindow::TabsWindow;

@@ -8,7 +8,6 @@
 #include <range/v3/view/iota.hpp>
 
 #include "Core/Store/Store.h"
-#include "UI/UI.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -17,6 +16,11 @@ using namespace Action;
 using std::vector;
 
 namespace Stateful::Field {
+inline static void UpdateGesturing() {
+    if (IsItemActivated()) IsGesturing = true;
+    if (IsItemDeactivated()) IsGesturing = false;
+}
+
 Base::Base(Stateful::Base *parent, string_view path_segment, string_view name_help)
     : Stateful::Base(parent, path_segment, name_help) {
     WithPath[Path] = this;
@@ -103,7 +107,7 @@ void Bool::MenuItem() const {
 void UInt::Render() const {
     U32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &Min, &Max, "%d");
-    UiContext.WidgetGestured();
+    UpdateGesturing();
     if (edited) SetValue{Path, value}.q();
     HelpMarker();
 }
@@ -142,7 +146,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     auto value = ColorConvertU32ToFloat4(mapped_value);
     if (is_auto) BeginDisabled();
     const bool changed = ImGui::ColorEdit4("", (float *)&value, flags | ImGuiColorEditFlags_AlphaBar | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-    UiContext.WidgetGestured();
+    UpdateGesturing();
     if (is_auto) EndDisabled();
 
     SameLine(0, GetStyle().ItemInnerSpacing.x);
@@ -156,7 +160,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
 void Int::Render() const {
     int value = Value;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, Min, Max, "%d", ImGuiSliderFlags_None);
-    UiContext.WidgetGestured();
+    UpdateGesturing();
     if (edited) SetValue{Path, value}.q();
     HelpMarker();
 }
@@ -178,7 +182,7 @@ void Int::Render(const vector<int> &options) const {
 void Float::Render() const {
     float value = Value;
     const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
-    UiContext.WidgetGestured();
+    UpdateGesturing();
     if (edited) SetValue{Path, value}.q();
     HelpMarker();
 }
@@ -278,7 +282,7 @@ Vec2::operator ImVec2() const { return {X, Y}; }
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
-    UiContext.WidgetGestured();
+    UpdateGesturing();
     if (edited) SetValues{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
     HelpMarker();
 }
@@ -301,7 +305,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     SameLine();
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
-    UiContext.WidgetGestured();
+    UpdateGesturing();
     if (edited) {
         if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;

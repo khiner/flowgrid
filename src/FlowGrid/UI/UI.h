@@ -18,11 +18,7 @@ struct UIContext {
         ImFont *FixedWidth{nullptr};
     };
 
-    void WidgetGestured();
-
     Fonts Fonts{};
-
-    bool IsWidgetGesturing{};
     Flags UpdateFlags = Flags_None;
 };
 

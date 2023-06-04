@@ -145,7 +145,6 @@ void ShowGesture(const Gesture &gesture) {
 
 #include "AppPreferences.h"
 #include "Settings.h"
-#include "UI/UI.h"
 
 // todo This is only needed since there's no `to_json(StoreHistory::RecordReference)`.
 #include "immer/map.hpp"
@@ -153,7 +152,7 @@ void ShowGesture(const Gesture &gesture) {
 void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
-        const bool widget_gesturing = UiContext.IsWidgetGesturing;
+        const bool widget_gesturing = Stateful::Field::IsGesturing;
         const bool ActiveGesturePresent = !History.ActiveGesture.empty();
         if (ActiveGesturePresent || widget_gesturing) {
             // Gesture completion progress bar

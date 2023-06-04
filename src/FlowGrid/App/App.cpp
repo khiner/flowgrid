@@ -10,6 +10,7 @@
 #include "Core/Store/StoreJson.h"
 #include "Helper/File.h"
 #include "ProjectConstants.h"
+#include "UI/UI.h"
 
 using namespace ImGui;
 using namespace FlowGrid;
@@ -193,7 +194,7 @@ void Project::Init() {
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {};
-    UiContext.IsWidgetGesturing = false;
+    Stateful::Field::IsGesturing = false;
 }
 
 void OpenProject(const fs::path &path) {
@@ -301,7 +302,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         );
     }
 
-    const bool finalize = force_finalize_gesture || (!UiContext.IsWidgetGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
+    const bool finalize = force_finalize_gesture || (!Stateful::Field::IsGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!state_actions.empty()) {
         const auto &patch = SetStore(store::EndTransient());
         History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());

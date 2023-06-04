@@ -24,11 +24,6 @@ using namespace ImGui;
 static SDL_Window *Window = nullptr;
 static SDL_GLContext GlContext{};
 
-void UIContext::WidgetGestured() {
-    if (IsItemActivated()) IsWidgetGesturing = true;
-    if (IsItemDeactivated()) IsWidgetGesturing = false;
-}
-
 UIContext CreateUiContext() {
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150

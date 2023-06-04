@@ -22,7 +22,7 @@ struct UIContext {
 };
 
 UIContext CreateUi();
-void TickUi(const Drawable &app);
+bool TickUi(const Drawable &app); // Returns `true` if the app should continue running.
 void DestroyUi();
 
 extern UIContext UiContext; // Created in `main.cpp`

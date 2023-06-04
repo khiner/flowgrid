@@ -52,7 +52,6 @@ DefineUI(
         },
         true};
 
-    Prop(Bool, Running, true);
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(fg::Style, Style);
     Prop(Audio, Audio);

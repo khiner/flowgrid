@@ -30,7 +30,6 @@ void App::Apply(const Action::StatefulAction &action) const {
         [&](const AudioAction &a) { Audio.Apply(a); },
         [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
-        [&](const CloseApplication &) { store::Set(Running, false); },
     );
 }
 
@@ -390,7 +389,6 @@ DefineQ(SaveDefaultProject);
 DefineQ(SaveCurrentProject);
 DefineQ(ShowOpenProjectDialog);
 DefineQ(ShowSaveProjectDialog);
-DefineQ(CloseApplication);
 DefineQ(ToggleValue);
 DefineQ(SetValue);
 DefineQ(SetValues);

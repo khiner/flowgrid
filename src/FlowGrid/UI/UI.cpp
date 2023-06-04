@@ -107,7 +107,7 @@ UIContext CreateUi() {
 }
 
 // Main UI tick function
-void TickUi(const Drawable &app) {
+bool TickUi(const Drawable &app) {
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -118,8 +118,7 @@ void TickUi(const Drawable &app) {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if (event.type == SDL_EVENT_QUIT ||
             (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(Window))) {
-            Action::CloseApplication{}.q();
-            return;
+            return false;
         }
     }
 
@@ -159,6 +158,8 @@ void TickUi(const Drawable &app) {
 #ifdef TRACING_ENABLED
     FrameMark;
 #endif
+
+    return true;
 }
 
 void DestroyUi() {

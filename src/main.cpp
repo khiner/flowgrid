@@ -43,8 +43,7 @@ int main(int, const char **) {
     Project::Init(); // Start with a clean slate.
     Project::SaveEmptyProject(); // Keep the canonical "empty" project up-to-date.
 
-    while (app.Running) {
-        TickUi(app);
+    while (TickUi(app)) {
         Project::RunQueuedActions();
     }
 

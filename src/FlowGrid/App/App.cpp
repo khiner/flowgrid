@@ -1,6 +1,10 @@
 
 #include "App.h"
 
+#include <range/v3/core.hpp>
+#include <range/v3/view/drop.hpp>
+#include <range/v3/view/reverse.hpp>
+#include <range/v3/view/transform.hpp>
 #include "imgui_internal.h"
 #include "immer/map.hpp"
 
@@ -9,10 +13,10 @@
 #include "Core/Store/StoreHistory.h"
 #include "Core/Store/StoreJson.h"
 #include "Helper/File.h"
+#include "Helper/String.h"
 #include "ProjectConstants.h"
 #include "UI/UI.h"
 
-using namespace ImGui;
 using namespace FlowGrid;
 using namespace nlohmann;
 
@@ -30,7 +34,56 @@ void App::Apply(const Action::StatefulAction &action) const {
     );
 }
 
+using KeyShortcut = std::pair<ImGuiModFlags, ImGuiKey>;
+
+const std::map<string, ImGuiModFlags> ModKeys{
+    {"shift", ImGuiModFlags_Shift},
+    {"ctrl", ImGuiModFlags_Ctrl},
+    {"alt", ImGuiModFlags_Alt},
+    {"cmd", ImGuiModFlags_Super},
+};
+
+
+// Handles any number of mods, followed by a single non-mod character.
+// Example: 'shift+cmd+s'
+// **Case-sensitive. `shortcut` must be lowercase.**
+static constexpr std::optional<KeyShortcut> ParseShortcut(const string &shortcut) {
+    const vector<string> tokens = StringHelper::Split(shortcut, "+");
+    if (tokens.empty()) return {};
+
+    const string command = tokens.back();
+    if (command.length() != 1) return {};
+
+    const auto key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);
+    ImGuiModFlags mod_flags = ImGuiModFlags_None;
+    for (const auto &token : ranges::views::reverse(tokens) | ranges::views::drop(1)) {
+        mod_flags |= ModKeys.at(token);
+    }
+
+    return {{mod_flags, key}};
+}
+
+// Transform `map<ActionID, string>` to `map<KeyShortcut, ActionID>`
+const auto KeyMap = Action::Any::IndexToShortcut | ranges::views::transform([](const auto &entry) {
+                        const auto &[action_id, shortcut] = entry;
+                        return std::pair(*ParseShortcut(shortcut), action_id);
+                    }) |
+    ranges::to<std::map>;
+
+using namespace ImGui;
+
 void App::Render() const {
+    const auto &io = GetIO();
+    for (const auto &[shortcut, action_id] : KeyMap) {
+        const auto &[mod, key] = shortcut;
+        if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(key))) {
+            const auto action = Action::Any::Create(action_id);
+            if (action.IsAllowed()) {
+                action.q();
+            }
+        }
+    }
+
     MainMenu.Draw();
 
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548

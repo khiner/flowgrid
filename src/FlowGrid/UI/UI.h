@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Drawable.h"
-
+struct Drawable;
 struct ImFont;
 
 struct UIContext {

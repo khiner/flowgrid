@@ -251,17 +251,17 @@ void FileDialog::Demo::Render() const {
 
                 static int selected = 0;
                 const auto &selection = Dialog->GetSelection();
-                std::vector<string> selection_keys = views::keys(selection) | ranges::to<std::vector>();
+                const auto selection_keys = views::keys(selection) | ranges::to<std::vector>();
                 ImGuiListClipper clipper;
-                clipper.Begin((int)selection.size(), GetTextLineHeightWithSpacing());
+                clipper.Begin(int(selection.size()), GetTextLineHeightWithSpacing());
                 while (clipper.Step()) {
                     for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
                         const auto &selection_key = selection_keys[i];
                         TableNextRow();
                         if (TableSetColumnIndex(0)) {
-                            ImGuiSelectableFlags selectableFlags = ImGuiSelectableFlags_AllowDoubleClick;
-                            selectableFlags |= ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
-                            if (Selectable(selection_key.c_str(), i == selected, selectableFlags)) selected = i;
+                            ImGuiSelectableFlags flags = ImGuiSelectableFlags_AllowDoubleClick;
+                            flags |= ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowItemOverlap;
+                            if (Selectable(selection_key.c_str(), i == selected, flags)) selected = i;
                         }
                         if (TableSetColumnIndex(1)) {
                             TextUnformatted(selection.at(selection_key).c_str());

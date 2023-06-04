@@ -14,9 +14,9 @@ namespace views = ranges::views;
 using namespace nlohmann;
 
 namespace Action {
-bool FileDialogOpen::Allowed() { return !file_dialog.Visible; }
-bool FileDialogSelect::Allowed() { return file_dialog.Visible; }
-bool FileDialogCancel::Allowed() { return file_dialog.Visible; }
+bool FileDialogOpen::IsAllowed() { return !file_dialog.Visible; }
+bool FileDialogSelect::IsAllowed() { return file_dialog.Visible; }
+bool FileDialogCancel::IsAllowed() { return file_dialog.Visible; }
 } // namespace Action
 
 void FileDialog::Apply(const Action::FileDialogAction &action) const {

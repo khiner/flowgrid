@@ -11,10 +11,9 @@
 #include "Helper/Variant.h"
 
 // next up:
-// - improve action IDs
-//   - actions all get a path in addition to their name (start with all at root, but will be heirarchical soon)
-//   - `ID` type generated from path, like `Stateful`:
-//     `Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0))`
+// - actions all get a path in addition to their name (start with all at root, but will be heirarchical soon)
+// - `ID` type generated from path, like `Stateful`:
+//   `Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0))`
 
 /**
 An action is an immutable representation of a user interaction event.
@@ -55,9 +54,9 @@ private:
 };
 
 #define ALLOWED_FUNCTION_0 \
-    inline static bool Allowed() { return true; }
+    inline static bool IsAllowed() { return true; }
 
-#define ALLOWED_FUNCTION_1 static bool Allowed();
+#define ALLOWED_FUNCTION_1 static bool IsAllowed();
 
 // Use `Merge` for actions that can be merged with any other action of the same type.
 // Use `NoMerge` for actions that cannot be merged with any other action.
@@ -68,7 +67,7 @@ private:
     inline std::variant<ActionType, bool> Merge(const ActionType &other) const { return other; }
 #define MergeType_CustomMerge(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
 
-// Pass `is_contextual = 1` and override `{ActionType}::Allowed()` to return `false` if the action is not allowed in the current state.
+// Pass `is_contextual = 1` and override `{ActionType}::IsAllowed()` to return `false` if the action is not allowed in the current state.
 // Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
 /**
  `q` is the main action-queue method.
@@ -142,19 +141,8 @@ struct ActionVariant : std::variant<T...> {
     const std::string &GetName() const {
         return Call([](auto &a) -> const std::string & { return a.GetName(); });
     }
-    const std::string &GetMenuLabel() const {
-        return Call([](auto &a) -> const std::string & { return a.GetMenuLabel(); });
-    }
-    std::string GetShortcut() const {
-        const auto id = GetId();
-        return IndexToShortcut.contains(id) ? IndexToShortcut.at(id) : "";
-    }
-
     bool IsAllowed() const {
-        return Call([](auto &a) { return a.Allowed(); });
-    }
-    bool IsSavable() const {
-        return Call([](auto &a) { return a._Meta.Savable; });
+        return Call([](auto &a) { return a.IsAllowed(); });
     }
     void q() const {
         Call([](auto &a) { a.q(); });
@@ -200,7 +188,7 @@ struct ActionVariant : std::variant<T...> {
     // Value element can possibly be null.
     // Assumes all actions define json converters.
     inline void to_json(nlohmann::json &j) const {
-        Call([&j](auto &a) { j = {a._Meta.Name, a}; });
+        Call([&j](auto &a) { j = {a.GetName(), a}; });
     }
     inline static void from_json(const nlohmann::json &j, ActionVariant &value) {
         const auto name = j[0].get<std::string>();

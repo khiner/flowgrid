@@ -111,9 +111,9 @@ static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
 namespace Action {
-bool OpenDefaultProject::Allowed() { return fs::exists(DefaultProjectPath); }
-bool ShowSaveProjectDialog::Allowed() { return ProjectHasChanges; }
-bool SaveCurrentProject::Allowed() { return ProjectHasChanges; }
+bool OpenDefaultProject::IsAllowed() { return fs::exists(DefaultProjectPath); }
+bool ShowSaveProjectDialog::IsAllowed() { return ProjectHasChanges; }
+bool SaveCurrentProject::IsAllowed() { return ProjectHasChanges; }
 } // namespace Action
 
 bool IsUserProjectPath(const fs::path &path) {
@@ -137,7 +137,7 @@ std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
 
 bool SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
-    if (is_current_project && !Action::SaveCurrentProject::Allowed()) return false;
+    if (is_current_project && !Action::SaveCurrentProject::IsAllowed()) return false;
 
     const auto format = GetStoreJsonFormat(path);
     if (!format) return false; // TODO log
@@ -317,14 +317,12 @@ void q(const Action::Any &&action, bool flush) {
     if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
 }
 
-#define DefineQ(ActionType)                                                            \
-    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }                \
-    void Action::ActionType::MenuItem() {                                              \
-        const string menu_label = GetMenuLabel();                                      \
-        const string shortcut = GetShortcut();                                         \
-        if (ImGui::MenuItem(menu_label.c_str(), shortcut.c_str(), false, Allowed())) { \
-            Action::ActionType{}.q();                                                  \
-        }                                                                              \
+#define DefineQ(ActionType)                                                                       \
+    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }                           \
+    void Action::ActionType::MenuItem() {                                                         \
+        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, IsAllowed())) { \
+            Action::ActionType{}.q();                                                             \
+        }                                                                                         \
     }
 
 DefineQ(Undo);

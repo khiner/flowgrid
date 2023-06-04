@@ -180,10 +180,10 @@ void StoreHistory::SetIndex(Count new_index) {
 }
 
 namespace Action {
-bool Undo::Allowed() { return History.CanUndo(); }
-bool Redo::Allowed() { return History.CanRedo(); }
-bool SaveProject::Allowed() { return !History.Empty(); }
-bool SaveDefaultProject::Allowed() { return !History.Empty(); }
+bool Undo::IsAllowed() { return History.CanUndo(); }
+bool Redo::IsAllowed() { return History.CanRedo(); }
+bool SaveProject::IsAllowed() { return !History.Empty(); }
+bool SaveDefaultProject::IsAllowed() { return !History.Empty(); }
 } // namespace Action
 
 StoreHistory History{};

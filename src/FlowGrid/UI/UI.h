@@ -4,6 +4,13 @@ struct Drawable;
 struct ImFont;
 
 struct UIContext {
+    UIContext();
+    ~UIContext();
+
+    // Main UI tick function
+    // Returns `true` if the app should continue running.
+    bool Tick(const Drawable &app);
+
     enum Flags_ {
         Flags_None = 0,
         Flags_ImGuiSettings = 1 << 0,
@@ -21,8 +28,4 @@ struct UIContext {
     Flags UpdateFlags = Flags_None;
 };
 
-UIContext CreateUi();
-bool TickUi(const Drawable &app); // Returns `true` if the app should continue running.
-void DestroyUi();
-
-extern UIContext UiContext; // Created in `main.cpp`
+extern UIContext Ui; // Created in `main.cpp`

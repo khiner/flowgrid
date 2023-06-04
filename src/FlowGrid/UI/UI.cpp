@@ -22,7 +22,9 @@ using fg::style;
 static SDL_Window *Window = nullptr;
 static SDL_GLContext GlContext{};
 
-UIContext CreateUiContext() {
+UIContext::UIContext() {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) throw std::runtime_error(SDL_GetError());
+
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
     const char *glsl_version = "#version 150";
@@ -71,17 +73,26 @@ UIContext CreateUiContext() {
     ImGui_ImplSDL3_InitForOpenGL(Window, GlContext);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    UIContext ui_context = {};
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
     // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
     // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
     // - Read 'docs/FONTS.md' for more instructions and details.
     io.FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
-    ui_context.Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
-    ui_context.Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
+    Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
+    Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
     io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * FontAtlasScale);
-    return ui_context;
+}
+
+UIContext::~UIContext() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
+    ImPlot::DestroyContext();
+
+    SDL_GL_DeleteContext(GlContext);
+    SDL_DestroyWindow(Window);
+    SDL_Quit();
 }
 
 void PrepareFrame() {
@@ -100,13 +111,7 @@ void RenderFrame() {
     SDL_GL_SwapWindow(Window);
 }
 
-UIContext CreateUi() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) throw std::runtime_error(SDL_GetError());
-    return CreateUiContext();
-}
-
-// Main UI tick function
-bool TickUi(const Drawable &app) {
+bool UIContext::Tick(const Drawable &app) {
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -122,7 +127,7 @@ bool TickUi(const Drawable &app) {
     }
 
     // Check if new UI settings need to be applied.
-    auto &flags = UiContext.UpdateFlags;
+    auto &flags = UpdateFlags;
     if (flags != UIContext::Flags_None) {
         if (flags & UIContext::Flags_ImGuiSettings) imgui_settings.Update(ImGui::GetCurrentContext());
         if (flags & UIContext::Flags_ImGuiStyle) style.ImGui.Update(ImGui::GetCurrentContext());
@@ -154,20 +159,10 @@ bool TickUi(const Drawable &app) {
         if (!patch.Empty()) Action::ApplyPatch{patch}.q();
         io.WantSaveIniSettings = false;
     }
+
 #ifdef TRACING_ENABLED
     FrameMark;
 #endif
 
     return true;
-}
-
-void DestroyUi() {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
-    ImGui::DestroyContext();
-    ImPlot::DestroyContext();
-
-    SDL_GL_DeleteContext(GlContext);
-    SDL_DestroyWindow(Window);
-    SDL_Quit();
 }

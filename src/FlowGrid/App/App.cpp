@@ -1,12 +1,12 @@
 
 #include "App.h"
 
+#include "imgui_internal.h"
+#include "immer/map.hpp"
 #include <range/v3/core.hpp>
 #include <range/v3/view/drop.hpp>
 #include <range/v3/view/reverse.hpp>
 #include <range/v3/view/transform.hpp>
-#include "imgui_internal.h"
-#include "immer/map.hpp"
 
 #include "AppPreferences.h"
 #include "Core/Store/Store.h"
@@ -41,7 +41,6 @@ const std::map<string, ImGuiModFlags> ModKeys{
     {"alt", ImGuiModFlags_Alt},
     {"cmd", ImGuiModFlags_Super},
 };
-
 
 // Handles any number of mods, followed by a single non-mod character.
 // Example: 'shift+cmd+s'
@@ -227,9 +226,9 @@ Patch SetStore(const Store &store) {
 
         // Setting `ImGuiSettings` does not require an `app.Apply` on the action, since the action will be initiated by ImGui itself,
         // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) UiContext.UpdateFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
-        else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) UiContext.UpdateFlags |= UIContext::Flags_ImGuiStyle;
-        else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) UiContext.UpdateFlags |= UIContext::Flags_ImPlotStyle;
+        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+        else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
+        else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
     }
     for (auto *modified_field : modified_fields) modified_field->Update();
 

@@ -57,7 +57,7 @@ void Faust::FaustEditor::Render() const {
         editing_file.c_str()
     );
 
-    ImGui::PushFont(UiContext.Fonts.FixedWidth);
+    ImGui::PushFont(Ui.Fonts.FixedWidth);
     editor.Render("TextEditor");
     ImGui::PopFont();
 

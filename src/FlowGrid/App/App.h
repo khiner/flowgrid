@@ -1,15 +1,15 @@
 #pragma once
 
+#include "AppAction.h"
 #include "Audio/Audio.h"
 #include "Debug.h"
 #include "Demo.h"
 #include "FileDialog/FileDialog.h"
 #include "ImGuiSettings.h"
 #include "Info.h"
+#include "ProjectAction.h"
 #include "Settings.h"
 #include "Style/Style.h"
-
-#include "Core/Action/Actions.h"
 
 /**
  * This class defines the main `App`, which fully describes the application at any point in time.
@@ -21,7 +21,7 @@ DefineUI(
 
     static void OpenRecentProjectMenuItem();
 
-    void Apply(const Action::StatefulAction &) const;
+    void Apply(const Action::AppAction &) const;
 
     const Menu MainMenu{
         {

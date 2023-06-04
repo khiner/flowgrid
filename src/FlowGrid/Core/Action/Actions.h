@@ -1,16 +1,13 @@
 #pragma once
 
-#include "App/Audio/AudioAction.h"
-#include "App/FileDialog/FileDialogAction.h"
+#include "App/AppAction.h"
 #include "App/ProjectAction.h"
-#include "App/Style/StyleAction.h"
-#include "Core/Store/StoreAction.h"
 
 namespace Action {
 // `Any` holds all action types.
-using Any = Action::Combine<ProjectAction, AudioAction, FileDialogAction, StyleAction, StoreAction>::type;
+using Any = Action::Combine<ProjectAction, AppAction>::type;
 using StatefulAction = Action::Filter<Action::IsSavable, Any>::type;
-using NonStatefulAction = Action::Filter<Action::NotSavable, Any>::type;
+using NonStatefulAction = Action::Filter<Action::IsNotSavable, Any>::type;
 
 // Composite action types.
 using ActionMoment = std::pair<Any, TimePoint>;

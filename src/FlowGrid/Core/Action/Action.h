@@ -99,7 +99,7 @@ concept IsActionable = requires() {
 template<IsActionable T> struct IsSavable {
     static constexpr bool value = T::IsSavable;
 };
-template<IsActionable T> struct NotSavable {
+template<IsActionable T> struct IsNotSavable {
     static constexpr bool value = !T::IsSavable;
 };
 
@@ -143,6 +143,9 @@ struct ActionVariant : std::variant<T...> {
     }
     bool IsAllowed() const {
         return Call([](auto &a) { return a.IsAllowed(); });
+    }
+    bool IsSavable() const {
+        return Call([](auto &a) { return a.IsSavable; });
     }
     void q() const {
         Call([](auto &a) { a.q(); });

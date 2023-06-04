@@ -9,6 +9,7 @@
 #include <range/v3/view/transform.hpp>
 
 #include "AppPreferences.h"
+#include "Core/Action/Actions.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Core/Store/StoreJson.h"
@@ -18,9 +19,8 @@
 #include "UI/UI.h"
 
 using namespace FlowGrid;
-using namespace nlohmann;
 
-void App::Apply(const Action::StatefulAction &action) const {
+void App::Apply(const Action::AppAction &action) const {
     using namespace Action;
     Match(
         action,
@@ -28,8 +28,6 @@ void App::Apply(const Action::StatefulAction &action) const {
         [&](const FileDialogAction &a) { FileDialog.Apply(a); },
         [&](const StyleAction &a) { Style.Apply(a); },
         [&](const AudioAction &a) { Audio.Apply(a); },
-        [&](const ShowOpenProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
-        [&](const ShowSaveProjectDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
     );
 }
 
@@ -203,6 +201,8 @@ bool SaveProject(const fs::path &path) {
 
 void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
 
+void OpenProject(const fs::path &); // Defined below.
+
 // Main setter to modify the canonical application state store.
 // _All_ store assignments happen via this method.
 Patch SetStore(const Store &store) {
@@ -248,38 +248,11 @@ void Project::Init() {
     Stateful::Field::IsGesturing = false;
 }
 
-void OpenProject(const fs::path &path) {
-    const auto format = GetStoreJsonFormat(path);
-    if (!format) return; // TODO log
-
-    Project::Init();
-
-    const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
-    if (format == StateFormat) {
-        SetStore(JsonToStore(project));
-    } else if (format == ActionFormat) {
-        OpenProject(EmptyProjectPath);
-
-        const StoreHistory::IndexedGestures indexed_gestures = project;
-        store::BeginTransient();
-        for (const auto &gesture : indexed_gestures.Gestures) {
-            for (const auto &action_moment : gesture) app.Apply(action_moment.first);
-            History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
-        }
-        SetStore(store::EndTransient());
-        ::SetHistoryIndex(indexed_gestures.Index);
-    }
-
-    SetCurrentProjectPath(path);
-}
-
-void Apply(const Action::NonStatefulAction &action) {
+void Apply(const Action::ProjectAction &action) {
     Match(
         action,
-        [&](const Action::AudioAction &a) { audio.Apply(a); }, // todo should just apply `Action::Any` and then handle stateful/non-stateful based on `action.Savable`
-        // Handle actions that don't directly update state.
-        // These options don't get added to the action/gesture history, since they only have non-application side effects,
-        // and we don't want them replayed when loading a saved `.fga` project.
+        [&](const Action::ShowOpenProjectDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
+        [&](const Action::ShowSaveProjectDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [&](const Action::OpenEmptyProject &) { OpenProject(EmptyProjectPath); },
         [&](const Action::OpenProject &a) { OpenProject(a.path); },
         [&](const Action::OpenDefaultProject &) { OpenProject(DefaultProjectPath); },
@@ -310,6 +283,39 @@ void Apply(const Action::NonStatefulAction &action) {
     );
 }
 
+void Apply(const Action::StatefulAction &action) {
+    Match(
+        action,
+        [&](const Action::AppAction &a) { app.Apply(a); },
+        [&](const Action::ProjectAction &a) { Apply(a); },
+    );
+}
+
+void OpenProject(const fs::path &path) {
+    const auto format = GetStoreJsonFormat(path);
+    if (!format) return; // TODO log
+
+    Project::Init();
+
+    const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
+    if (format == StateFormat) {
+        SetStore(JsonToStore(project));
+    } else if (format == ActionFormat) {
+        OpenProject(EmptyProjectPath);
+
+        const StoreHistory::IndexedGestures indexed_gestures = project;
+        store::BeginTransient();
+        for (const auto &gesture : indexed_gestures.Gestures) {
+            for (const auto &action_moment : gesture) Apply(action_moment.first);
+            History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
+        }
+        SetStore(store::EndTransient());
+        ::SetHistoryIndex(indexed_gestures.Index);
+    }
+
+    SetCurrentProjectPath(path);
+}
+
 //-----------------------------------------------------------------------------
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
@@ -337,19 +343,22 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
         force_finalize_gesture |= std::holds_alternative<Action::ToggleValue>(action);
 
+        const bool is_savable = action.IsSavable();
+        if (is_savable) store::BeginTransient(); // Idempotent.
+        // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
+        else if (store::IsTransientMode()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
+
         Match(
             action,
-            [&](const Action::StatefulAction &a) {
-                store::BeginTransient(); // Idempotent.
-                app.Apply(a);
-                state_actions.emplace_back(a, action_moment.second);
-            },
+            [&](const Action::AppAction &a) { app.Apply(a); },
+            [&](const Action::ProjectAction &a) { Apply(a); },
+        );
+
+        Match(
+            action,
+            [&](const Action::StatefulAction &a) { state_actions.emplace_back(a, action_moment.second); },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
-            [&](const Action::NonStatefulAction &a) {
-                // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
-                if (store::IsTransientMode()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
-                Apply(a);
-            },
+            [&](const Action::NonStatefulAction &) {},
         );
     }
 

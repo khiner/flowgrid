@@ -103,7 +103,8 @@ void AudioDevice::Init(AudioDevice::Callback callback) const {
 }
 
 void AudioDevice::Update() const {
-    if (IsStarted()) ma_device_set_master_volume(&MaDevice, Volume);
+    if (!IsStarted()) return;
+    ma_device_set_master_volume(&MaDevice, Muted ? 0.f : float(Volume));
 }
 
 void AudioDevice::Uninit() const {

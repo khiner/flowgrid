@@ -57,6 +57,15 @@ TransientStore &GetTransient() { return Transient; }
 Store GetPersistent() { return Transient.persistent(); }
 
 Primitive Get(const StorePath &path) { return IsTransient ? Transient.at(path) : AppStore.at(path); }
+void Set(const StorePath &path, const Primitive &value) {
+    if (IsTransient) Transient.set(path, value);
+    else auto _ = ApplicationStore.set(path, value);
+}
+void Erase(const StorePath &path) {
+    if (IsTransient) Transient.erase(path);
+    else auto _ = ApplicationStore.erase(path);
+}
+
 Count CountAt(const StorePath &path) { return IsTransient ? Transient.count(path) : AppStore.count(path); }
 
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path) {
@@ -87,68 +96,53 @@ Patch CreatePatch(const StorePath &base_path) {
 }
 
 void ApplyPatch(const Patch &patch) {
-    auto &store = Transient;
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
-        if (op.Op == PatchOp::Type::Add || op.Op == PatchOp::Type::Replace) store.set(path, *op.Value);
-        else if (op.Op == PatchOp::Type::Remove) store.erase(path);
+        if (op.Op == PatchOp::Type::Add || op.Op == PatchOp::Type::Replace) Set(path, *op.Value);
+        else if (op.Op == PatchOp::Type::Remove) Erase(path);
     }
-}
-
-// Transient modifiers
-void Set(const StorePath &path, const Primitive &value) {
-    auto &store = Transient;
-    store.set(path, value);
 }
 
 void Set(const StoreEntries &values) {
-    auto &store = Transient;
-    for (const auto &[path, value] : values) store.set(path, value);
+    for (const auto &[path, value] : values) Set(path, value);
 }
 void Set(const StorePath &path, const vector<Primitive> &values) {
-    auto &store = Transient;
     Count i = 0;
     while (i < values.size()) {
-        store.set(path / to_string(i), values[i]);
+        Set(path / to_string(i), values[i]);
         i++;
     }
-    while (store.count(path / to_string(i))) {
-        store.erase(path / to_string(i));
+    while (CountAt(path / to_string(i))) {
+        Erase(path / to_string(i));
         i++;
     }
 }
 
 void Set(const StorePath &path, const vector<Primitive> &data, const Count row_count) {
     assert(data.size() % row_count == 0);
-    auto &store = Transient;
     const Count col_count = data.size() / row_count;
     Count row = 0;
     while (row < row_count) {
         Count col = 0;
         while (col < col_count) {
-            store.set(path / to_string(row) / to_string(col), data[row * col_count + col]);
+            Set(path / to_string(row) / to_string(col), data[row * col_count + col]);
             col++;
         }
-        while (store.count(path / to_string(row) / to_string(col))) {
-            store.erase(path / to_string(row) / to_string(col));
+        while (CountAt(path / to_string(row) / to_string(col))) {
+            Erase(path / to_string(row) / to_string(col));
             col++;
         }
         row++;
     }
 
-    while (store.count(path / to_string(row) / to_string(0))) {
+    while (CountAt(path / to_string(row) / to_string(0))) {
         Count col = 0;
-        while (store.count(path / to_string(row) / to_string(col))) {
-            store.erase(path / to_string(row) / to_string(col));
+        while (CountAt(path / to_string(row) / to_string(col))) {
+            Erase(path / to_string(row) / to_string(col));
             col++;
         }
         row++;
     }
-}
-
-void Erase(const StorePath &path) {
-    auto &store = Transient;
-    store.erase(path);
 }
 
 void Set(const Store &store) {

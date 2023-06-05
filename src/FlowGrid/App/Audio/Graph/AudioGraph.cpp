@@ -24,7 +24,7 @@ void AudioGraph::AudioCallback(ma_device *device, void *output, const void *inpu
 
 void AudioGraph::Init() const {
     NodeGraphConfig = ma_node_graph_config_init(audio_device.InChannels);
-    int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
+    const int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
 
     Nodes.Init();

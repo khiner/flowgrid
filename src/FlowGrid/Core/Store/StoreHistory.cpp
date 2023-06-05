@@ -31,17 +31,14 @@ StoreHistory::~StoreHistory() {
 }
 
 void StoreHistory::Add(TimePoint time, const Store &store, const Gesture &gesture) {
+    const auto patch = store::CreatePatch(CurrentStore(), store);
+    if (patch.Empty()) return;
+
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
     Records.push_back({time, store, gesture});
     Index = Size() - 1;
-    const auto &patch = CreatePatch(Index);
-    if (patch.Empty()) {
-        Records.pop_back();
-        Index--;
-    } else {
-        const auto &gesture_time = gesture.back().second;
-        for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
-    }
+    const auto &gesture_time = gesture.back().second;
+    for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
 Count StoreHistory::Size() const { return Records.size(); }

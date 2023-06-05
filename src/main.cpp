@@ -1,7 +1,7 @@
 #include "imgui.h"
 
 #include "FlowGrid/App/App.h"
-#include "FlowGrid/App/ProjectConstants.h"
+#include "FlowGrid/App/Project/ProjectConstants.h"
 #include "UI/UI.h"
 
 // Initialize global extern variables.

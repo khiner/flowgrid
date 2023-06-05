@@ -3,7 +3,14 @@
 #include "StoreAction.h"
 #include "StoreFwd.h"
 
-using std::vector;
+#include "nlohmann/json.hpp"
+
+namespace nlohmann {
+void to_json(json &, const Store &);
+} // namespace nlohmann
+
+// Not using `nlohmann::from_json` pattern to avoid getting a reference to a default-constructed, non-transient `Store` instance.
+Store JsonToStore(const nlohmann::json &);
 
 namespace store {
 void Apply(const Action::StoreAction &);
@@ -14,6 +21,7 @@ void BeginTransient(); // End transient mode with `Commit`.
 const Store &Get(); // Get a read-only reference to the canonical application store.
 Store GetPersistent(); // Get the persistent store from the transient store _without_ ending transient mode.
 Patch CheckedSet(const Store &); // Overwrite the store with the provided store _if it is different_, and return the resulting (potentially empty) patch.
+Patch CheckedSet(const nlohmann::json &); // Same as above, but convert the provided JSON to a store first.
 
 void Commit(); // End transient mode and overwrite the store with the persistent store.
 Patch CheckedCommit();
@@ -23,8 +31,8 @@ Count CountAt(const StorePath &);
 
 void Set(const StorePath &, const Primitive &);
 void Set(const StoreEntries &);
-void Set(const StorePath &, const vector<Primitive> &);
-void Set(const StorePath &, const vector<Primitive> &, Count row_count); // For `SetMatrix` action.
+void Set(const StorePath &, const std::vector<Primitive> &);
+void Set(const StorePath &, const std::vector<Primitive> &, Count row_count); // For `SetMatrix` action.
 
 void Erase(const StorePath &);
 

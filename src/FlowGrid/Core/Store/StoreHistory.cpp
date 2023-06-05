@@ -12,7 +12,7 @@
 
 namespace views = ranges::views;
 using ranges::to, views::transform;
-using std::string;
+using std::string, std::vector;
 
 struct Record {
     const TimePoint Committed;

@@ -4,6 +4,8 @@
 
 #include "imgui_internal.h"
 
+using std::vector;
+
 using namespace ImGui;
 
 constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }

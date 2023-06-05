@@ -12,10 +12,10 @@
 #include "Core/Action/Actions.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
-#include "Core/Store/StoreJson.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
-#include "ProjectConstants.h"
+#include "Project/ProjectConstants.h"
+#include "Project/ProjectJson.h"
 #include "UI/UI.h"
 
 using namespace FlowGrid;
@@ -203,21 +203,21 @@ void SetCurrentProjectPath(const fs::path &path) {
     Preferences.OnProjectOpened(path);
 }
 
-std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
+std::optional<ProjectJsonFormat> GetProjectJsonFormat(const fs::path &path) {
     const string &ext = path.extension();
-    if (!StoreJsonFormatForExtension.contains(ext)) return {};
-    return StoreJsonFormatForExtension.at(ext);
+    if (!ProjectJsonFormatForExtension.contains(ext)) return {};
+    return ProjectJsonFormatForExtension.at(ext);
 }
 
 bool SaveProject(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
 
-    const auto format = GetStoreJsonFormat(path);
+    const auto format = GetProjectJsonFormat(path);
     if (!format) return false; // TODO log
 
     History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
-    if (!FileIO::write(path, GetStoreJson(*format).dump())) return false; // TODO log
+    if (!FileIO::write(path, GetProjectJson(*format).dump())) return false; // TODO log
 
     SetCurrentProjectPath(path);
     return true;
@@ -310,14 +310,14 @@ void Apply(const Action::StatefulAction &action) {
 }
 
 void OpenProject(const fs::path &path) {
-    const auto format = GetStoreJsonFormat(path);
+    const auto format = GetProjectJsonFormat(path);
     if (!format) return; // TODO log
 
     Project::Init();
 
     const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        OnPatch(store::CheckedSet(JsonToStore(project)));
+        OnPatch(store::CheckedSet(project));
         History = {};
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);

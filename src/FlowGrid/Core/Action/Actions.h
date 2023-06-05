@@ -1,7 +1,7 @@
 #pragma once
 
 #include "App/AppAction.h"
-#include "App/ProjectAction.h"
+#include "App/Project/ProjectAction.h"
 
 namespace Action {
 // `Any` holds all action types.

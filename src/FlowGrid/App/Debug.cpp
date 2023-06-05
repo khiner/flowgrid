@@ -8,8 +8,8 @@
 #include "App/Style/Style.h"
 #include "Core/Action/Actions.h"
 #include "Core/Store/StoreHistory.h"
-#include "Core/Store/StoreJson.h"
 #include "Helper/String.h"
+#include "Project/ProjectJson.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -117,7 +117,7 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
 }
 
 void Debug::StateViewer::Render() const {
-    StateJsonTree("State", GetStoreJson(StateFormat));
+    StateJsonTree("State", GetProjectJson(StateFormat));
 }
 
 void Debug::ProjectPreview::Render() const {
@@ -126,7 +126,7 @@ void Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    const nlohmann::json project_json = GetStoreJson(StoreJsonFormat(int(Format)));
+    const nlohmann::json project_json = GetProjectJson(ProjectJsonFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else fg::JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }

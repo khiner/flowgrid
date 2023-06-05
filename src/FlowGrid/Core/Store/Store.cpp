@@ -6,6 +6,8 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/map.hpp>
 
+using std::vector;
+
 namespace store {
 Store AppStore{};
 
@@ -57,6 +59,10 @@ Patch CheckedSet(const Store &store) {
 
     AppStore = store;
     return patch;
+}
+
+Patch CheckedSet(const nlohmann::json &j) {
+    return CheckedSet(JsonToStore(j));
 }
 
 Patch CheckedCommit() {
@@ -154,3 +160,22 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
     }
 }
 } // namespace store
+
+namespace nlohmann {
+void to_json(json &j, const Store &store) {
+    for (const auto &[key, value] : store) {
+        j[json::json_pointer(key.string())] = value;
+    }
+}
+} // namespace nlohmann
+
+Store JsonToStore(const nlohmann::json &j) {
+    const auto &flattened = j.flatten();
+    StoreEntries entries(flattened.size());
+    int item_index = 0;
+    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
+
+    TransientStore store;
+    for (const auto &[path, value] : entries) store.set(path, value);
+    return store.persistent();
+}

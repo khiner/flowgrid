@@ -8,6 +8,8 @@
 
 using std::vector;
 
+using TransientStore = immer::map_transient<StorePath, Primitive, StorePathHash>;
+
 namespace store {
 Store AppStore{};
 

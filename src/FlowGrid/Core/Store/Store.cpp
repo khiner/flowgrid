@@ -6,10 +6,11 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/map.hpp>
 
-Store ApplicationStore{};
-const Store &AppStore = ApplicationStore;
-
 namespace store {
+Store AppStore{};
+
+const Store &Get() { return AppStore; }
+
 void Apply(const Action::StoreAction &action) {
     using namespace Action;
     Match(
@@ -24,11 +25,8 @@ void Apply(const Action::StoreAction &action) {
 }
 bool CanApply(const Action::StoreAction &) { return true; }
 
-bool IsTransient = true; // Use transient store for initialization.
-
-bool IsTransientMode() { return IsTransient; }
-
 TransientStore Transient{};
+bool IsTransient = true;
 
 void BeginTransient() {
     if (IsTransient) return;
@@ -36,6 +34,9 @@ void BeginTransient() {
     Transient = AppStore.transient();
     IsTransient = true;
 }
+
+// End transient mode and return the new persistent store.
+// Not exposed publicly (use `Commit` instead).
 const Store EndTransient() {
     if (!IsTransient) return AppStore;
 
@@ -45,25 +46,33 @@ const Store EndTransient() {
 
     return new_store;
 }
-void CommitTransient() {
-    if (!IsTransient) return;
 
-    Set(Transient.persistent());
-    Transient = {};
-    IsTransient = false;
+void Commit() {
+    AppStore = EndTransient();
 }
 
-TransientStore &GetTransient() { return Transient; }
+Patch CheckedSet(const Store &store) {
+    const auto &patch = CreatePatch(store);
+    if (patch.Empty()) return {};
+
+    AppStore = store;
+    return patch;
+}
+
+Patch CheckedCommit() {
+    return CheckedSet(EndTransient());
+}
+
 Store GetPersistent() { return Transient.persistent(); }
 
 Primitive Get(const StorePath &path) { return IsTransient ? Transient.at(path) : AppStore.at(path); }
 void Set(const StorePath &path, const Primitive &value) {
     if (IsTransient) Transient.set(path, value);
-    else auto _ = ApplicationStore.set(path, value);
+    else auto _ = AppStore.set(path, value);
 }
 void Erase(const StorePath &path) {
     if (IsTransient) Transient.erase(path);
-    else auto _ = ApplicationStore.erase(path);
+    else auto _ = AppStore.erase(path);
 }
 
 Count CountAt(const StorePath &path) { return IsTransient ? Transient.count(path) : AppStore.count(path); }
@@ -92,7 +101,7 @@ Patch CreatePatch(const Store &store, const StorePath &base_path) {
 }
 
 Patch CreatePatch(const StorePath &base_path) {
-    return CreatePatch(AppStore, store::EndTransient(), base_path);
+    return CreatePatch(AppStore, EndTransient(), base_path);
 }
 
 void ApplyPatch(const Patch &patch) {
@@ -143,9 +152,5 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
         }
         row++;
     }
-}
-
-void Set(const Store &store) {
-    ApplicationStore = store;
 }
 } // namespace store

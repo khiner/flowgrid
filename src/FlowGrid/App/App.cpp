@@ -205,8 +205,8 @@ void SetCurrentProjectPath(const fs::path &path) {
 
 std::optional<StoreJsonFormat> GetStoreJsonFormat(const fs::path &path) {
     const string &ext = path.extension();
-    if (StoreJsonFormatForExtension.contains(ext)) return StoreJsonFormatForExtension.at(ext);
-    return {};
+    if (!StoreJsonFormatForExtension.contains(ext)) return {};
+    return StoreJsonFormatForExtension.at(ext);
 }
 
 bool SaveProject(const fs::path &path) {
@@ -227,13 +227,9 @@ void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
 
 void OpenProject(const fs::path &); // Defined below.
 
-// Main setter to modify the canonical application state store.
-// _All_ store assignments happen via this method.
-Patch SetStore(const Store &store) {
-    const auto &patch = store::CreatePatch(store);
-    if (patch.Empty()) return {};
+void OnPatch(const Patch &patch) {
+    if (patch.Empty()) return;
 
-    store::Set(store);
     History.LatestUpdatedPaths = patch.Ops | views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;
 
@@ -255,17 +251,15 @@ Patch SetStore(const Store &store) {
         else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
     }
     for (auto *modified_field : modified_fields) modified_field->Update();
-
-    return patch;
 }
 
 void SetHistoryIndex(Count index) {
     History.SetIndex(index);
-    SetStore(History.CurrentStore());
+    OnPatch(store::CheckedSet(History.CurrentStore()));
 }
 
 void Project::Init() {
-    store::CommitTransient(); // Make sure the store is not in transient mode when initializing a project.
+    store::Commit(); // Make sure the store is not in transient mode when initializing a project.
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {};
@@ -323,7 +317,7 @@ void OpenProject(const fs::path &path) {
 
     const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        SetStore(JsonToStore(project));
+        OnPatch(store::CheckedSet(JsonToStore(project)));
         History = {};
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
@@ -334,7 +328,7 @@ void OpenProject(const fs::path &path) {
             for (const auto &action_moment : gesture) Apply(action_moment.first);
             History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
         }
-        SetStore(store::EndTransient());
+        OnPatch(store::CheckedCommit());
         ::SetHistoryIndex(indexed_gestures.Index);
     }
 
@@ -352,8 +346,8 @@ inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void Project::RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
-    static vector<StatefulActionMoment> state_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
-    state_actions.clear();
+    static vector<StatefulActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
+    stateful_actions.clear();
 
     while (ActionQueue.try_dequeue(action_moment)) {
         // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
@@ -371,7 +365,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.
         // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
-        else if (store::IsTransientMode()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
+        else if (!stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
 
         Match(
             action,
@@ -381,19 +375,20 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         Match(
             action,
-            [&](const Action::StatefulAction &a) { state_actions.emplace_back(a, action_moment.second); },
+            [&](const Action::StatefulAction &a) { stateful_actions.emplace_back(a, action_moment.second); },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
             [&](const Action::NonStatefulAction &) {},
         );
     }
 
     const bool finalize = force_finalize_gesture || (!Stateful::Field::IsGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
-    if (!state_actions.empty()) {
-        const auto &patch = SetStore(store::EndTransient());
-        History.ActiveGesture.insert(History.ActiveGesture.end(), state_actions.begin(), state_actions.end());
-        History.UpdateGesturePaths(state_actions, patch);
+    if (!stateful_actions.empty()) {
+        const auto &patch = store::CheckedCommit();
+        OnPatch(patch);
+        History.ActiveGesture.insert(History.ActiveGesture.end(), stateful_actions.begin(), stateful_actions.end());
+        History.UpdateGesturePaths(stateful_actions, patch);
     } else {
-        store::EndTransient();
+        store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }
     if (finalize) History.FinalizeGesture();
 }

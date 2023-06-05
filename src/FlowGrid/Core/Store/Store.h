@@ -1,10 +1,7 @@
 #pragma once
 
-#include "StoreFwd.h"
-
 #include "StoreAction.h"
-
-#include "Core/Stateful/Stateful.h"
+#include "StoreFwd.h"
 
 using std::vector;
 
@@ -12,12 +9,14 @@ namespace store {
 void Apply(const Action::StoreAction &);
 bool CanApply(const Action::StoreAction &);
 
-void BeginTransient();
-const Store EndTransient();
-void CommitTransient();
-TransientStore &GetTransient(); // xxx temporary until all sets are done internally.
-bool IsTransientMode();
-Store GetPersistent();
+void BeginTransient(); // End transient mode with `Commit`.
+
+const Store &Get(); // Get a read-only reference to the canonical application store.
+Store GetPersistent(); // Get the persistent store from the transient store _without_ ending transient mode.
+Patch CheckedSet(const Store &); // Overwrite the store with the provided store _if it is different_, and return the resulting (potentially empty) patch.
+
+void Commit(); // End transient mode and overwrite the store with the persistent store.
+Patch CheckedCommit();
 
 Primitive Get(const StorePath &);
 Count CountAt(const StorePath &);
@@ -29,15 +28,12 @@ void Set(const StorePath &, const vector<Primitive> &, Count row_count); // For 
 
 void Erase(const StorePath &);
 
-// Overwrite the main application store.
-// This is the only place `ApplicationStore` is modified.
-void Set(const Store &);
-
 // Create a patch comparing the provided stores.
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path = RootPath);
 // Create a patch comparing the provided store with the current persistent store.
 Patch CreatePatch(const Store &, const StorePath &base_path = RootPath);
-// Create a patch comparing the current transient store with the current persistent store. (Stops transient mode.)
+// Create a patch comparing the current transient store with the current persistent store.
+// **Stops transient mode.**
 Patch CreatePatch(const StorePath &base_path = RootPath);
 
 void ApplyPatch(const Patch &);

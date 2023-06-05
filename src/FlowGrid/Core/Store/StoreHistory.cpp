@@ -12,6 +12,7 @@
 
 namespace views = ranges::views;
 using ranges::to, views::transform;
+using std::string;
 
 struct Record {
     const TimePoint Committed;
@@ -23,7 +24,7 @@ static vector<Record> Records;
 
 StoreHistory::StoreHistory() {
     Records.clear();
-    Records.push_back({Clock::now(), AppStore, {}});
+    Records.push_back({Clock::now(), store::Get(), {}});
 }
 StoreHistory::~StoreHistory() {
     // Not clearing records here because the destructor for the old singleton instance is called after the new instance is constructed.
@@ -107,7 +108,7 @@ void StoreHistory::FinalizeGesture() {
     GestureUpdateTimesForPath.clear();
     if (merged_gesture.empty()) return;
 
-    Add(Clock::now(), AppStore, merged_gesture);
+    Add(Clock::now(), store::Get(), merged_gesture);
 }
 
 void StoreHistory::UpdateGesturePaths(const Gesture &gesture, const Patch &patch) {

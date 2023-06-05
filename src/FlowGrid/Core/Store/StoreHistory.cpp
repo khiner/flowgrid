@@ -150,16 +150,22 @@ StoreHistory::Plottable StoreHistory::StorePathUpdateFrequencyPlottable() const 
 }
 
 void StoreHistory::SetIndex(Count new_index) {
-    // If we're mid-gesture, revert the current gesture before navigating to the requested history index.
-    if (!ActiveGesture.empty()) {
-        ActiveGesture.clear();
-        GestureUpdateTimesForPath.clear();
-    }
+    // If we're mid-gesture, revert the current gesture before navigating to the new index.
+    ActiveGesture.clear();
+    GestureUpdateTimesForPath.clear();
     if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
     const Count old_index = Index;
     Index = new_index;
 
+    // TODO
+    // I really don't like this O(index-diff) operation, just for updating debug metrics.
+    // It's the only thing in the way of glorious constant-time immutable history navigation.
+    // One idea to get rid of this would be to turn the `CommittedUpdateTimesForPath` map into an `immer/map`,
+    // and keep a separate vector (soon, tree) of them, in parallel to `Records`
+    //     using TimesForPath = immer::map<StorePath, std::vector<TimePoint>, StorePathHash>
+    //     struct MetricsRecord{ TimesForPath CommittedUpdateTimesForPath; };
+    //     using MetricsRecords = vector<MetricsRecord>;
     const auto direction = new_index > old_index ? Forward : Reverse;
     auto i = int(old_index);
     while (i != int(new_index)) {
@@ -178,7 +184,6 @@ void StoreHistory::SetIndex(Count new_index) {
             }
         }
     }
-    GestureUpdateTimesForPath.clear();
 }
 
 StoreHistory History{};

@@ -39,6 +39,7 @@ struct StoreHistory {
     void FinalizeGesture();
     void SetIndex(Count);
     void Add(TimePoint, const Store &, const Gesture &);
+    void AddTransient(const Gesture &); // Only used during action-formmated project loading.
 
     Count Size() const;
     bool Empty() const;

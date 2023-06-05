@@ -12,6 +12,24 @@ namespace store {
 Store AppStore{};
 
 const Store &Get() { return AppStore; }
+nlohmann::json GetJson() {
+    nlohmann::json j;
+    for (const auto &[key, value] : AppStore) {
+        j[nlohmann::json::json_pointer(key.string())] = value;
+    }
+    return j;
+}
+
+Store JsonToStore(const nlohmann::json &j) {
+    const auto &flattened = j.flatten();
+    StoreEntries entries(flattened.size());
+    int item_index = 0;
+    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
+
+    TransientStore store;
+    for (const auto &[path, value] : entries) store.set(path, value);
+    return store.persistent();
+}
 
 void Apply(const Action::StoreAction &action) {
     using namespace Action;
@@ -61,7 +79,7 @@ Patch CheckedSet(const Store &store) {
     return patch;
 }
 
-Patch CheckedSet(const nlohmann::json &j) {
+Patch CheckedSetJson(const nlohmann::json &j) {
     return CheckedSet(JsonToStore(j));
 }
 
@@ -160,22 +178,3 @@ void Set(const StorePath &path, const vector<Primitive> &data, const Count row_c
     }
 }
 } // namespace store
-
-namespace nlohmann {
-void to_json(json &j, const Store &store) {
-    for (const auto &[key, value] : store) {
-        j[json::json_pointer(key.string())] = value;
-    }
-}
-} // namespace nlohmann
-
-Store JsonToStore(const nlohmann::json &j) {
-    const auto &flattened = j.flatten();
-    StoreEntries entries(flattened.size());
-    int item_index = 0;
-    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
-
-    TransientStore store;
-    for (const auto &[path, value] : entries) store.set(path, value);
-    return store.persistent();
-}

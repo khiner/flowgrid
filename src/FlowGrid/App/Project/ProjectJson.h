@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Core/Store/Store.h"
+#include "nlohmann/json.hpp"
+
 #include "ProjectJsonFormat.h"
 
 nlohmann::json GetProjectJson(const ProjectJsonFormat);

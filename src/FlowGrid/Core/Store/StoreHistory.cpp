@@ -42,6 +42,10 @@ void StoreHistory::Add(TimePoint time, const Store &store, const Gesture &gestur
     for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
 }
 
+void StoreHistory::AddTransient(const Gesture &gesture) {
+    Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
+}
+
 Count StoreHistory::Size() const { return Records.size(); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
 bool StoreHistory::CanUndo() const { return !ActiveGesture.empty() || Index > 0; }

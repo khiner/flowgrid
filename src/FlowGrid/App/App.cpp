@@ -2,7 +2,6 @@
 #include "App.h"
 
 #include "imgui_internal.h"
-#include "immer/map.hpp"
 #include <range/v3/core.hpp>
 #include <range/v3/view/drop.hpp>
 #include <range/v3/view/reverse.hpp>
@@ -317,7 +316,7 @@ void OpenProject(const fs::path &path) {
 
     const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
     if (format == StateFormat) {
-        OnPatch(store::CheckedSet(project));
+        OnPatch(store::CheckedSetJson(project));
         History = {};
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
@@ -326,7 +325,7 @@ void OpenProject(const fs::path &path) {
         store::BeginTransient();
         for (const auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture) Apply(action_moment.first);
-            History.Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
+            History.AddTransient(gesture);
         }
         OnPatch(store::CheckedCommit());
         ::SetHistoryIndex(indexed_gestures.Index);

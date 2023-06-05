@@ -324,6 +324,7 @@ void OpenProject(const fs::path &path) {
     const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
     if (format == StateFormat) {
         SetStore(JsonToStore(project));
+        History = {};
     } else if (format == ActionFormat) {
         OpenProject(EmptyProjectPath);
 

@@ -14,13 +14,15 @@ namespace store {
 Store AppStore{};
 
 const Store &Get() { return AppStore; }
-nlohmann::json GetJson() {
+nlohmann::json GetJson(const Store &store) {
     nlohmann::json j;
-    for (const auto &[key, value] : AppStore) {
+    for (const auto &[key, value] : store) {
         j[nlohmann::json::json_pointer(key.string())] = value;
     }
     return j;
 }
+
+nlohmann::json GetJson() { return GetJson(AppStore); }
 
 Store JsonToStore(const nlohmann::json &j) {
     const auto &flattened = j.flatten();

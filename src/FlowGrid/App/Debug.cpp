@@ -7,6 +7,7 @@
 
 #include "App/Style/Style.h"
 #include "Core/Action/Actions.h"
+#include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/String.h"
 #include "Project/ProjectJson.h"
@@ -146,9 +147,6 @@ void ShowGesture(const Gesture &gesture) {
 #include "AppPreferences.h"
 #include "Settings.h"
 
-// todo This is only needed since there's no `to_json(StoreHistory::RecordReference)`.
-#include "immer/map.hpp"
-
 void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
@@ -205,7 +203,7 @@ void Metrics::FlowGridMetrics::Render() const {
                         TreePop();
                     }
                     if (TreeNode("State")) {
-                        JsonTree("", store_record);
+                        JsonTree("", store::GetJson(store_record));
                         TreePop();
                     }
                     TreePop();

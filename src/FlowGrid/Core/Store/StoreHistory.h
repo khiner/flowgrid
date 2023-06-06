@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Core/Action/Actions.h"
-#include "StoreFwd.h"
+
+struct Store;
 
 enum Direction {
     Forward,

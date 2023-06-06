@@ -1,26 +1,25 @@
 #include "Store.h"
 
+#include "StoreImpl.h"
+#include "TransientStoreImpl.h"
+
 #include "immer/algorithm.hpp"
-#include "immer/map.hpp"
-#include "immer/map_transient.hpp"
 #include <range/v3/core.hpp>
-#include <range/v3/view/map.hpp>
 
 using std::vector;
-
-using TransientStore = immer::map_transient<StorePath, Primitive, StorePathHash>;
 
 namespace store {
 Store AppStore{};
 
-const Store &Get() { return AppStore; }
 nlohmann::json GetJson(const Store &store) {
     nlohmann::json j;
-    for (const auto &[key, value] : store) {
+    for (const auto &[key, value] : store.PrimitiveForPath) {
         j[nlohmann::json::json_pointer(key.string())] = value;
     }
     return j;
 }
+
+const Store &Get() { return AppStore; }
 
 nlohmann::json GetJson() { return GetJson(AppStore); }
 
@@ -30,9 +29,9 @@ Store JsonToStore(const nlohmann::json &j) {
     int item_index = 0;
     for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
 
-    TransientStore store;
-    for (const auto &[path, value] : entries) store.set(path, value);
-    return store.persistent();
+    TransientStore::Map primitive_for_path;
+    for (const auto &[path, value] : entries) primitive_for_path.set(path, value);
+    return {primitive_for_path.persistent()};
 }
 
 void Apply(const Action::StoreAction &action) {
@@ -55,7 +54,7 @@ bool IsTransient = true;
 void BeginTransient() {
     if (IsTransient) return;
 
-    Transient = AppStore.transient();
+    Transient = AppStore.Transient();
     IsTransient = true;
 }
 
@@ -64,7 +63,7 @@ void BeginTransient() {
 const Store EndTransient() {
     if (!IsTransient) return AppStore;
 
-    const Store new_store = Transient.persistent();
+    const Store new_store = Transient.Persistent();
     Transient = {};
     IsTransient = false;
 
@@ -83,33 +82,28 @@ Patch CheckedSet(const Store &store) {
     return patch;
 }
 
-Patch CheckedSetJson(const nlohmann::json &j) {
-    return CheckedSet(JsonToStore(j));
-}
+Patch CheckedSetJson(const nlohmann::json &j) { return CheckedSet(JsonToStore(j)); }
+Patch CheckedCommit() { return CheckedSet(EndTransient()); }
 
-Patch CheckedCommit() {
-    return CheckedSet(EndTransient());
-}
+Store GetPersistent() { return Transient.Persistent(); }
 
-Store GetPersistent() { return Transient.persistent(); }
-
-Primitive Get(const StorePath &path) { return IsTransient ? Transient.at(path) : AppStore.at(path); }
+Primitive Get(const StorePath &path) { return IsTransient ? Transient.PrimitiveForPath.at(path) : AppStore.PrimitiveForPath.at(path); }
 void Set(const StorePath &path, const Primitive &value) {
-    if (IsTransient) Transient.set(path, value);
-    else auto _ = AppStore.set(path, value);
+    if (IsTransient) Transient.PrimitiveForPath.set(path, value);
+    else auto _ = AppStore.PrimitiveForPath.set(path, value);
 }
 void Erase(const StorePath &path) {
-    if (IsTransient) Transient.erase(path);
-    else auto _ = AppStore.erase(path);
+    if (IsTransient) Transient.PrimitiveForPath.erase(path);
+    else auto _ = AppStore.PrimitiveForPath.erase(path);
 }
 
-Count CountAt(const StorePath &path) { return IsTransient ? Transient.count(path) : AppStore.count(path); }
+Count CountAt(const StorePath &path) { return IsTransient ? Transient.PrimitiveForPath.count(path) : AppStore.PrimitiveForPath.count(path); }
 
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path) {
     PatchOps ops{};
     diff(
-        before,
-        after,
+        before.PrimitiveForPath,
+        after.PrimitiveForPath,
         [&](auto const &added_element) {
             ops[added_element.first.lexically_relative(base_path)] = {PatchOp::Type::Add, added_element.second, {}};
         },

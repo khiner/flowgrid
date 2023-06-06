@@ -1,6 +1,5 @@
 #include "StoreHistory.h"
 
-#include "immer/map.hpp"
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/filter.hpp>
@@ -9,6 +8,7 @@
 #include <set>
 
 #include "Store.h"
+#include "StoreImpl.h"
 
 namespace views = ranges::views;
 using ranges::to, views::transform;

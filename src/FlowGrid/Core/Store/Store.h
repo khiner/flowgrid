@@ -1,9 +1,10 @@
 #pragma once
 
 #include "StoreAction.h"
-#include "StoreFwd.h"
 
 #include "nlohmann/json.hpp"
+
+struct Store;
 
 namespace store {
 void Apply(const Action::StoreAction &);

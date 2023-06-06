@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Stateful/Window.h"
-#include "Core/Store/Store.h"
 
 template<typename T> struct ImChunkStream;
 template<typename T> struct ImVector;

@@ -2,6 +2,7 @@
 
 #include "FlowGrid/App/App.h"
 #include "FlowGrid/App/Project/ProjectConstants.h"
+#include "FlowGrid/Core/Store/Store.h"
 #include "UI/UI.h"
 
 // Initialize global extern variables.

@@ -1,7 +1,7 @@
 #pragma once
 
 // Store-related types like path/entry/patch.
-// Basically all store-related types except the actual `Store` type, which is in forward-declared in `StoreFwd.h`.
+// Basically all store-related types except the actual `Store` type.
 
 #include <unordered_map>
 #include <vector>

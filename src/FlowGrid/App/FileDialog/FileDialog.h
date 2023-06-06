@@ -3,7 +3,6 @@
 #include "FileDialogData.h"
 
 #include "Core/Stateful/Window.h"
-#include "Core/Store/StoreFwd.h"
 
 #include "FileDialogAction.h"
 

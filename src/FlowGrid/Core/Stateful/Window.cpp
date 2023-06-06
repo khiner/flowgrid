@@ -3,7 +3,6 @@
 #include "imgui_internal.h"
 
 #include "Core/Store/StoreAction.h"
-#include "Core/Store/StoreFwd.h"
 
 void UIStateful::DrawWindows() const {
     for (const auto *child : Children) {

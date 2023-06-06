@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Stateful/Window.h"
-#include "Core/Store/StoreFwd.h"
 
 struct ImVec4;
 

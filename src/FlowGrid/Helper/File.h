@@ -1,16 +1,12 @@
 #pragma once
 
-#include <filesystem>
 #include <string>
 #include <vector>
 
-namespace fs = std::filesystem;
-using std::string, std::vector;
+#include "Helper/Path.h"
 
 namespace FileIO {
-
-string read(const fs::path &path);
-bool write(const fs::path &path, const string &contents);
-bool write(const fs::path &path, const vector<std::uint8_t> &contents);
-
+std::string read(const fs::path &path);
+bool write(const fs::path &path, const std::string &contents);
+bool write(const fs::path &path, const std::vector<std::uint8_t> &contents);
 } // namespace FileIO

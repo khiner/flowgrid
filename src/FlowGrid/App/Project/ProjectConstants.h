@@ -1,6 +1,5 @@
 #pragma once
 
-#include <__filesystem/path.h>
 #include <map>
 #include <range/v3/core.hpp>
 #include <range/v3/view/join.hpp>
@@ -10,11 +9,12 @@
 #include <string>
 
 #include "ProjectJsonFormat.h"
+#include "Helper/Path.h"
 
 namespace views = ranges::views;
 using ranges::to;
 
-inline static const std::filesystem::path InternalPath = ".flowgrid";
+inline static const fs::path InternalPath = ".flowgrid";
 
 inline static const std::map<ProjectJsonFormat, std::string> ExtensionForProjectJsonFormat{{ProjectJsonFormat::StateFormat, ".fls"}, {ProjectJsonFormat::ActionFormat, ".fla"}};
 inline static const auto ProjectJsonFormatForExtension = ExtensionForProjectJsonFormat | views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();
@@ -22,7 +22,7 @@ inline static const auto ProjectJsonFormatForExtension = ExtensionForProjectJson
 inline static const std::set<std::string> AllProjectExtensions = views::keys(ProjectJsonFormatForExtension) | to<std::set>;
 inline static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | to<std::string>;
 
-inline static const std::filesystem::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
+inline static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
 // The default project is a user-created project that loads on app start, instead of the empty project.
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-inline static const std::filesystem::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::ActionFormat));
+inline static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::ActionFormat));

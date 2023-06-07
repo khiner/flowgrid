@@ -8,7 +8,7 @@
 struct Store;
 
 struct TransientStore {
-    using Map = immer::map_transient<StorePath, Primitive, StorePathHash>;
+    using Map = immer::map_transient<StorePath, Primitive, PathHash>;
     Map PrimitiveForPath;
 
     Store Persistent();

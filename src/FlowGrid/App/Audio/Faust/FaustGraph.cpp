@@ -24,7 +24,7 @@
 
 using namespace ImGui;
 using std::min, std::max;
-using std::pair, std::unordered_map;
+using std::pair, std::unordered_map, std::vector;
 
 namespace views = ranges::views;
 using ranges::to;

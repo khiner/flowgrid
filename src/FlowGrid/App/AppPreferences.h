@@ -1,10 +1,9 @@
 #pragma once
 
-#include <__filesystem/path.h>
 #include <list>
 #include <string>
 
-namespace fs = std::filesystem;
+#include "Helper/Path.h"
 
 struct AppPreferences {
     inline static const std::string FileExtension = ".flp";

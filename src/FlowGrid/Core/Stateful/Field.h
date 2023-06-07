@@ -12,7 +12,7 @@ namespace Stateful::Field {
 inline static bool IsGesturing{};
 
 struct Base : Stateful::Base {
-    inline static std::unordered_map<StorePath, Base *, StorePathHash> WithPath; // Find any field by its path.
+    inline static std::unordered_map<StorePath, Base *, PathHash> WithPath; // Find any field by its path.
 
     Base(Stateful::Base *parent, string_view path_segment, string_view name_help);
     ~Base();

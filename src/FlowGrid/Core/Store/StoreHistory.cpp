@@ -163,7 +163,7 @@ void StoreHistory::SetIndex(Count new_index) {
     // It's the only thing in the way of glorious constant-time immutable history navigation.
     // One idea to get rid of this would be to turn the `CommittedUpdateTimesForPath` map into an `immer/map`,
     // and keep a separate vector (soon, tree) of them, in parallel to `Records`
-    //     using TimesForPath = immer::map<StorePath, std::vector<TimePoint>, StorePathHash>
+    //     using TimesForPath = immer::map<StorePath, std::vector<TimePoint>, PathHash>
     //     struct MetricsRecord{ TimesForPath CommittedUpdateTimesForPath; };
     //     using MetricsRecords = vector<MetricsRecord>;
     const auto direction = new_index > old_index ? Forward : Reverse;

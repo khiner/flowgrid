@@ -8,19 +8,14 @@
 
 #include "Core/Primitive.h"
 #include "Helper/Time.h"
+#include "Helper/Path.h"
 
-#include <__filesystem/path.h>
 
-namespace fs = std::filesystem;
-using StorePath = std::filesystem::path;
-inline static const StorePath RootPath{"/"};
-
+using StorePath = fs::path;
 using StoreEntry = std::pair<StorePath, Primitive>;
 using StoreEntries = std::vector<StoreEntry>;
 
-struct StorePathHash {
-    auto operator()(const StorePath &p) const noexcept { return fs::hash_value(p); }
-};
+inline static const StorePath RootPath{"/"};
 
 struct PatchOp {
     enum Type {
@@ -36,7 +31,7 @@ struct PatchOp {
 
 std::string to_string(PatchOp::Type);
 
-using PatchOps = std::unordered_map<StorePath, PatchOp, StorePathHash>;
+using PatchOps = std::unordered_map<StorePath, PatchOp, PathHash>;
 PatchOps Merge(const PatchOps &a, const PatchOps &b);
 
 struct Patch {

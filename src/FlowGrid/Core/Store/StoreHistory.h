@@ -59,7 +59,7 @@ struct StoreHistory {
     std::vector<StorePath> LatestUpdatedPaths{};
 
 private:
-    using TimesForPath = std::unordered_map<StorePath, std::vector<TimePoint>, StorePathHash>;
+    using TimesForPath = std::unordered_map<StorePath, std::vector<TimePoint>, PathHash>;
     TimesForPath CommittedUpdateTimesForPath{};
     TimesForPath GestureUpdateTimesForPath{};
 };

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <__filesystem/path.h>
 #include <array>
 #include <concepts>
 #include <string>
@@ -9,9 +8,8 @@
 
 #include "nlohmann/json.hpp"
 
+#include "Helper/Path.h"
 #include "Helper/Variant.h"
-
-namespace fs = std::filesystem;
 
 /**
 An action is an immutable representation of a user interaction event.
@@ -31,25 +29,26 @@ struct Metadata {
     // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
     // (or added to the gesture history, or saved in a `.fga` (FlowGridAction) project).
     // This is used for actions with only non-state-updating side effects, like saving a file.
-    Metadata(fs::path type_path, std::string_view name, std::string_view meta_str = "");
+    Metadata(fs::path type_path, std::string_view path_suffix, std::string_view meta_str = "");
 
     const fs::path TypePath; // E.g. "Vector/Int"
-    const std::string Name; // Human-readable name.
+    const std::string PathSuffix; // E.g. "Set"
+    const std::string Name; // Human-readable name. By default, derived as `PascalToSentenceCase(PathSuffix)`.
     const std::string MenuLabel; // Defaults to `Name`.
     const std::string Shortcut;
 
+    fs::path GetPath() const noexcept { return TypePath / PathSuffix; } // E.g. "Vector/Int/Set"
+
     // todo
-    // const string PathSegment;
-    // const StorePath Path;
-    // const string Help, ImGuiLabel;
     // const ID Id;
+    // const string Help, ImGuiLabel;
 
 private:
     struct Parsed {
         const std::string MenuLabel, Shortcut;
     };
     Parsed ParseMetadata(std::string_view meta_str);
-    Metadata(fs::path type_path, std::string_view name, Parsed parsed);
+    Metadata(fs::path type_path, std::string_view path_suffix, Parsed parsed);
 };
 
 // Use `Merge` for actions that can be merged with any other action of the same type.
@@ -71,10 +70,11 @@ private:
 
 #define Define(ActionType, is_savable, merge_type, meta_str, ...)            \
     struct ActionType {                                                      \
-        inline static const Metadata _Meta{"", #ActionType, meta_str};           \
+        inline static const Metadata _Meta{"", #ActionType, meta_str};       \
         static constexpr bool IsSavable = is_savable;                        \
         void q(bool flush = false) const;                                    \
         static void MenuItem();                                              \
+        static fs::path GetPath() { return _Meta.GetPath(); }         \
         static const std::string &GetName() { return _Meta.Name; }           \
         static const std::string &GetMenuLabel() { return _Meta.MenuLabel; } \
         static const std::string &GetShortcut() { return _Meta.Shortcut; }   \
@@ -103,23 +103,23 @@ struct ActionVariant : std::variant<T...> {
     // Note that even though these maps are declared to be instantiated for each `ActionVariant` type,
     // the compiler only instantiates them for the types with references to the map.
     template<size_t I = 0>
-    static auto CreateNameToIndex() {
+    static auto CreatePathToIndex() {
         if constexpr (I < std::variant_size_v<variant_t>) {
             using MemberType = std::variant_alternative_t<I, variant_t>;
-            auto map = CreateNameToIndex<I + 1>();
-            map[MemberType::_Meta.Name] = I;
+            auto map = CreatePathToIndex<I + 1>();
+            map[MemberType::GetPath()] = I;
             return map;
         }
-        return std::unordered_map<std::string, size_t>{};
+        return std::unordered_map<fs::path, size_t, PathHash>{};
     }
-    static inline auto NameToIndex = CreateNameToIndex();
+    static inline auto PathToIndex = CreatePathToIndex();
 
     template<size_t I = 0>
     static auto CreateIndexToShortcut() {
         if constexpr (I < std::variant_size_v<variant_t>) {
             using MemberType = std::variant_alternative_t<I, variant_t>;
             auto map = CreateIndexToShortcut<I + 1>();
-            if (!MemberType::_Meta.Shortcut.empty()) {
+            if (!MemberType::GetShortcut().empty()) {
                 map[I] = MemberType::GetShortcut();
             }
             return map;
@@ -128,7 +128,7 @@ struct ActionVariant : std::variant<T...> {
     }
     static inline auto IndexToShortcut = CreateIndexToShortcut();
 
-    size_t GetId() const { return this->index(); }
+    size_t GetIndex() const { return this->index(); }
 
     const std::string &GetName() const {
         return Call([](auto &a) -> const std::string & { return a.GetName(); });
@@ -154,7 +154,7 @@ struct ActionVariant : std::variant<T...> {
     */
     using MergeResult = std::variant<ActionVariant, bool>;
     MergeResult Merge(const ActionVariant &other) const {
-        if (GetId() != other.GetId()) return false;
+        if (GetIndex() != other.GetIndex()) return false;
         return Call([&other](auto &a) {
             const auto &result = a.Merge(std::get<std::decay_t<decltype(a)>>(other));
             if (std::holds_alternative<bool>(result)) return MergeResult(std::get<bool>(result));
@@ -180,11 +180,11 @@ struct ActionVariant : std::variant<T...> {
     // Value element can possibly be null.
     // Assumes all actions define json converters.
     inline void to_json(nlohmann::json &j) const {
-        Call([&j](auto &a) { j = {a.GetName(), a}; });
+        Call([&j](auto &a) { j = {a.GetPath(), a}; });
     }
     inline static void from_json(const nlohmann::json &j, ActionVariant &value) {
-        const auto name = j[0].get<std::string>();
-        const auto index = NameToIndex[name];
+        const auto path = j[0].get<fs::path>();
+        const auto index = PathToIndex[path];
         value = Create(index, j[1]);
     }
 

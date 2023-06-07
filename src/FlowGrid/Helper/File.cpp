@@ -1,6 +1,8 @@
 #include "File.h"
 #include "fstream"
 
+using std::string, std::vector;
+
 // TODO handle errors
 
 string FileIO::read(const fs::path &path) {

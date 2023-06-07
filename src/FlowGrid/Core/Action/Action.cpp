@@ -14,10 +14,13 @@ Metadata::Parsed Metadata::ParseMetadata(string_view meta_str) {
     }
     return {"", ""};
 }
-Metadata::Metadata(fs::path type_path, string_view name, Metadata::Parsed parsed)
+Metadata::Metadata(fs::path type_path, string_view path_suffix, Metadata::Parsed parsed)
     : TypePath(type_path),
-      Name(StringHelper::PascalToSentenceCase(name)),
+      PathSuffix(path_suffix),
+      Name(StringHelper::PascalToSentenceCase(path_suffix)),
       MenuLabel(parsed.MenuLabel.empty() ? Name : parsed.MenuLabel),
       Shortcut(parsed.Shortcut) {}
-Metadata::Metadata(fs::path type_path, string_view name, string_view meta_str) : Metadata(type_path, name, ParseMetadata(meta_str)) {}
+
+Metadata::Metadata(fs::path type_path, string_view path_suffix, string_view meta_str)
+    : Metadata(type_path, path_suffix, ParseMetadata(meta_str)) {}
 } // namespace Action

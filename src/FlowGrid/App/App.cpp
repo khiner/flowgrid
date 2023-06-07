@@ -17,6 +17,8 @@
 #include "Project/ProjectJson.h"
 #include "UI/UI.h"
 
+using std::vector;
+
 using namespace FlowGrid;
 
 static std::optional<fs::path> CurrentProjectPath;

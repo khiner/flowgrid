@@ -1,11 +1,8 @@
 #pragma once
 
-#include <__filesystem/path.h>
-
 #include "Core/Action/Action.h"
 #include "Core/Json.h"
-
-namespace fs = std::filesystem;
+#include "Helper/Path.h"
 
 namespace Action {
 Define(FileDialogOpen, 1, Merge, "", std::string dialog_json;);

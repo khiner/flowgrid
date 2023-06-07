@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FieldAction.h"
 #include "Stateful.h"
 
 struct ImVec2;
@@ -24,6 +25,9 @@ struct PrimitiveBase : Base, Drawable {
     PrimitiveBase(Stateful::Base *parent, string_view path_segment, string_view name_help, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
+
+    static void Apply(const Action::Value &);
+    static bool CanApply(const Action::Value &);
 };
 
 using Entry = std::pair<const PrimitiveBase &, Primitive>;

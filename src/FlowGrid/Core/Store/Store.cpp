@@ -1,5 +1,6 @@
 #include "Store.h"
 
+#include "PatchJson.h"
 #include "StoreImpl.h"
 #include "TransientStoreImpl.h"
 
@@ -33,19 +34,6 @@ Store JsonToStore(const nlohmann::json &j) {
     for (const auto &[path, value] : entries) primitive_for_path.set(path, value);
     return {primitive_for_path.persistent()};
 }
-
-void Apply(const Action::Store &action) {
-    Match(
-        action,
-        [](const Action::SetValue &a) { Set(a.path, a.value); },
-        [](const Action::SetValues &a) { Set(a.values); },
-        [](const Action::SetVector &a) { Set(a.path, a.value); },
-        [](const Action::SetMatrix &a) { Set(a.path, a.data, a.row_count); },
-        [](const Action::ToggleValue &a) { Set(a.path, !std::get<bool>(store::Get(a.path))); },
-        [](const Action::ApplyPatch &a) { ApplyPatch(a.patch); },
-    );
-}
-bool CanApply(const Action::Store &) { return true; }
 
 TransientStore Transient{};
 bool IsTransient = true;

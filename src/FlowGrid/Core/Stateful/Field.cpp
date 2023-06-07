@@ -35,6 +35,15 @@ PrimitiveBase::PrimitiveBase(Stateful::Base *parent, string_view id, string_view
 
 Primitive PrimitiveBase::Get() const { return store::Get(Path); }
 
+void PrimitiveBase::Apply(const Action::Value &action) {
+    Match(
+        action,
+        [](const Action::SetValue &a) { store::Set(a.path, a.value); },
+        [](const Action::ToggleValue &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path))); },
+    );
+}
+bool PrimitiveBase::CanApply(const Action::Value &action) { return true; }
+
 UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, U32 value, U32 min, U32 max)
     : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
 UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value)

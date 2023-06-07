@@ -1,15 +1,13 @@
 #pragma once
 
-#include "StoreAction.h"
-
 #include "nlohmann/json.hpp"
+
+#include "Patch.h"
+#include "StoreEntries.h"
 
 struct Store;
 
 namespace store {
-void Apply(const Action::Store &);
-bool CanApply(const Action::Store &);
-
 void BeginTransient(); // End transient mode with `Commit`.
 
 const Store &Get(); // Get a read-only reference to the canonical application store.

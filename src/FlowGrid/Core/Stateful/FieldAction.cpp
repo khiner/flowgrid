@@ -1,4 +1,4 @@
-#include "StoreAction.h"
+#include "FieldAction.h"
 
 #include <range/v3/core.hpp>
 #include <range/v3/view/concat.hpp>
@@ -17,14 +17,6 @@ std::variant<SetVector, bool> SetVector::Merge(const SetVector &other) const {
 }
 std::variant<SetMatrix, bool> SetMatrix::Merge(const SetMatrix &other) const {
     if (path == other.path) return other;
-    return false;
-}
-std::variant<ApplyPatch, bool> ApplyPatch::Merge(const ApplyPatch &other) const {
-    // Keep patch actions affecting different base state-paths separate,
-    // since actions affecting different state bases are likely semantically different.
-    const auto &ops = ::Merge(patch.Ops, other.patch.Ops);
-    if (ops.empty()) return true;
-    if (patch.BasePath == other.patch.BasePath) return ApplyPatch{ops, other.patch.BasePath};
     return false;
 }
 } // namespace Action

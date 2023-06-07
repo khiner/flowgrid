@@ -27,7 +27,11 @@ static bool ProjectHasChanges{false};
 void App::Apply(const Action::App &action) const {
     Match(
         action,
-        [](const Action::Store &a) { store::Apply(a); },
+        [](const Action::Value &a) { Stateful::Field::PrimitiveBase::Apply(a); },
+        [](const Action::SetValues &a) { store::Set(a.values); },
+        [](const Action::SetVector &a) { store::Set(a.path, a.value); },
+        [](const Action::SetMatrix &a) { store::Set(a.path, a.data, a.row_count); },
+        [](const Action::ApplyPatch &a) { store::ApplyPatch(a.patch); },
         [&](const Action::FileDialog &a) { FileDialog.Apply(a); },
         [&](const Action::Style &a) { Style.Apply(a); },
         [&](const Action::Audio &a) { Audio.Apply(a); },
@@ -37,7 +41,11 @@ void App::Apply(const Action::App &action) const {
 bool App::CanApply(const Action::App &action) const {
     return Match(
         action,
-        [](const Action::Store &a) { return store::CanApply(a); },
+        [](const Action::Value &a) { return Stateful::Field::PrimitiveBase::CanApply(a); },
+        [](const Action::SetValues &a) { return true; },
+        [](const Action::SetVector &a) { return true; },
+        [](const Action::SetMatrix &a) { return true; },
+        [](const Action::ApplyPatch &a) { return true; },
         [&](const Action::FileDialog &a) { return FileDialog.CanApply(a); },
         [&](const Action::Style &a) { return Style.CanApply(a); },
         [&](const Action::Audio &a) { return Audio.CanApply(a); },

@@ -3,7 +3,8 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
-#include "StoreTypes.h"
+#include "Core/Primitive.h"
+#include "Helper/Path.h"
 
 struct Store;
 

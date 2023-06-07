@@ -15,19 +15,18 @@ using std::string, std::string_view;
 // todo don't split on escaped '\?'
 std::pair<string_view, string_view> ParseHelpText(string_view str);
 
-namespace Stateful {
-struct Base {
-    inline static std::unordered_map<ID, Base *> WithId; // Access any state member by its ID.
+struct Stateful {
+    inline static std::unordered_map<ID, Stateful *> WithId; // Access any state member by its ID.
 
-    Base(Base *parent = nullptr, string_view path_segment = "", string_view name_help = "");
-    Base(Base *parent, string_view path_segment, std::pair<string_view, string_view> name_help);
+    Stateful(Stateful *parent = nullptr, string_view path_segment = "", string_view name_help = "");
+    Stateful(Stateful *parent, string_view path_segment, std::pair<string_view, string_view> name_help);
 
-    virtual ~Base();
-    const Base *Child(Count i) const { return Children[i]; }
+    virtual ~Stateful();
+    const Stateful *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }
 
-    const Base *Parent;
-    std::vector<Base *> Children{};
+    const Stateful *Parent;
+    std::vector<Stateful *> Children{};
     const string PathSegment;
     const StorePath Path;
     const string Name, Help, ImGuiLabel;
@@ -37,7 +36,6 @@ protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 };
-} // namespace Stateful
 
 /**
 Convenience macros for compactly defining `Stateful` types and their properties.
@@ -93,13 +91,13 @@ todo Try out replacing semicolon separators by e.g. commas.
 #define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, (#PropName), (NameHelp), __VA_ARGS__};
 
 #define DefineStateful(TypeName, ...)  \
-    struct TypeName : Stateful::Base { \
-        using Stateful::Base::Base;    \
+    struct TypeName : Stateful { \
+        using Stateful::Stateful;    \
         __VA_ARGS__;                   \
     };
 
-struct UIStateful : Stateful::Base, Drawable {
-    using Stateful::Base::Base;
+struct UIStateful : Stateful, Drawable {
+    using Stateful::Stateful;
     void DrawWindows() const; // Recursively draw all windows in the state tree. Note that non-window members can contain windows.
 };
 
@@ -114,7 +112,7 @@ struct UIStateful : Stateful::Base, Drawable {
 
 #define DefineUI_(TypeName, ...)                                                                \
     struct TypeName : UIStateful {                                                              \
-        TypeName(Stateful::Base *parent, string_view path_segment, string_view name_help = ""); \
+        TypeName(Stateful *parent, string_view path_segment, string_view name_help = ""); \
         __VA_ARGS__;                                                                            \
                                                                                                 \
     protected:                                                                                  \

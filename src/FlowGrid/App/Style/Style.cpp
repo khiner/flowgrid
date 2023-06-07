@@ -134,15 +134,15 @@ void Style::ImPlotStyle::Update(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
-Style::ImGuiStyle::ImGuiStyle(Stateful::Base *parent, string_view path_segment, string_view name_help)
+Style::ImGuiStyle::ImGuiStyle(Stateful *parent, string_view path_segment, string_view name_help)
     : UIStateful(parent, path_segment, name_help) {
     ColorsDark();
 }
-Style::ImPlotStyle::ImPlotStyle(Stateful::Base *parent, string_view path_segment, string_view name_help)
+Style::ImPlotStyle::ImPlotStyle(Stateful *parent, string_view path_segment, string_view name_help)
     : UIStateful(parent, path_segment, name_help) {
     ColorsAuto();
 }
-Style::FlowGridStyle::FlowGridStyle(Stateful::Base *parent, string_view path_segment, string_view name_help)
+Style::FlowGridStyle::FlowGridStyle(Stateful *parent, string_view path_segment, string_view name_help)
     : UIStateful(parent, path_segment, name_help) {
     ColorsDark();
 }
@@ -206,9 +206,9 @@ void Style::FlowGridStyle::ColorsClassic() const {
     );
 }
 
-Style::ImGuiStyle::ImGuiColors::ImGuiColors(Stateful::Base *parent, string_view path_segment, string_view name_help)
+Style::ImGuiStyle::ImGuiColors::ImGuiColors(Stateful *parent, string_view path_segment, string_view name_help)
     : Colors(parent, path_segment, name_help, ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
-Style::ImPlotStyle::ImPlotColors::ImPlotColors(Stateful::Base *parent, string_view path_segment, string_view name_help)
+Style::ImPlotStyle::ImPlotColors::ImPlotColors(Stateful *parent, string_view path_segment, string_view name_help)
     : Colors(parent, path_segment, name_help, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::ImGuiStyle::Render() const {

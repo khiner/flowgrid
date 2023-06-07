@@ -2,7 +2,7 @@
 
 #include "miniaudio.h"
 
-AudioGraphNode::AudioGraphNode(Stateful::Base *parent, string_view path_segment, string_view name_help, bool on)
+AudioGraphNode::AudioGraphNode(Stateful *parent, string_view path_segment, string_view name_help, bool on)
     : UIStateful(parent, path_segment, name_help) {
     store::Set(On, on);
 }

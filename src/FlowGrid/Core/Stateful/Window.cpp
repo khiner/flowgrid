@@ -6,7 +6,7 @@
 
 void UIStateful::DrawWindows() const {
     for (const auto *child : Children) {
-        if (const auto *window_child = dynamic_cast<const Stateful::Window *>(child)) {
+        if (const auto *window_child = dynamic_cast<const Window *>(child)) {
             window_child->Draw();
         }
     }
@@ -19,14 +19,13 @@ void UIStateful::DrawWindows() const {
 
 using namespace ImGui;
 
-namespace Stateful {
-Window::Window(Stateful::Base *parent, string_view path_segment, string_view name_help, const bool visible)
+Window::Window(Stateful *parent, string_view path_segment, string_view name_help, const bool visible)
     : UIStateful(parent, path_segment, name_help) {
     store::Set(Visible, visible);
 }
-Window::Window(Stateful::Base *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
+Window::Window(Stateful *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
     : UIStateful(parent, path_segment, name_help), WindowFlags(flags) {}
-Window::Window(Stateful::Base *parent, string_view path_segment, string_view name_help, Menu menu)
+Window::Window(Stateful *parent, string_view path_segment, string_view name_help, Menu menu)
     : UIStateful(parent, path_segment, name_help), WindowMenu{std::move(menu)} {}
 
 ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }
@@ -58,7 +57,6 @@ void Window::MenuItem() const {
 void Window::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
-} // namespace Stateful
 
 void TabsWindow::Render(const std::set<ID> &exclude) const {
     if (BeginTabBar("")) {

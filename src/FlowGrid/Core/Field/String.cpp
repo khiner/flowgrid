@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 
-String::String(Stateful::Base *parent, string_view path_segment, string_view name_help, string_view value)
+String::String(Stateful *parent, string_view path_segment, string_view name_help, string_view value)
     : TypedField(parent, path_segment, name_help, string(value)) {}
 String::operator bool() const { return !Value.empty(); }
 String::operator string_view() const { return Value; }

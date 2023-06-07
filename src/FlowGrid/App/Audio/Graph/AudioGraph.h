@@ -26,11 +26,11 @@ struct AudioGraph : UIStateful {
     struct Nodes : UIStateful {
         using UIStateful::UIStateful;
 
-        // Iterate over all children, converting each element from a `Stateful::Base *` to a `Node *`.
+        // Iterate over all children, converting each element from a `Stateful *` to a `Node *`.
         // Usage: `for (const Node *node : Nodes) ...`
-        struct Iterator : std::vector<Stateful::Base *>::const_iterator {
-            Iterator(auto it) : std::vector<Stateful::Base *>::const_iterator(it) {}
-            const AudioGraphNode *operator*() const { return dynamic_cast<const AudioGraphNode *>(std::vector<Stateful::Base *>::const_iterator::operator*()); }
+        struct Iterator : std::vector<Stateful *>::const_iterator {
+            Iterator(auto it) : std::vector<Stateful *>::const_iterator(it) {}
+            const AudioGraphNode *operator*() const { return dynamic_cast<const AudioGraphNode *>(std::vector<Stateful *>::const_iterator::operator*()); }
         };
         Iterator begin() const { return Children.cbegin(); }
         Iterator end() const { return Children.cend(); }

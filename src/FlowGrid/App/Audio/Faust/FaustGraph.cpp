@@ -1302,7 +1302,7 @@ void FaustGraph::Render() const {
     EndChild();
 }
 
-FaustGraph::Style::Style(Stateful::Base *parent, string_view path_segment, string_view name_help)
+FaustGraph::Style::Style(Stateful *parent, string_view path_segment, string_view name_help)
     : UIStateful(parent, path_segment, name_help) {
     ColorsDark();
     LayoutFlowGrid();

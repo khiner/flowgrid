@@ -4,7 +4,7 @@
 
 using namespace ImGui;
 
-Vec2::Vec2(Stateful::Base *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)
+Vec2::Vec2(Stateful *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)
     : UIStateful(parent, path_segment, name_help),
       X(this, "X", "", value.first, min, max), Y(this, "Y", "", value.second, min, max), Format(fmt) {}
 
@@ -20,7 +20,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
 
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
-Vec2Linked::Vec2Linked(Stateful::Base *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
+Vec2Linked::Vec2Linked(Stateful *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(parent, path_segment, name_help, value, min, max, fmt) {
     store::Set(Linked, linked);
 }

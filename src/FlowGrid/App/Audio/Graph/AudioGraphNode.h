@@ -9,7 +9,7 @@ struct ma_node_graph;
 // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
 // This base `Node` can either be specialized or instantiated on its own.
 struct AudioGraphNode : UIStateful {
-    AudioGraphNode(Stateful::Base *parent, string_view path_segment, string_view name_help = "", bool on = true);
+    AudioGraphNode(Stateful *parent, string_view path_segment, string_view name_help = "", bool on = true);
 
     void Set(void *) const; // Set MA node.
     void *Get() const; // Get MA node.

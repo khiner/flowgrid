@@ -38,13 +38,12 @@ enum WindowFlags_ {
     WindowFlags_MenuBar = 1 << 10,
 };
 
-namespace Stateful {
 struct Window : UIStateful, MenuItemDrawable {
     using UIStateful::UIStateful;
 
-    Window(Stateful::Base *parent, string_view path_segment, string_view name_help, bool visible);
-    Window(Stateful::Base *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
-    Window(Stateful::Base *parent, string_view path_segment, string_view name_help, Menu menu);
+    Window(Stateful *parent, string_view path_segment, string_view name_help, bool visible);
+    Window(Stateful *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
+    Window(Stateful *parent, string_view path_segment, string_view name_help, Menu menu);
 
     ImGuiWindow &FindImGuiWindow() const;
     void Draw() const override;
@@ -57,11 +56,10 @@ struct Window : UIStateful, MenuItemDrawable {
     const Menu WindowMenu{{}};
     const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 };
-} // namespace Stateful
 
 #define DefineWindow(TypeName, ...)      \
-    struct TypeName : Stateful::Window { \
-        using Stateful::Window::Window;  \
+    struct TypeName : Window { \
+        using Window::Window;  \
         __VA_ARGS__;                     \
                                          \
     protected:                           \
@@ -69,9 +67,9 @@ struct Window : UIStateful, MenuItemDrawable {
     };
 
 #define DefineWindow_(TypeName, VisibleOrMenu, ...)                                            \
-    struct TypeName : Stateful::Window {                                                       \
-        TypeName(Stateful::Base *parent, string_view path_segment, string_view name_help = "") \
-            : Stateful::Window(parent, path_segment, name_help, (VisibleOrMenu)) {}            \
+    struct TypeName : Window {                                                       \
+        TypeName(Stateful *parent, string_view path_segment, string_view name_help = "") \
+            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}            \
         __VA_ARGS__;                                                                           \
                                                                                                \
     protected:                                                                                 \

@@ -6,8 +6,8 @@ struct ImColor;
 using ImGuiColorEditFlags = int;
 
 struct UInt : TypedField<U32> {
-    UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100);
-    UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0);
+    UInt(Stateful *parent, string_view path_segment, string_view name_help, U32 value = 0, U32 min = 0, U32 max = 100);
+    UInt(Stateful *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value = 0);
 
     operator bool() const;
     operator int() const;

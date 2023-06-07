@@ -3,7 +3,7 @@
 #include "Field.h"
 
 struct String : TypedField<string> {
-    String(Stateful::Base *parent, string_view path_segment, string_view name_help, string_view value = "");
+    String(Stateful *parent, string_view path_segment, string_view name_help, string_view value = "");
 
     operator bool() const;
     operator string_view() const;

@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 
-Int::Int(Stateful::Base *parent, string_view path_segment, string_view name_help, int value, int min, int max)
+Int::Int(Stateful *parent, string_view path_segment, string_view name_help, int value, int min, int max)
     : TypedField(parent, path_segment, name_help, value), Min(min), Max(max) {}
 Int::operator bool() const { return Value; }
 Int::operator short() const { return Value; }

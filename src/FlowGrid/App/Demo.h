@@ -4,7 +4,7 @@
 #include "FileDialog/FileDialog.h"
 
 struct Demo : TabsWindow {
-    Demo(Stateful::Base *parent, string_view path_segment, string_view name_help);
+    Demo(Stateful *parent, string_view path_segment, string_view name_help);
 
     DefineUI(ImGuiDemo);
     DefineUI(ImPlotDemo);

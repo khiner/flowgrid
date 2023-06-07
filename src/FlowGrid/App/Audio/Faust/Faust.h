@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Stateful/Field/Flags.h"
+#include "Core/Field/Flags.h"
 #include "FaustAction.h"
 #include "FaustGraph.h"
 

@@ -3,9 +3,9 @@
 #include "FileDialogAction.h"
 #include "FileDialogData.h"
 
-#include "Core/Stateful/Field/Bool.h"
-#include "Core/Stateful/Field/Int.h"
-#include "Core/Stateful/Field/String.h"
+#include "Core/Field/Bool.h"
+#include "Core/Field/Int.h"
+#include "Core/Field/String.h"
 #include "Core/Stateful/Window.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.

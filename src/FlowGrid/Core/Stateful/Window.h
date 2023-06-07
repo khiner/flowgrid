@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "Field/Bool.h"
+#include "Core/Field/Bool.h"
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
@@ -13,10 +13,7 @@ concept CanDrawMenuItem = requires(const T t) {
 };
 
 struct Menu : Drawable {
-    using Item = std::variant<
-        Menu,
-        std::reference_wrapper<MenuItemDrawable>,
-        std::function<void()>>;
+    using Item = std::variant<Menu, std::reference_wrapper<MenuItemDrawable>, std::function<void()>>;
 
     Menu(string_view label, const std::vector<const Item> items);
     explicit Menu(const std::vector<const Item> items);

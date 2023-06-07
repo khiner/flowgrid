@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/Stateful/Field/Vector.h"
-#include "Core/Stateful/Field/Vector2D.h"
+#include "Core/Field/Vector.h"
+#include "Core/Field/Vector2D.h"
 #include "Core/Stateful/Window.h"
 
 template<typename T> struct ImChunkStream;

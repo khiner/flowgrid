@@ -24,43 +24,40 @@ using namespace FlowGrid;
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
-void App::Apply(const Action::AppAction &action) const {
-    using namespace Action;
+void App::Apply(const Action::App &action) const {
     Match(
         action,
-        [](const StoreAction &a) { store::Apply(a); },
-        [&](const FileDialogAction &a) { FileDialog.Apply(a); },
-        [&](const StyleAction &a) { Style.Apply(a); },
-        [&](const AudioAction &a) { Audio.Apply(a); },
+        [](const Action::Store &a) { store::Apply(a); },
+        [&](const Action::FileDialog &a) { FileDialog.Apply(a); },
+        [&](const Action::Style &a) { Style.Apply(a); },
+        [&](const Action::Audio &a) { Audio.Apply(a); },
     );
 }
 
-bool App::CanApply(const Action::AppAction &action) const {
-    using namespace Action;
+bool App::CanApply(const Action::App &action) const {
     return Match(
         action,
-        [](const StoreAction &a) { return store::CanApply(a); },
-        [&](const FileDialogAction &a) { return FileDialog.CanApply(a); },
-        [&](const StyleAction &a) { return Style.CanApply(a); },
-        [&](const AudioAction &a) { return Audio.CanApply(a); },
+        [](const Action::Store &a) { return store::CanApply(a); },
+        [&](const Action::FileDialog &a) { return FileDialog.CanApply(a); },
+        [&](const Action::Style &a) { return Style.CanApply(a); },
+        [&](const Action::Audio &a) { return Audio.CanApply(a); },
     );
 }
 
 bool CanApply(const Action::Any &action) {
-    using namespace Action;
     return Match(
         action,
-        [&](const AppAction &a) { return app.CanApply(a); },
-        [&](const ProjectAction &a) {
+        [&](const Action::App &a) { return app.CanApply(a); },
+        [&](const Action::Project &a) {
             return Match(
                 a,
-                [&](const Undo &) { return History.CanUndo(); },
-                [&](const Redo &) { return History.CanRedo(); },
-                [&](const SaveProject &) { return !History.Empty(); },
-                [&](const SaveDefaultProject &) { return !History.Empty(); },
-                [&](const ShowSaveProjectDialog &) { return ProjectHasChanges; },
-                [&](const OpenDefaultProject &) { return fs::exists(DefaultProjectPath); },
-                [&](const SaveCurrentProject &) { return ProjectHasChanges; },
+                [&](const Action::Undo &) { return History.CanUndo(); },
+                [&](const Action::Redo &) { return History.CanRedo(); },
+                [&](const Action::SaveProject &) { return !History.Empty(); },
+                [&](const Action::SaveDefaultProject &) { return !History.Empty(); },
+                [&](const Action::ShowSaveProjectDialog &) { return ProjectHasChanges; },
+                [&](const Action::OpenDefaultProject &) { return fs::exists(DefaultProjectPath); },
+                [&](const Action::SaveCurrentProject &) { return ProjectHasChanges; },
                 [&](const auto &) { return true; },
             );
         },
@@ -267,7 +264,7 @@ void Project::Init() {
     Stateful::Field::IsGesturing = false;
 }
 
-void Apply(const Action::ProjectAction &action) {
+void Apply(const Action::Project &action) {
     Match(
         action,
         [&](const Action::ShowOpenProjectDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
@@ -302,11 +299,11 @@ void Apply(const Action::ProjectAction &action) {
     );
 }
 
-void Apply(const Action::StatefulAction &action) {
+void Apply(const Action::Stateful &action) {
     Match(
         action,
-        [&](const Action::AppAction &a) { app.Apply(a); },
-        [&](const Action::ProjectAction &a) { Apply(a); },
+        [&](const Action::App &a) { app.Apply(a); },
+        [&](const Action::Project &a) { Apply(a); },
     );
 }
 
@@ -370,15 +367,15 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         Match(
             action,
-            [&](const Action::AppAction &a) { app.Apply(a); },
-            [&](const Action::ProjectAction &a) { Apply(a); },
+            [&](const Action::App &a) { app.Apply(a); },
+            [&](const Action::Project &a) { Apply(a); },
         );
 
         Match(
             action,
-            [&](const Action::StatefulAction &a) { stateful_actions.emplace_back(a, action_moment.second); },
+            [&](const Action::Stateful &a) { stateful_actions.emplace_back(a, action_moment.second); },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
-            [&](const Action::NonStatefulAction &) {},
+            [&](const Action::NonStateful &) {},
         );
     }
 

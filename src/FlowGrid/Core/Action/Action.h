@@ -51,30 +51,30 @@ private:
     Metadata(fs::path type_path, std::string_view path_suffix, Parsed parsed);
 };
 
-// Use `Merge` for actions that can be merged with any other action of the same type.
-// Use `NoMerge` for actions that cannot be merged with any other action.
-// Use `CustomMerge` to override the `Merge` function with a custom implementation.
 #define MergeType_NoMerge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &) const { return false; }
 #define MergeType_Merge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &other) const { return other; }
 #define MergeType_CustomMerge(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
 
-// Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
 /**
- `q` is the main action-queue method.
- Providing `flush = true` will run all enqueued actions (including this one) and finalize any open gesture.
- This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
- Defined in `App.cpp`.
+* Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
+* Use `action.q()` to queue the action.
+* Pass `flush = true` to run all enqueued actions (including this one) and finalize any open gesture.
+  - This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
+  - _Note: `q` methods for all action types are defined in `App.cpp`._
+* Merge types:
+  - `NoMerge`: Cannot be merged with any other action.
+  - `Merge`: Can be merged with any other action of the same type.
+  - `CustomMerge`: Override the action type's `Merge` function with a custom implementation.
 */
-
 #define Define(ActionType, is_savable, merge_type, meta_str, ...)            \
     struct ActionType {                                                      \
         inline static const Metadata _Meta{"", #ActionType, meta_str};       \
         static constexpr bool IsSavable = is_savable;                        \
         void q(bool flush = false) const;                                    \
         static void MenuItem();                                              \
-        static fs::path GetPath() { return _Meta.GetPath(); }         \
+        static fs::path GetPath() { return _Meta.GetPath(); }                \
         static const std::string &GetName() { return _Meta.Name; }           \
         static const std::string &GetMenuLabel() { return _Meta.MenuLabel; } \
         static const std::string &GetShortcut() { return _Meta.Shortcut; }   \
@@ -206,7 +206,7 @@ template<typename... Ts1, typename... Ts2, typename... Vars> struct Combine<Acti
 };
 
 // Utility to filter an `ActionVariant` by a predicate.
-// E.g. `using StatefulAction = Action::Filter<Action::IsSavable, Any>::type;`
+// E.g. `using Action::Stateful = Action::Filter<Action::IsSavable, Any>::type;`
 template<template<typename> class Predicate, typename Var> struct Filter;
 template<template<typename> class Predicate, typename... Types> struct Filter<Predicate, Action::ActionVariant<Types...>> {
     template<typename Type>

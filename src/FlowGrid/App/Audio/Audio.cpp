@@ -2,15 +2,14 @@
 
 #include "imgui.h"
 
-void Audio::Apply(const Action::AudioAction &action) const {
-    using namespace Action;
+void Audio::Apply(const Action::Audio &action) const {
     Match(
         action,
-        [&](const FaustAction &a) { Faust.Apply(a); },
+        [&](const Action::Faust &a) { Faust.Apply(a); },
     );
 }
 
-bool Audio::CanApply(const Action::AudioAction &action) const { return true; }
+bool Audio::CanApply(const Action::Audio &action) const { return true; }
 
 // static ma_resampler_config ResamplerConfig;
 // static ma_resampler Resampler;

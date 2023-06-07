@@ -93,7 +93,7 @@ static Gesture MergeGesture(const Gesture &gesture) {
                 else merged_gesture.emplace_back(a); //
                 active.reset(); // No merge in either case. Move on to try compressing the next action.
             },
-            [&](const Action::StatefulAction &merged_action) {
+            [&](const Action::Stateful &merged_action) {
                 // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
                 active.emplace(merged_action, b.second);
             },

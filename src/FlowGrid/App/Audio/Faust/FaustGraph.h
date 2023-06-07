@@ -40,8 +40,8 @@ DefineWindow_(
         Menu("View", {Settings.HoverFlags}),
     }),
 
-    void Apply(const Action::FaustGraphAction &) const;
-    bool CanApply(const Action::FaustGraphAction &) const;
+    void Apply(const Action::FaustGraph &) const;
+    bool CanApply(const Action::FaustGraph &) const;
 
     DefineUI_(
         Style,

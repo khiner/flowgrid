@@ -11,24 +11,23 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-void Faust::Apply(const Action::FaustAction &action) const {
-    using namespace Action;
+void Faust::Apply(const Action::Faust &action) const {
     Match(
         action,
-        [&](const FaustFileAction &a) {
+        [&](const Action::FaustFile &a) {
             Match(
                 a,
-                [&](const ShowOpenFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
-                [&](const ShowSaveFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
-                [&](const OpenFaustFile &a) { store::Set(Code, FileIO::read(a.path)); },
-                [&](const SaveFaustFile &a) { FileIO::write(a.path, Code); },
+                [&](const Action::ShowOpenFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
+                [&](const Action::ShowSaveFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
+                [&](const Action::OpenFaustFile &a) { store::Set(Code, FileIO::read(a.path)); },
+                [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, Code); },
             );
         },
-        [&](const FaustGraphAction &a) { Graph.Apply(a); },
+        [&](const Action::FaustGraph &a) { Graph.Apply(a); },
     );
 }
 
-bool Faust::CanApply(const Action::FaustAction &action) const { return true; }
+bool Faust::CanApply(const Action::Faust &) const { return true; }
 
 bool Faust::IsReady() const { return Code && !Log.Error; }
 bool Faust::NeedsRestart() const {

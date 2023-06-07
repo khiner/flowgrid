@@ -10,8 +10,8 @@
 struct Audio : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    void Apply(const Action::AudioAction &) const;
-    bool CanApply(const Action::AudioAction &) const;
+    void Apply(const Action::Audio &) const;
+    bool CanApply(const Action::Audio &) const;
 
     void Init() const;
     void Uninit() const;

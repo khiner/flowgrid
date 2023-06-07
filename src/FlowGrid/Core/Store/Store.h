@@ -7,8 +7,8 @@
 struct Store;
 
 namespace store {
-void Apply(const Action::StoreAction &);
-bool CanApply(const Action::StoreAction &);
+void Apply(const Action::Store &);
+bool CanApply(const Action::Store &);
 
 void BeginTransient(); // End transient mode with `Commit`.
 

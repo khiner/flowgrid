@@ -62,8 +62,8 @@ using ParamsWidthSizingPolicy = int;
 struct Faust : UIStateful {
     using UIStateful::UIStateful;
 
-    void Apply(const Action::FaustAction &) const;
-    bool CanApply(const Action::FaustAction &) const;
+    void Apply(const Action::Faust &) const;
+    bool CanApply(const Action::Faust &) const;
 
     bool IsReady() const; // Has code and no errors.
     bool NeedsRestart() const;

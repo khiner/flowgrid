@@ -12,6 +12,6 @@ Json(OpenFaustFile, path);
 Json(ShowOpenFaustFileDialog);
 Json(ShowSaveFaustFileDialog);
 
-using FaustFileAction = ActionVariant<ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, SaveFaustFile, OpenFaustFile>;
-using FaustAction = Combine<FaustFileAction, FaustGraphAction>::type;
+using FaustFile = ActionVariant<ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, SaveFaustFile, OpenFaustFile>;
+using Faust = Combine<FaustFile, FaustGraph>::type;
 } // namespace Action

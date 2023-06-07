@@ -18,5 +18,5 @@ Json(SetMatrix, path, data, row_count);
 Json(ToggleValue, path);
 Json(ApplyPatch, patch);
 
-using StoreAction = ActionVariant<SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch>;
+using Store = ActionVariant<SetValue, SetValues, SetVector, SetMatrix, ToggleValue, ApplyPatch>;
 } // namespace Action

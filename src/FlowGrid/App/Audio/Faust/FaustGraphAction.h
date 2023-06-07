@@ -13,5 +13,5 @@ Json(SetGraphColorStyle, id);
 Json(SetGraphLayoutStyle, id);
 Json(ShowSaveFaustSvgFileDialog);
 
-using FaustGraphAction = ActionVariant<SetGraphColorStyle, SetGraphLayoutStyle, ShowSaveFaustSvgFileDialog, SaveFaustSvgFile>;
+using FaustGraph = ActionVariant<SetGraphColorStyle, SetGraphLayoutStyle, ShowSaveFaustSvgFileDialog, SaveFaustSvgFile>;
 } // namespace Action

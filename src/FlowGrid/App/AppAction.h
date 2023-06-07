@@ -6,5 +6,5 @@
 #include "Style/StyleAction.h"
 
 namespace Action {
-using AppAction = Action::Combine<AudioAction, FileDialogAction, StyleAction, StoreAction>::type;
+using App = Action::Combine<Audio, FileDialog, Style, Store>::type;
 } // namespace Action

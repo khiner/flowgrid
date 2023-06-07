@@ -12,5 +12,5 @@ Json(SetImGuiColorStyle, id);
 Json(SetImPlotColorStyle, id);
 Json(SetFlowGridColorStyle, id);
 
-using StyleAction = ActionVariant<SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle>;
+using Style = ActionVariant<SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle>;
 } // namespace Action

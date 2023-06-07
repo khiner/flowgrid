@@ -13,5 +13,5 @@ Json(FileDialogOpen, dialog_json);
 Json(FileDialogSelect, file_path);
 Json(FileDialogCancel);
 
-using FileDialogAction = ActionVariant<FileDialogOpen, FileDialogSelect, FileDialogCancel>;
+using FileDialog = ActionVariant<FileDialogOpen, FileDialogSelect, FileDialogCancel>;
 } // namespace Action

@@ -13,29 +13,27 @@
 namespace views = ranges::views;
 using namespace nlohmann;
 
-void FileDialog::Apply(const Action::FileDialogAction &action) const {
-    using namespace Action;
+void FileDialog::Apply(const Action::FileDialog &action) const {
     Match(
         action,
-        [&](const FileDialogOpen &a) { this->Set(json::parse(a.dialog_json)); },
-        [&](const FileDialogSelect &a) {
+        [&](const Action::FileDialogOpen &a) { this->Set(json::parse(a.dialog_json)); },
+        [&](const Action::FileDialogSelect &a) {
             store::Set(Visible, false);
             store::Set(SelectedFilePath, a.file_path);
         },
-        [&](const FileDialogCancel &) {
+        [&](const Action::FileDialogCancel &) {
             store::Set(Visible, false);
             store::Set(SelectedFilePath, "");
         },
     );
 }
 
-bool FileDialog::CanApply(const Action::FileDialogAction &action) const {
-    using namespace Action;
+bool FileDialog::CanApply(const Action::FileDialog &action) const {
     return Match(
         action,
-        [](const FileDialogOpen &) { return !file_dialog.Visible; },
-        [](const FileDialogSelect &) { return bool(file_dialog.Visible); },
-        [](const FileDialogCancel &) { return bool(file_dialog.Visible); },
+        [](const Action::FileDialogOpen &) { return !file_dialog.Visible; },
+        [](const Action::FileDialogSelect &) { return bool(file_dialog.Visible); },
+        [](const Action::FileDialogCancel &) { return bool(file_dialog.Visible); },
     );
 }
 

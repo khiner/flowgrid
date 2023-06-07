@@ -3,5 +3,5 @@
 #include "Faust/FaustAction.h"
 
 namespace Action {
-using AudioAction = Combine<FaustAction>::type;
+using Audio = Combine<Faust>::type;
 } // namespace Action

@@ -10,8 +10,8 @@
 DefineUI(
     FileDialog,
 
-    void Apply(const Action::FileDialogAction &) const;
-    bool CanApply(const Action::FileDialogAction &) const;
+    void Apply(const Action::FileDialog &) const;
+    bool CanApply(const Action::FileDialog &) const;
 
     void Set(const FileDialogData &) const;
 

@@ -2,6 +2,8 @@
 
 #include "App/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
 #include "AudioGraphNode.h"
+#include "Core/Stateful/Field/Float.h"
+#include "Core/Stateful/Field/Matrix.h"
 
 struct ma_device;
 

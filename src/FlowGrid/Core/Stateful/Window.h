@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "Field/Field.h"
+#include "Field/Bool.h"
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;

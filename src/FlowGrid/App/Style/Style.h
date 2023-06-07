@@ -1,6 +1,10 @@
 #pragma once
 
 #include "Colors.h"
+#include "Core/Stateful/Field/Enum.h"
+#include "Core/Stateful/Field/Float.h"
+#include "Core/Stateful/Field/Int.h"
+#include "Core/Stateful/Field/Vec2.h"
 #include "StyleAction.h"
 #include "UI/Styling.h"
 

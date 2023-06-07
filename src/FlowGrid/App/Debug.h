@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Stateful/Field/Bool.h"
+#include "Core/Stateful/Field/Enum.h"
 #include "Core/Stateful/Window.h"
 
 #include "nlohmann/json_fwd.hpp"

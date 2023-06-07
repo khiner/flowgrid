@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Stateful/Field/UInt.h"
 #include "Core/Stateful/Window.h"
 
 struct ImVec4;

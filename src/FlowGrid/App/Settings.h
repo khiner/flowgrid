@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Stateful/Field/Float.h"
 #include "Core/Stateful/Window.h"
 
 DefineWindow(

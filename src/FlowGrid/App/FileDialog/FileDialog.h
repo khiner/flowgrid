@@ -1,10 +1,12 @@
 #pragma once
 
+#include "FileDialogAction.h"
 #include "FileDialogData.h"
 
+#include "Core/Stateful/Field/Bool.h"
+#include "Core/Stateful/Field/Int.h"
+#include "Core/Stateful/Field/String.h"
 #include "Core/Stateful/Window.h"
-
-#include "FileDialogAction.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
 DefineUI(

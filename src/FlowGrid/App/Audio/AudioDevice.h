@@ -1,6 +1,11 @@
 #pragma once
 
 #include "AudioIO.h"
+#include "Core/Stateful/Field/Bool.h"
+#include "Core/Stateful/Field/Enum.h"
+#include "Core/Stateful/Field/Float.h"
+#include "Core/Stateful/Field/String.h"
+#include "Core/Stateful/Field/UInt.h"
 #include "Core/Stateful/Window.h"
 
 struct ma_device;

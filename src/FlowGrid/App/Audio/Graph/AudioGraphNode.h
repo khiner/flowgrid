@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Stateful/Field/Float.h"
 #include "Core/Stateful/Window.h" // xxx should only need Stateful and Field.
 
 struct ma_node_graph;

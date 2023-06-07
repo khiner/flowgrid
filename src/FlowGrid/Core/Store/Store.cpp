@@ -1,11 +1,11 @@
 #include "Store.h"
 
-#include "PatchJson.h"
-#include "StoreImpl.h"
-#include "TransientStoreImpl.h"
-
 #include "immer/algorithm.hpp"
 #include <range/v3/core.hpp>
+
+#include "Core/PrimitiveJson.h"
+#include "StoreImpl.h"
+#include "TransientStoreImpl.h"
 
 using std::vector;
 

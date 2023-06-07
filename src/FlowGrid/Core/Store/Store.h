@@ -2,7 +2,7 @@
 
 #include "nlohmann/json.hpp"
 
-#include "Patch.h"
+#include "Patch/Patch.h"
 #include "StoreEntries.h"
 
 struct Store;

@@ -11,7 +11,7 @@
 
 #include "App/ImGuiSettings.h"
 #include "App/Style/Style.h"
-#include "Core/Store/PatchAction.h"
+#include "Core/Store/Patch/PatchAction.h"
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>

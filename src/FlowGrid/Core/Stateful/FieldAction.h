@@ -3,7 +3,7 @@
 #include "Core/Action/Action.h"
 #include "Core/Store/StoreEntries.h"
 
-#include "Core/Store/PatchAction.h" // xxx only needed for path json conversion, which should be moved out.
+#include "Core/Store/Patch/PatchAction.h" // xxx only needed for path json conversion, which should be moved out.
 
 namespace Action {
 Define(SetValue, 1, CustomMerge, "", StorePath path; Primitive value;);

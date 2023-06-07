@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/Action.h"
-#include "Core/Store/PatchJson.h"
+#include "PatchJson.h"
 
 namespace Action {
 Define(ApplyPatch, 1, CustomMerge, "", Patch patch;);

@@ -2,8 +2,7 @@
 
 #include "Field.h"
 
-namespace Stateful::Field {
-struct Enum : TypedBase<int>, MenuItemDrawable {
+struct Enum : TypedField<int>, MenuItemDrawable {
     Enum(Stateful::Base *parent, string_view path_segment, string_view name_help, std::vector<string> names, int value = 0);
     Enum(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(int)> get_name, int value = 0);
 
@@ -18,4 +17,3 @@ private:
 
     const std::optional<std::function<const string(int)>> GetName{};
 };
-} // namespace Stateful::Field

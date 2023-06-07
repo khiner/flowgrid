@@ -2,9 +2,8 @@
 
 #include "Field.h"
 
-namespace Stateful::Field {
-template<IsPrimitive T> struct Matrix : Base {
-    using Base::Base;
+template<IsPrimitive T> struct Matrix : Field {
+    using Field::Field;
 
     StorePath PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
     Count Rows() const { return RowCount; }
@@ -17,4 +16,3 @@ private:
     Count RowCount, ColCount;
     std::vector<T> Data;
 };
-} // namespace Stateful::Field

@@ -4,21 +4,23 @@
 #include "FieldAction.h"
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
-namespace Stateful::Field {
-inline static bool IsGesturing{};
-void UpdateGesturing();
+struct Field : Stateful::Base {
+    inline static bool IsGesturing{};
+    static void UpdateGesturing();
 
-struct Base : Stateful::Base {
-    inline static std::unordered_map<StorePath, Base *, PathHash> WithPath; // Find any field by its path.
+    inline static std::unordered_map<StorePath, Field *, PathHash> WithPath; // Find any field by its path.
 
-    Base(Stateful::Base *parent, string_view path_segment, string_view name_help);
-    ~Base();
+    Field(Stateful::Base *parent, string_view path_segment, string_view name_help);
+    ~Field();
 
     virtual void Update() = 0;
 };
 
-struct PrimitiveBase : Base, Drawable {
-    PrimitiveBase(Stateful::Base *parent, string_view path_segment, string_view name_help, Primitive value);
+struct PrimitiveField : Field, Drawable {
+    using Entry = std::pair<const PrimitiveField &, Primitive>;
+    using Entries = std::vector<Entry>;
+
+    PrimitiveField(Stateful::Base *parent, string_view path_segment, string_view name_help, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
 
@@ -26,13 +28,10 @@ struct PrimitiveBase : Base, Drawable {
     static bool CanApply(const Action::Value &);
 };
 
-using Entry = std::pair<const PrimitiveBase &, Primitive>;
-using Entries = std::vector<Entry>;
-
 template<IsPrimitive T>
-struct TypedBase : PrimitiveBase {
-    TypedBase(Stateful::Base *parent, string_view path_segment, string_view name_help, T value = {})
-        : PrimitiveBase(parent, path_segment, name_help, value), Value(value) {}
+struct TypedField : PrimitiveField {
+    TypedField(Stateful::Base *parent, string_view path_segment, string_view name_help, T value = {})
+        : PrimitiveField(parent, path_segment, name_help, value), Value(value) {}
 
     operator T() const { return Value; }
     bool operator==(const T &value) const { return Value == value; }
@@ -43,9 +42,8 @@ struct TypedBase : PrimitiveBase {
 protected:
     T Value;
 };
-} // namespace Stateful::Field
 
 namespace store {
-void Set(const Stateful::Field::Base &, const Primitive &);
-void Set(const Stateful::Field::Entries &);
+void Set(const PrimitiveField &, const Primitive &);
+void Set(const PrimitiveField::Entries &);
 } // namespace store

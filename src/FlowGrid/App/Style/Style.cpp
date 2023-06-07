@@ -42,7 +42,7 @@ void Style::Apply(const Action::Style &action) const {
     );
 }
 
-bool Style::CanApply(const Action::Style &action) const { return true; }
+bool Style::CanApply(const Action::Style &) const { return true; }
 
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {

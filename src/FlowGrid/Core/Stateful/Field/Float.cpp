@@ -2,9 +2,8 @@
 
 #include "imgui.h"
 
-namespace Stateful::Field {
 Float::Float(Stateful::Base *parent, string_view path_segment, string_view name_help, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
-    : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
+    : TypedField(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
 // todo instead of overriding `Update` to handle ints, try ensuring floats are written to the store.
 void Float::Update() {
@@ -22,4 +21,3 @@ void Float::Render() const {
     if (edited) Action::SetValue{Path, value}.q();
     HelpMarker();
 }
-} // namespace Stateful::Field

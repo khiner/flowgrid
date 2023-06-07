@@ -4,7 +4,6 @@
 
 using namespace ImGui;
 
-namespace Stateful::Field {
 Vec2::Vec2(Stateful::Base *parent, string_view path_segment, string_view name_help, const std::pair<float, float> &value, float min, float max, const char *fmt)
     : UIStateful(parent, path_segment, name_help),
       X(this, "X", "", value.first, min, max), Y(this, "Y", "", value.second, min, max), Format(fmt) {}
@@ -14,7 +13,7 @@ Vec2::operator ImVec2() const { return {X, Y}; }
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
-    UpdateGesturing();
+    Field::UpdateGesturing();
     if (edited) Action::SetValues{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
     HelpMarker();
 }
@@ -37,7 +36,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     SameLine();
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
-    UpdateGesturing();
+    Field::UpdateGesturing();
     if (edited) {
         if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;
@@ -50,4 +49,3 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
 }
 
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
-} // namespace Stateful::Field

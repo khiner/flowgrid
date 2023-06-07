@@ -88,7 +88,7 @@ DefineWindow_(
         Prop(Float, InverterRadius, 3, 1, 5);
         Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
-        const std::vector<std::reference_wrapper<PrimitiveBase>> LayoutFields{
+        const std::vector<std::reference_wrapper<PrimitiveField>> LayoutFields{
             SequentialConnectionZigzag,
             OrientationMark,
             OrientationMarkRadius,

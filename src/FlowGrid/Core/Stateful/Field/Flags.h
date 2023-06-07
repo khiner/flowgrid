@@ -2,9 +2,8 @@
 
 #include "Field.h"
 
-namespace Stateful::Field {
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
-struct Flags : TypedBase<int>, MenuItemDrawable {
+struct Flags : TypedField<int>, MenuItemDrawable {
     struct Item {
         Item(const char *name_and_help);
 
@@ -22,4 +21,3 @@ struct Flags : TypedBase<int>, MenuItemDrawable {
 private:
     void Render() const override;
 };
-} // namespace Stateful::Field

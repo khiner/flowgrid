@@ -2,7 +2,6 @@
 
 #include "Core/Store/Store.h"
 
-namespace Stateful::Field {
 template<IsPrimitive T> void Matrix<T>::Update() {
     Count row_count = 0, col_count = 0;
     while (store::CountAt(PathAt(row_count, 0))) { row_count++; }
@@ -20,4 +19,3 @@ template<IsPrimitive T> void Matrix<T>::Update() {
 
 // Explicit instantiations.
 template struct Matrix<bool>;
-} // namespace Stateful::Field

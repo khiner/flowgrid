@@ -4,10 +4,8 @@
 
 #include "UI/HelpMarker.h"
 
-namespace Stateful::Field {
-
 Flags::Flags(Stateful::Base *parent, string_view path_segment, string_view name_help, std::vector<Item> items, int value)
-    : TypedBase(parent, path_segment, name_help, value), Items(std::move(items)) {}
+    : TypedField(parent, path_segment, name_help, value), Items(std::move(items)) {}
 
 Flags::Item::Item(const char *name_and_help) {
     const auto &[name, help] = ParseHelpText(name_and_help);
@@ -52,5 +50,3 @@ void Flags::MenuItem() const {
         EndMenu();
     }
 }
-
-} // namespace Stateful::Field

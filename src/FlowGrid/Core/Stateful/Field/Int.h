@@ -2,8 +2,7 @@
 
 #include "Field.h"
 
-namespace Stateful::Field {
-struct Int : TypedBase<int> {
+struct Int : TypedField<int> {
     Int(Stateful::Base *parent, string_view path_segment, string_view name_help, int value = 0, int min = 0, int max = 100);
 
     operator bool() const;
@@ -18,4 +17,3 @@ struct Int : TypedBase<int> {
 private:
     void Render() const override;
 };
-} // namespace Stateful::Field

@@ -2,8 +2,7 @@
 
 #include "Field.h"
 
-namespace Stateful::Field {
-struct String : TypedBase<string> {
+struct String : TypedField<string> {
     String(Stateful::Base *parent, string_view path_segment, string_view name_help, string_view value = "");
 
     operator bool() const;
@@ -14,4 +13,3 @@ struct String : TypedBase<string> {
 private:
     void Render() const override;
 };
-} // namespace Stateful::Field

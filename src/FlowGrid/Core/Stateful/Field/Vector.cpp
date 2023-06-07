@@ -2,7 +2,6 @@
 
 #include "Core/Store/Store.h"
 
-namespace Stateful::Field {
 template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &values) const {
     Count i = 0;
     while (i < values.size()) {
@@ -35,4 +34,3 @@ template struct Vector<bool>;
 template struct Vector<int>;
 template struct Vector<U32>;
 template struct Vector<float>;
-} // namespace Stateful::Field

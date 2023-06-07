@@ -6,11 +6,10 @@
 
 #include "UI/InvisibleButton.h"
 
-namespace Stateful::Field {
 UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, U32 value, U32 min, U32 max)
-    : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
+    : TypedField(parent, path_segment, name_help, value), Min(min), Max(max) {}
 UInt::UInt(Stateful::Base *parent, string_view path_segment, string_view name_help, std::function<const string(U32)> get_name, U32 value)
-    : TypedBase(parent, path_segment, name_help, value), Min(0), Max(100), GetName(std::move(get_name)) {}
+    : TypedField(parent, path_segment, name_help, value), Min(0), Max(100), GetName(std::move(get_name)) {}
 UInt::operator bool() const { return Value; }
 UInt::operator int() const { return Value; }
 UInt::operator ImColor() const { return Value; }
@@ -70,4 +69,3 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
 
     if (changed) Action::SetValue{Path, ColorConvertFloat4ToU32(value)}.q();
 }
-} // namespace Stateful::Field

@@ -3,9 +3,8 @@
 #include "Field.h"
 
 // Vector of vectors. Inner vectors need not have the same length.
-namespace Stateful::Field {
-template<IsPrimitive T> struct Vector2D : Base {
-    using Base::Base;
+template<IsPrimitive T> struct Vector2D : Field {
+    using Field::Field;
 
     StorePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
     Count Size() const { return Value.size(); }; // Number of outer vectors
@@ -19,4 +18,3 @@ template<IsPrimitive T> struct Vector2D : Base {
 private:
     std::vector<std::vector<T>> Value;
 };
-} // namespace Stateful::Field

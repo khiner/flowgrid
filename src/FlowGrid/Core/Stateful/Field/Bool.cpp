@@ -4,7 +4,6 @@
 
 #include "UI/HelpMarker.h"
 
-namespace Stateful::Field {
 void Bool::Toggle() const { Action::ToggleValue{Path}.q(); }
 
 using namespace ImGui;
@@ -26,4 +25,3 @@ void Bool::MenuItem() const {
     HelpMarker(false);
     if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
 }
-} // namespace Stateful::Field

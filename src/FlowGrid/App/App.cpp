@@ -27,7 +27,7 @@ static bool ProjectHasChanges{false};
 void App::Apply(const Action::App &action) const {
     Match(
         action,
-        [](const Action::Value &a) { Stateful::Field::PrimitiveBase::Apply(a); },
+        [](const Action::Value &a) { PrimitiveField::Apply(a); },
         [](const Action::SetValues &a) { store::Set(a.values); },
         [](const Action::SetVector &a) { store::Set(a.path, a.value); },
         [](const Action::SetMatrix &a) { store::Set(a.path, a.data, a.row_count); },
@@ -41,7 +41,7 @@ void App::Apply(const Action::App &action) const {
 bool App::CanApply(const Action::App &action) const {
     return Match(
         action,
-        [](const Action::Value &a) { return Stateful::Field::PrimitiveBase::CanApply(a); },
+        [](const Action::Value &a) { return PrimitiveField::CanApply(a); },
         [](const Action::SetValues &) { return true; },
         [](const Action::SetVector &) { return true; },
         [](const Action::SetMatrix &) { return true; },
@@ -239,14 +239,14 @@ void OnPatch(const Patch &patch) {
     History.LatestUpdatedPaths = patch.Ops | views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
     ProjectHasChanges = true;
 
-    static std::set<Base *> modified_fields;
+    static std::set<Field *> modified_fields;
     modified_fields.clear();
     for (const auto &path : History.LatestUpdatedPaths) {
         // Find all updated fields, including container fields.
-        auto modified_field = Base::WithPath.find(path);
-        if (modified_field == Base::WithPath.end()) modified_field = Base::WithPath.find(path.parent_path());
-        if (modified_field == Base::WithPath.end()) modified_field = Base::WithPath.find(path.parent_path().parent_path());
-        if (modified_field == Base::WithPath.end()) throw std::runtime_error(std::format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
+        auto modified_field = Field::WithPath.find(path);
+        if (modified_field == Field::WithPath.end()) modified_field = Field::WithPath.find(path.parent_path());
+        if (modified_field == Field::WithPath.end()) modified_field = Field::WithPath.find(path.parent_path().parent_path());
+        if (modified_field == Field::WithPath.end()) throw std::runtime_error(std::format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
 
         modified_fields.emplace(modified_field->second);
 
@@ -269,7 +269,7 @@ void Project::Init() {
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {};
-    Stateful::Field::IsGesturing = false;
+    Field::IsGesturing = false;
 }
 
 void Apply(const Action::Project &action) {
@@ -387,7 +387,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         );
     }
 
-    const bool finalize = force_finalize_gesture || (!Stateful::Field::IsGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
+    const bool finalize = force_finalize_gesture || (!Field::IsGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!stateful_actions.empty()) {
         const auto &patch = store::CheckedCommit();
         OnPatch(patch);

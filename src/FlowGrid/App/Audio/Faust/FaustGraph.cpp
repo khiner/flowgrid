@@ -1407,9 +1407,9 @@ void FaustGraph::Style::LayoutFlowGrid() const {
     static const auto DefaultLayoutEntries =
         LayoutFields |
         ranges::views::transform(
-            [](const PrimitiveBase &field) { return Stateful::Field::Entry(field, field.Get()); }
+            [](const PrimitiveField &field) { return PrimitiveField::Entry(field, field.Get()); }
         ) |
-        ranges::to<const Stateful::Field::Entries>;
+        ranges::to<const PrimitiveField::Entries>;
     store::Set(DefaultLayoutEntries);
 }
 void FaustGraph::Style::LayoutFaust() const {

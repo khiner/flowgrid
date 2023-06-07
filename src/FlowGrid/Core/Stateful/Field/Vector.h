@@ -2,10 +2,9 @@
 
 #include "Field.h"
 
-namespace Stateful::Field {
 template<IsPrimitive T>
-struct Vector : Base {
-    using Base::Base;
+struct Vector : Field {
+    using Field::Field;
 
     StorePath PathAt(const Count i) const { return Path / to_string(i); }
     Count Size() const { return Value.size(); }
@@ -19,4 +18,3 @@ struct Vector : Base {
 private:
     std::vector<T> Value;
 };
-} // namespace Stateful::Field

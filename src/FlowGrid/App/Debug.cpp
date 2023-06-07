@@ -150,9 +150,9 @@ void ShowGesture(const Gesture &gesture) {
 void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
-        const bool widget_gesturing = Stateful::Field::IsGesturing;
+        const bool is_gesturing = Field::IsGesturing;
         const bool ActiveGesturePresent = !History.ActiveGesture.empty();
-        if (ActiveGesturePresent || widget_gesturing) {
+        if (ActiveGesturePresent || is_gesturing) {
             // Gesture completion progress bar
             const float gesture_duration_sec = application_settings.GestureDurationSec;
             const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec(gesture_duration_sec) / gesture_duration_sec);
@@ -160,10 +160,10 @@ void Metrics::FlowGridMetrics::Render() const {
 
             const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
             if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (widget_gesturing) FillRowItemBg(style.ImGui.Colors[ImGuiCol_FrameBgActive]);
+                if (is_gesturing) FillRowItemBg(style.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
-                Text("Widget gesture: %s", widget_gesturing ? "true" : "false");
-                if (!widget_gesturing) EndDisabled();
+                Text("Widget gesture: %s", is_gesturing ? "true" : "false");
+                if (!is_gesturing) EndDisabled();
 
                 if (ActiveGesturePresent) ShowGesture(History.ActiveGesture);
                 else Text("No actions yet");

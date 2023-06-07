@@ -2,9 +2,8 @@
 
 #include "imgui.h"
 
-namespace Stateful::Field {
 String::String(Stateful::Base *parent, string_view path_segment, string_view name_help, string_view value)
-    : TypedBase(parent, path_segment, name_help, string(value)) {}
+    : TypedField(parent, path_segment, name_help, string(value)) {}
 String::operator bool() const { return !Value.empty(); }
 String::operator string_view() const { return Value; }
 
@@ -28,4 +27,3 @@ void String::Render(const std::vector<string> &options) const {
     }
     HelpMarker();
 }
-} // namespace Stateful::Field

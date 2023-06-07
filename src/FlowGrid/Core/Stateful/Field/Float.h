@@ -4,8 +4,7 @@
 
 using ImGuiSliderFlags = int;
 
-namespace Stateful::Field {
-struct Float : TypedBase<float> {
+struct Float : TypedField<float> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(
         Stateful::Base *parent, string_view path_segment, string_view name_help,
@@ -22,4 +21,3 @@ struct Float : TypedBase<float> {
 private:
     void Render() const override;
 };
-} // namespace Stateful::Field

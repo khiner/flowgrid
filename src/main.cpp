@@ -22,7 +22,7 @@ int main(int, const char **) {
     // Create the global canonical store, initially containing the full application state constructed during the initialization of `App`.
     store::Commit();
     // Ensure all store values set during initialization are reflected in cached field/collection values.
-    for (auto *field : ranges::views::values(Stateful::Field::Base::WithPath)) field->Update();
+    for (auto *field : ranges::views::values(Field::WithPath)) field->Update();
 
     Project::Init();
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);

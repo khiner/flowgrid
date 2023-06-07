@@ -41,8 +41,6 @@ enum WindowFlags_ {
     WindowFlags_MenuBar = 1 << 10,
 };
 
-using namespace Stateful::Field;
-
 namespace Stateful {
 struct Window : UIStateful, MenuItemDrawable {
     using UIStateful::UIStateful;

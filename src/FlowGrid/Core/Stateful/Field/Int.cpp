@@ -2,9 +2,8 @@
 
 #include "imgui.h"
 
-namespace Stateful::Field {
 Int::Int(Stateful::Base *parent, string_view path_segment, string_view name_help, int value, int min, int max)
-    : TypedBase(parent, path_segment, name_help, value), Min(min), Max(max) {}
+    : TypedField(parent, path_segment, name_help, value), Min(min), Max(max) {}
 Int::operator bool() const { return Value; }
 Int::operator short() const { return Value; }
 Int::operator char() const { return Value; }
@@ -33,4 +32,3 @@ void Int::Render(const std::vector<int> &options) const {
     }
     HelpMarker();
 }
-} // namespace Stateful::Field

@@ -8,7 +8,8 @@
 #include <range/v3/view/iota.hpp>
 
 #include "Core/Store/Store.h"
-#include "UI/Widgets.h"
+#include "UI/HelpMarker.h"
+#include "UI/InvisibleButton.h"
 
 using namespace ImGui;
 

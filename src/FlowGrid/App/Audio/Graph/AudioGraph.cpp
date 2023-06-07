@@ -7,7 +7,8 @@
 
 #include "App/Audio/AudioDevice.h"
 #include "Core/Stateful/Field/FieldAction.h"
-#include "UI/Widgets.h"
+#include "UI/InvisibleButton.h"
+#include "UI/Styling.h"
 
 static ma_node_graph_config NodeGraphConfig;
 

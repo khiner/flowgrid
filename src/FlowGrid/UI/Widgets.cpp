@@ -32,38 +32,6 @@ ColorSet GetSecondaryColorSet() {
     return {active, hovered, hovered};
 }
 
-void HelpMarker(const char *help) {
-    TextDisabled("(?)");
-    if (IsItemHovered()) {
-        BeginTooltip();
-        PushTextWrapPos(GetFontSize() * 35);
-        TextUnformatted(help);
-        PopTextWrapPos();
-        EndTooltip();
-    }
-}
-
-InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id) {
-    auto *window = GetCurrentWindow();
-    if (window->SkipItems) return false;
-
-    const auto imgui_id = window->GetID(id);
-    const auto size = CalcItemSize(size_arg, 0.0f, 0.0f);
-    const auto &cursor = GetCursorScreenPos();
-    const ImRect rect{cursor, cursor + size};
-    if (!ItemAdd(rect, imgui_id)) return false;
-
-    InteractionFlags flags = InteractionFlags_None;
-    static bool hovered, held;
-    if (ButtonBehavior(rect, imgui_id, &hovered, &held, ImGuiButtonFlags_AllowItemOverlap)) {
-        flags |= InteractionFlags_Clicked;
-    }
-    if (hovered) flags |= InteractionFlags_Hovered;
-    if (held) flags |= InteractionFlags_Held;
-
-    return flags;
-}
-
 bool ValueBar(const char *label, float *value, const float rect_height, const float min_value, const float max_value, const ValueBarFlags flags, const HJustify h_justify) {
     const float rect_width = CalcItemWidth();
     const ImVec2 &size = {rect_width, rect_height};

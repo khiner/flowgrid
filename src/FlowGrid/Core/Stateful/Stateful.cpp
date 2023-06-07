@@ -4,7 +4,7 @@
 #include <format>
 
 #include "Helper/String.h"
-#include "UI/Widgets.h"
+#include "UI/HelpMarker.h"
 
 std::pair<string_view, string_view> ParseHelpText(string_view str) {
     const auto help_split = str.find_first_of('?');

@@ -9,15 +9,6 @@ using namespace nlohmann;
 
 struct ImVec2;
 
-namespace FlowGrid {}
-namespace fg = FlowGrid;
-
-enum InteractionFlags_ {
-    InteractionFlags_None = 0,
-    InteractionFlags_Hovered = 1 << 0,
-    InteractionFlags_Held = 1 << 1,
-    InteractionFlags_Clicked = 1 << 2,
-};
 enum KnobFlags_ {
     KnobFlags_None = 0,
     KnobFlags_NoTitle = 1 << 0,
@@ -53,7 +44,6 @@ enum JsonTreeNodeFlags_ {
     JsonTreeNodeFlags_DefaultOpen = 1 << 2,
 };
 
-using InteractionFlags = int;
 using KnobFlags = int;
 using KnobVariant = int;
 using ValueBarFlags = int;
@@ -67,11 +57,6 @@ struct ColorSet {
 
     U32 base, hovered, active;
 };
-
-// Similar to `imgui_demo.cpp`'s `HelpMarker`.
-void HelpMarker(const char *help);
-// Basically `ImGui::InvisibleButton`, but supports hover/held testing.
-InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id);
 
 bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed = 0, const char *format = nullptr, HJustify h_justify = HJustify_Middle, KnobVariant variant = KnobVariant_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);
 bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed = 0, const char *format = nullptr, HJustify h_justify = HJustify_Middle, KnobVariant variant = KnobVariant_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);

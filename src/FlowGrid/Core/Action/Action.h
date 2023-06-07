@@ -1,5 +1,6 @@
 #pragma once
 
+#include <__filesystem/path.h>
 #include <array>
 #include <concepts>
 #include <string>
@@ -9,6 +10,8 @@
 #include "nlohmann/json.hpp"
 
 #include "Helper/Variant.h"
+
+namespace fs = std::filesystem;
 
 /**
 An action is an immutable representation of a user interaction event.
@@ -28,8 +31,9 @@ struct Metadata {
     // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
     // (or added to the gesture history, or saved in a `.fga` (FlowGridAction) project).
     // This is used for actions with only non-state-updating side effects, like saving a file.
-    Metadata(std::string_view name, std::string_view meta_str = "");
+    Metadata(fs::path type_path, std::string_view name, std::string_view meta_str = "");
 
+    const fs::path TypePath; // E.g. "Vector/Int"
     const std::string Name; // Human-readable name.
     const std::string MenuLabel; // Defaults to `Name`.
     const std::string Shortcut;
@@ -45,7 +49,7 @@ private:
         const std::string MenuLabel, Shortcut;
     };
     Parsed ParseMetadata(std::string_view meta_str);
-    Metadata(std::string_view name, Parsed parsed);
+    Metadata(fs::path type_path, std::string_view name, Parsed parsed);
 };
 
 // Use `Merge` for actions that can be merged with any other action of the same type.
@@ -67,7 +71,7 @@ private:
 
 #define Define(ActionType, is_savable, merge_type, meta_str, ...)            \
     struct ActionType {                                                      \
-        inline static const Metadata _Meta{#ActionType, meta_str};           \
+        inline static const Metadata _Meta{"", #ActionType, meta_str};           \
         static constexpr bool IsSavable = is_savable;                        \
         void q(bool flush = false) const;                                    \
         static void MenuItem();                                              \

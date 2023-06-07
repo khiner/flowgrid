@@ -14,11 +14,10 @@ Metadata::Parsed Metadata::ParseMetadata(string_view meta_str) {
     }
     return {"", ""};
 }
-
-Metadata::Metadata(string_view name, string_view meta_str) : Metadata(name, ParseMetadata(meta_str)) {}
-
-Metadata::Metadata(string_view name, Metadata::Parsed parsed)
-    : Name(StringHelper::PascalToSentenceCase(name)),
+Metadata::Metadata(fs::path type_path, string_view name, Metadata::Parsed parsed)
+    : TypePath(type_path),
+      Name(StringHelper::PascalToSentenceCase(name)),
       MenuLabel(parsed.MenuLabel.empty() ? Name : parsed.MenuLabel),
       Shortcut(parsed.Shortcut) {}
+Metadata::Metadata(fs::path type_path, string_view name, string_view meta_str) : Metadata(type_path, name, ParseMetadata(meta_str)) {}
 } // namespace Action

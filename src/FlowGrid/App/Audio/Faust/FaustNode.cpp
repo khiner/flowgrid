@@ -6,7 +6,7 @@
 #include "miniaudio.h"
 
 #include "App/Audio/AudioDevice.h"
-#include "Core/Stateful/FieldAction.h"
+#include "Core/Stateful/Field/FieldAction.h"
 #include "Faust.h"
 #include "FaustBox.h"
 #include "FaustParams.h"

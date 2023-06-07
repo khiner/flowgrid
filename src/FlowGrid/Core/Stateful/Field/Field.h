@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Core/Stateful/Stateful.h"
 #include "FieldAction.h"
-#include "Stateful.h"
 
 struct ImVec2;
 struct ImColor;

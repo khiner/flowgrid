@@ -17,8 +17,8 @@ void Faust::Apply(const Action::Faust &action) const {
         [&](const Action::FaustFile &a) {
             Match(
                 a,
-                [&](const Action::ShowOpenFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
-                [&](const Action::ShowSaveFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
+                [](const Action::ShowOpenFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
+                [](const Action::ShowSaveFaustFileDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
                 [&](const Action::OpenFaustFile &a) { store::Set(Code, FileIO::read(a.path)); },
                 [&](const Action::SaveFaustFile &a) { FileIO::write(a.path, Code); },
             );

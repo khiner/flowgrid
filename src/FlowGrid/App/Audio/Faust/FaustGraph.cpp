@@ -1245,7 +1245,7 @@ void FaustGraph::Apply(const Action::FaustGraph &action) const {
             }
         },
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
-        [&](const Action::ShowSaveFaustSvgFileDialog &) { file_dialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
+        [](const Action::ShowSaveFaustSvgFileDialog &) { file_dialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
         [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
     );
 }

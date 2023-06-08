@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/Action.h"
-#include "Core/PathJson.h"
+#include "Core/Json.h"
 #include "Core/PrimitiveJson.h"
 
 namespace Action {

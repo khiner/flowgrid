@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Action/Action.h"
-#include "Core/Json.h"
 
 namespace Action {
 Define(SetGraphColorStyle, Merge, "", int id;);

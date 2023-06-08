@@ -3,6 +3,7 @@
 #include "Core/Field/Vector.h"
 #include "Core/Field/Vector2D.h"
 #include "Core/Stateful/Window.h"
+#include "Core/Store/Patch/Patch.h"
 
 template<typename T> struct ImChunkStream;
 template<typename T> struct ImVector;

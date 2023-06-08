@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Core/Action/Action.h"
-
-#include "Core/Store/Patch/PatchAction.h" // xxx only needed for path json conversion, which should be moved out.
+#include "Core/PathJson.h"
+#include "Core/PrimitiveJson.h"
 
 namespace Action {
 Define(SetPrimitive, 1, CustomMerge, "", StorePath path; Primitive value;);

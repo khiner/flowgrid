@@ -48,8 +48,7 @@ std::vector<string> Split(const string &text, const char *delims);
 // Doesn't change contiguous capital ranges like "ID".
 // Doesn't modify the first occurrences of any words in the provided `skip_words` list.
 // Uppercases the first occurrences of all words in the provided `all_caps_words`.
-// E.g. 'FooBarFlowGridId' => 'Foo bar FlowGrid ID'
-inline static const std::vector<string> SkipWords{"FlowGrid", "ImGui", "ImPlot", "Faust"};
-inline static const std::vector<string> AllCapsWords{"Id", "Svg", "Dsp"};
-string PascalToSentenceCase(string_view str, const std::vector<string> &skip_words = SkipWords, const std::vector<string> &all_caps_words = AllCapsWords);
+// E.g. if "FlowGrid" is in `skip_words`: 'FooBarFlowGridId' => 'Foo bar FlowGrid ID'
+string PascalToSentenceCase(string_view str, const std::vector<string> &skip_words, const std::vector<string> &all_caps_words);
+string PascalToSentenceCase(string_view str); // Use the default `skip_word`s and `all_caps_words` (see impl).
 } // namespace StringHelper

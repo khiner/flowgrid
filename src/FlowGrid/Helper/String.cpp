@@ -22,7 +22,7 @@ vector<string> Split(const string &text, const char *delims) {
 }
 
 // Only matches first occurrence (assumes at most one match per match word).
-static constexpr vector<std::pair<size_t, size_t>> FindRangesMatching(string_view str, const vector<string> &match_words) {
+vector<std::pair<size_t, size_t>> FindRangesMatching(string_view str, const vector<string> &match_words) {
     vector<std::pair<size_t, size_t>> matching_ranges;
     for (const auto &match_word : match_words) {
         const size_t pos = str.find(match_word);
@@ -38,19 +38,28 @@ string PascalToSentenceCase(string_view str, const vector<string> &skip_words, c
     // Mutable vars:
     auto skip_range_it = skip_ranges.begin();
     auto caps_range_it = all_caps_ranges.begin();
-    string sentence_case;
 
+    string sentence_case;
     for (size_t index = 0; index < str.size(); index++) {
         if (skip_range_it != skip_ranges.end() && index > (*skip_range_it).second) skip_range_it++;
         if (caps_range_it != all_caps_ranges.end() && index > (*caps_range_it).second) caps_range_it++;
 
         const char ch = str[index];
-        if (isupper(ch) && islower(str[index - 1]) && (skip_range_it == skip_ranges.end() || index == (*skip_range_it).first)) sentence_case += ' ';
+        if (
+            isupper(ch) && islower(str[index - 1]) &&
+            (skip_range_it == skip_ranges.end() || index == (*skip_range_it).first || index == (*skip_range_it).second)
+        ) sentence_case += ' ';
 
         const bool in_skip_range = skip_range_it != skip_ranges.end() && index >= (*skip_range_it).first && index < (*skip_range_it).second;
         const bool in_caps_range = caps_range_it != all_caps_ranges.end() && index >= (*caps_range_it).first && index < (*caps_range_it).second;
         sentence_case += in_caps_range ? toupper(ch) : ((index > 0 && !in_skip_range) ? tolower(ch) : ch);
     }
     return sentence_case;
+}
+
+string PascalToSentenceCase(string_view str) {
+    static const std::vector<string> SkipWords{"FlowGrid", "ImGui", "ImPlot", "Faust"};
+    static const std::vector<string> AllCapsWords{"Id", "Svg", "Dsp"};
+    return PascalToSentenceCase(str, SkipWords, AllCapsWords);
 }
 } // namespace StringHelper

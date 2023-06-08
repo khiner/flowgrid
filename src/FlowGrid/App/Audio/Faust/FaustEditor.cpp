@@ -64,7 +64,7 @@ void Faust::FaustEditor::Render() const {
 
     const auto text = editor.GetText();
     if (editor.TextChanged) {
-        Action::SetValue{audio.Faust.Code.Path, text}.q();
+        Action::SetPrimitive{audio.Faust.Code.Path, text}.q();
     } else if (audio.Faust.Code != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
         //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.

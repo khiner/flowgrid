@@ -6,25 +6,19 @@
 #include "Core/Store/Patch/PatchAction.h" // xxx only needed for path json conversion, which should be moved out.
 
 namespace Action {
-Define(SetValue, 1, CustomMerge, "", StorePath path; Primitive value;);
-Define(ToggleValue, 1, NoMerge, "", StorePath path;);
+Define(SetPrimitive, 1, CustomMerge, "", StorePath path; Primitive value;);
+Define(SetPrimitives, 1, CustomMerge, "", StoreEntries values;);
+Define(ToggleBool, 1, NoMerge, "", StorePath path;);
 
-Json(SetValue, path, value);
-Json(ToggleValue, path);
+Json(SetPrimitive, path, value);
+Json(SetPrimitives, values);
+Json(ToggleBool, path);
 
-using Value = ActionVariant<SetValue, ToggleValue>;
+using Primitive = ActionVariant<SetPrimitive, SetPrimitives, ToggleBool>;
 } // namespace Action
 
 namespace Action {
-Define(SetValues, 1, CustomMerge, "", StoreEntries values;);
-
-Json(SetValues, values);
-
-using Values = ActionVariant<SetValues>;
-} // namespace Action
-
-namespace Action {
-Define(SetVector, 1, CustomMerge, "", StorePath path; std::vector<Primitive> value;);
+Define(SetVector, 1, CustomMerge, "", StorePath path; std::vector<::Primitive> value;);
 
 Json(SetVector, path, value);
 
@@ -32,7 +26,7 @@ using Vector = ActionVariant<SetVector>;
 } // namespace Action
 
 namespace Action {
-Define(SetMatrix, 1, CustomMerge, "", StorePath path; std::vector<Primitive> data; Count row_count;);
+Define(SetMatrix, 1, CustomMerge, "", StorePath path; std::vector<::Primitive> data; Count row_count;);
 
 Json(SetMatrix, path, data, row_count);
 

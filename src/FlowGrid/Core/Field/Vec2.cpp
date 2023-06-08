@@ -14,7 +14,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
     Field::UpdateGesturing();
-    if (edited) Action::SetValues{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
+    if (edited) Action::SetPrimitives{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
     HelpMarker();
 }
 
@@ -29,8 +29,8 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
     if (Linked.CheckedDraw()) {
         // Linking sets the max value to the min value.
-        if (X < Y) Action::SetValue{Y.Path, X}.q();
-        else if (Y < X) Action::SetValue{X.Path, Y}.q();
+        if (X < Y) Action::SetPrimitive{Y.Path, X}.q();
+        else if (Y < X) Action::SetPrimitive{X.Path, Y}.q();
     }
     PopID();
     SameLine();
@@ -40,9 +40,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (edited) {
         if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;
-            Action::SetValues{{{X.Path, changed_value}, {Y.Path, changed_value}}}.q();
+            Action::SetPrimitives{{{X.Path, changed_value}, {Y.Path, changed_value}}}.q();
         } else {
-            Action::SetValues{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
+            Action::SetPrimitives{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
         }
     }
     HelpMarker();

@@ -221,7 +221,7 @@ void Style::ImGuiStyle::Render() const {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) Action::SetValue{FontIndex.Path, n}.q();
+            if (Selectable(font->GetDebugName(), font == font_current)) Action::SetPrimitive{FontIndex.Path, n}.q();
             PopID();
         }
         EndCombo();
@@ -230,17 +230,17 @@ void Style::ImGuiStyle::Render() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) Action::SetValue{WindowBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("WindowBorder", &border)) Action::SetPrimitive{WindowBorderSize.Path, border ? 1 : 0}.q();
     }
     SameLine();
     {
         bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) Action::SetValue{FrameBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("FrameBorder", &border)) Action::SetPrimitive{FrameBorderSize.Path, border ? 1 : 0}.q();
     }
     SameLine();
     {
         bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) Action::SetValue{PopupBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("PopupBorder", &border)) Action::SetPrimitive{PopupBorderSize.Path, border ? 1 : 0}.q();
     }
 
     Separator();

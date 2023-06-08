@@ -174,7 +174,7 @@ void AudioGraph::RenderConnections() const {
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) Action::SetValue{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)}.q();
+            if (flags & InteractionFlags_Clicked) Action::SetPrimitive{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)}.q();
 
             const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));

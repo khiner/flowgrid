@@ -27,8 +27,7 @@ static bool ProjectHasChanges{false};
 void App::Apply(const Action::App &action) const {
     Match(
         action,
-        [](const Action::Value &a) { PrimitiveField::Apply(a); },
-        [](const Action::SetValues &a) { store::Set(a.values); },
+        [](const Action::Primitive &a) { PrimitiveField::Apply(a); },
         [](const Action::SetVector &a) { store::Set(a.path, a.value); },
         [](const Action::SetMatrix &a) { store::Set(a.path, a.data, a.row_count); },
         [](const Action::ApplyPatch &a) { store::ApplyPatch(a.patch); },
@@ -41,8 +40,7 @@ void App::Apply(const Action::App &action) const {
 bool App::CanApply(const Action::App &action) const {
     return Match(
         action,
-        [](const Action::Value &a) { return PrimitiveField::CanApply(a); },
-        [](const Action::SetValues &) { return true; },
+        [](const Action::Primitive &a) { return PrimitiveField::CanApply(a); },
         [](const Action::SetVector &) { return true; },
         [](const Action::SetMatrix &) { return true; },
         [](const Action::ApplyPatch &) { return true; },
@@ -366,7 +364,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
         if (std::holds_alternative<Action::SaveCurrentProject>(action) && !CurrentProjectPath) action = Action::ShowSaveProjectDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<Action::ToggleValue>(action);
+        force_finalize_gesture |= std::holds_alternative<Action::ToggleBool>(action);
 
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.
@@ -423,9 +421,9 @@ DefineQ(SaveDefaultProject);
 DefineQ(SaveCurrentProject);
 DefineQ(ShowOpenProjectDialog);
 DefineQ(ShowSaveProjectDialog);
-DefineQ(ToggleValue);
-DefineQ(SetValue);
-DefineQ(SetValues);
+DefineQ(ToggleBool);
+DefineQ(SetPrimitive);
+DefineQ(SetPrimitives);
 DefineQ(SetVector);
 DefineQ(SetMatrix);
 DefineQ(ApplyPatch);

@@ -20,7 +20,7 @@ void String::Render(const std::vector<string> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option : options) {
             const bool is_selected = option == value;
-            if (Selectable(option.c_str(), is_selected)) Action::SetValue{Path, option}.q();
+            if (Selectable(option.c_str(), is_selected)) Action::SetPrimitive{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();

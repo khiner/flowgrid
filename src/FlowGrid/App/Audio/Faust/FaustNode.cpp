@@ -47,8 +47,8 @@ static void Init() {
     }
 
     const auto &ErrorLog = faust.Log.Error;
-    if (!error_msg.empty()) Action::SetValue{ErrorLog.Path, error_msg}.q();
-    else if (ErrorLog) Action::SetValue{ErrorLog.Path, ""}.q();
+    if (!error_msg.empty()) Action::SetPrimitive{ErrorLog.Path, error_msg}.q();
+    else if (ErrorLog) Action::SetPrimitive{ErrorLog.Path, ""}.q();
 
     OnBoxChange(box);
     OnUiChange(Ui.get());

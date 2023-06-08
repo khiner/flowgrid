@@ -99,7 +99,7 @@ void AudioDevice::Init(AudioDevice::Callback callback) const {
     if (MaDevice.capture.channels != InChannels) initial_settings.emplace_back(InChannels.Path, MaDevice.capture.channels);
     if (MaDevice.playback.channels != OutChannels) initial_settings.emplace_back(OutChannels.Path, MaDevice.playback.channels);
     if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
-    if (!initial_settings.empty()) Action::SetValues{initial_settings}.q(true);
+    if (!initial_settings.empty()) Action::SetPrimitives{initial_settings}.q(true);
 }
 
 void AudioDevice::Update() const {

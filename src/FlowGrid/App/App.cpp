@@ -24,46 +24,50 @@ using namespace FlowGrid;
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
-void App::Apply(const Action::App &action) const {
+void App::Apply(const Action::App::Any &action) const {
     Match(
         action,
-        [](const Action::Primitive &a) { PrimitiveField::Apply(a); },
-        [](const Action::SetVector &a) { store::Set(a.path, a.value); },
-        [](const Action::SetMatrix &a) { store::Set(a.path, a.data, a.row_count); },
-        [](const Action::ApplyPatch &a) { store::ApplyPatch(a.patch); },
-        [&](const Action::FileDialog &a) { FileDialog.Apply(a); },
-        [&](const Action::Style &a) { Style.Apply(a); },
-        [&](const Action::Audio &a) { Audio.Apply(a); },
+        [](const Action::Primitive::Any &a) {
+            PrimitiveField::Apply(a); 
+            },
+        [](const Action::Vector::Set &a) { store::Set(a.path, a.value); },
+        [](const Action::Matrix::Set &a) { store::Set(a.path, a.data, a.row_count); },
+        [](const Action::Patch::Apply &a) {
+            store::ApplyPatch(a.patch);
+            },
+        [&](const Action::FileDialog::Any &a) { FileDialog.Apply(a); },
+        [&](const Action::Style::Any &a) { Style.Apply(a); },
+        [&](const Action::Audio::Any &a) { Audio.Apply(a); },
     );
 }
 
-bool App::CanApply(const Action::App &action) const {
+bool App::CanApply(const Action::App::Any &action) const {
     return Match(
         action,
-        [](const Action::Primitive &a) { return PrimitiveField::CanApply(a); },
-        [](const Action::SetVector &) { return true; },
-        [](const Action::SetMatrix &) { return true; },
-        [](const Action::ApplyPatch &) { return true; },
-        [&](const Action::FileDialog &a) { return FileDialog.CanApply(a); },
-        [&](const Action::Style &a) { return Style.CanApply(a); },
-        [&](const Action::Audio &a) { return Audio.CanApply(a); },
+        [](const Action::Primitive::Any &a) { return PrimitiveField::CanApply(a); },
+        [](const Action::Vector::Set &) { return true; },
+        [](const Action::Matrix::Set &) { return true; },
+        [](const Action::Patch::Apply &) { return true; },
+        [&](const Action::FileDialog::Any &a) { return FileDialog.CanApply(a); },
+        [&](const Action::Style::Any &a) { return Style.CanApply(a); },
+        [&](const Action::Audio::Any &a) { return Audio.CanApply(a); },
     );
 }
 
 bool CanApply(const Action::Any &action) {
     return Match(
         action,
-        [](const Action::App &a) { return app.CanApply(a); },
-        [](const Action::Project &a) {
+        [](const Action::App::Any &a) { return app.CanApply(a); },
+        [](const Action::Project::Any &a) {
             return Match(
                 a,
-                [](const Action::Undo &) { return History.CanUndo(); },
-                [](const Action::Redo &) { return History.CanRedo(); },
-                [](const Action::SaveProject &) { return !History.Empty(); },
-                [](const Action::SaveDefaultProject &) { return !History.Empty(); },
-                [](const Action::ShowSaveProjectDialog &) { return ProjectHasChanges; },
-                [](const Action::SaveCurrentProject &) { return ProjectHasChanges; },
-                [](const Action::OpenDefaultProject &) { return fs::exists(DefaultProjectPath); },
+                [](const Action::Project::Undo &) { return History.CanUndo(); },
+                [](const Action::Project::Redo &) { return History.CanRedo(); },
+                [](const Action::Project::Save &) { return !History.Empty(); },
+                [](const Action::Project::SaveDefault &) { return !History.Empty(); },
+                [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
+                [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
+                [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
                 [](const auto &) { return true; },
             );
         },
@@ -178,8 +182,8 @@ void App::Render() const {
         const fs::path selected_path = string(FileDialog.SelectedFilePath);
         const string &extension = selected_path.extension();
         if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
-            if (FileDialog.SaveMode) Action::SaveProject{selected_path}.q();
-            else Action::OpenProject{selected_path}.q();
+            if (FileDialog.SaveMode) Action::Project::Save{selected_path}.q();
+            else Action::Project::Open{selected_path}.q();
         }
         PrevSelectedPath = selected_path;
     }
@@ -188,7 +192,7 @@ void App::Render() const {
 void App::OpenRecentProjectMenuItem() {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) Action::OpenProject{recently_opened_path}.q();
+            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) Action::Project::Open{recently_opened_path}.q();
         }
         EndMenu();
     }
@@ -270,22 +274,22 @@ void Project::Init() {
     Field::IsGesturing = false;
 }
 
-void Apply(const Action::Project &action) {
+void Apply(const Action::Project::Any &action) {
     Match(
         action,
-        [](const Action::ShowOpenProjectDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
-        [](const Action::ShowSaveProjectDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
-        [](const Action::OpenEmptyProject &) { OpenProject(EmptyProjectPath); },
-        [](const Action::OpenProject &a) { OpenProject(a.path); },
-        [](const Action::OpenDefaultProject &) { OpenProject(DefaultProjectPath); },
+        [](const Action::Project::ShowOpenDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
+        [](const Action::Project::ShowSaveDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+        [](const Action::Project::OpenEmpty &) { OpenProject(EmptyProjectPath); },
+        [](const Action::Project::Open &a) { OpenProject(a.path); },
+        [](const Action::Project::OpenDefault &) { OpenProject(DefaultProjectPath); },
 
-        [](const Action::SaveProject &a) { SaveProject(a.path); },
-        [](const Action::SaveDefaultProject &) { SaveProject(DefaultProjectPath); },
-        [](const Action::SaveCurrentProject &) {
+        [](const Action::Project::Save &a) { SaveProject(a.path); },
+        [](const Action::Project::SaveDefault &) { SaveProject(DefaultProjectPath); },
+        [](const Action::Project::SaveCurrent &) {
             if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
         },
         // History-changing actions:
-        [](const Action::Undo &) {
+        [](const Action::Project::Undo &) {
             if (History.Empty()) return;
 
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
@@ -300,16 +304,16 @@ void Apply(const Action::Project &action) {
                 ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
             }
         },
-        [](const Action::Redo &) { SetHistoryIndex(History.Index + 1); },
-        [](const Action::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+        [](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
+        [](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
     );
 }
 
 void Apply(const Action::Stateful &action) {
     Match(
         action,
-        [&](const Action::App &a) { app.Apply(a); },
-        [&](const Action::Project &a) { Apply(a); },
+        [&](const Action::App::Any &a) { app.Apply(a); },
+        [&](const Action::Project::Any &a) { Apply(a); },
     );
 }
 
@@ -362,9 +366,9 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
-        if (std::holds_alternative<Action::SaveCurrentProject>(action) && !CurrentProjectPath) action = Action::ShowSaveProjectDialog{};
+        if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<Action::ToggleBool>(action);
+        force_finalize_gesture |= std::holds_alternative<Action::Primitive::ToggleBool>(action);
 
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.
@@ -373,8 +377,8 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
         Match(
             action,
-            [](const Action::App &a) { app.Apply(a); },
-            [](const Action::Project &a) { Apply(a); },
+            [](const Action::App::Any &a) { app.Apply(a); },
+            [](const Action::Project::Any &a) { Apply(a); },
         );
 
         Match(
@@ -410,34 +414,34 @@ void q(const Action::Any &&action, bool flush) {
         }                                                                                                            \
     }
 
-DefineQ(Undo);
-DefineQ(Redo);
-DefineQ(SetHistoryIndex);
-DefineQ(OpenProject);
-DefineQ(OpenEmptyProject);
-DefineQ(OpenDefaultProject);
-DefineQ(SaveProject);
-DefineQ(SaveDefaultProject);
-DefineQ(SaveCurrentProject);
-DefineQ(ShowOpenProjectDialog);
-DefineQ(ShowSaveProjectDialog);
-DefineQ(ToggleBool);
-DefineQ(SetPrimitive);
-DefineQ(SetPrimitives);
-DefineQ(SetVector);
-DefineQ(SetMatrix);
-DefineQ(ApplyPatch);
-DefineQ(SetImGuiColorStyle);
-DefineQ(SetImPlotColorStyle);
-DefineQ(SetFlowGridColorStyle);
-DefineQ(SetGraphColorStyle);
-DefineQ(SetGraphLayoutStyle);
-DefineQ(ShowOpenFaustFileDialog);
-DefineQ(ShowSaveFaustFileDialog);
-DefineQ(ShowSaveFaustSvgFileDialog);
-DefineQ(SaveFaustFile);
-DefineQ(OpenFaustFile);
-DefineQ(SaveFaustSvgFile);
-DefineQ(FileDialogOpen);
-DefineQ(FileDialogSelect);
-DefineQ(FileDialogCancel);
+DefineQ(Project::Undo);
+DefineQ(Project::Redo);
+DefineQ(Project::SetHistoryIndex);
+DefineQ(Project::Open);
+DefineQ(Project::OpenEmpty);
+DefineQ(Project::OpenDefault);
+DefineQ(Project::Save);
+DefineQ(Project::SaveDefault);
+DefineQ(Project::SaveCurrent);
+DefineQ(Project::ShowOpenDialog);
+DefineQ(Project::ShowSaveDialog);
+DefineQ(Primitive::ToggleBool);
+DefineQ(Primitive::Set);
+DefineQ(Primitive::SetMany);
+DefineQ(Vector::Set);
+DefineQ(Matrix::Set);
+DefineQ(Patch::Apply);
+DefineQ(Style::SetImGuiColorPreset);
+DefineQ(Style::SetImPlotColorPreset);
+DefineQ(Style::SetFlowGridColorPreset);
+DefineQ(FaustFile::ShowOpenDialog);
+DefineQ(FaustFile::ShowSaveDialog);
+DefineQ(FaustFile::Save);
+DefineQ(FaustFile::Open);
+DefineQ(FaustGraph::SetColorStyle);
+DefineQ(FaustGraph::SetLayoutStyle);
+DefineQ(FaustGraph::ShowSaveSvgDialog);
+DefineQ(FaustGraph::SaveSvgFile);
+DefineQ(FileDialog::Open);
+DefineQ(FileDialog::Select);
+DefineQ(FileDialog::Cancel);

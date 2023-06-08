@@ -27,7 +27,7 @@ Count CountAt(const StorePath &);
 void Set(const StorePath &, const Primitive &);
 void Set(const std::vector<std::pair<StorePath, Primitive>> &);
 void Set(const StorePath &, const std::vector<Primitive> &);
-void Set(const StorePath &, const std::vector<Primitive> &, Count row_count); // For `SetMatrix` action.
+void Set(const StorePath &, const std::vector<Primitive> &, Count row_count); // For the `Matrix::Set` action.
 
 void Erase(const StorePath &);
 

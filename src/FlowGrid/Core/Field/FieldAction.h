@@ -1,32 +1,35 @@
 #pragma once
 
-#include "Core/Action/Action.h"
+#include "Core/Action/DefineAction.h"
 #include "Core/PrimitiveJson.h"
 
-namespace Action {
-Define(SetPrimitive, CustomMerge, "", StorePath path; Primitive value;);
-Define(SetPrimitives, CustomMerge, "", std::vector<std::pair<StorePath, Primitive>> values;);
-Define(ToggleBool, NoMerge, "", StorePath path;);
+DefineActionType(
+    Primitive,
+    DefineAction(Set, CustomMerge, "", StorePath path; ::Primitive value;);
+    DefineAction(SetMany, CustomMerge, "", std::vector<std::pair<StorePath, ::Primitive>> values;);
+    DefineAction(ToggleBool, NoMerge, "", StorePath path;);
 
-Json(SetPrimitive, path, value);
-Json(SetPrimitives, values);
-Json(ToggleBool, path);
+    Json(Set, path, value);
+    Json(SetMany, values);
+    Json(ToggleBool, path);
 
-using Primitive = ActionVariant<SetPrimitive, SetPrimitives, ToggleBool>;
-} // namespace Action
+    using Any = ActionVariant<Set, SetMany, ToggleBool>;
+);
 
-namespace Action {
-Define(SetVector, CustomMerge, "", StorePath path; std::vector<::Primitive> value;);
+DefineActionType(
+    Vector,
+    DefineAction(Set, CustomMerge, "", StorePath path; std::vector<::Primitive> value;);
 
-Json(SetVector, path, value);
+    Json(Set, path, value);
 
-using Vector = ActionVariant<SetVector>;
-} // namespace Action
+    using Any = ActionVariant<Set>;
+);
 
-namespace Action {
-Define(SetMatrix, CustomMerge, "", StorePath path; std::vector<::Primitive> data; Count row_count;);
+DefineActionType(
+    Matrix,
+    DefineAction(Set, CustomMerge, "", StorePath path; std::vector<::Primitive> data; Count row_count;);
 
-Json(SetMatrix, path, data, row_count);
+    Json(Set, path, data, row_count);
 
-using Matrix = ActionVariant<SetMatrix>;
-} // namespace Action
+    using Any = ActionVariant<Set>;
+);

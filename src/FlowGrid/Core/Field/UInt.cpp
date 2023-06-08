@@ -21,7 +21,7 @@ void UInt::Render() const {
     U32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &Min, &Max, "%d");
     UpdateGesturing();
-    if (edited) Action::SetPrimitive{Path, value}.q();
+    if (edited) Action::Primitive::Set{Path, value}.q();
     HelpMarker();
 }
 void UInt::Render(const std::vector<U32> &options) const {
@@ -31,7 +31,7 @@ void UInt::Render(const std::vector<U32> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), ValueName(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(ValueName(option).c_str(), is_selected)) Action::SetPrimitive{Path, option}.q();
+            if (Selectable(ValueName(option).c_str(), is_selected)) Action::Primitive::Set{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -51,7 +51,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     // todo use auto for FG colors (link to ImGui colors)
     if (allow_auto) {
         if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-        if (Button("Auto")) Action::SetPrimitive{Path, is_auto ? mapped_value : AutoColor}.q();
+        if (Button("Auto")) Action::Primitive::Set{Path, is_auto ? mapped_value : AutoColor}.q();
         if (!is_auto) PopStyleVar();
         SameLine();
     }
@@ -67,5 +67,5 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
 
     PopID();
 
-    if (changed) Action::SetPrimitive{Path, ColorConvertFloat4ToU32(value)}.q();
+    if (changed) Action::Primitive::Set{Path, ColorConvertFloat4ToU32(value)}.q();
 }

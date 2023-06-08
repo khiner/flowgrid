@@ -42,12 +42,12 @@ using FlowGridGraphCol = int;
 DefineWindow_(
     FaustGraph,
     Menu({
-        Menu("File", {Action::ShowSaveFaustSvgFileDialog::MenuItem}),
+        Menu("File", {Action::FaustGraph::ShowSaveSvgDialog::MenuItem}),
         Menu("View", {Settings.HoverFlags}),
     }),
 
-    void Apply(const Action::FaustGraph &) const;
-    bool CanApply(const Action::FaustGraph &) const;
+    void Apply(const Action::FaustGraph::Any &) const;
+    bool CanApply(const Action::FaustGraph::Any &) const;
 
     DefineUI_(
         Style,

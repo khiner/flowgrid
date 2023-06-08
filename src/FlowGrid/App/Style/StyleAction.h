@@ -1,15 +1,17 @@
 #pragma once
 
-#include "Core/Action/Action.h"
+#include "Core/Action/DefineAction.h"
 
-namespace Action {
-Define(SetImGuiColorStyle, Merge, "", int id;);
-Define(SetImPlotColorStyle, Merge, "", int id;);
-Define(SetFlowGridColorStyle, Merge, "", int id;);
+DefineActionType(
+    Style,
 
-Json(SetImGuiColorStyle, id);
-Json(SetImPlotColorStyle, id);
-Json(SetFlowGridColorStyle, id);
+    DefineAction(SetImGuiColorPreset, Merge, "", int id;);
+    DefineAction(SetImPlotColorPreset, Merge, "", int id;);
+    DefineAction(SetFlowGridColorPreset, Merge, "", int id;);
 
-using Style = ActionVariant<SetImGuiColorStyle, SetImPlotColorStyle, SetFlowGridColorStyle>;
-} // namespace Action
+    Json(SetImGuiColorPreset, id);
+    Json(SetImPlotColorPreset, id);
+    Json(SetFlowGridColorPreset, id);
+
+    using Any = ActionVariant<SetImGuiColorPreset, SetImPlotColorPreset, SetFlowGridColorPreset>;
+);

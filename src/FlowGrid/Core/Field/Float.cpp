@@ -18,6 +18,6 @@ void Float::Render() const {
     float value = Value;
     const bool edited = DragSpeed > 0 ? DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) : SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
     UpdateGesturing();
-    if (edited) Action::SetPrimitive{Path, value}.q();
+    if (edited) Action::Primitive::Set{Path, value}.q();
     HelpMarker();
 }

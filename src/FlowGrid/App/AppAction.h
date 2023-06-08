@@ -6,6 +6,7 @@
 #include "FileDialog/FileDialogAction.h"
 #include "Style/StyleAction.h"
 
-namespace Action {
-using App = Action::Combine<Primitive, Vector, Matrix, Patch, Audio, FileDialog, Style>::type;
-} // namespace Action
+DefineActionType(
+    App,
+    using Any = Combine<Primitive::Any, Vector::Any, Matrix::Any, Patch::Any, Audio::Any, FileDialog::Any, Style::Any>::type;
+);

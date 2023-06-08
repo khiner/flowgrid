@@ -26,15 +26,15 @@ PrimitiveField::PrimitiveField(Stateful *parent, string_view id, string_view nam
 
 Primitive PrimitiveField::Get() const { return store::Get(Path); }
 
-void PrimitiveField::Apply(const Action::Primitive &action) {
+void PrimitiveField::Apply(const Action::Primitive::Any &action) {
     Match(
         action,
-        [](const Action::SetPrimitives &a) { store::Set(a.values); },
-        [](const Action::SetPrimitive &a) { store::Set(a.path, a.value); },
-        [](const Action::ToggleBool &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path))); },
+        [](const Action::Primitive::SetMany &a) { store::Set(a.values); },
+        [](const Action::Primitive::Set &a) { store::Set(a.path, a.value); },
+        [](const Action::Primitive::ToggleBool &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path))); },
     );
 }
-bool PrimitiveField::CanApply(const Action::Primitive &) { return true; }
+bool PrimitiveField::CanApply(const Action::Primitive::Any &) { return true; }
 
 namespace store {
 void Set(const PrimitiveField &field, const Primitive &value) { store::Set(field.Path, value); }

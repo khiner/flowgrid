@@ -4,7 +4,7 @@
 #include "Core/Field/FieldAction.h"
 #include "UI/UI.h"
 
-static const Menu FileMenu = {"File", {Action::ShowOpenFaustFileDialog::MenuItem, Action::ShowSaveFaustFileDialog::MenuItem}};
+static const Menu FileMenu = {"File", {Action::FaustFile::ShowOpenDialog::MenuItem, Action::FaustFile::ShowSaveDialog::MenuItem}};
 
 using namespace ImGui;
 
@@ -64,7 +64,7 @@ void Faust::FaustEditor::Render() const {
 
     const auto text = editor.GetText();
     if (editor.TextChanged) {
-        Action::SetPrimitive{audio.Faust.Code.Path, text}.q();
+        Action::Primitive::Set{audio.Faust.Code.Path, text}.q();
     } else if (audio.Faust.Code != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
         //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.

@@ -5,11 +5,11 @@
 
 namespace Action {
 // `Any` holds all action types.
-using Any = Action::Combine<Project, App>::type;
-using Stateful = Action::Filter<Action::IsSavable, Any>::type;
-using NonStateful = Action::Filter<Action::IsNotSavable, Any>::type;
+using Any = Combine<Project::Any, App::Any>::type;
+using Stateful = Filter<Action::IsSavable, Any>::type;
+using NonStateful = Filter<Action::IsNotSavable, Any>::type;
 
-// Composite action types.
+// Composite types.
 using ActionMoment = std::pair<Any, TimePoint>;
 using StatefulActionMoment = std::pair<Stateful, TimePoint>;
 using Gesture = std::vector<StatefulActionMoment>;

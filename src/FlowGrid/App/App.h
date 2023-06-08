@@ -21,13 +21,13 @@ DefineUI(
 
     static void OpenRecentProjectMenuItem();
 
-    void Apply(const Action::App &) const;
-    bool CanApply(const Action::App &) const;
+    void Apply(const Action::App::Any &) const;
+    bool CanApply(const Action::App::Any &) const;
 
     const Menu MainMenu{
         {
-            Menu("File", {Action::OpenEmptyProject::MenuItem, Action::ShowOpenProjectDialog::MenuItem, OpenRecentProjectMenuItem, Action::OpenDefaultProject::MenuItem, Action::SaveCurrentProject::MenuItem, Action::SaveDefaultProject::MenuItem}),
-            Menu("Edit", {Action::Undo::MenuItem, Action::Redo::MenuItem}),
+            Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, OpenRecentProjectMenuItem, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),
+            Menu("Edit", {Action::Project::Undo::MenuItem, Action::Project::Redo::MenuItem}),
             Menu(
                 "Windows",
                 {

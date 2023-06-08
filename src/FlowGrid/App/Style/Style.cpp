@@ -13,18 +13,18 @@ std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
 using namespace ImGui;
 
-void Style::Apply(const Action::Style &action) const {
+void Style::Apply(const Action::Style::Any &action) const {
     Match(
         action,
         // todo enum types instead of raw integers
-        [&](const Action::SetImGuiColorStyle &a) {
+        [&](const Action::Style::SetImGuiColorPreset &a) {
             switch (a.id) {
                 case 0: return ImGui.ColorsDark();
                 case 1: return ImGui.ColorsLight();
                 case 2: return ImGui.ColorsClassic();
             }
         },
-        [&](const Action::SetImPlotColorStyle &a) {
+        [&](const Action::Style::SetImPlotColorPreset &a) {
             switch (a.id) {
                 case 0: return ImPlot.ColorsAuto();
                 case 1: return ImPlot.ColorsDark();
@@ -32,7 +32,7 @@ void Style::Apply(const Action::Style &action) const {
                 case 3: return ImPlot.ColorsClassic();
             }
         },
-        [&](const Action::SetFlowGridColorStyle &a) {
+        [&](const Action::Style::SetFlowGridColorPreset &a) {
             switch (a.id) {
                 case 0: return FlowGrid.ColorsDark();
                 case 1: return FlowGrid.ColorsLight();
@@ -42,7 +42,7 @@ void Style::Apply(const Action::Style &action) const {
     );
 }
 
-bool Style::CanApply(const Action::Style &) const { return true; }
+bool Style::CanApply(const Action::Style::Any &) const { return true; }
 
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {
@@ -213,7 +213,7 @@ Style::ImPlotStyle::ImPlotColors::ImPlotColors(Stateful *parent, string_view pat
 
 void Style::ImGuiStyle::Render() const {
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) Action::SetImGuiColorStyle{style_idx}.q();
+    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) Action::Style::SetImGuiColorPreset{style_idx}.q();
 
     const auto &io = GetIO();
     const auto *font_current = GetFont();
@@ -221,7 +221,7 @@ void Style::ImGuiStyle::Render() const {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) Action::SetPrimitive{FontIndex.Path, n}.q();
+            if (Selectable(font->GetDebugName(), font == font_current)) Action::Primitive::Set{FontIndex.Path, n}.q();
             PopID();
         }
         EndCombo();
@@ -230,17 +230,17 @@ void Style::ImGuiStyle::Render() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) Action::SetPrimitive{WindowBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("WindowBorder", &border)) Action::Primitive::Set{WindowBorderSize.Path, border ? 1 : 0}.q();
     }
     SameLine();
     {
         bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) Action::SetPrimitive{FrameBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("FrameBorder", &border)) Action::Primitive::Set{FrameBorderSize.Path, border ? 1 : 0}.q();
     }
     SameLine();
     {
         bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) Action::SetPrimitive{PopupBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("PopupBorder", &border)) Action::Primitive::Set{PopupBorderSize.Path, border ? 1 : 0}.q();
     }
 
     Separator();
@@ -349,7 +349,7 @@ void Style::ImGuiStyle::Render() const {
 
 void Style::ImPlotStyle::Render() const {
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) Action::SetImPlotColorStyle{style_idx}.q();
+    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) Action::Style::SetImPlotColorPreset{style_idx}.q();
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
@@ -397,7 +397,7 @@ void Style::ImPlotStyle::Render() const {
 
 void Style::FlowGridStyle::Render() const {
     static int colors_idx = -1;
-    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) Action::SetFlowGridColorStyle{colors_idx}.q();
+    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) Action::Style::SetFlowGridColorPreset{colors_idx}.q();
     FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {

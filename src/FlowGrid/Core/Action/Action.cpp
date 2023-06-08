@@ -14,13 +14,12 @@ Metadata::Parsed Metadata::ParseMetadata(string_view meta_str) {
     }
     return {"", ""};
 }
-Metadata::Metadata(fs::path type_path, string_view path_suffix, Metadata::Parsed parsed)
-    : TypePath(type_path),
-      PathSuffix(path_suffix),
+Metadata::Metadata(string_view path_suffix, Metadata::Parsed parsed)
+    : PathSuffix(path_suffix),
       Name(StringHelper::PascalToSentenceCase(path_suffix)),
       MenuLabel(parsed.MenuLabel.empty() ? Name : parsed.MenuLabel),
       Shortcut(parsed.Shortcut) {}
 
-Metadata::Metadata(fs::path type_path, string_view path_suffix, string_view meta_str)
-    : Metadata(type_path, path_suffix, ParseMetadata(meta_str)) {}
+Metadata::Metadata(string_view path_suffix, string_view meta_str)
+    : Metadata(path_suffix, ParseMetadata(meta_str)) {}
 } // namespace Action

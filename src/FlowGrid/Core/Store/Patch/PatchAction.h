@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Core/Action/Action.h"
+#include "Core/Action/DefineAction.h"
 #include "PatchJson.h"
 
-namespace Action {
-Define(ApplyPatch, CustomMerge, "", Patch patch;);
+DefineActionType(
+    Patch,
+    DefineAction(Apply, CustomMerge, "", ::Patch patch;);
+    Json(Apply, patch);
 
-Json(ApplyPatch, patch);
-
-using Patch = ActionVariant<ApplyPatch>;
-} // namespace Action
+    using Any = ActionVariant<Apply>;
+);

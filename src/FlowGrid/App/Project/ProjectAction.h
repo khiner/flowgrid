@@ -1,25 +1,26 @@
 #pragma once
 
-#include "Core/Action/Action.h"
+#include "Core/Action/DefineAction.h"
 
-namespace Action {
-Define(ShowOpenProjectDialog, Merge, "~Open project@cmd+o");
-Define(ShowSaveProjectDialog, Merge, "~Save project as...@shift+cmd+s");
+DefineActionType(
+    Project,
+    DefineAction(ShowOpenDialog, Merge, "~Open project@cmd+o");
+    DefineAction(ShowSaveDialog, Merge, "~Save project as...@shift+cmd+s");
 
-Json(ShowOpenProjectDialog);
-Json(ShowSaveProjectDialog);
+    Json(ShowOpenDialog);
+    Json(ShowSaveDialog);
 
-DefineUnsaved(Undo, NoMerge, "@cmd+z");
-DefineUnsaved(Redo, NoMerge, "@shift+cmd+z");
-DefineUnsaved(SetHistoryIndex, NoMerge, "", int index;);
-DefineUnsaved(OpenProject, NoMerge, "", std::string path;);
-DefineUnsaved(OpenEmptyProject, NoMerge, "~New project@cmd+n");
-DefineUnsaved(OpenDefaultProject, NoMerge, "@shift+cmd+o");
-DefineUnsaved(SaveProject, NoMerge, "", std::string path;);
-DefineUnsaved(SaveDefaultProject, NoMerge, "");
-DefineUnsaved(SaveCurrentProject, NoMerge, "~Save project@cmd+s");
+    DefineActionUnsaved(Undo, NoMerge, "@cmd+z");
+    DefineActionUnsaved(Redo, NoMerge, "@shift+cmd+z");
+    DefineActionUnsaved(SetHistoryIndex, NoMerge, "", int index;);
+    DefineActionUnsaved(Open, NoMerge, "", std::string path;);
+    DefineActionUnsaved(OpenEmpty, NoMerge, "~New project@cmd+n");
+    DefineActionUnsaved(OpenDefault, NoMerge, "@shift+cmd+o");
+    DefineActionUnsaved(Save, NoMerge, "", std::string path;);
+    DefineActionUnsaved(SaveDefault, NoMerge, "");
+    DefineActionUnsaved(SaveCurrent, NoMerge, "~Save project@cmd+s");
 
-using Project = ActionVariant<
-    Undo, Redo, SetHistoryIndex,
-    OpenProject, OpenEmptyProject, OpenDefaultProject, SaveProject, SaveDefaultProject, SaveCurrentProject, ShowOpenProjectDialog, ShowSaveProjectDialog>;
-} // namespace Action
+    using Any = ActionVariant<
+        Undo, Redo, SetHistoryIndex,
+        Open, OpenEmpty, OpenDefault, Save, SaveDefault, SaveCurrent, ShowOpenDialog, ShowSaveDialog>;
+);

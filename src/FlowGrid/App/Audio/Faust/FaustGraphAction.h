@@ -1,17 +1,18 @@
 #pragma once
 
-#include "Core/Action/Action.h"
+#include "Core/Action/DefineAction.h"
 
-namespace Action {
-Define(SetGraphColorStyle, Merge, "", int id;);
-Define(SetGraphLayoutStyle, Merge, "", int id;);
-Define(ShowSaveFaustSvgFileDialog, Merge, "~Export SVG");
+DefineActionType(
+    FaustGraph,
+    DefineAction(SetColorStyle, Merge, "", int id;);
+    DefineAction(SetLayoutStyle, Merge, "", int id;);
+    DefineAction(ShowSaveSvgDialog, Merge, "~Export SVG");
 
-Json(SetGraphColorStyle, id);
-Json(SetGraphLayoutStyle, id);
-Json(ShowSaveFaustSvgFileDialog);
+    Json(SetColorStyle, id);
+    Json(SetLayoutStyle, id);
+    Json(ShowSaveSvgDialog);
 
-DefineUnsaved(SaveFaustSvgFile, NoMerge, "", std::string path;);
+    DefineActionUnsaved(SaveSvgFile, NoMerge, "", std::string path;);
 
-using FaustGraph = ActionVariant<SetGraphColorStyle, SetGraphLayoutStyle, ShowSaveFaustSvgFileDialog, SaveFaustSvgFile>;
-} // namespace Action
+    using Any = ActionVariant<SetColorStyle, SetLayoutStyle, ShowSaveSvgDialog, SaveSvgFile>;
+);

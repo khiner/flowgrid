@@ -1,7 +1,7 @@
 #include "AudioAction.h"
 
 namespace Action {
-std::variant<OpenFaustFile, bool> OpenFaustFile::Merge(const OpenFaustFile &other) const {
+std::variant<FaustFile::Open, bool> FaustFile::Open::Merge(const FaustFile::Open &other) const {
     if (path == other.path) return other;
     return false;
 }

@@ -1227,10 +1227,10 @@ void SaveBoxSvg(string_view path) {
 
 bool IsBoxHovered(ID imgui_id) { return Node::WithId[imgui_id] != nullptr; }
 
-void FaustGraph::Apply(const Action::FaustGraph &action) const {
+void FaustGraph::Apply(const Action::FaustGraph::Any &action) const {
     Match(
         action,
-        [&](const Action::SetGraphColorStyle &a) {
+        [&](const Action::FaustGraph::SetColorStyle &a) {
             switch (a.id) {
                 case 0: return Style.ColorsDark();
                 case 1: return Style.ColorsLight();
@@ -1238,19 +1238,19 @@ void FaustGraph::Apply(const Action::FaustGraph &action) const {
                 case 3: return Style.ColorsFaust();
             }
         },
-        [&](const Action::SetGraphLayoutStyle &a) {
+        [&](const Action::FaustGraph::SetLayoutStyle &a) {
             switch (a.id) {
                 case 0: return Style.LayoutFlowGrid();
                 case 1: return Style.LayoutFaust();
             }
         },
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
-        [](const Action::ShowSaveFaustSvgFileDialog &) { file_dialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
-        [](const Action::SaveFaustSvgFile &a) { SaveBoxSvg(a.path); },
+        [](const Action::FaustGraph::ShowSaveSvgDialog &) { file_dialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
+        [](const Action::FaustGraph::SaveSvgFile &a) { SaveBoxSvg(a.path); },
     );
 }
 
-bool FaustGraph::CanApply(const Action::FaustGraph &) const { return true; }
+bool FaustGraph::CanApply(const Action::FaustGraph::Any &) const { return true; }
 
 void FaustGraph::Render() const {
     if (!RootNode) {
@@ -1263,7 +1263,7 @@ void FaustGraph::Render() const {
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
         const fs::path selected_path = string(file_dialog.SelectedFilePath);
         const string &extension = selected_path.extension();
-        if (extension == SvgFileExtension && file_dialog.SaveMode) Action::SaveFaustSvgFile{selected_path}.q();
+        if (extension == SvgFileExtension && file_dialog.SaveMode) Action::FaustGraph::SaveSvgFile{selected_path}.q();
         PrevSelectedPath = selected_path;
     }
 
@@ -1449,7 +1449,7 @@ void FaustGraph::Style::Render() const {
     if (BeginTabBar(ImGuiLabel.c_str(), ImGuiTabBarFlags_None)) {
         if (BeginTabItem("Layout")) {
             static int graph_layout_idx = -1;
-            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) Action::SetGraphLayoutStyle{graph_layout_idx}.q();
+            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) Action::FaustGraph::SetLayoutStyle{graph_layout_idx}.q();
 
             FoldComplexity.Draw();
             const bool scale_fill = ScaleFillHeight;
@@ -1497,7 +1497,7 @@ void FaustGraph::Style::Render() const {
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str())) {
             static int graph_colors_idx = -1;
-            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) Action::SetGraphColorStyle{graph_colors_idx}.q();
+            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) Action::FaustGraph::SetColorStyle{graph_colors_idx}.q();
 
             Colors.Draw();
             EndTabItem();

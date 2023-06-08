@@ -14,27 +14,27 @@
 namespace views = ranges::views;
 using namespace nlohmann;
 
-void FileDialog::Apply(const Action::FileDialog &action) const {
+void FileDialog::Apply(const Action::FileDialog::Any &action) const {
     Match(
         action,
-        [&](const Action::FileDialogOpen &a) { this->Set(json::parse(a.dialog_json)); },
-        [&](const Action::FileDialogSelect &a) {
+        [&](const Action::FileDialog::Open &a) { this->Set(json::parse(a.dialog_json)); },
+        [&](const Action::FileDialog::Select &a) {
             store::Set(Visible, false);
             store::Set(SelectedFilePath, a.file_path);
         },
-        [&](const Action::FileDialogCancel &) {
+        [&](const Action::FileDialog::Cancel &) {
             store::Set(Visible, false);
             store::Set(SelectedFilePath, "");
         },
     );
 }
 
-bool FileDialog::CanApply(const Action::FileDialog &action) const {
+bool FileDialog::CanApply(const Action::FileDialog::Any &action) const {
     return Match(
         action,
-        [](const Action::FileDialogOpen &) { return !file_dialog.Visible; },
-        [](const Action::FileDialogSelect &) { return bool(file_dialog.Visible); },
-        [](const Action::FileDialogCancel &) { return bool(file_dialog.Visible); },
+        [](const Action::FileDialog::Open &) { return !file_dialog.Visible; },
+        [](const Action::FileDialog::Select &) { return bool(file_dialog.Visible); },
+        [](const Action::FileDialog::Cancel &) { return bool(file_dialog.Visible); },
     );
 }
 
@@ -53,7 +53,7 @@ void FileDialog::Set(const FileDialogData &data) const {
     );
 }
 
-static void OpenDialog(const FileDialogData &data) { Action::FileDialogOpen{json(data).dump()}.q(); }
+static void OpenDialog(const FileDialogData &data) { Action::FileDialog::Open{json(data).dump()}.q(); }
 
 using namespace ImGui;
 
@@ -142,8 +142,8 @@ void FileDialog::Render() const {
     else flags &= ~ImGuiFileDialogFlags_ConfirmOverwrite;
     Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
-        if (Dialog->IsOk()) Action::FileDialogSelect{Dialog->GetFilePathName()}.q(true);
-        else Action::FileDialogCancel{}.q(true);
+        if (Dialog->IsOk()) Action::FileDialog::Select{Dialog->GetFilePathName()}.q(true);
+        else Action::FileDialog::Cancel{}.q(true);
     }
 }
 

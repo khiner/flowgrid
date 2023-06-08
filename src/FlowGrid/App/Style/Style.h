@@ -24,8 +24,8 @@ namespace FlowGrid {
 struct Style : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    void Apply(const Action::Style &) const;
-    bool CanApply(const Action::Style &) const;
+    void Apply(const Action::Style::Any &) const;
+    bool CanApply(const Action::Style::Any &) const;
 
     DefineUI_(
         FlowGridStyle,

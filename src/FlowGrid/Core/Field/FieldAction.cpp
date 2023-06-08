@@ -4,18 +4,18 @@
 #include <range/v3/view/concat.hpp>
 
 namespace Action {
-std::variant<SetPrimitive, bool> SetPrimitive::Merge(const SetPrimitive &other) const {
+std::variant<Primitive::Set, bool> Primitive::Set::Merge(const Primitive::Set &other) const {
     if (path == other.path) return other;
     return false;
 }
-std::variant<SetPrimitives, bool> SetPrimitives::Merge(const SetPrimitives &other) const {
-    return SetPrimitives{ranges::views::concat(values, other.values) | ranges::to<std::vector>};
+std::variant<Primitive::SetMany, bool> Primitive::SetMany::Merge(const Primitive::SetMany &other) const {
+    return Primitive::SetMany{ranges::views::concat(values, other.values) | ranges::to<std::vector>};
 }
-std::variant<SetVector, bool> SetVector::Merge(const SetVector &other) const {
+std::variant<Vector::Set, bool> Vector::Set::Merge(const Vector::Set &other) const {
     if (path == other.path) return other;
     return false;
 }
-std::variant<SetMatrix, bool> SetMatrix::Merge(const SetMatrix &other) const {
+std::variant<Matrix::Set, bool> Matrix::Set::Merge(const Matrix::Set &other) const {
     if (path == other.path) return other;
     return false;
 }

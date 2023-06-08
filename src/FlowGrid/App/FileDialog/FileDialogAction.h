@@ -1,15 +1,17 @@
 #pragma once
 
-#include "Core/Action/Action.h"
+#include "Core/Action/DefineAction.h"
 
-namespace Action {
-Define(FileDialogOpen, Merge, "", std::string dialog_json;);
-Define(FileDialogSelect, NoMerge, "", fs::path file_path;);
-Define(FileDialogCancel, Merge, "");
+DefineActionType(
+    FileDialog,
 
-Json(FileDialogOpen, dialog_json);
-Json(FileDialogSelect, file_path);
-Json(FileDialogCancel);
+    DefineAction(Open, Merge, "", std::string dialog_json;);
+    DefineAction(Select, NoMerge, "", fs::path file_path;);
+    DefineAction(Cancel, Merge, "");
 
-using FileDialog = ActionVariant<FileDialogOpen, FileDialogSelect, FileDialogCancel>;
-} // namespace Action
+    Json(Open, dialog_json);
+    Json(Select, file_path);
+    Json(Cancel);
+
+    using Any = ActionVariant<Open, Select, Cancel>;
+);

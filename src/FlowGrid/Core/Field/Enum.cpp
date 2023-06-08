@@ -24,7 +24,7 @@ void Enum::Render(const std::vector<int> &options) const {
         for (int option : options) {
             const bool is_selected = option == value;
             const auto &name = OptionName(option);
-            if (Selectable(name.c_str(), is_selected)) Action::SetPrimitive{Path, option}.q();
+            if (Selectable(name.c_str(), is_selected)) Action::Primitive::Set{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -37,7 +37,7 @@ void Enum::MenuItem() const {
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (Count i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
-            if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) Action::SetPrimitive{Path, int(i)}.q();
+            if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) Action::Primitive::Set{Path, int(i)}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();

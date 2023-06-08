@@ -3,7 +3,6 @@
 #include "nlohmann/json.hpp"
 
 #include "Patch/Patch.h"
-#include "StoreEntries.h"
 
 struct Store;
 
@@ -26,7 +25,7 @@ Primitive Get(const StorePath &);
 Count CountAt(const StorePath &);
 
 void Set(const StorePath &, const Primitive &);
-void Set(const StoreEntries &);
+void Set(const std::vector<std::pair<StorePath, Primitive>> &);
 void Set(const StorePath &, const std::vector<Primitive> &);
 void Set(const StorePath &, const std::vector<Primitive> &, Count row_count); // For `SetMatrix` action.
 

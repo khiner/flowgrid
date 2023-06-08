@@ -26,7 +26,7 @@ nlohmann::json GetJson() { return GetJson(AppStore); }
 
 Store JsonToStore(const nlohmann::json &j) {
     const auto &flattened = j.flatten();
-    StoreEntries entries(flattened.size());
+    std::vector<std::pair<StorePath, Primitive>> entries(flattened.size());
     int item_index = 0;
     for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
 
@@ -121,7 +121,7 @@ void ApplyPatch(const Patch &patch) {
     }
 }
 
-void Set(const StoreEntries &values) {
+void Set(const std::vector<std::pair<StorePath, Primitive>> &values) {
     for (const auto &[path, value] : values) Set(path, value);
 }
 void Set(const StorePath &path, const vector<Primitive> &values) {

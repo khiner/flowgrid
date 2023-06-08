@@ -1,13 +1,12 @@
 #pragma once
 
 #include "Core/Action/Action.h"
-#include "Core/Store/StoreEntries.h"
 
 #include "Core/Store/Patch/PatchAction.h" // xxx only needed for path json conversion, which should be moved out.
 
 namespace Action {
 Define(SetPrimitive, 1, CustomMerge, "", StorePath path; Primitive value;);
-Define(SetPrimitives, 1, CustomMerge, "", StoreEntries values;);
+Define(SetPrimitives, 1, CustomMerge, "", std::vector<std::pair<StorePath, Primitive>> values;);
 Define(ToggleBool, 1, NoMerge, "", StorePath path;);
 
 Json(SetPrimitive, path, value);

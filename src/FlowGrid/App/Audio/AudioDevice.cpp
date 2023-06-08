@@ -91,7 +91,7 @@ void AudioDevice::Init(AudioDevice::Callback callback) const {
         NativeSampleRates.emplace_back(native_format.sampleRate);
     }
 
-    StoreEntries initial_settings;
+    std::vector<std::pair<StorePath, Primitive>> initial_settings;
     if (MaDevice.capture.name != InDeviceName) initial_settings.emplace_back(InDeviceName.Path, MaDevice.capture.name);
     if (MaDevice.playback.name != OutDeviceName) initial_settings.emplace_back(OutDeviceName.Path, MaDevice.playback.name);
     if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, MaDevice.capture.format);

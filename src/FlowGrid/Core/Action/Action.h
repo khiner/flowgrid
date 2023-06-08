@@ -68,7 +68,7 @@ private:
   - `Merge`: Can be merged with any other action of the same type.
   - `CustomMerge`: Override the action type's `Merge` function with a custom implementation.
 */
-#define Define(ActionType, is_savable, merge_type, meta_str, ...)            \
+#define DefineInternal(ActionType, is_savable, merge_type, meta_str, ...)    \
     struct ActionType {                                                      \
         inline static const Metadata _Meta{"", #ActionType, meta_str};       \
         static constexpr bool IsSavable = is_savable;                        \
@@ -81,6 +81,11 @@ private:
         MergeType_##merge_type(ActionType);                                  \
         __VA_ARGS__;                                                         \
     };
+
+#define Define(ActionType, merge_type, meta_str, ...) \
+    DefineInternal(ActionType, 1, merge_type, meta_str, __VA_ARGS__)
+#define DefineUnsaved(ActionType, merge_type, meta_str, ...) \
+    DefineInternal(ActionType, 0, merge_type, meta_str, __VA_ARGS__)
 
 template<typename T>
 concept IsActionable = requires() {

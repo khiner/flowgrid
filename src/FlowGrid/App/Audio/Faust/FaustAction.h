@@ -3,14 +3,15 @@
 #include "FaustGraphAction.h"
 
 namespace Action {
-Define(ShowOpenFaustFileDialog, 1, Merge, "~Open DSP file");
-Define(ShowSaveFaustFileDialog, 1, Merge, "~Save DSP as...");
-Define(SaveFaustFile, 0, NoMerge, "", std::string path;);
-Define(OpenFaustFile, 1, CustomMerge, "", std::string path;);
+Define(ShowOpenFaustFileDialog, Merge, "~Open DSP file");
+Define(ShowSaveFaustFileDialog, Merge, "~Save DSP as...");
+Define(OpenFaustFile, CustomMerge, "", std::string path;);
 
 Json(OpenFaustFile, path);
 Json(ShowOpenFaustFileDialog);
 Json(ShowSaveFaustFileDialog);
+
+DefineUnsaved(SaveFaustFile, NoMerge, "", std::string path;);
 
 using FaustFile = ActionVariant<ShowOpenFaustFileDialog, ShowSaveFaustFileDialog, SaveFaustFile, OpenFaustFile>;
 using Faust = Combine<FaustFile, FaustGraph>::type;

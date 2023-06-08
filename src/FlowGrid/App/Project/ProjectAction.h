@@ -4,22 +4,21 @@
 #include "Core/Json.h"
 
 namespace Action {
-Define(Undo, 0, NoMerge, "@cmd+z");
-Define(Redo, 0, NoMerge, "@shift+cmd+z");
-Define(SetHistoryIndex, 0, NoMerge, "", int index;);
-Define(OpenProject, 0, NoMerge, "", std::string path;);
-Define(OpenEmptyProject, 0, NoMerge, "~New project@cmd+n");
-Define(OpenDefaultProject, 0, NoMerge, "@shift+cmd+o");
-Define(SaveProject, 0, NoMerge, "", std::string path;);
-Define(SaveDefaultProject, 0, NoMerge, "");
-Define(SaveCurrentProject, 0, NoMerge, "~Save project@cmd+s");
-Define(ShowOpenProjectDialog, 1, Merge, "~Open project@cmd+o");
-Define(ShowSaveProjectDialog, 1, Merge, "~Save project as...@shift+cmd+s");
+Define(ShowOpenProjectDialog, Merge, "~Open project@cmd+o");
+Define(ShowSaveProjectDialog, Merge, "~Save project as...@shift+cmd+s");
 
-// Define json converters for stateful actions (ones that can be saved to a project)
-// todo should be done for all actions that are `Saveable`.
 Json(ShowOpenProjectDialog);
 Json(ShowSaveProjectDialog);
+
+DefineUnsaved(Undo, NoMerge, "@cmd+z");
+DefineUnsaved(Redo, NoMerge, "@shift+cmd+z");
+DefineUnsaved(SetHistoryIndex, NoMerge, "", int index;);
+DefineUnsaved(OpenProject, NoMerge, "", std::string path;);
+DefineUnsaved(OpenEmptyProject, NoMerge, "~New project@cmd+n");
+DefineUnsaved(OpenDefaultProject, NoMerge, "@shift+cmd+o");
+DefineUnsaved(SaveProject, NoMerge, "", std::string path;);
+DefineUnsaved(SaveDefaultProject, NoMerge, "");
+DefineUnsaved(SaveCurrentProject, NoMerge, "~Save project@cmd+s");
 
 using Project = ActionVariant<
     Undo, Redo, SetHistoryIndex,

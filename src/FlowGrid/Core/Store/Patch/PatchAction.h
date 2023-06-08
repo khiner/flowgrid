@@ -4,7 +4,7 @@
 #include "PatchJson.h"
 
 namespace Action {
-Define(ApplyPatch, 1, CustomMerge, "", Patch patch;);
+Define(ApplyPatch, CustomMerge, "", Patch patch;);
 
 Json(ApplyPatch, patch);
 

@@ -90,10 +90,10 @@ todo Try out replacing semicolon separators by e.g. commas.
 #define Prop(PropType, PropName, ...) PropType PropName{this, (#PropName), "", __VA_ARGS__};
 #define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, (#PropName), (NameHelp), __VA_ARGS__};
 
-#define DefineStateful(TypeName, ...)  \
-    struct TypeName : Stateful { \
-        using Stateful::Stateful;    \
-        __VA_ARGS__;                   \
+#define DefineStateful(TypeName, ...) \
+    struct TypeName : Stateful {      \
+        using Stateful::Stateful;     \
+        __VA_ARGS__;                  \
     };
 
 struct UIStateful : Stateful, Drawable {
@@ -110,11 +110,11 @@ struct UIStateful : Stateful, Drawable {
         void Render() const override; \
     };
 
-#define DefineUI_(TypeName, ...)                                                                \
-    struct TypeName : UIStateful {                                                              \
+#define DefineUI_(TypeName, ...)                                                          \
+    struct TypeName : UIStateful {                                                        \
         TypeName(Stateful *parent, string_view path_segment, string_view name_help = ""); \
-        __VA_ARGS__;                                                                            \
-                                                                                                \
-    protected:                                                                                  \
-        void Render() const override;                                                           \
+        __VA_ARGS__;                                                                      \
+                                                                                          \
+    protected:                                                                            \
+        void Render() const override;                                                     \
     };

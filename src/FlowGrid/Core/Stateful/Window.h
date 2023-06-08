@@ -57,23 +57,23 @@ struct Window : UIStateful, MenuItemDrawable {
     const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 };
 
-#define DefineWindow(TypeName, ...)      \
-    struct TypeName : Window { \
-        using Window::Window;  \
-        __VA_ARGS__;                     \
-                                         \
-    protected:                           \
-        void Render() const override;    \
+#define DefineWindow(TypeName, ...)   \
+    struct TypeName : Window {        \
+        using Window::Window;         \
+        __VA_ARGS__;                  \
+                                      \
+    protected:                        \
+        void Render() const override; \
     };
 
-#define DefineWindow_(TypeName, VisibleOrMenu, ...)                                            \
-    struct TypeName : Window {                                                       \
+#define DefineWindow_(TypeName, VisibleOrMenu, ...)                                      \
+    struct TypeName : Window {                                                           \
         TypeName(Stateful *parent, string_view path_segment, string_view name_help = "") \
-            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}            \
-        __VA_ARGS__;                                                                           \
-                                                                                               \
-    protected:                                                                                 \
-        void Render() const override;                                                          \
+            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}                \
+        __VA_ARGS__;                                                                     \
+                                                                                         \
+    protected:                                                                           \
+        void Render() const override;                                                    \
     };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.

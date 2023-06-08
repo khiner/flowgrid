@@ -4,9 +4,9 @@
 #include "Core/Json.h"
 
 namespace Action {
-Define(SetImGuiColorStyle, 1, Merge, "", int id;);
-Define(SetImPlotColorStyle, 1, Merge, "", int id;);
-Define(SetFlowGridColorStyle, 1, Merge, "", int id;);
+Define(SetImGuiColorStyle, Merge, "", int id;);
+Define(SetImPlotColorStyle, Merge, "", int id;);
+Define(SetFlowGridColorStyle, Merge, "", int id;);
 
 Json(SetImGuiColorStyle, id);
 Json(SetImPlotColorStyle, id);

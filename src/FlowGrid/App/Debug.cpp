@@ -135,12 +135,12 @@ void Debug::ProjectPreview::Render() const {
 void ShowGesture(const Gesture &gesture) {
     for (Count action_index = 0; action_index < gesture.size(); action_index++) {
         const auto &[action, time] = gesture[action_index];
-        JsonTree(
-            std::format("{}: {}", action.GetName(), date::format("%Y-%m-%d %T", time).c_str()),
-            json(action)[1],
-            JsonTreeNodeFlags_None,
-            to_string(action_index).c_str()
-        );
+        if (TreeNodeEx(to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
+            BulletText("Time: %s", date::format("%Y-%m-%d %T", time).c_str());
+            const json data = json(action)[1];
+            if (!data.is_null()) JsonTree("Data", data, JsonTreeNodeFlags_DefaultOpen);
+            TreePop();
+        }
     }
 }
 

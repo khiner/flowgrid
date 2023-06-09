@@ -97,6 +97,9 @@ struct ActionVariant : std::variant<T...> {
     const std::string &GetName() const {
         return Call([](auto &a) -> const std::string & { return a.GetName(); });
     }
+    fs::path GetPath() const {
+        return Call([](auto &a) { return a.GetPath(); });
+    }
     bool IsSavable() const {
         return Call([](auto &a) { return a.IsSavable; });
     }

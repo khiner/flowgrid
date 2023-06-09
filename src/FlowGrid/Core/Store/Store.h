@@ -3,10 +3,14 @@
 #include "nlohmann/json.hpp"
 
 #include "Patch/Patch.h"
+#include "StoreAction.h"
 
 struct Store;
 
 namespace store {
+void Apply(const Action::Store::Any &);
+bool CanApply(const Action::Store::Any &);
+
 void BeginTransient(); // End transient mode with `Commit`.
 
 const Store &Get(); // Get a read-only reference to the canonical application store.
@@ -38,7 +42,4 @@ Patch CreatePatch(const Store &, const StorePath &base_path = RootPath);
 // Create a patch comparing the current transient store with the current persistent store.
 // **Stops transient mode.**
 Patch CreatePatch(const StorePath &base_path = RootPath);
-
-void ApplyPatch(const Patch &);
-
 } // namespace store

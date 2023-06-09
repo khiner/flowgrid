@@ -2,6 +2,13 @@
 
 #include "Core/Store/Store.h"
 
+void VectorBase::Apply(const Action::Vector::Any &action) {
+    Match(
+        action,
+        [](const Action::Vector::Set &a) { store::Set(a.path, a.value); },
+    );
+}
+
 template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &values) const {
     Count i = 0;
     while (i < values.size()) {

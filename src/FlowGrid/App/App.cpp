@@ -24,20 +24,17 @@ using namespace FlowGrid;
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
+// using Any = Combine<Primitive::Any, Vector::Any, Matrix::Any, Store::Any, Audio::Any, FileDialog::Any, Style::Any>::type;
 void App::Apply(const Action::App::Any &action) const {
     Match(
         action,
-        [](const Action::Primitive::Any &a) {
-            PrimitiveField::Apply(a); 
-            },
-        [](const Action::Vector::Set &a) { store::Set(a.path, a.value); },
-        [](const Action::Matrix::Set &a) { store::Set(a.path, a.data, a.row_count); },
-        [](const Action::Patch::Apply &a) {
-            store::ApplyPatch(a.patch);
-            },
+        [](const Action::Primitive::Any &a) { PrimitiveField::Apply(a); },
+        [](const Action::Vector::Any &a) { VectorBase::Apply(a); },
+        [](const Action::Matrix::Any &a) { MatrixBase::Apply(a); },
+        [](const Action::Store::Any &a) { store::Apply(a); },
+        [&](const Action::Audio::Any &a) { Audio.Apply(a); },
         [&](const Action::FileDialog::Any &a) { FileDialog.Apply(a); },
         [&](const Action::Style::Any &a) { Style.Apply(a); },
-        [&](const Action::Audio::Any &a) { Audio.Apply(a); },
     );
 }
 
@@ -45,12 +42,28 @@ bool App::CanApply(const Action::App::Any &action) const {
     return Match(
         action,
         [](const Action::Primitive::Any &a) { return PrimitiveField::CanApply(a); },
-        [](const Action::Vector::Set &) { return true; },
-        [](const Action::Matrix::Set &) { return true; },
-        [](const Action::Patch::Apply &) { return true; },
+        [](const Action::Vector::Any &a) { return VectorBase::CanApply(a); },
+        [](const Action::Matrix::Any &a) { return MatrixBase::CanApply(a); },
+        [](const Action::Store::Any &a) { return store::CanApply(a); },
+        [&](const Action::Audio::Any &a) { return Audio.CanApply(a); },
         [&](const Action::FileDialog::Any &a) { return FileDialog.CanApply(a); },
         [&](const Action::Style::Any &a) { return Style.CanApply(a); },
-        [&](const Action::Audio::Any &a) { return Audio.CanApply(a); },
+    );
+}
+
+void Apply(const Action::Stateful &action) {
+    Match(
+        action,
+        [&](const Action::App::Any &a) { app.Apply(a); },
+        [&](const Action::Project::Any &a) { Project::Apply(a); },
+    );
+}
+
+void Apply(const Action::Any &action) {
+    Match(
+        action,
+        [](const Action::App::Any &a) { app.Apply(a); },
+        [](const Action::Project::Any &a) { Project::Apply(a); },
     );
 }
 
@@ -58,19 +71,7 @@ bool CanApply(const Action::Any &action) {
     return Match(
         action,
         [](const Action::App::Any &a) { return app.CanApply(a); },
-        [](const Action::Project::Any &a) {
-            return Match(
-                a,
-                [](const Action::Project::Undo &) { return History.CanUndo(); },
-                [](const Action::Project::Redo &) { return History.CanRedo(); },
-                [](const Action::Project::Save &) { return !History.Empty(); },
-                [](const Action::Project::SaveDefault &) { return !History.Empty(); },
-                [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
-                [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
-                [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
-                [](const auto &) { return true; },
-            );
-        },
+        [](const Action::Project::Any &a) { return Project::CanApply(a); },
     );
 }
 
@@ -217,7 +218,7 @@ std::optional<ProjectJsonFormat> GetProjectJsonFormat(const fs::path &path) {
     return ProjectJsonFormatForExtension.at(ext);
 }
 
-bool SaveProject(const fs::path &path) {
+bool Project::Save(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
 
@@ -231,9 +232,7 @@ bool SaveProject(const fs::path &path) {
     return true;
 }
 
-void Project::SaveEmptyProject() { SaveProject(EmptyProjectPath); }
-
-void OpenProject(const fs::path &); // Defined below.
+void Project::SaveEmpty() { Save(EmptyProjectPath); }
 
 void OnPatch(const Patch &patch) {
     if (patch.Empty()) return;
@@ -274,19 +273,19 @@ void Project::Init() {
     Field::IsGesturing = false;
 }
 
-void Apply(const Action::Project::Any &action) {
+void Project::Apply(const Action::Project::Any &action) {
     Match(
         action,
         [](const Action::Project::ShowOpenDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [](const Action::Project::ShowSaveDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
-        [](const Action::Project::OpenEmpty &) { OpenProject(EmptyProjectPath); },
-        [](const Action::Project::Open &a) { OpenProject(a.path); },
-        [](const Action::Project::OpenDefault &) { OpenProject(DefaultProjectPath); },
+        [](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
+        [](const Action::Project::Open &a) { Open(a.path); },
+        [](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
 
-        [](const Action::Project::Save &a) { SaveProject(a.path); },
-        [](const Action::Project::SaveDefault &) { SaveProject(DefaultProjectPath); },
+        [](const Action::Project::Save &a) { Save(a.path); },
+        [](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
         [](const Action::Project::SaveCurrent &) {
-            if (CurrentProjectPath) SaveProject(*CurrentProjectPath);
+            if (CurrentProjectPath) Save(*CurrentProjectPath);
         },
         // History-changing actions:
         [](const Action::Project::Undo &) {
@@ -309,15 +308,21 @@ void Apply(const Action::Project::Any &action) {
     );
 }
 
-void Apply(const Action::Stateful &action) {
-    Match(
+bool Project::CanApply(const Action::Project::Any &action) {
+    return Match(
         action,
-        [&](const Action::App::Any &a) { app.Apply(a); },
-        [&](const Action::Project::Any &a) { Apply(a); },
+        [](const Action::Project::Undo &) { return History.CanUndo(); },
+        [](const Action::Project::Redo &) { return History.CanRedo(); },
+        [](const Action::Project::Save &) { return !History.Empty(); },
+        [](const Action::Project::SaveDefault &) { return !History.Empty(); },
+        [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
+        [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
+        [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
+        [](const auto &) { return true; },
     );
 }
 
-void OpenProject(const fs::path &path) {
+void Project::Open(const fs::path &path) {
     const auto format = GetProjectJsonFormat(path);
     if (!format) return; // TODO log
 
@@ -328,12 +333,12 @@ void OpenProject(const fs::path &path) {
         OnPatch(store::CheckedSetJson(project));
         History = {};
     } else if (format == ActionFormat) {
-        OpenProject(EmptyProjectPath);
+        Open(EmptyProjectPath); // Intentional recursive call.
 
         const StoreHistory::IndexedGestures indexed_gestures = project;
         store::BeginTransient();
         for (const auto &gesture : indexed_gestures.Gestures) {
-            for (const auto &action_moment : gesture) Apply(action_moment.first);
+            for (const auto &action_moment : gesture) ::Apply(action_moment.first);
             History.AddTransient(gesture);
         }
         OnPatch(store::CheckedCommit());
@@ -352,7 +357,7 @@ void OpenProject(const fs::path &path) {
 using Action::ActionMoment, Action::StatefulActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
-void Project::RunQueuedActions(bool force_finalize_gesture) {
+void RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
     static vector<StatefulActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     stateful_actions.clear();
@@ -375,11 +380,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
         // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
         else if (!stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
 
-        Match(
-            action,
-            [](const Action::App::Any &a) { app.Apply(a); },
-            [](const Action::Project::Any &a) { Apply(a); },
-        );
+        Apply(action);
 
         Match(
             action,
@@ -403,7 +404,7 @@ void Project::RunQueuedActions(bool force_finalize_gesture) {
 
 void q(const Action::Any &&action, bool flush) {
     ActionQueue.enqueue({action, Clock::now()});
-    if (flush) Project::RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
+    if (flush) RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
 }
 
 #define DefineQ(ActionType)                                                                                          \
@@ -430,7 +431,7 @@ DefineQ(Primitive::Set);
 DefineQ(Primitive::SetMany);
 DefineQ(Vector::Set);
 DefineQ(Matrix::Set);
-DefineQ(Patch::Apply);
+DefineQ(Store::ApplyPatch);
 DefineQ(Style::SetImGuiColorPreset);
 DefineQ(Style::SetImPlotColorPreset);
 DefineQ(Style::SetFlowGridColorPreset);

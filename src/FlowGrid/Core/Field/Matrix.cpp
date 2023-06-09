@@ -2,6 +2,13 @@
 
 #include "Core/Store/Store.h"
 
+void MatrixBase::Apply(const Action::Matrix::Any &action) {
+    Match(
+        action,
+        [](const Action::Matrix::Set &a) { store::Set(a.path, a.data, a.row_count); },
+    );
+}
+
 template<IsPrimitive T> void Matrix<T>::Update() {
     Count row_count = 0, col_count = 0;
     while (store::CountAt(PathAt(row_count, 0))) { row_count++; }

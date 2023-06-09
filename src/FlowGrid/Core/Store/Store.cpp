@@ -10,6 +10,23 @@
 using std::vector;
 
 namespace store {
+void ApplyPatch(const Patch &patch) {
+    for (const auto &[partial_path, op] : patch.Ops) {
+        const auto &path = patch.BasePath / partial_path;
+        if (op.Op == PatchOp::Type::Add || op.Op == PatchOp::Type::Replace) Set(path, *op.Value);
+        else if (op.Op == PatchOp::Type::Remove) Erase(path);
+    }
+}
+
+bool CanApply(const Action::Store::Any &) { return true; }
+
+void Apply(const Action::Store::Any &action) {
+    Match(
+        action,
+        [](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); },
+    );
+}
+
 Store AppStore{};
 
 nlohmann::json GetJson(const Store &store) {
@@ -111,14 +128,6 @@ Patch CreatePatch(const Store &store, const StorePath &base_path) {
 
 Patch CreatePatch(const StorePath &base_path) {
     return CreatePatch(AppStore, EndTransient(), base_path);
-}
-
-void ApplyPatch(const Patch &patch) {
-    for (const auto &[partial_path, op] : patch.Ops) {
-        const auto &path = patch.BasePath / partial_path;
-        if (op.Op == PatchOp::Type::Add || op.Op == PatchOp::Type::Replace) Set(path, *op.Value);
-        else if (op.Op == PatchOp::Type::Remove) Erase(path);
-    }
 }
 
 void Set(const std::vector<std::pair<StorePath, Primitive>> &values) {

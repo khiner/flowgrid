@@ -65,10 +65,18 @@ DefineUI(
 );
 
 struct Project {
+    static void Apply(const Action::Project::Any &);
+    static bool CanApply(const Action::Project::Any &);
+
     static void Init();
-    static void SaveEmptyProject();
-    static void RunQueuedActions(bool force_finalize_gesture = false);
+    static void SaveEmpty();
+
+private:
+    static void Open(const fs::path &);
+    static bool Save(const fs::path &);
 };
+
+void RunQueuedActions(bool force_finalize_gesture = false);
 
 /**
 Declare global read-only accessor for the canonical state instance `app`.

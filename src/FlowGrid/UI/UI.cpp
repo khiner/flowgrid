@@ -11,7 +11,7 @@
 
 #include "App/ImGuiSettings.h"
 #include "App/Style/Style.h"
-#include "Core/Store/Patch/PatchAction.h"
+#include "Core/Store/StoreAction.h"
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>
@@ -156,7 +156,7 @@ bool UIContext::Tick(const Drawable &app) {
         // ImGui sometimes sets this flags when settings have not, in fact, changed.
         // E.g. if you click and hold a window-resize, it will set this every frame, even if the cursor is still (no window size change).
         const auto &patch = imgui_settings.CreatePatch(ImGui::GetCurrentContext());
-        if (!patch.Empty()) Action::Patch::Apply{patch}.q();
+        if (!patch.Empty()) Action::Store::ApplyPatch{patch}.q();
         io.WantSaveIniSettings = false;
     }
 

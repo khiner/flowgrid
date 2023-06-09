@@ -3,7 +3,7 @@
 #include "Core/Store/Store.h"
 
 void VectorBase::Apply(const Action::Vector::Any &action) {
-    Match(
+    Visit(
         action,
         [](const Action::Vector::Set &a) { store::Set(a.path, a.value); },
     );

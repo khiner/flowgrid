@@ -86,7 +86,7 @@ static Gesture MergeGesture(const Gesture &gesture) {
         const auto &a = *active;
         const auto &b = gesture[i + 1];
         const auto merge_result = a.first.Merge(b.first);
-        Match(
+        Visit(
             merge_result,
             [&](const bool cancel_out) {
                 if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)

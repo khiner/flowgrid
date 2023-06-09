@@ -3,7 +3,7 @@
 #include "imgui.h"
 
 void Audio::Apply(const Action::Audio::Any &action) const {
-    Match(
+    Visit(
         action,
         [&](const Action::Faust &a) { Faust.Apply(a); },
     );

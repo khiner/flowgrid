@@ -27,7 +27,7 @@ PrimitiveField::PrimitiveField(Stateful *parent, string_view id, string_view nam
 Primitive PrimitiveField::Get() const { return store::Get(Path); }
 
 void PrimitiveField::Apply(const Action::Primitive::Any &action) {
-    Match(
+    Visit(
         action,
         [](const Action::Primitive::SetMany &a) { store::Set(a.values); },
         [](const Action::Primitive::Set &a) { store::Set(a.path, a.value); },

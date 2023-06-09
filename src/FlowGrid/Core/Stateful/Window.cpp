@@ -87,7 +87,7 @@ void Menu::Render() const {
     const bool is_menu_bar = Label.empty();
     if (IsMain ? BeginMainMenuBar() : (is_menu_bar ? BeginMenuBar() : BeginMenu(Label.c_str()))) {
         for (const auto &item : Items) {
-            Match(
+            Visit(
                 item,
                 [](const Menu &menu) {
                     menu.Draw();

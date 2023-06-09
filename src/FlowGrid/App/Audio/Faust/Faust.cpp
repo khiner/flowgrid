@@ -12,10 +12,10 @@
 static const std::string FaustDspFileExtension = ".dsp";
 
 void Faust::Apply(const Action::Faust &action) const {
-    Match(
+    Visit(
         action,
         [&](const Action::FaustFile::Any &a) {
-            Match(
+            Visit(
                 a,
                 [](const Action::FaustFile::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
                 [](const Action::FaustFile::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },

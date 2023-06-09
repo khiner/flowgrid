@@ -26,7 +26,7 @@ static bool ProjectHasChanges{false};
 
 // using Any = Combine<Primitive::Any, Vector::Any, Matrix::Any, Store::Any, Audio::Any, FileDialog::Any, Style::Any>::type;
 void App::Apply(const Action::App::Any &action) const {
-    Match(
+    Visit(
         action,
         [](const Action::Primitive::Any &a) { PrimitiveField::Apply(a); },
         [](const Action::Vector::Any &a) { VectorBase::Apply(a); },
@@ -39,7 +39,7 @@ void App::Apply(const Action::App::Any &action) const {
 }
 
 bool App::CanApply(const Action::App::Any &action) const {
-    return Match(
+    return Visit(
         action,
         [](const Action::Primitive::Any &a) { return PrimitiveField::CanApply(a); },
         [](const Action::Vector::Any &a) { return VectorBase::CanApply(a); },
@@ -52,7 +52,7 @@ bool App::CanApply(const Action::App::Any &action) const {
 }
 
 void Apply(const Action::Stateful &action) {
-    Match(
+    Visit(
         action,
         [&](const Action::App::Any &a) { app.Apply(a); },
         [&](const Action::Project::Any &a) { Project::Apply(a); },
@@ -60,7 +60,7 @@ void Apply(const Action::Stateful &action) {
 }
 
 void Apply(const Action::Any &action) {
-    Match(
+    Visit(
         action,
         [](const Action::App::Any &a) { app.Apply(a); },
         [](const Action::Project::Any &a) { Project::Apply(a); },
@@ -68,7 +68,7 @@ void Apply(const Action::Any &action) {
 }
 
 bool CanApply(const Action::Any &action) {
-    return Match(
+    return Visit(
         action,
         [](const Action::App::Any &a) { return app.CanApply(a); },
         [](const Action::Project::Any &a) { return Project::CanApply(a); },
@@ -274,7 +274,7 @@ void Project::Init() {
 }
 
 void Project::Apply(const Action::Project::Any &action) {
-    Match(
+    Visit(
         action,
         [](const Action::Project::ShowOpenDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [](const Action::Project::ShowSaveDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
@@ -309,7 +309,7 @@ void Project::Apply(const Action::Project::Any &action) {
 }
 
 bool Project::CanApply(const Action::Project::Any &action) {
-    return Match(
+    return Visit(
         action,
         [](const Action::Project::Undo &) { return History.CanUndo(); },
         [](const Action::Project::Redo &) { return History.CanRedo(); },
@@ -382,7 +382,7 @@ void RunQueuedActions(bool force_finalize_gesture) {
 
         Apply(action);
 
-        Match(
+        Visit(
             action,
             [](const Action::Stateful &a) { stateful_actions.emplace_back(a, action_moment.second); },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.

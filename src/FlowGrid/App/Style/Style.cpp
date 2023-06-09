@@ -14,7 +14,7 @@ std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 using namespace ImGui;
 
 void Style::Apply(const Action::Style::Any &action) const {
-    Match(
+    Visit(
         action,
         // todo enum types instead of raw integers
         [&](const Action::Style::SetImGuiColorPreset &a) {

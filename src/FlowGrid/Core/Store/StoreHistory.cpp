@@ -11,7 +11,8 @@
 #include "StoreImpl.h"
 
 namespace views = ranges::views;
-using ranges::to, views::transform;
+
+using views::transform;
 using std::string, std::vector;
 
 struct Record {
@@ -61,7 +62,7 @@ StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
 
 StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
     const Gestures gestures = Records | transform([](const auto &record) { return record.Gesture; }) |
-        views::filter([](const auto &gesture) { return !gesture.empty(); }) | to<vector>; // First gesture is expected to be empty.
+        views::filter([](const auto &gesture) { return !gesture.empty(); }) | ranges::to<vector>; // First gesture is expected to be empty.
     return {gestures, Index};
 }
 
@@ -127,7 +128,7 @@ std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StorePath &path) c
 }
 
 StoreHistory::Plottable StoreHistory::StorePathUpdateFrequencyPlottable() const {
-    const std::set<StorePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | to<std::set>;
+    const std::set<StorePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | ranges::to<std::set>;
     if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();
@@ -144,7 +145,7 @@ StoreHistory::Plottable StoreHistory::StorePathUpdateFrequencyPlottable() const 
                             std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
                             return label;
                         }) |
-        to<vector<const char *>>;
+        ranges::to<vector<const char *>>;
 
     return {labels, values};
 }

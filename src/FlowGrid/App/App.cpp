@@ -201,7 +201,7 @@ void Project::SaveEmpty() { Save(EmptyProjectPath); }
 void OnPatch(const Patch &patch) {
     if (patch.Empty()) return;
 
-    History.LatestUpdatedPaths = patch.Ops | views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | to<vector>;
+    History.LatestUpdatedPaths = patch.Ops | views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | ranges::to<vector>;
     ProjectHasChanges = true;
 
     static std::set<Field *> modified_fields;

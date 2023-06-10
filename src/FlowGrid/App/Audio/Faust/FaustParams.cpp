@@ -18,7 +18,7 @@ using enum FaustParam::Type;
 using std::min, std::max;
 
 namespace views = ranges::views;
-using ranges::to, views::transform;
+using views::transform;
 
 FaustParamsUI *interface;
 

@@ -27,7 +27,6 @@ using std::min, std::max;
 using std::pair, std::unordered_map, std::vector;
 
 namespace views = ranges::views;
-using ranges::to;
 
 static const string SvgFileExtension = ".svg";
 
@@ -501,7 +500,8 @@ struct Node {
         const string tree_name = GetTreeName(FaustTree);
         if (tree_name == "process") return tree_name + SvgFileExtension;
 
-        return (views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | to<string>)+std::format("-{}", Id) + SvgFileExtension;
+        const string name_limited = views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | ranges::to<string>;
+        return std::format("{}-{}{}", name_limited, Id, SvgFileExtension);
     }
 
     void WriteSvg(const fs::path &path) const {
@@ -1245,7 +1245,9 @@ void FaustGraph::Apply(const Action::FaustGraph::Any &action) const {
             }
         },
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
-        [](const Action::FaustGraph::ShowSaveSvgDialog &) { file_dialog.Set({"Choose directory", ".*", ".", "faust_graph", true, 1}); },
+        [](const Action::FaustGraph::ShowSaveSvgDialog &) {
+            file_dialog.Set({Action::FaustGraph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
+        },
         [](const Action::FaustGraph::SaveSvgFile &a) { SaveBoxSvg(a.path); },
     );
 }
@@ -1262,8 +1264,9 @@ void FaustGraph::Render() const {
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
         const fs::path selected_path = string(file_dialog.SelectedFilePath);
-        const string &extension = selected_path.extension();
-        if (extension == SvgFileExtension && file_dialog.SaveMode) Action::FaustGraph::SaveSvgFile{selected_path}.q();
+        if (file_dialog.Title == Action::FaustGraph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
+            Action::FaustGraph::SaveSvgFile{selected_path}.q();
+        }
         PrevSelectedPath = selected_path;
     }
 

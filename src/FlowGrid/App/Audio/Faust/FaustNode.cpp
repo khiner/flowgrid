@@ -9,11 +9,11 @@
 #include "Core/Field/PrimitiveAction.h"
 #include "Faust.h"
 #include "FaustBox.h"
-#include "FaustParams.h"
+#include "FaustParamsUI.h"
 
 namespace FaustContext {
 static dsp *Dsp = nullptr;
-static std::unique_ptr<FaustParams> Ui;
+static std::unique_ptr<FaustParamsUI> Ui;
 
 static void Init() {
     if (Dsp || !faust.IsReady()) return;
@@ -21,7 +21,7 @@ static void Init() {
     createLibContext();
 
     const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
-    vector<const char *> argv = {"-I", libraries_path};
+    std::vector<const char *> argv = {"-I", libraries_path};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
 
     const int argc = argv.size();
@@ -40,7 +40,7 @@ static void Init() {
         Dsp = dsp_factory->createDSPInstance();
         if (!Dsp) error_msg = "Could not create Faust DSP.";
         else {
-            Ui = std::make_unique<FaustParams>();
+            Ui = std::make_unique<FaustParamsUI>();
             Dsp->buildUserInterface(Ui.get());
             // `Dsp->Init` happens in the Faust graph node.
         }

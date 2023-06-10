@@ -326,7 +326,7 @@ void Project::Open(const fs::path &path) {
     const auto format = GetProjectJsonFormat(path);
     if (!format) return; // TODO log
 
-    Project::Init();
+    Init();
 
     const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
     if (format == StateFormat) {

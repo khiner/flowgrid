@@ -6,11 +6,13 @@
 #include "implot.h"
 
 #include "App/Style/Style.h"
+#include "AppPreferences.h"
 #include "Core/Action/Actions.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/String.h"
 #include "Project/ProjectJson.h"
+#include "Settings.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -143,9 +145,6 @@ void ShowGesture(const Gesture &gesture) {
         }
     }
 }
-
-#include "AppPreferences.h"
-#include "Settings.h"
 
 void Metrics::FlowGridMetrics::Render() const {
     {

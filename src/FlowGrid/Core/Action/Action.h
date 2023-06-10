@@ -48,19 +48,20 @@ private:
 };
 
 template<typename T>
-concept IsActionable = requires() {
+concept IsAction = requires(T t, bool b) {
     { T::_Meta } -> std::same_as<const Metadata &>;
     { T::IsSavable } -> std::same_as<const bool &>;
+    { t.q(b) } -> std::same_as<void>;
 };
 
-template<IsActionable T> struct IsSavable {
+template<IsAction T> struct IsSavable {
     static constexpr bool value = T::IsSavable;
 };
-template<IsActionable T> struct IsNotSavable {
+template<IsAction T> struct IsNotSavable {
     static constexpr bool value = !T::IsSavable;
 };
 
-template<IsActionable... T>
+template<IsAction... T>
 struct ActionVariant : std::variant<T...> {
     using variant_t = std::variant<T...>; // Alias to the base variant type.
     using variant_t::variant; // Inherit the base variant's constructors.

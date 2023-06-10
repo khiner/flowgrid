@@ -5,7 +5,7 @@
 #include "Helper/String.h"
 
 namespace Action {
-Metadata::Parsed Metadata::ParseMetadata(string_view meta_str) {
+Metadata::Parsed Metadata::Parse(string_view meta_str) {
     static const std::regex pattern("(~([^@]*))?(@(.*))?");
     string meta_str_std(meta_str);
     static std::smatch matches;
@@ -21,5 +21,5 @@ Metadata::Metadata(string_view path_suffix, Metadata::Parsed parsed)
       Shortcut(parsed.Shortcut) {}
 
 Metadata::Metadata(string_view path_suffix, string_view meta_str)
-    : Metadata(path_suffix, ParseMetadata(meta_str)) {}
+    : Metadata(path_suffix, Parse(meta_str)) {}
 } // namespace Action

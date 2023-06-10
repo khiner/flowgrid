@@ -7,6 +7,7 @@
 
 #include "nlohmann/json.hpp"
 
+#include "Core/Shortcut.h"
 #include "Helper/Path.h"
 #include "Helper/Variant.h"
 
@@ -23,6 +24,7 @@ Thus, the byte size of `Action::Any` is large enough to hold its biggest type.
   (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
 namespace Action {
+
 struct Metadata {
     // `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required)
     // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
@@ -43,7 +45,8 @@ private:
     struct Parsed {
         const std::string MenuLabel, Shortcut;
     };
-    Parsed ParseMetadata(std::string_view meta_str);
+    Parsed Parse(std::string_view meta_str);
+
     Metadata(std::string_view path_suffix, Parsed parsed);
 };
 
@@ -80,18 +83,15 @@ struct ActionVariant : std::variant<T...> {
     }
 
     template<size_t I = 0>
-    static auto CreateIndexToShortcut() {
+    static auto CreateShortcuts() {
         if constexpr (I < std::variant_size_v<variant_t>) {
             using MemberType = std::variant_alternative_t<I, variant_t>;
-            auto map = CreateIndexToShortcut<I + 1>();
-            if (!MemberType::GetShortcut().empty()) {
-                map[I] = MemberType::GetShortcut();
-            }
-            return map;
+            auto shortcuts = CreateShortcuts<I + 1>();
+            if (!MemberType::GetShortcut().empty()) shortcuts.emplace_back(I, MemberType::GetShortcut());
+            return shortcuts;
         }
-        return std::unordered_map<size_t, std::string>{};
+        return std::vector<std::pair<size_t, Shortcut>>{};
     }
-    static inline auto IndexToShortcut = CreateIndexToShortcut();
 
     size_t GetIndex() const { return this->index(); }
 

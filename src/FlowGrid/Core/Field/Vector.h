@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Field.h"
+#include "VectorAction.h"
 
 struct VectorBase : Field {
     using Field::Field;

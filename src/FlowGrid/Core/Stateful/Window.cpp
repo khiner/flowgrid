@@ -2,8 +2,6 @@
 
 #include "imgui_internal.h"
 
-#include "Core/Field/FieldAction.h"
-
 void UIStateful::DrawWindows() const {
     for (const auto *child : Children) {
         if (const auto *window_child = dynamic_cast<const Window *>(child)) {

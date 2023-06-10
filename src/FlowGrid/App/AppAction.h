@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Audio/AudioAction.h"
-#include "Core/Field/FieldAction.h"
+#include "Core/Field/MatrixAction.h"
+#include "Core/Field/PrimitiveAction.h"
+#include "Core/Field/VectorAction.h"
 #include "Core/Store/StoreAction.h"
 #include "FileDialog/FileDialogAction.h"
 #include "Style/StyleAction.h"

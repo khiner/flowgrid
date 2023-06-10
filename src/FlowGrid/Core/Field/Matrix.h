@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Field.h"
+#include "MatrixAction.h"
 
 struct MatrixBase : Field {
     using Field::Field;

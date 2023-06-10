@@ -1,7 +1,7 @@
 #include "App/TextEditor/TextEditor.h"
 
 #include "App/Audio/Audio.h"
-#include "Core/Field/FieldAction.h"
+#include "Core/Field/PrimitiveAction.h"
 #include "UI/UI.h"
 
 static const Menu FileMenu = {"File", {Action::FaustFile::ShowOpenDialog::MenuItem, Action::FaustFile::ShowSaveDialog::MenuItem}};

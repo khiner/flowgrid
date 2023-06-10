@@ -6,7 +6,8 @@
 #include "miniaudio.h"
 
 #include "App/Audio/AudioDevice.h"
-#include "Core/Field/FieldAction.h"
+#include "Core/Field/MatrixAction.h"
+#include "Core/Field/PrimitiveAction.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 

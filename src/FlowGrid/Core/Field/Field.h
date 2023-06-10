@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Stateful/Stateful.h"
-#include "FieldAction.h"
+#include "PrimitiveAction.h"
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
 struct Field : Stateful {

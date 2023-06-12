@@ -10,10 +10,10 @@ using namespace ImGui;
 // Copied from `implot.h`.
 #define IMPLOT_AUTO_COL ImVec4(0, 0, 0, -1)
 
-Colors::Colors(Component *parent, string_view path_leaf, string_view meta_str, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
-    : UIComponent(parent, path_leaf, meta_str), AllowAuto(allow_auto) {
+Colors::Colors(ComponentArgs &&args, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
+    : UIComponent(std::move(args)), AllowAuto(allow_auto) {
     for (Count i = 0; i < size; i++) {
-        new UInt(this, to_string(i), get_color_name(i)); // Adds to `Children` as a side-effect.
+        new UInt(ComponentArgs{this, to_string(i), get_color_name(i)}); // Adds to `Children` as a side-effect.
     }
 }
 Colors::~Colors() {

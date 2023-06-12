@@ -3,7 +3,7 @@
 #include "Field.h"
 
 struct String : TypedField<string> {
-    String(Component *parent, string_view path_leaf, string_view meta_str, string_view value = "");
+    String(ComponentArgs &&, string_view value = "");
 
     operator bool() const;
     operator string_view() const;

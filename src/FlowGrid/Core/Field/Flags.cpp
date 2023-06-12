@@ -4,8 +4,8 @@
 
 #include "UI/HelpMarker.h"
 
-Flags::Flags(Component *parent, string_view path_leaf, string_view meta_str, std::vector<Item> items, int value)
-    : TypedField(parent, path_leaf, meta_str, value), Items(std::move(items)) {}
+Flags::Flags(ComponentArgs &&args, std::vector<Item> items, int value)
+    : TypedField(std::move(args), value), Items(std::move(items)) {}
 
 Flags::Item::Item(const char *name_and_help) {
     const auto meta = Component::Metadata::Parse(name_and_help);

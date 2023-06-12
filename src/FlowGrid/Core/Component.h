@@ -18,11 +18,15 @@ struct Component {
         static Metadata Parse(string_view meta_str);
         const string Name, Help;
     };
+    struct ComponentArgs {
+        Component *Parent = nullptr;
+        string_view PathLeaf = "";
+        string_view MetaStr = "";
+    };
 
     inline static std::unordered_map<ID, Component *> WithId; // Access any state member by its ID. todo change to vector after adding `Component::Index`.
 
-    Component(Component *parent = nullptr, string_view path_leaf = "", string_view meta_str = "");
-    Component(Component *parent, string_view path_leaf, Metadata meta);
+    Component(ComponentArgs &&);
     virtual ~Component();
 
     const Component *Child(Count i) const { return Children[i]; }
@@ -38,6 +42,9 @@ struct Component {
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
+
+private:
+    Component(Component *parent, string_view path_leaf, Metadata meta);
 };
 
 /**
@@ -90,8 +97,8 @@ todo Try out replacing semicolon separators by e.g. commas.
 
 **/
 
-#define Prop(PropType, PropName, ...) PropType PropName{this, (#PropName), "", __VA_ARGS__};
-#define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, (#PropName), (NameHelp), __VA_ARGS__};
+#define Prop(PropType, PropName, ...) PropType PropName{ComponentArgs{this, (#PropName), ""}, __VA_ARGS__};
+#define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{ComponentArgs{this, (#PropName), (NameHelp)}, __VA_ARGS__};
 
 #define DefineComponent(TypeName, ...) \
     struct TypeName : Component {      \
@@ -113,11 +120,11 @@ struct UIComponent : Component, Drawable {
         void Render() const override;   \
     };
 
-#define DefineUI_(TypeName, ...)                                                       \
-    struct TypeName : UIComponent {                                                    \
-        TypeName(Component *parent, string_view path_leaf, string_view meta_str = ""); \
-        __VA_ARGS__;                                                                   \
-                                                                                       \
-    protected:                                                                         \
-        void Render() const override;                                                  \
+#define DefineUI_(TypeName, ...)      \
+    struct TypeName : UIComponent {   \
+        TypeName(ComponentArgs &&);   \
+        __VA_ARGS__;                  \
+                                      \
+    protected:                        \
+        void Render() const override; \
     };

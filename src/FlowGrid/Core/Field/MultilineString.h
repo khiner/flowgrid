@@ -6,7 +6,7 @@
 
 // struct MultilineString : TypedField<string>, Window {
 struct MultilineString : Window {
-    MultilineString(Component *parent, string_view path_leaf, string_view meta_str, string_view value = "");
+    MultilineString(ComponentArgs &&, string_view value = "");
 
     bool operator==(const std::string &value) const { return Value == value; }
     operator std::string() const { return Value; }

@@ -24,8 +24,8 @@ Component::Component(Component *parent, string_view path_leaf, Metadata meta)
     WithId[Id] = this;
 }
 
-Component::Component(Component *parent, string_view path_leaf, string_view meta_str)
-    : Component(parent, path_leaf, Metadata::Parse(meta_str)) {}
+Component::Component(ComponentArgs &&args)
+    : Component(std::move(args.Parent), std::move(args.PathLeaf), Metadata::Parse(std::move(args.MetaStr))) {}
 
 Component::~Component() {
     WithId.erase(Id);

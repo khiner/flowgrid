@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/Window.h" // xxx should only need Component and Field.
 #include "Core/Field/Float.h"
+#include "Core/Window.h" // xxx should only need Component and Field.
 
 struct ma_node_graph;
 
@@ -9,7 +9,7 @@ struct ma_node_graph;
 // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
 // This base `Node` can either be specialized or instantiated on its own.
 struct AudioGraphNode : UIComponent {
-    AudioGraphNode(Component *parent, string_view path_leaf, string_view meta_str = "", bool on = true);
+    AudioGraphNode(ComponentArgs &&, bool on = true);
 
     void Set(void *) const; // Set MA node.
     void *Get() const; // Get MA node.

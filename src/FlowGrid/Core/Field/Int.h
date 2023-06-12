@@ -3,7 +3,7 @@
 #include "Field.h"
 
 struct Int : TypedField<int> {
-    Int(Component *parent, string_view path_leaf, string_view meta_str, int value = 0, int min = 0, int max = 100);
+    Int(ComponentArgs &&, int value = 0, int min = 0, int max = 100);
 
     operator bool() const;
     operator short() const;

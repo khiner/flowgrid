@@ -3,8 +3,8 @@
 #include "Field.h"
 
 struct Enum : TypedField<int>, MenuItemDrawable {
-    Enum(Component *parent, string_view path_leaf, string_view meta_str, std::vector<string> names, int value = 0);
-    Enum(Component *parent, string_view path_leaf, string_view meta_str, std::function<const string(int)> get_name, int value = 0);
+    Enum(ComponentArgs &&, std::vector<string> names, int value = 0);
+    Enum(ComponentArgs &&, std::function<const string(int)> get_name, int value = 0);
 
     void Render(const std::vector<int> &options) const;
     void MenuItem() const override;

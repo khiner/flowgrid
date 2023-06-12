@@ -134,16 +134,13 @@ void Style::ImPlotStyle::Update(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
-Style::ImGuiStyle::ImGuiStyle(Component *parent, string_view path_leaf, string_view meta_str)
-    : UIComponent(parent, path_leaf, meta_str) {
+Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : UIComponent(std::move(args)) {
     ColorsDark();
 }
-Style::ImPlotStyle::ImPlotStyle(Component *parent, string_view path_leaf, string_view meta_str)
-    : UIComponent(parent, path_leaf, meta_str) {
+Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : UIComponent(std::move(args)) {
     ColorsAuto();
 }
-Style::FlowGridStyle::FlowGridStyle(Component *parent, string_view path_leaf, string_view meta_str)
-    : UIComponent(parent, path_leaf, meta_str) {
+Style::FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : UIComponent(std::move(args)) {
     ColorsDark();
 }
 
@@ -206,10 +203,10 @@ void Style::FlowGridStyle::ColorsClassic() const {
     );
 }
 
-Style::ImGuiStyle::ImGuiColors::ImGuiColors(Component *parent, string_view path_leaf, string_view meta_str)
-    : Colors(parent, path_leaf, meta_str, ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
-Style::ImPlotStyle::ImPlotColors::ImPlotColors(Component *parent, string_view path_leaf, string_view meta_str)
-    : Colors(parent, path_leaf, meta_str, ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
+Style::ImGuiStyle::ImGuiColors::ImGuiColors(ComponentArgs &&args)
+    : Colors(std::move(args), ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
+Style::ImPlotStyle::ImPlotColors::ImPlotColors(ComponentArgs &&args)
+    : Colors(std::move(args), ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::ImGuiStyle::Render() const {
     static int style_idx = -1;

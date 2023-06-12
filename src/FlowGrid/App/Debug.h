@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Core/Window.h"
 #include "Core/Field/Bool.h"
 #include "Core/Field/Enum.h"
+#include "Core/Window.h"
 
 #include "nlohmann/json_fwd.hpp"
 

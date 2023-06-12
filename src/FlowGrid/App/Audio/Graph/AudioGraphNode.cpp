@@ -2,8 +2,7 @@
 
 #include "miniaudio.h"
 
-AudioGraphNode::AudioGraphNode(Component *parent, string_view path_leaf, string_view meta_str, bool on)
-    : UIComponent(parent, path_leaf, meta_str) {
+AudioGraphNode::AudioGraphNode(ComponentArgs &&args, bool on) : UIComponent(std::move(args)) {
     store::Set(On, on);
 }
 

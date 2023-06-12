@@ -41,12 +41,12 @@ struct Style : TabsWindow {
     );
 
     struct ImGuiStyle : UIComponent {
-        ImGuiStyle(Component *parent, string_view path_leaf, string_view meta_str = "");
+        ImGuiStyle(ComponentArgs &&);
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImGuiColors : Colors {
-            ImGuiColors(Component *parent, string_view path_leaf, string_view meta_str);
+            ImGuiColors(ComponentArgs &&);
         };
 
         void Update(ImGuiContext *ctx) const;
@@ -124,12 +124,12 @@ struct Style : TabsWindow {
     };
 
     struct ImPlotStyle : UIComponent {
-        ImPlotStyle(Component *parent, string_view path_leaf, string_view meta_str = "");
+        ImPlotStyle(ComponentArgs &&);
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImPlotColors : Colors {
-            ImPlotColors(Component *parent, string_view path_leaf, string_view meta_str);
+            ImPlotColors(ComponentArgs &&);
         };
 
         void Update(ImPlotContext *ctx) const;

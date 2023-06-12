@@ -5,10 +5,10 @@
 #include <range/v3/core.hpp>
 #include <range/v3/view/iota.hpp>
 
-Enum::Enum(Component *parent, string_view path_leaf, string_view meta_str, std::vector<string> names, int value)
-    : TypedField(parent, path_leaf, meta_str, value), Names(std::move(names)) {}
-Enum::Enum(Component *parent, string_view path_leaf, string_view meta_str, std::function<const string(int)> get_name, int value)
-    : TypedField(parent, path_leaf, meta_str, value), Names({}), GetName(std::move(get_name)) {}
+Enum::Enum(ComponentArgs &&args, std::vector<string> names, int value)
+    : TypedField(std::move(args), value), Names(std::move(names)) {}
+Enum::Enum(ComponentArgs &&args, std::function<const string(int)> get_name, int value)
+    : TypedField(std::move(args), value), Names({}), GetName(std::move(get_name)) {}
 string Enum::OptionName(const int option) const { return GetName ? (*GetName)(option) : Names[option]; }
 
 using namespace ImGui;

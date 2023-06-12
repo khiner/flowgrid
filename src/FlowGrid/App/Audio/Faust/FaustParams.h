@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Core/Window.h"
 #include "Core/Field/Bool.h"
 #include "Core/Field/Enum.h"
 #include "Core/Field/Flags.h"
 #include "Core/Field/Float.h"
+#include "Core/Window.h"
 #include "UI/Styling.h"
 
 #include "FaustParam.h"

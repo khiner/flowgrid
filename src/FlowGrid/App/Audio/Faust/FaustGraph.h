@@ -1,13 +1,13 @@
 #pragma once
 
 #include "App/Style/Colors.h"
-#include "Core/Window.h"
 #include "Core/Field/Bool.h"
 #include "Core/Field/Enum.h"
 #include "Core/Field/Flags.h"
 #include "Core/Field/Float.h"
 #include "Core/Field/String.h"
 #include "Core/Field/Vec2.h"
+#include "Core/Window.h"
 #include "FaustGraphAction.h"
 #include "UI/Styling.h"
 

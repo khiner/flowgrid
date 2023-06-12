@@ -6,7 +6,7 @@
 #include "UI/UI.h"
 
 // Initialize global extern variables.
-const App Application{}; // Initialize the global application state.
+const App Application{{}}; // Initialize the global application state.
 const App &app = Application; // Set the read-only app reference global.
 const fg::Style &fg::style = app.Style;
 const AudioDevice &audio_device = app.Audio.Device;

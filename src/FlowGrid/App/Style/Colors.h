@@ -6,7 +6,7 @@
 struct ImVec4;
 
 struct Colors : UIComponent {
-    Colors(Component *parent, string_view path_leaf, string_view meta_str, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
+    Colors(ComponentArgs &&, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
     ~Colors();
 
     static U32 ConvertFloat4ToU32(const ImVec4 &value);

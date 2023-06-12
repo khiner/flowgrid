@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-Int::Int(Component *parent, string_view path_leaf, string_view meta_str, int value, int min, int max)
-    : TypedField(parent, path_leaf, meta_str, value), Min(min), Max(max) {}
+Int::Int(ComponentArgs &&args, int value, int min, int max) : TypedField(std::move(args), value), Min(min), Max(max) {}
+
 Int::operator bool() const { return Value; }
 Int::operator short() const { return Value; }
 Int::operator char() const { return Value; }

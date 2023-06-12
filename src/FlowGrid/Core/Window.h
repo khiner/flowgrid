@@ -41,9 +41,9 @@ enum WindowFlags_ {
 struct Window : UIComponent, MenuItemDrawable {
     using UIComponent::UIComponent;
 
-    Window(Component *parent, string_view path_leaf, string_view meta_str, bool visible);
-    Window(Component *parent, string_view path_leaf, string_view meta_str, ImGuiWindowFlags flags);
-    Window(Component *parent, string_view path_leaf, string_view meta_str, Menu menu);
+    Window(ComponentArgs &&, bool visible);
+    Window(ComponentArgs &&, ImGuiWindowFlags flags);
+    Window(ComponentArgs &&, Menu &&menu);
 
     ImGuiWindow &FindImGuiWindow() const;
     void Draw() const override;
@@ -66,21 +66,21 @@ struct Window : UIComponent, MenuItemDrawable {
         void Render() const override; \
     };
 
-#define DefineWindow_(TypeName, VisibleOrMenu, ...)                                   \
-    struct TypeName : Window {                                                        \
-        TypeName(Component *parent, string_view path_leaf, string_view meta_str = "") \
-            : Window(parent, path_leaf, meta_str, (VisibleOrMenu)) {}                 \
-        __VA_ARGS__;                                                                  \
-                                                                                      \
-    protected:                                                                        \
-        void Render() const override;                                                 \
+#define DefineWindow_(TypeName, VisibleOrMenu, ...)       \
+    struct TypeName : Window {                            \
+        TypeName(ComponentArgs &&args)                    \
+            : Window(std::move(args), (VisibleOrMenu)) {} \
+        __VA_ARGS__;                                      \
+                                                          \
+    protected:                                            \
+        void Render() const override;                     \
     };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.
-// The controct we're signing up for is to implement `void TabsWindow::Render() const`.
-DefineWindow(
-    TabsWindow,
+struct TabsWindow : Window {
+    using Window::Window;
 
-    protected
-    : void Render(const std::set<ID> &exclude) const;
-);
+protected:
+    void Render() const override;
+    void Render(const std::set<ID> &exclude) const;
+};

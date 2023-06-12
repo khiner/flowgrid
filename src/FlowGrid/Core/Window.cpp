@@ -17,14 +17,11 @@ void UIComponent::DrawWindows() const {
 
 using namespace ImGui;
 
-Window::Window(Component *parent, string_view path_leaf, string_view meta_str, const bool visible)
-    : UIComponent(parent, path_leaf, meta_str) {
+Window::Window(ComponentArgs &&args, const bool visible) : UIComponent(std::move(args)) {
     store::Set(Visible, visible);
 }
-Window::Window(Component *parent, string_view path_leaf, string_view meta_str, const ImGuiWindowFlags flags)
-    : UIComponent(parent, path_leaf, meta_str), WindowFlags(flags) {}
-Window::Window(Component *parent, string_view path_leaf, string_view meta_str, Menu menu)
-    : UIComponent(parent, path_leaf, meta_str), WindowMenu{std::move(menu)} {}
+Window::Window(ComponentArgs &&args, const ImGuiWindowFlags flags): UIComponent(std::move(args)), WindowFlags(flags) {}
+Window::Window(ComponentArgs &&args, Menu &&menu) : UIComponent(std::move(args)), WindowMenu{std::move(menu)} {}
 
 ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }
 

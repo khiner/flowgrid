@@ -15,10 +15,14 @@ struct Faust : UIComponent {
     bool IsReady() const; // Has code and no errors.
     bool NeedsRestart() const;
 
-    DefineWindow(
-        FaustLog,
+    struct FaustLog : Window {
+        using Window::Window;
+
         Prop(String, Error);
-    );
+
+    protected:
+        void Render() const override;
+    };
 
     Prop_(FaustGraph, Graph, "Faust graph");
     Prop_(FaustParams, Params, "Faust params");

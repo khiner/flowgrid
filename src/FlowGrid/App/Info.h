@@ -2,4 +2,9 @@
 
 #include "Core/Window.h"
 
-DefineWindow(Info);
+struct Info : Window {
+    using Window::Window;
+
+protected:
+    void Render() const override;
+};

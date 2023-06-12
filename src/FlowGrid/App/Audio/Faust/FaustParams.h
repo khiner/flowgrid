@@ -63,11 +63,12 @@ enum ParamsWidthSizingPolicy_ {
 };
 using ParamsWidthSizingPolicy = int;
 
-DefineWindow(
-    FaustParams,
+struct FaustParams : Window {
+    using Window::Window;
 
-    DefineUI(
-        Style,
+    struct Style : UIComponent {
+        using UIComponent::UIComponent;
+
         Prop(Bool, HeaderTitles, true);
         // In frame-height units:
         Prop(Float, MinHorizontalItemWidth, 4, 2, 8);
@@ -85,16 +86,20 @@ DefineWindow(
             "Balanced: All param types are given flexible-width, weighted by their minimum width. (Looks more balanced, but less expansion room for wide params).",
             {"StretchToFill", "StretchFlexibleOnly", "Balanced"},
             ParamsWidthSizingPolicy_StretchFlexibleOnly
-        )
-    );
+        );
+
+    protected:
+        void Render() const override;
+    };
 
     Prop(Style, Style);
 
-    private
-    :
+protected:
+    void Render() const override;
 
+private:
     void DrawUiItem(const FaustParam &, const char *label, const float suggested_height) const;
     float CalcWidth(const FaustParam &, const bool include_label) const;
     float CalcHeight(const FaustParam &) const;
     float CalcLabelHeight(const FaustParam &) const;
-);
+};

@@ -39,18 +39,21 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-DefineWindow_(
-    FaustGraph,
-    Menu({
-        Menu("File", {Action::FaustGraph::ShowSaveSvgDialog::MenuItem}),
-        Menu("View", {Settings.HoverFlags}),
-    }),
+struct FaustGraph : Window {
+    FaustGraph(ComponentArgs &&args)
+        : Window(
+              std::move(args),
+              Menu({
+                  Menu("File", {Action::FaustGraph::ShowSaveSvgDialog::MenuItem}),
+                  Menu("View", {Settings.HoverFlags}),
+              })
+          ) {}
 
     void Apply(const Action::FaustGraph::Any &) const;
     bool CanApply(const Action::FaustGraph::Any &) const;
 
-    DefineUI_(
-        Style,
+    struct Style : UIComponent {
+        Style(ComponentArgs &&);
 
         Prop_(
             UInt, FoldComplexity,
@@ -127,23 +130,22 @@ DefineWindow_(
         void LayoutFaust() const; // Layout Faust graphs the same way Faust does when it renders to SVG.
 
         static const char *GetColorName(FlowGridGraphCol idx);
-    );
 
-    DefineComponent(
-        GraphSettings,
-        Prop_(
-            Flags, HoverFlags,
-            "?Hovering over a node in the graph will display the selected information",
-            {"ShowRect?Display the hovered node's bounding rectangle",
-             "ShowType?Display the hovered node's box type",
-             "ShowChannels?Display the hovered node's channel points and indices",
-             "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"},
-            FaustGraphHoverFlags_None
-        )
-    );
+    protected:
+        void Render() const override;
+    };
+
+    struct GraphSettings : Component {
+        using Component::Component;
+
+        Prop_(Flags, HoverFlags, "?Hovering over a node in the graph will display the selected information", {"ShowRect?Display the hovered node's bounding rectangle", "ShowType?Display the hovered node's box type", "ShowChannels?Display the hovered node's channel points and indices", "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"}, FaustGraphHoverFlags_None);
+    };
 
     Prop(GraphSettings, Settings);
     Prop(Style, Style);
-);
+
+protected:
+    void Render() const override;
+};
 
 extern const FaustGraph &faust_graph;

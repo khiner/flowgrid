@@ -19,8 +19,8 @@ struct ImGuiTableSettings;
 //  Use Raw/Formatted settings in state viewers to:
 //  * convert structs-of-arrays to arrays-of-structs,
 //  * unpack positions/sizes
-DefineComponent(
-    DockNodeSettings,
+struct DockNodeSettings : Component {
+    using Component::Component;
 
     void Set(const ImVector<ImGuiDockNodeSettings> &) const;
     void Update(ImGuiContext *) const;
@@ -35,10 +35,10 @@ DefineComponent(
     Prop(Vector<U32>, Pos); // Packed ImVec2ih
     Prop(Vector<U32>, Size); // Packed ImVec2ih
     Prop(Vector<U32>, SizeRef); // Packed ImVec2ih
-);
+};
 
-DefineComponent(
-    WindowSettings,
+struct WindowSettings : Component {
+    using Component::Component;
 
     void Set(ImChunkStream<ImGuiWindowSettings> &) const;
     void Update(ImGuiContext *) const;
@@ -52,10 +52,11 @@ DefineComponent(
     Prop(Vector<U32>, Size); // Packed ImVec2ih
     Prop(Vector<U32>, ViewportPos); // Packed ImVec2ih
     Prop(Vector<bool>, Collapsed);
-);
+};
 
-DefineComponent(
-    TableColumnSettings,
+struct TableColumnSettings : Component {
+    using Component::Component;
+
     // [table_index][column_index]
     Prop(Vector2D<float>, WidthOrWeight);
     Prop(Vector2D<ID>, UserID);
@@ -65,10 +66,10 @@ DefineComponent(
     Prop(Vector2D<int>, SortDirection);
     Prop(Vector2D<bool>, IsEnabled); // "Visible" in ini file
     Prop(Vector2D<bool>, IsStretch);
-);
+};
 
-DefineComponent(
-    TableSettings,
+struct TableSettings : Component {
+    using Component::Component;
 
     void Set(ImChunkStream<ImGuiTableSettings> &) const;
     void Update(ImGuiContext *) const;
@@ -80,10 +81,10 @@ DefineComponent(
     Prop(Vector<Count>, ColumnsCountMax);
     Prop(Vector<bool>, WantApply);
     Prop(TableColumnSettings, Columns);
-);
+};
 
-DefineComponent(
-    ImGuiSettings,
+struct ImGuiSettings : Component {
+    using Component::Component;
 
     // Create a patch resulting from applying the current ImGui context.
     Patch CreatePatch(ImGuiContext *ctx) const;
@@ -96,6 +97,6 @@ DefineComponent(
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);
     Prop(TableSettings, Tables);
-);
+};
 
 extern const ImGuiSettings &imgui_settings;

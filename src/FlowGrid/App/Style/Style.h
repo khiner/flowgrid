@@ -27,8 +27,8 @@ struct Style : TabsWindow {
     void Apply(const Action::Style::Any &) const;
     bool CanApply(const Action::Style::Any &) const;
 
-    DefineUI_(
-        FlowGridStyle,
+    struct FlowGridStyle : UIComponent {
+        FlowGridStyle(ComponentArgs &&);
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
         Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
@@ -38,7 +38,10 @@ struct Style : TabsWindow {
         void ColorsClassic() const;
 
         static const char *GetColorName(FlowGridCol idx);
-    );
+
+    protected:
+        void Render() const override;
+    };
 
     struct ImGuiStyle : UIComponent {
         ImGuiStyle(ComponentArgs &&);

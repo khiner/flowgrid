@@ -6,8 +6,18 @@
 struct Demo : TabsWindow {
     Demo(ComponentArgs &&);
 
-    DefineUI(ImGuiDemo);
-    DefineUI(ImPlotDemo);
+    struct ImGuiDemo : UIComponent {
+        using UIComponent::UIComponent;
+
+    protected:
+        void Render() const override;
+    };
+    struct ImPlotDemo : UIComponent {
+        using UIComponent::UIComponent;
+
+    protected:
+        void Render() const override;
+    };
 
     Prop(ImGuiDemo, ImGui);
     Prop(ImPlotDemo, ImPlot);

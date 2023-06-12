@@ -9,15 +9,20 @@
 #include "Core/Window.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-DefineUI(
-    FileDialog,
+struct FileDialog : UIComponent {
+    using UIComponent::UIComponent;
 
     void Apply(const Action::FileDialog::Any &) const;
     bool CanApply(const Action::FileDialog::Any &) const;
 
     void Set(const FileDialogData &) const;
 
-    DefineUI(Demo);
+    struct Demo : UIComponent {
+        using UIComponent::UIComponent;
+
+    protected:
+        void Render() const override;
+    };
 
     Prop(Bool, Visible);
     Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
@@ -29,7 +34,10 @@ DefineUI(
     Prop(String, DefaultFileName);
 
     Prop(String, SelectedFilePath);
-);
+
+protected:
+    void Render() const override;
+};
 
 // This demo code is adapted from the [ImGuiFileDialog:main branch](https://github.com/aiekick/ImGuiFileDialog/blob/master/main.cpp)
 // It is up-to-date as of https://github.com/aiekick/ImGuiFileDialog/commit/43daff00783dd1c4862d31e69a8186259ab1605b

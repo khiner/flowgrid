@@ -16,8 +16,8 @@
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
 
-DefineUI(
-    App,
+struct App : UIComponent {
+    using UIComponent::UIComponent;
 
     static void OpenRecentProjectMenuItem();
 
@@ -62,7 +62,10 @@ DefineUI(
 
     Prop(Demo, Demo);
     Prop(Debug, Debug);
-);
+
+protected:
+    void Render() const override;
+};
 
 struct Project {
     static void Apply(const Action::Project::Any &);

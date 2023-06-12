@@ -5,9 +5,7 @@
 using namespace ImGui;
 
 Vec2::Vec2(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, const char *fmt)
-    : UIComponent(std::move(args)),
-      X(ComponentArgs{this, "X", ""}, value.first, min, max),
-      Y(ComponentArgs{this, "Y", ""}, value.second, min, max),
+    : UIComponent(std::move(args)), X({this, "X", ""}, value.first, min, max), Y({this, "Y", ""}, value.second, min, max),
       Format(fmt) {}
 
 Vec2::operator ImVec2() const { return {X, Y}; }

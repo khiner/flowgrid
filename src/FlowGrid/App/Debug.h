@@ -9,25 +9,50 @@
 struct Metrics : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    DefineUI(FlowGridMetrics, Prop(Bool, ShowRelativePaths, true));
-    DefineUI(ImGuiMetrics);
-    DefineUI(ImPlotMetrics);
+    struct FlowGridMetrics : UIComponent {
+        using UIComponent::UIComponent;
+        Prop(Bool, ShowRelativePaths, true);
+
+    protected:
+        void Render() const override;
+    };
+
+    struct ImGuiMetrics : UIComponent {
+        using UIComponent::UIComponent;
+
+    protected:
+        void Render() const override;
+    };
+
+    struct ImPlotMetrics : UIComponent {
+        using UIComponent::UIComponent;
+
+    protected:
+        void Render() const override;
+    };
 
     Prop(FlowGridMetrics, FlowGrid);
     Prop(ImGuiMetrics, ImGui);
     Prop(ImPlotMetrics, ImPlot);
 };
 
-DefineUI(
-    Debug,
+struct Debug : UIComponent {
+    using UIComponent::UIComponent;
 
-    DefineWindow_(
-        StateViewer,
-        Menu({
-            Menu("Settings", {AutoSelect, LabelMode}),
-            Menu({}), // Need multiple elements to disambiguate vector-of-variants construction from variant construction.
-        }),
-        enum LabelMode{Annotated, Raw};
+    struct StateViewer : Window {
+        StateViewer(ComponentArgs &&args)
+            : Window(
+                  std::move(args),
+                  Menu({
+                      Menu("Settings", {AutoSelect, LabelMode}),
+                      Menu({}), // Need multiple elements to disambiguate vector-of-variants construction from variant construction.
+                  })
+              ) {}
+
+        enum LabelMode {
+            Annotated,
+            Raw
+        };
         Prop_(Enum, LabelMode, "?The raw dog JSON state doesn't store keys for all items.\n"
                                "For example, the main `ui.style.colors` state is a list.\n\n"
                                "'Annotated' mode shows (highlighted) labels for such state items.\n"
@@ -39,19 +64,42 @@ DefineUI(
               true);
 
         void StateJsonTree(string_view key, const nlohmann::json &value, const StorePath &path = RootPath) const;
-    );
 
-    DefineWindow(
-        ProjectPreview,
+    protected:
+        void Render() const override;
+    };
+
+    struct ProjectPreview : Window {
+        using Window::Window;
+
         Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
-        Prop(Bool, Raw)
-    );
+        Prop(Bool, Raw);
 
-    // DefineWindow_(StateMemoryEditor, WindowFlags_NoScrollbar);
-    DefineWindow(StorePathUpdateFrequency);
+    protected:
+        void Render() const override;
+    };
 
-    DefineWindow(DebugLog);
-    DefineWindow(StackTool);
+    // StateMemoryEditor, WindowFlags_NoScrollbar
+    struct StorePathUpdateFrequency : Window {
+        using Window::Window;
+
+    protected:
+        void Render() const override;
+    };
+
+    struct DebugLog : Window {
+        using Window::Window;
+
+    protected:
+        void Render() const override;
+    };
+
+    struct StackTool : Window {
+        using Window::Window;
+
+    protected:
+        void Render() const override;
+    };
 
     Prop(StateViewer, StateViewer);
     Prop(ProjectPreview, ProjectPreview);
@@ -60,4 +108,7 @@ DefineUI(
     Prop(DebugLog, DebugLog);
     Prop(StackTool, StackTool);
     Prop(Metrics, Metrics);
-);
+
+protected:
+    void Render() const override;
+};

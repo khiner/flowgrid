@@ -48,6 +48,8 @@ struct Window : UIComponent, MenuItemDrawable {
     ImGuiWindow &FindImGuiWindow() const;
     void Draw() const override;
     void MenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
+
+    // todo Refactor docking behavior out of `Window` into a new `Docked` type.
     void Dock(ID node_id) const;
     void SelectTab() const; // If this window is tabbed, select it.
 
@@ -57,26 +59,7 @@ struct Window : UIComponent, MenuItemDrawable {
     const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 };
 
-#define DefineWindow(TypeName, ...)   \
-    struct TypeName : Window {        \
-        using Window::Window;         \
-        __VA_ARGS__;                  \
-                                      \
-    protected:                        \
-        void Render() const override; \
-    };
-
-#define DefineWindow_(TypeName, VisibleOrMenu, ...)       \
-    struct TypeName : Window {                            \
-        TypeName(ComponentArgs &&args)                    \
-            : Window(std::move(args), (VisibleOrMenu)) {} \
-        __VA_ARGS__;                                      \
-                                                          \
-    protected:                                            \
-        void Render() const override;                     \
-    };
-
-// When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.
+// Renders all its props as tabs (except the `Visible` boolean member coming from `Window`).
 struct TabsWindow : Window {
     using Window::Window;
 

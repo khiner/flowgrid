@@ -49,19 +49,22 @@ struct AudioGraph : UIComponent {
         void Render() const override;
     };
 
-    DefineComponent(
-        Style,
+    struct Style : Component {
+        using Component::Component;
 
-        DefineUI(
-            Matrix,
+        struct Matrix : UIComponent {
+            using UIComponent::UIComponent;
 
             Prop_(Float, CellSize, "?The size of each matrix cell, as a multiple of line height.", 1, 1, 3);
             Prop_(Float, CellGap, "?The gap between matrix cells.", 1, 0, 10);
             Prop_(Float, LabelSize, "?The space provided for the label, as a multiple of line height.\n(Use Style->ImGui->InnerItemSpacing->X for spacing between labels and cells.)", 6, 3, 8);
-        );
+
+        protected:
+            void Render() const override;
+        };
 
         Prop(Matrix, Matrix);
-    );
+    };
 
     Prop(Nodes, Nodes);
     Prop(Matrix<bool>, Connections);

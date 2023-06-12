@@ -20,7 +20,7 @@ using namespace ImGui;
 Window::Window(ComponentArgs &&args, const bool visible) : UIComponent(std::move(args)) {
     store::Set(Visible, visible);
 }
-Window::Window(ComponentArgs &&args, const ImGuiWindowFlags flags): UIComponent(std::move(args)), WindowFlags(flags) {}
+Window::Window(ComponentArgs &&args, const ImGuiWindowFlags flags) : UIComponent(std::move(args)), WindowFlags(flags) {}
 Window::Window(ComponentArgs &&args, Menu &&menu) : UIComponent(std::move(args)), WindowMenu{std::move(menu)} {}
 
 ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }

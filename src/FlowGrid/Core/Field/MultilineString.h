@@ -13,7 +13,12 @@ struct MultilineString : Window {
     operator string_view() const { return Value; };
     operator bool() const { return Value; }
 
-    DefineWindow(Metrics);
+    struct Metrics : Window {
+        using Window::Window;
+
+    protected:
+        void Render() const override;
+    };
 
     Prop(String, Value);
     Prop_(Metrics, Metrics, "Editor metrics");

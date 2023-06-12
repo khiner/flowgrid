@@ -2,14 +2,14 @@
 
 #include "imgui_internal.h"
 
-void UIStateful::DrawWindows() const {
+void UIComponent::DrawWindows() const {
     for (const auto *child : Children) {
         if (const auto *window_child = dynamic_cast<const Window *>(child)) {
             window_child->Draw();
         }
     }
     for (const auto *child : Children) {
-        if (const auto *ui_child = dynamic_cast<const UIStateful *>(child)) {
+        if (const auto *ui_child = dynamic_cast<const UIComponent *>(child)) {
             ui_child->DrawWindows();
         }
     }
@@ -17,14 +17,14 @@ void UIStateful::DrawWindows() const {
 
 using namespace ImGui;
 
-Window::Window(Stateful *parent, string_view path_leaf, string_view meta_str, const bool visible)
-    : UIStateful(parent, path_leaf, meta_str) {
+Window::Window(Component *parent, string_view path_leaf, string_view meta_str, const bool visible)
+    : UIComponent(parent, path_leaf, meta_str) {
     store::Set(Visible, visible);
 }
-Window::Window(Stateful *parent, string_view path_leaf, string_view meta_str, const ImGuiWindowFlags flags)
-    : UIStateful(parent, path_leaf, meta_str), WindowFlags(flags) {}
-Window::Window(Stateful *parent, string_view path_leaf, string_view meta_str, Menu menu)
-    : UIStateful(parent, path_leaf, meta_str), WindowMenu{std::move(menu)} {}
+Window::Window(Component *parent, string_view path_leaf, string_view meta_str, const ImGuiWindowFlags flags)
+    : UIComponent(parent, path_leaf, meta_str), WindowFlags(flags) {}
+Window::Window(Component *parent, string_view path_leaf, string_view meta_str, Menu menu)
+    : UIComponent(parent, path_leaf, meta_str), WindowMenu{std::move(menu)} {}
 
 ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }
 
@@ -59,7 +59,7 @@ void Window::SelectTab() const {
 void TabsWindow::Render(const std::set<ID> &exclude) const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
-            if (const auto *ui_child = dynamic_cast<const UIStateful *>(child)) {
+            if (const auto *ui_child = dynamic_cast<const UIComponent *>(child)) {
                 if (!exclude.contains(ui_child->Id) && ui_child->Id != Visible.Id && BeginTabItem(child->ImGuiLabel.c_str())) {
                     ui_child->Draw();
                     EndTabItem();

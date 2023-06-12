@@ -133,7 +133,7 @@ void App::Render() const {
 
     // Draw non-window children.
     for (const auto *child : Children) {
-        if (const auto *ui_child = dynamic_cast<const UIStateful *>(child)) {
+        if (const auto *ui_child = dynamic_cast<const UIComponent *>(child)) {
             if (!dynamic_cast<const Window *>(child)) {
                 ui_child->Draw();
             }

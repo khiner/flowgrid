@@ -2,8 +2,8 @@
 
 #include "miniaudio.h"
 
-AudioGraphNode::AudioGraphNode(Stateful *parent, string_view path_leaf, string_view meta_str, bool on)
-    : UIStateful(parent, path_leaf, meta_str) {
+AudioGraphNode::AudioGraphNode(Component *parent, string_view path_leaf, string_view meta_str, bool on)
+    : UIComponent(parent, path_leaf, meta_str) {
     store::Set(On, on);
 }
 

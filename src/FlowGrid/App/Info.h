@@ -1,5 +1,5 @@
 #pragma once
 
-#include "Core/Stateful/Window.h"
+#include "Core/Component/Window.h"
 
 DefineWindow(Info);

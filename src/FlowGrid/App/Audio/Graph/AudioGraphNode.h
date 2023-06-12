@@ -1,15 +1,15 @@
 #pragma once
 
+#include "Core/Component/Window.h" // xxx should only need Component and Field.
 #include "Core/Field/Float.h"
-#include "Core/Stateful/Window.h" // xxx should only need Stateful and Field.
 
 struct ma_node_graph;
 
 // Corresponds to `ma_node_base`.
 // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
 // This base `Node` can either be specialized or instantiated on its own.
-struct AudioGraphNode : UIStateful {
-    AudioGraphNode(Stateful *parent, string_view path_leaf, string_view meta_str = "", bool on = true);
+struct AudioGraphNode : UIComponent {
+    AudioGraphNode(Component *parent, string_view path_leaf, string_view meta_str = "", bool on = true);
 
     void Set(void *) const; // Set MA node.
     void *Get() const; // Get MA node.

@@ -40,13 +40,13 @@ struct Style : TabsWindow {
         static const char *GetColorName(FlowGridCol idx);
     );
 
-    struct ImGuiStyle : UIStateful {
-        ImGuiStyle(Stateful *parent, string_view path_leaf, string_view meta_str = "");
+    struct ImGuiStyle : UIComponent {
+        ImGuiStyle(Component *parent, string_view path_leaf, string_view meta_str = "");
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImGuiColors : Colors {
-            ImGuiColors(Stateful *parent, string_view path_leaf, string_view meta_str);
+            ImGuiColors(Component *parent, string_view path_leaf, string_view meta_str);
         };
 
         void Update(ImGuiContext *ctx) const;
@@ -123,13 +123,13 @@ struct Style : TabsWindow {
         void Render() const override;
     };
 
-    struct ImPlotStyle : UIStateful {
-        ImPlotStyle(Stateful *parent, string_view path_leaf, string_view meta_str = "");
+    struct ImPlotStyle : UIComponent {
+        ImPlotStyle(Component *parent, string_view path_leaf, string_view meta_str = "");
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImPlotColors : Colors {
-            ImPlotColors(Stateful *parent, string_view path_leaf, string_view meta_str);
+            ImPlotColors(Component *parent, string_view path_leaf, string_view meta_str);
         };
 
         void Update(ImPlotContext *ctx) const;

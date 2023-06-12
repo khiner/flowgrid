@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Core/Stateful/Window.h"
+#include "Core/Component/Window.h"
 #include "Field.h"
 #include "String.h"
 
 // struct MultilineString : TypedField<string>, Window {
 struct MultilineString : Window {
-    MultilineString(Stateful *parent, string_view path_leaf, string_view meta_str, string_view value = "");
+    MultilineString(Component *parent, string_view path_leaf, string_view meta_str, string_view value = "");
 
     bool operator==(const std::string &value) const { return Value == value; }
     operator std::string() const { return Value; }

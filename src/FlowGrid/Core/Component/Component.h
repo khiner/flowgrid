@@ -15,18 +15,18 @@ using std::string, std::string_view;
 // todo don't split on escaped '\?'
 std::pair<string_view, string_view> ParseHelpText(string_view str);
 
-struct Stateful {
-    inline static std::unordered_map<ID, Stateful *> WithId; // Access any state member by its ID. todo change to vector after adding `Stateful::Index`.
+struct Component {
+    inline static std::unordered_map<ID, Component *> WithId; // Access any state member by its ID. todo change to vector after adding `Component::Index`.
 
-    Stateful(Stateful *parent = nullptr, string_view path_leaf = "", string_view meta_str = "");
-    Stateful(Stateful *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str);
+    Component(Component *parent = nullptr, string_view path_leaf = "", string_view meta_str = "");
+    Component(Component *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str);
 
-    virtual ~Stateful();
-    const Stateful *Child(Count i) const { return Children[i]; }
+    virtual ~Component();
+    const Component *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }
 
-    const Stateful *Parent;
-    std::vector<Stateful *> Children{};
+    const Component *Parent;
+    std::vector<Component *> Children{};
     const string PathLeaf;
     const StorePath Path;
     const string Name, Help, ImGuiLabel;
@@ -38,7 +38,7 @@ protected:
 };
 
 /**
-Convenience macros for compactly defining `Stateful` types and their properties.
+Convenience macros for compactly defining `Component` types and their properties.
 
 todo These will very likely be defined in a separate language once the API settles down.
   If we could hot-reload and only recompile the needed bits without restarting the app, it would accelerate development A TON.
@@ -61,10 +61,10 @@ todo Try out replacing semicolon separators by e.g. commas.
     (string with value the same as the variable name).
     - `Prop_` is the same as `Prop`, but supports overriding the displayed name & adding help text in the third arg.
     - Arguments
-      1) `PropType`: Any type deriving from `Stateful`.
+      1) `PropType`: Any type deriving from `Component`.
       2) `PropName` (use PascalCase) is used for:
         - The ID of the property, relative to its parent (`this` during the macro's execution).
-        - The name of the instance variable added to `this` (again, defined like any other instance variable in a `Stateful`).
+        - The name of the instance variable added to `this` (again, defined like any other instance variable in a `Component`).
         - The default label displayed in the UI is a 'Sentense cased' label derived from the prop's 'PascalCase' `PropName` property-id/path-segment (the second arg).
       3) `NameHelp`
         - A string with format "Label string?Help string".
@@ -74,8 +74,8 @@ todo Try out replacing semicolon separators by e.g. commas.
           - E.g. `Prop(Bool, TestAThing, "Test-a-thing?A state member for testing things")` overrides the default "Test a thing" label with a hyphenation.
           - Or, provide nothing before the '?' to add a help string without overriding the default `PropName`-derived label.
             - E.g. "?A state member for testing things."
-* Stateful types
-  - `DefineStateful` defines a plain old state type.
+* Component types
+  - `DefineComponent` defines a plain old state type.
   - `DefineUI` defines a drawable state type.
     - `DefineUI_` is the same as `DefineUI`, but adds a custom constructor implementation (with the same arguments).
   - `DefineWindow` defines a drawable state type whose contents are rendered to a window.
@@ -90,31 +90,31 @@ todo Try out replacing semicolon separators by e.g. commas.
 #define Prop(PropType, PropName, ...) PropType PropName{this, (#PropName), "", __VA_ARGS__};
 #define Prop_(PropType, PropName, NameHelp, ...) PropType PropName{this, (#PropName), (NameHelp), __VA_ARGS__};
 
-#define DefineStateful(TypeName, ...) \
-    struct TypeName : Stateful {      \
-        using Stateful::Stateful;     \
-        __VA_ARGS__;                  \
+#define DefineComponent(TypeName, ...) \
+    struct TypeName : Component {      \
+        using Component::Component;    \
+        __VA_ARGS__;                   \
     };
 
-struct UIStateful : Stateful, Drawable {
-    using Stateful::Stateful;
+struct UIComponent : Component, Drawable {
+    using Component::Component;
     void DrawWindows() const; // Recursively draw all windows in the state tree. Note that non-window members can contain windows.
 };
 
-#define DefineUI(TypeName, ...)       \
-    struct TypeName : UIStateful {    \
-        using UIStateful::UIStateful; \
-        __VA_ARGS__;                  \
-                                      \
-    protected:                        \
-        void Render() const override; \
+#define DefineUI(TypeName, ...)         \
+    struct TypeName : UIComponent {     \
+        using UIComponent::UIComponent; \
+        __VA_ARGS__;                    \
+                                        \
+    protected:                          \
+        void Render() const override;   \
     };
 
-#define DefineUI_(TypeName, ...)                                                      \
-    struct TypeName : UIStateful {                                                    \
-        TypeName(Stateful *parent, string_view path_leaf, string_view meta_str = ""); \
-        __VA_ARGS__;                                                                  \
-                                                                                      \
-    protected:                                                                        \
-        void Render() const override;                                                 \
+#define DefineUI_(TypeName, ...)                                                       \
+    struct TypeName : UIComponent {                                                    \
+        TypeName(Component *parent, string_view path_leaf, string_view meta_str = ""); \
+        __VA_ARGS__;                                                                   \
+                                                                                       \
+    protected:                                                                         \
+        void Render() const override;                                                  \
     };

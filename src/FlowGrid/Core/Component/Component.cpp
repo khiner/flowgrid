@@ -1,4 +1,4 @@
-#include "Stateful.h"
+#include "Component.h"
 
 #include "imgui_internal.h" // Only needed for `ImHashStr`.
 #include <format>
@@ -12,7 +12,7 @@ std::pair<string_view, string_view> ParseHelpText(string_view str) {
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
 }
 
-Stateful::Stateful(Stateful *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str)
+Component::Component(Component *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str)
     : Parent(parent),
       PathLeaf(path_leaf),
       Path(Parent && !PathLeaf.empty() ? (Parent->Path / PathLeaf) : (Parent ? Parent->Path : (!PathLeaf.empty() ? StorePath(PathLeaf) : RootPath))),
@@ -24,16 +24,16 @@ Stateful::Stateful(Stateful *parent, string_view path_leaf, std::pair<string_vie
     WithId[Id] = this;
 }
 
-Stateful::Stateful(Stateful *parent, string_view path_leaf, string_view meta_str)
-    : Stateful(parent, path_leaf, ParseHelpText(meta_str)) {}
+Component::Component(Component *parent, string_view path_leaf, string_view meta_str)
+    : Component(parent, path_leaf, ParseHelpText(meta_str)) {}
 
-Stateful::~Stateful() {
+Component::~Component() {
     WithId.erase(Id);
 }
 
 // Currently, `Draw` is not used for anything except wrapping around `Render`.
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
-void Stateful::HelpMarker(const bool after) const {
+void Component::HelpMarker(const bool after) const {
     if (Help.empty()) return;
 
     if (after) ImGui::SameLine();

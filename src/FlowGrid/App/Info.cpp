@@ -11,8 +11,8 @@ void Info::Render() const {
     if (!hovered_id) return;
 
     PushTextWrapPos(0);
-    if (Stateful::WithId.contains(hovered_id)) {
-        const auto *member = Stateful::WithId.at(hovered_id);
+    if (Component::WithId.contains(hovered_id)) {
+        const auto *member = Component::WithId.at(hovered_id);
         const string help = member->Help.empty() ? std::format("No info available for \"{}\".", member->Name) : member->Help;
         TextUnformatted(help.c_str());
     } else if (IsBoxHovered(hovered_id)) {

@@ -6,9 +6,9 @@
 
 #include "UI/InvisibleButton.h"
 
-UInt::UInt(Stateful *parent, string_view path_leaf, string_view meta_str, U32 value, U32 min, U32 max)
+UInt::UInt(Component *parent, string_view path_leaf, string_view meta_str, U32 value, U32 min, U32 max)
     : TypedField(parent, path_leaf, meta_str, value), Min(min), Max(max) {}
-UInt::UInt(Stateful *parent, string_view path_leaf, string_view meta_str, std::function<const string(U32)> get_name, U32 value)
+UInt::UInt(Component *parent, string_view path_leaf, string_view meta_str, std::function<const string(U32)> get_name, U32 value)
     : TypedField(parent, path_leaf, meta_str, value), Min(0), Max(100), GetName(std::move(get_name)) {}
 UInt::operator bool() const { return Value; }
 UInt::operator int() const { return Value; }

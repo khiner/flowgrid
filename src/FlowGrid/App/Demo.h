@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Core/Stateful/Window.h"
+#include "Core/Component/Window.h"
 #include "FileDialog/FileDialog.h"
 
 struct Demo : TabsWindow {
-    Demo(Stateful *parent, string_view path_leaf, string_view meta_str);
+    Demo(Component *parent, string_view path_leaf, string_view meta_str);
 
     DefineUI(ImGuiDemo);
     DefineUI(ImPlotDemo);

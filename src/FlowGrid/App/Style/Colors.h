@@ -1,12 +1,12 @@
 #pragma once
 
+#include "Core/Component/Window.h"
 #include "Core/Field/UInt.h"
-#include "Core/Stateful/Window.h"
 
 struct ImVec4;
 
-struct Colors : UIStateful {
-    Colors(Stateful *parent, string_view path_leaf, string_view meta_str, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
+struct Colors : UIComponent {
+    Colors(Component *parent, string_view path_leaf, string_view meta_str, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
     ~Colors();
 
     static U32 ConvertFloat4ToU32(const ImVec4 &value);

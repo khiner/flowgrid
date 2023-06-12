@@ -1,16 +1,16 @@
 #pragma once
 
-#include "Core/Stateful/Stateful.h"
+#include "Core/Component/Component.h"
 #include "PrimitiveAction.h"
 
 // A `Field` is a drawable state-member that wraps around a primitive type.
-struct Field : Stateful {
+struct Field : Component {
     inline static bool IsGesturing{};
     static void UpdateGesturing();
 
     inline static std::unordered_map<StorePath, Field *, PathHash> WithPath; // Find any field by its path.
 
-    Field(Stateful *parent, string_view path_leaf, string_view meta_str);
+    Field(Component *parent, string_view path_leaf, string_view meta_str);
     ~Field();
 
     virtual void Update() = 0;
@@ -20,7 +20,7 @@ struct PrimitiveField : Field, Drawable {
     using Entry = std::pair<const PrimitiveField &, Primitive>;
     using Entries = std::vector<Entry>;
 
-    PrimitiveField(Stateful *parent, string_view path_leaf, string_view meta_str, Primitive value);
+    PrimitiveField(Component *parent, string_view path_leaf, string_view meta_str, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
 
@@ -30,7 +30,7 @@ struct PrimitiveField : Field, Drawable {
 
 template<IsPrimitive T>
 struct TypedField : PrimitiveField {
-    TypedField(Stateful *parent, string_view path_leaf, string_view meta_str, T value = {})
+    TypedField(Component *parent, string_view path_leaf, string_view meta_str, T value = {})
         : PrimitiveField(parent, path_leaf, meta_str, value), Value(value) {}
 
     operator T() const { return Value; }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Stateful/Window.h"
+#include "Core/Component/Window.h"
 
 #include "AudioAction.h"
 #include "AudioDevice.h"

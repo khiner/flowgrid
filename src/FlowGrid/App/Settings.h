@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Core/Component/Window.h"
 #include "Core/Field/Float.h"
-#include "Core/Stateful/Window.h"
 
 DefineWindow(
     ApplicationSettings,

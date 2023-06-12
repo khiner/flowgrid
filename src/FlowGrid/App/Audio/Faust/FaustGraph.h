@@ -1,13 +1,13 @@
 #pragma once
 
 #include "App/Style/Colors.h"
+#include "Core/Component/Window.h"
 #include "Core/Field/Bool.h"
 #include "Core/Field/Enum.h"
 #include "Core/Field/Flags.h"
 #include "Core/Field/Float.h"
 #include "Core/Field/String.h"
 #include "Core/Field/Vec2.h"
-#include "Core/Stateful/Window.h"
 #include "FaustGraphAction.h"
 #include "UI/Styling.h"
 
@@ -129,7 +129,7 @@ DefineWindow_(
         static const char *GetColorName(FlowGridGraphCol idx);
     );
 
-    DefineStateful(
+    DefineComponent(
         GraphSettings,
         Prop_(
             Flags, HoverFlags,

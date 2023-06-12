@@ -7,7 +7,7 @@ using ImGuiSliderFlags = int;
 struct Float : TypedField<float> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(
-        Stateful *parent, string_view path_leaf, string_view meta_str,
+        Component *parent, string_view path_leaf, string_view meta_str,
         float value = 0, float min = 0, float max = 1, const char *fmt = nullptr,
         ImGuiSliderFlags flags = 0, float drag_speed = 0
     );

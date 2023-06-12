@@ -6,8 +6,8 @@
 
 #include "Core/Field/MultilineString.h"
 
-struct Faust : UIStateful {
-    using UIStateful::UIStateful;
+struct Faust : UIComponent {
+    using UIComponent::UIComponent;
 
     void Apply(const Action::Faust &) const;
     bool CanApply(const Action::Faust &) const;

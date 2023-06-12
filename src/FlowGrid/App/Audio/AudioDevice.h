@@ -1,17 +1,17 @@
 #pragma once
 
 #include "AudioIO.h"
+#include "Core/Component/Window.h"
 #include "Core/Field/Bool.h"
 #include "Core/Field/Enum.h"
 #include "Core/Field/Float.h"
 #include "Core/Field/String.h"
 #include "Core/Field/UInt.h"
-#include "Core/Stateful/Window.h"
 
 struct ma_device;
 // Corresponds to `ma_device`.
-struct AudioDevice : UIStateful {
-    using UIStateful::UIStateful;
+struct AudioDevice : UIComponent {
+    using UIComponent::UIComponent;
 
     static const std::vector<U32> PrioritizedSampleRates;
     static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.

@@ -8,8 +8,8 @@
 struct ma_device;
 
 // Corresponds to `ma_node_graph`.
-struct AudioGraph : UIStateful {
-    using UIStateful::UIStateful;
+struct AudioGraph : UIComponent {
+    using UIComponent::UIComponent;
 
     void Init() const;
     void Update() const;
@@ -23,14 +23,14 @@ struct AudioGraph : UIStateful {
         void DoUninit() const override;
     };
 
-    struct Nodes : UIStateful {
-        using UIStateful::UIStateful;
+    struct Nodes : UIComponent {
+        using UIComponent::UIComponent;
 
-        // Iterate over all children, converting each element from a `Stateful *` to a `Node *`.
+        // Iterate over all children, converting each element from a `Component *` to a `Node *`.
         // Usage: `for (const Node *node : Nodes) ...`
-        struct Iterator : std::vector<Stateful *>::const_iterator {
-            Iterator(auto it) : std::vector<Stateful *>::const_iterator(it) {}
-            const AudioGraphNode *operator*() const { return dynamic_cast<const AudioGraphNode *>(std::vector<Stateful *>::const_iterator::operator*()); }
+        struct Iterator : std::vector<Component *>::const_iterator {
+            Iterator(auto it) : std::vector<Component *>::const_iterator(it) {}
+            const AudioGraphNode *operator*() const { return dynamic_cast<const AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
         };
         Iterator begin() const { return Children.cbegin(); }
         Iterator end() const { return Children.cend(); }
@@ -49,7 +49,7 @@ struct AudioGraph : UIStateful {
         void Render() const override;
     };
 
-    DefineStateful(
+    DefineComponent(
         Style,
 
         DefineUI(

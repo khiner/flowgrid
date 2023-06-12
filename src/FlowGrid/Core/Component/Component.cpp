@@ -6,18 +6,18 @@
 #include "Helper/String.h"
 #include "UI/HelpMarker.h"
 
-std::pair<string_view, string_view> ParseHelpText(string_view str) {
+Component::Metadata Component::Metadata::Parse(string_view str) {
     const auto help_split = str.find_first_of('?');
     const bool found = help_split != string::npos;
-    return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
+    return {found ? string(str.substr(0, help_split)) : string(str), found ? string(str.substr(help_split + 1)) : ""};
 }
 
-Component::Component(Component *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str)
+Component::Component(Component *parent, string_view path_leaf, Metadata meta)
     : Parent(parent),
       PathLeaf(path_leaf),
       Path(Parent && !PathLeaf.empty() ? (Parent->Path / PathLeaf) : (Parent ? Parent->Path : (!PathLeaf.empty() ? StorePath(PathLeaf) : RootPath))),
-      Name(meta_str.first.empty() ? PathLeaf.empty() ? "" : StringHelper::PascalToSentenceCase(PathLeaf) : meta_str.first),
-      Help(meta_str.second),
+      Name(meta.Name.empty() ? PathLeaf.empty() ? "" : StringHelper::PascalToSentenceCase(PathLeaf) : meta.Name),
+      Help(meta.Help),
       ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathLeaf)),
       Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0)) {
     if (parent) parent->Children.emplace_back(this);
@@ -25,7 +25,7 @@ Component::Component(Component *parent, string_view path_leaf, std::pair<string_
 }
 
 Component::Component(Component *parent, string_view path_leaf, string_view meta_str)
-    : Component(parent, path_leaf, ParseHelpText(meta_str)) {}
+    : Component(parent, path_leaf, Metadata::Parse(meta_str)) {}
 
 Component::~Component() {
     WithId.erase(Id);

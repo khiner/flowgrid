@@ -8,9 +8,9 @@ Flags::Flags(Component *parent, string_view path_leaf, string_view meta_str, std
     : TypedField(parent, path_leaf, meta_str, value), Items(std::move(items)) {}
 
 Flags::Item::Item(const char *name_and_help) {
-    const auto &[name, help] = ParseHelpText(name_and_help);
-    Name = name;
-    Help = help;
+    const auto meta = Component::Metadata::Parse(name_and_help);
+    Name = meta.Name;
+    Help = meta.Help;
 }
 
 using namespace ImGui;

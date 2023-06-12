@@ -10,18 +10,21 @@
 
 using std::string, std::string_view;
 
-// Split the string on '?'.
-// If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
-// todo don't split on escaped '\?'
-std::pair<string_view, string_view> ParseHelpText(string_view str);
-
 struct Component {
+    struct Metadata {
+        // Split the string on '?'.
+        // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
+        // todo don't split on escaped '\?'
+        static Metadata Parse(string_view meta_str);
+        const string Name, Help;
+    };
+
     inline static std::unordered_map<ID, Component *> WithId; // Access any state member by its ID. todo change to vector after adding `Component::Index`.
 
     Component(Component *parent = nullptr, string_view path_leaf = "", string_view meta_str = "");
-    Component(Component *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str);
-
+    Component(Component *parent, string_view path_leaf, Metadata meta);
     virtual ~Component();
+
     const Component *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }
 

@@ -10,7 +10,7 @@ struct Field : Stateful {
 
     inline static std::unordered_map<StorePath, Field *, PathHash> WithPath; // Find any field by its path.
 
-    Field(Stateful *parent, string_view path_segment, string_view name_help);
+    Field(Stateful *parent, string_view path_leaf, string_view meta_str);
     ~Field();
 
     virtual void Update() = 0;
@@ -20,7 +20,7 @@ struct PrimitiveField : Field, Drawable {
     using Entry = std::pair<const PrimitiveField &, Primitive>;
     using Entries = std::vector<Entry>;
 
-    PrimitiveField(Stateful *parent, string_view path_segment, string_view name_help, Primitive value);
+    PrimitiveField(Stateful *parent, string_view path_leaf, string_view meta_str, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
 
@@ -30,8 +30,8 @@ struct PrimitiveField : Field, Drawable {
 
 template<IsPrimitive T>
 struct TypedField : PrimitiveField {
-    TypedField(Stateful *parent, string_view path_segment, string_view name_help, T value = {})
-        : PrimitiveField(parent, path_segment, name_help, value), Value(value) {}
+    TypedField(Stateful *parent, string_view path_leaf, string_view meta_str, T value = {})
+        : PrimitiveField(parent, path_leaf, meta_str, value), Value(value) {}
 
     operator T() const { return Value; }
     bool operator==(const T &value) const { return Value == value; }

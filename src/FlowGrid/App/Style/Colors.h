@@ -6,7 +6,7 @@
 struct ImVec4;
 
 struct Colors : UIStateful {
-    Colors(Stateful *parent, string_view path_segment, string_view name_help, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
+    Colors(Stateful *parent, string_view path_leaf, string_view meta_str, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
     ~Colors();
 
     static U32 ConvertFloat4ToU32(const ImVec4 &value);

@@ -17,14 +17,14 @@ void UIStateful::DrawWindows() const {
 
 using namespace ImGui;
 
-Window::Window(Stateful *parent, string_view path_segment, string_view name_help, const bool visible)
-    : UIStateful(parent, path_segment, name_help) {
+Window::Window(Stateful *parent, string_view path_leaf, string_view meta_str, const bool visible)
+    : UIStateful(parent, path_leaf, meta_str) {
     store::Set(Visible, visible);
 }
-Window::Window(Stateful *parent, string_view path_segment, string_view name_help, const ImGuiWindowFlags flags)
-    : UIStateful(parent, path_segment, name_help), WindowFlags(flags) {}
-Window::Window(Stateful *parent, string_view path_segment, string_view name_help, Menu menu)
-    : UIStateful(parent, path_segment, name_help), WindowMenu{std::move(menu)} {}
+Window::Window(Stateful *parent, string_view path_leaf, string_view meta_str, const ImGuiWindowFlags flags)
+    : UIStateful(parent, path_leaf, meta_str), WindowFlags(flags) {}
+Window::Window(Stateful *parent, string_view path_leaf, string_view meta_str, Menu menu)
+    : UIStateful(parent, path_leaf, meta_str), WindowMenu{std::move(menu)} {}
 
 ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }
 

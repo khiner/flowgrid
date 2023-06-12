@@ -18,8 +18,8 @@ std::pair<string_view, string_view> ParseHelpText(string_view str);
 struct Stateful {
     inline static std::unordered_map<ID, Stateful *> WithId; // Access any state member by its ID. todo change to vector after adding `Stateful::Index`.
 
-    Stateful(Stateful *parent = nullptr, string_view path_segment = "", string_view name_help = "");
-    Stateful(Stateful *parent, string_view path_segment, std::pair<string_view, string_view> name_help);
+    Stateful(Stateful *parent = nullptr, string_view path_leaf = "", string_view meta_str = "");
+    Stateful(Stateful *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str);
 
     virtual ~Stateful();
     const Stateful *Child(Count i) const { return Children[i]; }
@@ -27,7 +27,7 @@ struct Stateful {
 
     const Stateful *Parent;
     std::vector<Stateful *> Children{};
-    const string PathSegment;
+    const string PathLeaf;
     const StorePath Path;
     const string Name, Help, ImGuiLabel;
     const ID Id;
@@ -110,11 +110,11 @@ struct UIStateful : Stateful, Drawable {
         void Render() const override; \
     };
 
-#define DefineUI_(TypeName, ...)                                                          \
-    struct TypeName : UIStateful {                                                        \
-        TypeName(Stateful *parent, string_view path_segment, string_view name_help = ""); \
-        __VA_ARGS__;                                                                      \
-                                                                                          \
-    protected:                                                                            \
-        void Render() const override;                                                     \
+#define DefineUI_(TypeName, ...)                                                      \
+    struct TypeName : UIStateful {                                                    \
+        TypeName(Stateful *parent, string_view path_leaf, string_view meta_str = ""); \
+        __VA_ARGS__;                                                                  \
+                                                                                      \
+    protected:                                                                        \
+        void Render() const override;                                                 \
     };

@@ -12,7 +12,7 @@ struct Flags : TypedField<int>, MenuItemDrawable {
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.
     // E.g. `{"Foo?Does a thing", "Bar?Does a different thing", "Baz"}`
-    Flags(Stateful *parent, string_view path_segment, string_view name_help, std::vector<Item> items, int value = 0);
+    Flags(Stateful *parent, string_view path_leaf, string_view meta_str, std::vector<Item> items, int value = 0);
 
     void MenuItem() const override;
 

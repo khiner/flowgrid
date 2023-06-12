@@ -12,20 +12,20 @@ std::pair<string_view, string_view> ParseHelpText(string_view str) {
     return {found ? str.substr(0, help_split) : str, found ? str.substr(help_split + 1) : ""};
 }
 
-Stateful::Stateful(Stateful *parent, string_view path_segment, std::pair<string_view, string_view> name_help)
+Stateful::Stateful(Stateful *parent, string_view path_leaf, std::pair<string_view, string_view> meta_str)
     : Parent(parent),
-      PathSegment(path_segment),
-      Path(Parent && !PathSegment.empty() ? (Parent->Path / PathSegment) : (Parent ? Parent->Path : (!PathSegment.empty() ? StorePath(PathSegment) : RootPath))),
-      Name(name_help.first.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : name_help.first),
-      Help(name_help.second),
-      ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathSegment)),
+      PathLeaf(path_leaf),
+      Path(Parent && !PathLeaf.empty() ? (Parent->Path / PathLeaf) : (Parent ? Parent->Path : (!PathLeaf.empty() ? StorePath(PathLeaf) : RootPath))),
+      Name(meta_str.first.empty() ? PathLeaf.empty() ? "" : StringHelper::PascalToSentenceCase(PathLeaf) : meta_str.first),
+      Help(meta_str.second),
+      ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathLeaf)),
       Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0)) {
     if (parent) parent->Children.emplace_back(this);
     WithId[Id] = this;
 }
 
-Stateful::Stateful(Stateful *parent, string_view path_segment, string_view name_help)
-    : Stateful(parent, path_segment, ParseHelpText(name_help)) {}
+Stateful::Stateful(Stateful *parent, string_view path_leaf, string_view meta_str)
+    : Stateful(parent, path_leaf, ParseHelpText(meta_str)) {}
 
 Stateful::~Stateful() {
     WithId.erase(Id);

@@ -41,9 +41,9 @@ enum WindowFlags_ {
 struct Window : UIStateful, MenuItemDrawable {
     using UIStateful::UIStateful;
 
-    Window(Stateful *parent, string_view path_segment, string_view name_help, bool visible);
-    Window(Stateful *parent, string_view path_segment, string_view name_help, ImGuiWindowFlags flags);
-    Window(Stateful *parent, string_view path_segment, string_view name_help, Menu menu);
+    Window(Stateful *parent, string_view path_leaf, string_view meta_str, bool visible);
+    Window(Stateful *parent, string_view path_leaf, string_view meta_str, ImGuiWindowFlags flags);
+    Window(Stateful *parent, string_view path_leaf, string_view meta_str, Menu menu);
 
     ImGuiWindow &FindImGuiWindow() const;
     void Draw() const override;
@@ -66,14 +66,14 @@ struct Window : UIStateful, MenuItemDrawable {
         void Render() const override; \
     };
 
-#define DefineWindow_(TypeName, VisibleOrMenu, ...)                                      \
-    struct TypeName : Window {                                                           \
-        TypeName(Stateful *parent, string_view path_segment, string_view name_help = "") \
-            : Window(parent, path_segment, name_help, (VisibleOrMenu)) {}                \
-        __VA_ARGS__;                                                                     \
-                                                                                         \
-    protected:                                                                           \
-        void Render() const override;                                                    \
+#define DefineWindow_(TypeName, VisibleOrMenu, ...)                                  \
+    struct TypeName : Window {                                                       \
+        TypeName(Stateful *parent, string_view path_leaf, string_view meta_str = "") \
+            : Window(parent, path_leaf, meta_str, (VisibleOrMenu)) {}                \
+        __VA_ARGS__;                                                                 \
+                                                                                     \
+    protected:                                                                       \
+        void Render() const override;                                                \
     };
 
 // When we define a window member type without adding properties, we're defining a new way to arrange and draw the children of the window.

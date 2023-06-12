@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-Float::Float(Stateful *parent, string_view path_segment, string_view name_help, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
-    : TypedField(parent, path_segment, name_help, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
+Float::Float(Stateful *parent, string_view path_leaf, string_view meta_str, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
+    : TypedField(parent, path_leaf, meta_str, value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
 // todo instead of overriding `Update` to handle ints, try ensuring floats are written to the store.
 void Float::Update() {

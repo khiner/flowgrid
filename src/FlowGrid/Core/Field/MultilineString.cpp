@@ -7,8 +7,8 @@
 #include "Core/Field/PrimitiveAction.h"
 #include "UI/UI.h"
 
-MultilineString::MultilineString(Stateful *parent, string_view path_segment, string_view name_help, string_view value)
-    : Window(parent, path_segment, name_help, WindowFlags_MenuBar) {
+MultilineString::MultilineString(Stateful *parent, string_view path_leaf, string_view meta_str, string_view value)
+    : Window(parent, path_leaf, meta_str, WindowFlags_MenuBar) {
     store::Set(Value, string(value));
 }
 

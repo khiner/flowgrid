@@ -28,7 +28,7 @@
         static constexpr bool IsSavable = is_savable;                           \
         void q(bool flush = false) const;                                       \
         static void MenuItem();                                                 \
-        static fs::path GetPath() { return _TypePath / _Meta.PathSuffix; }      \
+        static fs::path GetPath() { return _TypePath / _Meta.PathLeaf; }        \
         static const std::string &GetName() { return _Meta.Name; }              \
         static const std::string &GetMenuLabel() { return _Meta.MenuLabel; }    \
         static const std::string &GetShortcut() { return _Meta.Shortcut; }      \

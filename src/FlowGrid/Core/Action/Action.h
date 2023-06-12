@@ -30,10 +30,10 @@ struct Metadata {
     // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
     // (or added to the gesture history, or saved in a `.fga` (FlowGridAction) project).
     // This is used for actions with only non-state-updating side effects, like saving a file.
-    Metadata(std::string_view path_suffix, std::string_view meta_str = "");
+    Metadata(std::string_view path_leaf, std::string_view meta_str = "");
 
-    const std::string PathSuffix; // E.g. "Set"
-    const std::string Name; // Human-readable name. By default, derived as `PascalToSentenceCase(PathSuffix)`.
+    const std::string PathLeaf; // E.g. "Set"
+    const std::string Name; // Human-readable name. By default, derived as `PascalToSentenceCase(PathLeaf)`.
     const std::string MenuLabel; // Defaults to `Name`.
     const std::string Shortcut;
 
@@ -47,7 +47,7 @@ private:
     };
     Parsed Parse(std::string_view meta_str);
 
-    Metadata(std::string_view path_suffix, Parsed parsed);
+    Metadata(std::string_view path_leaf, Parsed parsed);
 };
 
 template<typename T>

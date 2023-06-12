@@ -41,12 +41,12 @@ struct Style : TabsWindow {
     );
 
     struct ImGuiStyle : UIStateful {
-        ImGuiStyle(Stateful *parent, string_view path_segment, string_view name_help = "");
+        ImGuiStyle(Stateful *parent, string_view path_leaf, string_view meta_str = "");
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImGuiColors : Colors {
-            ImGuiColors(Stateful *parent, string_view path_segment, string_view name_help);
+            ImGuiColors(Stateful *parent, string_view path_leaf, string_view meta_str);
         };
 
         void Update(ImGuiContext *ctx) const;
@@ -124,12 +124,12 @@ struct Style : TabsWindow {
     };
 
     struct ImPlotStyle : UIStateful {
-        ImPlotStyle(Stateful *parent, string_view path_segment, string_view name_help = "");
+        ImPlotStyle(Stateful *parent, string_view path_leaf, string_view meta_str = "");
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImPlotColors : Colors {
-            ImPlotColors(Stateful *parent, string_view path_segment, string_view name_help);
+            ImPlotColors(Stateful *parent, string_view path_leaf, string_view meta_str);
         };
 
         void Update(ImPlotContext *ctx) const;

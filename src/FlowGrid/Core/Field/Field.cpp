@@ -6,8 +6,8 @@
 
 using std::vector;
 
-Field::Field(Stateful *parent, string_view path_segment, string_view name_help)
-    : Stateful(parent, path_segment, name_help) {
+Field::Field(Stateful *parent, string_view path_leaf, string_view meta_str)
+    : Stateful(parent, path_leaf, meta_str) {
     WithPath[Path] = this;
 }
 Field::~Field() {
@@ -19,8 +19,8 @@ void Field::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsGesturing = false;
 }
 
-PrimitiveField::PrimitiveField(Stateful *parent, string_view id, string_view name_help, Primitive value)
-    : Field(parent, id, name_help) {
+PrimitiveField::PrimitiveField(Stateful *parent, string_view id, string_view meta_str, Primitive value)
+    : Field(parent, id, meta_str) {
     store::Set(*this, value);
 }
 

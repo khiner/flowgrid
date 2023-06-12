@@ -25,5 +25,3 @@ struct Audio : Window {
 protected:
     void Render() const override;
 };
-
-extern const Audio &audio;

@@ -9,9 +9,8 @@
 const App Application{}; // Initialize the global application state.
 const App &app = Application; // Set the read-only app reference global.
 const fg::Style &fg::style = app.Style;
-const Audio &audio = app.Audio;
-const AudioDevice &audio_device = audio.Device;
-const Faust &faust = audio.Faust;
+const AudioDevice &audio_device = app.Audio.Device;
+const Faust &faust = app.Audio.Faust;
 const FaustGraph &faust_graph = faust.Graph;
 const ImGuiSettings &imgui_settings = app.ImGuiSettings;
 const FileDialog &file_dialog = app.FileDialog;
@@ -45,7 +44,7 @@ int main() {
     }
 
     IGFD::Uninit();
-    audio.Uninit();
+    app.Audio.Uninit();
 
     return 0;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Component/Component.h"
+#include "Core/Component.h"
 #include "PrimitiveAction.h"
 
 // A `Field` is a drawable state-member that wraps around a primitive type.

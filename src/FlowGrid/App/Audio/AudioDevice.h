@@ -1,7 +1,7 @@
 #pragma once
 
 #include "AudioIO.h"
-#include "Core/Component/Window.h"
+#include "Core/Window.h"
 #include "Core/Field/Bool.h"
 #include "Core/Field/Enum.h"
 #include "Core/Field/Float.h"

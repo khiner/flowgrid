@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Component/Window.h"
+#include "Core/Window.h"
 #include "Core/Field/Float.h"
 
 DefineWindow(

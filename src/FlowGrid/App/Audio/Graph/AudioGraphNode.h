@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Component/Window.h" // xxx should only need Component and Field.
+#include "Core/Window.h" // xxx should only need Component and Field.
 #include "Core/Field/Float.h"
 
 struct ma_node_graph;

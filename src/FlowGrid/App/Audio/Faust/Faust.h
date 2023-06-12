@@ -4,6 +4,8 @@
 #include "FaustGraph.h"
 #include "FaustParams.h"
 
+#include "Core/Field/MultilineString.h"
+
 struct Faust : UIStateful {
     using UIStateful::UIStateful;
 
@@ -13,26 +15,16 @@ struct Faust : UIStateful {
     bool IsReady() const; // Has code and no errors.
     bool NeedsRestart() const;
 
-    DefineWindow_(
-        FaustEditor,
-        WindowFlags_MenuBar,
-
-        DefineWindow(Metrics);
-
-        Prop_(Metrics, Metrics, "Faust editor metrics");
-    );
-
     DefineWindow(
         FaustLog,
         Prop(String, Error);
     );
 
-    Prop_(FaustEditor, Editor, "Faust editor");
     Prop_(FaustGraph, Graph, "Faust graph");
     Prop_(FaustParams, Params, "Faust params");
     Prop_(FaustLog, Log, "Faust log");
 
-    Prop(String, Code, R"#(import("stdfaust.lib");
+    Prop(MultilineString, Code, R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
    vslider("window (samples)", 1000, 50, 10000, 1),
    vslider("xfade (samples)", 10, 1, 10000, 1),

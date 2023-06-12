@@ -105,8 +105,8 @@ void App::Render() const {
         Audio.Dock(settings_node_id);
         Settings.Dock(settings_node_id);
 
-        Audio.Faust.Editor.Dock(faust_editor_node_id);
-        Audio.Faust.Editor.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
+        Audio.Faust.Code.Dock(faust_editor_node_id);
+        Audio.Faust.Code.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
         Audio.Faust.Log.Dock(faust_tools_node_id);
         Audio.Faust.Graph.Dock(faust_tools_node_id);
         Audio.Faust.Params.Dock(faust_tools_node_id);
@@ -215,9 +215,9 @@ void OnPatch(const Patch &patch) {
 
         modified_fields.emplace(modified_field->second);
 
-        // Setting `ImGuiSettings` does not require an `app.Apply` on the action, since the action will be initiated by ImGui itself,
-        // whereas the style editors don't update the ImGui/ImPlot contexts themselves.
-        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings; // TODO only when not ui-initiated
+        // TODO Only update contexts when not ui-initiated (via a an `ApplyPatch` action inside the `WantSaveIniSettings` block).
+        //   Otherwise it's redundant.
+        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;
         else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
         else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
     }

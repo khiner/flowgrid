@@ -16,7 +16,7 @@ using std::string, std::string_view;
 std::pair<string_view, string_view> ParseHelpText(string_view str);
 
 struct Stateful {
-    inline static std::unordered_map<ID, Stateful *> WithId; // Access any state member by its ID.
+    inline static std::unordered_map<ID, Stateful *> WithId; // Access any state member by its ID. todo change to vector after adding `Stateful::Index`.
 
     Stateful(Stateful *parent = nullptr, string_view path_segment = "", string_view name_help = "");
     Stateful(Stateful *parent, string_view path_segment, std::pair<string_view, string_view> name_help);

@@ -34,7 +34,7 @@ DefineUI(
                     Menu(
                         "Faust",
                         {
-                            Menu("Editor", {Audio.Faust.Editor, Audio.Faust.Editor.Metrics}),
+                            Menu("Editor", {Audio.Faust.Code, Audio.Faust.Code.Metrics}),
                             Audio.Faust.Graph,
                             Audio.Faust.Params,
                             Audio.Faust.Log,

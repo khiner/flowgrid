@@ -999,7 +999,7 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::CSharp() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Json() {
+const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Jsn() {
     static bool inited = false;
     static LanguageDefT langDef;
     if (!inited) {

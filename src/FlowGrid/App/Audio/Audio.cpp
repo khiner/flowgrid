@@ -9,7 +9,7 @@ void Audio::Apply(const Action::Audio::Any &action) const {
     );
 }
 
-bool Audio::CanApply(const Action::Audio::Any &action) const { return true; }
+bool Audio::CanApply(const Action::Audio::Any &) const { return true; }
 
 // static ma_resampler_config ResamplerConfig;
 // static ma_resampler Resampler;

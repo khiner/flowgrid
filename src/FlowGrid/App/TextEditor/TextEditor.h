@@ -134,7 +134,7 @@ struct IMGUI_API TextEditor {
         static const LanguageDefT &AngelScript();
         static const LanguageDefT &Lua();
         static const LanguageDefT &CSharp();
-        static const LanguageDefT &Json();
+        static const LanguageDefT &Jsn();
     };
 
     enum class UndoOperationType {

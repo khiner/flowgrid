@@ -81,7 +81,7 @@ static Gesture MergeGesture(const Gesture &gesture) {
 
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
-    std::optional<const Action::StatefulActionMoment> active;
+    std::optional<const Action::SavableActionMoment> active;
     for (Count i = 0; i < gesture.size(); i++) {
         if (!active) active.emplace(gesture[i]);
         const auto &a = *active;
@@ -94,7 +94,7 @@ static Gesture MergeGesture(const Gesture &gesture) {
                 else merged_gesture.emplace_back(a); //
                 active.reset(); // No merge in either case. Move on to try compressing the next action.
             },
-            [&](const Action::Stateful &merged_action) {
+            [&](const Action::Savable &merged_action) {
                 // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
                 active.emplace(merged_action, b.second);
             },

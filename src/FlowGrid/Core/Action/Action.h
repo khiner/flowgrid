@@ -176,7 +176,7 @@ template<typename... Ts1, typename... Ts2, typename... Vars> struct Combine<Acti
 };
 
 // Utility to filter an `ActionVariant` by a predicate.
-// E.g. `using Action::Stateful = Action::Filter<Action::IsSavable, Any>::type;`
+// E.g. `using Action::Savable = Action::Filter<Action::IsSavable, Any>::type;`
 template<template<typename> class Predicate, typename Var> struct Filter;
 template<template<typename> class Predicate, typename... Types> struct Filter<Predicate, Action::ActionVariant<Types...>> {
     template<typename Type>

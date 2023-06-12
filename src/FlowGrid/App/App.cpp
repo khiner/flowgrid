@@ -48,7 +48,7 @@ bool App::CanApply(const Action::App::Any &action) const {
     );
 }
 
-void Apply(const Action::Stateful &action) {
+void Apply(const Action::Savable &action) {
     Visit(
         action,
         [&](const Action::App::Any &a) { app.Apply(a); },
@@ -318,12 +318,12 @@ void Project::Open(const fs::path &path) {
 
 #include "blockingconcurrentqueue.h"
 
-using Action::ActionMoment, Action::StatefulActionMoment;
+using Action::ActionMoment, Action::SavableActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void RunQueuedActions(bool force_finalize_gesture) {
     static ActionMoment action_moment;
-    static vector<StatefulActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
+    static vector<SavableActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     stateful_actions.clear();
 
     while (ActionQueue.try_dequeue(action_moment)) {
@@ -348,9 +348,9 @@ void RunQueuedActions(bool force_finalize_gesture) {
 
         Visit(
             action,
-            [](const Action::Stateful &a) { stateful_actions.emplace_back(a, action_moment.second); },
+            [](const Action::Savable &a) { stateful_actions.emplace_back(a, action_moment.second); },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
-            [](const Action::NonStateful &) {},
+            [](const Action::NonSavable &) {},
         );
     }
 

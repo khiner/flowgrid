@@ -6,16 +6,16 @@
 namespace Action {
 // `Any` holds all action types.
 using Any = Combine<Project::Any, App::Any>::type;
-using Stateful = Filter<Action::IsSavable, Any>::type;
-using NonStateful = Filter<Action::IsNotSavable, Any>::type;
+using Savable = Filter<Action::IsSavable, Any>::type;
+using NonSavable = Filter<Action::IsNotSavable, Any>::type;
 
 // Composite types.
 using ActionMoment = std::pair<Any, TimePoint>;
-using StatefulActionMoment = std::pair<Stateful, TimePoint>;
-using Gesture = std::vector<StatefulActionMoment>;
+using SavableActionMoment = std::pair<Savable, TimePoint>;
+using Gesture = std::vector<SavableActionMoment>;
 using Gestures = std::vector<Gesture>;
 } // namespace Action
 
 namespace nlohmann {
-DeclareJson(Action::Stateful);
+DeclareJson(Action::Savable);
 } // namespace nlohmann

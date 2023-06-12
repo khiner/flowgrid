@@ -7,8 +7,8 @@
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
 
-struct Audio : TabsWindow {
-    using TabsWindow::TabsWindow;
+struct Audio : Window {
+    using Window::Window;
 
     void Apply(const Action::Audio::Any &) const;
     bool CanApply(const Action::Audio::Any &) const;
@@ -18,12 +18,9 @@ struct Audio : TabsWindow {
     void Update() const;
     bool NeedsRestart() const;
 
-    DefineUI(Style);
-
     Prop(AudioDevice, Device);
     Prop(AudioGraph, Graph);
     Prop(Faust, Faust);
-    Prop(Style, Style);
 
 protected:
     void Render() const override;

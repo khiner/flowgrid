@@ -59,13 +59,6 @@ bool Audio::CanApply(const Action::Audio::Any &) const { return true; }
 //     }
 // }
 
-void Audio::Render() const {
-    Update();
-    // Render Faust separately, not as a tab.
-    TabsWindow::Render({Faust.Id});
-    Faust.Draw();
-}
-
 // todo support loopback mode? (think of use cases)
 
 // todo explicit re-scan action.
@@ -104,18 +97,36 @@ void Audio::Update() const {
 
 using namespace ImGui;
 
-void Audio::Style::Render() const {
-    if (BeginTabBar("Style")) {
-        if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Graph.Style.Matrix.Draw();
+void Audio::Render() const {
+    Update();
+
+    Faust.Draw();
+
+    if (BeginTabBar("")) {
+        if (BeginTabItem(Device.ImGuiLabel.c_str())) {
+            Device.Draw();
             EndTabItem();
         }
-        if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.Graph.Style.Draw();
+        if (BeginTabItem(Graph.ImGuiLabel.c_str())) {
+            Graph.Draw();
             EndTabItem();
         }
-        if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.Params.Style.Draw();
+        if (BeginTabItem("Style")) {
+            if (BeginTabBar("")) {
+                if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
+                    Graph.Style.Matrix.Draw();
+                    EndTabItem();
+                }
+                if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
+                    Faust.Graph.Style.Draw();
+                    EndTabItem();
+                }
+                if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
+                    Faust.Params.Style.Draw();
+                    EndTabItem();
+                }
+                EndTabBar();
+            }
             EndTabItem();
         }
         EndTabBar();

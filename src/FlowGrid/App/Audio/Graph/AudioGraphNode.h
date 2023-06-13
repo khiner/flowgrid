@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Core/Field/Bool.h"
 #include "Core/Field/Float.h"
-#include "Core/Window.h" // xxx should only need Component and Field.
 
 struct ma_node_graph;
 

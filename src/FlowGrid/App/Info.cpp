@@ -1,5 +1,7 @@
 #include "Info.h"
 
+#include <format>
+
 #include "imgui_internal.h"
 
 #include "Audio/Faust/FaustBox.h"

@@ -4,7 +4,6 @@
 #include "Core/Field/Enum.h"
 #include "Core/Field/Flags.h"
 #include "Core/Field/Float.h"
-#include "Core/Window.h"
 #include "UI/Styling.h"
 
 #include "FaustParam.h"
@@ -63,8 +62,8 @@ enum ParamsWidthSizingPolicy_ {
 };
 using ParamsWidthSizingPolicy = int;
 
-struct FaustParams : Window {
-    using Window::Window;
+struct FaustParams : Component, Drawable {
+    using Component::Component;
 
     struct Style : Component, Drawable {
         using Component::Component;

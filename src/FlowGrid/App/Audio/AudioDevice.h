@@ -6,7 +6,6 @@
 #include "Core/Field/Float.h"
 #include "Core/Field/String.h"
 #include "Core/Field/UInt.h"
-#include "Core/Window.h"
 
 struct ma_device;
 // Corresponds to `ma_device`.

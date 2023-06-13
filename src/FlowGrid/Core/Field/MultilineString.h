@@ -1,11 +1,10 @@
 #pragma once
 
-#include "Core/Window.h"
 #include "Field.h"
 #include "String.h"
 
 // struct MultilineString : TypedField<string>, Window {
-struct MultilineString : Window {
+struct MultilineString : Component, Drawable {
     MultilineString(ComponentArgs &&, string_view value = "");
 
     bool operator==(const std::string &value) const { return Value == value; }
@@ -13,8 +12,8 @@ struct MultilineString : Window {
     operator string_view() const { return Value; };
     operator bool() const { return Value; }
 
-    struct Metrics : Window {
-        using Window::Window;
+    struct Metrics : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;

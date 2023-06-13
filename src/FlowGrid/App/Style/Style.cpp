@@ -405,4 +405,9 @@ void Style::FlowGridStyle::Render() const {
         EndTabBar();
     }
 }
+
+void Style::Render() const {
+    RenderTabs();
+}
+
 } // namespace FlowGrid

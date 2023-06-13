@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Core/Window.h"
+#include "Core/Component.h"
 
-struct Info : Window {
-    using Window::Window;
+struct Info : Component, Drawable {
+    using Component::Component;
 
 protected:
     void Render() const override;

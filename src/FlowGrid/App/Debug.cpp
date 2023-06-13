@@ -244,6 +244,10 @@ void Metrics::FlowGridMetrics::Render() const {
     }
 }
 
+void Metrics::Render() const {
+    RenderTabs();
+}
+
 // #include "imgui_memory_editor.h"
 
 // todo need to rethink this with the store system

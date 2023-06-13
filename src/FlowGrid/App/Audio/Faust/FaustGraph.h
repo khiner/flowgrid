@@ -7,7 +7,6 @@
 #include "Core/Field/Float.h"
 #include "Core/Field/String.h"
 #include "Core/Field/Vec2.h"
-#include "Core/Window.h"
 #include "FaustGraphAction.h"
 #include "UI/Styling.h"
 
@@ -39,9 +38,9 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraph : Window {
+struct FaustGraph : Component, Drawable {
     FaustGraph(ComponentArgs &&args)
-        : Window(
+        : Component(
               std::move(args),
               Menu({
                   Menu("File", {Action::FaustGraph::ShowSaveSvgDialog::MenuItem}),

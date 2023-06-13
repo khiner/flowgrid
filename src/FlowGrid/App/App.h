@@ -2,6 +2,7 @@
 
 #include "AppAction.h"
 #include "Audio/Audio.h"
+#include "Core/Windows.h"
 #include "Debug.h"
 #include "Demo.h"
 #include "FileDialog/FileDialog.h"
@@ -15,43 +16,15 @@
  * This class defines the main `App`, which fully describes the application at any point in time.
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
-
 struct App : Component, Drawable {
     using Component::Component;
 
     static void OpenRecentProjectMenuItem();
 
+    void InitLayout() const;
+
     void Apply(const Action::App::Any &) const;
     bool CanApply(const Action::App::Any &) const;
-
-    const Menu MainMenu{
-        {
-            Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, OpenRecentProjectMenuItem, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),
-            Menu("Edit", {Action::Project::Undo::MenuItem, Action::Project::Redo::MenuItem}),
-            Menu(
-                "Windows",
-                {
-                    Menu(
-                        "Faust",
-                        {
-                            Menu("Editor", {Audio.Faust.Code, Audio.Faust.Code.Metrics}),
-                            Audio.Faust.Graph,
-                            Audio.Faust.Params,
-                            Audio.Faust.Log,
-                        }
-                    ),
-                    Audio,
-                    Style,
-                    Demo,
-                    Menu(
-                        "Debug",
-                        {Debug.Metrics, Debug.DebugLog, Debug.StackTool, Debug.StateViewer, Debug.StorePathUpdateFrequency, Debug.ProjectPreview}
-                        // Debug.StateMemoryEditor,
-                    ),
-                }
-            ),
-        },
-        true};
 
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(fg::Style, Style);
@@ -62,6 +35,16 @@ struct App : Component, Drawable {
 
     Prop(Demo, Demo);
     Prop(Debug, Debug);
+
+    Prop(Windows, Windows);
+
+    const Menu MainMenu{
+        {
+            Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, OpenRecentProjectMenuItem, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),
+            Menu("Edit", {Action::Project::Undo::MenuItem, Action::Project::Redo::MenuItem}),
+            Windows,
+        },
+        true};
 
 protected:
     void Render() const override;

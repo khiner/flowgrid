@@ -1,9 +1,8 @@
 #pragma once
 
-#include "Core/Window.h"
 #include "FileDialog/FileDialog.h"
 
-struct Demo : TabsWindow {
+struct Demo : Component, Drawable {
     Demo(ComponentArgs &&);
 
     struct ImGuiDemo : Component, Drawable {
@@ -22,4 +21,7 @@ struct Demo : TabsWindow {
     Prop(ImGuiDemo, ImGui);
     Prop(ImPlotDemo, ImPlot);
     Prop(FileDialog::Demo, FileDialog);
+
+protected:
+    void Render() const override;
 };

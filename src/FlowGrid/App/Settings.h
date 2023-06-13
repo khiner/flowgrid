@@ -1,10 +1,9 @@
 #pragma once
 
 #include "Core/Field/Float.h"
-#include "Core/Window.h"
 
-struct ApplicationSettings : Window {
-    using Window::Window;
+struct ApplicationSettings : Component, Drawable {
+    using Component::Component;
 
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture
 

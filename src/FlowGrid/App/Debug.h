@@ -2,12 +2,11 @@
 
 #include "Core/Field/Bool.h"
 #include "Core/Field/Enum.h"
-#include "Core/Window.h"
 
 #include "nlohmann/json_fwd.hpp"
 
-struct Metrics : TabsWindow {
-    using TabsWindow::TabsWindow;
+struct Metrics : Component, Drawable {
+    using Component::Component;
 
     struct FlowGridMetrics : Component, Drawable {
         using Component::Component;
@@ -34,14 +33,17 @@ struct Metrics : TabsWindow {
     Prop(FlowGridMetrics, FlowGrid);
     Prop(ImGuiMetrics, ImGui);
     Prop(ImPlotMetrics, ImPlot);
+
+protected:
+    void Render() const override;
 };
 
 struct Debug : Component, Drawable {
     using Component::Component;
 
-    struct StateViewer : Window {
+    struct StateViewer : Component, Drawable {
         StateViewer(ComponentArgs &&args)
-            : Window(
+            : Component(
                   std::move(args),
                   Menu({
                       Menu("Settings", {AutoSelect, LabelMode}),
@@ -69,8 +71,8 @@ struct Debug : Component, Drawable {
         void Render() const override;
     };
 
-    struct ProjectPreview : Window {
-        using Window::Window;
+    struct ProjectPreview : Component, Drawable {
+        using Component::Component;
 
         Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
         Prop(Bool, Raw);
@@ -80,22 +82,22 @@ struct Debug : Component, Drawable {
     };
 
     // StateMemoryEditor, WindowFlags_NoScrollbar
-    struct StorePathUpdateFrequency : Window {
-        using Window::Window;
+    struct StorePathUpdateFrequency : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;
     };
 
-    struct DebugLog : Window {
-        using Window::Window;
+    struct DebugLog : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;
     };
 
-    struct StackTool : Window {
-        using Window::Window;
+    struct StackTool : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;

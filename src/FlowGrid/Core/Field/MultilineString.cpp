@@ -7,7 +7,8 @@
 #include "Core/Field/PrimitiveAction.h"
 #include "UI/UI.h"
 
-MultilineString::MultilineString(ComponentArgs &&args, string_view value) : Window(std::move(args), WindowFlags_MenuBar) {
+MultilineString::MultilineString(ComponentArgs &&args, string_view value)
+    : Component(std::move(args), WindowFlags_MenuBar) {
     store::Set(Value, string(value));
 }
 

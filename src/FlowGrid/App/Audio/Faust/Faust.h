@@ -15,8 +15,8 @@ struct Faust : Component, Drawable {
     bool IsReady() const; // Has code and no errors.
     bool NeedsRestart() const;
 
-    struct FaustLog : Window {
-        using Window::Window;
+    struct FaustLog : Component, Drawable {
+        using Component::Component;
 
         Prop(String, Error);
 

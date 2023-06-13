@@ -21,6 +21,27 @@ using namespace FlowGrid;
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
+void App::InitLayout() const {
+    Windows.SetWindowComponents({
+        Audio,
+        Settings,
+        Audio.Faust.Code,
+        Audio.Faust.Code.Metrics,
+        Audio.Faust.Log,
+        Audio.Faust.Graph,
+        Audio.Faust.Params,
+        Debug.StateViewer,
+        Debug.ProjectPreview,
+        Debug.StorePathUpdateFrequency,
+        Debug.DebugLog,
+        Debug.StackTool,
+        Debug.Metrics,
+        Style,
+        Demo,
+        Info,
+    });
+}
+
 // using Any = Combine<Primitive::Any, Vector::Any, Matrix::Any, Store::Any, Audio::Any, FileDialog::Any, Style::Any>::type;
 void App::Apply(const Action::App::Any &action) const {
     Visit(
@@ -31,6 +52,7 @@ void App::Apply(const Action::App::Any &action) const {
         [](const Action::Store::Any &a) { store::Apply(a); },
         [&](const Action::Audio::Any &a) { Audio.Apply(a); },
         [&](const Action::FileDialog::Any &a) { FileDialog.Apply(a); },
+        [&](const Action::Windows::Any &a) { Windows.Apply(a); },
         [&](const Action::Style::Any &a) { Style.Apply(a); },
     );
 }
@@ -44,6 +66,7 @@ bool App::CanApply(const Action::App::Any &action) const {
         [](const Action::Store::Any &a) { return store::CanApply(a); },
         [&](const Action::Audio::Any &a) { return Audio.CanApply(a); },
         [&](const Action::FileDialog::Any &a) { return FileDialog.CanApply(a); },
+        [&](const Action::Windows::Any &a) { return Windows.CanApply(a); },
         [&](const Action::Style::Any &a) { return Style.CanApply(a); },
     );
 }
@@ -133,15 +156,16 @@ void App::Render() const {
 
     // Draw non-window children.
     for (const auto *child : Children) {
-        if (!dynamic_cast<const Window *>(child)) {
-            if (auto *drawable_child = dynamic_cast<const Drawable *>(child)) {
+        if (child == &Windows) continue;
+        if (auto *drawable_child = dynamic_cast<const Drawable *>(child)) {
+            if (!Windows.IsVisible(child->Id)) {
                 drawable_child->Draw();
             }
         }
     }
 
     // Recursively draw all windows.
-    DrawWindows();
+    Windows.Draw();
 
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
@@ -380,6 +404,7 @@ void q(const Action::Any &&action, bool flush) {
         }                                                                                                            \
     }
 
+DefineQ(Windows::ToggleVisible);
 DefineQ(Project::Undo);
 DefineQ(Project::Redo);
 DefineQ(Project::SetHistoryIndex);

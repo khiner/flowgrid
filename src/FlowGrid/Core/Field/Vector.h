@@ -15,11 +15,18 @@ template<IsPrimitive T>
 struct Vector : VectorBase {
     using VectorBase::VectorBase;
 
+    auto begin() const { return Value.begin(); }
+    auto end() const { return Value.end(); }
+
     Count Size() const { return Value.size(); }
     T operator[](const Count i) const { return Value[i]; }
+    size_t IndexOf(const T &) const;
+    bool Contains(const T &value) const { return IndexOf(value) != Value.size(); }
 
     void Set(const std::vector<T> &) const;
     void Set(const std::vector<std::pair<int, T>> &) const;
+    void Append(const T &) const;
+    void Erase(const T &) const;
 
     void Update() override;
 

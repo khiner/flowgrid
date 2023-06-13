@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -8,7 +9,36 @@
 #include "Helper/Path.h"
 #include "UI/Drawable.h"
 
+namespace FlowGrid {}
+namespace fg = FlowGrid;
+
 using std::string, std::string_view;
+
+struct Menu : Drawable {
+    using Item = std::variant<Menu, std::reference_wrapper<MenuItemDrawable>, std::function<void()>>;
+
+    Menu(string_view label, const std::vector<const Item> items);
+    explicit Menu(const std::vector<const Item> items);
+    Menu(const std::vector<const Item> items, const bool is_main);
+
+    const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
+    const std::vector<const Item> Items;
+    const bool IsMain{false};
+
+protected:
+    void Render() const override;
+};
+
+struct ImGuiWindow;
+using ImGuiWindowFlags = int;
+
+// Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
+// Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.
+enum WindowFlags_ {
+    WindowFlags_None = 0,
+    WindowFlags_NoScrollbar = 1 << 3,
+    WindowFlags_MenuBar = 1 << 10,
+};
 
 struct Component {
     struct Metadata {
@@ -27,12 +57,13 @@ struct Component {
     inline static std::unordered_map<ID, Component *> WithId; // Access any state member by its ID. todo change to vector after adding `Component::Index`.
 
     Component(ComponentArgs &&);
+    Component(ComponentArgs &&, ImGuiWindowFlags flags);
+    Component(ComponentArgs &&, Menu &&menu);
+
     virtual ~Component();
 
     const Component *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }
-
-    void DrawWindows() const; // Recursively draw all descendent windows. Note that non-window components can contain windows.
 
     const Component *Parent;
     std::vector<Component *> Children{};
@@ -41,12 +72,26 @@ struct Component {
     const string Name, Help, ImGuiLabel;
     const ID Id;
 
+    // todo this should be separated after current window refactor.
+    ImGuiWindow &FindImGuiWindow() const;
+    void Dock(ID node_id) const;
+    void SelectTab() const; // If this window is tabbed, select it.
+    const Menu WindowMenu{{}};
+    const ImGuiWindowFlags WindowFlags{WindowFlags_None};
+
+    void RenderTabs() const;
+    void RenderTabs(const std::set<ID> &exclude) const;
+
 protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 
 private:
-    Component(Component *parent, string_view path_leaf, Metadata meta);
+    Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
+};
+
+// Render all of a component's child props as tabs.
+struct Tabs {
 };
 
 /**

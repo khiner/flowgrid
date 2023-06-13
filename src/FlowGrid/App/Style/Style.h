@@ -21,8 +21,8 @@ enum SliderFlags_ {
 };
 
 namespace FlowGrid {
-struct Style : TabsWindow {
-    using TabsWindow::TabsWindow;
+struct Style : Component, Drawable {
+    using Component::Component;
 
     void Apply(const Action::Style::Any &) const;
     bool CanApply(const Action::Style::Any &) const;
@@ -192,6 +192,9 @@ struct Style : TabsWindow {
     Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
     Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
+
+protected:
+    void Render() const override;
 };
 
 extern const Style &style;

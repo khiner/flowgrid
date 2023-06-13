@@ -6,7 +6,6 @@
 #include "Core/Field/Bool.h"
 #include "Core/Field/Int.h"
 #include "Core/Field/String.h"
-#include "Core/Window.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
 struct FileDialog : Component, Drawable {

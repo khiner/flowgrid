@@ -17,7 +17,8 @@
 
 using namespace ImGui;
 
-void Debug::Render() const {}
+void Debug::Render() const {
+}
 
 void Debug::StorePathUpdateFrequency::Render() const {
     auto [labels, values] = History.StorePathUpdateFrequencyPlottable();

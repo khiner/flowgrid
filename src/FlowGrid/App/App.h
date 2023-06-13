@@ -17,11 +17,11 @@
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
 struct App : Component, Drawable {
-    using Component::Component;
+    App(ComponentArgs &&);
 
     static void OpenRecentProjectMenuItem();
 
-    void InitLayout() const;
+    void InitLayout();
 
     void Apply(const Action::App::Any &) const;
     bool CanApply(const Action::App::Any &) const;

@@ -18,7 +18,6 @@ const ApplicationSettings &application_settings = app.Settings;
 UIContext Ui{}; // Initialize UI
 
 int main() {
-    app.InitLayout();
     // Create the global canonical store, initially containing the full application state constructed during the initialization of `App`.
     store::Commit();
     // Ensure all store values set during initialization are reflected in cached field/collection values.

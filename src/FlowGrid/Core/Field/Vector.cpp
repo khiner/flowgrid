@@ -25,19 +25,8 @@ template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &values) const 
     }
 }
 
-template<IsPrimitive T> void Vector<T>::Erase(const T &value) const {
-    const size_t index = IndexOf(value);
-    if (index != Value.size()) {
-        store::Erase(PathAt(index));
-        for (size_t i = index + 1; i < Value.size(); i++) {
-            store::Set(PathAt(i - 1), Value[i]);
-            store::Erase(PathAt(i));
-        }
-    }
-}
-
-template<IsPrimitive T> void Vector<T>::Append(const T &value) const {
-    store::Set(PathAt(Value.size()), value);
+template<IsPrimitive T> void Vector<T>::Set(size_t i, const T &value) const {
+    store::Set(PathAt(i), value);
 }
 
 template<IsPrimitive T> void Vector<T>::Set(const std::vector<std::pair<int, T>> &values) const {

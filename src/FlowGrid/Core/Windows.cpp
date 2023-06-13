@@ -4,22 +4,19 @@
 
 #include "imgui.h"
 
-void Windows::SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &components) const {
-    std::vector<ID> ids;
-    ids.reserve(components.size());
-    for (const auto &component : components) ids.push_back(component.get().Id);
-    VisibleComponents.Set(ids);
+void Windows::SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &components) {
+    WindowComponentIds.reserve(components.size());
+    for (const auto &component : components) WindowComponentIds.push_back(component.get().Id);
+    std::vector<bool> visible_components(components.size(), true);
+    VisibleComponents.Set(visible_components);
 }
 
 void Windows::Apply(const Action::Windows::Any &action) const {
     Visit(
         action,
         [&](const Action::Windows::ToggleVisible &a) {
-            if (VisibleComponents.Contains(a.component_id)) {
-                VisibleComponents.Erase(a.component_id);
-            } else {
-                VisibleComponents.Append(a.component_id);
-            }
+            const auto index = std::find(WindowComponentIds.begin(), WindowComponentIds.end(), a.component_id) - WindowComponentIds.begin();
+            VisibleComponents.Set(index, !VisibleComponents[index]);
         }
     )
 }
@@ -27,8 +24,11 @@ void Windows::Apply(const Action::Windows::Any &action) const {
 using namespace ImGui;
 
 void Windows::Render() const {
-    for (ID id : VisibleComponents) {
-        const auto *component = Component::WithId[id];
+    for (size_t i = 0; i < WindowComponentIds.size(); i++) {
+        if (!VisibleComponents[i]) continue;
+
+        const auto component_id = WindowComponentIds[i];
+        const auto *component = Component::WithId[component_id];
         if (auto *drawable_component = dynamic_cast<const Drawable *>(component)) {
             ImGuiWindowFlags flags = component->WindowFlags;
             if (!component->WindowMenu.Items.empty()) flags |= ImGuiWindowFlags_MenuBar;

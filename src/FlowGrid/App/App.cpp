@@ -21,7 +21,7 @@ using namespace FlowGrid;
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
-void App::InitLayout() const {
+App::App(ComponentArgs &&args) : Component(std::move(args)) {
     Windows.SetWindowComponents({
         Audio,
         Settings,
@@ -164,7 +164,6 @@ void App::Render() const {
         }
     }
 
-    // Recursively draw all windows.
     Windows.Draw();
 
     static string PrevSelectedPath = "";

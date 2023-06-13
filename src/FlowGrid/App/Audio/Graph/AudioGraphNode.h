@@ -8,7 +8,7 @@ struct ma_node_graph;
 // Corresponds to `ma_node_base`.
 // MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
 // This base `Node` can either be specialized or instantiated on its own.
-struct AudioGraphNode : UIComponent {
+struct AudioGraphNode : Component, Drawable {
     AudioGraphNode(ComponentArgs &&, bool on = true);
 
     void Set(void *) const; // Set MA node.

@@ -3,7 +3,7 @@
 #include "Core/Component.h"
 #include "PrimitiveAction.h"
 
-// A `Field` is a drawable state-member that wraps around a primitive type.
+// A `Field` is a component backed by a store value.
 struct Field : Component {
     inline static bool IsGesturing{};
     static void UpdateGesturing();
@@ -28,8 +28,7 @@ struct PrimitiveField : Field, Drawable {
     static bool CanApply(const Action::Primitive::Any &);
 };
 
-template<IsPrimitive T>
-struct TypedField : PrimitiveField {
+template<IsPrimitive T> struct TypedField : PrimitiveField {
     TypedField(ComponentArgs &&args, T value = {}) : PrimitiveField(std::move(args), value), Value(value) {}
 
     operator T() const { return Value; }

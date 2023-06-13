@@ -52,7 +52,7 @@ struct FaustGraph : Window {
     void Apply(const Action::FaustGraph::Any &) const;
     bool CanApply(const Action::FaustGraph::Any &) const;
 
-    struct Style : UIComponent {
+    struct Style : Component, Drawable {
         Style(ComponentArgs &&);
 
         Prop_(

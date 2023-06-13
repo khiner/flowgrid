@@ -16,8 +16,8 @@
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
 
-struct App : UIComponent {
-    using UIComponent::UIComponent;
+struct App : Component, Drawable {
+    using Component::Component;
 
     static void OpenRecentProjectMenuItem();
 

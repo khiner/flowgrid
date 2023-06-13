@@ -27,7 +27,7 @@ struct Style : TabsWindow {
     void Apply(const Action::Style::Any &) const;
     bool CanApply(const Action::Style::Any &) const;
 
-    struct FlowGridStyle : UIComponent {
+    struct FlowGridStyle : Component, Drawable {
         FlowGridStyle(ComponentArgs &&);
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
@@ -43,7 +43,7 @@ struct Style : TabsWindow {
         void Render() const override;
     };
 
-    struct ImGuiStyle : UIComponent {
+    struct ImGuiStyle : Component, Drawable {
         ImGuiStyle(ComponentArgs &&);
 
         static std::vector<ImVec4> ColorPresetBuffer;
@@ -126,7 +126,7 @@ struct Style : TabsWindow {
         void Render() const override;
     };
 
-    struct ImPlotStyle : UIComponent {
+    struct ImPlotStyle : Component, Drawable {
         ImPlotStyle(ComponentArgs &&);
 
         static std::vector<ImVec4> ColorPresetBuffer;

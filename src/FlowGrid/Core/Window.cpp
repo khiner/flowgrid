@@ -2,26 +2,24 @@
 
 #include "imgui_internal.h"
 
-void UIComponent::DrawWindows() const {
+void Component::DrawWindows() const {
     for (const auto *child : Children) {
         if (const auto *window_child = dynamic_cast<const Window *>(child)) {
             window_child->Draw();
         }
     }
     for (const auto *child : Children) {
-        if (const auto *ui_child = dynamic_cast<const UIComponent *>(child)) {
-            ui_child->DrawWindows();
-        }
+        child->DrawWindows();
     }
 }
 
 using namespace ImGui;
 
-Window::Window(ComponentArgs &&args, const bool visible) : UIComponent(std::move(args)) {
+Window::Window(ComponentArgs &&args, const bool visible) : Component(std::move(args)) {
     store::Set(Visible, visible);
 }
-Window::Window(ComponentArgs &&args, const ImGuiWindowFlags flags) : UIComponent(std::move(args)), WindowFlags(flags) {}
-Window::Window(ComponentArgs &&args, Menu &&menu) : UIComponent(std::move(args)), WindowMenu{std::move(menu)} {}
+Window::Window(ComponentArgs &&args, const ImGuiWindowFlags flags) : Component(std::move(args)), WindowFlags(flags) {}
+Window::Window(ComponentArgs &&args, Menu &&menu) : Component(std::move(args)), WindowMenu{std::move(menu)} {}
 
 ImGuiWindow &Window::FindImGuiWindow() const { return *FindWindowByName(ImGuiLabel.c_str()); }
 
@@ -56,9 +54,9 @@ void Window::SelectTab() const {
 void TabsWindow::Render(const std::set<ID> &exclude) const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
-            if (const auto *ui_child = dynamic_cast<const UIComponent *>(child)) {
-                if (!exclude.contains(ui_child->Id) && ui_child->Id != Visible.Id && BeginTabItem(child->ImGuiLabel.c_str())) {
-                    ui_child->Draw();
+            if (const auto *drawable_child = dynamic_cast<const Drawable *>(child)) {
+                if (!exclude.contains(child->Id) && child->Id != Visible.Id && BeginTabItem(child->ImGuiLabel.c_str())) {
+                    drawable_child->Draw();
                     EndTabItem();
                 }
             }
@@ -84,15 +82,9 @@ void Menu::Render() const {
         for (const auto &item : Items) {
             Visit(
                 item,
-                [](const Menu &menu) {
-                    menu.Draw();
-                },
-                [](const MenuItemDrawable &drawable) {
-                    drawable.MenuItem();
-                },
-                [](const std::function<void()> &draw) {
-                    draw();
-                }
+                [](const Menu &menu) { menu.Draw(); },
+                [](const MenuItemDrawable &drawable) { drawable.MenuItem(); },
+                [](const std::function<void()> &draw) { draw(); }
             );
         }
         if (IsMain) EndMainMenuBar();

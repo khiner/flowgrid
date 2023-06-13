@@ -66,8 +66,8 @@ using ParamsWidthSizingPolicy = int;
 struct FaustParams : Window {
     using Window::Window;
 
-    struct Style : UIComponent {
-        using UIComponent::UIComponent;
+    struct Style : Component, Drawable {
+        using Component::Component;
 
         Prop(Bool, HeaderTitles, true);
         // In frame-height units:

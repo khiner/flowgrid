@@ -134,13 +134,13 @@ void Style::ImPlotStyle::Update(ImPlotContext *ctx) const {
     ImPlot::BustItemCache();
 }
 
-Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : UIComponent(std::move(args)) {
+Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : Component(std::move(args)) {
     ColorsDark();
 }
-Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : UIComponent(std::move(args)) {
+Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : Component(std::move(args)) {
     ColorsAuto();
 }
-Style::FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : UIComponent(std::move(args)) {
+Style::FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : Component(std::move(args)) {
     ColorsDark();
 }
 

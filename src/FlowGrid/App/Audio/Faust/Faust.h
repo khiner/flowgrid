@@ -6,8 +6,8 @@
 
 #include "Core/Field/MultilineString.h"
 
-struct Faust : UIComponent {
-    using UIComponent::UIComponent;
+struct Faust : Component, Drawable {
+    using Component::Component;
 
     void Apply(const Action::Faust &) const;
     bool CanApply(const Action::Faust &) const;

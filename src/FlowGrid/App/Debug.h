@@ -9,23 +9,23 @@
 struct Metrics : TabsWindow {
     using TabsWindow::TabsWindow;
 
-    struct FlowGridMetrics : UIComponent {
-        using UIComponent::UIComponent;
+    struct FlowGridMetrics : Component, Drawable {
+        using Component::Component;
         Prop(Bool, ShowRelativePaths, true);
 
     protected:
         void Render() const override;
     };
 
-    struct ImGuiMetrics : UIComponent {
-        using UIComponent::UIComponent;
+    struct ImGuiMetrics : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;
     };
 
-    struct ImPlotMetrics : UIComponent {
-        using UIComponent::UIComponent;
+    struct ImPlotMetrics : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;
@@ -36,8 +36,8 @@ struct Metrics : TabsWindow {
     Prop(ImPlotMetrics, ImPlot);
 };
 
-struct Debug : UIComponent {
-    using UIComponent::UIComponent;
+struct Debug : Component, Drawable {
+    using Component::Component;
 
     struct StateViewer : Window {
         StateViewer(ComponentArgs &&args)

@@ -32,6 +32,8 @@ struct Component {
     const Component *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }
 
+    void DrawWindows() const; // Recursively draw all descendent windows. Note that non-window components can contain windows.
+
     const Component *Parent;
     std::vector<Component *> Children{};
     const string PathLeaf;
@@ -88,9 +90,3 @@ todo Try out replacing semicolon separators by e.g. commas.
 
 #define Prop(PropType, PropName, ...) PropType PropName{{this, #PropName, ""}, __VA_ARGS__};
 #define Prop_(PropType, PropName, MetaStr, ...) PropType PropName{{this, #PropName, MetaStr}, __VA_ARGS__};
-
-struct UIComponent : Component, Drawable {
-    using Component::Component;
-
-    void DrawWindows() const; // Recursively draw all windows in the state tree. Note that non-window members can contain windows.
-};

@@ -6,7 +6,7 @@
 
 struct ImVec2;
 
-struct Vec2 : UIComponent {
+struct Vec2 : Component, Drawable {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 

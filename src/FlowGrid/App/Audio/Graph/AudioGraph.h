@@ -8,8 +8,8 @@
 struct ma_device;
 
 // Corresponds to `ma_node_graph`.
-struct AudioGraph : UIComponent {
-    using UIComponent::UIComponent;
+struct AudioGraph : Component, Drawable {
+    using Component::Component;
 
     void Init() const;
     void Update() const;
@@ -23,8 +23,8 @@ struct AudioGraph : UIComponent {
         void DoUninit() const override;
     };
 
-    struct Nodes : UIComponent {
-        using UIComponent::UIComponent;
+    struct Nodes : Component, Drawable {
+        using Component::Component;
 
         // Iterate over all children, converting each element from a `Component *` to a `Node *`.
         // Usage: `for (const Node *node : Nodes) ...`
@@ -52,8 +52,8 @@ struct AudioGraph : UIComponent {
     struct Style : Component {
         using Component::Component;
 
-        struct Matrix : UIComponent {
-            using UIComponent::UIComponent;
+        struct Matrix : Component, Drawable {
+            using Component::Component;
 
             Prop_(Float, CellSize, "?The size of each matrix cell, as a multiple of line height.", 1, 1, 3);
             Prop_(Float, CellGap, "?The gap between matrix cells.", 1, 0, 10);

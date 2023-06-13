@@ -133,12 +133,13 @@ void App::Render() const {
 
     // Draw non-window children.
     for (const auto *child : Children) {
-        if (const auto *ui_child = dynamic_cast<const UIComponent *>(child)) {
-            if (!dynamic_cast<const Window *>(child)) {
-                ui_child->Draw();
+        if (!dynamic_cast<const Window *>(child)) {
+            if (auto *drawable_child = dynamic_cast<const Drawable *>(child)) {
+                drawable_child->Draw();
             }
         }
     }
+
     // Recursively draw all windows.
     DrawWindows();
 

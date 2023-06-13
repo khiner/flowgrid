@@ -38,8 +38,8 @@ enum WindowFlags_ {
     WindowFlags_MenuBar = 1 << 10,
 };
 
-struct Window : UIComponent, MenuItemDrawable {
-    using UIComponent::UIComponent;
+struct Window : Component, Drawable, MenuItemDrawable {
+    using Component::Component;
 
     Window(ComponentArgs &&, bool visible);
     Window(ComponentArgs &&, ImGuiWindowFlags flags);
@@ -49,7 +49,6 @@ struct Window : UIComponent, MenuItemDrawable {
     void Draw() const override;
     void MenuItem() const override; // Rendering a window as a menu item shows a window visibility toggle, with the window name as the label.
 
-    // todo Refactor docking behavior out of `Window` into a new `Docked` type.
     void Dock(ID node_id) const;
     void SelectTab() const; // If this window is tabbed, select it.
 

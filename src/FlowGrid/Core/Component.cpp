@@ -41,7 +41,8 @@ void Component::HelpMarker(const bool after) const {
     if (!after) ImGui::SameLine();
 }
 
-// Fields don't wrap their `Render` with a push/pop-id, ImGui widgets all push the provided label to the ID stack.
+// Fields don't wrap their `Render` with a push/pop-id.
+// ImGui widgets all push the provided label to the ID stack.
 void Drawable::Draw() const {
     //    PushID(ImGuiLabel.c_str());
     Render();

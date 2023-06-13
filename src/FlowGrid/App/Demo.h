@@ -6,14 +6,14 @@
 struct Demo : TabsWindow {
     Demo(ComponentArgs &&);
 
-    struct ImGuiDemo : UIComponent {
-        using UIComponent::UIComponent;
+    struct ImGuiDemo : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;
     };
-    struct ImPlotDemo : UIComponent {
-        using UIComponent::UIComponent;
+    struct ImPlotDemo : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;

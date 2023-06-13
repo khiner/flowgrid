@@ -10,8 +10,8 @@
 
 struct ma_device;
 // Corresponds to `ma_device`.
-struct AudioDevice : UIComponent {
-    using UIComponent::UIComponent;
+struct AudioDevice : Component, Drawable {
+    using Component::Component;
 
     static const std::vector<U32> PrioritizedSampleRates;
     static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.

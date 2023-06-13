@@ -9,16 +9,16 @@
 #include "Core/Window.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-struct FileDialog : UIComponent {
-    using UIComponent::UIComponent;
+struct FileDialog : Component, Drawable {
+    using Component::Component;
 
     void Apply(const Action::FileDialog::Any &) const;
     bool CanApply(const Action::FileDialog::Any &) const;
 
     void Set(const FileDialogData &) const;
 
-    struct Demo : UIComponent {
-        using UIComponent::UIComponent;
+    struct Demo : Component, Drawable {
+        using Component::Component;
 
     protected:
         void Render() const override;

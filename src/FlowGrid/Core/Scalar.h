@@ -41,8 +41,8 @@ An ID is used to uniquely identify something.
 `Component::Id` reflects the state member's `StorePath Path`, using `ImHashStr` to calculate its own `Id` using its parent's `Id` as a seed.
 In the same way, each segment in `Component::Path` is calculated by appending its own `PathLeaf` to its parent's `Path`.
 This exactly reflects the way ImGui calculates its window/tab/dockspace/etc. ID calculation.
-A drawable `UIComponent` uses its `ID` (which is also an `ImGuiID`) as the ID for the top-level `ImGui` widget rendered during its `Draw` call.
-This results in the nice property that we can find any `UIComponent` instance by calling `Component::WithId.contains(ImGui::GetHoveredID())` any time during a `UIComponent::Draw`.
+A drawable `Component` uses its `ID` (which is also an `ImGuiID`) as the ID for the top-level `ImGui` widget rendered during its `Draw` call.
+This results in the nice property that we can find any `Component` instance by calling `Component::WithId.contains(ImGui::GetHoveredID())` any time during a `Draw`.
  */
 using ID = ImGuiID;
 

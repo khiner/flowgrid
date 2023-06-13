@@ -7,14 +7,9 @@
 #include "Core/Field/PrimitiveAction.h"
 #include "UI/UI.h"
 
-MultilineString::MultilineString(ComponentArgs &&args, string_view value)
-    : Component(std::move(args), WindowFlags_MenuBar) {
-    store::Set(Value, string(value));
-}
-
-using namespace ImGui;
-
 static const Menu FileMenu = {"File", {Action::FaustFile::ShowOpenDialog::MenuItem, Action::FaustFile::ShowSaveDialog::MenuItem}};
+
+MultilineString::MultilineString(ComponentArgs &&args, string_view value) : TypedField(std::move(args), string(value)) {}
 
 using namespace ImGui;
 
@@ -74,7 +69,7 @@ void MultilineString::Render() const {
 
     const string text = editor.GetText();
     if (editor.TextChanged) {
-        Action::Primitive::Set{Value.Path, text}.q();
+        Action::Primitive::Set{Path, text}.q();
     } else if (Value != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
         //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.

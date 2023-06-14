@@ -1,7 +1,6 @@
 #include "Store.h"
 
 #include "immer/algorithm.hpp"
-#include <range/v3/core.hpp>
 
 #include "Core/PrimitiveJson.h"
 #include "StoreImpl.h"

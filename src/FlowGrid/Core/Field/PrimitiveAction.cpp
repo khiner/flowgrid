@@ -1,6 +1,6 @@
 #include "PrimitiveAction.h"
 
-#include <range/v3/core.hpp>
+#include <range/v3/range/conversion.hpp>
 #include <range/v3/view/concat.hpp>
 
 namespace Action {

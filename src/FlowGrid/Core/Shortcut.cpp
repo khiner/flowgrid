@@ -1,7 +1,7 @@
 #include "Shortcut.h"
 
-#include <range/v3/view/drop.hpp>
-#include <range/v3/view/reverse.hpp>
+#include <__ranges/drop_view.h>
+#include <__ranges/reverse_view.h>
 #include <unordered_map>
 
 #include "imgui.h"
@@ -29,7 +29,7 @@ static Shortcut::ImGuiFlagsAndKey Parse(const string &shortcut) {
 
     const auto key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);
     ImGuiModFlags mod_flags = ImGuiModFlags_None;
-    for (const auto &token : ranges::views::reverse(tokens) | ranges::views::drop(1)) {
+    for (const auto &token : std::ranges::views::reverse(tokens) | std::ranges::views::drop(1)) {
         mod_flags |= ModKeys.at(token);
     }
 

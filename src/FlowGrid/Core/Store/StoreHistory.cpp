@@ -1,19 +1,14 @@
 #include "StoreHistory.h"
 
-#include <range/v3/core.hpp>
+#include <range/v3/range/conversion.hpp>
 #include <range/v3/view/concat.hpp>
-#include <range/v3/view/filter.hpp>
 #include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
 #include <set>
 
 #include "Store.h"
 #include "StoreImpl.h"
 
-namespace views = ranges::views;
-
 using std::string, std::vector;
-using views::transform;
 
 struct Record {
     const TimePoint Committed;
@@ -61,8 +56,8 @@ StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
 }
 
 StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
-    const Gestures gestures = Records | transform([](const auto &record) { return record.Gesture; }) |
-        views::filter([](const auto &gesture) { return !gesture.empty(); }) | ranges::to<vector>; // First gesture is expected to be empty.
+    const Gestures gestures = Records | std::views::transform([](const auto &record) { return record.Gesture; }) |
+        std::views::filter([](const auto &gesture) { return !gesture.empty(); }) | ranges::to<vector>; // First gesture is expected to be empty.
     return {gestures, Index};
 }
 
@@ -128,7 +123,11 @@ std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StorePath &path) c
 }
 
 StoreHistory::Plottable StoreHistory::StorePathUpdateFrequencyPlottable() const {
-    const std::set<StorePath> paths = views::concat(views::keys(CommittedUpdateTimesForPath), views::keys(GestureUpdateTimesForPath)) | ranges::to<std::set>;
+    const std::set<StorePath> paths = ranges::views::concat(
+                                          ranges::views::keys(CommittedUpdateTimesForPath),
+                                          ranges::views::keys(GestureUpdateTimesForPath)
+                                      ) |
+        ranges::to<std::set>;
     if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();
@@ -139,7 +138,7 @@ StoreHistory::Plottable StoreHistory::StorePathUpdateFrequencyPlottable() const 
     if (has_gesture)
         for (const auto &path : paths) values[i++] = GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).size() : 0;
 
-    const auto labels = paths | transform([](const string &path) {
+    const auto labels = paths | std::views::transform([](const string &path) {
                             // Convert `string` to char array, removing first character of the path, which is a '/'.
                             char *label = new char[path.size()];
                             std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());

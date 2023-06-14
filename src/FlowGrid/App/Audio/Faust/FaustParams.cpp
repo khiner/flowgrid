@@ -1,10 +1,6 @@
 #include "FaustParamsUI.h"
 
-#include <range/v3/algorithm/any_of.hpp>
-#include <range/v3/algorithm/max.hpp>
-#include <range/v3/core.hpp>
 #include <range/v3/numeric/accumulate.hpp>
-#include <range/v3/view/transform.hpp>
 
 #include <imgui_internal.h>
 
@@ -16,9 +12,6 @@ using namespace fg;
 
 using enum FaustParam::Type;
 using std::min, std::max;
-
-namespace views = ranges::views;
-using views::transform;
 
 FaustParamsUI *interface;
 
@@ -48,19 +41,19 @@ float FaustParams::CalcWidth(const FaustParam &param, const bool include_label) 
         case Type_HBargraph: return Style.MinHorizontalItemWidth * frame_height + label_width_with_spacing;
         case Type_HRadioButtons: {
             return label_width_with_spacing +
-                ranges::accumulate(interface->NamesAndValues[param.zone].names | transform(CalcRadioChoiceWidth), 0.f) +
+                ranges::accumulate(interface->NamesAndValues[param.zone].names | std::views::transform(CalcRadioChoiceWidth), 0.f) +
                 inner_spacing * float(interface->NamesAndValues.size());
         }
         case Type_Menu: {
-            return label_width_with_spacing + ranges::max(interface->NamesAndValues[param.zone].names | transform([](const string &choice_name) {
-                                                              return CalcTextSize(choice_name).x;
-                                                          })) +
+            return label_width_with_spacing + std::ranges::max(interface->NamesAndValues[param.zone].names | std::views::transform([](const string &choice_name) {
+                                                                   return CalcTextSize(choice_name).x;
+                                                               })) +
                 GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
         }
         case Type_CheckButton: return frame_height + label_width_with_spacing;
         case Type_VBargraph:
         case Type_VSlider: return max(frame_height, label_width);
-        case Type_VRadioButtons: return max(ranges::max(interface->NamesAndValues[param.zone].names | transform(CalcRadioChoiceWidth)), label_width);
+        case Type_VRadioButtons: return max(std::ranges::max(interface->NamesAndValues[param.zone].names | std::views::transform(CalcRadioChoiceWidth)), label_width);
         case Type_Button: return raw_label_width + imgui_style.FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case Type_Knob: return max(Style.MinKnobItemSize * frame_height, label_width);
         default: return GetContentRegionAvail().x;
@@ -142,8 +135,8 @@ void FaustParams::DrawUiItem(const FaustParam &param, const char *label, const f
             float suggested_item_height = 0; // Including any label height, not including cell padding
             if (is_h) {
                 bool include_labels = !Style.HeaderTitles;
-                suggested_item_height = ranges::max(
-                    param.children | transform([&](const auto &child) {
+                suggested_item_height = std::ranges::max(
+                    param.children | std::views::transform([&](const auto &child) {
                         return CalcHeight(child) + (include_labels ? CalcLabelHeight(child) : 0);
                     })
                 );
@@ -155,7 +148,7 @@ void FaustParams::DrawUiItem(const FaustParam &param, const char *label, const f
                     const float row_min_height = suggested_item_height + cell_padding;
                     if (is_h) {
                         ParamsWidthSizingPolicy policy = Style.WidthSizingPolicy;
-                        const bool allow_fixed_width_params = policy != ParamsWidthSizingPolicy_Balanced && (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly || (policy == ParamsWidthSizingPolicy_StretchToFill && ranges::any_of(param.children, [](const auto &child) { return IsWidthExpandable(child.type); })));
+                        const bool allow_fixed_width_params = policy != ParamsWidthSizingPolicy_Balanced && (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly || (policy == ParamsWidthSizingPolicy_StretchToFill && std::ranges::any_of(param.children, [](const auto &child) { return IsWidthExpandable(child.type); })));
                         for (const auto &child : children) {
                             ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
                             if (allow_fixed_width_params && !IsWidthExpandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;

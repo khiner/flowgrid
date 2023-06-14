@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-#include <range/v3/core.hpp>
-#include <range/v3/view/iota.hpp>
+#include <__ranges/iota_view.h>
+#include <range/v3/range/conversion.hpp>
 
 Enum::Enum(ComponentArgs &&args, std::vector<string> names, int value)
     : TypedField(std::move(args), value), Names(std::move(names)) {}
@@ -14,7 +14,7 @@ string Enum::OptionName(const int option) const { return GetName ? (*GetName)(op
 using namespace ImGui;
 
 void Enum::Render() const {
-    Render(ranges::views::ints(0, int(Names.size())) | ranges::to<std::vector>); // todo if I stick with this pattern, cache.
+    Render(std::views::iota(0, int(Names.size())) | ranges::to<std::vector>); // todo if I stick with this pattern, cache.
 }
 void Enum::Render(const std::vector<int> &options) const {
     if (options.empty()) return;

@@ -2,10 +2,8 @@
 #include "App.h"
 
 #include "imgui_internal.h"
-#include <range/v3/core.hpp>
+#include <range/v3/range/conversion.hpp>
 #include <range/v3/view/join.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
 
 #include "AppPreferences.h"
 #include "Core/Action/Actions.h"
@@ -17,7 +15,6 @@
 
 using std::vector;
 using namespace FlowGrid;
-namespace views = ranges::views;
 
 App::App(ComponentArgs &&args) : Component(std::move(args)) {
     Windows.SetWindowComponents({
@@ -97,10 +94,10 @@ bool CanApply(const Action::Any &action) {
 static const fs::path InternalPath = ".flowgrid";
 
 static const std::map<ProjectJsonFormat, std::string> ExtensionForProjectJsonFormat{{ProjectJsonFormat::StateFormat, ".fls"}, {ProjectJsonFormat::ActionFormat, ".fla"}};
-static const auto ProjectJsonFormatForExtension = ExtensionForProjectJsonFormat | views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
+static const auto ProjectJsonFormatForExtension = ExtensionForProjectJsonFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
 
-static const std::set<std::string> AllProjectExtensions = views::keys(ProjectJsonFormatForExtension) | ranges::to<std::set>;
-static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>;
+static const std::set<std::string> AllProjectExtensions = std::views::keys(ProjectJsonFormatForExtension) | ranges::to<std::set>;
+static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
 
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
 // The default project is a user-created project that loads on app start, instead of the empty project.
@@ -240,7 +237,7 @@ void Project::SaveEmpty() { Save(EmptyProjectPath); }
 void OnPatch(const Patch &patch) {
     if (patch.Empty()) return;
 
-    History.LatestUpdatedPaths = patch.Ops | views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | ranges::to<vector>;
+    History.LatestUpdatedPaths = patch.Ops | std::views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | ranges::to<vector>;
     ProjectHasChanges = true;
 
     static std::set<Field *> modified_fields;

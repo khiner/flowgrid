@@ -1,9 +1,7 @@
 #include "FileDialog.h"
 
 #include <imgui_internal.h>
-#include <range/v3/core.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
+#include <range/v3/range/conversion.hpp>
 
 #include "FileDialogDataJson.h"
 #include "Helper/File.h"
@@ -11,7 +9,6 @@
 #include "UI/HelpMarker.h"
 #include "UI/Styling.h"
 
-namespace views = ranges::views;
 using namespace nlohmann;
 
 void FileDialog::Apply(const ActionType &action) const {
@@ -254,7 +251,7 @@ void FileDialog::Demo::Render() const {
 
                 static int selected = 0;
                 const auto &selection = Dialog->GetSelection();
-                const auto selection_keys = views::keys(selection) | ranges::to<std::vector>();
+                const auto selection_keys = std::views::keys(selection) | ranges::to<std::vector>();
                 ImGuiListClipper clipper;
                 clipper.Begin(int(selection.size()), GetTextLineHeightWithSpacing());
                 while (clipper.Step()) {

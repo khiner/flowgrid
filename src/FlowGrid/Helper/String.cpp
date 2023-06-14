@@ -1,10 +1,6 @@
 #include "String.h"
 
-#include <range/v3/core.hpp>
-
 using std::vector;
-
-namespace views = ranges::views;
 
 namespace StringHelper {
 vector<string> Split(const string &text, const char *delims) {

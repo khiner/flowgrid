@@ -1,8 +1,5 @@
 #include "Faust.h"
 
-#include <range/v3/core.hpp>
-#include <range/v3/view/transform.hpp>
-
 #include "imgui.h"
 
 #include "App/Audio/AudioIO.h"

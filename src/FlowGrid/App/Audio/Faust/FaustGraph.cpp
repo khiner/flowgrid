@@ -5,10 +5,7 @@
 #include <unordered_map>
 
 #include <range/v3/algorithm/contains.hpp>
-#include <range/v3/core.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/take.hpp>
-#include <range/v3/view/take_while.hpp>
+#include <range/v3/range/conversion.hpp>
 
 #include "faust/dsp/libfaust-box.h"
 #include "faust/dsp/libfaust-signal.h"
@@ -25,8 +22,6 @@
 using namespace ImGui;
 using std::min, std::max;
 using std::pair, std::unordered_map, std::vector;
-
-namespace views = ranges::views;
 
 static const string SvgFileExtension = ".svg";
 
@@ -500,7 +495,7 @@ struct Node {
         const string tree_name = GetTreeName(FaustTree);
         if (tree_name == "process") return tree_name + SvgFileExtension;
 
-        const string name_limited = views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | views::take(16) | ranges::to<string>;
+        const string name_limited = std::views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | std::views::take(16) | ranges::to<string>;
         return std::format("{}-{}{}", name_limited, Id, SvgFileExtension);
     }
 
@@ -768,7 +763,7 @@ struct BinaryNode : Node {
                 ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
             }
             // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
-            for (const auto dir : views::keys(ChannelsForDirection)) {
+            for (const auto dir : std::views::keys(ChannelsForDirection)) {
                 const auto &channels = ChannelsForDirection.at(dir);
                 for (Count i = 0; i < channels.size(); i++) {
                     const auto channel = channels[i];
@@ -1437,7 +1432,7 @@ void FaustGraph::Style::LayoutFlowGrid() const {
     };
     static const auto DefaultLayoutEntries =
         LayoutFields |
-        ranges::views::transform(
+        std::views::transform(
             [](const PrimitiveField &field) { return PrimitiveField::Entry(field, field.Get()); }
         ) |
         ranges::to<const PrimitiveField::Entries>;

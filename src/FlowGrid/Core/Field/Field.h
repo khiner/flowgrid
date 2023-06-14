@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Action/Actionable.h"
 #include "Core/Component.h"
 #include "PrimitiveAction.h"
 
@@ -24,9 +25,9 @@ struct PrimitiveField : Field, Drawable {
 
     Primitive Get() const; // Returns the value in the main state store.
 
-    struct ActionHandler {
-        void Apply(const Action::Primitive::Any &);
-        bool CanApply(const Action::Primitive::Any &);
+    struct ActionHandler : Actionable<Action::Primitive::Any> {
+        void Apply(const ActionType &) const override;
+        bool CanApply(const ActionType &) const override { return true; };
     };
 
     inline static ActionHandler ActionHandler;

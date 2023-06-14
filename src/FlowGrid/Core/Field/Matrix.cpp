@@ -2,7 +2,7 @@
 
 #include "Core/Store/Store.h"
 
-void MatrixBase::ActionHandler::Apply(const Action::Matrix::Any &action) {
+void MatrixBase::ActionHandler::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const Action::Matrix::Set &a) { store::Set(a.path, a.data, a.row_count); },

@@ -18,7 +18,7 @@ void ApplyPatch(const Patch &patch) {
     }
 }
 
-void ActionHandler::Apply(const Action::Store::Any &action) {
+void ActionHandler::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); },

@@ -14,7 +14,7 @@
 namespace views = ranges::views;
 using namespace nlohmann;
 
-void FileDialog::Apply(const Action::FileDialog::Any &action) const {
+void FileDialog::Apply(const ActionType &action) const {
     Visit(
         action,
         [&](const Action::FileDialog::Open &a) { this->Set(json::parse(a.dialog_json)); },
@@ -29,7 +29,7 @@ void FileDialog::Apply(const Action::FileDialog::Any &action) const {
     );
 }
 
-bool FileDialog::CanApply(const Action::FileDialog::Any &action) const {
+bool FileDialog::CanApply(const ActionType &action) const {
     return Visit(
         action,
         [](const Action::FileDialog::Open &) { return !file_dialog.Visible; },

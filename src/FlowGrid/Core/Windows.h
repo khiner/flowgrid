@@ -3,13 +3,13 @@
 #include "Field/Vector.h"
 #include "WindowsAction.h"
 
-struct Windows : Component, Drawable, MenuItemDrawable {
+struct Windows : Component, Drawable, MenuItemDrawable, Actionable<Action::Windows::Any> {
     using Component::Component;
 
     void SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &);
 
-    void Apply(const Action::Windows::Any &) const;
-    bool CanApply(const Action::Windows::Any &) const { return true; }
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; }
     bool IsVisible(ID id) const { return VisibleComponents.Contains(id); }
     void MenuItem() const override;
 

@@ -43,55 +43,55 @@ App::App(ComponentArgs &&args) : Component(std::move(args)) {
 }
 
 // using Any = Combine<Primitive::Any, Vector::Any, Matrix::Any, Store::Any, Audio::Any, FileDialog::Any, Style::Any>::type;
-void App::Apply(const Action::App::Any &action) const {
+void App::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const Action::Primitive::Any &a) { PrimitiveField::ActionHandler.Apply(a); },
-        [](const Action::Vector::Any &a) { VectorBase::ActionHandler.Apply(a); },
-        [](const Action::Matrix::Any &a) { MatrixBase::ActionHandler.Apply(a); },
-        [](const Action::Store::Any &a) { store::ActionHandler.Apply(a); },
-        [&](const Action::Audio::Any &a) { Audio.Apply(a); },
-        [&](const Action::FileDialog::Any &a) { FileDialog.Apply(a); },
-        [&](const Action::Windows::Any &a) { Windows.Apply(a); },
-        [&](const Action::Style::Any &a) { Style.Apply(a); },
+        [](const PrimitiveField::ActionHandler::ActionType &a) { PrimitiveField::ActionHandler.Apply(a); },
+        [](const VectorBase::ActionHandler::ActionType &a) { VectorBase::ActionHandler.Apply(a); },
+        [](const MatrixBase::ActionHandler::ActionType &a) { MatrixBase::ActionHandler.Apply(a); },
+        [](const store::ActionHandler::ActionType &a) { store::ActionHandler.Apply(a); },
+        [&](const Audio::ActionType &a) { Audio.Apply(a); },
+        [&](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
+        [&](const Windows::ActionType &a) { Windows.Apply(a); },
+        [&](const Style::ActionType &a) { Style.Apply(a); },
     );
 }
 
-bool App::CanApply(const Action::App::Any &action) const {
+bool App::CanApply(const ActionType &action) const {
     return Visit(
         action,
-        [](const Action::Primitive::Any &a) { return PrimitiveField::ActionHandler.CanApply(a); },
-        [](const Action::Vector::Any &a) { return VectorBase::ActionHandler.CanApply(a); },
-        [](const Action::Matrix::Any &a) { return MatrixBase::ActionHandler.CanApply(a); },
-        [](const Action::Store::Any &a) { return store::ActionHandler.CanApply(a); },
-        [&](const Action::Audio::Any &a) { return Audio.CanApply(a); },
-        [&](const Action::FileDialog::Any &a) { return FileDialog.CanApply(a); },
-        [&](const Action::Windows::Any &a) { return Windows.CanApply(a); },
-        [&](const Action::Style::Any &a) { return Style.CanApply(a); },
+        [](const PrimitiveField::ActionHandler::ActionType &a) { return PrimitiveField::ActionHandler.CanApply(a); },
+        [](const VectorBase::ActionHandler::ActionType &a) { return VectorBase::ActionHandler.CanApply(a); },
+        [](const MatrixBase::ActionHandler::ActionType &a) { return MatrixBase::ActionHandler.CanApply(a); },
+        [](const store::ActionHandler::ActionType &a) { return store::ActionHandler.CanApply(a); },
+        [&](const Audio::ActionType &a) { return Audio.CanApply(a); },
+        [&](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
+        [&](const Windows::ActionType &a) { return Windows.CanApply(a); },
+        [&](const Style::ActionType &a) { return Style.CanApply(a); },
     );
 }
 
 void Apply(const Action::Savable &action) {
     Visit(
         action,
-        [&](const Action::App::Any &a) { app.Apply(a); },
-        [&](const Action::Project::Any &a) { Project::ActionHandler.Apply(a); },
+        [&](const App::ActionType &a) { app.Apply(a); },
+        [&](const Project::ActionHandler::ActionType &a) { Project::ActionHandler.Apply(a); },
     );
 }
 
 void Apply(const Action::Any &action) {
     Visit(
         action,
-        [](const Action::App::Any &a) { app.Apply(a); },
-        [](const Action::Project::Any &a) { Project::ActionHandler.Apply(a); },
+        [](const App::ActionType &a) { app.Apply(a); },
+        [](const Project::ActionHandler::ActionType &a) { Project::ActionHandler.Apply(a); },
     );
 }
 
 bool CanApply(const Action::Any &action) {
     return Visit(
         action,
-        [](const Action::App::Any &a) { return app.CanApply(a); },
-        [](const Action::Project::Any &a) { return Project::ActionHandler.CanApply(a); },
+        [](const App::ActionType &a) { return app.CanApply(a); },
+        [](const Project::ActionHandler::ActionType &a) { return Project::ActionHandler.CanApply(a); },
     );
 }
 
@@ -261,7 +261,7 @@ void Project::Init() {
     Field::IsGesturing = false;
 }
 
-void Project::ActionHandler::Apply(const Action::Project::Any &action) {
+void Project::ActionHandler::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const Action::Project::ShowOpenDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
@@ -296,7 +296,7 @@ void Project::ActionHandler::Apply(const Action::Project::Any &action) {
     );
 }
 
-bool Project::ActionHandler::CanApply(const Action::Project::Any &action) {
+bool Project::ActionHandler::CanApply(const ActionType &action) const {
     return Visit(
         action,
         [](const Action::Project::Undo &) { return History.CanUndo(); },

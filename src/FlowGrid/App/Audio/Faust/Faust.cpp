@@ -11,7 +11,7 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-void Faust::Apply(const Action::Faust &action) const {
+void Faust::Apply(const ActionType &action) const {
     Visit(
         action,
         [&](const Action::FaustFile::Any &a) {
@@ -27,7 +27,7 @@ void Faust::Apply(const Action::Faust &action) const {
     );
 }
 
-bool Faust::CanApply(const Action::Faust &) const { return true; }
+bool Faust::CanApply(const ActionType &) const { return true; }
 
 bool Faust::IsReady() const { return Code && !Log.Error; }
 bool Faust::NeedsRestart() const {

@@ -13,7 +13,7 @@ std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
 using namespace ImGui;
 
-void Style::Apply(const Action::Style::Any &action) const {
+void Style::Apply(const ActionType &action) const {
     Visit(
         action,
         // todo enum types instead of raw integers
@@ -42,7 +42,7 @@ void Style::Apply(const Action::Style::Any &action) const {
     );
 }
 
-bool Style::CanApply(const Action::Style::Any &) const { return true; }
+bool Style::CanApply(const ActionType &) const { return true; }
 
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {

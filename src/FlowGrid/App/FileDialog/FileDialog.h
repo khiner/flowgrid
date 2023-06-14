@@ -8,11 +8,11 @@
 #include "Core/Field/String.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-struct FileDialog : Component, Drawable {
+struct FileDialog : Component, Drawable, Actionable<Action::FileDialog::Any> {
     using Component::Component;
 
-    void Apply(const Action::FileDialog::Any &) const;
-    bool CanApply(const Action::FileDialog::Any &) const;
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override;
 
     void Set(const FileDialogData &) const;
 

@@ -2,6 +2,7 @@
 
 #include "AppAction.h"
 #include "Audio/Audio.h"
+#include "Core/Action/Actionable.h"
 #include "Core/Windows.h"
 #include "Debug.h"
 #include "Demo.h"
@@ -16,15 +17,13 @@
  * This class defines the main `App`, which fully describes the application at any point in time.
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
-struct App : Component, Drawable {
+struct App : Component, Drawable, Actionable<Action::App::Any> {
     App(ComponentArgs &&);
 
     static void OpenRecentProjectMenuItem();
 
-    void InitLayout();
-
-    void Apply(const Action::App::Any &) const;
-    bool CanApply(const Action::App::Any &) const;
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override;
 
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(fg::Style, Style);
@@ -54,9 +53,9 @@ struct Project {
     static void Init();
     static void SaveEmpty();
 
-    struct ActionHandler {
-        void Apply(const Action::Project::Any &);
-        bool CanApply(const Action::Project::Any &);
+    struct ActionHandler : Actionable<Action::Project::Any> {
+        void Apply(const ActionType &) const override;
+        bool CanApply(const ActionType &) const override;
     };
 
     inline static ActionHandler ActionHandler;

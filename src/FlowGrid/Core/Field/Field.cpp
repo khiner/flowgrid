@@ -24,7 +24,7 @@ PrimitiveField::PrimitiveField(ComponentArgs &&args, Primitive value) : Field(st
 
 Primitive PrimitiveField::Get() const { return store::Get(Path); }
 
-void PrimitiveField::ActionHandler::Apply(const Action::Primitive::Any &action) {
+void PrimitiveField::ActionHandler::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const Action::Primitive::SetMany &a) { store::Set(a.values); },
@@ -32,7 +32,6 @@ void PrimitiveField::ActionHandler::Apply(const Action::Primitive::Any &action) 
         [](const Action::Primitive::ToggleBool &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path))); },
     );
 }
-bool PrimitiveField::ActionHandler::CanApply(const Action::Primitive::Any &) { return true; }
 
 namespace store {
 void Set(const PrimitiveField &field, const Primitive &value) { store::Set(field.Path, value); }

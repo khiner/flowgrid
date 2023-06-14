@@ -11,9 +11,9 @@ struct MatrixBase : Field {
     Count Rows() const { return RowCount; }
     Count Cols() const { return ColCount; }
 
-    struct ActionHandler {
-        void Apply(const Action::Matrix::Any &);
-        bool CanApply(const Action::Matrix::Any &) { return true; }
+    struct ActionHandler : Actionable<Action::Matrix::Any> {
+        void Apply(const ActionType &) const override;
+        bool CanApply(const ActionType &) const override { return true; }
     };
 
     inline static ActionHandler ActionHandler;

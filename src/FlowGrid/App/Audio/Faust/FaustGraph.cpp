@@ -1227,7 +1227,7 @@ void SaveBoxSvg(string_view path) {
 
 bool IsBoxHovered(ID imgui_id) { return Node::WithId[imgui_id] != nullptr; }
 
-void FaustGraph::Apply(const Action::FaustGraph::Any &action) const {
+void FaustGraph::Apply(const ActionType &action) const {
     Visit(
         action,
         [&](const Action::FaustGraph::SetColorStyle &a) {
@@ -1252,7 +1252,7 @@ void FaustGraph::Apply(const Action::FaustGraph::Any &action) const {
     );
 }
 
-bool FaustGraph::CanApply(const Action::FaustGraph::Any &) const { return true; }
+bool FaustGraph::CanApply(const ActionType &) const { return true; }
 
 void FaustGraph::Render() const {
     if (!RootNode) {

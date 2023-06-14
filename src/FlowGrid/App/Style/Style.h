@@ -21,11 +21,11 @@ enum SliderFlags_ {
 };
 
 namespace FlowGrid {
-struct Style : Component, Drawable {
+struct Style : Component, Drawable, Actionable<Action::Style::Any> {
     using Component::Component;
 
-    void Apply(const Action::Style::Any &) const;
-    bool CanApply(const Action::Style::Any &) const;
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override;
 
     struct FlowGridStyle : Component, Drawable {
         FlowGridStyle(ComponentArgs &&);

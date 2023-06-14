@@ -2,6 +2,7 @@
 
 #include "nlohmann/json.hpp"
 
+#include "Core/Action/Actionable.h"
 #include "Patch/Patch.h"
 #include "StoreAction.h"
 
@@ -9,9 +10,9 @@ struct Store;
 
 namespace store {
 
-struct ActionHandler {
-    void Apply(const Action::Store::Any &);
-    bool CanApply(const Action::Store::Any &) { return true; }
+struct ActionHandler : Actionable<Action::Store::Any> {
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; }
 };
 
 inline static ActionHandler ActionHandler;

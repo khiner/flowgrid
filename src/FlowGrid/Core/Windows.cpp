@@ -11,7 +11,7 @@ void Windows::SetWindowComponents(const std::vector<std::reference_wrapper<const
     VisibleComponents.Set(visible_components);
 }
 
-void Windows::Apply(const Action::Windows::Any &action) const {
+void Windows::Apply(const ActionType &action) const {
     Visit(
         action,
         [&](const Action::Windows::ToggleVisible &a) {

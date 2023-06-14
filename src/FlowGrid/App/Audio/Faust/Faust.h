@@ -4,13 +4,14 @@
 #include "FaustGraph.h"
 #include "FaustParams.h"
 
+#include "Core/Action/Actionable.h"
 #include "Core/Field/MultilineString.h"
 
-struct Faust : Component, Drawable {
+struct Faust : Component, Drawable, Actionable<Action::Faust> {
     using Component::Component;
 
-    void Apply(const Action::Faust &) const;
-    bool CanApply(const Action::Faust &) const;
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override;
 
     bool IsReady() const; // Has code and no errors.
     bool NeedsRestart() const;

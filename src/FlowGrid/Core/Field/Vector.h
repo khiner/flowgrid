@@ -8,9 +8,9 @@ struct VectorBase : Field {
 
     StorePath PathAt(const Count i) const { return Path / to_string(i); }
 
-    struct ActionHandler {
-        void Apply(const Action::Vector::Any &);
-        bool CanApply(const Action::Vector::Any &) { return true; }
+    struct ActionHandler : Actionable<Action::Vector::Any> {
+        void Apply(const ActionType &) const override;
+        bool CanApply(const ActionType &) const override { return true; }
     };
 
     inline static ActionHandler ActionHandler;

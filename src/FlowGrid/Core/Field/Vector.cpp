@@ -4,7 +4,7 @@
 
 #include "Core/Store/Store.h"
 
-void VectorBase::ActionHandler::Apply(const Action::Vector::Any &action) {
+void VectorBase::ActionHandler::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const Action::Vector::Set &a) { store::Set(a.path, a.value); },

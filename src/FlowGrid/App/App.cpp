@@ -3,6 +3,8 @@
 
 #include "imgui_internal.h"
 #include <range/v3/core.hpp>
+#include <range/v3/view/join.hpp>
+#include <range/v3/view/map.hpp>
 #include <range/v3/view/transform.hpp>
 
 #include "AppPreferences.h"
@@ -10,16 +12,12 @@
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
-#include "Project/ProjectConstants.h"
 #include "Project/ProjectJson.h"
 #include "UI/UI.h"
 
 using std::vector;
-
 using namespace FlowGrid;
-
-static std::optional<fs::path> CurrentProjectPath;
-static bool ProjectHasChanges{false};
+namespace views = ranges::views;
 
 App::App(ComponentArgs &&args) : Component(std::move(args)) {
     Windows.SetWindowComponents({
@@ -94,6 +92,23 @@ bool CanApply(const Action::Any &action) {
         [](const Project::ActionHandler::ActionType &a) { return Project::ActionHandler.CanApply(a); },
     );
 }
+
+// Project constants:
+static const fs::path InternalPath = ".flowgrid";
+
+static const std::map<ProjectJsonFormat, std::string> ExtensionForProjectJsonFormat{{ProjectJsonFormat::StateFormat, ".fls"}, {ProjectJsonFormat::ActionFormat, ".fla"}};
+static const auto ProjectJsonFormatForExtension = ExtensionForProjectJsonFormat | views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
+
+static const std::set<std::string> AllProjectExtensions = views::keys(ProjectJsonFormatForExtension) | ranges::to<std::set>;
+static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | views::join(',') | ranges::to<std::string>;
+
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
+// The default project is a user-created project that loads on app start, instead of the empty project.
+// As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::ActionFormat));
+
+static std::optional<fs::path> CurrentProjectPath;
+static bool ProjectHasChanges{false};
 
 using namespace ImGui;
 
@@ -254,7 +269,7 @@ void SetHistoryIndex(Count index) {
 }
 
 void Project::Init() {
-    store::Commit(); // Make sure the store is not in transient mode when initializing a project.
+    if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
     CurrentProjectPath = {};
     ProjectHasChanges = false;
     History = {};

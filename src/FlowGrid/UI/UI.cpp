@@ -111,7 +111,7 @@ void RenderFrame() {
     SDL_GL_SwapWindow(Window);
 }
 
-bool UIContext::Tick(const Drawable &app) {
+bool UIContext::Tick(const Drawable &drawable) {
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -149,7 +149,7 @@ bool UIContext::Tick(const Drawable &app) {
     }
 
     PrepareFrame();
-    app.Draw(); // All application content drawing, initial dockspace setup, keyboard shortcuts.
+    drawable.Draw(); // All application content drawing, initial dockspace setup, keyboard shortcuts.
     RenderFrame();
 
     if (io.WantSaveIniSettings) {

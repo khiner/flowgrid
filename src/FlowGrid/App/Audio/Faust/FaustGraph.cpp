@@ -843,7 +843,7 @@ Both `GroupNode` and `DecorateNode` render a grouping border around the provided
 
 # Respected layout properties
 
-Each property can be changed in `app.Audio.Faust.Graph.Style.(Group|Decorate){PropertyName}`.
+Each property can be changed in `Style.(Group|Decorate){PropertyName}`.
 
 * Margin (`Vec2`):
   - Adds to total size.

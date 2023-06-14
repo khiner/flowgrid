@@ -6,7 +6,7 @@ struct MultilineString : TypedField<string> {
     MultilineString(ComponentArgs &&, string_view value = "");
 
     operator bool() const { return !Value.empty(); }
-    operator string_view() const { return Value;}
+    operator string_view() const { return Value; }
 
     struct Metrics : Component, Drawable {
         using Component::Component;

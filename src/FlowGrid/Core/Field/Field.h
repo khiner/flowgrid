@@ -24,8 +24,12 @@ struct PrimitiveField : Field, Drawable {
 
     Primitive Get() const; // Returns the value in the main state store.
 
-    static void Apply(const Action::Primitive::Any &);
-    static bool CanApply(const Action::Primitive::Any &);
+    struct ActionHandler {
+        void Apply(const Action::Primitive::Any &);
+        bool CanApply(const Action::Primitive::Any &);
+    };
+
+    inline static ActionHandler ActionHandler;
 };
 
 template<IsPrimitive T> struct TypedField : PrimitiveField {

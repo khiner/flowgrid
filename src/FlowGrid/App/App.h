@@ -51,11 +51,15 @@ protected:
 };
 
 struct Project {
-    static void Apply(const Action::Project::Any &);
-    static bool CanApply(const Action::Project::Any &);
-
     static void Init();
     static void SaveEmpty();
+
+    struct ActionHandler {
+        void Apply(const Action::Project::Any &);
+        bool CanApply(const Action::Project::Any &);
+    };
+
+    inline static ActionHandler ActionHandler;
 
 private:
     static void Open(const fs::path &);

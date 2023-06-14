@@ -6,12 +6,17 @@
 struct MatrixBase : Field {
     using Field::Field;
 
-    static void Apply(const Action::Matrix::Any &);
-    static bool CanApply(const Action::Matrix::Any &) { return true; }
     StorePath PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
 
     Count Rows() const { return RowCount; }
     Count Cols() const { return ColCount; }
+
+    struct ActionHandler {
+        void Apply(const Action::Matrix::Any &);
+        bool CanApply(const Action::Matrix::Any &) { return true; }
+    };
+
+    inline static ActionHandler ActionHandler;
 
 protected:
     Count RowCount, ColCount;

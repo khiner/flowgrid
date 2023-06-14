@@ -6,9 +6,14 @@
 struct VectorBase : Field {
     using Field::Field;
 
-    static void Apply(const Action::Vector::Any &);
-    static bool CanApply(const Action::Vector::Any &) { return true; }
     StorePath PathAt(const Count i) const { return Path / to_string(i); }
+
+    struct ActionHandler {
+        void Apply(const Action::Vector::Any &);
+        bool CanApply(const Action::Vector::Any &) { return true; }
+    };
+
+    inline static ActionHandler ActionHandler;
 };
 
 template<IsPrimitive T>

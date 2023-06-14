@@ -6,7 +6,7 @@ struct String : TypedField<string> {
     String(ComponentArgs &&, string_view value = "");
 
     operator bool() const { return !Value.empty(); }
-    operator string_view() const { return Value;}
+    operator string_view() const { return Value; }
 
     void Render(const std::vector<string> &options) const;
 

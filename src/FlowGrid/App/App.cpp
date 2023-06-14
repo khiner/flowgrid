@@ -46,10 +46,10 @@ App::App(ComponentArgs &&args) : Component(std::move(args)) {
 void App::Apply(const Action::App::Any &action) const {
     Visit(
         action,
-        [](const Action::Primitive::Any &a) { PrimitiveField::Apply(a); },
-        [](const Action::Vector::Any &a) { VectorBase::Apply(a); },
-        [](const Action::Matrix::Any &a) { MatrixBase::Apply(a); },
-        [](const Action::Store::Any &a) { store::Apply(a); },
+        [](const Action::Primitive::Any &a) { PrimitiveField::ActionHandler.Apply(a); },
+        [](const Action::Vector::Any &a) { VectorBase::ActionHandler.Apply(a); },
+        [](const Action::Matrix::Any &a) { MatrixBase::ActionHandler.Apply(a); },
+        [](const Action::Store::Any &a) { store::ActionHandler.Apply(a); },
         [&](const Action::Audio::Any &a) { Audio.Apply(a); },
         [&](const Action::FileDialog::Any &a) { FileDialog.Apply(a); },
         [&](const Action::Windows::Any &a) { Windows.Apply(a); },
@@ -60,10 +60,10 @@ void App::Apply(const Action::App::Any &action) const {
 bool App::CanApply(const Action::App::Any &action) const {
     return Visit(
         action,
-        [](const Action::Primitive::Any &a) { return PrimitiveField::CanApply(a); },
-        [](const Action::Vector::Any &a) { return VectorBase::CanApply(a); },
-        [](const Action::Matrix::Any &a) { return MatrixBase::CanApply(a); },
-        [](const Action::Store::Any &a) { return store::CanApply(a); },
+        [](const Action::Primitive::Any &a) { return PrimitiveField::ActionHandler.CanApply(a); },
+        [](const Action::Vector::Any &a) { return VectorBase::ActionHandler.CanApply(a); },
+        [](const Action::Matrix::Any &a) { return MatrixBase::ActionHandler.CanApply(a); },
+        [](const Action::Store::Any &a) { return store::ActionHandler.CanApply(a); },
         [&](const Action::Audio::Any &a) { return Audio.CanApply(a); },
         [&](const Action::FileDialog::Any &a) { return FileDialog.CanApply(a); },
         [&](const Action::Windows::Any &a) { return Windows.CanApply(a); },
@@ -75,7 +75,7 @@ void Apply(const Action::Savable &action) {
     Visit(
         action,
         [&](const Action::App::Any &a) { app.Apply(a); },
-        [&](const Action::Project::Any &a) { Project::Apply(a); },
+        [&](const Action::Project::Any &a) { Project::ActionHandler.Apply(a); },
     );
 }
 
@@ -83,7 +83,7 @@ void Apply(const Action::Any &action) {
     Visit(
         action,
         [](const Action::App::Any &a) { app.Apply(a); },
-        [](const Action::Project::Any &a) { Project::Apply(a); },
+        [](const Action::Project::Any &a) { Project::ActionHandler.Apply(a); },
     );
 }
 
@@ -91,7 +91,7 @@ bool CanApply(const Action::Any &action) {
     return Visit(
         action,
         [](const Action::App::Any &a) { return app.CanApply(a); },
-        [](const Action::Project::Any &a) { return Project::CanApply(a); },
+        [](const Action::Project::Any &a) { return Project::ActionHandler.CanApply(a); },
     );
 }
 
@@ -261,7 +261,7 @@ void Project::Init() {
     Field::IsGesturing = false;
 }
 
-void Project::Apply(const Action::Project::Any &action) {
+void Project::ActionHandler::Apply(const Action::Project::Any &action) {
     Visit(
         action,
         [](const Action::Project::ShowOpenDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
@@ -296,7 +296,7 @@ void Project::Apply(const Action::Project::Any &action) {
     );
 }
 
-bool Project::CanApply(const Action::Project::Any &action) {
+bool Project::ActionHandler::CanApply(const Action::Project::Any &action) {
     return Visit(
         action,
         [](const Action::Project::Undo &) { return History.CanUndo(); },

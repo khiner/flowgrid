@@ -16,6 +16,7 @@ struct Windows : Component, Drawable, MenuItemDrawable {
     Prop(Vector<bool>, VisibleComponents);
 
     std::vector<ID> WindowComponentIds;
+
 protected:
     void Render() const override;
 };

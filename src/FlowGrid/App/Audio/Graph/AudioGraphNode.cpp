@@ -7,7 +7,7 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args, bool on) : Component(std::m
 }
 
 void *AudioGraphNode::Get() const { return DataFor.contains(Id) ? DataFor.at(Id) : nullptr; }
-void AudioGraphNode::Set(ma_node *data) const {
+void AudioGraphNode::Set(ma_node *data) {
     if (data == nullptr) DataFor.erase(Id);
     else DataFor[Id] = data;
 }
@@ -17,12 +17,12 @@ Count AudioGraphNode::OutputBusCount() const { return ma_node_get_output_bus_cou
 Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Get(), bus); }
 Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Get(), bus); }
 
-void AudioGraphNode::Init(ma_node_graph *graph) const {
+void AudioGraphNode::Init(ma_node_graph *graph) {
     DoInit(graph);
     NeedsRestart(); // xxx Updates cached values as side effect.
 }
 
-void AudioGraphNode::Update(ma_node_graph *graph) const {
+void AudioGraphNode::Update(ma_node_graph *graph) {
     DoUpdate();
 
     const bool is_initialized = Get() != nullptr;
@@ -37,13 +37,13 @@ void AudioGraphNode::Update(ma_node_graph *graph) const {
     }
     if (On) ma_node_set_output_bus_volume(Get(), 0, Volume);
 }
-void AudioGraphNode::Uninit() const {
+void AudioGraphNode::Uninit() {
     if (!Get()) return;
 
     DoUninit();
     Set(nullptr);
 }
-void AudioGraphNode::DoUninit() const {
+void AudioGraphNode::DoUninit() {
     ma_node_uninit(Get(), nullptr);
 }
 void AudioGraphNode::Render() const {

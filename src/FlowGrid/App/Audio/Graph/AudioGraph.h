@@ -11,16 +11,16 @@ struct ma_device;
 struct AudioGraph : Component, Drawable {
     using Component::Component;
 
-    void Init() const;
-    void Update() const;
-    void Uninit() const;
+    void Init();
+    void Update();
+    void Uninit();
 
     static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
 
     struct InputNode : AudioGraphNode {
         using AudioGraphNode::AudioGraphNode;
-        void DoInit(ma_node_graph *) const override;
-        void DoUninit() const override;
+        void DoInit(ma_node_graph *) override;
+        void DoUninit() override;
     };
 
     struct Nodes : Component, Drawable {
@@ -31,13 +31,17 @@ struct AudioGraph : Component, Drawable {
         struct Iterator : std::vector<Component *>::const_iterator {
             Iterator(auto it) : std::vector<Component *>::const_iterator(it) {}
             const AudioGraphNode *operator*() const { return dynamic_cast<const AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
+            AudioGraphNode *operator*() { return dynamic_cast<AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
         };
         Iterator begin() const { return Children.cbegin(); }
         Iterator end() const { return Children.cend(); }
 
-        void Init() const;
-        void Update() const;
-        void Uninit() const;
+        Iterator begin() { return Children.begin(); }
+        Iterator end() { return Children.end(); }
+
+        void Init();
+        void Update();
+        void Uninit();
 
         // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
         // todo configurable data source

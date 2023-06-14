@@ -24,7 +24,7 @@ void AudioGraph::AudioCallback(ma_device *device, void *output, const void *inpu
     (void)device; // unused
 }
 
-void AudioGraph::Init() const {
+void AudioGraph::Init() {
     NodeGraphConfig = ma_node_graph_config_init(audio_device.InChannels);
     const int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
@@ -46,7 +46,7 @@ void AudioGraph::Init() const {
     Action::Matrix::Set{Connections.Path, connections, dest_count}.q(true);
 }
 
-void AudioGraph::Update() const {
+void AudioGraph::Update() {
     Nodes.Update();
 
     // Setting up busses is idempotent.
@@ -65,24 +65,24 @@ void AudioGraph::Update() const {
         source_i++;
     }
 }
-void AudioGraph::Uninit() const {
+void AudioGraph::Uninit() {
     Nodes.Uninit();
     // ma_node_graph_uninit(&NodeGraph, nullptr); // Graph endpoint is already uninitialized in `Nodes.Uninit`.
 }
 
-void AudioGraph::Nodes::Init() const {
+void AudioGraph::Nodes::Init() {
     Output.Set(ma_node_graph_get_endpoint(&NodeGraph)); // Output is present whenever the graph is running. todo Graph is a Node
-    for (const auto *node : *this) node->Init(&NodeGraph);
+    for (auto *node : *this) node->Init(&NodeGraph);
 }
-void AudioGraph::Nodes::Update() const {
-    for (const auto *node : *this) node->Update(&NodeGraph);
+void AudioGraph::Nodes::Update() {
+    for (auto *node : *this) node->Update(&NodeGraph);
 }
-void AudioGraph::Nodes::Uninit() const {
-    for (const auto *node : *this) node->Uninit();
+void AudioGraph::Nodes::Uninit() {
+    for (auto *node : *this) node->Uninit();
 }
 
 // Output node is already allocated by the MA graph, so we don't need to track internal data for it.
-void AudioGraph::InputNode::DoInit(ma_node_graph *graph) const {
+void AudioGraph::InputNode::DoInit(ma_node_graph *graph) {
     int result = ma_audio_buffer_ref_init((ma_format) int(audio_device.InFormat), audio_device.InChannels, nullptr, 0, &InputBuffer);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
 
@@ -95,7 +95,7 @@ void AudioGraph::InputNode::DoInit(ma_node_graph *graph) const {
 
     Set(&Node);
 }
-void AudioGraph::InputNode::DoUninit() const {
+void AudioGraph::InputNode::DoUninit() {
     ma_data_source_node_uninit((ma_data_source_node *)Get(), nullptr);
     ma_audio_buffer_ref_uninit(&InputBuffer);
 }

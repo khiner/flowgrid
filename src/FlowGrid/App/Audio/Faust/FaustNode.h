@@ -7,8 +7,11 @@
 
 struct FaustNode : AudioGraphNode {
     using AudioGraphNode::AudioGraphNode;
-    void DoInit(ma_node_graph *) const override;
-    void DoUpdate() const override;
-    void DoUninit() const override;
+
     bool NeedsRestart() const override;
+
+private:
+    void DoInit(ma_node_graph *) override;
+    void DoUpdate() override;
+    void DoUninit() override;
 };

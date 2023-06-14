@@ -62,7 +62,7 @@ bool Audio::CanApply(const ActionType &) const { return true; }
 // todo support loopback mode? (think of use cases)
 
 // todo explicit re-scan action.
-void Audio::Init() const {
+void Audio::Init() {
     Device.Init(AudioGraph::AudioCallback);
     Graph.Init();
     Device.Start();
@@ -70,13 +70,13 @@ void Audio::Init() const {
     Device.NeedsRestart(); // xxx Updates cached values as side effect.
 }
 
-void Audio::Uninit() const {
+void Audio::Uninit() {
     Device.Stop();
     Graph.Uninit();
     Device.Uninit();
 }
 
-void Audio::Update() const {
+void Audio::Update() {
     const bool is_initialized = Device.IsStarted();
     const bool needs_restart = Device.NeedsRestart(); // Don't inline! Must run during every update.
     if (Device.On && !is_initialized) {
@@ -98,8 +98,6 @@ void Audio::Update() const {
 using namespace ImGui;
 
 void Audio::Render() const {
-    Update();
-
     Faust.Draw();
 
     if (BeginTabBar("")) {

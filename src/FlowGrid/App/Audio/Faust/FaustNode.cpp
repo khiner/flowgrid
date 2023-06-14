@@ -92,7 +92,7 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
     (void)frame_count_in; // unused
 }
 
-void FaustNode::DoInit(ma_node_graph *graph) const {
+void FaustNode::DoInit(ma_node_graph *graph) {
     if (FaustContext::Dsp) throw std::runtime_error("Faust DSP already initialized.");
 
     FaustContext::Init();
@@ -118,11 +118,11 @@ void FaustNode::DoInit(ma_node_graph *graph) const {
     Set(&node);
 }
 
-void FaustNode::DoUninit() const {
+void FaustNode::DoUninit() {
     FaustContext::Uninit();
 }
 
-void FaustNode::DoUpdate() const {
+void FaustNode::DoUpdate() {
     FaustContext::Update();
 }
 

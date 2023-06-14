@@ -18,10 +18,11 @@ struct AudioDevice : Component, Drawable {
 
     using Callback = void (*)(ma_device *, void *, const void *, Count);
 
-    void Init(Callback callback) const;
-    void Update() const; // Update device based on current settings.
-    void Uninit() const;
     bool NeedsRestart() const;
+
+    void Init(Callback callback);
+    void Update(); // Update device based on current settings.
+    void Uninit();
 
     void Start() const;
     void Stop() const;

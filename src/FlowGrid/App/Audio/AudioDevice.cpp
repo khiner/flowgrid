@@ -36,7 +36,7 @@ static ma_device MaDevice;
 static ma_device_config DeviceConfig;
 static ma_device_info DeviceInfo;
 
-void AudioDevice::Init(AudioDevice::Callback callback) const {
+void AudioDevice::Init(AudioDevice::Callback callback) {
     int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
 
@@ -84,7 +84,7 @@ void AudioDevice::Init(AudioDevice::Callback callback) const {
     result = ma_context_get_device_info(MaDevice.pContext, MaDevice.type, nullptr, &DeviceInfo);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio device info: {}", result));
 
-    // todo need to clarify that the cross-product of these formats & sample rates are supported natively, and not just each config jointly
+    // todo need to verify that the cross-product of these formats & sample rates are supported natively, and not just each config jointly
     for (Count i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
         const auto &native_format = DeviceInfo.nativeDataFormats[i];
         NativeFormats.emplace_back(native_format.format);
@@ -99,15 +99,17 @@ void AudioDevice::Init(AudioDevice::Callback callback) const {
     if (MaDevice.capture.channels != InChannels) initial_settings.emplace_back(InChannels.Path, MaDevice.capture.channels);
     if (MaDevice.playback.channels != OutChannels) initial_settings.emplace_back(OutChannels.Path, MaDevice.playback.channels);
     if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
-    if (!initial_settings.empty()) Action::Primitive::SetMany{initial_settings}.q(true);
+    if (!initial_settings.empty()) {
+        Action::Primitive::SetMany{initial_settings}.q(true);
+    }
 }
 
-void AudioDevice::Update() const {
+void AudioDevice::Update() {
     if (!IsStarted()) return;
     ma_device_set_master_volume(&MaDevice, Muted ? 0.f : float(Volume));
 }
 
-void AudioDevice::Uninit() const {
+void AudioDevice::Uninit() {
     ma_device_uninit(&MaDevice);
     // ma_resampler_uninit(&Resampler, nullptr);
 

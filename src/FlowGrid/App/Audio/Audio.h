@@ -12,10 +12,9 @@ struct Audio : Component, Drawable, Actionable<Action::Audio::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    void Init() const;
-    void Uninit() const;
-    void Update() const;
-    bool NeedsRestart() const;
+    void Init();
+    void Uninit();
+    void Update();
 
     Prop(AudioDevice, Device);
     Prop(AudioGraph, Graph);
@@ -23,4 +22,7 @@ struct Audio : Component, Drawable, Actionable<Action::Audio::Any> {
 
 protected:
     void Render() const override;
+
+private:
+    bool NeedsRestart() const;
 };

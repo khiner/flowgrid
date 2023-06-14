@@ -158,7 +158,7 @@ void App::Render() const {
     for (const auto *child : Children) {
         if (child == &Windows) continue;
         if (auto *drawable_child = dynamic_cast<const Drawable *>(child)) {
-            if (!Windows.IsVisible(child->Id)) {
+            if (!Windows.IsWindow(child->Id)) {
                 drawable_child->Draw();
             }
         }

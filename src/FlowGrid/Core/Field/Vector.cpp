@@ -11,8 +11,6 @@ void VectorBase::ActionHandler::Apply(const ActionType &action) const {
     );
 }
 
-template<IsPrimitive T> size_t Vector<T>::IndexOf(const T &value) const { return std::find(Value.begin(), Value.end(), value) - Value.begin(); }
-
 template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &values) const {
     Count i = 0;
     while (i < values.size()) {

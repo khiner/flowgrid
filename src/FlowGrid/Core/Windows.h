@@ -10,7 +10,7 @@ struct Windows : Component, Drawable, MenuItemDrawable, Actionable<Action::Windo
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
-    bool IsVisible(ID id) const { return VisibleComponents.Contains(id); }
+    bool IsWindow(ID id) const;
     void MenuItem() const override;
 
     Prop(Vector<bool>, VisibleComponents);

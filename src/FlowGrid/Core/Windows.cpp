@@ -11,6 +11,8 @@ void Windows::SetWindowComponents(const std::vector<std::reference_wrapper<const
     VisibleComponents.Set(visible_components);
 }
 
+bool Windows::IsWindow(ID id) const { return std::ranges::find(WindowComponentIds, id) != WindowComponentIds.end(); }
+
 void Windows::Apply(const ActionType &action) const {
     Visit(
         action,

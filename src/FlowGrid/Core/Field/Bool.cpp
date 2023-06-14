@@ -4,7 +4,7 @@
 
 #include "UI/HelpMarker.h"
 
-void Bool::Toggle() const { Action::Primitive::ToggleBool{Path}.q(); }
+void Bool::Toggle() const { Action::Primitive::Bool::Toggle{Path}.q(); }
 
 using namespace ImGui;
 

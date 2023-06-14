@@ -4,14 +4,21 @@
 #include "Core/PrimitiveJson.h"
 
 DefineActionType(
+    Primitive::Bool,
+    DefineAction(Toggle, NoMerge, "", StorePath path;);
+
+    Json(Toggle, path);
+
+    using Any = ActionVariant<Toggle>;
+);
+
+DefineActionType(
     Primitive,
     DefineAction(Set, CustomMerge, "", StorePath path; ::Primitive value;);
     DefineAction(SetMany, CustomMerge, "", std::vector<std::pair<StorePath, ::Primitive>> values;);
-    DefineAction(ToggleBool, NoMerge, "", StorePath path;);
 
     Json(Set, path, value);
     Json(SetMany, values);
-    Json(ToggleBool, path);
 
-    using Any = ActionVariant<Set, SetMany, ToggleBool>;
+    using Any = ActionVariant<Set, SetMany, Bool::Toggle>;
 );

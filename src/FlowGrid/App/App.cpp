@@ -361,7 +361,7 @@ void RunQueuedActions(bool force_finalize_gesture) {
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<Action::Primitive::ToggleBool>(action);
+        force_finalize_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action);
 
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.
@@ -415,7 +415,7 @@ DefineQ(Project::SaveDefault);
 DefineQ(Project::SaveCurrent);
 DefineQ(Project::ShowOpenDialog);
 DefineQ(Project::ShowSaveDialog);
-DefineQ(Primitive::ToggleBool);
+DefineQ(Primitive::Bool::Toggle);
 DefineQ(Primitive::Set);
 DefineQ(Primitive::SetMany);
 DefineQ(Vector::Set);

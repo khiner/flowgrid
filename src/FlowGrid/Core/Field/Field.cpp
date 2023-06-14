@@ -29,7 +29,7 @@ void PrimitiveField::ActionHandler::Apply(const ActionType &action) const {
         action,
         [](const Action::Primitive::SetMany &a) { store::Set(a.values); },
         [](const Action::Primitive::Set &a) { store::Set(a.path, a.value); },
-        [](const Action::Primitive::ToggleBool &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path))); },
+        [](const Action::Primitive::Bool::Toggle &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path))); },
     );
 }
 

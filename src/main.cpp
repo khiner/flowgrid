@@ -21,7 +21,7 @@ int main() {
     store::Commit();
 
     // Ensure all store values set during initialization are reflected in cached field/collection values.
-    for (auto *field : std::ranges::views::values(Field::WithPath)) field->Update();
+    for (auto *field : Field::Instances) field->Update();
 
     Project::Init();
     IGFD::Init();

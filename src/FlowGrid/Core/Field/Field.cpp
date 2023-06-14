@@ -7,10 +7,21 @@
 using std::vector;
 
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
-    WithPath[Path] = this;
+    Index = Instances.size();
+    Instances.push_back(this);
+    IndexForPath[Path] = Index;
 }
 Field::~Field() {
-    WithPath.erase(Path);
+    IndexForPath.erase(Path);
+    Instances.erase(Instances.begin() + Index);
+}
+
+Field *Field::FindByPath(const StorePath &search_path) {
+    if (IndexForPath.contains(search_path)) return Instances[IndexForPath[search_path]];
+    // Handle container fields.
+    if (IndexForPath.contains(search_path.parent_path())) return Instances[IndexForPath[search_path.parent_path()]];
+    if (IndexForPath.contains(search_path.parent_path().parent_path())) return Instances[IndexForPath[search_path.parent_path().parent_path()]];
+    return nullptr;
 }
 
 void Field::UpdateGesturing() {

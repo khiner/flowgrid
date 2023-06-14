@@ -6,15 +6,20 @@
 
 // A `Field` is a component backed by a store value.
 struct Field : Component {
+    inline static std::vector<Field *> Instances; // All fields.
+    inline static std::map<StorePath, U32> IndexForPath; // Maps store paths to field indices.
+
     inline static bool IsGesturing{};
     static void UpdateGesturing();
 
-    inline static std::unordered_map<StorePath, Field *, PathHash> WithPath; // Find any field by its path.
+    static Field *FindByPath(const StorePath &);
 
     Field(ComponentArgs &&);
     ~Field();
 
     virtual void Update() = 0;
+
+    U32 Index; // Index in `Instances`.
 };
 
 struct PrimitiveField : Field, Drawable {

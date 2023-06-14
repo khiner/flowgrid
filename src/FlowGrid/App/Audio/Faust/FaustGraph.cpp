@@ -1406,14 +1406,45 @@ void FaustGraph::Style::ColorsFaust() const {
 }
 
 void FaustGraph::Style::LayoutFlowGrid() const {
+    static const std::vector<std::reference_wrapper<PrimitiveField const>> LayoutFields{
+        SequentialConnectionZigzag,
+        OrientationMark,
+        OrientationMarkRadius,
+        DecorateRootNode,
+        DecorateMargin.X,
+        DecorateMargin.Y,
+        DecoratePadding.X,
+        DecoratePadding.Y,
+        DecorateLineWidth,
+        DecorateCornerRadius,
+        GroupMargin.X,
+        GroupMargin.Y,
+        GroupPadding.X,
+        GroupPadding.Y,
+        GroupLineWidth,
+        GroupCornerRadius,
+        BoxCornerRadius,
+        BinaryHorizontalGapRatio,
+        WireWidth,
+        WireGap,
+        NodeMargin.X,
+        NodeMargin.Y,
+        NodePadding.X,
+        NodePadding.Y,
+        ArrowSize.X,
+        ArrowSize.Y,
+        InverterRadius,
+    };
     static const auto DefaultLayoutEntries =
         LayoutFields |
         ranges::views::transform(
             [](const PrimitiveField &field) { return PrimitiveField::Entry(field, field.Get()); }
         ) |
         ranges::to<const PrimitiveField::Entries>;
+
     store::Set(DefaultLayoutEntries);
 }
+
 void FaustGraph::Style::LayoutFaust() const {
     store::Set(
         {

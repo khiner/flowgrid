@@ -90,36 +90,6 @@ struct FaustGraph : Component, Drawable, Actionable<Action::FaustGraph::Any> {
         Prop(Float, InverterRadius, 3, 1, 5);
         Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
-        const std::vector<std::reference_wrapper<PrimitiveField>> LayoutFields{
-            SequentialConnectionZigzag,
-            OrientationMark,
-            OrientationMarkRadius,
-            DecorateRootNode,
-            DecorateMargin.X,
-            DecorateMargin.Y,
-            DecoratePadding.X,
-            DecoratePadding.Y,
-            DecorateLineWidth,
-            DecorateCornerRadius,
-            GroupMargin.X,
-            GroupMargin.Y,
-            GroupPadding.X,
-            GroupPadding.Y,
-            GroupLineWidth,
-            GroupCornerRadius,
-            BoxCornerRadius,
-            BinaryHorizontalGapRatio,
-            WireWidth,
-            WireGap,
-            NodeMargin.X,
-            NodeMargin.Y,
-            NodePadding.X,
-            NodePadding.Y,
-            ArrowSize.X,
-            ArrowSize.Y,
-            InverterRadius,
-        };
-
         void ColorsDark() const;
         void ColorsClassic() const;
         void ColorsLight() const;

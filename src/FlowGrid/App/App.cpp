@@ -246,13 +246,10 @@ void OnPatch(const Patch &patch) {
     static std::set<Field *> modified_fields;
     modified_fields.clear();
     for (const auto &path : History.LatestUpdatedPaths) {
-        // Find all updated fields, including container fields.
-        auto modified_field = Field::WithPath.find(path);
-        if (modified_field == Field::WithPath.end()) modified_field = Field::WithPath.find(path.parent_path());
-        if (modified_field == Field::WithPath.end()) modified_field = Field::WithPath.find(path.parent_path().parent_path());
-        if (modified_field == Field::WithPath.end()) throw std::runtime_error(std::format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
+        auto *modified_field = Field::FindByPath(path);
+        if (modified_field == nullptr) throw std::runtime_error(std::format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
 
-        modified_fields.emplace(modified_field->second);
+        modified_fields.emplace(modified_field);
 
         // TODO Only update contexts when not ui-initiated (via a an `ApplyPatch` action inside the `WantSaveIniSettings` block).
         //   Otherwise it's redundant.

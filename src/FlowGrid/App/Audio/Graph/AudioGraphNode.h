@@ -38,5 +38,5 @@ protected:
     virtual void DoUninit();
 
 private:
-    inline static std::unordered_map<ID, void *> DataFor; // MA node for owning Node's ID.
+    inline static std::unordered_map<ID, void *> DataForId; // MA node for owning Node's ID.
 };

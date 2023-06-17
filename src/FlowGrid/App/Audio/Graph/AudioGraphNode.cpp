@@ -6,10 +6,14 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args, bool on) : Component(std::m
     store::Set(On, on);
 }
 
-void *AudioGraphNode::Get() const { return DataFor.contains(Id) ? DataFor.at(Id) : nullptr; }
+void *AudioGraphNode::Get() const {
+    auto it = DataForId.find(Id);
+    return it != DataForId.end() ? it->second : nullptr;
+}
+
 void AudioGraphNode::Set(ma_node *data) {
-    if (data == nullptr) DataFor.erase(Id);
-    else DataFor[Id] = data;
+    if (data == nullptr) DataForId.erase(Id);
+    else DataForId[Id] = data;
 }
 
 Count AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Get()); }
@@ -35,17 +39,21 @@ void AudioGraphNode::Update(ma_node_graph *graph) {
         Uninit();
         Init(graph);
     }
+
     if (On) ma_node_set_output_bus_volume(Get(), 0, Volume);
 }
+
 void AudioGraphNode::Uninit() {
     if (!Get()) return;
 
     DoUninit();
     Set(nullptr);
 }
+
 void AudioGraphNode::DoUninit() {
     ma_node_uninit(Get(), nullptr);
 }
+
 void AudioGraphNode::Render() const {
     On.Draw();
     Volume.Draw();

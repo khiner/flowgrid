@@ -577,7 +577,7 @@ struct BlockNode : Node {
 
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            const float arrow_width = in ? Style().ArrowSize.X : 0.f;
+            const float arrow_width = in ? Style().ArrowSize.X() : 0.f;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(io, channel);
                 const auto &b = channel_point + ImVec2{(XMargin() - arrow_width) * DirUnit(io), 0};
@@ -891,7 +891,7 @@ struct GroupNode : Node {
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
             const bool has_arrow = Type == NodeType_Decorate && !in;
-            const float arrow_width = has_arrow ? Style().ArrowSize.X : 0.f;
+            const float arrow_width = has_arrow ? Style().ArrowSize.X() : 0.f;
             for (Count channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
                 const ImVec2 &a = {in ? 0 : (Size - offset).x, channel_point.y};
@@ -1401,41 +1401,34 @@ void FaustGraph::Style::ColorsFaust() const {
 }
 
 void FaustGraph::Style::LayoutFlowGrid() const {
-    static const std::vector<std::reference_wrapper<PrimitiveField const>> LayoutFields{
+    static const std::vector<std::reference_wrapper<ExtendedPrimitiveField const>> LayoutFields{
         SequentialConnectionZigzag,
         OrientationMark,
         OrientationMarkRadius,
         DecorateRootNode,
-        DecorateMargin.X,
-        DecorateMargin.Y,
-        DecoratePadding.X,
-        DecoratePadding.Y,
+        DecorateMargin,
+        DecoratePadding,
         DecorateLineWidth,
         DecorateCornerRadius,
-        GroupMargin.X,
-        GroupMargin.Y,
-        GroupPadding.X,
-        GroupPadding.Y,
+        GroupMargin,
+        GroupPadding,
         GroupLineWidth,
         GroupCornerRadius,
         BoxCornerRadius,
         BinaryHorizontalGapRatio,
         WireWidth,
         WireGap,
-        NodeMargin.X,
-        NodeMargin.Y,
-        NodePadding.X,
-        NodePadding.Y,
-        ArrowSize.X,
-        ArrowSize.Y,
+        NodeMargin,
+        NodePadding,
+        ArrowSize,
         InverterRadius,
     };
     static const auto DefaultLayoutEntries =
         LayoutFields |
         std::views::transform(
-            [](const PrimitiveField &field) { return PrimitiveField::Entry(field, field.Get()); }
+            [](const ExtendedPrimitiveField &field) { return ExtendedPrimitiveField::Entry(field, field.GetValue()); }
         ) |
-        ranges::to<const PrimitiveField::Entries>;
+        ranges::to<const ExtendedPrimitiveField::Entries>;
 
     store::Set(DefaultLayoutEntries);
 }
@@ -1446,28 +1439,21 @@ void FaustGraph::Style::LayoutFaust() const {
             {SequentialConnectionZigzag, true},
             {OrientationMark, true},
             {DecorateRootNode, true},
-            {DecorateMargin.X, 10},
-            {DecorateMargin.Y, 10},
-            {DecoratePadding.X, 10},
-            {DecoratePadding.Y, 10},
+            {DecorateMargin, std::pair{10, 10}},
+            {DecoratePadding, std::pair{10, 10}},
             {DecorateLineWidth, 1},
             {DecorateCornerRadius, 0},
-            {GroupMargin.X, 10},
-            {GroupMargin.Y, 10},
-            {GroupPadding.X, 10},
-            {GroupPadding.Y, 10},
+            {GroupMargin, std::pair{10, 10}},
+            {GroupPadding, std::pair{10, 10}},
             {GroupLineWidth, 1},
             {GroupCornerRadius, 0},
             {BoxCornerRadius, 0},
             {BinaryHorizontalGapRatio, 0.25f},
             {WireWidth, 1},
             {WireGap, 16},
-            {NodeMargin.X, 8},
-            {NodeMargin.Y, 8},
-            {NodePadding.X, 8},
-            {NodePadding.Y, 0},
-            {ArrowSize.X, 3},
-            {ArrowSize.Y, 2},
+            {NodeMargin, std::pair{8, 8}},
+            {NodePadding, std::pair{8, 0}},
+            {ArrowSize, std::pair{3, 2}},
             {InverterRadius, 3},
         }
     );

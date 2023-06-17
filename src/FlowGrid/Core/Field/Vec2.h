@@ -7,25 +7,30 @@
 
 struct ImVec2;
 
-struct Vec2 : Component, Drawable {
+struct Vec2 : ExtendedPrimitiveField, Actionable<Action::Vec2::Any> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 
     operator ImVec2() const;
 
-    Float X, Y;
+    const float Min, Max;
     const char *Format;
 
-    struct ActionHandler : Actionable<Action::Vec2::Any> {
-        void Apply(const ActionType &) const override;
-        bool CanApply(const ActionType &) const override { return true; };
-    };
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; };
 
-    inline static ActionHandler ActionHandler;
+    void Update() override;
+
+    inline float X() const { return Value.first; }
+    inline float Y() const { return Value.second; }
+
+    FieldValue GetValue() const override { return Value; }
 
 protected:
     virtual void Render(ImGuiSliderFlags) const;
     void Render() const override;
+
+    std::pair<float, float> Value;
 };
 
 struct Vec2Linked : Vec2 {

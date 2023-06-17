@@ -4,6 +4,10 @@
 #include "Core/Component.h"
 #include "PrimitiveAction.h"
 
+#include "FieldActionHandler.h"
+
+using FieldValue = std::variant<Primitive, std::pair<float, float>>; // Includes float pair for `Vec2`.
+
 // A `Field` is a component backed by a store value.
 struct Field : Component {
     inline static std::vector<Field *> Instances; // All fields.
@@ -14,6 +18,8 @@ struct Field : Component {
 
     static Field *FindByPath(const StorePath &);
 
+    inline static FieldActionHandler ActionHandler;
+
     Field(ComponentArgs &&);
     ~Field();
 
@@ -22,20 +28,23 @@ struct Field : Component {
     U32 Index; // Index in `Instances`.
 };
 
-struct PrimitiveField : Field, Drawable {
-    using Entry = std::pair<const PrimitiveField &, Primitive>;
+struct ExtendedPrimitiveField : Field, Drawable {
+    using Field::Field;
+
+    using Entry = std::pair<const ExtendedPrimitiveField &, FieldValue>;
     using Entries = std::vector<Entry>;
 
+    virtual FieldValue GetValue() const = 0; // Returns the value in the main state store.
+};
+
+struct PrimitiveField : ExtendedPrimitiveField, Actionable<Action::Primitive::Any> {
     PrimitiveField(ComponentArgs &&, Primitive value);
 
     Primitive Get() const; // Returns the value in the main state store.
+    FieldValue GetValue() const override { return Get(); };
 
-    struct ActionHandler : Actionable<Action::Primitive::Any> {
-        void Apply(const ActionType &) const override;
-        bool CanApply(const ActionType &) const override { return true; };
-    };
-
-    inline static ActionHandler ActionHandler;
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; };
 };
 
 template<IsPrimitive T> struct TypedField : PrimitiveField {
@@ -55,6 +64,6 @@ protected:
 };
 
 namespace store {
-void Set(const PrimitiveField &, const Primitive &);
-void Set(const PrimitiveField::Entries &);
+void Set(const ExtendedPrimitiveField &, const FieldValue &);
+void Set(const ExtendedPrimitiveField::Entries &);
 } // namespace store

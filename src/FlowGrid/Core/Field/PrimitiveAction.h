@@ -5,7 +5,7 @@
 
 DefineActionType(
     Primitive::Bool,
-    DefineAction(Toggle, NoMerge, "", StorePath path;);
+    DefineFieldAction(Toggle, "");
 
     Json(Toggle, path);
 

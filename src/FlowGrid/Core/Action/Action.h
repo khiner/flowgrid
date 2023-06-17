@@ -63,15 +63,18 @@ template<IsAction T> struct IsNotSavable {
     static constexpr bool value = !T::IsSavable;
 };
 
-template<IsAction... T>
-struct ActionVariant : std::variant<T...> {
+template<typename T>
+concept HasStorePath = requires(T t) {
+    { t.path } -> std::same_as<fs::path>;
+};
+
+template<IsAction... T> struct ActionVariant : std::variant<T...> {
     using variant_t = std::variant<T...>; // Alias to the base variant type.
     using variant_t::variant; // Inherit the base variant's constructors.
 
     // Note that even though these maps are declared to be instantiated for each `ActionVariant` type,
     // the compiler only instantiates them for the types with references to the map.
-    template<size_t I = 0>
-    static auto CreatePathToIndex() {
+    template<size_t I = 0> static auto CreatePathToIndex() {
         if constexpr (I < std::variant_size_v<variant_t>) {
             using MemberType = std::variant_alternative_t<I, variant_t>;
             auto map = CreatePathToIndex<I + 1>();
@@ -81,8 +84,7 @@ struct ActionVariant : std::variant<T...> {
         return std::unordered_map<fs::path, size_t, PathHash>{};
     }
 
-    template<size_t I = 0>
-    static auto CreateShortcuts() {
+    template<size_t I = 0> static auto CreateShortcuts() {
         if constexpr (I < std::variant_size_v<variant_t>) {
             using MemberType = std::variant_alternative_t<I, variant_t>;
             auto shortcuts = CreateShortcuts<I + 1>();
@@ -99,6 +101,9 @@ struct ActionVariant : std::variant<T...> {
     }
     fs::path GetPath() const {
         return Call([](auto &a) { return a.GetPath(); });
+    }
+    fs::path GetFieldPath() const {
+        return Call([](auto &a) { return a.GetFieldPath(); });
     }
     bool IsSavable() const {
         return Call([](auto &a) { return a.IsSavable; });
@@ -129,26 +134,25 @@ struct ActionVariant : std::variant<T...> {
         });
     }
 
-    template<size_t I = 0>
-    static ActionVariant Create(size_t index) {
+    template<size_t I = 0> static ActionVariant Create(size_t index) {
         if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
         else return index == 0 ? ActionVariant{std::in_place_index<I>} : Create<I + 1>(index - 1);
     }
 
     // Construct a variant from its index and JSON representation.
     // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
-    template<size_t I = 0>
-    static ActionVariant Create(size_t index, const nlohmann::json &j) {
+    template<size_t I = 0> static ActionVariant Create(size_t index, const nlohmann::json &j) {
         if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
         else return index == 0 ? j.get<std::variant_alternative_t<I, variant_t>>() : Create<I + 1>(index - 1, j);
     }
 
-    // Serialize actions as two-element arrays, [name, value].
+    // Serialize actions as two-element arrays, `[Path, Data]`.
     // Value element can possibly be null.
     // Assumes all actions define json converters.
     inline void to_json(nlohmann::json &j) const {
         Call([&j](auto &a) { j = {a.GetPath(), a}; });
     }
+
     inline static void from_json(const nlohmann::json &j, ActionVariant &value) {
         static auto PathToIndex = CreatePathToIndex();
         const auto path = j[0].get<fs::path>();

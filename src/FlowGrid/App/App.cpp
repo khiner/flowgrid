@@ -40,10 +40,7 @@ App::App(ComponentArgs &&args) : Component(std::move(args)) {
 void App::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const PrimitiveField::ActionHandler::ActionType &a) { PrimitiveField::ActionHandler.Apply(a); },
-        [](const Vec2::ActionHandler::ActionType &a) { Vec2::ActionHandler.Apply(a); },
-        [](const VectorBase::ActionHandler::ActionType &a) { VectorBase::ActionHandler.Apply(a); },
-        [](const MatrixBase::ActionHandler::ActionType &a) { MatrixBase::ActionHandler.Apply(a); },
+        [](const FieldActionHandler::ActionType &a) { Field::ActionHandler.Apply(a); },
         [](const store::ActionHandler::ActionType &a) { store::ActionHandler.Apply(a); },
         [&](const Audio::ActionType &a) { Audio.Apply(a); },
         [&](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
@@ -55,10 +52,7 @@ void App::Apply(const ActionType &action) const {
 bool App::CanApply(const ActionType &action) const {
     return Visit(
         action,
-        [](const PrimitiveField::ActionHandler::ActionType &a) { return PrimitiveField::ActionHandler.CanApply(a); },
-        [](const Vec2::ActionHandler::ActionType &a) { return Vec2::ActionHandler.CanApply(a); },
-        [](const VectorBase::ActionHandler::ActionType &a) { return VectorBase::ActionHandler.CanApply(a); },
-        [](const MatrixBase::ActionHandler::ActionType &a) { return MatrixBase::ActionHandler.CanApply(a); },
+        [](const FieldActionHandler::ActionType &a) { return Field::ActionHandler.CanApply(a); },
         [](const store::ActionHandler::ActionType &a) { return store::ActionHandler.CanApply(a); },
         [&](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [&](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
@@ -428,6 +422,8 @@ DefineQ(Primitive::Bool::Toggle);
 DefineQ(Primitive::Set);
 DefineQ(Vector::Set);
 DefineQ(Vec2::Set);
+DefineQ(Vec2::SetX);
+DefineQ(Vec2::SetY);
 DefineQ(Vec2::SetAll);
 DefineQ(Matrix::Set);
 DefineQ(Store::ApplyPatch);

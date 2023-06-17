@@ -29,7 +29,7 @@ void Field::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsGesturing = false;
 }
 
-PrimitiveField::PrimitiveField(ComponentArgs &&args, Primitive value) : Field(std::move(args)) {
+PrimitiveField::PrimitiveField(ComponentArgs &&args, Primitive value) : ExtendedPrimitiveField(std::move(args)) {
     store::Set(*this, value);
 }
 
@@ -47,17 +47,28 @@ template void TypedField<std::string>::Set(const std::string &);
 template void TypedField<float>::Set(const float &);
 template void TypedField<int>::Set(const int &);
 
-void PrimitiveField::ActionHandler::Apply(const ActionType &action) const {
+void PrimitiveField::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const Action::Primitive::Set &a) { store::Set(a.path, a.value); },
-        [](const Action::Primitive::Bool::Toggle &a) { store::Set(a.path, !std::get<bool>(store::Get(a.path))); },
+        [this](const Action::Primitive::Set &a) { store::Set(Path, a.value); },
+        [this](const Action::Primitive::Bool::Toggle &) { store::Set(Path, !std::get<bool>(store::Get(Path))); },
     );
 }
 
 namespace store {
-void Set(const PrimitiveField &field, const Primitive &value) { store::Set(field.Path, value); }
-void Set(const PrimitiveField::Entries &values) {
-    for (const auto &[field, value] : values) store::Set(field.Path, value);
+void Set(const ExtendedPrimitiveField &field, const FieldValue &value) {
+    Visit(
+        value,
+        [&field](const std::pair<float, float> &v) {
+            store::Set(field.Path / "X", v.first);
+            store::Set(field.Path / "Y", v.second);
+        },
+        [&field](const auto &v) {
+            store::Set(field.Path, v);
+        },
+    );
+}
+void Set(const ExtendedPrimitiveField::Entries &values) {
+    for (const auto &[field, value] : values) Set(field, value);
 }
 } // namespace store

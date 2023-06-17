@@ -30,7 +30,7 @@ void AudioGraph::Init() {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
 
     Nodes.Init();
-    vector<Primitive> connections{};
+    vector<bool> connections{};
     Count dest_count = 0;
     for (const auto *dest_node : Nodes) {
         if (!dest_node->IsDestination()) continue;
@@ -43,7 +43,7 @@ void AudioGraph::Init() {
         }
         dest_count++;
     }
-    Action::Matrix::Set{Connections.Path, connections, dest_count}.q(true);
+    Connections.Set(connections, dest_count);
 }
 
 void AudioGraph::Update() {

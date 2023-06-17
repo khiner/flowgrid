@@ -399,13 +399,12 @@ void RunQueuedActions(bool force_finalize_gesture) {
     if (finalize) History.FinalizeGesture();
 }
 
-void q(const Action::Any &&action, bool flush) {
+void q(const Action::Any &&action) {
     ActionQueue.enqueue({action, Clock::now()});
-    if (flush) RunQueuedActions(true); // If the `flush` flag is set, we finalize the gesture now.
 }
 
 #define DefineQ(ActionType)                                                                                          \
-    void Action::ActionType::q(bool flush) const { ::q(*this, flush); }                                              \
+    void Action::ActionType::q() const { ::q(*this); }                                                               \
     void Action::ActionType::MenuItem() {                                                                            \
         if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, CanApply(Action::ActionType{}))) { \
             Action::ActionType{}.q();                                                                                \

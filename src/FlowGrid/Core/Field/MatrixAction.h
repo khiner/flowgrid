@@ -5,9 +5,9 @@
 
 DefineActionType(
     Matrix,
-    DefineAction(Set, CustomMerge, "", StorePath path; std::vector<::Primitive> data; Count row_count;);
+    DefineAction(Set, CustomMerge, "", StorePath path; std::vector<::Primitive> value; Count row_count;);
 
-    Json(Set, path, data, row_count);
+    Json(Set, path, value, row_count);
 
     using Any = ActionVariant<Set>;
 );

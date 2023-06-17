@@ -91,17 +91,13 @@ void AudioDevice::Init(AudioDevice::Callback callback) {
         NativeSampleRates.emplace_back(native_format.sampleRate);
     }
 
-    std::vector<std::pair<StorePath, Primitive>> initial_settings;
-    if (MaDevice.capture.name != InDeviceName) initial_settings.emplace_back(InDeviceName.Path, MaDevice.capture.name);
-    if (MaDevice.playback.name != OutDeviceName) initial_settings.emplace_back(OutDeviceName.Path, MaDevice.playback.name);
-    if (MaDevice.capture.format != InFormat) initial_settings.emplace_back(InFormat.Path, MaDevice.capture.format);
-    if (MaDevice.playback.format != OutFormat) initial_settings.emplace_back(OutFormat.Path, MaDevice.playback.format);
-    if (MaDevice.capture.channels != InChannels) initial_settings.emplace_back(InChannels.Path, MaDevice.capture.channels);
-    if (MaDevice.playback.channels != OutChannels) initial_settings.emplace_back(OutChannels.Path, MaDevice.playback.channels);
-    if (MaDevice.sampleRate != SampleRate) initial_settings.emplace_back(SampleRate.Path, MaDevice.sampleRate);
-    if (!initial_settings.empty()) {
-        Action::Primitive::SetMany{initial_settings}.q(true);
-    }
+    if (MaDevice.capture.name != InDeviceName) InDeviceName.Set(MaDevice.capture.name);
+    if (MaDevice.playback.name != OutDeviceName) OutDeviceName.Set(MaDevice.playback.name);
+    if (MaDevice.capture.format != InFormat) InFormat.Set(MaDevice.capture.format);
+    if (MaDevice.playback.format != OutFormat) OutFormat.Set(MaDevice.playback.format);
+    if (MaDevice.capture.channels != InChannels) InChannels.Set(MaDevice.capture.channels);
+    if (MaDevice.playback.channels != OutChannels) OutChannels.Set(MaDevice.playback.channels);
+    if (MaDevice.sampleRate != SampleRate) SampleRate.Set(MaDevice.sampleRate);
 }
 
 void AudioDevice::Update() {

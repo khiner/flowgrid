@@ -44,6 +44,9 @@ template<IsPrimitive T> struct TypedField : PrimitiveField {
     operator T() const { return Value; }
     bool operator==(const T &value) const { return Value == value; }
 
+    // Mutating set. Updates both store and cached value. Should only be used during side-effect handle pass.
+    void Set(const T &);
+
     // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
     virtual void Update() override { Value = std::get<T>(Get()); }
 

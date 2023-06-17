@@ -13,10 +13,7 @@
 
 /**
 * Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
-* Use `action.q()` to queue the action.
-* Pass `flush = true` to run all enqueued actions (including this one) and finalize any open gesture.
-  - This is useful for running multiple actions in a single frame, without grouping them into a single gesture.
-  - _Note: `q` methods for all action types are defined in `App.cpp`._
+* Use `action.q()` to queue the action. _Note: `q` methods for all action types are defined in `App.cpp`._
 * Merge types:
   - `NoMerge`: Cannot be merged with any other action.
   - `Merge`: Can be merged with any other action of the same type.
@@ -26,7 +23,7 @@
     struct ActionType {                                                         \
         inline static const Metadata _Meta{#ActionType, meta_str};              \
         static constexpr bool IsSavable = is_savable;                           \
-        void q(bool flush = false) const;                                       \
+        void q() const;                                                         \
         static void MenuItem();                                                 \
         static fs::path GetPath() { return _TypePath / _Meta.PathLeaf; }        \
         static const std::string &GetName() { return _Meta.Name; }              \

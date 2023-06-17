@@ -139,8 +139,8 @@ void FileDialog::Render() const {
     else flags &= ~ImGuiFileDialogFlags_ConfirmOverwrite;
     Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
-        if (Dialog->IsOk()) Action::FileDialog::Select{Dialog->GetFilePathName()}.q(true);
-        else Action::FileDialog::Cancel{}.q(true);
+        if (Dialog->IsOk()) Action::FileDialog::Select{Dialog->GetFilePathName()}.q();
+        else Action::FileDialog::Cancel{}.q();
     }
 }
 

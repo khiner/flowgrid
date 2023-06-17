@@ -3,6 +3,7 @@
 #include "Bool.h"
 #include "Field.h"
 #include "Float.h"
+#include "Vec2Action.h"
 
 struct ImVec2;
 
@@ -14,6 +15,13 @@ struct Vec2 : Component, Drawable {
 
     Float X, Y;
     const char *Format;
+
+    struct ActionHandler : Actionable<Action::Vec2::Any> {
+        void Apply(const ActionType &) const override;
+        bool CanApply(const ActionType &) const override { return true; };
+    };
+
+    inline static ActionHandler ActionHandler;
 
 protected:
     virtual void Render(ImGuiSliderFlags) const;

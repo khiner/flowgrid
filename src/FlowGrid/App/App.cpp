@@ -37,11 +37,11 @@ App::App(ComponentArgs &&args) : Component(std::move(args)) {
     });
 }
 
-// using Any = Combine<Primitive::Any, Vector::Any, Matrix::Any, Store::Any, Audio::Any, FileDialog::Any, Style::Any>::type;
 void App::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const PrimitiveField::ActionHandler::ActionType &a) { PrimitiveField::ActionHandler.Apply(a); },
+        [](const Vec2::ActionHandler::ActionType &a) { Vec2::ActionHandler.Apply(a); },
         [](const VectorBase::ActionHandler::ActionType &a) { VectorBase::ActionHandler.Apply(a); },
         [](const MatrixBase::ActionHandler::ActionType &a) { MatrixBase::ActionHandler.Apply(a); },
         [](const store::ActionHandler::ActionType &a) { store::ActionHandler.Apply(a); },
@@ -56,6 +56,7 @@ bool App::CanApply(const ActionType &action) const {
     return Visit(
         action,
         [](const PrimitiveField::ActionHandler::ActionType &a) { return PrimitiveField::ActionHandler.CanApply(a); },
+        [](const Vec2::ActionHandler::ActionType &a) { return Vec2::ActionHandler.CanApply(a); },
         [](const VectorBase::ActionHandler::ActionType &a) { return VectorBase::ActionHandler.CanApply(a); },
         [](const MatrixBase::ActionHandler::ActionType &a) { return MatrixBase::ActionHandler.CanApply(a); },
         [](const store::ActionHandler::ActionType &a) { return store::ActionHandler.CanApply(a); },
@@ -425,8 +426,8 @@ DefineQ(Project::ShowOpenDialog);
 DefineQ(Project::ShowSaveDialog);
 DefineQ(Primitive::Bool::Toggle);
 DefineQ(Primitive::Set);
-DefineQ(Primitive::SetMany);
 DefineQ(Vector::Set);
+DefineQ(Vec2::Set);
 DefineQ(Matrix::Set);
 DefineQ(Store::ApplyPatch);
 DefineQ(Style::SetImGuiColorPreset);

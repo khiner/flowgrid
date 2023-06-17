@@ -8,7 +8,4 @@ std::variant<Primitive::Set, bool> Primitive::Set::Merge(const Primitive::Set &o
     if (path == other.path) return other;
     return false;
 }
-std::variant<Primitive::SetMany, bool> Primitive::SetMany::Merge(const Primitive::SetMany &other) const {
-    return Primitive::SetMany{ranges::views::concat(values, other.values) | ranges::to<std::vector>};
-}
 } // namespace Action

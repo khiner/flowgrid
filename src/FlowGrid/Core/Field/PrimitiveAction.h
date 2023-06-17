@@ -15,10 +15,8 @@ DefineActionType(
 DefineActionType(
     Primitive,
     DefineAction(Set, CustomMerge, "", StorePath path; ::Primitive value;);
-    DefineAction(SetMany, CustomMerge, "", std::vector<std::pair<StorePath, ::Primitive>> values;);
 
     Json(Set, path, value);
-    Json(SetMany, values);
 
-    using Any = ActionVariant<Set, SetMany, Bool::Toggle>;
+    using Any = ActionVariant<Set, Bool::Toggle>;
 );

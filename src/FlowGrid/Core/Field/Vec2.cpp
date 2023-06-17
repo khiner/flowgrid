@@ -2,6 +2,8 @@
 
 #include "imgui.h"
 
+#include "Core/Store/Store.h"
+
 using namespace ImGui;
 
 Vec2::Vec2(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, const char *fmt)
@@ -10,11 +12,22 @@ Vec2::Vec2(ComponentArgs &&args, const std::pair<float, float> &value, float min
 
 Vec2::operator ImVec2() const { return {X, Y}; }
 
+void Vec2::ActionHandler::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [](const Action::Vec2::Set &a) {
+            const auto &[x, y] = a.value;
+            store::Set(a.path / "X", x);
+            store::Set(a.path / "Y", y);
+        },
+    );
+}
+
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, X.Min, X.Max, Format, flags);
     Field::UpdateGesturing();
-    if (edited) Action::Primitive::SetMany{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
+    if (edited) Action::Vec2::Set{Path, {values.x, values.y}}.q();
     HelpMarker();
 }
 
@@ -40,9 +53,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (edited) {
         if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;
-            Action::Primitive::SetMany{{{X.Path, changed_value}, {Y.Path, changed_value}}}.q();
+            Action::Vec2::Set{Path, {changed_value, changed_value}}.q();
         } else {
-            Action::Primitive::SetMany{{{X.Path, values.x}, {Y.Path, values.y}}}.q();
+            Action::Vec2::Set{Path, {values.x, values.y}}.q();
         }
     }
     HelpMarker();

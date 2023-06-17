@@ -12,7 +12,7 @@ DefineActionType(
     Json(SetLayoutStyle, id);
     Json(ShowSaveSvgDialog);
 
-    DefineActionUnsaved(SaveSvgFile, NoMerge, "", std::string path;);
+    DefineUnsavedAction(SaveSvgFile, NoMerge, "", fs::path dir_path;);
 
     using Any = ActionVariant<SetColorStyle, SetLayoutStyle, ShowSaveSvgDialog, SaveSvgFile>;
 );

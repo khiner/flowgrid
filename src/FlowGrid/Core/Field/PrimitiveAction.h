@@ -14,7 +14,7 @@ DefineActionType(
 
 DefineActionType(
     Primitive,
-    DefineAction(Set, CustomMerge, "", StorePath path; ::Primitive value;);
+    DefineFieldAction(Set, "", ::Primitive value;);
 
     Json(Set, path, value);
 

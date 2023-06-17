@@ -6,13 +6,13 @@ DefineActionType(
     FaustFile,
     DefineAction(ShowOpenDialog, Merge, "~Open DSP file");
     DefineAction(ShowSaveDialog, Merge, "~Save DSP as...");
-    DefineAction(Open, CustomMerge, "", std::string path;);
+    DefineAction(Open, CustomMerge, "", fs::path file_path;);
 
-    Json(Open, path);
+    Json(Open, file_path);
     Json(ShowOpenDialog);
     Json(ShowSaveDialog);
 
-    DefineActionUnsaved(Save, NoMerge, "", std::string path;);
+    DefineUnsavedAction(Save, NoMerge, "", fs::path file_path;);
 
     using Any = ActionVariant<ShowOpenDialog, ShowSaveDialog, Save, Open>;
 );

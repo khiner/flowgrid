@@ -10,6 +10,11 @@
 #define MergeType_Merge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &other) const { return other; }
 #define MergeType_CustomMerge(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
+#define MergeType_SamePathMerge(ActionType)                                      \
+    inline std::variant<ActionType, bool> Merge(const ActionType &other) const { \
+        if (this->path == other.path) return other;                              \
+        return false;                                                            \
+    }
 
 /**
 * Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
@@ -35,8 +40,10 @@
 
 #define DefineAction(ActionType, merge_type, meta_str, ...) \
     DefineActionInternal(ActionType, 1, merge_type, meta_str, __VA_ARGS__)
-#define DefineActionUnsaved(ActionType, merge_type, meta_str, ...) \
+#define DefineUnsavedAction(ActionType, merge_type, meta_str, ...) \
     DefineActionInternal(ActionType, 0, merge_type, meta_str, __VA_ARGS__)
+#define DefineFieldAction(ActionType, meta_str, ...) \
+    DefineActionInternal(ActionType, 1, SamePathMerge, meta_str, fs::path path; __VA_ARGS__)
 
 #define DefineActionType(TypePath, ...)                \
     namespace Action {                                 \

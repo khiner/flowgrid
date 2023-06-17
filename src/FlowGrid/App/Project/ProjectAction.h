@@ -10,15 +10,15 @@ DefineActionType(
     Json(ShowOpenDialog);
     Json(ShowSaveDialog);
 
-    DefineActionUnsaved(Undo, NoMerge, "@cmd+z");
-    DefineActionUnsaved(Redo, NoMerge, "@shift+cmd+z");
-    DefineActionUnsaved(SetHistoryIndex, NoMerge, "", int index;);
-    DefineActionUnsaved(Open, NoMerge, "", std::string path;);
-    DefineActionUnsaved(OpenEmpty, NoMerge, "~New project@cmd+n");
-    DefineActionUnsaved(OpenDefault, NoMerge, "@shift+cmd+o");
-    DefineActionUnsaved(Save, NoMerge, "", std::string path;);
-    DefineActionUnsaved(SaveDefault, NoMerge, "");
-    DefineActionUnsaved(SaveCurrent, NoMerge, "~Save project@cmd+s");
+    DefineUnsavedAction(Undo, NoMerge, "@cmd+z");
+    DefineUnsavedAction(Redo, NoMerge, "@shift+cmd+z");
+    DefineUnsavedAction(SetHistoryIndex, NoMerge, "", int index;);
+    DefineUnsavedAction(Open, NoMerge, "", fs::path file_path;);
+    DefineUnsavedAction(OpenEmpty, NoMerge, "~New project@cmd+n");
+    DefineUnsavedAction(OpenDefault, NoMerge, "@shift+cmd+o");
+    DefineUnsavedAction(Save, NoMerge, "", fs::path file_path;);
+    DefineUnsavedAction(SaveDefault, NoMerge, "");
+    DefineUnsavedAction(SaveCurrent, NoMerge, "~Save project@cmd+s");
 
     using Any = ActionVariant<
         Undo, Redo, SetHistoryIndex,

@@ -277,10 +277,10 @@ void Project::ActionHandler::Apply(const ActionType &action) const {
         [](const Action::Project::ShowOpenDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [](const Action::Project::ShowSaveDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
-        [](const Action::Project::Open &a) { Open(a.path); },
+        [](const Action::Project::Open &a) { Open(a.file_path); },
         [](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
 
-        [](const Action::Project::Save &a) { Save(a.path); },
+        [](const Action::Project::Save &a) { Save(a.file_path); },
         [](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
         [](const Action::Project::SaveCurrent &) {
             if (CurrentProjectPath) Save(*CurrentProjectPath);
@@ -320,13 +320,13 @@ bool Project::ActionHandler::CanApply(const ActionType &action) const {
     );
 }
 
-void Project::Open(const fs::path &path) {
-    const auto format = GetProjectJsonFormat(path);
+void Project::Open(const fs::path &file_path) {
+    const auto format = GetProjectJsonFormat(file_path);
     if (!format) return; // TODO log
 
     Init();
 
-    const nlohmann::json project = nlohmann::json::parse(FileIO::read(path));
+    const nlohmann::json project = nlohmann::json::parse(FileIO::read(file_path));
     if (format == StateFormat) {
         OnPatch(store::CheckedSetJson(project));
         History = {};
@@ -343,7 +343,7 @@ void Project::Open(const fs::path &path) {
         ::SetHistoryIndex(indexed_gestures.Index);
     }
 
-    SetCurrentProjectPath(path);
+    SetCurrentProjectPath(file_path);
 }
 
 //-----------------------------------------------------------------------------

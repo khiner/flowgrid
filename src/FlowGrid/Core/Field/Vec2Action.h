@@ -5,8 +5,8 @@
 
 DefineActionType(
     Vec2,
-    DefineAction(Set, CustomMerge, "", StorePath path; std::pair<float, float> value;);
-    DefineAction(SetAll, CustomMerge, "", StorePath path; float value;);
+    DefineFieldAction(Set, "", std::pair<float, float> value;);
+    DefineFieldAction(SetAll, "", float value;);
 
     Json(Set, path, value);
     Json(SetAll, path, value);

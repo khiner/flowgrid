@@ -1208,16 +1208,16 @@ void OnBoxChange(Box box) {
     }
 }
 
-void SaveBoxSvg(string_view path) {
+void SaveBoxSvg(const fs::path &dir_path) {
     if (!RootNode) return;
 
-    fs::remove_all(path);
-    fs::create_directory(path);
+    fs::remove_all(dir_path);
+    fs::create_directory(dir_path);
 
     auto node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
     node.PlaceSize(DeviceType_SVG);
     node.Place(DeviceType_SVG);
-    node.WriteSvg(path);
+    node.WriteSvg(dir_path);
 }
 
 bool IsBoxHovered(ID imgui_id) { return Node::WithId[imgui_id] != nullptr; }
@@ -1243,7 +1243,7 @@ void FaustGraph::Apply(const ActionType &action) const {
         [](const Action::FaustGraph::ShowSaveSvgDialog &) {
             file_dialog.Set({Action::FaustGraph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
         },
-        [](const Action::FaustGraph::SaveSvgFile &a) { SaveBoxSvg(a.path); },
+        [](const Action::FaustGraph::SaveSvgFile &a) { SaveBoxSvg(a.dir_path); },
     );
 }
 

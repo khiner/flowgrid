@@ -5,7 +5,7 @@
 
 DefineActionType(
     Vector,
-    DefineAction(Set, CustomMerge, "", StorePath path; std::vector<::Primitive> value;);
+    DefineFieldAction(Set, "", std::vector<::Primitive> value;);
 
     Json(Set, path, value);
 

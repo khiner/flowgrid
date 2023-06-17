@@ -24,7 +24,6 @@ Thus, the byte size of `Action::Any` is large enough to hold its biggest type.
   (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
 */
 namespace Action {
-
 struct Metadata {
     // `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required)
     // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack

@@ -428,6 +428,7 @@ DefineQ(Primitive::Bool::Toggle);
 DefineQ(Primitive::Set);
 DefineQ(Vector::Set);
 DefineQ(Vec2::Set);
+DefineQ(Vec2::SetAll);
 DefineQ(Matrix::Set);
 DefineQ(Store::ApplyPatch);
 DefineQ(Style::SetImGuiColorPreset);

@@ -20,6 +20,10 @@ void Vec2::ActionHandler::Apply(const ActionType &action) const {
             store::Set(a.path / "X", x);
             store::Set(a.path / "Y", y);
         },
+        [](const Action::Vec2::SetAll &a) {
+            store::Set(a.path / "X", a.value);
+            store::Set(a.path / "Y", a.value);
+        },
     );
 }
 
@@ -53,7 +57,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (edited) {
         if (Linked) {
             const float changed_value = values.x != X ? values.x : values.y;
-            Action::Vec2::Set{Path, {changed_value, changed_value}}.q();
+            Action::Vec2::SetAll{Path, changed_value}.q();
         } else {
             Action::Vec2::Set{Path, {values.x, values.y}}.q();
         }

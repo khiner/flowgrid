@@ -6,8 +6,6 @@
 
 #include "FieldActionHandler.h"
 
-using FieldValue = std::variant<Primitive, std::pair<float, float>>; // Includes float pair for `Vec2`.
-
 // A `Field` is a component backed by a store value.
 struct Field : Component {
     inline static std::vector<Field *> Instances; // All fields.
@@ -32,22 +30,12 @@ struct Field : Component {
     U32 Index; // Index in `Instances`.
 };
 
-struct ExtendedPrimitiveField : Field, Drawable {
-    using Field::Field;
-
-    using Entry = std::pair<const ExtendedPrimitiveField &, FieldValue>;
-    using Entries = std::vector<Entry>;
-
-    virtual FieldValue GetValue() const = 0; // Returns the value in the main state store.
-};
-
-struct PrimitiveField : ExtendedPrimitiveField, Actionable<Action::Primitive::Any> {
+struct PrimitiveField : Field, Drawable, Actionable<Action::Primitive::Any> {
     PrimitiveField(ComponentArgs &&, Primitive value);
 
     void Set(const Primitive &) const;
 
     Primitive Get() const; // Returns the value in the main state store.
-    FieldValue GetValue() const override { return Get(); };
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
@@ -75,8 +63,3 @@ template<IsPrimitive T> struct TypedField : PrimitiveField {
 protected:
     T Value;
 };
-
-namespace store {
-void Set(const ExtendedPrimitiveField &, const FieldValue &);
-void Set(const ExtendedPrimitiveField::Entries &);
-} // namespace store

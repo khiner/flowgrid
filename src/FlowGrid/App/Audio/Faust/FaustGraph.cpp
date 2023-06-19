@@ -1401,36 +1401,25 @@ void FaustGraph::Style::ColorsFaust() const {
 }
 
 void FaustGraph::Style::LayoutFlowGrid() const {
-    static const std::vector<std::reference_wrapper<ExtendedPrimitiveField const>> LayoutFields{
-        SequentialConnectionZigzag,
-        OrientationMark,
-        OrientationMarkRadius,
-        DecorateRootNode,
-        DecorateMargin,
-        DecoratePadding,
-        DecorateLineWidth,
-        DecorateCornerRadius,
-        GroupMargin,
-        GroupPadding,
-        GroupLineWidth,
-        GroupCornerRadius,
-        BoxCornerRadius,
-        BinaryHorizontalGapRatio,
-        WireWidth,
-        WireGap,
-        NodeMargin,
-        NodePadding,
-        ArrowSize,
-        InverterRadius,
-    };
-    static const auto DefaultLayoutEntries =
-        LayoutFields |
-        std::views::transform(
-            [](const ExtendedPrimitiveField &field) { return ExtendedPrimitiveField::Entry(field, field.GetValue()); }
-        ) |
-        ranges::to<const ExtendedPrimitiveField::Entries>;
-
-    store::Set(DefaultLayoutEntries);
+    SequentialConnectionZigzag.Set(false);
+    OrientationMark.Set(false);
+    DecorateRootNode.Set(true);
+    DecorateMargin.Set({10, 10});
+    DecoratePadding.Set({10, 10});
+    DecorateLineWidth.Set(1);
+    DecorateCornerRadius.Set(0);
+    GroupMargin.Set({8, 8});
+    GroupPadding.Set({8, 8});
+    GroupLineWidth.Set(2);
+    GroupCornerRadius.Set(5);
+    BoxCornerRadius.Set(4);
+    BinaryHorizontalGapRatio.Set(0.25);
+    WireWidth.Set(1);
+    WireGap.Set(16);
+    NodeMargin.Set({8, 8});
+    NodePadding.Set({8, 0});
+    ArrowSize.Set({3, 2});
+    InverterRadius.Set(3);
 }
 
 void FaustGraph::Style::LayoutFaust() const {

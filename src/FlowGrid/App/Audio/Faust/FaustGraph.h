@@ -68,7 +68,7 @@ struct FaustGraph : Component, Drawable, Actionable<Action::FaustGraph::Any> {
         Prop(Bool, OrientationMark);
         Prop(Float, OrientationMarkRadius, 1.5, 0.5, 3);
 
-        Prop(Bool, DecorateRootNode, true);
+        Prop(Bool, DecorateRootNode);
         Prop(Vec2Linked, DecorateMargin, {10, 10}, 0, 20);
         Prop(Vec2Linked, DecoratePadding, {10, 10}, 0, 20);
         Prop(Float, DecorateLineWidth, 1, 1, 4);
@@ -88,6 +88,7 @@ struct FaustGraph : Component, Drawable, Actionable<Action::FaustGraph::Any> {
         Prop(Float, WireGap, 16, 10, 20);
         Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
         Prop(Float, InverterRadius, 3, 1, 5);
+
         Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
         void ColorsDark() const;

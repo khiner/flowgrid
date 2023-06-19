@@ -1,7 +1,5 @@
 #include "Windows.h"
 
-#include "Core/Store/Store.h"
-
 #include "imgui.h"
 
 void Windows::SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &components) {

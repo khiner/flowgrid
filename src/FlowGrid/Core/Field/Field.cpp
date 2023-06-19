@@ -30,7 +30,7 @@ void Field::UpdateGesturing() {
 }
 
 PrimitiveField::PrimitiveField(ComponentArgs &&args, Primitive value)
-    : ExtendedPrimitiveField(std::move(args)) {
+    : Field(std::move(args)) {
     Set(value);
 }
 
@@ -54,21 +54,3 @@ void PrimitiveField::Apply(const ActionType &action) const {
         [this](const Action::Primitive::Bool::Toggle &) { Set(!std::get<bool>(Get())); },
     );
 }
-
-namespace store {
-void Set(const ExtendedPrimitiveField &field, const FieldValue &value) {
-    Visit(
-        value,
-        [&field](const std::pair<float, float> &v) {
-            store::Set(field.Path / "X", v.first);
-            store::Set(field.Path / "Y", v.second);
-        },
-        [&field](const auto &v) {
-            store::Set(field.Path, v);
-        },
-    );
-}
-void Set(const ExtendedPrimitiveField::Entries &values) {
-    for (const auto &[field, value] : values) Set(field, value);
-}
-} // namespace store

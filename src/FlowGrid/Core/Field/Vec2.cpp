@@ -7,7 +7,7 @@
 using namespace ImGui;
 
 Vec2::Vec2(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, const char *fmt)
-    : ExtendedPrimitiveField(std::move(args)), Min(min), Max(max), Format(fmt), Value(value) {
+    : Field(std::move(args)), Min(min), Max(max), Format(fmt), Value(value) {
     Set(value);
 }
 

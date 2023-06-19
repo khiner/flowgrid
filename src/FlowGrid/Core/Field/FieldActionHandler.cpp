@@ -13,53 +13,23 @@
 
 void FieldActionHandler::Apply(const ActionType &action) const {
     const auto *field = Field::FindByPath(action.GetFieldPath());
+    if (field == nullptr) throw std::runtime_error(std::format("Field not found: {}", action.GetFieldPath().string()));
+
+    // Note: If/when we support arbitrary json actions, we'll need to check field types.
+    //   Maybe with a separate `FindByPath` for each type?
+    //   Could also have each field primitive field type accept an `Action::Field::Any`,
+    //   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
     Visit(
         action,
-        [&field](const Bool::ActionType &a) {
-            if (const auto *bool_field = dynamic_cast<const Bool *>(field)) {
-                bool_field->Apply(a);
-            }
-        },
-        [&field](const Int::ActionType &a) {
-            if (const auto *int_field = dynamic_cast<const Int *>(field)) {
-                int_field->Apply(a);
-            }
-        },
-        [&field](const UInt::ActionType &a) {
-            if (const auto *uint_field = dynamic_cast<const UInt *>(field)) {
-                uint_field->Apply(a);
-            }
-        },
-        [&field](const Float::ActionType &a) {
-            if (const auto *float_field = dynamic_cast<const Float *>(field)) {
-                float_field->Apply(a);
-            }
-        },
-        [&field](const String::ActionType &a) {
-            if (const auto *string_field = dynamic_cast<const String *>(field)) {
-                string_field->Apply(a);
-            }
-        },
-        [&field](const Enum::ActionType &a) {
-            if (const auto *enum_field = dynamic_cast<const Enum *>(field)) {
-                enum_field->Apply(a);
-            }
-        },
-        [&field](const Flags::ActionType &a) {
-            if (const auto *flags_field = dynamic_cast<const Flags *>(field)) {
-                flags_field->Apply(a);
-            }
-        },
-        [&field](const MultilineString::ActionType &a) {
-            if (const auto *multiline_string_field = dynamic_cast<const MultilineString *>(field)) {
-                multiline_string_field->Apply(a);
-            }
-        },
-        [&field](const Vec2::ActionType &a) {
-            if (const auto *vec2_field = dynamic_cast<const Vec2 *>(field)) {
-                vec2_field->Apply(a);
-            }
-        },
+        [&field](const Bool::ActionType &a) { static_cast<const Bool *>(field)->Apply(a); },
+        [&field](const Int::ActionType &a) { static_cast<const Int *>(field)->Apply(a); },
+        [&field](const UInt::ActionType &a) { static_cast<const UInt *>(field)->Apply(a); },
+        [&field](const Float::ActionType &a) { static_cast<const Float *>(field)->Apply(a); },
+        [&field](const String::ActionType &a) { static_cast<const String *>(field)->Apply(a); },
+        [&field](const Enum::ActionType &a) { static_cast<const Enum *>(field)->Apply(a); },
+        [&field](const Flags::ActionType &a) { static_cast<const Flags *>(field)->Apply(a); },
+        [&field](const MultilineString::ActionType &a) { static_cast<const MultilineString *>(field)->Apply(a); },
+        [&field](const Vec2::ActionType &a) { static_cast<const Vec2 *>(field)->Apply(a); },
         [](const VectorBase::ActionHandler::ActionType &a) { VectorBase::ActionHandler.Apply(a); },
         [](const MatrixBase::ActionHandler::ActionType &a) { MatrixBase::ActionHandler.Apply(a); },
     );

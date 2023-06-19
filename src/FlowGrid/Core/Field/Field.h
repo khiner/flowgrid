@@ -44,6 +44,8 @@ struct ExtendedPrimitiveField : Field, Drawable {
 struct PrimitiveField : ExtendedPrimitiveField, Actionable<Action::Primitive::Any> {
     PrimitiveField(ComponentArgs &&, Primitive value);
 
+    void Set(const Primitive &) const;
+
     Primitive Get() const; // Returns the value in the main state store.
     FieldValue GetValue() const override { return Get(); };
 

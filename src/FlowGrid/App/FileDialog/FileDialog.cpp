@@ -16,12 +16,12 @@ void FileDialog::Apply(const ActionType &action) const {
         action,
         [&](const Action::FileDialog::Open &a) { this->Set(json::parse(a.dialog_json)); },
         [&](const Action::FileDialog::Select &a) {
-            store::Set(Visible, false);
-            store::Set(SelectedFilePath, a.file_path);
+            Visible.Set(false);
+            SelectedFilePath.Set(a.file_path);
         },
         [&](const Action::FileDialog::Cancel &) {
-            store::Set(Visible, false);
-            store::Set(SelectedFilePath, "");
+            Visible.Set(false);
+            SelectedFilePath.Set("");
         },
     );
 }
@@ -36,18 +36,14 @@ bool FileDialog::CanApply(const ActionType &action) const {
 }
 
 void FileDialog::Set(const FileDialogData &data) const {
-    store::Set(
-        {
-            {Visible, true},
-            {Title, data.title},
-            {Filters, data.filters},
-            {FilePath, data.file_path},
-            {DefaultFileName, data.default_file_name},
-            {SaveMode, data.save_mode},
-            {MaxNumSelections, data.max_num_selections},
-            {Flags, data.flags},
-        }
-    );
+    Visible.Set(true);
+    Title.Set(data.title);
+    Filters.Set(data.filters);
+    FilePath.Set(data.file_path);
+    DefaultFileName.Set(data.default_file_name);
+    SaveMode.Set(data.save_mode);
+    MaxNumSelections.Set(data.max_num_selections);
+    Flags.Set(data.flags);
 }
 
 static void OpenDialog(const FileDialogData &data) { Action::FileDialog::Open{json(data).dump()}.q(); }

@@ -21,6 +21,8 @@ struct Vec2 : ExtendedPrimitiveField, Actionable<Action::Vec2::Any> {
 
     void RefreshValue() override;
 
+    void Set(const std::pair<float, float> &) const;
+
     inline float X() const { return Value.first; }
     inline float Y() const { return Value.second; }
 

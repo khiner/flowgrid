@@ -1434,29 +1434,25 @@ void FaustGraph::Style::LayoutFlowGrid() const {
 }
 
 void FaustGraph::Style::LayoutFaust() const {
-    store::Set(
-        {
-            {SequentialConnectionZigzag, true},
-            {OrientationMark, true},
-            {DecorateRootNode, true},
-            {DecorateMargin, std::pair{10, 10}},
-            {DecoratePadding, std::pair{10, 10}},
-            {DecorateLineWidth, 1},
-            {DecorateCornerRadius, 0},
-            {GroupMargin, std::pair{10, 10}},
-            {GroupPadding, std::pair{10, 10}},
-            {GroupLineWidth, 1},
-            {GroupCornerRadius, 0},
-            {BoxCornerRadius, 0},
-            {BinaryHorizontalGapRatio, 0.25f},
-            {WireWidth, 1},
-            {WireGap, 16},
-            {NodeMargin, std::pair{8, 8}},
-            {NodePadding, std::pair{8, 0}},
-            {ArrowSize, std::pair{3, 2}},
-            {InverterRadius, 3},
-        }
-    );
+    SequentialConnectionZigzag.Set(true);
+    OrientationMark.Set(true);
+    DecorateRootNode.Set(true);
+    DecorateMargin.Set({10, 10});
+    DecoratePadding.Set({10, 10});
+    DecorateLineWidth.Set(1);
+    DecorateCornerRadius.Set(0);
+    GroupMargin.Set({10, 10});
+    GroupPadding.Set({10, 10});
+    GroupLineWidth.Set(1);
+    GroupCornerRadius.Set(0);
+    BoxCornerRadius.Set(0);
+    BinaryHorizontalGapRatio.Set(0.25f);
+    WireWidth.Set(1);
+    WireGap.Set(16);
+    NodeMargin.Set({8, 8});
+    NodePadding.Set({8, 0});
+    ArrowSize.Set({3, 2});
+    InverterRadius.Set(3);
 }
 
 void FaustGraph::Style::Render() const {

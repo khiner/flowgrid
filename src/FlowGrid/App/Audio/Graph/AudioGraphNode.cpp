@@ -3,7 +3,7 @@
 #include "miniaudio.h"
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args, bool on) : Component(std::move(args)) {
-    store::Set(On, on);
+    On.Set(on);
 }
 
 void *AudioGraphNode::Get() const {

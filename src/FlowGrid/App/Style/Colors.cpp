@@ -31,12 +31,12 @@ const UInt *Colors::At(Count i) const { return dynamic_cast<const UInt *>(Childr
 U32 Colors::operator[](Count i) const { return *At(i); };
 void Colors::Set(const std::vector<ImVec4> &values) const {
     for (Count i = 0; i < values.size(); i++) {
-        store::Set(*At(i), ConvertFloat4ToU32(values[i]));
+        At(i)->Set(ConvertFloat4ToU32(values[i]));
     }
 }
 void Colors::Set(const std::vector<std::pair<int, ImVec4>> &entries) const {
     for (const auto &[i, v] : entries) {
-        store::Set(*At(i), ConvertFloat4ToU32(v));
+        At(i)->Set(ConvertFloat4ToU32(v));
     }
 }
 

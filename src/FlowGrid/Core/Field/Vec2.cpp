@@ -8,25 +8,24 @@ using namespace ImGui;
 
 Vec2::Vec2(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, const char *fmt)
     : ExtendedPrimitiveField(std::move(args)), Min(min), Max(max), Format(fmt), Value(value) {
-    Apply(Action::Vec2::Set{Path, value});
+    Set(value);
 }
 
 Vec2::operator ImVec2() const { return {X(), Y()}; }
 
+void Vec2::Set(const std::pair<float, float> &value) const {
+    const auto &[x, y] = value;
+    store::Set(Path / "X", x);
+    store::Set(Path / "Y", y);
+}
+
 void Vec2::Apply(const ActionType &action) const {
     Visit(
         action,
-        [this](const Action::Vec2::Set &a) {
-            const auto &[x, y] = a.value;
-            store::Set(Path / "X", x);
-            store::Set(Path / "Y", y);
-        },
+        [this](const Action::Vec2::Set &a) { Set(a.value); },
         [this](const Action::Vec2::SetX &a) { store::Set(Path / "X", a.value); },
         [this](const Action::Vec2::SetY &a) { store::Set(Path / "Y", a.value); },
-        [this](const Action::Vec2::SetAll &a) {
-            store::Set(Path / "X", a.value);
-            store::Set(Path / "Y", a.value);
-        },
+        [this](const Action::Vec2::SetAll &a) { Set({a.value, a.value}); },
     );
 }
 
@@ -46,7 +45,7 @@ void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
 Vec2Linked::Vec2Linked(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(std::move(args), value, min, max, fmt) {
-    store::Set(Linked, linked);
+    Linked.Set(linked);
 }
 
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {

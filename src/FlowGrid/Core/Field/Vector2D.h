@@ -13,7 +13,7 @@ template<IsPrimitive T> struct Vector2D : Field {
 
     void Set(const std::vector<std::vector<T>> &) const;
 
-    void Update() override;
+    void RefreshValue() override;
 
 private:
     std::vector<std::vector<T>> Value;

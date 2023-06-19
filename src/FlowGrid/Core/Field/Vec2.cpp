@@ -30,7 +30,7 @@ void Vec2::Apply(const ActionType &action) const {
     );
 }
 
-void Vec2::Update() {
+void Vec2::RefreshValue() {
     Value = {std::get<float>(store::Get(Path / "X")), std::get<float>(store::Get(Path / "Y"))};
 }
 

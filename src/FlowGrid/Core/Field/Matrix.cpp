@@ -11,7 +11,7 @@ void MatrixBase::ActionHandler::Apply(const ActionType &action) const {
     );
 }
 
-template<IsPrimitive T> void Matrix<T>::Update() {
+template<IsPrimitive T> void Matrix<T>::RefreshValue() {
     Count row_count = 0, col_count = 0;
     while (store::CountAt(PathAt(row_count, 0))) { row_count++; }
     while (store::CountAt(PathAt(row_count - 1, col_count))) { col_count++; }

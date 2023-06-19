@@ -249,7 +249,7 @@ void OnPatch(const Patch &patch) {
         else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
         else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
     }
-    for (auto *modified_field : modified_fields) modified_field->Update();
+    for (auto *modified_field : modified_fields) modified_field->RefreshValue();
 }
 
 void SetHistoryIndex(Count index) {

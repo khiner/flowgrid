@@ -27,7 +27,7 @@ struct Vector : Field {
     void Set(size_t i, const T &value) const;
     void Set(const std::vector<std::pair<int, T>> &) const;
 
-    void Update() override;
+    void RefreshValue() override;
 
 private:
     std::vector<T> Value;

@@ -19,7 +19,7 @@ struct Vec2 : ExtendedPrimitiveField, Actionable<Action::Vec2::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
-    void Update() override;
+    void RefreshValue() override;
 
     inline float X() const { return Value.first; }
     inline float Y() const { return Value.second; }

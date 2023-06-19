@@ -21,7 +21,7 @@ template<IsPrimitive T> void Vector2D<T>::Set(const std::vector<std::vector<T>> 
     }
 }
 
-template<IsPrimitive T> void Vector2D<T>::Update() {
+template<IsPrimitive T> void Vector2D<T>::RefreshValue() {
     Count i = 0;
     while (store::CountAt(PathAt(i, 0))) {
         if (Value.size() == i) Value.push_back({});

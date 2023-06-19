@@ -22,7 +22,7 @@ int main() {
     store::Commit();
 
     // Ensure all store values set during initialization are reflected in cached field/collection values.
-    for (auto *field : Field::Instances) field->Update();
+    for (auto *field : Field::Instances) field->RefreshValue();
 
     Project::Init();
     IGFD::Init();

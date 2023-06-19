@@ -25,7 +25,9 @@ struct Field : Component {
 
     Field &operator=(const Field &) = delete;
 
-    virtual void Update() = 0;
+    // Refresh the cached value based on the main store.
+    // Should be called for each affected field after a state change to avoid stale values.
+    virtual void RefreshValue() = 0;
 
     U32 Index; // Index in `Instances`.
 };
@@ -66,7 +68,7 @@ template<IsPrimitive T> struct TypedField : PrimitiveField {
     }
 
     // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
-    virtual void Update() override { Value = std::get<T>(Get()); }
+    virtual void RefreshValue() override { Value = std::get<T>(Get()); }
 
 protected:
     T Value;

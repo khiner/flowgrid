@@ -23,7 +23,7 @@ template<IsPrimitive T> struct Matrix : Field {
 
     T operator()(const Count row, const Count col) const { return Value[row * ColCount + col]; }
 
-    void Update() override;
+    void RefreshValue() override;
 
 private:
     Count RowCount, ColCount;

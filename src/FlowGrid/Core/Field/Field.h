@@ -23,6 +23,8 @@ struct Field : Component {
     Field(ComponentArgs &&);
     ~Field();
 
+    Field &operator=(const Field &) = delete;
+
     virtual void Update() = 0;
 
     U32 Index; // Index in `Instances`.
@@ -53,8 +55,15 @@ template<IsPrimitive T> struct TypedField : PrimitiveField {
     operator T() const { return Value; }
     bool operator==(const T &value) const { return Value == value; }
 
-    // Mutating set. Updates both store and cached value. Should only be used during side-effect handle pass.
-    void Set(const T &);
+    // Non-mutating set. Only updates store. Used during action application.
+    void Set(const T &) const;
+
+    // Mutating set. Updates both store and cached value.
+    // Should only be used during initialization and side-effect handling pass.
+    void Set_(const T &value) {
+        Set(value);
+        Value = value;
+    }
 
     // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
     virtual void Update() override { Value = std::get<T>(Get()); }

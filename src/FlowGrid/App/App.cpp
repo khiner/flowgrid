@@ -239,7 +239,7 @@ void OnPatch(const Patch &patch) {
     modified_fields.clear();
     for (const auto &path : History.LatestUpdatedPaths) {
         auto *modified_field = Field::FindByPath(path);
-        if (modified_field == nullptr) throw std::runtime_error(std::format("`SetStore` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
+        if (modified_field == nullptr) throw std::runtime_error(std::format("`Set` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
 
         modified_fields.emplace(modified_field);
 

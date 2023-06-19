@@ -35,17 +35,16 @@ PrimitiveField::PrimitiveField(ComponentArgs &&args, Primitive value) : Extended
 
 Primitive PrimitiveField::Get() const { return store::Get(Path); }
 
-template<IsPrimitive T> void TypedField<T>::Set(const T &value) {
+template<IsPrimitive T> void TypedField<T>::Set(const T &value) const {
     store::Set(*this, value);
-    Value = value;
 }
 
 // Explicit instantiations for `Set`.
-template void TypedField<bool>::Set(const bool &);
-template void TypedField<U32>::Set(const U32 &);
-template void TypedField<std::string>::Set(const std::string &);
-template void TypedField<float>::Set(const float &);
-template void TypedField<int>::Set(const int &);
+template void TypedField<bool>::Set(const bool &) const;
+template void TypedField<U32>::Set(const U32 &) const;
+template void TypedField<std::string>::Set(const std::string &) const;
+template void TypedField<float>::Set(const float &) const;
+template void TypedField<int>::Set(const int &) const;
 
 void PrimitiveField::Apply(const ActionType &action) const {
     Visit(

@@ -6,7 +6,6 @@
 struct Flags : TypedField<int>, MenuItemDrawable {
     struct Item {
         Item(const char *name_and_help);
-
         string Name, Help;
     };
 

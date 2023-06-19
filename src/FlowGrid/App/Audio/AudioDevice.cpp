@@ -91,13 +91,13 @@ void AudioDevice::Init(AudioDevice::Callback callback) {
         NativeSampleRates.emplace_back(native_format.sampleRate);
     }
 
-    if (MaDevice.capture.name != InDeviceName) InDeviceName.Set(MaDevice.capture.name);
-    if (MaDevice.playback.name != OutDeviceName) OutDeviceName.Set(MaDevice.playback.name);
-    if (MaDevice.capture.format != InFormat) InFormat.Set(MaDevice.capture.format);
-    if (MaDevice.playback.format != OutFormat) OutFormat.Set(MaDevice.playback.format);
-    if (MaDevice.capture.channels != InChannels) InChannels.Set(MaDevice.capture.channels);
-    if (MaDevice.playback.channels != OutChannels) OutChannels.Set(MaDevice.playback.channels);
-    if (MaDevice.sampleRate != SampleRate) SampleRate.Set(MaDevice.sampleRate);
+    if (MaDevice.capture.name != InDeviceName) InDeviceName.Set_(MaDevice.capture.name);
+    if (MaDevice.playback.name != OutDeviceName) OutDeviceName.Set_(MaDevice.playback.name);
+    if (MaDevice.capture.format != InFormat) InFormat.Set_(MaDevice.capture.format);
+    if (MaDevice.playback.format != OutFormat) OutFormat.Set_(MaDevice.playback.format);
+    if (MaDevice.capture.channels != InChannels) InChannels.Set_(MaDevice.capture.channels);
+    if (MaDevice.playback.channels != OutChannels) OutChannels.Set_(MaDevice.playback.channels);
+    if (MaDevice.sampleRate != SampleRate) SampleRate.Set_(MaDevice.sampleRate);
 }
 
 void AudioDevice::Update() {

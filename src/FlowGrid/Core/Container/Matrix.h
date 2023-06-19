@@ -15,9 +15,11 @@ struct MatrixBase {
 template<IsPrimitive T> struct Matrix : Field {
     using Field::Field;
 
-    void Set(const std::vector<T> &, const Count row_count);
+    void Set(const std::vector<T> &, const Count row_count) const;
+    void Set_(const std::vector<T> &, const Count row_count);
 
     StorePath PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
+
     Count Rows() const { return RowCount; }
     Count Cols() const { return ColCount; }
 

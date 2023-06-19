@@ -5,8 +5,6 @@
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "Core/Primitive/PrimitiveAction.h"
-
 namespace FlowGrid {
 std::vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
@@ -218,7 +216,7 @@ void Style::ImGuiStyle::Render() const {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) Action::Primitive::Set{FontIndex.Path, n}.q();
+            if (Selectable(font->GetDebugName(), font == font_current)) Action::Primitive::Int::Set{FontIndex.Path, n}.q();
             PopID();
         }
         EndCombo();
@@ -227,17 +225,17 @@ void Style::ImGuiStyle::Render() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) Action::Primitive::Set{WindowBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("WindowBorder", &border)) Action::Primitive::Float::Set{WindowBorderSize.Path, border ? 1.f : 0.f}.q();
     }
     SameLine();
     {
         bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) Action::Primitive::Set{FrameBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("FrameBorder", &border)) Action::Primitive::Float::Set{FrameBorderSize.Path, border ? 1.f : 0.f}.q();
     }
     SameLine();
     {
         bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) Action::Primitive::Set{PopupBorderSize.Path, border ? 1 : 0}.q();
+        if (Checkbox("PopupBorder", &border)) Action::Primitive::Float::Set{PopupBorderSize.Path, border ? 1.f : 0.f}.q();
     }
 
     Separator();

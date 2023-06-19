@@ -10,9 +10,16 @@ UInt::UInt(ComponentArgs &&args, U32 value, U32 min, U32 max)
     : TypedField(std::move(args), value), Min(min), Max(max) {}
 UInt::UInt(ComponentArgs &&args, std::function<const string(U32)> get_name, U32 value)
     : TypedField(std::move(args), value), Min(0), Max(100), GetName(std::move(get_name)) {}
-UInt::operator bool() const { return Value; }
-UInt::operator int() const { return Value; }
+
 UInt::operator ImColor() const { return Value; }
+
+void UInt::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [this](const Action::Primitive::UInt::Set &a) { Set(a.value); },
+    );
+}
+
 string UInt::ValueName(const U32 value) const { return GetName ? (*GetName)(value) : to_string(value); }
 
 using namespace ImGui;
@@ -21,7 +28,7 @@ void UInt::Render() const {
     U32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &Min, &Max, "%d");
     UpdateGesturing();
-    if (edited) Action::Primitive::Set{Path, value}.q();
+    if (edited) Action::Primitive::UInt::Set{Path, value}.q();
     HelpMarker();
 }
 void UInt::Render(const std::vector<U32> &options) const {
@@ -31,7 +38,7 @@ void UInt::Render(const std::vector<U32> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), ValueName(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(ValueName(option).c_str(), is_selected)) Action::Primitive::Set{Path, option}.q();
+            if (Selectable(ValueName(option).c_str(), is_selected)) Action::Primitive::UInt::Set{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -51,7 +58,7 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
     // todo use auto for FG colors (link to ImGui colors)
     if (allow_auto) {
         if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-        if (Button("Auto")) Action::Primitive::Set{Path, is_auto ? mapped_value : AutoColor}.q();
+        if (Button("Auto")) Action::Primitive::UInt::Set{Path, is_auto ? mapped_value : AutoColor}.q();
         if (!is_auto) PopStyleVar();
         SameLine();
     }
@@ -67,5 +74,5 @@ void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
 
     PopID();
 
-    if (changed) Action::Primitive::Set{Path, ColorConvertFloat4ToU32(value)}.q();
+    if (changed) Action::Primitive::UInt::Set{Path, ColorConvertFloat4ToU32(value)}.q();
 }

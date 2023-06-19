@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "Scalar.h"
 #include "Helper/Variant.h"
+#include "Scalar.h"
 
 using Primitive = std::variant<bool, U32, S32, float, std::string>;
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Action/DefineAction.h"
-#include "Core/Primitive/PrimitiveJson.h"
 
 DefineActionType(
     Vec2,

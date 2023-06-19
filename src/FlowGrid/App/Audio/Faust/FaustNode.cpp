@@ -6,7 +6,6 @@
 #include "miniaudio.h"
 
 #include "App/Audio/AudioDevice.h"
-#include "Core/Primitive/PrimitiveAction.h"
 #include "Faust.h"
 #include "FaustBox.h"
 #include "FaustParamsUI.h"
@@ -47,8 +46,8 @@ static void Init() {
     }
 
     const auto &ErrorLog = faust.Log.Error;
-    if (!error_msg.empty()) Action::Primitive::Set{ErrorLog.Path, error_msg}.q();
-    else if (ErrorLog) Action::Primitive::Set{ErrorLog.Path, ""}.q();
+    if (!error_msg.empty()) Action::Primitive::String::Set{ErrorLog.Path, error_msg}.q();
+    else if (ErrorLog) Action::Primitive::String::Set{ErrorLog.Path, ""}.q();
 
     OnBoxChange(box);
     OnUiChange(Ui.get());

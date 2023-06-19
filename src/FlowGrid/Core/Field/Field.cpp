@@ -29,28 +29,20 @@ void Field::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsGesturing = false;
 }
 
-PrimitiveField::PrimitiveField(ComponentArgs &&args, Primitive value)
-    : Field(std::move(args)) {
-    Set(value);
-}
+template<IsPrimitive T> T TypedField<T>::Get() const { return std::get<T>(store::Get(Path)); }
 
-Primitive PrimitiveField::Get() const { return store::Get(Path); }
-
-void PrimitiveField::Set(const Primitive &value) const { store::Set(Path, value); }
+// Explicit instantiations for `Get`.
+template bool TypedField<bool>::Get() const;
+template int TypedField<int>::Get() const;
+template U32 TypedField<U32>::Get() const;
+template float TypedField<float>::Get() const;
+template std::string TypedField<std::string>::Get() const;
 
 template<IsPrimitive T> void TypedField<T>::Set(const T &value) const { store::Set(Path, value); }
 
 // Explicit instantiations for `Set`.
 template void TypedField<bool>::Set(const bool &) const;
-template void TypedField<U32>::Set(const U32 &) const;
-template void TypedField<std::string>::Set(const std::string &) const;
-template void TypedField<float>::Set(const float &) const;
 template void TypedField<int>::Set(const int &) const;
-
-void PrimitiveField::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Primitive::Set &a) { Set(a.value); },
-        [this](const Action::Primitive::Bool::Toggle &) { Set(!std::get<bool>(Get())); },
-    );
-}
+template void TypedField<U32>::Set(const U32 &) const;
+template void TypedField<float>::Set(const float &) const;
+template void TypedField<std::string>::Set(const std::string &) const;

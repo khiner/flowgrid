@@ -8,6 +8,7 @@ void MatrixBase::ActionHandler::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const Action::Matrix::Set &a) { store::Set(a.path, a.value, a.row_count); },
+        [](const Action::Matrix::SetValue &a) { store::Set(a.path / to_string(a.row) / to_string(a.col), a.value); },
     );
 }
 
@@ -26,11 +27,15 @@ template<IsPrimitive T> void Matrix<T>::RefreshValue() {
     }
 }
 
-template<IsPrimitive T> void Matrix<T>::Set(const std::vector<T> &value, const Count row_count) {
-    Value = value;
-
+template<IsPrimitive T> void Matrix<T>::Set(const std::vector<T> &value, const Count row_count) const {
     const std::vector<Primitive> primitives = value | std::views::transform([](const T &v) { return Primitive(v); }) | ranges::to<std::vector>();
     store::Set(Path, primitives, row_count);
+}
+
+template<IsPrimitive T> void Matrix<T>::Set_(const std::vector<T> &value, const Count row_count) {
+    Value = value;
+    RowCount = row_count;
+    Set(value, row_count);
 }
 
 // Explicit instantiations.

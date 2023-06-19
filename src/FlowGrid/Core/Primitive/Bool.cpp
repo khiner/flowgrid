@@ -6,6 +6,13 @@
 
 void Bool::Toggle() const { Action::Primitive::Bool::Toggle{Path}.q(); }
 
+void Bool::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [this](const Action::Primitive::Bool::Toggle &) { Set(!Get()); },
+    );
+}
+
 using namespace ImGui;
 
 void Bool::Render() const {

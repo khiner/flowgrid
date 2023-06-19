@@ -2,12 +2,15 @@
 
 #include "imgui.h"
 
-Int::Int(ComponentArgs &&args, int value, int min, int max) : TypedField(std::move(args), value), Min(min), Max(max) {}
+Int::Int(ComponentArgs &&args, int value, int min, int max)
+    : TypedField(std::move(args), value), Min(min), Max(max) {}
 
-Int::operator bool() const { return Value; }
-Int::operator short() const { return Value; }
-Int::operator char() const { return Value; }
-Int::operator S8() const { return Value; }
+void Int::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [this](const Action::Primitive::Int::Set &a) { Set(a.value); },
+    );
+}
 
 using namespace ImGui;
 
@@ -15,7 +18,7 @@ void Int::Render() const {
     int value = Value;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, Min, Max, "%d", ImGuiSliderFlags_None);
     UpdateGesturing();
-    if (edited) Action::Primitive::Set{Path, value}.q();
+    if (edited) Action::Primitive::Int::Set{Path, value}.q();
     HelpMarker();
 }
 void Int::Render(const std::vector<int> &options) const {
@@ -25,7 +28,7 @@ void Int::Render(const std::vector<int> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(to_string(option).c_str(), is_selected)) Action::Primitive::Set{Path, option}.q();
+            if (Selectable(to_string(option).c_str(), is_selected)) Action::Primitive::Int::Set{Path, option}.q();
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();

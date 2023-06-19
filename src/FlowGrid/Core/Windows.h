@@ -3,13 +3,14 @@
 #include "Core/Container/Vector.h"
 #include "WindowsAction.h"
 
-struct Windows : Component, Drawable, MenuItemDrawable, Actionable<Action::Windows::Any> {
+struct Windows : Component, Drawable, Actionable<Action::Windows::Any>, MenuItemDrawable {
     using Component::Component;
-
-    void SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
+
+    void SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &);
+
     bool IsWindow(ID id) const;
     void MenuItem() const override;
 

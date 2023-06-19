@@ -4,12 +4,18 @@
 
 #include "App/Audio/Faust/FaustAction.h"
 #include "App/TextEditor/TextEditor.h"
-#include "Core/Primitive/PrimitiveAction.h"
 #include "UI/UI.h"
 
 static const Menu FileMenu = {"File", {Action::FaustFile::ShowOpenDialog::MenuItem, Action::FaustFile::ShowSaveDialog::MenuItem}};
 
 MultilineString::MultilineString(ComponentArgs &&args, string_view value) : TypedField(std::move(args), string(value)) {}
+
+void MultilineString::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [this](const Action::MultilineString::Set &a) { Set(a.value); },
+    );
+}
 
 using namespace ImGui;
 
@@ -69,7 +75,7 @@ void MultilineString::Render() const {
 
     const string text = editor.GetText();
     if (editor.TextChanged) {
-        Action::Primitive::Set{Path, text}.q();
+        Action::MultilineString::Set{Path, text}.q();
     } else if (Value != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
         //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.

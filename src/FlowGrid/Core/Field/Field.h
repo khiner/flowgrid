@@ -2,7 +2,6 @@
 
 #include "Core/Action/Actionable.h"
 #include "Core/Component.h"
-#include "Core/Primitive/PrimitiveAction.h"
 
 #include "FieldActionHandler.h"
 
@@ -30,22 +29,15 @@ struct Field : Component {
     U32 Index; // Index in `Instances`.
 };
 
-struct PrimitiveField : Field, Drawable, Actionable<Action::Primitive::Any> {
-    PrimitiveField(ComponentArgs &&, Primitive value);
-
-    void Set(const Primitive &) const;
-
-    Primitive Get() const; // Returns the value in the main state store.
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; };
-};
-
-template<IsPrimitive T> struct TypedField : PrimitiveField {
-    TypedField(ComponentArgs &&args, T value = {}) : PrimitiveField(std::move(args), value), Value(value) {}
+template<IsPrimitive T> struct TypedField : Field, Drawable {
+    TypedField(ComponentArgs &&args, T value = {}) : Field(std::move(args)), Value(value) {
+        Set(value);
+    }
 
     operator T() const { return Value; }
     bool operator==(const T &value) const { return Value == value; }
+
+    T Get() const; // Get from store.
 
     // Non-mutating set. Only updates store. Used during action application.
     void Set(const T &) const;
@@ -58,7 +50,7 @@ template<IsPrimitive T> struct TypedField : PrimitiveField {
     }
 
     // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
-    virtual void RefreshValue() override { Value = std::get<T>(Get()); }
+    virtual void RefreshValue() override { Value = Get(); }
 
 protected:
     T Value;

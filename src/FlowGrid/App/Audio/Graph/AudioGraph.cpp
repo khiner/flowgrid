@@ -7,7 +7,6 @@
 
 #include "App/Audio/AudioDevice.h"
 #include "Core/Container/MatrixAction.h"
-#include "Core/Primitive/PrimitiveAction.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
@@ -43,7 +42,7 @@ void AudioGraph::Init() {
         }
         dest_count++;
     }
-    Connections.Set(connections, dest_count);
+    Connections.Set_(connections, dest_count);
 }
 
 void AudioGraph::Update() {
@@ -175,7 +174,7 @@ void AudioGraph::RenderConnections() const {
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) Action::Primitive::Set{Connections.PathAt(dest_i, source_i), !Connections(dest_i, source_i)}.q();
+            if (flags & InteractionFlags_Clicked) Action::Matrix::SetValue{Connections.Path, dest_i, source_i, !Connections(dest_i, source_i)}.q();
 
             const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));

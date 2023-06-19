@@ -1,6 +1,6 @@
 #include "Vector.h"
 
-#include <algorithm>
+#include <range/v3/range/conversion.hpp>
 
 #include "Core/Store/Store.h"
 
@@ -11,16 +11,9 @@ void VectorBase::ActionHandler::Apply(const ActionType &action) const {
     );
 }
 
-template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &values) const {
-    Count i = 0;
-    while (i < values.size()) {
-        store::Set(PathAt(i), T(values[i])); // When T is a bool, an explicit cast seems to be needed?
-        i++;
-    }
-    while (store::CountAt(PathAt(i))) {
-        store::Erase(PathAt(i));
-        i++;
-    }
+template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &value) const {
+    const std::vector<Primitive> primitives = value | std::views::transform([](const T &v) { return Primitive(v); }) | ranges::to<std::vector>();
+    store::Set(Path, primitives);
 }
 
 template<IsPrimitive T> void Vector<T>::Set(size_t i, const T &value) const {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/Field/Bool.h"
-#include "Core/Field/Float.h"
+#include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Float.h"
 
 struct ma_node_graph;
 

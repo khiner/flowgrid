@@ -1,12 +1,12 @@
 #pragma once
 
 #include "App/Style/Colors.h"
-#include "Core/Field/Bool.h"
-#include "Core/Field/Enum.h"
-#include "Core/Field/Flags.h"
-#include "Core/Field/Float.h"
-#include "Core/Field/String.h"
-#include "Core/Field/Vec2.h"
+#include "Core/Container/Vec2.h"
+#include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Enum.h"
+#include "Core/Primitive/Flags.h"
+#include "Core/Primitive/Float.h"
+#include "Core/Primitive/String.h"
 #include "FaustGraphAction.h"
 #include "UI/Styling.h"
 

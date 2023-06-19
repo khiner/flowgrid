@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/DefineAction.h"
-#include "Core/PrimitiveJson.h"
+#include "Core/Primitive/PrimitiveJson.h"
 
 DefineActionType(
     Matrix,

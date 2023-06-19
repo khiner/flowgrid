@@ -2,7 +2,7 @@
 
 #include "immer/map.hpp"
 
-#include "Core/Primitive.h"
+#include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 
 struct TransientStore;

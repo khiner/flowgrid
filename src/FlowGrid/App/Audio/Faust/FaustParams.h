@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Core/Field/Bool.h"
-#include "Core/Field/Enum.h"
-#include "Core/Field/Flags.h"
-#include "Core/Field/Float.h"
+#include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Enum.h"
+#include "Core/Primitive/Flags.h"
+#include "Core/Primitive/Float.h"
 #include "UI/Styling.h"
 
 #include "FaustParam.h"

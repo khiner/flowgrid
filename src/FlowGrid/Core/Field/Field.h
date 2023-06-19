@@ -2,7 +2,7 @@
 
 #include "Core/Action/Actionable.h"
 #include "Core/Component.h"
-#include "PrimitiveAction.h"
+#include "Core/Primitive/PrimitiveAction.h"
 
 #include "FieldActionHandler.h"
 

@@ -3,7 +3,7 @@
 #include "Patch.h"
 
 #include "Core/Json.h"
-#include "Core/PrimitiveJson.h"
+#include "Core/Primitive/PrimitiveJson.h"
 
 namespace nlohmann {
 NLOHMANN_JSON_SERIALIZE_ENUM(

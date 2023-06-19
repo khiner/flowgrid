@@ -2,7 +2,7 @@
 
 #include "immer/algorithm.hpp"
 
-#include "Core/PrimitiveJson.h"
+#include "Core/Primitive/PrimitiveJson.h"
 #include "StoreImpl.h"
 #include "TransientStoreImpl.h"
 

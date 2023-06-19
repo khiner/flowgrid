@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include "Core/Primitive.h"
+#include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 #include "Helper/Time.h"
 

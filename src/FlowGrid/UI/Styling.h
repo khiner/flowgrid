@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "Core/Scalar.h"
+#include "Core/Primitive/Scalar.h"
 
 static constexpr float FontAtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 

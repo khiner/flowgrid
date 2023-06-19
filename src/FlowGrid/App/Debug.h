@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/Field/Bool.h"
-#include "Core/Field/Enum.h"
+#include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Enum.h"
 
 #include "nlohmann/json_fwd.hpp"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Field/Float.h"
+#include "Core/Primitive/Float.h"
 
 struct ApplicationSettings : Component, Drawable {
     using Component::Component;

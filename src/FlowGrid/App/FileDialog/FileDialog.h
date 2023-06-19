@@ -3,9 +3,9 @@
 #include "FileDialogAction.h"
 #include "FileDialogData.h"
 
-#include "Core/Field/Bool.h"
-#include "Core/Field/Int.h"
-#include "Core/Field/String.h"
+#include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Int.h"
+#include "Core/Primitive/String.h"
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
 struct FileDialog : Component, Drawable, Actionable<Action::FileDialog::Any> {

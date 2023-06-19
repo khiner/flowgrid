@@ -5,7 +5,7 @@
 #include "FaustParams.h"
 
 #include "Core/Action/Actionable.h"
-#include "Core/Field/MultilineString.h"
+#include "Core/Container/MultilineString.h"
 
 struct Faust : Component, Drawable, Actionable<Action::Faust> {
     using Component::Component;

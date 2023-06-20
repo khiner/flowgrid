@@ -25,6 +25,7 @@ template<IsPrimitive T> struct Vector2D : Field, Actionable<typename Action::Vec
     Count Size(Count i) const { return Value[i].size(); }; // Size of inner vector at index `i`
 
     void Set(const std::vector<std::vector<T>> &) const;
+    void Set(Count i, Count j, const T &) const;
 
 private:
     std::vector<std::vector<T>> Value;

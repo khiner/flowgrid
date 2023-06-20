@@ -26,8 +26,8 @@ Store AppStore{};
 
 nlohmann::json GetJson(const Store &store) {
     nlohmann::json j;
-    for (const auto &[key, value] : store.PrimitiveForPath) {
-        j[nlohmann::json::json_pointer(key.string())] = value;
+    for (const auto &[path, primitive] : store.PrimitiveForPath) {
+        j[nlohmann::json::json_pointer(path.string())] = primitive;
     }
     return j;
 }

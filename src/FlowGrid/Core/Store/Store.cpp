@@ -6,8 +6,6 @@
 #include "StoreImpl.h"
 #include "TransientStoreImpl.h"
 
-using std::vector;
-
 namespace store {
 void ApplyPatch(const Patch &patch) {
     for (const auto &[partial_path, op] : patch.Ops) {
@@ -125,32 +123,5 @@ Patch CreatePatch(const Store &store, const StorePath &base_path) {
 
 Patch CreatePatch(const StorePath &base_path) {
     return CreatePatch(AppStore, EndTransient(), base_path);
-}
-
-void Set(const StorePath &path, const vector<Primitive> &data, const Count row_count) {
-    assert(data.size() % row_count == 0);
-    const Count col_count = data.size() / row_count;
-    Count row = 0;
-    while (row < row_count) {
-        Count col = 0;
-        while (col < col_count) {
-            Set(path / to_string(row) / to_string(col), data[row * col_count + col]);
-            col++;
-        }
-        while (CountAt(path / to_string(row) / to_string(col))) {
-            Erase(path / to_string(row) / to_string(col));
-            col++;
-        }
-        row++;
-    }
-
-    while (CountAt(path / to_string(row) / to_string(0))) {
-        Count col = 0;
-        while (CountAt(path / to_string(row) / to_string(col))) {
-            Erase(path / to_string(row) / to_string(col));
-            col++;
-        }
-        row++;
-    }
 }
 } // namespace store

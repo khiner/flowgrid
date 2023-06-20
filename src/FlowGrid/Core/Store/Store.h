@@ -35,14 +35,14 @@ Primitive Get(const StorePath &);
 Count CountAt(const StorePath &);
 
 void Set(const StorePath &, const Primitive &);
-void Set(const StorePath &, const std::vector<Primitive> &, Count row_count); // For the `Matrix::Set` action.
-
 void Erase(const StorePath &);
 
 // Create a patch comparing the provided stores.
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path = RootPath);
+
 // Create a patch comparing the provided store with the current persistent store.
 Patch CreatePatch(const Store &, const StorePath &base_path = RootPath);
+
 // Create a patch comparing the current transient store with the current persistent store.
 // **Stops transient mode.**
 Patch CreatePatch(const StorePath &base_path = RootPath);

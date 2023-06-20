@@ -11,20 +11,20 @@ struct Vec2 : Field, Drawable, Actionable<Action::Vec2::Any> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 
-    operator ImVec2() const;
-
-    const float Min, Max;
-    const char *Format;
-
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
     void RefreshValue() override;
 
+    operator ImVec2() const;
+
     void Set(const std::pair<float, float> &) const;
 
     inline float X() const { return Value.first; }
     inline float Y() const { return Value.second; }
+
+    const float Min, Max;
+    const char *Format;
 
 protected:
     virtual void Render(ImGuiSliderFlags) const;

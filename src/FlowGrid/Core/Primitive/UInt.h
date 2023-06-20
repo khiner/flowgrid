@@ -10,12 +10,12 @@ struct UInt : TypedField<U32>, Actionable<Action::Primitive::UInt::Any> {
     UInt(ComponentArgs &&, U32 value = 0, U32 min = 0, U32 max = 100);
     UInt(ComponentArgs &&, std::function<const string(U32)> get_name, U32 value = 0);
 
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; };
+
     operator bool() const { return Value != 0; }
     operator int() const { return Value; };
     operator ImColor() const;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; };
 
     void Render(const std::vector<U32> &options) const;
     void ColorEdit4(ImGuiColorEditFlags flags = 0, bool allow_auto = false) const;

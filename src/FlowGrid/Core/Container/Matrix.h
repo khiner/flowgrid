@@ -17,19 +17,18 @@ template<IsPrimitive T> struct Matrix : Field, Actionable<typename Action::Matri
     }
     bool CanApply(const ActionType &) const override { return true; }
 
+    void RefreshValue() override;
+
+    T operator()(Count row, Count col) const { return Value[row * ColCount + col]; }
+
+    StorePath PathAt(Count row, Count col) const { return Path / to_string(row) / to_string(col); }
     void Set(const std::vector<T> &, Count row_count) const;
     void Set_(const std::vector<T> &, Count row_count);
 
     void Set(Count row, Count col, const T &) const;
 
-    StorePath PathAt(Count row, Count col) const { return Path / to_string(row) / to_string(col); }
-
     Count Rows() const { return RowCount; }
     Count Cols() const { return ColCount; }
-
-    T operator()(Count row, Count col) const { return Value[row * ColCount + col]; }
-
-    void RefreshValue() override;
 
 private:
     Count RowCount, ColCount;

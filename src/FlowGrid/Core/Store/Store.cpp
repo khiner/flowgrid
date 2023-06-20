@@ -127,21 +127,6 @@ Patch CreatePatch(const StorePath &base_path) {
     return CreatePatch(AppStore, EndTransient(), base_path);
 }
 
-void Set(const std::vector<std::pair<StorePath, Primitive>> &values) {
-    for (const auto &[path, value] : values) Set(path, value);
-}
-void Set(const StorePath &path, const vector<Primitive> &values) {
-    Count i = 0;
-    while (i < values.size()) {
-        Set(path / to_string(i), values[i]);
-        i++;
-    }
-    while (CountAt(path / to_string(i))) {
-        Erase(path / to_string(i));
-        i++;
-    }
-}
-
 void Set(const StorePath &path, const vector<Primitive> &data, const Count row_count) {
     assert(data.size() % row_count == 0);
     const Count col_count = data.size() / row_count;

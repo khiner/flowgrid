@@ -1,12 +1,17 @@
 #include "Vector.h"
 
-#include <range/v3/range/conversion.hpp>
-
 #include "Core/Store/Store.h"
 
 template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &value) const {
-    const std::vector<Primitive> primitives = value | std::views::transform([](const T &v) { return Primitive(v); }) | ranges::to<std::vector>();
-    store::Set(Path, primitives);
+    Count i = 0;
+    while (i < value.size()) {
+        Set(i, value[i]);
+        i++;
+    }
+    while (store::CountAt(PathAt(i))) {
+        store::Erase(PathAt(i));
+        i++;
+    }
 }
 
 template<IsPrimitive T> void Vector<T>::Set(size_t i, const T &value) const {

@@ -3,6 +3,8 @@
 #include "Action.h"
 #include "Core/Json.h"
 
+template<class...> constexpr bool always_false_v = false;
+
 // A set of macros for defining actions.
 
 #define MergeType_NoMerge(ActionType) \
@@ -57,4 +59,10 @@
     inline static const fs::path _TypePath{#TypePath}; \
     __VA_ARGS__;                                       \
     }                                                  \
+    }
+
+#define DefineTemplatedActionType(ClassName, TypePath, ...) \
+    template<> struct ClassName {                           \
+        inline static const fs::path _TypePath{#TypePath};  \
+        __VA_ARGS__;                                        \
     }

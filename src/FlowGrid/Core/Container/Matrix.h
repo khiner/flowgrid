@@ -3,27 +3,31 @@
 #include "Core/Field/Field.h"
 #include "MatrixAction.h"
 
-struct MatrixBase {
-    struct ActionHandler : Actionable<Action::Matrix::Any> {
-        void Apply(const ActionType &) const override;
-        bool CanApply(const ActionType &) const override { return true; }
-    };
-
-    inline static ActionHandler ActionHandler;
-};
-
-template<IsPrimitive T> struct Matrix : Field {
+// todo make this a `TypedField<MatrixData>`, where `MatrixData` holds RowCount, ColCount, Value.
+template<IsPrimitive T> struct Matrix : Field, Actionable<typename Action::Matrix<T>::Any> {
     using Field::Field;
+    using typename Actionable<typename Action::Matrix<T>::Any>::ActionType; // See note in `Vector.h`.
 
-    void Set(const std::vector<T> &, const Count row_count) const;
-    void Set_(const std::vector<T> &, const Count row_count);
+    void Apply(const ActionType &action) const override {
+        Visit(
+            action,
+            [this](const Action::Matrix<T>::Set &a) { Set(a.value, a.row_count); },
+            [this](const Action::Matrix<T>::SetValue &a) { Set(a.row, a.col, a.value); },
+        );
+    }
+    bool CanApply(const ActionType &) const override { return true; }
 
-    StorePath PathAt(const Count row, const Count col) const { return Path / to_string(row) / to_string(col); }
+    void Set(const std::vector<T> &, Count row_count) const;
+    void Set_(const std::vector<T> &, Count row_count);
+
+    void Set(Count row, Count col, const T &) const;
+
+    StorePath PathAt(Count row, Count col) const { return Path / to_string(row) / to_string(col); }
 
     Count Rows() const { return RowCount; }
     Count Cols() const { return ColCount; }
 
-    T operator()(const Count row, const Count col) const { return Value[row * ColCount + col]; }
+    T operator()(Count row, Count col) const { return Value[row * ColCount + col]; }
 
     void RefreshValue() override;
 

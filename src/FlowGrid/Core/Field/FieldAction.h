@@ -4,6 +4,7 @@
 #include "Core/Container/MultilineStringAction.h"
 #include "Core/Container/Vec2Action.h"
 #include "Core/Container/VectorAction.h"
+#include "Core/Container/Vector2DAction.h"
 #include "Core/Primitive/BoolAction.h"
 #include "Core/Primitive/EnumAction.h"
 #include "Core/Primitive/FlagsAction.h"
@@ -18,5 +19,6 @@ DefineActionType(
         Primitive::Bool::Any, Primitive::Int::Any, Primitive::UInt::Any, Primitive::Float::Any, Primitive::String::Any, Primitive::Enum::Any, Primitive::Flags::Any,
         MultilineString::Any, Vec2::Any,
         Vector<bool>::Any, Vector<int>::Any, Vector<U32>::Any, Vector<float>::Any,
+        Vector2D<bool>::Any, Vector2D<int>::Any, Vector2D<U32>::Any, Vector2D<float>::Any,
         Matrix<bool>::Any>::type;
 );

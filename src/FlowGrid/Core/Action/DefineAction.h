@@ -61,8 +61,18 @@ template<class...> constexpr bool always_false_v = false;
     }                                                  \
     }
 
-#define DefineTemplatedActionType(ClassName, TypePath, ...) \
-    template<> struct ClassName {                           \
-        inline static const fs::path _TypePath{#TypePath};  \
-        __VA_ARGS__;                                        \
+#define DefineNestedActionType(ParentType, InnerType, ...)                      \
+    namespace Action {                                                          \
+    namespace ParentType {                                                      \
+    namespace InnerType {                                                       \
+    inline static const fs::path _TypePath{fs::path{#ParentType} / #InnerType}; \
+    __VA_ARGS__;                                                                \
+    }                                                                           \
+    }                                                                           \
+    }
+
+#define DefineTemplatedActionType(ParentType, InnerType, TemplateType, ...)         \
+    template<> struct ParentType<TemplateType> {                                    \
+        inline static const fs::path _TypePath{fs::path{#ParentType} / #InnerType}; \
+        __VA_ARGS__;                                                                \
     }

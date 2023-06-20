@@ -3,8 +3,8 @@
 #include "Core/Action/DefineAction.h"
 #include "Core/Json.h"
 
-DefineActionType(
-    Primitive::Enum,
+DefineNestedActionType(
+    Primitive, Enum,
     DefineFieldAction(Set, "", int value;);
     Json(Set, path, value);
 

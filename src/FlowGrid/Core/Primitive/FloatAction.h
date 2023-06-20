@@ -3,8 +3,8 @@
 #include "Core/Action/DefineAction.h"
 #include "Core/Json.h"
 
-DefineActionType(
-    Primitive::Float,
+DefineNestedActionType(
+    Primitive, Float,
     DefineFieldAction(Set, "", float value;);
     Json(Set, path, value);
 

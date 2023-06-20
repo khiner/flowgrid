@@ -9,28 +9,28 @@ template<IsPrimitive T> struct Vector {
 };
 
 DefineTemplatedActionType(
-    Vector<bool>, Vector / Bool,
+    Vector, Bool, bool,
     DefineFieldAction(Set, "", std::vector<bool> value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
-    Vector<int>, Vector / Int,
+    Vector, Int, int,
     DefineFieldAction(Set, "", std::vector<int> value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
-    Vector<U32>, Vector / UInt,
+    Vector, UInt, U32,
     DefineFieldAction(Set, "", std::vector<U32> value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
-    Vector<float>, Vector / Float,
+    Vector, Float, float,
     DefineFieldAction(Set, "", std::vector<float> value;);
 
     using Any = ActionVariant<Set>;

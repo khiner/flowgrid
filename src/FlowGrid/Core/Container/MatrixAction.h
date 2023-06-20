@@ -9,7 +9,7 @@ template<IsPrimitive T> struct Matrix {
 };
 
 DefineTemplatedActionType(
-    Matrix<bool>, Matrix / Bool,
+    Matrix, Bool, bool,
     DefineFieldAction(Set, "", std::vector<bool> value; Count row_count;);
     DefineFieldAction(SetValue, "", Count row; Count col; bool value;);
 

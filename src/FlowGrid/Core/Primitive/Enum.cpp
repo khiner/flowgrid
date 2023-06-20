@@ -6,9 +6,9 @@
 #include <range/v3/range/conversion.hpp>
 
 Enum::Enum(ComponentArgs &&args, std::vector<string> names, int value)
-    : TypedField(std::move(args), value), Names(std::move(names)) {}
+    : PrimitiveField(std::move(args), value), Names(std::move(names)) {}
 Enum::Enum(ComponentArgs &&args, std::function<const string(int)> get_name, int value)
-    : TypedField(std::move(args), value), Names({}), GetName(std::move(get_name)) {}
+    : PrimitiveField(std::move(args), value), Names({}), GetName(std::move(get_name)) {}
 
 void Enum::Apply(const ActionType &action) const {
     Visit(

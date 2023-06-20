@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Core/Field/Field.h"
+#include "PrimitiveField.h"
 #include "StringAction.h"
 
-struct String : TypedField<string>, Actionable<Action::Primitive::String::Any> {
+struct String : PrimitiveField<string>, Actionable<Action::Primitive::String::Any> {
     String(ComponentArgs &&, string_view value = "");
 
     operator bool() const { return !Value.empty(); }

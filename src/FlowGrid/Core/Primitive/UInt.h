@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Core/Field/Field.h"
+#include "PrimitiveField.h"
 #include "UIntAction.h"
 
 struct ImColor;
 using ImGuiColorEditFlags = int;
 
-struct UInt : TypedField<U32>, Actionable<Action::Primitive::UInt::Any> {
+struct UInt : PrimitiveField<U32>, Actionable<Action::Primitive::UInt::Any> {
     UInt(ComponentArgs &&, U32 value = 0, U32 min = 0, U32 max = 100);
     UInt(ComponentArgs &&, std::function<const string(U32)> get_name, U32 value = 0);
 

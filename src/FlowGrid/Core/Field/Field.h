@@ -28,30 +28,3 @@ struct Field : Component {
 
     U32 Index; // Index in `Instances`.
 };
-
-template<IsPrimitive T> struct TypedField : Field, Drawable {
-    TypedField(ComponentArgs &&args, T value = {}) : Field(std::move(args)), Value(value) {
-        Set(value);
-    }
-
-    operator T() const { return Value; }
-    bool operator==(const T &value) const { return Value == value; }
-
-    T Get() const; // Get from store.
-
-    // Non-mutating set. Only updates store. Used during action application.
-    void Set(const T &) const;
-
-    // Mutating set. Updates both store and cached value.
-    // Should only be used during initialization and side-effect handling pass.
-    void Set_(const T &value) {
-        Set(value);
-        Value = value;
-    }
-
-    // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
-    virtual void RefreshValue() override { Value = Get(); }
-
-protected:
-    T Value;
-};

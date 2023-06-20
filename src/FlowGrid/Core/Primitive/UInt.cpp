@@ -7,9 +7,9 @@
 #include "UI/InvisibleButton.h"
 
 UInt::UInt(ComponentArgs &&args, U32 value, U32 min, U32 max)
-    : TypedField(std::move(args), value), Min(min), Max(max) {}
+    : PrimitiveField(std::move(args), value), Min(min), Max(max) {}
 UInt::UInt(ComponentArgs &&args, std::function<const string(U32)> get_name, U32 value)
-    : TypedField(std::move(args), value), Min(0), Max(100), GetName(std::move(get_name)) {}
+    : PrimitiveField(std::move(args), value), Min(0), Max(100), GetName(std::move(get_name)) {}
 
 UInt::operator ImColor() const { return Value; }
 

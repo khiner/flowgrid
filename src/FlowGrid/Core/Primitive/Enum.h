@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Core/Field/Field.h"
 #include "EnumAction.h"
+#include "PrimitiveField.h"
 
-struct Enum : TypedField<int>, Actionable<Action::Primitive::Enum::Any>, MenuItemDrawable {
+struct Enum : PrimitiveField<int>, Actionable<Action::Primitive::Enum::Any>, MenuItemDrawable {
     Enum(ComponentArgs &&, std::vector<string> names, int value = 0);
     Enum(ComponentArgs &&, std::function<const string(int)> get_name, int value = 0);
 

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "BoolAction.h"
-#include "Core/Field/Field.h"
+#include "PrimitiveField.h"
 
-struct Bool : TypedField<bool>, Actionable<Action::Primitive::Bool::Any>, MenuItemDrawable {
-    using TypedField::TypedField;
+struct Bool : PrimitiveField<bool>, Actionable<Action::Primitive::Bool::Any>, MenuItemDrawable {
+    using PrimitiveField::PrimitiveField;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };

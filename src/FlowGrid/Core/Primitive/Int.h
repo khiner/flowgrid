@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Core/Field/Field.h"
 #include "IntAction.h"
+#include "PrimitiveField.h"
 
-struct Int : TypedField<int>, Actionable<Action::Primitive::Int::Any> {
+struct Int : PrimitiveField<int>, Actionable<Action::Primitive::Int::Any> {
     Int(ComponentArgs &&, int value = 0, int min = 0, int max = 100);
 
     void Apply(const ActionType &) const override;

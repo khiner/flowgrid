@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Core/Field/Field.h"
 #include "FloatAction.h"
+#include "PrimitiveField.h"
 
 using ImGuiSliderFlags = int;
 
-struct Float : TypedField<float>, Actionable<Action::Primitive::Float::Any> {
+struct Float : PrimitiveField<float>, Actionable<Action::Primitive::Float::Any> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Float(ComponentArgs &&, float value = 0, float min = 0, float max = 1, const char *fmt = nullptr, ImGuiSliderFlags flags = 0, float drag_speed = 0);
 

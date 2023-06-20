@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Core/Field/Field.h"
+#include "Core/Primitive/PrimitiveField.h"
 #include "MultilineStringAction.h"
 
-struct MultilineString : TypedField<string>, Actionable<Action::MultilineString::Any> {
+struct MultilineString : PrimitiveField<string>, Actionable<Action::MultilineString::Any> {
     MultilineString(ComponentArgs &&, string_view value = "");
 
     void Apply(const ActionType &) const override;

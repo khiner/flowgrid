@@ -3,7 +3,7 @@
 #include "imgui.h"
 
 Float::Float(ComponentArgs &&args, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
-    : TypedField(std::move(args), value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
+    : PrimitiveField(std::move(args), value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
 void Float::Apply(const ActionType &action) const {
     Visit(

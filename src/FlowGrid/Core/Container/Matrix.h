@@ -3,7 +3,6 @@
 #include "Core/Field/Field.h"
 #include "MatrixAction.h"
 
-// todo make this a `TypedField<MatrixData>`, where `MatrixData` holds RowCount, ColCount, Value.
 template<IsPrimitive T> struct Matrix : Field, Actionable<typename Action::Matrix<T>::Any> {
     using Field::Field;
     using typename Actionable<typename Action::Matrix<T>::Any>::ActionType; // See note in `Vector.h`.

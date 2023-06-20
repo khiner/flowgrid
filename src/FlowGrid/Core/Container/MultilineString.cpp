@@ -8,7 +8,7 @@
 
 static const Menu FileMenu = {"File", {Action::FaustFile::ShowOpenDialog::MenuItem, Action::FaustFile::ShowSaveDialog::MenuItem}};
 
-MultilineString::MultilineString(ComponentArgs &&args, string_view value) : TypedField(std::move(args), string(value)) {}
+MultilineString::MultilineString(ComponentArgs &&args, string_view value) : PrimitiveField(std::move(args), string(value)) {}
 
 void MultilineString::Apply(const ActionType &action) const {
     Visit(

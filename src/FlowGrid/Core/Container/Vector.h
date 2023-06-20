@@ -3,7 +3,6 @@
 #include "Core/Field/Field.h"
 #include "VectorAction.h"
 
-// todo make this a `TypedField<std::vector<T>>`.
 template<IsPrimitive T> struct Vector : Field, Actionable<typename Action::Vector<T>::Any> {
     using Field::Field;
 

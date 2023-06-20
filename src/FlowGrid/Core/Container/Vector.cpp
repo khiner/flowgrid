@@ -4,13 +4,6 @@
 
 #include "Core/Store/Store.h"
 
-void VectorBase::ActionHandler::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [](const Action::Vector::Set &a) { store::Set(a.path, a.value); },
-    );
-}
-
 template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &value) const {
     const std::vector<Primitive> primitives = value | std::views::transform([](const T &v) { return Primitive(v); }) | ranges::to<std::vector>();
     store::Set(Path, primitives);

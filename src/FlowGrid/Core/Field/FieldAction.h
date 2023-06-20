@@ -14,5 +14,9 @@
 
 DefineActionType(
     Field,
-    using Any = Combine<Primitive::Bool::Any, Primitive::Int::Any, Primitive::UInt::Any, Primitive::Float::Any, Primitive::String::Any, Primitive::Enum::Any, Primitive::Flags::Any, MultilineString::Any, Vec2::Any, Vector::Any, Matrix::Any>::type;
+    using Any = Combine<
+        Primitive::Bool::Any, Primitive::Int::Any, Primitive::UInt::Any, Primitive::Float::Any, Primitive::String::Any, Primitive::Enum::Any, Primitive::Flags::Any,
+        MultilineString::Any, Vec2::Any,
+        Vector<bool>::Any, Vector<int>::Any, Vector<U32>::Any, Vector<float>::Any,
+        Matrix::Any>::type;
 );

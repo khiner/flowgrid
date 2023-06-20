@@ -30,7 +30,10 @@ void FieldActionHandler::Apply(const ActionType &action) const {
         [&field](const Flags::ActionType &a) { static_cast<const Flags *>(field)->Apply(a); },
         [&field](const MultilineString::ActionType &a) { static_cast<const MultilineString *>(field)->Apply(a); },
         [&field](const Vec2::ActionType &a) { static_cast<const Vec2 *>(field)->Apply(a); },
-        [](const VectorBase::ActionHandler::ActionType &a) { VectorBase::ActionHandler.Apply(a); },
+        [&field](const Vector<bool>::ActionType &a) { static_cast<const Vector<bool> *>(field)->Apply(a); },
+        [&field](const Vector<int>::ActionType &a) { static_cast<const Vector<int> *>(field)->Apply(a); },
+        [&field](const Vector<U32>::ActionType &a) { static_cast<const Vector<U32> *>(field)->Apply(a); },
+        [&field](const Vector<float>::ActionType &a) { static_cast<const Vector<float> *>(field)->Apply(a); },
         [](const MatrixBase::ActionHandler::ActionType &a) { MatrixBase::ActionHandler.Apply(a); },
     );
 }

@@ -8,14 +8,27 @@ namespace Action {
 using Any = Combine<Project::Any, App::Any>::type;
 using Savable = Filter<Action::IsSavable, Any>::type;
 using NonSavable = Filter<Action::IsNotSavable, Any>::type;
-
-// Action moments are actions paired with the time they were queued.
-using ActionMoment = std::pair<Any, TimePoint>;
-using SavableActionMoment = std::pair<Savable, TimePoint>;
-using Gesture = std::vector<SavableActionMoment>;
-using Gestures = std::vector<Gesture>;
 } // namespace Action
 
+// Action moments are actions paired with the time they were queued.
+using ActionMoment = std::pair<Action::Any, TimePoint>;
+using SavableActionMoment = std::pair<Action::Savable, TimePoint>;
+using SavableActionMoments = std::vector<SavableActionMoment>;
+
+struct Gesture {
+    SavableActionMoments Actions;
+    TimePoint CommitTime;
+};
+
+using Gestures = std::vector<Gesture>;
+
 namespace nlohmann {
-DeclareJson(Action::Savable);
+inline static void to_json(json &j, const Action::Savable &action) {
+    action.to_json(j);
+}
+inline static void from_json(const json &j, Action::Savable &action) {
+    Action::Savable::from_json(j, action);
+}
+
+Json(Gesture, Actions, CommitTime);
 } // namespace nlohmann

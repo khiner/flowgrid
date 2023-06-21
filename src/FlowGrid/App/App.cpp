@@ -289,10 +289,10 @@ void Project::ActionHandler::Apply(const ActionType &action) const {
             // to commit and cut off everything after the current history index, so an undo just ditches the active changes.
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
             if (History.Index == History.Size() - 1) {
-                if (!History.ActiveGesture.empty()) History.CommitGesture();
+                if (!History.ActiveGestureActions.empty()) History.CommitGesture();
                 ::SetHistoryIndex(History.Index - 1);
             } else {
-                ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
+                ::SetHistoryIndex(History.Index - (History.ActiveGestureActions.empty() ? 1 : 0));
             }
         },
         [](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
@@ -330,8 +330,8 @@ void Project::Open(const fs::path &file_path) {
         const StoreHistory::IndexedGestures indexed_gestures = project;
         store::BeginTransient();
         for (const auto &gesture : indexed_gestures.Gestures) {
-            for (const auto &action_moment : gesture) ::Apply(action_moment.first);
-            History.AddTransient(gesture);
+            for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.first);
+            History.AddTransientGesture(gesture);
         }
         OnPatch(store::CheckedCommit());
         ::SetHistoryIndex(indexed_gestures.Index);
@@ -346,7 +346,6 @@ void Project::Open(const fs::path &file_path) {
 
 #include "blockingconcurrentqueue.h"
 
-using Action::ActionMoment, Action::SavableActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
 void q(const Action::Any &&action) {
@@ -386,7 +385,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         );
     }
 
-    const bool commit_gesture = force_commit_gesture || (!Field::IsGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
+    const bool commit_gesture = force_commit_gesture || (!Field::IsGesturing && !History.ActiveGestureActions.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!stateful_actions.empty()) {
         const auto &patch = store::CheckedCommit();
         const auto commit_time = Clock::now();

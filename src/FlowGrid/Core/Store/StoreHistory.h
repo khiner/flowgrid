@@ -9,8 +9,6 @@ enum Direction {
     Reverse
 };
 
-using Action::Gesture, Action::Gestures;
-
 struct StoreHistory {
     // Used for saving/loading the history.
     // This is all the information needed to reconstruct a project.
@@ -20,9 +18,8 @@ struct StoreHistory {
     };
 
     struct ReferenceRecord {
-        const TimePoint GestureCommitTime; // The time at which the store was committed.
         const Store &Store; // Reference to the store as it was at `GestureCommitTime`.
-        const Gesture &Gesture; // Reference to the compressed gesture (list of `ActionMoment`s) that caused the store change
+        const Gesture &Gesture; // Reference to the (compressed) gesture that caused the store change.
     };
 
     struct Plottable {
@@ -35,9 +32,9 @@ struct StoreHistory {
 
     void SetIndex(Count);
 
-    void AddTransient(const Gesture &); // Only used during action-formmated project loading.
+    void AddTransientGesture(const Gesture &); // Only used during action-formmated project loading.
     void CommitGesture();
-    void OnStoreCommit(const TimePoint &commit_time, const std::vector<Action::SavableActionMoment> &, const Patch &);
+    void OnStoreCommit(const TimePoint &commit_time, const std::vector<SavableActionMoment> &, const Patch &);
 
     Count Size() const;
     bool Empty() const;
@@ -56,7 +53,7 @@ struct StoreHistory {
     std::optional<TimePoint> LatestUpdateTime(const StorePath &) const;
 
     Count Index{0};
-    Gesture ActiveGesture{}; // uncompressed, uncommitted
+    SavableActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     std::vector<StorePath> LatestUpdatedPaths{};
 
 private:
@@ -64,7 +61,7 @@ private:
     TimesForPath CommitTimesForPath{};
     TimesForPath GestureUpdateTimesForPath{};
 
-    void Add(TimePoint, const Store &, const Gesture &);
+    void Add(const Store &, const Gesture &);
 };
 
 Json(StoreHistory::IndexedGestures, Gestures, Index);

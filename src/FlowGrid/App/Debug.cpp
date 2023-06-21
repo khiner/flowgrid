@@ -39,7 +39,7 @@ void Debug::StorePathUpdateFrequency::Render() const {
         // todo add an axis flag to show last tick
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};
-        const int item_count = !History.ActiveGesture.empty() ? 2 : 1;
+        const int item_count = !History.ActiveGestureActions.empty() ? 2 : 1;
         const int group_count = int(values.size()) / item_count;
         ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
@@ -136,9 +136,9 @@ void Debug::ProjectPreview::Render() const {
     else fg::JsonTree("", project_json, JsonTreeNodeFlags_DefaultOpen);
 }
 
-void ShowGesture(const Gesture &gesture) {
-    for (Count action_index = 0; action_index < gesture.size(); action_index++) {
-        const auto &[action, queue_time] = gesture[action_index];
+void ShowActions(const SavableActionMoments &actions) {
+    for (Count action_index = 0; action_index < actions.size(); action_index++) {
+        const auto &[action, queue_time] = actions[action_index];
         if (TreeNodeEx(to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
             BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
             SameLine();
@@ -159,21 +159,21 @@ void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
         const bool is_gesturing = Field::IsGesturing;
-        const bool ActiveGesturePresent = !History.ActiveGesture.empty();
-        if (ActiveGesturePresent || is_gesturing) {
+        const bool any_gesture_actions = !History.ActiveGestureActions.empty();
+        if (any_gesture_actions || is_gesturing) {
             // Gesture completion progress bar (full-width to empty)
             const float gesture_duration_sec = application_settings.GestureDurationSec;
             const auto row_item_ratio_rect = RowItemRatioRect(History.GestureTimeRemainingSec(gesture_duration_sec) / gesture_duration_sec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
-            const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
-            if (TreeNodeEx(ActiveGesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            const auto &ActiveGestureActions_title = "Active gesture"s + (any_gesture_actions ? " (uncompressed)" : "");
+            if (TreeNodeEx(ActiveGestureActions_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (is_gesturing) FillRowItemBg(style.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
                 Text("Widget gesture: %s", is_gesturing ? "true" : "false");
                 if (!is_gesturing) EndDisabled();
 
-                if (ActiveGesturePresent) ShowGesture(History.ActiveGesture);
+                if (any_gesture_actions) ShowActions(History.ActiveGestureActions);
                 else Text("No actions yet");
                 TreePop();
             }
@@ -190,14 +190,14 @@ void Metrics::FlowGridMetrics::Render() const {
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", History.Size() - 1, History.Index)) {
             for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[committed, store_record, gesture] = History.RecordAt(i);
-                    BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
+                    const auto &[store_record, gesture] = History.RecordAt(i);
+                    BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", gesture.CommitTime).c_str());
                     if (TreeNode("Actions")) {
-                        ShowGesture(gesture);
+                        ShowActions(gesture.Actions);
                         TreePop();
                     }
                     if (TreeNode("Patch")) {
-                        // We compute patches as we need them rather than memoizing them.
+                        // We compute patches as we need them rather than memoizing.
                         const auto &patch = History.CreatePatch(i);
                         for (const auto &[partial_path, op] : patch.Ops) {
                             const auto &path = patch.BasePath / partial_path;

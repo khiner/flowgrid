@@ -349,6 +349,10 @@ void Project::Open(const fs::path &file_path) {
 using Action::ActionMoment, Action::SavableActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
+void q(const Action::Any &&action) {
+    ActionQueue.enqueue({action, Clock::now()});
+}
+
 void RunQueuedActions(bool force_commit_gesture) {
     static ActionMoment action_moment;
     static vector<SavableActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
@@ -358,7 +362,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
-        auto &[action, _] = action_moment;
+        auto &[action, queue_time] = action_moment;
         if (!CanApply(action)) continue;
 
         // Special cases:
@@ -376,7 +380,7 @@ void RunQueuedActions(bool force_commit_gesture) {
 
         Visit(
             action,
-            [](const Action::Savable &a) { stateful_actions.emplace_back(a, action_moment.second); },
+            [&queue_time](const Action::Savable &a) { stateful_actions.emplace_back(a, queue_time); },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
             [](const Action::NonSavable &) {},
         );
@@ -392,10 +396,6 @@ void RunQueuedActions(bool force_commit_gesture) {
         store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }
     if (commit_gesture) History.CommitGesture();
-}
-
-void q(const Action::Any &&action) {
-    ActionQueue.enqueue({action, Clock::now()});
 }
 
 #define DefineQ(ActionType)                                                                                          \

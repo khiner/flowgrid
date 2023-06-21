@@ -13,6 +13,7 @@
 #include "Helper/String.h"
 #include "Project/ProjectJson.h"
 #include "Settings.h"
+#include "UI/HelpMarker.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -137,9 +138,11 @@ void Debug::ProjectPreview::Render() const {
 
 void ShowGesture(const Gesture &gesture) {
     for (Count action_index = 0; action_index < gesture.size(); action_index++) {
-        const auto &[action, time] = gesture[action_index];
+        const auto &[action, queue_time] = gesture[action_index];
         if (TreeNodeEx(to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
-            BulletText("Time: %s", date::format("%Y-%m-%d %T", time).c_str());
+            BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
+            SameLine();
+            fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
             const json data = json(action)[1];
             if (!data.is_null()) JsonTree("Data", data, JsonTreeNodeFlags_DefaultOpen);
             TreePop();
@@ -245,8 +248,10 @@ void Metrics::FlowGridMetrics::Render() const {
         Text("Action variant size: %lu bytes", sizeof(Action::Savable));
         Text("Primitive variant size: %lu bytes", sizeof(Primitive));
         SameLine();
-        HelpMarker("All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
-                   "Thus, it's important to keep action data minimal.");
+        fg::HelpMarker(
+            "All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
+            "Thus, it's important to keep action data minimal."
+        );
     }
 }
 

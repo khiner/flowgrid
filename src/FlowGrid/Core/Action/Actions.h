@@ -9,7 +9,7 @@ using Any = Combine<Project::Any, App::Any>::type;
 using Savable = Filter<Action::IsSavable, Any>::type;
 using NonSavable = Filter<Action::IsNotSavable, Any>::type;
 
-// Composite types.
+// Action moments are actions paired with the time they were queued.
 using ActionMoment = std::pair<Any, TimePoint>;
 using SavableActionMoment = std::pair<Savable, TimePoint>;
 using Gesture = std::vector<SavableActionMoment>;

@@ -184,11 +184,15 @@ void Metrics::FlowGridMetrics::Render() const {
     {
         const bool no_history = History.Empty();
         if (no_history) BeginDisabled();
-        if (TreeNodeEx("StoreHistory", ImGuiTreeNodeFlags_DefaultOpen, "Store event records (Count: %d, Current index: %d)", History.Size() - 1, History.Index)) {
+        if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", History.Size() - 1, History.Index)) {
             for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[committed, store_record, gesture] = History.RecordAt(i);
-                    BulletText("Gesture commit time: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
+                    BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
+                    if (TreeNode("Actions")) {
+                        ShowGesture(gesture);
+                        TreePop();
+                    }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing them.
                         const auto &patch = History.CreatePatch(i);
@@ -203,11 +207,7 @@ void Metrics::FlowGridMetrics::Render() const {
                         }
                         TreePop();
                     }
-                    if (TreeNode("Actions")) {
-                        ShowGesture(gesture);
-                        TreePop();
-                    }
-                    if (TreeNode("State")) {
+                    if (TreeNode("State snapshot")) {
                         JsonTree("", store::GetJson(store_record));
                         TreePop();
                     }

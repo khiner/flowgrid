@@ -82,7 +82,7 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
         SetNextItemOpen(was_recently_updated);
     }
 
-    // Flash background color of nodes when its corresponding path updates.
+    // Flash background color of nodes with alpha level corresponding to how much time is left in the gesture before it's committed.
     const auto &latest_update_time = History.LatestUpdateTime(path);
     if (latest_update_time) {
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / style.FlowGrid.FlashDurationSec;
@@ -147,15 +147,20 @@ void ShowGesture(const Gesture &gesture) {
     }
 }
 
+ImRect RowItemRatioRect(float ratio) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
+}
+
 void Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
         const bool is_gesturing = Field::IsGesturing;
         const bool ActiveGesturePresent = !History.ActiveGesture.empty();
         if (ActiveGesturePresent || is_gesturing) {
-            // Gesture completion progress bar
+            // Gesture completion progress bar (full-width to empty)
             const float gesture_duration_sec = application_settings.GestureDurationSec;
-            const auto row_item_ratio_rect = RowItemRatioRect(1 - History.GestureTimeRemainingSec(gesture_duration_sec) / gesture_duration_sec);
+            const auto row_item_ratio_rect = RowItemRatioRect(History.GestureTimeRemainingSec(gesture_duration_sec) / gesture_duration_sec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
             const auto &ActiveGesture_title = "Active gesture"s + (ActiveGesturePresent ? " (uncompressed)" : "");
@@ -198,7 +203,7 @@ void Metrics::FlowGridMetrics::Render() const {
                         }
                         TreePop();
                     }
-                    if (TreeNode("Gesture")) {
+                    if (TreeNode("Actions")) {
                         ShowGesture(gesture);
                         TreePop();
                     }

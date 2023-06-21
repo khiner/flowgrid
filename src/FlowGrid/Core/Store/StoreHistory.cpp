@@ -117,7 +117,6 @@ void StoreHistory::CommitGesture() {
 
 std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StorePath &path) const {
     if (GestureUpdateTimesForPath.contains(path)) return GestureUpdateTimesForPath.at(path).back();
-    if (CommitTimesForPath.contains(path)) return CommitTimesForPath.at(path).back();
     return {};
 }
 

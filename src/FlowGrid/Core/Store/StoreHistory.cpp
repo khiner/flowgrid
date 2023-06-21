@@ -11,7 +11,7 @@
 using std::string, std::vector;
 
 struct Record {
-    const TimePoint Committed;
+    const TimePoint GestureCommitTime;
     const Store Store;
     const Gesture Gesture;
 };
@@ -20,26 +20,30 @@ static vector<Record> Records;
 
 StoreHistory::StoreHistory() {
     Records.clear();
-    Records.push_back({Clock::now(), store::Get(), {}});
+    Records.emplace_back(Clock::now(), store::Get(), Gesture{});
 }
 StoreHistory::~StoreHistory() {
     // Not clearing records here because the destructor for the old singleton instance is called after the new instance is constructed.
     // This is fine, since `Records` should have the same lifetime as the application.
 }
 
-void StoreHistory::Add(TimePoint time, const Store &store, const Gesture &gesture) {
+void StoreHistory::Add(TimePoint gesture_commit_time, const Store &store, const Gesture &gesture) {
     const auto patch = store::CreatePatch(CurrentStore(), store);
     if (patch.Empty()) return;
 
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
-    Records.push_back({time, store, gesture});
+    Records.emplace_back(gesture_commit_time, store, gesture);
     Index = Size() - 1;
-    const auto &gesture_time = gesture.back().second;
-    for (const auto &[partial_path, op] : patch.Ops) CommittedUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+    for (const auto &[partial_path, op] : patch.Ops) CommitTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_commit_time);
 }
 
 void StoreHistory::AddTransient(const Gesture &gesture) {
     Add(gesture.back().second, store::GetPersistent(), gesture); // todo save/load gesture commit times
+}
+
+void StoreHistory::OnStoreCommit(const TimePoint &commit_time, const std::vector<Action::SavableActionMoment> &actions, const Patch &patch) {
+    ActiveGesture.insert(ActiveGesture.end(), actions.begin(), actions.end());
+    for (const auto &[partial_path, op] : patch.Ops) GestureUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(commit_time);
 }
 
 Count StoreHistory::Size() const { return Records.size(); }
@@ -100,43 +104,43 @@ static Gesture MergeGesture(const Gesture &gesture) {
     return merged_gesture;
 }
 
-void StoreHistory::FinalizeGesture() {
+void StoreHistory::CommitGesture() {
+    GestureUpdateTimesForPath.clear();
     if (ActiveGesture.empty()) return;
 
-    const auto merged_gesture = MergeGesture(ActiveGesture);
+    const auto gesture = MergeGesture(ActiveGesture);
     ActiveGesture.clear();
-    GestureUpdateTimesForPath.clear();
-    if (merged_gesture.empty()) return;
+    if (gesture.empty()) return;
 
-    Add(Clock::now(), store::Get(), merged_gesture);
-}
-
-void StoreHistory::UpdateGesturePaths(const Gesture &gesture, const Patch &patch) {
-    const auto &gesture_time = gesture.back().second;
-    for (const auto &[partial_path, op] : patch.Ops) GestureUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(gesture_time);
+    Add(Clock::now(), store::Get(), gesture);
 }
 
 std::optional<TimePoint> StoreHistory::LatestUpdateTime(const StorePath &path) const {
     if (GestureUpdateTimesForPath.contains(path)) return GestureUpdateTimesForPath.at(path).back();
-    if (CommittedUpdateTimesForPath.contains(path)) return CommittedUpdateTimesForPath.at(path).back();
+    if (CommitTimesForPath.contains(path)) return CommitTimesForPath.at(path).back();
     return {};
 }
 
-StoreHistory::Plottable StoreHistory::StorePathUpdateFrequencyPlottable() const {
-    const std::set<StorePath> paths = ranges::views::concat(
-                                          ranges::views::keys(CommittedUpdateTimesForPath),
-                                          ranges::views::keys(GestureUpdateTimesForPath)
-                                      ) |
+StoreHistory::Plottable StoreHistory::StorePathChangeFrequencyPlottable() const {
+    if (CommitTimesForPath.empty() && GestureUpdateTimesForPath.empty()) return {};
+
+    const std::set<StorePath> paths =
+        ranges::views::concat(
+            ranges::views::keys(CommitTimesForPath),
+            ranges::views::keys(GestureUpdateTimesForPath)
+        ) |
         ranges::to<std::set>;
-    if (paths.empty()) return {};
 
     const bool has_gesture = !GestureUpdateTimesForPath.empty();
     vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
     Count i = 0;
-    for (const auto &path : paths) values[i++] = CommittedUpdateTimesForPath.contains(path) ? CommittedUpdateTimesForPath.at(path).size() : 0;
+    for (const auto &path : paths) values[i++] = CommitTimesForPath.contains(path) ? CommitTimesForPath.at(path).size() : 0;
     // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
-    if (has_gesture)
-        for (const auto &path : paths) values[i++] = GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).size() : 0;
+    if (has_gesture) {
+        for (const auto &path : paths) {
+            values[i++] = GestureUpdateTimesForPath.contains(path) ? GestureUpdateTimesForPath.at(path).size() : 0;
+        }
+    }
 
     const auto labels = paths | std::views::transform([](const string &path) {
                             // Convert `string` to char array, removing first character of the path, which is a '/'.
@@ -159,12 +163,9 @@ void StoreHistory::SetIndex(Count new_index) {
     Index = new_index;
 
     // TODO
-    // I really don't like this O(index-diff) operation, just for updating debug metrics.
-    // It's the only thing in the way of glorious constant-time immutable history navigation.
-    // One idea to get rid of this would be to turn the `CommittedUpdateTimesForPath` map into an `immer/map`,
-    // and keep a separate vector (soon, tree) of them, in parallel to `Records`
+    // Turn the `CommitTimesForPath` map into an `immer/map`, and keep a separate vector (soon, tree) of them, in parallel to `Records`.
     //     using TimesForPath = immer::map<StorePath, std::vector<TimePoint>, PathHash>
-    //     struct MetricsRecord{ TimesForPath CommittedUpdateTimesForPath; };
+    //     struct MetricsRecord{ TimesForPath CommitTimesForPath; };
     //     using MetricsRecords = vector<MetricsRecord>;
     const auto direction = new_index > old_index ? Forward : Reverse;
     auto i = int(old_index);
@@ -173,17 +174,17 @@ void StoreHistory::SetIndex(Count new_index) {
         const Count record_index = history_index == -1 ? Index : history_index;
         const auto &segment_patch = CreatePatch(record_index + 1);
         const auto &gesture_time = Records[record_index + 1].Gesture.back().second;
-        for (const auto &[partial_path, op] : segment_patch.Ops) {
+        for (const auto &[partial_path, _] : segment_patch.Ops) {
             const auto &path = segment_patch.BasePath / partial_path;
             if (direction == Forward) {
-                CommittedUpdateTimesForPath[path].emplace_back(gesture_time);
-            } else if (CommittedUpdateTimesForPath.contains(path)) {
-                auto &update_times = CommittedUpdateTimesForPath.at(path);
+                CommitTimesForPath[path].emplace_back(gesture_time);
+            } else if (CommitTimesForPath.contains(path)) {
+                auto &update_times = CommitTimesForPath.at(path);
                 update_times.pop_back();
-                if (update_times.empty()) CommittedUpdateTimesForPath.erase(path);
+                if (update_times.empty()) CommitTimesForPath.erase(path);
             }
         }
     }
 }
 
-StoreHistory History{};
+StoreHistory History{}; // Global.

@@ -25,6 +25,8 @@ void ActionHandler::Apply(const ActionType &action) const {
 Store AppStore{};
 
 nlohmann::json GetJson(const Store &store) {
+    // TODO serialize using the concrete primitive type and avoid the ambiguous Primitive JSON conversion.
+    //   - This will be easier after separating container storage, since each `PrimitiveForPath` entry will correspond to a single `PrimitiveField`.
     nlohmann::json j;
     for (const auto &[path, primitive] : store.PrimitiveForPath) {
         j[nlohmann::json::json_pointer(path.string())] = primitive;

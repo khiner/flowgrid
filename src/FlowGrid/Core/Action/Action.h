@@ -14,7 +14,7 @@
 /**
 An action is an immutable representation of a user interaction event.
 Each action stores all information needed to apply the action to a `Store` instance.
-An `ActionMoment` is a combination of any action (`Action::Any`) and the `TimePoint` at which the action happened.
+An `ActionMoment` is a combination of any action (of variant type `Action::Any`) and the `TimePoint` at which the action was queued.
 
 Actions are grouped into `ActionVariant`s, which wrap around `std::variant`.
 Thus, the byte size of `Action::Any` is large enough to hold its biggest type.

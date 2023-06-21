@@ -220,7 +220,7 @@ bool Project::Save(const fs::path &path) {
     const auto format = GetProjectJsonFormat(path);
     if (!format) return false; // TODO log
 
-    History.FinalizeGesture(); // Make sure any pending actions/diffs are committed.
+    History.CommitGesture(); // Make sure any pending actions/diffs are committed.
     if (!FileIO::write(path, GetProjectJson(*format).dump())) return false; // TODO log
 
     SetCurrentProjectPath(path);
@@ -284,12 +284,12 @@ void Project::ActionHandler::Apply(const ActionType &action) const {
             if (History.Empty()) return;
 
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
-            // If we're at the end of the stack, we want to finalize the active gesture and add it to the stack.
+            // If we're at the end of the stack, we want to commit the active gesture and add it to the stack.
             // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
-            // to finalize and cut off everything after the current history index, so an undo just ditches the active changes.
+            // to commit and cut off everything after the current history index, so an undo just ditches the active changes.
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
             if (History.Index == History.Size() - 1) {
-                if (!History.ActiveGesture.empty()) History.FinalizeGesture();
+                if (!History.ActiveGesture.empty()) History.CommitGesture();
                 ::SetHistoryIndex(History.Index - 1);
             } else {
                 ::SetHistoryIndex(History.Index - (History.ActiveGesture.empty() ? 1 : 0));
@@ -349,7 +349,7 @@ void Project::Open(const fs::path &file_path) {
 using Action::ActionMoment, Action::SavableActionMoment;
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
-void RunQueuedActions(bool force_finalize_gesture) {
+void RunQueuedActions(bool force_commit_gesture) {
     static ActionMoment action_moment;
     static vector<SavableActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     stateful_actions.clear();
@@ -365,7 +365,7 @@ void RunQueuedActions(bool force_finalize_gesture) {
         // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_finalize_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action);
+        force_commit_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action);
 
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.
@@ -382,16 +382,16 @@ void RunQueuedActions(bool force_finalize_gesture) {
         );
     }
 
-    const bool finalize = force_finalize_gesture || (!Field::IsGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
+    const bool commit_gesture = force_commit_gesture || (!Field::IsGesturing && !History.ActiveGesture.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!stateful_actions.empty()) {
         const auto &patch = store::CheckedCommit();
+        const auto commit_time = Clock::now();
         OnPatch(patch);
-        History.ActiveGesture.insert(History.ActiveGesture.end(), stateful_actions.begin(), stateful_actions.end());
-        History.UpdateGesturePaths(stateful_actions, patch);
+        History.OnStoreCommit(commit_time, stateful_actions, patch);
     } else {
         store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }
-    if (finalize) History.FinalizeGesture();
+    if (commit_gesture) History.CommitGesture();
 }
 
 void q(const Action::Any &&action) {

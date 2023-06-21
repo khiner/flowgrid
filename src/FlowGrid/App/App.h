@@ -65,7 +65,7 @@ private:
     static bool Save(const fs::path &);
 };
 
-void RunQueuedActions(bool force_finalize_gesture = false);
+void RunQueuedActions(bool force_commit_gesture = false);
 
 /**
 Declare global read-only accessor for the canonical state instance `app`.

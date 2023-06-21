@@ -21,7 +21,7 @@ void Debug::Render() const {
 }
 
 void Debug::StorePathUpdateFrequency::Render() const {
-    auto [labels, values] = History.StorePathUpdateFrequencyPlottable();
+    auto [labels, values] = History.StorePathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;
@@ -183,7 +183,7 @@ void Metrics::FlowGridMetrics::Render() const {
             for (Count i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[committed, store_record, gesture] = History.RecordAt(i);
-                    BulletText("Committed: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
+                    BulletText("Gesture commit time: %s\n", date::format("%Y-%m-%d %T", committed).c_str());
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing them.
                         const auto &patch = History.CreatePatch(i);

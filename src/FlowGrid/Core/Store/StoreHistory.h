@@ -20,8 +20,8 @@ struct StoreHistory {
     };
 
     struct ReferenceRecord {
-        const TimePoint Committed; // The time at which the store was committed.
-        const Store &Store; // Reference to the store as it was at `Committed` time
+        const TimePoint GestureCommitTime; // The time at which the store was committed.
+        const Store &Store; // Reference to the store as it was at `GestureCommitTime`.
         const Gesture &Gesture; // Reference to the compressed gesture (list of `ActionMoment`s) that caused the store change
     };
 
@@ -33,26 +33,27 @@ struct StoreHistory {
     StoreHistory();
     ~StoreHistory();
 
-    void UpdateGesturePaths(const Gesture &, const Patch &);
-    Plottable StorePathUpdateFrequencyPlottable() const;
-    std::optional<TimePoint> LatestUpdateTime(const StorePath &path) const;
-
-    void FinalizeGesture();
     void SetIndex(Count);
-    void Add(TimePoint, const Store &, const Gesture &);
+
     void AddTransient(const Gesture &); // Only used during action-formmated project loading.
+    void CommitGesture();
+    void OnStoreCommit(const TimePoint &commit_time, const std::vector<Action::SavableActionMoment> &, const Patch &);
 
     Count Size() const;
     bool Empty() const;
+
     bool CanUndo() const;
     bool CanRedo() const;
 
     const Store &CurrentStore() const;
     Patch CreatePatch(Count index) const; // Create a patch between the store at `index` and the store at `index - 1`.
     ReferenceRecord RecordAt(Count index) const;
-    IndexedGestures GetIndexedGestures() const;
+    IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
+
     TimePoint GestureStartTime() const;
     float GestureTimeRemainingSec(float gesture_duration_sec) const;
+    Plottable StorePathChangeFrequencyPlottable() const;
+    std::optional<TimePoint> LatestUpdateTime(const StorePath &) const;
 
     Count Index{0};
     Gesture ActiveGesture{}; // uncompressed, uncommitted
@@ -60,8 +61,10 @@ struct StoreHistory {
 
 private:
     using TimesForPath = std::unordered_map<StorePath, std::vector<TimePoint>, PathHash>;
-    TimesForPath CommittedUpdateTimesForPath{};
+    TimesForPath CommitTimesForPath{};
     TimesForPath GestureUpdateTimesForPath{};
+
+    void Add(TimePoint, const Store &, const Gesture &);
 };
 
 Json(StoreHistory::IndexedGestures, Gestures, Index);

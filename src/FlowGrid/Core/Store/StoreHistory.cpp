@@ -64,14 +64,9 @@ StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
     return {gestures, Index};
 }
 
-TimePoint StoreHistory::GestureStartTime() const {
-    if (ActiveGestureActions.empty()) return {};
-    return ActiveGestureActions.front().QueueTime;
-}
-
 float StoreHistory::GestureTimeRemainingSec(float gesture_duration_sec) const {
     if (ActiveGestureActions.empty()) return 0;
-    return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - GestureStartTime()).count());
+    return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
 static SavableActionMoments MergeActions(const SavableActionMoments &actions) {

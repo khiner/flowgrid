@@ -47,7 +47,6 @@ struct StoreHistory {
     ReferenceRecord RecordAt(Count index) const;
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
 
-    TimePoint GestureStartTime() const;
     float GestureTimeRemainingSec(float gesture_duration_sec) const;
     Plottable StorePathChangeFrequencyPlottable() const;
     std::optional<TimePoint> LatestUpdateTime(const StorePath &) const;

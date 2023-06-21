@@ -66,7 +66,7 @@ StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
 
 TimePoint StoreHistory::GestureStartTime() const {
     if (ActiveGestureActions.empty()) return {};
-    return ActiveGestureActions.front().second; // Using the queue time of the first action in the gesture.
+    return ActiveGestureActions.front().QueueTime;
 }
 
 float StoreHistory::GestureTimeRemainingSec(float gesture_duration_sec) const {
@@ -84,7 +84,7 @@ static SavableActionMoments MergeActions(const SavableActionMoments &actions) {
         if (!active) active.emplace(actions[i]);
         const auto &a = *active;
         const auto &b = actions[i + 1];
-        const auto merge_result = a.first.Merge(b.first);
+        const auto merge_result = a.Action.Merge(b.Action);
         Visit(
             merge_result,
             [&](const bool cancel_out) {
@@ -94,7 +94,7 @@ static SavableActionMoments MergeActions(const SavableActionMoments &actions) {
             },
             [&](const Action::Savable &merged_action) {
                 // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
-                active.emplace(merged_action, b.second);
+                active.emplace(merged_action, b.QueueTime);
             },
         );
     }

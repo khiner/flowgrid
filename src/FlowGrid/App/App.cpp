@@ -330,7 +330,7 @@ void Project::Open(const fs::path &file_path) {
         const StoreHistory::IndexedGestures indexed_gestures = project;
         store::BeginTransient();
         for (const auto &gesture : indexed_gestures.Gestures) {
-            for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.first);
+            for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.Action);
             History.AddTransientGesture(gesture);
         }
         OnPatch(store::CheckedCommit());

@@ -11,8 +11,16 @@ using NonSavable = Filter<Action::IsNotSavable, Any>::type;
 } // namespace Action
 
 // Action moments are actions paired with the time they were queued.
-using ActionMoment = std::pair<Action::Any, TimePoint>;
-using SavableActionMoment = std::pair<Action::Savable, TimePoint>;
+struct ActionMoment {
+    Action::Any Action;
+    TimePoint QueueTime;
+};
+
+struct SavableActionMoment {
+    Action::Savable Action;
+    TimePoint QueueTime;
+};
+
 using SavableActionMoments = std::vector<SavableActionMoment>;
 
 struct Gesture {
@@ -30,5 +38,6 @@ inline static void from_json(const json &j, Action::Savable &action) {
     Action::Savable::from_json(j, action);
 }
 
+Json(SavableActionMoment, Action, QueueTime);
 Json(Gesture, Actions, CommitTime);
 } // namespace nlohmann

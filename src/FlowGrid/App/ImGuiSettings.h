@@ -14,10 +14,7 @@ struct ImGuiTableSettings;
 
 // These Dock/Window/Table settings are `Component` duplicates of those in `imgui.cpp`.
 // They are stored here a structs-of-arrays (vs. arrays-of-structs)
-// todo These will show up counter-intuitively in the json state viewers.
-//  Use Raw/Formatted settings in state viewers to:
-//  * convert structs-of-arrays to arrays-of-structs,
-//  * unpack positions/sizes
+// todo Use Raw/Formatted settings in state viewers to unpack positions/sizes
 struct DockNodeSettings : Component {
     using Component::Component;
 

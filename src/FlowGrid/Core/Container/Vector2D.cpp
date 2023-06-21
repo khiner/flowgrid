@@ -14,11 +14,20 @@ template<IsPrimitive T> void Vector2D<T>::Set(const std::vector<std::vector<T>> 
         i++;
     }
 
+    Resize(i);
+}
+
+template<IsPrimitive T> void Vector2D<T>::Resize(Count size) const {
+    Count i = size;
     while (store::CountAt(PathAt(i, 0))) {
-        Count j = 0;
-        while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
+        Resize(i, 0);
         i++;
     }
+}
+
+template<IsPrimitive T> void Vector2D<T>::Resize(Count i, Count size) const {
+    Count j = size;
+    while (store::CountAt(PathAt(i, j))) store::Erase(PathAt(i, j++));
 }
 
 template<IsPrimitive T> void Vector2D<T>::Set(Count i, Count j, const T &value) const {

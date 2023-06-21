@@ -21,7 +21,7 @@ template<IsPrimitive T> struct Vector : Field, Actionable<typename Action::Vecto
 
     void RefreshValue() override;
 
-    T operator[](size_t i) const { return Value[i]; }
+    T operator[](Count i) const { return Value[i]; }
     auto begin() const { return Value.begin(); }
     auto end() const { return Value.end(); }
 
@@ -31,6 +31,7 @@ template<IsPrimitive T> struct Vector : Field, Actionable<typename Action::Vecto
     void Set(const std::vector<T> &) const;
     void Set(size_t i, const T &value) const;
     void Set(const std::vector<std::pair<int, T>> &) const;
+    void Resize(Count) const;
 
 private:
     std::vector<T> Value;

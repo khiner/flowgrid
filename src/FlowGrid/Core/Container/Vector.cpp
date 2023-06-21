@@ -8,6 +8,11 @@ template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &value) const {
         Set(i, value[i]);
         i++;
     }
+    Resize(i);
+}
+
+template<IsPrimitive T> void Vector<T>::Resize(Count size) const {
+    Count i = size;
     while (store::CountAt(PathAt(i))) {
         store::Erase(PathAt(i));
         i++;

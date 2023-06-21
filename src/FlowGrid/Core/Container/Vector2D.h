@@ -26,6 +26,8 @@ template<IsPrimitive T> struct Vector2D : Field, Actionable<typename Action::Vec
 
     void Set(const std::vector<std::vector<T>> &) const;
     void Set(Count i, Count j, const T &) const;
+    void Resize(Count size) const;
+    void Resize(Count i, Count size) const;
 
 private:
     std::vector<std::vector<T>> Value;

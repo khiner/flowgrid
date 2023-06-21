@@ -5,8 +5,6 @@
 
 #include "Core/Store/Store.h"
 
-using std::vector;
-
 using namespace ImGui;
 
 constexpr U32 PackImVec2ih(const ImVec2ih &unpacked) { return (U32(unpacked.x) << 16) + U32(unpacked.y); }
@@ -28,33 +26,33 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
 
 void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss) const {
     const Count size = dss.Size;
-    vector<ID> node_id(size), parent_node_id(size), parent_window_id(size), selected_tab_id(size);
-    vector<int> split_axis(size), depth(size), flags(size);
-    vector<U32> pos(size), sz(size), sz_ref(size);
+
+    NodeId.Resize(size);
+    ParentNodeId.Resize(size);
+    ParentWindowId.Resize(size);
+    SelectedTabId.Resize(size);
+    SplitAxis.Resize(size);
+    Depth.Resize(size);
+    Flags.Resize(size);
+    Pos.Resize(size);
+    Size.Resize(size);
+    SizeRef.Resize(size);
+
     for (Count i = 0; i < size; i++) {
         const auto &ds = dss[int(i)];
-        node_id[i] = ds.NodeId;
-        parent_node_id[i] = ds.ParentNodeId;
-        parent_window_id[i] = ds.ParentWindowId;
-        selected_tab_id[i] = ds.SelectedTabId;
-        split_axis[i] = ds.SplitAxis;
-        depth[i] = ds.Depth;
-        flags[i] = ds.Flags;
-        pos[i] = PackImVec2ih(ds.Pos);
-        sz[i] = PackImVec2ih(ds.Size);
-        sz_ref[i] = PackImVec2ih(ds.SizeRef);
+        NodeId.Set(i, ds.NodeId);
+        ParentNodeId.Set(i, ds.ParentNodeId);
+        ParentWindowId.Set(i, ds.ParentWindowId);
+        SelectedTabId.Set(i, ds.SelectedTabId);
+        SplitAxis.Set(i, ds.SplitAxis);
+        Depth.Set(i, ds.Depth);
+        Flags.Set(i, ds.Flags);
+        Pos.Set(i, PackImVec2ih(ds.Pos));
+        Size.Set(i, PackImVec2ih(ds.Size));
+        SizeRef.Set(i, PackImVec2ih(ds.SizeRef));
     }
-    NodeId.Set(node_id);
-    ParentNodeId.Set(parent_node_id);
-    ParentWindowId.Set(parent_window_id);
-    SelectedTabId.Set(selected_tab_id);
-    SplitAxis.Set(split_axis);
-    Depth.Set(depth);
-    Flags.Set(flags);
-    Pos.Set(pos);
-    Size.Set(sz);
-    SizeRef.Set(sz_ref);
 }
+
 void DockNodeSettings::Update(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
     const auto size = NodeId.Size();
@@ -75,30 +73,31 @@ void DockNodeSettings::Update(ImGuiContext *ctx) const {
 }
 
 void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss) const {
-    vector<ID> id, class_id, viewport_id, dock_id;
-    vector<int> dock_order;
-    vector<U32> pos, sz, viewport_pos;
-    vector<bool> collapsed;
+    const Count size = wss.size();
+
+    Id.Resize(size);
+    ClassId.Resize(size);
+    ViewportId.Resize(size);
+    DockId.Resize(size);
+    DockOrder.Resize(size);
+    Pos.Resize(size);
+    Size.Resize(size);
+    ViewportPos.Resize(size);
+    Collapsed.Resize(size);
+
+    Count i = 0;
     for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
-        id.push_back(ws->ID);
-        class_id.push_back(ws->ClassId);
-        viewport_id.push_back(ws->ViewportId);
-        dock_id.push_back(ws->DockId);
-        dock_order.push_back(ws->DockOrder);
-        pos.push_back(PackImVec2ih(ws->Pos));
-        sz.push_back(PackImVec2ih(ws->Size));
-        viewport_pos.push_back(PackImVec2ih(ws->ViewportPos));
-        collapsed.push_back(ws->Collapsed);
+        Id.Set(i, ws->ID);
+        ClassId.Set(i, ws->ClassId);
+        ViewportId.Set(i, ws->ViewportId);
+        DockId.Set(i, ws->DockId);
+        DockOrder.Set(i, ws->DockOrder);
+        Pos.Set(i, PackImVec2ih(ws->Pos));
+        Size.Set(i, PackImVec2ih(ws->Size));
+        ViewportPos.Set(i, PackImVec2ih(ws->ViewportPos));
+        Collapsed.Set(i, ws->Collapsed);
+        i++;
     }
-    Id.Set(id);
-    ClassId.Set(class_id);
-    ViewportId.Set(viewport_id);
-    DockId.Set(dock_id);
-    DockOrder.Set(dock_order);
-    Pos.Set(pos);
-    Size.Set(sz);
-    ViewportPos.Set(viewport_pos);
-    Collapsed.Set(collapsed);
 }
 
 // See `imgui.cpp::ApplyWindowSettings`
@@ -131,68 +130,53 @@ void WindowSettings::Update(ImGuiContext *) const {
 }
 
 void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) const {
+    const Count size = tss.size();
     // Table settings
-    vector<ImGuiID> id;
-    vector<int> save_flags;
-    vector<float> ref_scale;
-    vector<Count> columns_counts, columns_count_max;
-    vector<bool> want_apply;
-
+    ID.Resize(size);
+    SaveFlags.Resize(size);
+    RefScale.Resize(size);
+    ColumnsCount.Resize(size);
+    ColumnsCountMax.Resize(size);
+    WantApply.Resize(size);
     // Column settings
-    vector<vector<float>> width_or_weight;
-    vector<vector<::ID>> user_id;
-    vector<vector<int>> index, display_order, sort_order, sort_direction;
-    vector<vector<bool>> is_enabled, is_stretch;
+    Columns.WidthOrWeight.Resize(size);
+    Columns.UserID.Resize(size);
+    Columns.Index.Resize(size);
+    Columns.DisplayOrder.Resize(size);
+    Columns.SortOrder.Resize(size);
+    Columns.SortDirection.Resize(size);
+    Columns.IsEnabled.Resize(size);
+    Columns.IsStretch.Resize(size);
 
+    Count i = 0;
     for (auto *ts_it = tss.begin(); ts_it != nullptr; ts_it = tss.next_chunk(ts_it)) {
         auto &ts = *ts_it;
-        const auto columns_count = ts.ColumnsCount;
+        const Count columns_count = ts.ColumnsCount;
 
-        id.push_back(ts.ID);
-        save_flags.push_back(ts.SaveFlags);
-        ref_scale.push_back(ts.RefScale);
-        columns_counts.push_back(columns_count);
-        columns_count_max.push_back(ts.ColumnsCountMax);
-        want_apply.push_back(ts.WantApply);
+        Columns.WidthOrWeight.Resize(i, columns_count);
+        Columns.UserID.Resize(i, columns_count);
+        Columns.Index.Resize(i, columns_count);
+        Columns.DisplayOrder.Resize(i, columns_count);
+        Columns.SortOrder.Resize(i, columns_count);
+        Columns.SortDirection.Resize(i, columns_count);
+        Columns.IsEnabled.Resize(i, columns_count);
+        Columns.IsStretch.Resize(i, columns_count);
 
-        width_or_weight.push_back(vector<float>(columns_count));
-        user_id.push_back(vector<::ID>(columns_count));
-        index.push_back(vector<int>(columns_count));
-        display_order.push_back(vector<int>(columns_count));
-        sort_order.push_back(vector<int>(columns_count));
-        sort_direction.push_back(vector<int>(columns_count));
-        is_enabled.push_back(vector<bool>(columns_count));
-        is_stretch.push_back(vector<bool>(columns_count));
-
-        for (int column_index = 0; column_index < columns_count; column_index++) {
-            const auto &cs = ts.GetColumnSettings()[column_index];
+        for (Count j = 0; j < columns_count; j++) {
+            const auto &cs = ts.GetColumnSettings()[j];
             // todo these nans show up when we start with a default layout showing a table and then switch the tab so that the table is hidden.
             //   should probably handle this more robustly.
-            width_or_weight.back()[column_index] = std::isnan(cs.WidthOrWeight) ? 0 : cs.WidthOrWeight;
-            user_id.back()[column_index] = cs.UserID;
-            index.back()[column_index] = cs.Index;
-            display_order.back()[column_index] = cs.DisplayOrder;
-            sort_order.back()[column_index] = cs.SortOrder;
-            sort_direction.back()[column_index] = cs.SortDirection;
-            is_enabled.back()[column_index] = cs.IsEnabled;
-            is_stretch.back()[column_index] = cs.IsStretch;
+            Columns.WidthOrWeight.Set(i, j, std::isnan(cs.WidthOrWeight) ? 0 : cs.WidthOrWeight);
+            Columns.UserID.Set(i, j, cs.UserID);
+            Columns.Index.Set(i, j, cs.Index);
+            Columns.DisplayOrder.Set(i, j, cs.DisplayOrder);
+            Columns.SortOrder.Set(i, j, cs.SortOrder);
+            Columns.SortDirection.Set(i, j, cs.SortDirection);
+            Columns.IsEnabled.Set(i, j, cs.IsEnabled);
+            Columns.IsStretch.Set(i, j, cs.IsStretch);
         }
+        i++;
     }
-
-    ID.Set(id);
-    SaveFlags.Set(save_flags);
-    RefScale.Set(ref_scale);
-    ColumnsCount.Set(columns_counts);
-    ColumnsCountMax.Set(columns_count_max);
-    WantApply.Set(want_apply);
-    Columns.WidthOrWeight.Set(width_or_weight);
-    Columns.UserID.Set(user_id);
-    Columns.Index.Set(index);
-    Columns.DisplayOrder.Set(display_order);
-    Columns.SortOrder.Set(sort_order);
-    Columns.SortDirection.Set(sort_direction);
-    Columns.IsEnabled.Set(is_enabled);
-    Columns.IsStretch.Set(is_stretch);
 }
 
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
@@ -245,8 +229,6 @@ void TableSettings::Update(ImGuiContext *) const {
 }
 
 Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) const {
-    SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-
     store::BeginTransient();
     Nodes.Set(ctx->DockContext.NodesSettings);
     Windows.Set(ctx->SettingsWindows);

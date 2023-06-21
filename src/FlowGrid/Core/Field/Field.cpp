@@ -5,11 +5,13 @@
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     Index = Instances.size();
     Instances.push_back(this);
+    ValueIsStale.push_back(false);
     IndexForPath[Path] = Index;
 }
 Field::~Field() {
     IndexForPath.erase(Path);
     Instances.erase(Instances.begin() + Index);
+    ValueIsStale.erase(ValueIsStale.begin() + Index);
 }
 
 Field *Field::FindByPath(const StorePath &search_path) {

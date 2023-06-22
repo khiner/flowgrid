@@ -41,6 +41,4 @@ void FieldActionHandler::Apply(const ActionType &action) const {
         [&field](const Vector2D<float>::ActionType &a) { static_cast<const Vector2D<float> *>(field)->Apply(a); },
         [&field](const Matrix<bool>::ActionType &a) { static_cast<const Matrix<bool> *>(field)->Apply(a); },
     );
-
-    field->MarkValueStale();
 }

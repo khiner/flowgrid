@@ -235,21 +235,25 @@ void OnPatch(const Patch &patch) {
     History.LatestUpdatedPaths = patch.Ops | std::views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | ranges::to<vector>;
     ProjectHasChanges = true;
 
-    static std::set<Field *> modified_fields;
-    modified_fields.clear();
+    // Find and mark fields with stale values.
     for (const auto &path : History.LatestUpdatedPaths) {
         auto *modified_field = Field::FindByPath(path);
         if (modified_field == nullptr) throw std::runtime_error(std::format("`Set` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
 
-        modified_fields.emplace(modified_field);
+        modified_field->MarkValueStale();
+    }
 
+    // Refresh stale values. todo do this separately.
+    Field::RefreshStale();
+
+    // Set UI context update flags based on affected paths.
+    for (const auto &path : History.LatestUpdatedPaths) {
         // TODO Only update contexts when not ui-initiated (via a an `ApplyPatch` action inside the `WantSaveIniSettings` block).
         //   Otherwise it's redundant.
         if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;
         else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
         else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
     }
-    for (auto *modified_field : modified_fields) modified_field->RefreshValue();
 }
 
 void SetHistoryIndex(Count index) {

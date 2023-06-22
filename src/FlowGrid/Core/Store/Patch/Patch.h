@@ -29,4 +29,5 @@ struct Patch {
 
     bool Empty() const noexcept { return Ops.empty(); }
     std::vector<StorePath> GetPaths() const noexcept;
+    bool IsAncestorOfAnyPath(const StorePath &) const noexcept;
 };

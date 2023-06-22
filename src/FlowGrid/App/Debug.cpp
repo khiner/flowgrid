@@ -77,10 +77,7 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
         string(key);
 
     if (AutoSelect) {
-        const auto &updated_paths = History.LatestUpdatedPaths;
-        const auto is_ancestor_path = [&path](const string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
-        const bool was_recently_updated = std::find_if(updated_paths.begin(), updated_paths.end(), is_ancestor_path) != updated_paths.end();
-        SetNextItemOpen(was_recently_updated);
+        SetNextItemOpen(History.LatestPatch.IsAncestorOfAnyPath(path));
     }
 
     // Flash background color of nodes with alpha level corresponding to how much time is left in the gesture before it's committed.

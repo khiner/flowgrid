@@ -53,7 +53,7 @@ struct StoreHistory {
 
     Count Index{0};
     SavableActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
-    std::vector<StorePath> LatestUpdatedPaths{};
+    Patch LatestPatch;
 
 private:
     using TimesForPath = std::unordered_map<StorePath, std::vector<TimePoint>, PathHash>;

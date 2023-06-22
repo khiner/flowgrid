@@ -314,19 +314,28 @@ bool Project::ActionHandler::CanApply(const ActionType &action) const {
     );
 }
 
+nlohmann::json ReadFileJson(const fs::path &file_path) {
+    return nlohmann::json::parse(FileIO::read(file_path));
+}
+
+// Helper function used in `Project::Open`.
+void OpenStateFormatProjectInner(const nlohmann::json &project) {
+    store::CheckedSetJson(project);
+    Field::RefreshAll();
+    Ui.UpdateFlags = UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle;
+}
+
 void Project::Open(const fs::path &file_path) {
     const auto format = GetProjectJsonFormat(file_path);
     if (!format) return; // TODO log
 
     Init();
 
-    const nlohmann::json project = nlohmann::json::parse(FileIO::read(file_path));
+    const nlohmann::json project = ReadFileJson(file_path);
     if (format == StateFormat) {
-        store::CheckedSetJson(project);
-        Field::RefreshAll();
-        Ui.UpdateFlags = UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle;
+        OpenStateFormatProjectInner(project);
     } else if (format == ActionFormat) {
-        Open(EmptyProjectPath); // Intentional recursive call.
+        OpenStateFormatProjectInner(ReadFileJson(EmptyProjectPath));
 
         const StoreHistory::IndexedGestures indexed_gestures = project;
         store::BeginTransient();

@@ -237,9 +237,8 @@ void OnPatch(const Patch &patch) {
     History.LatestPatch = patch;
     ProjectHasChanges = true;
 
-    const auto &updated_paths = patch.GetPaths();
     // Find and mark fields with stale values.
-    for (const auto &path : updated_paths) {
+    for (const auto &path : patch.GetPaths()) {
         auto *modified_field = Field::FindByPath(path);
         if (modified_field == nullptr) throw std::runtime_error(std::format("`Set` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
 
@@ -250,7 +249,7 @@ void OnPatch(const Patch &patch) {
     Field::RefreshStale();
 
     // Set UI context update flags based on affected paths.
-    for (const auto &path : updated_paths) {
+    for (const auto &path : patch.GetPaths()) {
         // TODO Only update contexts when not ui-initiated (via a an `ApplyPatch` action inside the `WantSaveIniSettings` block).
         //   Otherwise it's redundant.
         if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;

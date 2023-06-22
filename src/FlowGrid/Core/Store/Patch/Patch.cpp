@@ -1,7 +1,6 @@
 #include "Patch.h"
 
-#include <range/v3/range/conversion.hpp>
-#include <ranges>
+#include <filesystem>
 
 std::string to_string(PatchOp::Type patch_op_type) {
     switch (patch_op_type) {
@@ -47,12 +46,9 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
     return merged;
 }
 
-std::vector<StorePath> Patch::GetPaths() const noexcept {
-    return std::views::keys(Ops) | std::views::transform([this](const auto &partial_path) { return BasePath / partial_path; }) | ranges::to<std::vector>;
-}
-
-bool Patch::IsAncestorOfAnyPath(const StorePath &path) const noexcept {
-    const auto &paths = GetPaths();
-    const auto is_ancestor_path = [&path](const std::string &candidate_path) { return candidate_path.rfind(path.string(), 0) == 0; };
-    return std::find_if(paths.begin(), paths.end(), is_ancestor_path) != paths.end();
+bool Patch::IsPrefixOfAnyPath(const StorePath &path) const noexcept {
+    return std::ranges::any_of(GetPaths(), [&path](const StorePath &candidate_path) {
+        const auto &[first_mismatched_path_it, _] = std::mismatch(path.begin(), path.end(), candidate_path.begin(), candidate_path.end());
+        return first_mismatched_path_it == path.end();
+    });
 }

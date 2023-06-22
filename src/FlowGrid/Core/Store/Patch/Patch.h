@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ranges>
 #include <unordered_map>
 
 #include "Core/Primitive/Primitive.h"
@@ -27,7 +28,11 @@ struct Patch {
     PatchOps Ops;
     StorePath BasePath{RootPath};
 
+    // Returns a view.
+    inline auto GetPaths() const noexcept {
+        return std::views::keys(Ops) | std::views::transform([this](const auto &partial_path) { return BasePath / partial_path; });
+    }
+
     bool Empty() const noexcept { return Ops.empty(); }
-    std::vector<StorePath> GetPaths() const noexcept;
-    bool IsAncestorOfAnyPath(const StorePath &) const noexcept;
+    bool IsPrefixOfAnyPath(const StorePath &) const noexcept;
 };

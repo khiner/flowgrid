@@ -77,7 +77,7 @@ void Debug::StateViewer::StateJsonTree(string_view key, const json &value, const
         string(key);
 
     if (AutoSelect) {
-        SetNextItemOpen(History.LatestPatch.IsAncestorOfAnyPath(path));
+        SetNextItemOpen(History.LatestPatch.IsPrefixOfAnyPath(path));
     }
 
     // Flash background color of nodes with alpha level corresponding to how much time is left in the gesture before it's committed.

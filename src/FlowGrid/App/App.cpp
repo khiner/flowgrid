@@ -322,8 +322,9 @@ void Project::Open(const fs::path &file_path) {
 
     const nlohmann::json project = nlohmann::json::parse(FileIO::read(file_path));
     if (format == StateFormat) {
-        OnPatch(store::CheckedSetJson(project));
-        History = {};
+        store::CheckedSetJson(project);
+        Field::RefreshAll();
+        Ui.UpdateFlags = UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle;
     } else if (format == ActionFormat) {
         Open(EmptyProjectPath); // Intentional recursive call.
 

@@ -1258,7 +1258,7 @@ void FaustGraph::Render() const {
 
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
-        const fs::path selected_path = string(file_dialog.SelectedFilePath);
+        const fs::path selected_path = file_dialog.SelectedFilePath;
         if (file_dialog.Title == Action::FaustGraph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
             Action::FaustGraph::SaveSvgFile{selected_path}.q();
         }

@@ -20,7 +20,7 @@ template<IsPrimitive T> struct PrimitiveField : Field, Drawable {
     void Set(const T &) const;
 
     // Mutating set. Updates both store and cached value.
-    // Should only be used during initialization and side-effect handling pass.
+    // Should only be used during initialization and side effect handling pass.
     void Set_(const T &value) {
         Set(value);
         Value = value;

@@ -17,11 +17,11 @@ void FileDialog::Apply(const ActionType &action) const {
         [&](const Action::FileDialog::Open &a) { this->Set(json::parse(a.dialog_json)); },
         [&](const Action::FileDialog::Select &a) {
             Visible.Set(false);
-            SelectedFilePath.Set(a.file_path);
+            SelectedFilePath = a.file_path; // Non-stateful side effect.
         },
         [&](const Action::FileDialog::Cancel &) {
             Visible.Set(false);
-            SelectedFilePath.Set("");
+            SelectedFilePath = ""; // Non-stateful side effect.
         },
     );
 }

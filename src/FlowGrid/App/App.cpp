@@ -175,7 +175,7 @@ void App::Render() const {
 
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
-        const fs::path selected_path = string(FileDialog.SelectedFilePath);
+        const fs::path selected_path = FileDialog.SelectedFilePath;
         const string &extension = selected_path.extension();
         if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
             if (FileDialog.SaveMode) Action::Project::Save{selected_path}.q();

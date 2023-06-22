@@ -32,7 +32,7 @@ struct FileDialog : Component, Drawable, Actionable<Action::FileDialog::Any> {
     Prop(String, FilePath, ".");
     Prop(String, DefaultFileName);
 
-    Prop(String, SelectedFilePath);
+    inline static std::string SelectedFilePath; // Not saved to state, since we never want to replay file selection side effects.
 
 protected:
     void Render() const override;

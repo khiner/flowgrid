@@ -59,7 +59,7 @@ using namespace ImGui;
 void Faust::Render() const {
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
-        const fs::path selected_path = string(file_dialog.SelectedFilePath);
+        const fs::path selected_path = file_dialog.SelectedFilePath;
         const string &extension = selected_path.extension();
         if (extension == FaustDspFileExtension) {
             if (file_dialog.SaveMode) Action::FaustFile::Save{selected_path}.q();

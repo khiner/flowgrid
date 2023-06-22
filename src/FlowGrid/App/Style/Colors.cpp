@@ -13,7 +13,7 @@ using namespace ImGui;
 Colors::Colors(ComponentArgs &&args, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
     : Component(std::move(args)), AllowAuto(allow_auto) {
     for (Count i = 0; i < size; i++) {
-        new UInt({this, to_string(i), get_color_name(i)}); // Adds to `Children` as a side-effect.
+        new UInt({this, to_string(i), get_color_name(i)}); // Adds to `Children` as a side effect.
     }
 }
 Colors::~Colors() {

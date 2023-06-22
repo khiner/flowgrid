@@ -83,7 +83,12 @@ Patch CheckedSet(const Store &store) {
     return patch;
 }
 
-Patch CheckedSetJson(const nlohmann::json &j) { return CheckedSet(JsonToStore(j)); }
+void SetJson(const nlohmann::json &j) {
+    Transient = {};
+    IsTransient = false;
+    AppStore = JsonToStore(j);
+}
+
 Patch CheckedCommit() { return CheckedSet(EndTransient()); }
 
 Store GetPersistent() { return Transient.Persistent(); }

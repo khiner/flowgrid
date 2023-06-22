@@ -200,11 +200,13 @@ bool IsUserProjectPath(const fs::path &path) {
 }
 
 void SetCurrentProjectPath(const fs::path &path) {
-    if (!IsUserProjectPath(path)) return;
-
     ProjectHasChanges = false;
-    CurrentProjectPath = path;
-    Preferences.OnProjectOpened(path);
+    if (IsUserProjectPath(path)) {
+        CurrentProjectPath = path;
+        Preferences.OnProjectOpened(path);
+    } else {
+        CurrentProjectPath = {};
+    }
 }
 
 std::optional<ProjectJsonFormat> GetProjectJsonFormat(const fs::path &path) {
@@ -221,13 +223,13 @@ bool Project::Save(const fs::path &path) {
     if (!format) return false; // TODO log
 
     History.CommitGesture(); // Make sure any pending actions/diffs are committed.
-    if (!FileIO::write(path, GetProjectJson(*format).dump())) return false; // TODO log
+    if (!FileIO::write(path, GetProjectJson(*format).dump())) {
+        throw std::runtime_error(std::format("Failed to write project file: {}", path.string()));
+    }
 
     SetCurrentProjectPath(path);
     return true;
 }
-
-void Project::SaveEmpty() { Save(EmptyProjectPath); }
 
 void OnPatch(const Patch &patch) {
     if (patch.Empty()) return;
@@ -261,12 +263,12 @@ void SetHistoryIndex(Count index) {
     OnPatch(store::CheckedSet(History.CurrentStore()));
 }
 
-void Project::Init() {
-    if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
-    CurrentProjectPath = {};
-    ProjectHasChanges = false;
-    History = {};
+void Project::OnApplicationLaunch() {
     Field::IsGesturing = false;
+    History = {};
+    // Keep the canonical "empty" project up-to-date.
+    if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
+    Save(EmptyProjectPath);
 }
 
 void Project::ActionHandler::Apply(const ActionType &action) const {
@@ -324,16 +326,17 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 
 // Helper function used in `Project::Open`.
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
-    store::CheckedSetJson(project);
+    store::SetJson(project);
     Field::RefreshAll();
     Ui.UpdateFlags = UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle;
+    History = {};
 }
 
 void Project::Open(const fs::path &file_path) {
     const auto format = GetProjectJsonFormat(file_path);
     if (!format) return; // TODO log
 
-    Init();
+    Field::IsGesturing = false;
 
     const nlohmann::json project = ReadFileJson(file_path);
     if (format == StateFormat) {
@@ -379,10 +382,10 @@ void RunQueuedActions(bool force_commit_gesture) {
         if (!CanApply(action)) continue;
 
         // Special cases:
-        // * If saving the current project where there is none, open the save project dialog so the user can tell us where to save it:
+        // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_commit_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action);
+        force_commit_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action) || std::holds_alternative<Action::FileDialog::Select>(action) || std::holds_alternative<Action::FileDialog::Cancel>(action);
 
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.

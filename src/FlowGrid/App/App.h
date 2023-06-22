@@ -50,8 +50,7 @@ protected:
 };
 
 struct Project {
-    static void Init();
-    static void SaveEmpty();
+    static void OnApplicationLaunch();
 
     struct ActionHandler : Actionable<Action::Project::Any> {
         void Apply(const ActionType &) const override;

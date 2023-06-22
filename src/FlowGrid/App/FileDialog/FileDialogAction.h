@@ -7,7 +7,7 @@ DefineActionType(
 
     DefineAction(Open, Merge, "", std::string dialog_json;);
     DefineAction(Select, NoMerge, "", fs::path file_path;);
-    DefineAction(Cancel, Merge, "");
+    DefineAction(Cancel, NoMerge, "");
 
     Json(Open, dialog_json);
     Json(Select, file_path);

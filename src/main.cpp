@@ -24,7 +24,6 @@ int main() {
     // Ensure all store values set during initialization are reflected in cached field/collection values.
     Field::RefreshAll();
 
-    Project::Init();
     IGFD::Init();
 
     {
@@ -36,8 +35,7 @@ int main() {
         RunQueuedActions(true);
     }
 
-    Project::Init(); // Start with a clean slate.
-    Project::SaveEmpty(); // Keep the canonical "empty" project up-to-date.
+    Project::OnApplicationLaunch(); // Clean-slate project initialization.
 
     while (Ui.Tick(app)) {
         RunQueuedActions();

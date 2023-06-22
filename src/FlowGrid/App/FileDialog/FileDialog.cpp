@@ -12,16 +12,18 @@
 using namespace nlohmann;
 
 void FileDialog::Apply(const ActionType &action) const {
+    // `SelectedFilePath` mutations are non-stateful side effects.
     Visit(
         action,
-        [&](const Action::FileDialog::Open &a) { this->Set(json::parse(a.dialog_json)); },
+        [&](const Action::FileDialog::Open &a) {
+            Set(json::parse(a.dialog_json));
+        },
         [&](const Action::FileDialog::Select &a) {
+            SelectedFilePath = a.file_path;
             Visible.Set(false);
-            SelectedFilePath = a.file_path; // Non-stateful side effect.
         },
         [&](const Action::FileDialog::Cancel &) {
             Visible.Set(false);
-            SelectedFilePath = ""; // Non-stateful side effect.
         },
     );
 }
@@ -36,6 +38,7 @@ bool FileDialog::CanApply(const ActionType &action) const {
 }
 
 void FileDialog::Set(const FileDialogData &data) const {
+    SelectedFilePath = "";
     Visible.Set(true);
     Title.Set(data.title);
     Filters.Set(data.filters);

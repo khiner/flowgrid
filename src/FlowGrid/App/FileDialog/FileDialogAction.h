@@ -7,11 +7,10 @@ DefineActionType(
 
     DefineAction(Open, Merge, "", std::string dialog_json;);
     DefineAction(Select, NoMerge, "", fs::path file_path;);
-    DefineAction(Cancel, NoMerge, "");
+    // Cancel action is done by simply toggling the dialog's `Visible` field.
 
     Json(Open, dialog_json);
     Json(Select, file_path);
-    Json(Cancel);
 
-    using Any = ActionVariant<Open, Select, Cancel>;
+    using Any = ActionVariant<Open, Select>;
 );

@@ -22,9 +22,6 @@ void FileDialog::Apply(const ActionType &action) const {
             SelectedFilePath = a.file_path;
             Visible.Set(false);
         },
-        [&](const Action::FileDialog::Cancel &) {
-            Visible.Set(false);
-        },
     );
 }
 
@@ -33,7 +30,6 @@ bool FileDialog::CanApply(const ActionType &action) const {
         action,
         [](const Action::FileDialog::Open &) { return !file_dialog.Visible; },
         [](const Action::FileDialog::Select &) { return bool(file_dialog.Visible); },
-        [](const Action::FileDialog::Cancel &) { return bool(file_dialog.Visible); },
     );
 }
 
@@ -139,7 +135,7 @@ void FileDialog::Render() const {
     Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
         if (Dialog->IsOk()) Action::FileDialog::Select{Dialog->GetFilePathName()}.q();
-        else Action::FileDialog::Cancel{}.q();
+        else Visible.Toggle(); // Queues a toggle action.
     }
 }
 

@@ -385,7 +385,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_commit_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action) || std::holds_alternative<Action::FileDialog::Select>(action) || std::holds_alternative<Action::FileDialog::Cancel>(action);
+        force_commit_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action) || std::holds_alternative<Action::FileDialog::Select>(action);
 
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.
@@ -470,4 +470,3 @@ DefineQ(FaustGraph::ShowSaveSvgDialog);
 DefineQ(FaustGraph::SaveSvgFile);
 DefineQ(FileDialog::Open);
 DefineQ(FileDialog::Select);
-DefineQ(FileDialog::Cancel);

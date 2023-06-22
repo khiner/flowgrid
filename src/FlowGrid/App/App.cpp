@@ -232,9 +232,9 @@ bool Project::Save(const fs::path &path) {
 }
 
 void OnPatch(const Patch &patch) {
+    History.LatestPatch = patch;
     if (patch.Empty()) return;
 
-    History.LatestPatch = patch;
     ProjectHasChanges = true;
 
     // Find and mark fields with stale values.
@@ -249,13 +249,11 @@ void OnPatch(const Patch &patch) {
     Field::RefreshStale();
 
     // Set UI context update flags based on affected paths.
-    for (const auto &path : patch.GetPaths()) {
-        // TODO Only update contexts when not ui-initiated (via a an `ApplyPatch` action inside the `WantSaveIniSettings` block).
-        //   Otherwise it's redundant.
-        if (path.string().rfind(imgui_settings.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;
-        else if (path.string().rfind(fg::style.ImGui.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
-        else if (path.string().rfind(fg::style.ImPlot.Path.string(), 0) == 0) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
-    }
+    // TODO Only update contexts when not ui-initiated (via a an `ApplyPatch` action inside the `WantSaveIniSettings` block).
+    //   Otherwise it's redundant.
+    if (patch.IsPrefixOfAnyPath(imgui_settings.Path)) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;
+    if (patch.IsPrefixOfAnyPath(fg::style.ImGui.Path)) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
+    if (patch.IsPrefixOfAnyPath(fg::style.ImPlot.Path)) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
 }
 
 void SetHistoryIndex(Count index) {

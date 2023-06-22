@@ -34,7 +34,7 @@ struct StoreHistory {
 
     void AddTransientGesture(const Gesture &); // Only used during action-formmated project loading.
     void CommitGesture();
-    void OnStoreCommit(const TimePoint &commit_time, const std::vector<SavableActionMoment> &, const Patch &);
+    void AddToActiveGesture(const std::vector<SavableActionMoment> &, const Patch &, const TimePoint &store_commit_time);
 
     Count Size() const;
     bool Empty() const;

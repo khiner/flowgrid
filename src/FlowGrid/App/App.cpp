@@ -388,9 +388,9 @@ void RunQueuedActions(bool force_commit_gesture) {
     const bool commit_gesture = force_commit_gesture || (!Field::IsGesturing && !History.ActiveGestureActions.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!stateful_actions.empty()) {
         const auto &patch = store::CheckedCommit();
-        const auto commit_time = Clock::now();
+        const auto store_commit_time = Clock::now();
         OnPatch(patch);
-        History.OnStoreCommit(commit_time, stateful_actions, patch);
+        History.AddToActiveGesture(stateful_actions, patch, store_commit_time);
     } else {
         store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }

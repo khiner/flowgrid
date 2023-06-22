@@ -33,7 +33,7 @@ void StoreHistory::Add(const Store &store, const Gesture &gesture) {
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
     Records.emplace_back(store, gesture);
     Index = Size() - 1;
-    for (const auto &[partial_path, op] : patch.Ops) CommitTimesForPath[patch.BasePath / partial_path].emplace_back(gesture.CommitTime);
+    for (const auto &path : patch.GetPaths()) CommitTimesForPath[path].emplace_back(gesture.CommitTime);
 }
 
 void StoreHistory::AddTransientGesture(const Gesture &gesture) {
@@ -42,7 +42,7 @@ void StoreHistory::AddTransientGesture(const Gesture &gesture) {
 
 void StoreHistory::AddToActiveGesture(const std::vector<SavableActionMoment> &actions, const Patch &patch, const TimePoint &store_commit_time) {
     ActiveGestureActions.insert(ActiveGestureActions.end(), actions.begin(), actions.end());
-    for (const auto &[partial_path, op] : patch.Ops) GestureUpdateTimesForPath[patch.BasePath / partial_path].emplace_back(store_commit_time);
+    for (const auto &path : patch.GetPaths()) GestureUpdateTimesForPath[path].emplace_back(store_commit_time);
 }
 
 Count StoreHistory::Size() const { return Records.size(); }
@@ -167,8 +167,7 @@ void StoreHistory::SetIndex(Count new_index) {
         const Count record_index = history_index == -1 ? Index : history_index;
         const auto &segment_patch = CreatePatch(record_index + 1);
         const auto &gesture_commit_time = Records[record_index + 1].Gesture.CommitTime;
-        for (const auto &[partial_path, _] : segment_patch.Ops) {
-            const auto &path = segment_patch.BasePath / partial_path;
+        for (const auto &path : segment_patch.GetPaths()) {
             if (direction == Forward) {
                 CommitTimesForPath[path].emplace_back(gesture_commit_time);
             } else if (CommitTimesForPath.contains(path)) {

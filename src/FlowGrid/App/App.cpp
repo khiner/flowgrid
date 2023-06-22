@@ -232,7 +232,7 @@ void Project::SaveEmpty() { Save(EmptyProjectPath); }
 void OnPatch(const Patch &patch) {
     if (patch.Empty()) return;
 
-    History.LatestUpdatedPaths = patch.Ops | std::views::transform([&patch](const auto &entry) { return patch.BasePath / entry.first; }) | ranges::to<vector>;
+    History.LatestUpdatedPaths = patch.GetPaths();
     ProjectHasChanges = true;
 
     // Find and mark fields with stale values.

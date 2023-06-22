@@ -28,4 +28,5 @@ struct Patch {
     StorePath BasePath{RootPath};
 
     bool Empty() const noexcept { return Ops.empty(); }
+    std::vector<StorePath> GetPaths() const noexcept;
 };

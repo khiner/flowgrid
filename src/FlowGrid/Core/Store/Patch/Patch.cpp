@@ -1,5 +1,8 @@
 #include "Patch.h"
 
+#include <ranges>
+#include <range/v3/range/conversion.hpp>
+
 std::string to_string(PatchOp::Type patch_op_type) {
     switch (patch_op_type) {
         case PatchOp::Type::Add: return "Add";
@@ -42,4 +45,8 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
     }
 
     return merged;
+}
+
+std::vector<StorePath> Patch::GetPaths() const noexcept {
+    return std::views::keys(Ops) | std::views::transform([this](const auto &partial_path) { return BasePath / partial_path; }) | ranges::to<std::vector>;
 }

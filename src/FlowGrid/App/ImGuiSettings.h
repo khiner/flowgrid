@@ -79,16 +79,29 @@ struct TableSettings : Component {
     Prop(TableColumnSettings, Columns);
 };
 
+namespace Action {
+namespace ImGuiSettings {
+using Any = Combine<
+    Vector<bool>::Any, Vector<int>::Any, Vector<U32>::Any, Vector<float>::Any,
+    Vector2D<bool>::Any, Vector2D<int>::Any, Vector2D<U32>::Any, Vector2D<float>::Any>::type;
+} // namespace ImGuiSettings
+} // namespace Action
+
 struct ImGuiSettings : Component {
     using Component::Component;
 
     // Create a patch resulting from applying the current ImGui context.
-    Patch CreatePatch(ImGuiContext *ctx) const;
+    Patch CreatePatch(ImGuiContext *) const;
+
+    // Compute a minimal set of actions to apply to `ImGuiSettings` field members to match the current ImGui context.
+    // todo implement and replace `CreatePatch` with this.
+    //   This method would be a great first test case. https://github.com/catchorg/Catch2
+    std::vector<Action::ImGuiSettings::Any> CreateActionsToMatch(ImGuiContext *) const { return {}; }
 
     // `Update(ctx)` is basically `imgui_context.settings = this`.
     // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized `.ini` text format.
-    void Update(ImGuiContext *ctx) const;
+    void Update(ImGuiContext *) const;
 
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);

@@ -161,6 +161,8 @@ bool UIContext::Tick(const Drawable &drawable) {
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
         const auto &patch = imgui_settings.CreatePatch(ImGui::GetCurrentContext());
         if (!patch.Empty()) Action::Store::ApplyPatch{patch}.q();
+        // const auto actions = imgui_settings.CreateActions(ImGui::GetCurrentContext());
+        // for (const auto &action : actions) action.q();
         io.WantSaveIniSettings = false;
     }
 

@@ -255,20 +255,15 @@ void SetUiUpdateFlags(const Patch &patch) {
     SetStyleUpdateFlags(patch);
 }
 
-void OnPatch(const Patch &patch) {
-    if (patch.Empty()) return;
-
-    ProjectHasChanges = true;
-
-    FindAndMarkStaleFields(patch);
-    Field::RefreshStale();
-}
-
 void SetHistoryIndex(Count index) {
+    if (index == History.Index) return;
+
     History.SetIndex(index);
     History.LatestPatch = store::CheckedSet(History.CurrentStore());
-    OnPatch(History.LatestPatch);
+    FindAndMarkStaleFields(History.LatestPatch);
+    Field::RefreshStale();
     SetUiUpdateFlags(History.LatestPatch);
+    ProjectHasChanges = true;
 }
 
 void Project::OnApplicationLaunch() {
@@ -361,7 +356,8 @@ void Project::Open(const fs::path &file_path) {
             History.AddTransientGesture(gesture);
         }
         History.LatestPatch = store::CheckedCommit();
-        OnPatch(History.LatestPatch);
+        FindAndMarkStaleFields(History.LatestPatch);
+        Field::RefreshStale();
         ::SetHistoryIndex(indexed_gestures.Index);
     }
 
@@ -422,14 +418,20 @@ void RunQueuedActions(bool force_commit_gesture) {
     const bool commit_gesture = force_commit_gesture || (!Field::IsGesturing && !History.ActiveGestureActions.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!stateful_actions.empty()) {
         History.LatestPatch = store::CheckedCommit();
-        const auto store_commit_time = Clock::now();
-        OnPatch(History.LatestPatch);
-        SetStyleUpdateFlags(History.LatestPatch);
-        History.AddToActiveGesture(stateful_actions, store_commit_time);
+        if (!History.LatestPatch.Empty()) {
+            const auto store_commit_time = Clock::now();
+            FindAndMarkStaleFields(History.LatestPatch);
+            Field::RefreshStale();
+            SetStyleUpdateFlags(History.LatestPatch);
+            History.AddToActiveGesture(stateful_actions, store_commit_time);
+
+            ProjectHasChanges = true;
+        }
     } else {
         store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }
     if (commit_gesture) History.CommitGesture();
+    Application.Audio.Update();
 }
 
 #define DefineQ(ActionType)                                                                                          \

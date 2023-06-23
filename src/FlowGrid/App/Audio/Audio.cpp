@@ -85,7 +85,7 @@ void Audio::Update() {
         Uninit();
     } else if (needs_restart && is_initialized) {
         // todo no need to completely reset in many cases (like when only format has changed) - just modify as needed in `Device::Update`.
-        // todo sample rate conversion is happening even when choosing a SR that is native to both intpu & output, if it's not the highest-priority SR.
+        // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
         Uninit();
         Init();
     }

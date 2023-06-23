@@ -90,10 +90,6 @@ private:
     Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
 };
 
-// Render all of a component's child props as tabs.
-struct Tabs {
-};
-
 /**
 Convenience macros for compactly defining `Component` types and their properties.
 

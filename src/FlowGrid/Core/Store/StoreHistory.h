@@ -34,7 +34,7 @@ struct StoreHistory {
 
     void AddTransientGesture(const Gesture &); // Only used during action-formmated project loading.
     void CommitGesture();
-    void AddToActiveGesture(const std::vector<SavableActionMoment> &, const Patch &, const TimePoint &store_commit_time);
+    void AddToActiveGesture(const std::vector<SavableActionMoment> &, const TimePoint &store_commit_time); // Assumes `LatestPatch` has already been set.
 
     Count Size() const;
     bool Empty() const;

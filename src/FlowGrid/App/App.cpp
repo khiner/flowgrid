@@ -231,39 +231,51 @@ bool Project::Save(const fs::path &path) {
     return true;
 }
 
-void OnPatch(const Patch &patch) {
-    History.LatestPatch = patch;
-    if (patch.Empty()) return;
-
-    ProjectHasChanges = true;
-
+void FindAndMarkStaleFields(const Patch &patch) {
     // Find and mark fields with stale values.
     for (const auto &path : patch.GetPaths()) {
         auto *modified_field = Field::FindByPath(path);
-        if (modified_field == nullptr) throw std::runtime_error(std::format("`Set` resulted in a patch affecting a path belonging to an unknown field: {}", path.string()));
+        if (modified_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
         modified_field->MarkValueStale();
     }
+}
 
-    // Refresh stale values. todo do this separately.
-    Field::RefreshStale();
-
-    // Set UI context update flags based on affected paths.
-    // TODO Only update contexts when not ui-initiated (via a an `ApplyPatch` action inside the `WantSaveIniSettings` block).
-    //   Otherwise it's redundant.
-    if (patch.IsPrefixOfAnyPath(imgui_settings.Path)) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;
+void SetStyleUpdateFlags(const Patch &patch) {
     if (patch.IsPrefixOfAnyPath(fg::style.ImGui.Path)) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
     if (patch.IsPrefixOfAnyPath(fg::style.ImPlot.Path)) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
 }
 
+void SetUiUpdateFlags(const Patch &patch) {
+    // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
+    // when it initially changes, since ImGui has already updated its own context.
+    // We only need to update the ImGui context based on settings changes when the history index changes.
+    // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
+    if (patch.IsPrefixOfAnyPath(imgui_settings.Path)) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;
+    SetStyleUpdateFlags(patch);
+}
+
+void OnPatch(const Patch &patch) {
+    if (patch.Empty()) return;
+
+    ProjectHasChanges = true;
+
+    FindAndMarkStaleFields(patch);
+    Field::RefreshStale();
+}
+
 void SetHistoryIndex(Count index) {
     History.SetIndex(index);
-    OnPatch(store::CheckedSet(History.CurrentStore()));
+    History.LatestPatch = store::CheckedSet(History.CurrentStore());
+    OnPatch(History.LatestPatch);
+    SetUiUpdateFlags(History.LatestPatch);
 }
 
 void Project::OnApplicationLaunch() {
     Field::IsGesturing = false;
     History = {};
+    Ui.SetAllUpdateFlags();
+
     // Keep the canonical "empty" project up-to-date.
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
     Save(EmptyProjectPath);
@@ -326,7 +338,7 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
     store::SetJson(project);
     Field::RefreshAll();
-    Ui.UpdateFlags = UIContext::Flags_ImGuiSettings | UIContext::Flags_ImGuiStyle | UIContext::Flags_ImPlotStyle;
+    Ui.SetAllUpdateFlags();
     History = {};
 }
 
@@ -348,7 +360,8 @@ void Project::Open(const fs::path &file_path) {
             for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.Action);
             History.AddTransientGesture(gesture);
         }
-        OnPatch(store::CheckedCommit());
+        History.LatestPatch = store::CheckedCommit();
+        OnPatch(History.LatestPatch);
         ::SetHistoryIndex(indexed_gestures.Index);
     }
 
@@ -402,10 +415,11 @@ void RunQueuedActions(bool force_commit_gesture) {
 
     const bool commit_gesture = force_commit_gesture || (!Field::IsGesturing && !History.ActiveGestureActions.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
     if (!stateful_actions.empty()) {
-        const auto &patch = store::CheckedCommit();
+        History.LatestPatch = store::CheckedCommit();
         const auto store_commit_time = Clock::now();
-        OnPatch(patch);
-        History.AddToActiveGesture(stateful_actions, patch, store_commit_time);
+        OnPatch(History.LatestPatch);
+        SetStyleUpdateFlags(History.LatestPatch);
+        History.AddToActiveGesture(stateful_actions, store_commit_time);
     } else {
         store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }

@@ -40,9 +40,9 @@ void StoreHistory::AddTransientGesture(const Gesture &gesture) {
     Add(store::GetPersistent(), gesture);
 }
 
-void StoreHistory::AddToActiveGesture(const std::vector<SavableActionMoment> &actions, const Patch &patch, const TimePoint &store_commit_time) {
+void StoreHistory::AddToActiveGesture(const std::vector<SavableActionMoment> &actions, const TimePoint &store_commit_time) {
     ActiveGestureActions.insert(ActiveGestureActions.end(), actions.begin(), actions.end());
-    for (const auto &path : patch.GetPaths()) GestureUpdateTimesForPath[path].emplace_back(store_commit_time);
+    for (const auto &path : LatestPatch.GetPaths()) GestureUpdateTimesForPath[path].emplace_back(store_commit_time);
 }
 
 Count StoreHistory::Size() const { return Records.size(); }

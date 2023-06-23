@@ -11,6 +11,8 @@ struct UIContext {
     // Returns `true` if the app should continue running.
     bool Tick(const Drawable &app);
 
+    inline void SetAllUpdateFlags() { UpdateFlags = Flags_ImGuiSettings | Flags_ImGuiStyle | Flags_ImPlotStyle; }
+
     enum Flags_ {
         Flags_None = 0,
         Flags_ImGuiSettings = 1 << 0,

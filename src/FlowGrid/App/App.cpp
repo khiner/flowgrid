@@ -385,6 +385,12 @@ void RunQueuedActions(bool force_commit_gesture) {
     static vector<SavableActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     stateful_actions.clear();
 
+    if (file_dialog.Visible) {
+        // Disable all actions while the file dialog is open.
+        while (ActionQueue.try_dequeue(action_moment)) {};
+        return;
+    }
+
     while (ActionQueue.try_dequeue(action_moment)) {
         // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,

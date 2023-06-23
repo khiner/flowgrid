@@ -20,7 +20,6 @@ void FileDialog::Apply(const ActionType &action) const {
         },
         [&](const Action::FileDialog::Select &a) {
             SelectedFilePath = a.file_path;
-            Visible.Set(false);
         },
     );
 }
@@ -29,20 +28,20 @@ bool FileDialog::CanApply(const ActionType &action) const {
     return Visit(
         action,
         [](const Action::FileDialog::Open &) { return !file_dialog.Visible; },
-        [](const Action::FileDialog::Select &) { return bool(file_dialog.Visible); },
+        [](const Action::FileDialog::Select &) { return true; }, // File dialog `Visible` is set to false _before_ the select action is issued.
     );
 }
 
 void FileDialog::Set(const FileDialogData &data) const {
     SelectedFilePath = "";
-    Visible.Set(true);
-    Title.Set(data.title);
-    Filters.Set(data.filters);
-    FilePath.Set(data.file_path);
-    DefaultFileName.Set(data.default_file_name);
-    SaveMode.Set(data.save_mode);
-    MaxNumSelections.Set(data.max_num_selections);
-    Flags.Set(data.flags);
+    Visible = true;
+    Title = data.title;
+    Filters = data.filters;
+    FilePath = data.file_path;
+    DefaultFileName = data.default_file_name;
+    SaveMode = data.save_mode;
+    MaxNumSelections = data.max_num_selections;
+    Flags = data.flags;
 }
 
 static void OpenDialog(const FileDialogData &data) { Action::FileDialog::Open{json(data).dump()}.q(); }
@@ -132,10 +131,10 @@ void FileDialog::Render() const {
     ImGuiFileDialogFlags flags = Flags;
     if (SaveMode) flags |= ImGuiFileDialogFlags_ConfirmOverwrite;
     else flags &= ~ImGuiFileDialogFlags_ConfirmOverwrite;
-    Dialog->OpenDialog(DialogKey, Title, string(Filters).c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
+    Dialog->OpenDialog(DialogKey, Title, Filters.c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
+        Visible = false;
         if (Dialog->IsOk()) Action::FileDialog::Select{Dialog->GetFilePathName()}.q();
-        else Visible.Toggle(); // Queues a toggle action.
     }
 }
 

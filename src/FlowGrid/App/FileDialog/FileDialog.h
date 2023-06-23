@@ -7,6 +7,8 @@
 #include "Core/Primitive/Int.h"
 #include "Core/Primitive/String.h"
 
+using ImGuiFileDialogFlags = int;
+
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
 struct FileDialog : Component, Drawable, Actionable<Action::FileDialog::Any> {
     using Component::Component;
@@ -23,14 +25,14 @@ struct FileDialog : Component, Drawable, Actionable<Action::FileDialog::Any> {
         void Render() const override;
     };
 
-    Prop(Bool, Visible);
-    Prop(Bool, SaveMode); // The same file dialog instance is used for both saving & opening files.
-    Prop(Int, MaxNumSelections, 1);
-    Prop(Int, Flags, FileDialogFlags_Modal);
-    Prop(String, Title, "Choose file");
-    Prop(String, Filters);
-    Prop(String, FilePath, ".");
-    Prop(String, DefaultFileName);
+    inline static bool Visible;
+    inline static bool SaveMode; // The same file dialog instance is used for both saving & opening files.
+    inline static U32 MaxNumSelections{1};
+    inline static ImGuiFileDialogFlags Flags{FileDialogFlags_Modal};
+    inline static std::string Title{"Choose file"};
+    inline static std::string Filters;
+    inline static std::string FilePath{"."};
+    inline static std::string DefaultFileName;
 
     inline static std::string SelectedFilePath; // Not saved to state, since we never want to replay file selection side effects.
 

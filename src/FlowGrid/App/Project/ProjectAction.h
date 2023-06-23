@@ -4,11 +4,8 @@
 
 DefineActionType(
     Project,
-    DefineAction(ShowOpenDialog, Merge, "~Open project@cmd+o");
-    DefineAction(ShowSaveDialog, Merge, "~Save project as...@shift+cmd+s");
-
-    Json(ShowOpenDialog);
-    Json(ShowSaveDialog);
+    DefineUnsavedAction(ShowOpenDialog, Merge, "~Open project@cmd+o");
+    DefineUnsavedAction(ShowSaveDialog, Merge, "~Save project as...@shift+cmd+s");
 
     DefineUnsavedAction(Undo, NoMerge, "@cmd+z");
     DefineUnsavedAction(Redo, NoMerge, "@shift+cmd+z");

@@ -29,19 +29,17 @@ void Windows::Render() const {
 
         const auto component_id = WindowComponentIds[i];
         const auto *component = Component::WithId[component_id];
-        if (auto *drawable_component = dynamic_cast<const Drawable *>(component)) {
-            ImGuiWindowFlags flags = component->WindowFlags;
-            if (!component->WindowMenu.Items.empty()) flags |= ImGuiWindowFlags_MenuBar;
+        ImGuiWindowFlags flags = component->WindowFlags;
+        if (!component->WindowMenu.Items.empty()) flags |= ImGuiWindowFlags_MenuBar;
 
-            bool open = true;
-            if (Begin(component->ImGuiLabel.c_str(), &open, flags)) {
-                component->WindowMenu.Draw();
-                drawable_component->Draw();
-            }
-            End();
-
-            if (!open) Action::Windows::ToggleVisible{component->Id}.q();
+        bool open = true;
+        if (Begin(component->ImGuiLabel.c_str(), &open, flags)) {
+            component->WindowMenu.Draw();
+            component->Draw();
         }
+        End();
+
+        if (!open) Action::Windows::ToggleVisible{component->Id}.q();
     }
 }
 

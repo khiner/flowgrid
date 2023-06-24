@@ -21,13 +21,13 @@ enum SliderFlags_ {
 };
 
 namespace FlowGrid {
-struct Style : Component, Drawable, Actionable<Action::Style::Any> {
+struct Style : Component, Actionable<Action::Style::Any> {
     using Component::Component;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    struct FlowGridStyle : Component, Drawable {
+    struct FlowGridStyle : Component {
         FlowGridStyle(ComponentArgs &&);
 
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
@@ -43,7 +43,7 @@ struct Style : Component, Drawable, Actionable<Action::Style::Any> {
         void Render() const override;
     };
 
-    struct ImGuiStyle : Component, Drawable {
+    struct ImGuiStyle : Component {
         ImGuiStyle(ComponentArgs &&);
 
         static std::vector<ImVec4> ColorPresetBuffer;
@@ -126,7 +126,7 @@ struct Style : Component, Drawable, Actionable<Action::Style::Any> {
         void Render() const override;
     };
 
-    struct ImPlotStyle : Component, Drawable {
+    struct ImPlotStyle : Component {
         ImPlotStyle(ComponentArgs &&);
 
         static std::vector<ImVec4> ColorPresetBuffer;

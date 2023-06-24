@@ -558,7 +558,7 @@ struct BlockNode : Node {
         device.AdvanceCursor(local_rect.Min); // todo this pattern should be RIAA style
 
         if (device.Type() == DeviceType_SVG) {
-            auto &svg_device = dynamic_cast<SVGDevice &>(device);
+            auto &svg_device = static_cast<SVGDevice &>(device);
             if (Inner && !fs::exists(svg_device.Directory / Inner->SvgFileName())) Inner->WriteSvg(svg_device.Directory);
             const string link = Inner ? SvgFileName() : "";
             svg_device.Rect({{0, 0}, size}, {.FillColor = fill_color, .CornerRadius = Style().BoxCornerRadius}, link);

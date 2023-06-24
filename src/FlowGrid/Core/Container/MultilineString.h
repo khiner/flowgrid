@@ -12,7 +12,7 @@ struct MultilineString : PrimitiveField<string>, Actionable<Action::MultilineStr
     operator bool() const { return !Value.empty(); }
     operator string_view() const { return Value; }
 
-    struct Metrics : Component, Drawable {
+    struct Metrics : Component {
         using Component::Component;
 
     protected:

@@ -7,7 +7,7 @@
 
 struct ImVec2;
 
-struct Vec2 : Field, Drawable, Actionable<Action::Vec2::Any> {
+struct Vec2 : Field, Actionable<Action::Vec2::Any> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, const std::pair<float, float> &value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
 

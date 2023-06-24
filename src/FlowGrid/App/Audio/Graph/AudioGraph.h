@@ -8,7 +8,7 @@
 struct ma_device;
 
 // Corresponds to `ma_node_graph`.
-struct AudioGraph : Component, Drawable {
+struct AudioGraph : Component {
     using Component::Component;
 
     void Init();
@@ -23,15 +23,15 @@ struct AudioGraph : Component, Drawable {
         void DoUninit() override;
     };
 
-    struct Nodes : Component, Drawable {
+    struct Nodes : Component {
         using Component::Component;
 
         // Iterate over all children, converting each element from a `Component *` to a `Node *`.
         // Usage: `for (const Node *node : Nodes) ...`
         struct Iterator : std::vector<Component *>::const_iterator {
             Iterator(auto it) : std::vector<Component *>::const_iterator(it) {}
-            const AudioGraphNode *operator*() const { return dynamic_cast<const AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
-            AudioGraphNode *operator*() { return dynamic_cast<AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
+            const AudioGraphNode *operator*() const { return static_cast<const AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
+            AudioGraphNode *operator*() { return static_cast<AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
         };
         Iterator begin() const { return Children.cbegin(); }
         Iterator end() const { return Children.cend(); }
@@ -56,7 +56,7 @@ struct AudioGraph : Component, Drawable {
     struct Style : Component {
         using Component::Component;
 
-        struct Matrix : Component, Drawable {
+        struct Matrix : Component {
             using Component::Component;
 
             Prop_(Float, CellSize, "?The size of each matrix cell, as a multiple of line height.", 1, 1, 3);

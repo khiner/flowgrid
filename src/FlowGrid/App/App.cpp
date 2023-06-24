@@ -164,13 +164,8 @@ void App::Render() const {
     // Draw non-window children.
     for (const auto *child : Children) {
         if (child == &Windows) continue;
-        if (auto *drawable_child = dynamic_cast<const Drawable *>(child)) {
-            if (!Windows.IsWindow(child->Id)) {
-                drawable_child->Draw();
-            }
-        }
+        if (!Windows.IsWindow(child->Id)) child->Draw();
     }
-
     Windows.Draw();
 
     static string PrevSelectedPath = "";

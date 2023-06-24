@@ -94,11 +94,9 @@ void Component::SelectTab() const {
 void Component::RenderTabs(const std::set<ID> &exclude) const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
-            if (const auto *drawable_child = dynamic_cast<const Drawable *>(child)) {
-                if (!exclude.contains(child->Id) && BeginTabItem(child->ImGuiLabel.c_str())) {
-                    drawable_child->Draw();
-                    EndTabItem();
-                }
+            if (!exclude.contains(child->Id) && BeginTabItem(child->ImGuiLabel.c_str())) {
+                child->Draw();
+                EndTabItem();
             }
         }
         EndTabBar();

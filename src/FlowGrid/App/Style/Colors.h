@@ -4,7 +4,7 @@
 
 struct ImVec4;
 
-struct Colors : Component, Drawable {
+struct Colors : Component {
     Colors(ComponentArgs &&, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
     ~Colors();
 

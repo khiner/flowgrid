@@ -3,7 +3,7 @@
 #include "Core/Container/Vector.h"
 #include "WindowsAction.h"
 
-struct Windows : Component, Drawable, Actionable<Action::Windows::Any>, MenuItemDrawable {
+struct Windows : Component, Actionable<Action::Windows::Any>, MenuItemDrawable {
     using Component::Component;
 
     void Apply(const ActionType &) const override;

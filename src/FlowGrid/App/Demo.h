@@ -2,16 +2,16 @@
 
 #include "FileDialog/FileDialog.h"
 
-struct Demo : Component, Drawable {
+struct Demo : Component {
     Demo(ComponentArgs &&);
 
-    struct ImGuiDemo : Component, Drawable {
+    struct ImGuiDemo : Component {
         using Component::Component;
 
     protected:
         void Render() const override;
     };
-    struct ImPlotDemo : Component, Drawable {
+    struct ImPlotDemo : Component {
         using Component::Component;
 
     protected:

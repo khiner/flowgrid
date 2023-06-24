@@ -27,7 +27,7 @@ U32 Colors::ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUT
 ImVec4 Colors::ConvertU32ToFloat4(const U32 value) { return value == UInt::AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 Count Colors::Size() const { return Children.size(); }
 
-const UInt *Colors::At(Count i) const { return dynamic_cast<const UInt *>(Children[i]); }
+const UInt *Colors::At(Count i) const { return static_cast<const UInt *>(Children[i]); }
 U32 Colors::operator[](Count i) const { return *At(i); };
 void Colors::Set(const std::vector<ImVec4> &values) const {
     for (Count i = 0; i < values.size(); i++) {
@@ -59,7 +59,7 @@ void Colors::Render() const {
     PushItemWidth(-160);
 
     for (const auto *child : Children) {
-        const auto *child_color = dynamic_cast<const UInt *>(child);
+        const auto *child_color = static_cast<const UInt *>(child);
         if (filter.PassFilter(child->Name.c_str())) {
             child_color->ColorEdit4(flags, AllowAuto);
         }

@@ -38,7 +38,7 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraph : Component, Drawable, Actionable<Action::FaustGraph::Any> {
+struct FaustGraph : Component, Actionable<Action::FaustGraph::Any> {
     FaustGraph(ComponentArgs &&args)
         : Component(
               std::move(args),
@@ -51,7 +51,7 @@ struct FaustGraph : Component, Drawable, Actionable<Action::FaustGraph::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    struct Style : Component, Drawable {
+    struct Style : Component {
         Style(ComponentArgs &&);
 
         Prop_(

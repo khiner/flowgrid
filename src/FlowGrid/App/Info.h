@@ -2,7 +2,7 @@
 
 #include "Core/Component.h"
 
-struct Info : Component, Drawable {
+struct Info : Component {
     using Component::Component;
 
 protected:

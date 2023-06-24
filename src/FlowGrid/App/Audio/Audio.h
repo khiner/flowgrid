@@ -6,7 +6,7 @@
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
 
-struct Audio : Component, Drawable, Actionable<Action::Audio::Any> {
+struct Audio : Component, Actionable<Action::Audio::Any> {
     using Component::Component;
 
     void Apply(const ActionType &) const override;

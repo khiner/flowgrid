@@ -40,7 +40,7 @@ enum WindowFlags_ {
     WindowFlags_MenuBar = 1 << 10,
 };
 
-struct Component {
+struct Component : Drawable {
     struct Metadata {
         // Split the string on '?'.
         // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
@@ -83,9 +83,10 @@ struct Component {
     void RenderTabs(const std::set<ID> &exclude) const;
 
 protected:
+    virtual void Render() const override {} // By default, components don't render anything.
+
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
-
 private:
     Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
 };

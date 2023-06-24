@@ -2,7 +2,7 @@
 
 #include "Core/Primitive/Float.h"
 
-struct ApplicationSettings : Component, Drawable {
+struct ApplicationSettings : Component {
     using Component::Component;
 
     Prop(Float, GestureDurationSec, 0.5, 0, 5); // Merge actions occurring in short succession into a single gesture

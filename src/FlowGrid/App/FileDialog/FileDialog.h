@@ -10,7 +10,7 @@
 using ImGuiFileDialogFlags = int;
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-struct FileDialog : Component, Drawable, Actionable<Action::FileDialog::Any> {
+struct FileDialog : Component, Actionable<Action::FileDialog::Any> {
     using Component::Component;
 
     void Apply(const ActionType &) const override;
@@ -18,7 +18,7 @@ struct FileDialog : Component, Drawable, Actionable<Action::FileDialog::Any> {
 
     void Set(const FileDialogData &) const;
 
-    struct Demo : Component, Drawable {
+    struct Demo : Component {
         using Component::Component;
 
     protected:

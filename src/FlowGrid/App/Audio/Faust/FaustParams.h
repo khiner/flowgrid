@@ -62,10 +62,10 @@ enum ParamsWidthSizingPolicy_ {
 };
 using ParamsWidthSizingPolicy = int;
 
-struct FaustParams : Component, Drawable {
+struct FaustParams : Component {
     using Component::Component;
 
-    struct Style : Component, Drawable {
+    struct Style : Component {
         using Component::Component;
 
         Prop(Bool, HeaderTitles, true);

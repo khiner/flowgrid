@@ -3,7 +3,7 @@
 #include "Core/Action/Actionable.h"
 #include "Core/Field/Field.h"
 
-template<IsPrimitive T> struct PrimitiveField : Field, Drawable {
+template<IsPrimitive T> struct PrimitiveField : Field {
     PrimitiveField(ComponentArgs &&args, T value = {}) : Field(std::move(args)), Value(value) {
         Set(value);
     }

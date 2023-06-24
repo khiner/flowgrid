@@ -5,10 +5,10 @@
 
 #include "nlohmann/json_fwd.hpp"
 
-struct Metrics : Component, Drawable {
+struct Metrics : Component {
     using Component::Component;
 
-    struct FlowGridMetrics : Component, Drawable {
+    struct FlowGridMetrics : Component {
         using Component::Component;
         Prop(Bool, ShowRelativePaths, true);
 
@@ -16,14 +16,14 @@ struct Metrics : Component, Drawable {
         void Render() const override;
     };
 
-    struct ImGuiMetrics : Component, Drawable {
+    struct ImGuiMetrics : Component {
         using Component::Component;
 
     protected:
         void Render() const override;
     };
 
-    struct ImPlotMetrics : Component, Drawable {
+    struct ImPlotMetrics : Component {
         using Component::Component;
 
     protected:
@@ -38,10 +38,10 @@ protected:
     void Render() const override;
 };
 
-struct Debug : Component, Drawable {
+struct Debug : Component {
     using Component::Component;
 
-    struct StateViewer : Component, Drawable {
+    struct StateViewer : Component {
         StateViewer(ComponentArgs &&args)
             : Component(
                   std::move(args),
@@ -71,7 +71,7 @@ struct Debug : Component, Drawable {
         void Render() const override;
     };
 
-    struct ProjectPreview : Component, Drawable {
+    struct ProjectPreview : Component {
         using Component::Component;
 
         Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
@@ -82,21 +82,21 @@ struct Debug : Component, Drawable {
     };
 
     // StateMemoryEditor, WindowFlags_NoScrollbar
-    struct StorePathUpdateFrequency : Component, Drawable {
+    struct StorePathUpdateFrequency : Component {
         using Component::Component;
 
     protected:
         void Render() const override;
     };
 
-    struct DebugLog : Component, Drawable {
+    struct DebugLog : Component {
         using Component::Component;
 
     protected:
         void Render() const override;
     };
 
-    struct StackTool : Component, Drawable {
+    struct StackTool : Component {
         using Component::Component;
 
     protected:

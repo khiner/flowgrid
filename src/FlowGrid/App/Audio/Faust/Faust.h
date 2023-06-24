@@ -7,7 +7,7 @@
 #include "Core/Action/Actionable.h"
 #include "Core/Container/MultilineString.h"
 
-struct Faust : Component, Drawable, Actionable<Action::Faust> {
+struct Faust : Component, Actionable<Action::Faust> {
     using Component::Component;
 
     void Apply(const ActionType &) const override;
@@ -16,7 +16,7 @@ struct Faust : Component, Drawable, Actionable<Action::Faust> {
     bool IsReady() const; // Has code and no errors.
     bool NeedsRestart() const;
 
-    struct FaustLog : Component, Drawable {
+    struct FaustLog : Component {
         using Component::Component;
 
         Prop(String, Error);

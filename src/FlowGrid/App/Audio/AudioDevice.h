@@ -9,7 +9,7 @@
 
 struct ma_device;
 // Corresponds to `ma_device`.
-struct AudioDevice : Component, Drawable {
+struct AudioDevice : Component {
     using Component::Component;
 
     static const std::vector<U32> PrioritizedSampleRates;

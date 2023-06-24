@@ -43,8 +43,11 @@ struct Style : Component, Actionable<Action::Style::Any> {
         void Render() const override;
     };
 
-    struct ImGuiStyle : Component {
+    struct ImGuiStyle : Component, Field::ChangeListener {
         ImGuiStyle(ComponentArgs &&);
+        ~ImGuiStyle();
+
+        inline static bool IsChanged{false};
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
@@ -52,7 +55,8 @@ struct Style : Component, Actionable<Action::Style::Any> {
             ImGuiColors(ComponentArgs &&);
         };
 
-        void Update(ImGuiContext *ctx) const;
+        void OnFieldChanged() override { IsChanged = true; }
+        void UpdateIfChanged(ImGuiContext *ctx) const;
         void ColorsDark() const;
         void ColorsLight() const;
         void ColorsClassic() const;
@@ -126,8 +130,11 @@ struct Style : Component, Actionable<Action::Style::Any> {
         void Render() const override;
     };
 
-    struct ImPlotStyle : Component {
+    struct ImPlotStyle : Component, Field::ChangeListener {
         ImPlotStyle(ComponentArgs &&);
+        ~ImPlotStyle();
+
+        inline static bool IsChanged{false};
 
         static std::vector<ImVec4> ColorPresetBuffer;
 
@@ -135,7 +142,8 @@ struct Style : Component, Actionable<Action::Style::Any> {
             ImPlotColors(ComponentArgs &&);
         };
 
-        void Update(ImPlotContext *ctx) const;
+        void OnFieldChanged() override { IsChanged = true; }
+        void UpdateIfChanged(ImPlotContext *ctx) const;
         void ColorsAuto() const;
         void ColorsDark() const;
         void ColorsLight() const;

@@ -42,6 +42,32 @@ void Style::Apply(const ActionType &action) const {
 
 bool Style::CanApply(const ActionType &) const { return true; }
 
+Style::FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : Component(std::move(args)) {
+    ColorsDark();
+}
+
+Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : Component(std::move(args)) {
+    for (const auto *child : Children) {
+        const auto *field = static_cast<const Field *>(child);
+        Field::RegisterChangeListener(*field, this);
+    }
+    ColorsDark();
+}
+Style::ImGuiStyle::~ImGuiStyle() {
+    Field::UnregisterChangeListener(this);
+}
+
+Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : Component(std::move(args)) {
+    for (const auto *child : Children) {
+        const auto *field = static_cast<const Field *>(child);
+        Field::RegisterChangeListener(*field, this);
+    }
+    ColorsAuto();
+}
+Style::ImPlotStyle::~ImPlotStyle() {
+    Field::UnregisterChangeListener(this);
+}
+
 const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {
         case FlowGridCol_GestureIndicator: return "GestureIndicator";
@@ -50,7 +76,11 @@ const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     }
 }
 
-void Style::ImGuiStyle::Update(ImGuiContext *ctx) const {
+void Style::ImGuiStyle::UpdateIfChanged(ImGuiContext *ctx) const {
+    if (!IsChanged) return;
+
+    IsChanged = false;
+
     auto &style = ctx->Style;
     style.Alpha = Alpha;
     style.DisabledAlpha = DisabledAlpha;
@@ -95,7 +125,11 @@ void Style::ImGuiStyle::Update(ImGuiContext *ctx) const {
     for (int i = 0; i < ImGuiCol_COUNT; i++) style.Colors[i] = ColorConvertU32ToFloat4(Colors[i]);
 }
 
-void Style::ImPlotStyle::Update(ImPlotContext *ctx) const {
+void Style::ImPlotStyle::UpdateIfChanged(ImPlotContext *ctx) const {
+    if (!IsChanged) return;
+
+    IsChanged = false;
+
     auto &style = ctx->Style;
     style.LineWeight = LineWeight;
     style.Marker = Marker;
@@ -130,16 +164,6 @@ void Style::ImPlotStyle::Update(ImPlotContext *ctx) const {
     style.Use24HourClock = Use24HourClock;
     for (int i = 0; i < ImPlotCol_COUNT; i++) style.Colors[i] = Colors::ConvertU32ToFloat4(Colors[i]);
     ImPlot::BustItemCache();
-}
-
-Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : Component(std::move(args)) {
-    ColorsDark();
-}
-Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : Component(std::move(args)) {
-    ColorsAuto();
-}
-Style::FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : Component(std::move(args)) {
-    ColorsDark();
 }
 
 void Style::ImGuiStyle::ColorsDark() const {

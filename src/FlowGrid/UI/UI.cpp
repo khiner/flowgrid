@@ -127,13 +127,9 @@ bool UIContext::Tick(const Drawable &drawable) {
     }
 
     // Check if new UI settings need to be applied.
-    auto &flags = UpdateFlags;
-    if (flags != UIContext::Flags_None) {
-        if (flags & UIContext::Flags_ImGuiSettings) imgui_settings.Update(ImGui::GetCurrentContext());
-        if (flags & UIContext::Flags_ImGuiStyle) style.ImGui.Update(ImGui::GetCurrentContext());
-        if (flags & UIContext::Flags_ImPlotStyle) style.ImPlot.Update(ImPlot::GetCurrentContext());
-        flags = UIContext::Flags_None;
-    }
+    imgui_settings.UpdateIfChanged(ImGui::GetCurrentContext());
+    style.ImGui.UpdateIfChanged(ImGui::GetCurrentContext());
+    style.ImPlot.UpdateIfChanged(ImPlot::GetCurrentContext());
 
     auto &io = ImGui::GetIO();
 

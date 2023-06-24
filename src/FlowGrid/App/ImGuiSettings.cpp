@@ -237,7 +237,11 @@ Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) const {
     return store::CreatePatch(Path);
 }
 
-void ImGuiSettings::Update(ImGuiContext *ctx) const {
+void ImGuiSettings::UpdateIfChanged(ImGuiContext *ctx) const {
+    if (!IsChanged) return;
+
+    IsChanged = false;
+
     DockSettingsHandler_ClearAll(ctx, nullptr);
     Windows.Update(ctx);
     Tables.Update(ctx);

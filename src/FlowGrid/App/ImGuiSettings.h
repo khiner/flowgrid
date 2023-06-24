@@ -82,17 +82,20 @@ struct TableSettings : Component {
 struct ImGuiSettings : Component {
     using Component::Component;
 
+    inline static bool IsChanged{false};
+
     // Create a patch resulting from applying the current ImGui context.
     Patch CreatePatch(ImGuiContext *ctx) const;
 
     // `Update(ctx)` is basically `imgui_context.settings = this`.
     // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized `.ini` text format.
-    void Update(ImGuiContext *ctx) const;
+    void UpdateIfChanged(ImGuiContext *ctx) const;
 
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);
     Prop(TableSettings, Tables);
+
 };
 
 extern const ImGuiSettings &imgui_settings;

@@ -236,20 +236,6 @@ void FindAndMarkStaleFields(const Patch &patch) {
     }
 }
 
-void SetStyleUpdateFlags(const Patch &patch) {
-    if (patch.IsPrefixOfAnyPath(fg::style.ImGui.Path)) Ui.UpdateFlags |= UIContext::Flags_ImGuiStyle;
-    if (patch.IsPrefixOfAnyPath(fg::style.ImPlot.Path)) Ui.UpdateFlags |= UIContext::Flags_ImPlotStyle;
-}
-
-void SetUiUpdateFlags(const Patch &patch) {
-    // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
-    // when it initially changes, since ImGui has already updated its own context.
-    // We only need to update the ImGui context based on settings changes when the history index changes.
-    // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
-    if (patch.IsPrefixOfAnyPath(imgui_settings.Path)) Ui.UpdateFlags |= UIContext::Flags_ImGuiSettings;
-    SetStyleUpdateFlags(patch);
-}
-
 void SetHistoryIndex(Count index) {
     if (index == History.Index) return;
 
@@ -257,14 +243,27 @@ void SetHistoryIndex(Count index) {
     History.LatestPatch = store::CheckedSet(History.CurrentStore());
     FindAndMarkStaleFields(History.LatestPatch);
     Field::RefreshStale();
-    SetUiUpdateFlags(History.LatestPatch);
+    // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
+    // when it initially changes, since ImGui has already updated its own context.
+    // We only need to update the ImGui context based on settings changes when the history index changes.
+    // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
+    // We don't make `ImGuiSettings` a field change listener for this because it would would end up being slower,
+    // since it has many descendent fields, and we would wastefully check for changes during the forward action pass, as explained above.
+    if (History.LatestPatch.IsPrefixOfAnyPath(imgui_settings.Path)) imgui_settings.IsChanged = true;
     ProjectHasChanges = true;
+}
+
+// When loading a new project, we always refresh all UI contexts.
+void RefreshAllUiContextsOnNextRender() {
+    style.ImGui.IsChanged = true;
+    style.ImPlot.IsChanged = true;
+    imgui_settings.IsChanged = true;
 }
 
 void Project::OnApplicationLaunch() {
     Field::IsGesturing = false;
     History = {};
-    Ui.SetAllUpdateFlags();
+    RefreshAllUiContextsOnNextRender();
 
     // Keep the canonical "empty" project up-to-date.
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
@@ -328,7 +327,7 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
     store::SetJson(project);
     Field::RefreshAll();
-    Ui.SetAllUpdateFlags();
+    RefreshAllUiContextsOnNextRender();
     History = {};
 }
 
@@ -417,7 +416,6 @@ void RunQueuedActions(bool force_commit_gesture) {
             const auto store_commit_time = Clock::now();
             FindAndMarkStaleFields(History.LatestPatch);
             Field::RefreshStale();
-            SetStyleUpdateFlags(History.LatestPatch);
             History.AddToActiveGesture(stateful_actions, store_commit_time);
 
             ProjectHasChanges = true;

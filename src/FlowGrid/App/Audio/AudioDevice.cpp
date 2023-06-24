@@ -99,11 +99,6 @@ void AudioDevice::Init(AudioDevice::Callback callback) {
     if (MaDevice.sampleRate != SampleRate) SampleRate.Set_(MaDevice.sampleRate);
 }
 
-void AudioDevice::Update() {
-    if (!IsStarted()) return;
-    ma_device_set_master_volume(&MaDevice, Muted ? 0.f : float(Volume));
-}
-
 void AudioDevice::Uninit() {
     ma_device_uninit(&MaDevice);
     // ma_resampler_uninit(&Resampler, nullptr);
@@ -115,30 +110,6 @@ void AudioDevice::Uninit() {
 
     const int result = ma_context_uninit(&AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
-}
-
-bool AudioDevice::NeedsRestart() const {
-    static string PreviousInDeviceName = InDeviceName, PreviousOutDeviceName = OutDeviceName;
-    static int PreviousInFormat = InFormat, PreviousOutFormat = OutFormat;
-    static U32 PreviousInChannels = InChannels, PreviousOutChannels = OutChannels;
-    static U32 PreviousSampleRate = SampleRate;
-
-    const bool needs_restart =
-        PreviousInDeviceName != InDeviceName ||
-        PreviousOutDeviceName != OutDeviceName ||
-        PreviousInFormat != InFormat || PreviousOutFormat != OutFormat ||
-        PreviousInChannels != InChannels || PreviousOutChannels != OutChannels ||
-        PreviousSampleRate != SampleRate;
-
-    PreviousInDeviceName = InDeviceName;
-    PreviousOutDeviceName = OutDeviceName;
-    PreviousInFormat = InFormat;
-    PreviousOutFormat = OutFormat;
-    PreviousInChannels = InChannels;
-    PreviousOutChannels = OutChannels;
-    PreviousSampleRate = SampleRate;
-
-    return needs_restart;
 }
 
 void AudioDevice::Start() const {
@@ -161,6 +132,7 @@ void AudioDevice::Render() const {
         TextUnformatted("No audio device started yet");
         return;
     }
+    ma_device_set_master_volume(&MaDevice, Muted ? 0.f : float(Volume));
     Muted.Draw();
     SameLine();
     Volume.Draw();

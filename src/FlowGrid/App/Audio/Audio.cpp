@@ -2,6 +2,30 @@
 
 #include "imgui.h"
 
+Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
+    Init();
+    if (Device.IsStarted()) Graph.Update();
+
+    const std::vector<std::reference_wrapper<const Field>> listened_fields = {
+        Device.On,
+        Device.InDeviceName,
+        Device.OutDeviceName,
+        Device.InFormat,
+        Device.OutFormat,
+        Device.InChannels,
+        Device.OutChannels,
+        Device.SampleRate,
+    };
+    for (const Field &field : listened_fields) {
+        Field::RegisterChangeListener(field, this);
+    }
+}
+
+Audio::~Audio() {
+    Field::UnregisterChangeListener(this);
+    Uninit();
+}
+
 void Audio::Apply(const ActionType &action) const {
     Visit(
         action,
@@ -10,6 +34,22 @@ void Audio::Apply(const ActionType &action) const {
 }
 
 bool Audio::CanApply(const ActionType &) const { return true; }
+
+void Audio::OnFieldChanged() {
+    const bool is_initialized = Device.IsStarted();
+    if (Device.On && !is_initialized) {
+        Init();
+    } else if (!Device.On && is_initialized) {
+        Uninit();
+    } else if (is_initialized) {
+        // todo no need to completely reset in some cases (like when only format has changed) - just modify as needed in `Device::Update`.
+        // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
+        Uninit();
+        Init();
+    }
+
+    if (Device.IsStarted()) Graph.Update();
+}
 
 // static ma_resampler_config ResamplerConfig;
 // static ma_resampler Resampler;
@@ -66,33 +106,12 @@ void Audio::Init() {
     Device.Init(AudioGraph::AudioCallback);
     Graph.Init();
     Device.Start();
-
-    Device.NeedsRestart(); // xxx Updates cached values as side effect.
 }
 
 void Audio::Uninit() {
     Device.Stop();
     Graph.Uninit();
     Device.Uninit();
-}
-
-void Audio::Update() {
-    const bool is_initialized = Device.IsStarted();
-    const bool needs_restart = Device.NeedsRestart(); // Don't inline! Must run during every update.
-    if (Device.On && !is_initialized) {
-        Init();
-    } else if (!Device.On && is_initialized) {
-        Uninit();
-    } else if (needs_restart && is_initialized) {
-        // todo no need to completely reset in many cases (like when only format has changed) - just modify as needed in `Device::Update`.
-        // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
-        Uninit();
-        Init();
-    }
-
-    Device.Update();
-
-    if (Device.IsStarted()) Graph.Update();
 }
 
 using namespace ImGui;

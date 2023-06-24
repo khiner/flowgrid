@@ -6,15 +6,17 @@
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
 
-struct Audio : Component, Actionable<Action::Audio::Any> {
-    using Component::Component;
+struct Audio : Component, Actionable<Action::Audio::Any>, Field::ChangeListener {
+    Audio(ComponentArgs &&);
+    ~Audio();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
+    void OnFieldChanged() override;
+
     void Init();
     void Uninit();
-    void Update();
 
     Prop(AudioDevice, Device);
     Prop(AudioGraph, Graph);
@@ -22,7 +24,4 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
 
 protected:
     void Render() const override;
-
-private:
-    bool NeedsRestart() const;
 };

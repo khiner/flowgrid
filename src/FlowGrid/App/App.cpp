@@ -91,7 +91,7 @@ static const fs::path InternalPath = ".flowgrid";
 static const std::map<ProjectJsonFormat, std::string> ExtensionForProjectJsonFormat{{ProjectJsonFormat::StateFormat, ".fls"}, {ProjectJsonFormat::ActionFormat, ".fla"}};
 static const auto ProjectJsonFormatForExtension = ExtensionForProjectJsonFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
 
-static const std::set<std::string> AllProjectExtensions = std::views::keys(ProjectJsonFormatForExtension) | ranges::to<std::set>;
+static const auto AllProjectExtensions = std::views::keys(ProjectJsonFormatForExtension) | ranges::to<std::unordered_set>;
 static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
 
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
@@ -425,8 +425,8 @@ void RunQueuedActions(bool force_commit_gesture) {
     } else {
         store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }
+
     if (commit_gesture) History.CommitGesture();
-    Application.Audio.Update();
 }
 
 #define DefineQ(ActionType)                                                                                          \

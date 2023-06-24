@@ -1,6 +1,6 @@
 #pragma once
 
-#include <set>
+#include <unordered_set>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -80,7 +80,7 @@ struct Component : Drawable {
     const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 
     void RenderTabs() const;
-    void RenderTabs(const std::set<ID> &exclude) const;
+    void RenderTabs(const std::unordered_set<ID> &exclude) const;
 
 protected:
     virtual void Render() const override {} // By default, components don't render anything.

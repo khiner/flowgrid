@@ -91,7 +91,7 @@ void Component::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
 
-void Component::RenderTabs(const std::set<ID> &exclude) const {
+void Component::RenderTabs(const std::unordered_set<ID> &exclude) const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
             if (!exclude.contains(child->Id) && BeginTabItem(child->ImGuiLabel.c_str())) {

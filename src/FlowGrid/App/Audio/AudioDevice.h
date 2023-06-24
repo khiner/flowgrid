@@ -18,10 +18,7 @@ struct AudioDevice : Component {
 
     using Callback = void (*)(ma_device *, void *, const void *, Count);
 
-    bool NeedsRestart() const;
-
     void Init(Callback callback);
-    void Update(); // Update device based on current settings.
     void Uninit();
 
     void Start() const;

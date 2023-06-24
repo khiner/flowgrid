@@ -17,7 +17,6 @@ const ApplicationSettings &application_settings = app.Settings;
 UIContext Ui{}; // Initialize UI
 
 int main() {
-    Application.Audio.Update();
     // Initialize the global canonical store with all application state values set during the initialization of `App`.
     store::Commit();
 
@@ -39,11 +38,9 @@ int main() {
 
     while (Ui.Tick(app)) {
         RunQueuedActions();
-        Application.Audio.Update();
     }
 
     IGFD::Uninit();
-    Application.Audio.Uninit();
 
     return 0;
 }

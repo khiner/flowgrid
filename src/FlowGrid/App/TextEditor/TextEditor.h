@@ -1,8 +1,6 @@
 #pragma once
 
-#include "imgui.h"
 #include <array>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <regex>
@@ -10,6 +8,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "imgui.h"
 
 using std::string;
 

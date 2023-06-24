@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <stack>
 #include <string>
 #include <unordered_map>

@@ -83,10 +83,10 @@ Patch CheckedSet(const Store &store) {
     return patch;
 }
 
-void SetJson(const nlohmann::json &j) {
+Patch SetJson(const nlohmann::json &j) {
     Transient = {};
     IsTransient = false;
-    AppStore = JsonToStore(j);
+    return CheckedSet(JsonToStore(j));
 }
 
 Patch CheckedCommit() { return CheckedSet(EndTransient()); }

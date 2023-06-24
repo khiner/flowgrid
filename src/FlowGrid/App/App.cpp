@@ -315,9 +315,10 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 
 // Helper function used in `Project::Open`.
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
-    store::SetJson(project);
-    Field::RefreshAllWithoutNotifying();
-    MarkAllUiContextsChanged();
+    const auto &patch = store::SetJson(project);
+    Field::RefreshChanged(patch);
+    // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
+    imgui_settings.IsChanged = true;
     History = {};
 }
 

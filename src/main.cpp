@@ -20,8 +20,8 @@ int main() {
     // Initialize the global canonical store with all application state values set during the initialization of `App`.
     store::Commit();
 
-    // Ensure all store values set during initialization are reflected in cached field/collection values.
-    Field::RefreshAllWithoutNotifying();
+    // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
+    Field::RefreshAndNotifyAll();
 
     IGFD::Init();
 

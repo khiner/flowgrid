@@ -4,7 +4,6 @@
 
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
     Init();
-    if (Device.IsStarted()) Graph.Update();
 
     const std::vector<std::reference_wrapper<const Field>> listened_fields = {
         Device.On,

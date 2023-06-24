@@ -32,16 +32,16 @@ void Field::FindAndMarkChanged(const Patch &patch) {
 
 void Field::RefreshChanged(const Patch &patch) {
     FindAndMarkChanged(patch);
-    static std::unordered_set<ChangeListener *> AffectedListeners;
+    static std::unordered_set<ChangeListener *> affected_listeners;
     for (const auto changed_field_id : ChangedFieldIds) {
         auto *changed_field = FieldById[changed_field_id];
         changed_field->RefreshValue();
         const auto &listeners = ChangeListenersForField[changed_field_id];
-        AffectedListeners.insert(listeners.begin(), listeners.end());
+        affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
-    for (auto *listener : AffectedListeners) listener->OnFieldChanged();
-    AffectedListeners.clear();
+    for (auto *listener : affected_listeners) listener->OnFieldChanged();
+    affected_listeners.clear();
     ChangedFieldIds.clear();
 }
 

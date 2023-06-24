@@ -8,14 +8,15 @@
 
 #include "FieldActionHandler.h"
 
+struct Patch;
+
 // A `Field` is a component backed by a store value.
 struct Field : Component {
     struct ChangeListener {
         // Called when at least one of the listened fields has changed.
-        // Changed field(s) are not passed to the callback.
+        // Changed field(s) are not passed to the callback
         // However, this callback is called before the changed values are marked as non-stale,
-        // so listeners can use `field.IsValueStale()` to check which listened fields were changed if they wish.
-        // todo change `IsValueStale` to `IsValueChanged`.
+        // so listeners can use `field.IsChanged()` to check which listened fields were changed if they wish.
         virtual void OnFieldChanged() = 0;
     };
 
@@ -24,49 +25,37 @@ struct Field : Component {
 
     Field &operator=(const Field &) = delete;
 
-    inline static std::vector<Field *> Instances; // All fields.
-    inline static std::unordered_map<StorePath, U32, PathHash> IndexForPath; // Maps store paths to field indices.
-    inline static std::vector<bool> ValueIsStale;
+    inline static std::unordered_map<ID, Field *> FieldById;
+    inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
+    inline static std::unordered_set<ID> ChangedFieldIds; // Fields updated during the current action pass (cleared at the end of it).
+    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersForField;
 
-    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListeners;
     inline static void RegisterChangeListener(const Field &field, ChangeListener *listener) {
-        if (ChangeListeners.find(field.Id) == ChangeListeners.end()) {
-            ChangeListeners.emplace(field.Id, std::unordered_set<ChangeListener *>{});
+        if (!ChangeListenersForField.contains(field.Id)) {
+            ChangeListenersForField.emplace(field.Id, std::unordered_set<ChangeListener *>{});
         }
-        ChangeListeners[field.Id].insert(listener);
+        ChangeListenersForField[field.Id].insert(listener);
     }
     inline static void UnregisterChangeListener(ChangeListener *listener) {
-        for (auto &[field_id, listeners] : ChangeListeners) {
+        for (auto &[field_id, listeners] : ChangeListenersForField) {
             listeners.erase(listener);
-            if (listeners.empty()) ChangeListeners.erase(field_id);
+            if (listeners.empty()) ChangeListenersForField.erase(field_id);
         }
+    }
+
+    static Field *FindByPath(const StorePath &);
+
+    // Refresh the cached values of all fields affected by the patch, and notifies all listeners of the affected fields.
+    static void RefreshChanged(const Patch &);
+
+    // Refresh the cached values of all fields without notifying listeners.
+    // Used during app/project initialization.
+    inline static void RefreshAllWithoutNotifying() {
+        for (auto &[id, field] : FieldById) field->RefreshValue();
     }
 
     inline static bool IsGesturing{};
     static void UpdateGesturing();
-
-    inline static void RefreshStale() {
-        static std::unordered_set<ChangeListener *> AffectedListeners;
-        for (size_t i = 0; i < Instances.size(); i++) {
-            if (ValueIsStale[i]) {
-                auto *field = Instances[i];
-                field->RefreshValue();
-                const auto &listeners = ChangeListeners[field->Id];
-                AffectedListeners.insert(listeners.begin(), listeners.end());
-            }
-        }
-
-        for (auto *listener : AffectedListeners) listener->OnFieldChanged();
-        AffectedListeners.clear();
-
-        ValueIsStale.assign(ValueIsStale.size(), false);
-    }
-
-    inline static void RefreshAll() {
-        for (auto *field : Instances) field->RefreshValue();
-    }
-
-    static Field *FindByPath(const StorePath &);
 
     inline static FieldActionHandler ActionHandler;
 
@@ -74,8 +63,10 @@ struct Field : Component {
     // Should be called for each affected field after a state change to avoid stale values.
     virtual void RefreshValue() = 0;
 
-    inline bool IsValueStale() const noexcept { return ValueIsStale[Index]; }
-    inline void MarkValueStale() const noexcept { ValueIsStale[Index] = true; }
+    inline bool IsChanged() const noexcept { return ChangedFieldIds.contains(Id); }
 
-    unsigned int Index; // Index in `Instances`.
+private:
+    // Find and mark fields with values that were made stale during the most recent action pass.
+    // Used internally by `RefreshChanged`.
+    static void FindAndMarkChanged(const Patch &);
 };

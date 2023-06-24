@@ -5,7 +5,6 @@
 
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
-#include "Helper/Time.h"
 
 struct PatchOp {
     enum Type {

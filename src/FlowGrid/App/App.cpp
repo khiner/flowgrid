@@ -10,6 +10,7 @@
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
+#include "Helper/Time.h"
 #include "Project/ProjectJson.h"
 #include "UI/UI.h"
 
@@ -226,23 +227,12 @@ bool Project::Save(const fs::path &path) {
     return true;
 }
 
-void FindAndMarkStaleFields(const Patch &patch) {
-    // Find and mark fields with stale values.
-    for (const auto &path : patch.GetPaths()) {
-        auto *modified_field = Field::FindByPath(path);
-        if (modified_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
-
-        modified_field->MarkValueStale();
-    }
-}
-
 void SetHistoryIndex(Count index) {
     if (index == History.Index) return;
 
     History.SetIndex(index);
     History.LatestPatch = store::CheckedSet(History.CurrentStore());
-    FindAndMarkStaleFields(History.LatestPatch);
-    Field::RefreshStale();
+    Field::RefreshChanged(History.LatestPatch);
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
@@ -254,7 +244,7 @@ void SetHistoryIndex(Count index) {
 }
 
 // When loading a new project, we always refresh all UI contexts.
-void RefreshAllUiContextsOnNextRender() {
+void MarkAllUiContextsChanged() {
     style.ImGui.IsChanged = true;
     style.ImPlot.IsChanged = true;
     imgui_settings.IsChanged = true;
@@ -263,7 +253,7 @@ void RefreshAllUiContextsOnNextRender() {
 void Project::OnApplicationLaunch() {
     Field::IsGesturing = false;
     History = {};
-    RefreshAllUiContextsOnNextRender();
+    MarkAllUiContextsChanged();
 
     // Keep the canonical "empty" project up-to-date.
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
@@ -326,8 +316,8 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 // Helper function used in `Project::Open`.
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
     store::SetJson(project);
-    Field::RefreshAll();
-    RefreshAllUiContextsOnNextRender();
+    Field::RefreshAllWithoutNotifying();
+    MarkAllUiContextsChanged();
     History = {};
 }
 
@@ -350,8 +340,7 @@ void Project::Open(const fs::path &file_path) {
             History.AddTransientGesture(gesture);
         }
         History.LatestPatch = store::CheckedCommit();
-        FindAndMarkStaleFields(History.LatestPatch);
-        Field::RefreshStale();
+        Field::RefreshChanged(History.LatestPatch);
         ::SetHistoryIndex(indexed_gestures.Index);
     }
 
@@ -414,8 +403,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         History.LatestPatch = store::CheckedCommit();
         if (!History.LatestPatch.Empty()) {
             const auto store_commit_time = Clock::now();
-            FindAndMarkStaleFields(History.LatestPatch);
-            Field::RefreshStale();
+            Field::RefreshChanged(History.LatestPatch);
             History.AddToActiveGesture(stateful_actions, store_commit_time);
 
             ProjectHasChanges = true;

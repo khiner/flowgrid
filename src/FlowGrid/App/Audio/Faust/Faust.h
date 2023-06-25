@@ -19,7 +19,7 @@ struct Faust : Component, Actionable<Action::Faust> {
     struct FaustLog : Component {
         using Component::Component;
 
-        Prop(String, Error);
+        mutable std::string ErrorMessage;
 
     protected:
         void Render() const override;

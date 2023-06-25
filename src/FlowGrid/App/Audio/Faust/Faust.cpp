@@ -26,7 +26,7 @@ void Faust::Apply(const ActionType &action) const {
 
 bool Faust::CanApply(const ActionType &) const { return true; }
 
-bool Faust::IsReady() const { return Code && !Log.Error; }
+bool Faust::IsReady() const { return Code && Log.ErrorMessage.empty(); }
 bool Faust::NeedsRestart() const {
     static string PreviousCode = Code;
 
@@ -71,6 +71,6 @@ void Faust::Render() const {
 
 void Faust::FaustLog::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    Error.Draw();
+    TextUnformatted(ErrorMessage.c_str());
     PopStyleColor();
 }

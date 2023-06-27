@@ -30,16 +30,13 @@ void Audio::AudioCallback(ma_device *device, void *output, const void *input, Co
 }
 
 void Audio::OnFieldChanged() {
+    // xxx this is obviously not great. could maybe move faust node management to `Faust`.
     if (Faust.Code.IsChanged()) {
-        if (!Faust.Dsp && Faust.Code) {
-            Faust.InitDsp();
-        } else if (Faust.Dsp && !Faust.Code) {
-            Faust.UninitDsp();
-        } else {
-            Faust.UninitDsp();
-            Faust.InitDsp();
-        }
+        Graph.Nodes.Faust.Uninit();
+        Faust.UpdateDsp();
         Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
+        Graph.Nodes.Faust.Init(Graph.Get());
+        Graph.Update();
     }
 }
 

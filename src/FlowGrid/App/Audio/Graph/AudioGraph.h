@@ -6,6 +6,7 @@
 #include "Core/Primitive/Float.h"
 
 struct ma_device;
+struct ma_node_graph;
 
 // Corresponds to `ma_node_graph`.
 struct AudioGraph : Component, Field::ChangeListener {
@@ -17,6 +18,8 @@ struct AudioGraph : Component, Field::ChangeListener {
     void OnFieldChanged() override;
 
     static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
+
+    ma_node_graph *Get();
 
     struct InputNode : AudioGraphNode {
         using AudioGraphNode::AudioGraphNode;

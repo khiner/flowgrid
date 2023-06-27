@@ -68,16 +68,27 @@ void Faust::InitDsp() {
 
 void Faust::UninitDsp() {
     if (Dsp) {
+        Params.OnDspChanged(nullptr);
         delete Dsp;
         Dsp = nullptr;
-        Params.OnDspChanged(nullptr);
         deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
     }
-
-    Box = nullptr;
-    Graph.OnBoxChanged(nullptr);
-
+    if (Box) {
+        Graph.OnBoxChanged(nullptr);
+        Box = nullptr;
+    }
     destroyLibContext();
+}
+
+void Faust::UpdateDsp() {
+    if (!Dsp && Code) {
+        InitDsp();
+    } else if (Dsp && !Code) {
+        UninitDsp();
+    } else {
+        UninitDsp();
+        InitDsp();
+    }
 }
 
 using namespace ImGui;

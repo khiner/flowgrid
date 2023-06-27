@@ -28,8 +28,10 @@ struct Faust : Component, Actionable<Action::Faust> {
 
     Box Box;
     dsp *Dsp;
+
     void InitDsp();
     void UninitDsp();
+    void UpdateDsp();
 
     Prop_(FaustGraph, Graph, "Faust graph");
     Prop_(FaustParams, Params, "Faust params");

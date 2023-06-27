@@ -41,6 +41,8 @@ void AudioGraph::AudioCallback(ma_device *device, void *output, const void *inpu
     (void)device; // unused
 }
 
+ma_node_graph *AudioGraph::Get() { return &NodeGraph; }
+
 void AudioGraph::Init() {
     NodeGraphConfig = ma_node_graph_config_init(audio_device.InChannels);
     const int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);

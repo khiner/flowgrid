@@ -11,6 +11,13 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
+Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
+    InitDsp();
+}
+Faust::~Faust() {
+    UninitDsp();
+}
+
 void Faust::Apply(const ActionType &action) const {
     Visit(
         action,

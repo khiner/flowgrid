@@ -6,6 +6,8 @@
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
 
+struct ma_device;
+
 struct Audio : Component, Actionable<Action::Audio::Any>, Field::ChangeListener {
     Audio(ComponentArgs &&);
     ~Audio();
@@ -15,10 +17,12 @@ struct Audio : Component, Actionable<Action::Audio::Any>, Field::ChangeListener 
 
     void OnFieldChanged() override;
 
-    void Init();
-    void Uninit();
+    // Just delegates to `AudioGraph::AudioCallback`.
+    // We use this indirection so we can initialize `AudioDevice` with a callback before initializing `AudioGraph`
+    // (which depends on `AudioDevice` being initialized).
+    static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
 
-    Prop(AudioDevice, Device);
+    Prop(AudioDevice, Device, AudioCallback);
     Prop(AudioGraph, Graph);
     Prop(Faust, Faust);
 

@@ -9,17 +9,17 @@
 
 struct ma_device;
 // Corresponds to `ma_device`.
-struct AudioDevice : Component {
-    using Component::Component;
+struct AudioDevice : Component, Field::ChangeListener {
+    using AudioCallback = void (*)(ma_device *, void *, const void *, Count);
+
+    AudioDevice(ComponentArgs &&, AudioCallback);
+    ~AudioDevice();
 
     static const std::vector<U32> PrioritizedSampleRates;
     static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.
     static const string GetSampleRateName(U32);
 
-    using Callback = void (*)(ma_device *, void *, const void *, Count);
-
-    void Init(Callback callback);
-    void Uninit();
+    void OnFieldChanged() override;
 
     void Start() const;
     void Stop() const;
@@ -38,6 +38,13 @@ struct AudioDevice : Component {
 
 protected:
     void Render() const override;
+
+private:
+    void Init();
+    void Uninit();
+    void UpdateVolume() const;
+
+    AudioCallback Callback;
 };
 
 extern const AudioDevice &audio_device;

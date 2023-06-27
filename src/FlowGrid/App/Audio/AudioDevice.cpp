@@ -12,6 +12,54 @@ const std::vector<U32> AudioDevice::PrioritizedSampleRates = {std::begin(g_maSta
 static std::vector<ma_format> NativeFormats;
 static std::vector<U32> NativeSampleRates;
 
+static ma_context AudioContext;
+static ma_device MaDevice;
+static ma_device_config DeviceConfig;
+static ma_device_info DeviceInfo;
+
+AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback) : Component(std::move(args)), Callback(callback) {
+    Init();
+    UpdateVolume();
+
+    const std::vector<std::reference_wrapper<const Field>>
+        listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate, Muted, Volume};
+    for (const Field &field : listened_fields) {
+        Field::RegisterChangeListener(field, this);
+    }
+}
+AudioDevice::~AudioDevice() {
+    Field::UnregisterChangeListener(this);
+    Uninit();
+}
+
+void AudioDevice::UpdateVolume() const {
+    ma_device_set_master_volume(&MaDevice, Muted ? 0.f : float(Volume));
+}
+
+void AudioDevice::OnFieldChanged() {
+    if (On.IsChanged() ||
+        InDeviceName.IsChanged() ||
+        OutDeviceName.IsChanged() ||
+        InFormat.IsChanged() ||
+        OutFormat.IsChanged() ||
+        InChannels.IsChanged() ||
+        OutChannels.IsChanged() ||
+        SampleRate.IsChanged()) {
+        const bool is_initialized = IsStarted();
+        if (On && !is_initialized) {
+            Init();
+        } else if (!On && is_initialized) {
+            Uninit();
+        } else if (is_initialized) {
+            // todo no need to completely reset in some cases (like when only format has changed) - just modify as needed in `Device::Update`.
+            // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
+            Uninit();
+            Init();
+        }
+    }
+    if (Muted.IsChanged() || Volume.IsChanged()) UpdateVolume();
+}
+
 const string AudioDevice::GetFormatName(const int format) {
     const bool is_native = std::find(NativeFormats.begin(), NativeFormats.end(), format) != NativeFormats.end();
     return ::std::format("{}{}", ma_get_format_name((ma_format)format), is_native ? "*" : "");
@@ -30,12 +78,7 @@ static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
     return nullptr;
 }
 
-static ma_context AudioContext;
-static ma_device MaDevice;
-static ma_device_config DeviceConfig;
-static ma_device_info DeviceInfo;
-
-void AudioDevice::Init(AudioDevice::Callback callback) {
+void AudioDevice::Init() {
     int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
 
@@ -61,7 +104,7 @@ void AudioDevice::Init(AudioDevice::Callback callback) {
     DeviceConfig.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
     DeviceConfig.playback.format = ma_format_f32;
     DeviceConfig.playback.channels = OutChannels;
-    DeviceConfig.dataCallback = callback;
+    DeviceConfig.dataCallback = Callback;
     DeviceConfig.sampleRate = SampleRate;
 
     // MA graph nodes require f32 format for in/out.
@@ -97,9 +140,13 @@ void AudioDevice::Init(AudioDevice::Callback callback) {
     if (MaDevice.capture.channels != InChannels) InChannels.Set_(MaDevice.capture.channels);
     if (MaDevice.playback.channels != OutChannels) OutChannels.Set_(MaDevice.playback.channels);
     if (MaDevice.sampleRate != SampleRate) SampleRate.Set_(MaDevice.sampleRate);
+
+    Start();
 }
 
 void AudioDevice::Uninit() {
+    if (IsStarted()) Stop();
+
     ma_device_uninit(&MaDevice);
     // ma_resampler_uninit(&Resampler, nullptr);
 
@@ -132,7 +179,6 @@ void AudioDevice::Render() const {
         TextUnformatted("No audio device started yet");
         return;
     }
-    ma_device_set_master_volume(&MaDevice, Muted ? 0.f : float(Volume));
     Muted.Draw();
     SameLine();
     Volume.Draw();

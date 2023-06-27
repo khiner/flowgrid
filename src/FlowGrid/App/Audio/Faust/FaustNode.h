@@ -10,7 +10,7 @@ struct FaustNode : AudioGraphNode, Field::ChangeListener {
     FaustNode(ComponentArgs &&, bool on = true);
     ~FaustNode();
 
-    void OnFieldChanged() override {}
+    void OnFieldChanged() override;
     void OnDspChanged(dsp *);
 
 private:

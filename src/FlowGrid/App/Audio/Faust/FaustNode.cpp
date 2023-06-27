@@ -17,6 +17,10 @@ FaustNode::~FaustNode() {
     Field::UnregisterChangeListener(this);
 }
 
+void FaustNode::OnFieldChanged() {
+    if (CurrentDsp) CurrentDsp->init(audio_device.SampleRate);
+}
+
 void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
     // ma_pcm_rb_init_ex()
     // ma_deinterleave_pcm_frames()

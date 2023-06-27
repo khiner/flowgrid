@@ -8,12 +8,13 @@
 struct ma_device;
 
 // Corresponds to `ma_node_graph`.
-struct AudioGraph : Component {
-    using Component::Component;
+struct AudioGraph : Component, Field::ChangeListener {
+    AudioGraph(ComponentArgs &&);
+    ~AudioGraph();
 
-    void Init();
     void Update();
-    void Uninit();
+
+    void OnFieldChanged() override;
 
     static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
 
@@ -77,4 +78,8 @@ struct AudioGraph : Component {
 protected:
     void Render() const override;
     void RenderConnections() const;
+
+private:
+    void Init();
+    void Uninit();
 };

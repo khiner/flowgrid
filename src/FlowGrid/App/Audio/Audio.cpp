@@ -2,30 +2,18 @@
 
 #include "imgui.h"
 
+// todo support loopback mode? (think of use cases)
+// todo explicit re-scan action.
+
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
-    Init();
+    Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
+    Graph.Update();
 
-    const std::vector<std::reference_wrapper<const Field>> listened_fields = {
-        Device.On,
-        Device.InDeviceName,
-        Device.OutDeviceName,
-        Device.InFormat,
-        Device.OutFormat,
-        Device.InChannels,
-        Device.OutChannels,
-        Device.SampleRate,
-
-        Faust.Code,
-    };
-    for (const Field &field : listened_fields) {
-        Field::RegisterChangeListener(field, this);
-    }
+    Field::RegisterChangeListener(Faust.Code, this);
 }
 
 Audio::~Audio() {
     Field::UnregisterChangeListener(this);
-    Faust.UninitDsp();
-    Uninit();
 }
 
 void Audio::Apply(const ActionType &action) const {
@@ -37,41 +25,21 @@ void Audio::Apply(const ActionType &action) const {
 
 bool Audio::CanApply(const ActionType &) const { return true; }
 
+void Audio::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {
+    AudioGraph::AudioCallback(device, output, input, frame_count);
+}
+
 void Audio::OnFieldChanged() {
-    if (Device.On.IsChanged() ||
-        Device.InDeviceName.IsChanged() ||
-        Device.OutDeviceName.IsChanged() ||
-        Device.InFormat.IsChanged() ||
-        Device.OutFormat.IsChanged() ||
-        Device.InChannels.IsChanged() ||
-        Device.OutChannels.IsChanged() ||
-        Device.SampleRate.IsChanged()) {
-        const bool is_initialized = Device.IsStarted();
-        if (Device.On && !is_initialized) {
-            Init();
-        } else if (!Device.On && is_initialized) {
-            Uninit();
-        } else if (is_initialized) {
-            // todo no need to completely reset in some cases (like when only format has changed) - just modify as needed in `Device::Update`.
-            // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
-            Uninit();
-            Init();
+    if (Faust.Code.IsChanged()) {
+        if (!Faust.Dsp && Faust.Code) {
+            Faust.InitDsp();
+        } else if (Faust.Dsp && !Faust.Code) {
+            Faust.UninitDsp();
+        } else {
+            Faust.UninitDsp();
+            Faust.InitDsp();
         }
-    }
-    if (Device.IsStarted()) {
-        if (Faust.Code.IsChanged()) {
-            if (!Faust.Dsp && Faust.Code) {
-                Faust.InitDsp();
-            } else if (Faust.Dsp && !Faust.Code) {
-                Faust.UninitDsp();
-            } else {
-                Faust.UninitDsp();
-                Faust.InitDsp();
-            }
-            Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
-        }
-        Graph.Nodes.Update();
-        Graph.Update();
+        Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
     }
 }
 
@@ -122,21 +90,6 @@ void Audio::OnFieldChanged() {
 //         }
 //     }
 // }
-
-// todo support loopback mode? (think of use cases)
-
-// todo explicit re-scan action.
-void Audio::Init() {
-    Device.Init(AudioGraph::AudioCallback);
-    Graph.Init();
-    Device.Start();
-}
-
-void Audio::Uninit() {
-    Device.Stop();
-    Graph.Uninit();
-    Device.Uninit();
-}
 
 using namespace ImGui;
 

@@ -17,6 +17,24 @@ using std::vector;
 static ma_node_graph NodeGraph;
 static ma_audio_buffer_ref InputBuffer;
 
+AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
+    Init();
+    Field::RegisterChangeListener(audio_device.InChannels, this);
+    Field::RegisterChangeListener(audio_device.OutChannels, this);
+    Field::RegisterChangeListener(audio_device.InFormat, this);
+    Field::RegisterChangeListener(audio_device.OutFormat, this);
+}
+AudioGraph::~AudioGraph() {
+    Field::UnregisterChangeListener(this);
+    Uninit();
+}
+
+void AudioGraph::OnFieldChanged() {
+    Uninit();
+    Init();
+    Update();
+}
+
 void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {
     ma_audio_buffer_ref_set_data(&InputBuffer, input, frame_count);
     ma_node_graph_read_pcm_frames(&NodeGraph, output, frame_count, nullptr);
@@ -46,6 +64,7 @@ void AudioGraph::Init() {
 }
 
 void AudioGraph::Update() {
+    Nodes.Update();
     // Setting up busses is idempotent.
     // Count source_i = 0;
     // for (const auto *source_node : Nodes) {

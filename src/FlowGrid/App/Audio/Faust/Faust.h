@@ -11,7 +11,8 @@
 class dsp;
 
 struct Faust : Component, Actionable<Action::Faust> {
-    using Component::Component;
+    Faust(ComponentArgs &&);
+    ~Faust();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;

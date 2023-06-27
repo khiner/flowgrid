@@ -46,23 +46,25 @@ void AudioGraph::Init() {
 }
 
 void AudioGraph::Update() {
-    Nodes.Update();
-
     // Setting up busses is idempotent.
-    Count source_i = 0;
-    for (const auto *source_node : Nodes) {
-        if (!source_node->IsSource()) continue;
-        ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
-        Count dest_i = 0;
-        for (const auto *dest_node : Nodes) {
-            if (!dest_node->IsDestination()) continue;
-            if (Connections(dest_i, source_i)) {
-                ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
-            }
-            dest_i++;
-        }
-        source_i++;
-    }
+    // Count source_i = 0;
+    // for (const auto *source_node : Nodes) {
+    //     if (!source_node->IsSource()) continue;
+    //     ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
+    //     Count dest_i = 0;
+    //     for (const auto *dest_node : Nodes) {
+    //         if (!dest_node->IsDestination()) continue;
+    //         if (Connections(dest_i, source_i)) {
+    //             ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
+    //         }
+    //         dest_i++;
+    //     }
+    //     source_i++;
+    // }
+    ma_node_detach_output_bus(Nodes.Input.Get(), 0); // No way to just detach one connection.
+    ma_node_detach_output_bus(Nodes.Faust.Get(), 0); // No way to just detach one connection.
+    ma_node_attach_output_bus(Nodes.Input.Get(), 0, Nodes.Faust.Get(), 0);
+    ma_node_attach_output_bus(Nodes.Faust.Get(), 0, Nodes.Output.Get(), 0);
 }
 
 void AudioGraph::Uninit() {

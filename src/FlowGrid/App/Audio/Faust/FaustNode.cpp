@@ -21,7 +21,7 @@ FaustNode::~FaustNode() {
 }
 
 void FaustNode::InitDsp() {
-    if (Dsp || !faust.IsReady()) return;
+    if (Dsp || !faust.Code) return;
 
     createLibContext();
 
@@ -33,26 +33,26 @@ void FaustNode::InitDsp() {
     static int num_inputs, num_outputs;
     string &error_message = faust.Log.ErrorMessage;
     box = DSPToBoxes("FlowGrid", faust.Code, argc, argv.data(), &num_inputs, &num_outputs, error_message);
+    OnBoxChange(box);
 
     static llvm_dsp_factory *dsp_factory;
     if (box && error_message.empty()) {
         static const int optimize_level = -1;
         dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv.data(), "", error_message, optimize_level);
+        if (dsp_factory && error_message.empty()) {
+            Dsp = dsp_factory->createDSPInstance();
+            if (!Dsp) error_message = "Could not create Faust DSP.";
+        }
+    } else if (!box && error_message.empty()) {
+        error_message = "`DSPToBoxes` returned no error but did not produce a result.";
     }
-    if (!box && error_message.empty()) error_message = "`DSPToBoxes` returned no error but did not produce a result.";
 
-    if (dsp_factory && error_message.empty()) {
-        Dsp = dsp_factory->createDSPInstance();
-        if (!Dsp) error_message = "Could not create Faust DSP.";
-    }
-
-    OnBoxChange(box);
-    OnUiChange(Dsp);
+    OnFaustDspChange(Dsp);
 }
 
 void FaustNode::UninitDsp() {
     OnBoxChange(nullptr);
-    OnUiChange(nullptr);
+    OnFaustDspChange(nullptr);
 
     CurrentDsp = nullptr;
     if (Dsp) {
@@ -62,19 +62,6 @@ void FaustNode::UninitDsp() {
     }
 
     destroyLibContext();
-}
-
-void FaustNode::UpdateDsp() {
-    const bool ready = faust.IsReady();
-    const bool needs_restart = faust.NeedsRestart(); // Don't inline! Must run during every update.
-    if (!Dsp && ready) {
-        InitDsp();
-    } else if (Dsp && !ready) {
-        UninitDsp();
-    } else if (needs_restart) {
-        UninitDsp();
-        InitDsp();
-    }
 }
 
 void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
@@ -88,9 +75,8 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
 }
 
 void FaustNode::DoInit(ma_node_graph *graph) {
-    if (Dsp) throw std::runtime_error("Faust DSP already initialized.");
+    if (!Dsp) return;
 
-    InitDsp();
     Dsp->init(audio_device.SampleRate);
     CurrentDsp = Dsp;
 
@@ -113,23 +99,4 @@ void FaustNode::DoInit(ma_node_graph *graph) {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust node: {}", result));
 
     Set(&node);
-}
-
-void FaustNode::DoUninit() {
-    UninitDsp();
-}
-
-void FaustNode::DoUpdate() {
-    UpdateDsp();
-}
-
-bool FaustNode::NeedsRestart() const {
-    static dsp *PreviousDsp = Dsp;
-    static U32 PreviousSampleRate = audio_device.SampleRate;
-
-    const bool needs_restart = Dsp != PreviousDsp || audio_device.SampleRate != PreviousSampleRate;
-    PreviousDsp = Dsp;
-    PreviousSampleRate = audio_device.SampleRate;
-
-    return needs_restart;
 }

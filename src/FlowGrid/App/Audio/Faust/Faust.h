@@ -13,9 +13,6 @@ struct Faust : Component, Actionable<Action::Faust> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    bool IsReady() const; // Has code and no errors.
-    bool NeedsRestart() const;
-
     struct FaustLog : Component {
         using Component::Component;
 

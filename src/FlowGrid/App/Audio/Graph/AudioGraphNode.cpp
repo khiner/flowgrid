@@ -23,23 +23,15 @@ Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_o
 
 void AudioGraphNode::Init(ma_node_graph *graph) {
     DoInit(graph);
-    NeedsRestart(); // xxx Updates cached values as side effect.
 }
 
 void AudioGraphNode::Update(ma_node_graph *graph) {
-    DoUpdate();
-
     const bool is_initialized = Get() != nullptr;
-    const bool needs_restart = NeedsRestart(); // Don't inline! Must run during every update.
     if (On && !is_initialized) {
         Init(graph);
     } else if (!On && is_initialized) {
         Uninit();
-    } else if (needs_restart && is_initialized) {
-        Uninit();
-        Init(graph);
     }
-
     if (On) ma_node_set_output_bus_volume(Get(), 0, Volume);
 }
 

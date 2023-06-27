@@ -26,15 +26,6 @@ void Faust::Apply(const ActionType &action) const {
 
 bool Faust::CanApply(const ActionType &) const { return true; }
 
-bool Faust::IsReady() const { return Code && Log.ErrorMessage.empty(); }
-bool Faust::NeedsRestart() const {
-    static string PreviousCode = Code;
-
-    const bool needs_restart = Code != PreviousCode;
-    PreviousCode = Code;
-    return needs_restart;
-}
-
 ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
     ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingStretchProp;
     if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;

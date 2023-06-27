@@ -32,9 +32,7 @@ struct AudioGraphNode : Component {
 protected:
     void Render() const override;
 
-    virtual bool NeedsRestart() const { return false; }; // Return `true` if node needs re-initialization due to changed state.
     virtual void DoInit(ma_node_graph *){};
-    virtual void DoUpdate(){};
     virtual void DoUninit();
 
 private:

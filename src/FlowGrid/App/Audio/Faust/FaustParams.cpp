@@ -274,7 +274,7 @@ void FaustParams::Render() const {
     //    }
 }
 
-void OnUiChange(dsp *dsp) {
+void OnFaustDspChange(dsp *dsp) {
     if (dsp) {
         Ui = std::make_unique<FaustParamsUI>();
         dsp->buildUserInterface(Ui.get());

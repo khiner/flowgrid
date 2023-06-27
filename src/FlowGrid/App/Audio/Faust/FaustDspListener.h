@@ -1,4 +1,4 @@
 #pragma once
 
 class dsp;
-void OnUiChange(dsp *);
+void OnFaustDspChange(dsp *);

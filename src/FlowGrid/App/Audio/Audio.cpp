@@ -14,6 +14,8 @@ Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
         Device.InChannels,
         Device.OutChannels,
         Device.SampleRate,
+
+        Faust.Code,
     };
     for (const Field &field : listened_fields) {
         Field::RegisterChangeListener(field, this);
@@ -22,6 +24,7 @@ Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
 
 Audio::~Audio() {
     Field::UnregisterChangeListener(this);
+    Graph.Nodes.Faust.UninitDsp();
     Uninit();
 }
 
@@ -35,19 +38,41 @@ void Audio::Apply(const ActionType &action) const {
 bool Audio::CanApply(const ActionType &) const { return true; }
 
 void Audio::OnFieldChanged() {
-    const bool is_initialized = Device.IsStarted();
-    if (Device.On && !is_initialized) {
-        Init();
-    } else if (!Device.On && is_initialized) {
-        Uninit();
-    } else if (is_initialized) {
-        // todo no need to completely reset in some cases (like when only format has changed) - just modify as needed in `Device::Update`.
-        // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
-        Uninit();
-        Init();
+    if (Device.On.IsChanged() ||
+        Device.InDeviceName.IsChanged() ||
+        Device.OutDeviceName.IsChanged() ||
+        Device.InFormat.IsChanged() ||
+        Device.OutFormat.IsChanged() ||
+        Device.InChannels.IsChanged() ||
+        Device.OutChannels.IsChanged() ||
+        Device.SampleRate.IsChanged()) {
+        const bool is_initialized = Device.IsStarted();
+        if (Device.On && !is_initialized) {
+            Init();
+        } else if (!Device.On && is_initialized) {
+            Uninit();
+        } else if (is_initialized) {
+            // todo no need to completely reset in some cases (like when only format has changed) - just modify as needed in `Device::Update`.
+            // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
+            Uninit();
+            Init();
+        }
     }
-
-    if (Device.IsStarted()) Graph.Update();
+    if (Device.IsStarted()) {
+        if (Faust.Code.IsChanged()) {
+            const bool ready = Faust.Code && Faust.Log.ErrorMessage.empty();
+            if (!Graph.Nodes.Faust.Dsp && ready) {
+                Graph.Nodes.Faust.InitDsp();
+            } else if (Graph.Nodes.Faust.Dsp && !ready) {
+                Graph.Nodes.Faust.UninitDsp();
+            } else {
+                Graph.Nodes.Faust.UninitDsp();
+                Graph.Nodes.Faust.InitDsp();
+            }
+        }
+        Graph.Nodes.Update();
+        Graph.Update();
+    }
 }
 
 // static ma_resampler_config ResamplerConfig;

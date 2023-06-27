@@ -27,7 +27,7 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
     (void)frame_count_in; // unused
 }
 
-void FaustNode::OnFaustDspChanged(dsp *dsp) {
+void FaustNode::OnDspChanged(dsp *dsp) {
     CurrentDsp = dsp;
 }
 

@@ -7,7 +7,6 @@
 
 #include <imgui_internal.h>
 
-#include "FaustDspListener.h"
 #include "FaustParams.h"
 #include "UI/Widgets.h"
 
@@ -274,7 +273,7 @@ void FaustParams::Render() const {
     //    }
 }
 
-void OnFaustDspChange(dsp *dsp) {
+void FaustParams::OnDspChanged(dsp *dsp) {
     if (dsp) {
         Ui = std::make_unique<FaustParamsUI>();
         dsp->buildUserInterface(Ui.get());

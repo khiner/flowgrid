@@ -4,14 +4,14 @@
 
 #include "App/Audio/Graph/AudioGraphNode.h"
 
-struct dsp;
+class dsp;
 
 struct FaustNode : AudioGraphNode, Field::ChangeListener {
     FaustNode(ComponentArgs &&, bool on = true);
     ~FaustNode();
 
     void OnFieldChanged() override {}
-    void OnFaustDspChanged(dsp *);
+    void OnDspChanged(dsp *);
 
 private:
     void DoInit(ma_node_graph *) override;

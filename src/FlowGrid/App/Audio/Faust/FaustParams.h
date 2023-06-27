@@ -62,8 +62,12 @@ enum ParamsWidthSizingPolicy_ {
 };
 using ParamsWidthSizingPolicy = int;
 
+class dsp;
+
 struct FaustParams : Component {
     using Component::Component;
+
+    void OnDspChanged(dsp *);
 
     struct Style : Component {
         using Component::Component;

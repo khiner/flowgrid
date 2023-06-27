@@ -1,13 +1,14 @@
 #pragma once
 
 #include "FaustAction.h"
+#include "FaustBox.h"
 #include "FaustGraph.h"
 #include "FaustParams.h"
 
 #include "Core/Action/Actionable.h"
 #include "Core/Container/MultilineString.h"
 
-struct dsp;
+class dsp;
 
 struct Faust : Component, Actionable<Action::Faust> {
     using Component::Component;
@@ -24,6 +25,7 @@ struct Faust : Component, Actionable<Action::Faust> {
         void Render() const override;
     };
 
+    Box Box;
     dsp *Dsp;
     void InitDsp();
     void UninitDsp();

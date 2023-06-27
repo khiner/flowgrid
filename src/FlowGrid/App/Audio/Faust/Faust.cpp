@@ -8,8 +8,6 @@
 #include "App/Audio/AudioIO.h"
 #include "App/FileDialog/FileDialog.h"
 #include "Helper/File.h"
-#include "FaustDspListener.h"
-#include "FaustBox.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
 
@@ -32,7 +30,6 @@ void Faust::Apply(const ActionType &action) const {
 bool Faust::CanApply(const ActionType &) const { return true; }
 
 void Faust::InitDsp() {
-    static Box box;
     if (Dsp || !Code) return;
 
     createLibContext();
@@ -44,33 +41,34 @@ void Faust::InitDsp() {
     const int argc = argv.size();
     static int num_inputs, num_outputs;
     string &error_message = Log.ErrorMessage;
-    box = DSPToBoxes("FlowGrid", Code, argc, argv.data(), &num_inputs, &num_outputs, error_message);
-    OnBoxChange(box);
+    Box = DSPToBoxes("FlowGrid", Code, argc, argv.data(), &num_inputs, &num_outputs, error_message);
+    Graph.OnBoxChanged(Box);
 
     static llvm_dsp_factory *dsp_factory;
-    if (box && error_message.empty()) {
+    if (Box && error_message.empty()) {
         static const int optimize_level = -1;
-        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv.data(), "", error_message, optimize_level);
+        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", Box, argc, argv.data(), "", error_message, optimize_level);
         if (dsp_factory && error_message.empty()) {
             Dsp = dsp_factory->createDSPInstance();
             if (!Dsp) error_message = "Could not create Faust DSP.";
         }
-    } else if (!box && error_message.empty()) {
+    } else if (!Box && error_message.empty()) {
         error_message = "`DSPToBoxes` returned no error but did not produce a result.";
     }
 
-    OnFaustDspChange(Dsp);
+    Params.OnDspChanged(Dsp);
 }
 
 void Faust::UninitDsp() {
-    OnBoxChange(nullptr);
-    OnFaustDspChange(nullptr);
-
     if (Dsp) {
         delete Dsp;
         Dsp = nullptr;
+        Params.OnDspChanged(nullptr);
         deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
     }
+
+    Box = nullptr;
+    Graph.OnBoxChanged(nullptr);
 
     destroyLibContext();
 }

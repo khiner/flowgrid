@@ -7,6 +7,7 @@
 #include "Core/Primitive/Flags.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/String.h"
+#include "FaustBox.h"
 #include "FaustGraphAction.h"
 #include "UI/Styling.h"
 
@@ -50,6 +51,8 @@ struct FaustGraph : Component, Actionable<Action::FaustGraph::Any> {
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
+
+    void OnBoxChanged(Box) const;
 
     struct Style : Component {
         Style(ComponentArgs &&);

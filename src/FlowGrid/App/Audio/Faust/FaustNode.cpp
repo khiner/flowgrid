@@ -1,67 +1,20 @@
 #include "FaustNode.h"
 
 #include "App/Audio/Sample.h" // Must be included before any Faust includes.
-#include "faust/dsp/llvm-dsp.h"
+#include "faust/dsp/dsp.h"
 
 #include "miniaudio.h"
 
 #include "App/Audio/AudioDevice.h"
 #include "Faust.h"
-#include "FaustBox.h"
-#include "FaustDspListener.h"
 
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
-static Box box;
 
 FaustNode::FaustNode(ComponentArgs &&args, bool on) : AudioGraphNode(std::move(args), on) {
     Field::RegisterChangeListener(audio_device.SampleRate, this);
 }
 FaustNode::~FaustNode() {
     Field::UnregisterChangeListener(this);
-}
-
-void FaustNode::InitDsp() {
-    if (Dsp || !faust.Code) return;
-
-    createLibContext();
-
-    const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
-    std::vector<const char *> argv = {"-I", libraries_path};
-    if (std::is_same_v<Sample, double>) argv.push_back("-double");
-
-    const int argc = argv.size();
-    static int num_inputs, num_outputs;
-    string &error_message = faust.Log.ErrorMessage;
-    box = DSPToBoxes("FlowGrid", faust.Code, argc, argv.data(), &num_inputs, &num_outputs, error_message);
-    OnBoxChange(box);
-
-    static llvm_dsp_factory *dsp_factory;
-    if (box && error_message.empty()) {
-        static const int optimize_level = -1;
-        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", box, argc, argv.data(), "", error_message, optimize_level);
-        if (dsp_factory && error_message.empty()) {
-            Dsp = dsp_factory->createDSPInstance();
-            if (!Dsp) error_message = "Could not create Faust DSP.";
-        }
-    } else if (!box && error_message.empty()) {
-        error_message = "`DSPToBoxes` returned no error but did not produce a result.";
-    }
-
-    OnFaustDspChange(Dsp);
-}
-
-void FaustNode::UninitDsp() {
-    OnBoxChange(nullptr);
-    OnFaustDspChange(nullptr);
-
-    CurrentDsp = nullptr;
-    if (Dsp) {
-        delete Dsp;
-        Dsp = nullptr;
-        deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
-    }
-
-    destroyLibContext();
 }
 
 void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
@@ -74,14 +27,17 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *f
     (void)frame_count_in; // unused
 }
 
+void FaustNode::OnFaustDspChanged(dsp *dsp) {
+    CurrentDsp = dsp;
+}
+
 void FaustNode::DoInit(ma_node_graph *graph) {
-    if (!Dsp) return;
+    if (!CurrentDsp) return;
 
-    Dsp->init(audio_device.SampleRate);
-    CurrentDsp = Dsp;
+    CurrentDsp->init(audio_device.SampleRate);
 
-    const Count in_channels = Dsp->getNumInputs();
-    const Count out_channels = Dsp->getNumOutputs();
+    const Count in_channels = CurrentDsp->getNumInputs();
+    const Count out_channels = CurrentDsp->getNumOutputs();
     if (in_channels == 0 && out_channels == 0) return;
 
     static ma_node_vtable vtable{};

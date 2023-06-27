@@ -7,6 +7,8 @@
 #include "Core/Action/Actionable.h"
 #include "Core/Container/MultilineString.h"
 
+struct dsp;
+
 struct Faust : Component, Actionable<Action::Faust> {
     using Component::Component;
 
@@ -21,6 +23,10 @@ struct Faust : Component, Actionable<Action::Faust> {
     protected:
         void Render() const override;
     };
+
+    dsp *Dsp;
+    void InitDsp();
+    void UninitDsp();
 
     Prop_(FaustGraph, Graph, "Faust graph");
     Prop_(FaustParams, Params, "Faust params");

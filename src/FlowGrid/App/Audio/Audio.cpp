@@ -24,7 +24,7 @@ Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
 
 Audio::~Audio() {
     Field::UnregisterChangeListener(this);
-    Graph.Nodes.Faust.UninitDsp();
+    Faust.UninitDsp();
     Uninit();
 }
 
@@ -60,15 +60,15 @@ void Audio::OnFieldChanged() {
     }
     if (Device.IsStarted()) {
         if (Faust.Code.IsChanged()) {
-            const bool ready = Faust.Code && Faust.Log.ErrorMessage.empty();
-            if (!Graph.Nodes.Faust.Dsp && ready) {
-                Graph.Nodes.Faust.InitDsp();
-            } else if (Graph.Nodes.Faust.Dsp && !ready) {
-                Graph.Nodes.Faust.UninitDsp();
+            if (!Faust.Dsp && Faust.Code) {
+                Faust.InitDsp();
+            } else if (Faust.Dsp && !Faust.Code) {
+                Faust.UninitDsp();
             } else {
-                Graph.Nodes.Faust.UninitDsp();
-                Graph.Nodes.Faust.InitDsp();
+                Faust.UninitDsp();
+                Faust.InitDsp();
             }
+            Graph.Nodes.Faust.OnFaustDspChanged(Faust.Dsp);
         }
         Graph.Nodes.Update();
         Graph.Update();

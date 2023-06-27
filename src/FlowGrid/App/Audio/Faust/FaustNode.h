@@ -11,11 +11,7 @@ struct FaustNode : AudioGraphNode, Field::ChangeListener {
     ~FaustNode();
 
     void OnFieldChanged() override {}
-
-    void InitDsp();
-    void UninitDsp();
-
-    dsp *Dsp;
+    void OnFaustDspChanged(dsp *);
 
 private:
     void DoInit(ma_node_graph *) override;

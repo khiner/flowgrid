@@ -48,15 +48,14 @@ struct Field : Component {
     // Refresh the cached values of all fields affected by the patch, and notifies all listeners of the affected fields.
     static void RefreshChanged(const Patch &);
 
-    // Refresh the cached values of all fields and notifies all listeners.
+    // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
-    inline static void RefreshAndNotifyAll() {
+    inline static void RefreshAll() {
         for (auto &[id, field] : FieldById) field->RefreshValue();
         std::unordered_set<ChangeListener *> all_listeners;
         for (auto &[id, listeners] : ChangeListenersForField) {
             all_listeners.insert(listeners.begin(), listeners.end());
         }
-        for (auto *listener : all_listeners) listener->OnFieldChanged();
     }
 
     inline static bool IsGesturing{};

@@ -104,5 +104,3 @@ private:
 
     std::stack<FaustParam *> Groups{};
 };
-
-void OnUiChange(FaustParamsUI *);

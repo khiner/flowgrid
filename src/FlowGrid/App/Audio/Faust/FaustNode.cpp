@@ -8,9 +8,8 @@
 #include "App/Audio/AudioDevice.h"
 #include "Faust.h"
 #include "FaustBox.h"
-#include "FaustParamsUI.h"
+#include "FaustDspListener.h"
 
-static std::unique_ptr<FaustParamsUI> Ui; // xxx the only static "member" of `FaustNode`
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
 static Box box;
 
@@ -45,22 +44,16 @@ void FaustNode::InitDsp() {
     if (dsp_factory && error_message.empty()) {
         Dsp = dsp_factory->createDSPInstance();
         if (!Dsp) error_message = "Could not create Faust DSP.";
-        else {
-            Ui = std::make_unique<FaustParamsUI>();
-            Dsp->buildUserInterface(Ui.get());
-            // `Dsp->Init` happens in the Faust graph node.
-        }
     }
 
     OnBoxChange(box);
-    OnUiChange(Ui.get());
+    OnUiChange(Dsp);
 }
 
 void FaustNode::UninitDsp() {
     OnBoxChange(nullptr);
     OnUiChange(nullptr);
 
-    Ui = nullptr;
     CurrentDsp = nullptr;
     if (Dsp) {
         delete Dsp;

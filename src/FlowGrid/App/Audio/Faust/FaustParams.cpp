@@ -2,8 +2,12 @@
 
 #include <range/v3/numeric/accumulate.hpp>
 
+#include "App/Audio/Sample.h" // Must be included before any Faust includes.
+#include "faust/dsp/dsp.h"
+
 #include <imgui_internal.h>
 
+#include "FaustDspListener.h"
 #include "FaustParams.h"
 #include "UI/Widgets.h"
 
@@ -13,7 +17,7 @@ using namespace fg;
 using enum FaustParam::Type;
 using std::min, std::max;
 
-FaustParamsUI *interface;
+static std::unique_ptr<FaustParamsUI> Ui;
 
 static bool IsWidthExpandable(const FaustParam::Type type) {
     return type == Type_HGroup || type == Type_VGroup || type == Type_TGroup || type == Type_NumEntry || type == Type_HSlider || type == Type_HBargraph;
@@ -41,11 +45,11 @@ float FaustParams::CalcWidth(const FaustParam &param, const bool include_label) 
         case Type_HBargraph: return Style.MinHorizontalItemWidth * frame_height + label_width_with_spacing;
         case Type_HRadioButtons: {
             return label_width_with_spacing +
-                ranges::accumulate(interface->NamesAndValues[param.zone].names | std::views::transform(CalcRadioChoiceWidth), 0.f) +
-                inner_spacing * float(interface->NamesAndValues.size());
+                ranges::accumulate(Ui->NamesAndValues[param.zone].names | std::views::transform(CalcRadioChoiceWidth), 0.f) +
+                inner_spacing * float(Ui->NamesAndValues.size());
         }
         case Type_Menu: {
-            return label_width_with_spacing + std::ranges::max(interface->NamesAndValues[param.zone].names | std::views::transform([](const string &choice_name) {
+            return label_width_with_spacing + std::ranges::max(Ui->NamesAndValues[param.zone].names | std::views::transform([](const string &choice_name) {
                                                                    return CalcTextSize(choice_name).x;
                                                                })) +
                 GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
@@ -53,7 +57,7 @@ float FaustParams::CalcWidth(const FaustParam &param, const bool include_label) 
         case Type_CheckButton: return frame_height + label_width_with_spacing;
         case Type_VBargraph:
         case Type_VSlider: return max(frame_height, label_width);
-        case Type_VRadioButtons: return max(std::ranges::max(interface->NamesAndValues[param.zone].names | std::views::transform(CalcRadioChoiceWidth)), label_width);
+        case Type_VRadioButtons: return max(std::ranges::max(Ui->NamesAndValues[param.zone].names | std::views::transform(CalcRadioChoiceWidth)), label_width);
         case Type_Button: return raw_label_width + imgui_style.FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case Type_Knob: return max(Style.MinKnobItemSize * frame_height, label_width);
         default: return GetContentRegionAvail().x;
@@ -225,10 +229,10 @@ void FaustParams::DrawUiItem(const FaustParam &param, const char *label, const f
             RadioButtonsFlags flags = has_label ? RadioButtonsFlags_None : RadioButtonsFlags_NoTitle;
             if (type == Type_VRadioButtons) flags |= ValueBarFlags_Vertical;
             SetNextItemWidth(item_size.x); // Include label in param width for radio buttons (inconsistent but just makes things easier).
-            if (RadioButtons(param.label.c_str(), &value, interface->NamesAndValues[param.zone], flags, justify)) *param.zone = Real(value);
+            if (RadioButtons(param.label.c_str(), &value, Ui->NamesAndValues[param.zone], flags, justify)) *param.zone = Real(value);
         } else if (type == Type_Menu) {
             auto value = float(*param.zone);
-            const auto &names_and_values = interface->NamesAndValues[param.zone];
+            const auto &names_and_values = Ui->NamesAndValues[param.zone];
             // todo handle not present
             const auto selected_index = find(names_and_values.values.begin(), names_and_values.values.end(), value) - names_and_values.values.begin();
             if (BeginCombo(param.label.c_str(), names_and_values.names[selected_index].c_str())) {
@@ -253,25 +257,30 @@ void FaustParams::DrawUiItem(const FaustParam &param, const char *label, const f
 }
 
 void FaustParams::Render() const {
-    if (!interface) {
+    if (!Ui) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?
         return;
     }
 
-    DrawUiItem(interface->UiParam, "", GetContentRegionAvail().y);
+    DrawUiItem(Ui->UiParam, "", GetContentRegionAvail().y);
 
     //    if (hovered_node) {
     //        const string label = get_ui_label(hovered_node->tree);
     //        if (!label.empty()) {
-    //            const auto *widget = interface->GetWidget(label);
+    //            const auto *widget = Ui->GetWidget(label);
     //            if (widget) cout << "Found widget: " << label << '\n';
     //        }
     //    }
 }
 
-void OnUiChange(FaustParamsUI *ui) {
-    interface = ui;
+void OnUiChange(dsp *dsp) {
+    if (dsp) {
+        Ui = std::make_unique<FaustParamsUI>();
+        dsp->buildUserInterface(Ui.get());
+    } else {
+        Ui = nullptr;
+    }
 }
 
 void FaustParams::Style::Render() const {

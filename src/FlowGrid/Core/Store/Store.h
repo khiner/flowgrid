@@ -3,6 +3,7 @@
 #include "nlohmann/json.hpp"
 
 #include "Core/Action/Actionable.h"
+#include "IdPair.h"
 #include "Patch/Patch.h"
 #include "StoreAction.h"
 
@@ -36,6 +37,10 @@ Count CountAt(const StorePath &);
 
 void Set(const StorePath &, const Primitive &);
 void Erase(const StorePath &);
+
+void AddIdPair(const StorePath &, const IdPair &);
+void EraseIdPair(const StorePath &, const IdPair &);
+bool HasIdPair(const StorePath &, const IdPair &);
 
 // Create a patch comparing the provided stores.
 Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path = RootPath);

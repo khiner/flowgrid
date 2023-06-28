@@ -6,7 +6,7 @@
 #include "miniaudio.h"
 
 #include "App/Audio/AudioDevice.h"
-#include "Core/Container/MatrixAction.h"
+#include "Core/Container/AdjacencyListAction.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
@@ -23,6 +23,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Field::RegisterChangeListener(audio_device.OutChannels, this);
     Field::RegisterChangeListener(audio_device.InFormat, this);
     Field::RegisterChangeListener(audio_device.OutFormat, this);
+    Field::RegisterChangeListener(Connections, this);
 }
 AudioGraph::~AudioGraph() {
     Field::UnregisterChangeListener(this);
@@ -30,9 +31,13 @@ AudioGraph::~AudioGraph() {
 }
 
 void AudioGraph::OnFieldChanged() {
-    Uninit();
-    Init();
-    Update();
+    if (Connections.IsChanged()) {
+        UpdateConnections();
+    } else {
+        Uninit();
+        Init();
+        Update();
+    }
 }
 
 void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {
@@ -49,43 +54,27 @@ void AudioGraph::Init() {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
 
     Nodes.Init();
-    vector<bool> connections{};
-    Count dest_count = 0;
-    for (const auto *dest_node : Nodes) {
-        if (!dest_node->IsDestination()) continue;
-        for (const auto *source_node : Nodes) {
-            if (!source_node->IsSource()) continue;
-            const bool default_connected =
-                (source_node == &Nodes.Input && dest_node == &Nodes.Faust) ||
-                (source_node == &Nodes.Faust && dest_node == &Nodes.Output);
-            connections.push_back(default_connected);
+    Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
+    Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
+}
+
+void AudioGraph::UpdateConnections() {
+    // Setting up busses is idempotent.
+    for (const auto *source_node : Nodes) {
+        if (!source_node->IsSource()) continue;
+        ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
+        for (const auto *dest_node : Nodes) {
+            if (!dest_node->IsDestination()) continue;
+            if (Connections.IsConnected(source_node->Id, dest_node->Id)) {
+                ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
+            }
         }
-        dest_count++;
     }
-    Connections.Set_(connections, dest_count);
 }
 
 void AudioGraph::Update() {
     Nodes.Update();
-    // Setting up busses is idempotent.
-    // Count source_i = 0;
-    // for (const auto *source_node : Nodes) {
-    //     if (!source_node->IsSource()) continue;
-    //     ma_node_detach_output_bus(source_node->Get(), 0); // No way to just detach one connection.
-    //     Count dest_i = 0;
-    //     for (const auto *dest_node : Nodes) {
-    //         if (!dest_node->IsDestination()) continue;
-    //         if (Connections(dest_i, source_i)) {
-    //             ma_node_attach_output_bus(source_node->Get(), 0, dest_node->Get(), 0);
-    //         }
-    //         dest_i++;
-    //     }
-    //     source_i++;
-    // }
-    ma_node_detach_output_bus(Nodes.Input.Get(), 0); // No way to just detach one connection.
-    ma_node_detach_output_bus(Nodes.Faust.Get(), 0); // No way to just detach one connection.
-    ma_node_attach_output_bus(Nodes.Input.Get(), 0, Nodes.Faust.Get(), 0);
-    ma_node_attach_output_bus(Nodes.Faust.Get(), 0, Nodes.Output.Get(), 0);
+    UpdateConnections();
 }
 
 void AudioGraph::Uninit() {
@@ -183,6 +172,8 @@ void AudioGraph::RenderConnections() const {
     for (const auto *dest_node : Nodes) {
         if (!dest_node->IsDestination()) continue;
 
+        const auto dest_id = dest_node->Id;
+
         const char *label = dest_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
 
@@ -194,15 +185,29 @@ void AudioGraph::RenderConnections() const {
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
 
-        for (Count source_i = 0; source_i < source_count; source_i++) {
+        Count source_i = 0;
+        for (const auto *source_node : Nodes) {
+            if (!source_node->IsSource()) continue;
+
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
-            const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) Action::Matrix<bool>::SetValue{Connections.Path, dest_i, source_i, !Connections(dest_i, source_i)}.q();
 
-            const auto fill_color = flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : (Connections(dest_i, source_i) ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg));
+            const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
+            if (flags & InteractionFlags_Clicked) {
+                Action::AdjacencyList::ToggleConnection{Connections.Path, source_node->Id, dest_node->Id}.q();
+            }
+
+            const bool is_connected = Connections.IsConnected(source_node->Id, dest_node->Id);
+            const auto fill_color =
+                flags & InteractionFlags_Held ?
+                ImGuiCol_ButtonActive :
+                (flags & InteractionFlags_Hovered ?
+                     ImGuiCol_ButtonHovered :
+                     (is_connected ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg)
+                );
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));
             PopID();
+            source_i++;
         }
         dest_i++;
     }

@@ -2,7 +2,7 @@
 
 #include "App/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
 #include "AudioGraphNode.h"
-#include "Core/Container/Matrix.h"
+#include "Core/Container/AdjacencyList.h"
 #include "Core/Primitive/Float.h"
 
 struct ma_device;
@@ -75,7 +75,7 @@ struct AudioGraph : Component, Field::ChangeListener {
     };
 
     Prop(Nodes, Nodes);
-    Prop(Matrix<bool>, Connections);
+    Prop(AdjacencyList, Connections);
     Prop(Style, Style);
 
 protected:
@@ -85,4 +85,5 @@ protected:
 private:
     void Init();
     void Uninit();
+    void UpdateConnections();
 };

@@ -382,7 +382,10 @@ void RunQueuedActions(bool force_commit_gesture) {
         // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
-        force_commit_gesture |= std::holds_alternative<Action::Primitive::Bool::Toggle>(action) || std::holds_alternative<Action::FileDialog::Select>(action);
+        force_commit_gesture |=
+            std::holds_alternative<Action::Primitive::Bool::Toggle>(action) ||
+            std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
+            std::holds_alternative<Action::FileDialog::Select>(action);
 
         const bool is_savable = action.IsSavable();
         if (is_savable) store::BeginTransient(); // Idempotent.
@@ -456,8 +459,7 @@ DefineQ(Vec2::Set);
 DefineQ(Vec2::SetX);
 DefineQ(Vec2::SetY);
 DefineQ(Vec2::SetAll);
-DefineQ(Matrix<bool>::Set);
-DefineQ(Matrix<bool>::SetValue);
+DefineQ(AdjacencyList::ToggleConnection);
 DefineQ(Store::ApplyPatch);
 DefineQ(Style::SetImGuiColorPreset);
 DefineQ(Style::SetImPlotColorPreset);

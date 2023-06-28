@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Container/MatrixAction.h"
+#include "Core/Container/AdjacencyListAction.h"
 #include "Core/Container/MultilineStringAction.h"
 #include "Core/Container/Vec2Action.h"
 #include "Core/Container/Vector2DAction.h"
@@ -20,5 +20,5 @@ DefineActionType(
         MultilineString::Any, Vec2::Any,
         Vector<bool>::Any, Vector<int>::Any, Vector<U32>::Any, Vector<float>::Any,
         Vector2D<bool>::Any, Vector2D<int>::Any, Vector2D<U32>::Any, Vector2D<float>::Any,
-        Matrix<bool>::Any>::type;
+        AdjacencyList::Any>::type;
 );

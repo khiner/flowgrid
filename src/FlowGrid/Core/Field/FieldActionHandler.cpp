@@ -1,6 +1,6 @@
 #include "FieldActionHandler.h"
 
-#include "Core/Container/Matrix.h"
+#include "Core/Container/AdjacencyList.h"
 #include "Core/Container/MultilineString.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Container/Vector.h"
@@ -30,6 +30,7 @@ void FieldActionHandler::Apply(const ActionType &action) const {
         [&field](const Enum::ActionType &a) { static_cast<const Enum *>(field)->Apply(a); },
         [&field](const Flags::ActionType &a) { static_cast<const Flags *>(field)->Apply(a); },
         [&field](const MultilineString::ActionType &a) { static_cast<const MultilineString *>(field)->Apply(a); },
+        [&field](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(field)->Apply(a); },
         [&field](const Vec2::ActionType &a) { static_cast<const Vec2 *>(field)->Apply(a); },
         [&field](const Vector<bool>::ActionType &a) { static_cast<const Vector<bool> *>(field)->Apply(a); },
         [&field](const Vector<int>::ActionType &a) { static_cast<const Vector<int> *>(field)->Apply(a); },
@@ -39,6 +40,5 @@ void FieldActionHandler::Apply(const ActionType &action) const {
         [&field](const Vector2D<int>::ActionType &a) { static_cast<const Vector2D<int> *>(field)->Apply(a); },
         [&field](const Vector2D<U32>::ActionType &a) { static_cast<const Vector2D<U32> *>(field)->Apply(a); },
         [&field](const Vector2D<float>::ActionType &a) { static_cast<const Vector2D<float> *>(field)->Apply(a); },
-        [&field](const Matrix<bool>::ActionType &a) { static_cast<const Matrix<bool> *>(field)->Apply(a); },
     );
 }

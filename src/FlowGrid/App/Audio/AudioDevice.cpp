@@ -24,7 +24,7 @@ AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callba
     const std::vector<std::reference_wrapper<const Field>>
         listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate, Muted, Volume};
     for (const Field &field : listened_fields) {
-        Field::RegisterChangeListener(field, this);
+        Field::RegisterChangeListener(this, field);
     }
 }
 AudioDevice::~AudioDevice() {

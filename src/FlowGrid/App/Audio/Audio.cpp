@@ -9,7 +9,7 @@ Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
     Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
     Graph.Update();
 
-    Field::RegisterChangeListener(Faust.Code, this);
+    Field::RegisterChangeListener(this, Faust.Code);
 }
 
 Audio::~Audio() {

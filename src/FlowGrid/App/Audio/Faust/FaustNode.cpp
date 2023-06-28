@@ -11,7 +11,7 @@
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
 
 FaustNode::FaustNode(ComponentArgs &&args, bool on) : AudioGraphNode(std::move(args), on) {
-    Field::RegisterChangeListener(audio_device.SampleRate, this);
+    Field::RegisterChangeListener(this, audio_device.SampleRate);
 }
 FaustNode::~FaustNode() {
     Field::UnregisterChangeListener(this);

@@ -49,7 +49,7 @@ Style::FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : Component(std::move(
 Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : Component(std::move(args)) {
     for (const auto *child : Children) {
         const auto *field = static_cast<const Field *>(child);
-        Field::RegisterChangeListener(*field, this);
+        Field::RegisterChangeListener(this, *field);
     }
     ColorsDark();
 }
@@ -60,7 +60,7 @@ Style::ImGuiStyle::~ImGuiStyle() {
 Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : Component(std::move(args)) {
     for (const auto *child : Children) {
         const auto *field = static_cast<const Field *>(child);
-        Field::RegisterChangeListener(*field, this);
+        Field::RegisterChangeListener(this, *field);
     }
     ColorsAuto();
 }

@@ -30,7 +30,7 @@ struct Field : Component {
     inline static std::unordered_set<ID> ChangedFieldIds; // Fields updated during the current action pass (cleared at the end of it).
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersForField;
 
-    inline static void RegisterChangeListener(const Field &field, ChangeListener *listener) {
+    inline static void RegisterChangeListener(ChangeListener *listener, const Field &field) {
         if (!ChangeListenersForField.contains(field.Id)) {
             ChangeListenersForField.emplace(field.Id, std::unordered_set<ChangeListener *>{});
         }

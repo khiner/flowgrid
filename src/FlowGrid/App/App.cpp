@@ -4,6 +4,7 @@
 #include "imgui_internal.h"
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/join.hpp>
+#include <set>
 
 #include "AppPreferences.h"
 #include "Core/Action/Actions.h"
@@ -89,10 +90,13 @@ bool CanApply(const Action::Any &action) {
 // Project constants:
 static const fs::path InternalPath = ".flowgrid";
 
-static const std::map<ProjectJsonFormat, std::string> ExtensionForProjectJsonFormat{{ProjectJsonFormat::StateFormat, ".fls"}, {ProjectJsonFormat::ActionFormat, ".fla"}};
+// Order matters here, as the first extension is the default project extension.
+static const std::map<ProjectJsonFormat, std::string> ExtensionForProjectJsonFormat{
+    {ProjectJsonFormat::ActionFormat, ".fla"},
+    {ProjectJsonFormat::StateFormat, ".fls"},
+};
 static const auto ProjectJsonFormatForExtension = ExtensionForProjectJsonFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
-
-static const auto AllProjectExtensions = std::views::keys(ProjectJsonFormatForExtension) | ranges::to<std::unordered_set>;
+static const auto AllProjectExtensions = std::views::keys(ProjectJsonFormatForExtension) | ranges::to<std::set>;
 static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
 
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::StateFormat));

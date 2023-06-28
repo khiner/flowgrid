@@ -16,5 +16,5 @@ DefineActionType(
 );
 
 namespace Action {
-using Faust = Combine<FaustFile::Any, FaustGraph::Any>::type;
+using Faust = Combine<FaustFile::Any, FaustGraph::Any>;
 } // namespace Action

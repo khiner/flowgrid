@@ -9,5 +9,5 @@
 
 DefineActionType(
     App,
-    using Any = Combine<Field::Any, Store::Any, Audio::Any, FileDialog::Any, Windows::Any, Style::Any>::type;
+    using Any = Combine<Field::Any, Store::Any, Audio::Any, FileDialog::Any, Windows::Any, Style::Any>;
 );

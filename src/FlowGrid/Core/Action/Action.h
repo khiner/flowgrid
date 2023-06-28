@@ -169,21 +169,23 @@ private:
 };
 
 // Utility to flatten two or more `ActionVariant`s together into one variant.
-// E.g. `Action::Combine<ActionVariant1, ActionVariant2, ActionVariant3>`
-template<typename... Vars> struct Combine;
-template<typename Var> struct Combine<Var> {
+// E.g. `using FooAction = Action::Combine<ActionVariant1, ActionVariant2, ActionVariant3>`
+template<typename... Vars> struct CombineImpl;
+template<typename Var> struct CombineImpl<Var> {
     using type = Var;
 };
-template<typename... Ts1, typename... Ts2, typename... Vars> struct Combine<ActionVariant<Ts1...>, ActionVariant<Ts2...>, Vars...> {
-    using type = Combine<ActionVariant<Ts1..., Ts2...>, Vars...>::type;
+template<typename... Ts1, typename... Ts2, typename... Vars> struct CombineImpl<ActionVariant<Ts1...>, ActionVariant<Ts2...>, Vars...> {
+    using type = CombineImpl<ActionVariant<Ts1..., Ts2...>, Vars...>::type;
 };
+template<typename... Vars> using Combine = typename CombineImpl<Vars...>::type;
 
 // Utility to filter an `ActionVariant` by a predicate.
-// E.g. `using Action::Savable = Action::Filter<Action::IsSavable, Any>::type;`
-template<template<typename> class Predicate, typename Var> struct Filter;
-template<template<typename> class Predicate, typename... Types> struct Filter<Predicate, Action::ActionVariant<Types...>> {
+// E.g. `using Savable = Action::Filter<Action::IsSavable, Any>;`
+template<template<typename> class Predicate, typename Var> struct FilterImpl;
+template<template<typename> class Predicate, typename... Types> struct FilterImpl<Predicate, Action::ActionVariant<Types...>> {
     template<typename Type>
     using ConditionalAdd = std::conditional_t<Predicate<Type>::value, Action::ActionVariant<Type>, Action::ActionVariant<>>;
-    using type = Action::Combine<ConditionalAdd<Types>...>::type;
+    using type = Action::Combine<ConditionalAdd<Types>...>;
 };
+template<template<typename> class Predicate, typename... Types> using Filter = typename FilterImpl<Predicate, Types...>::type;
 } // namespace Action

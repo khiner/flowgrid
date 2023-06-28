@@ -5,5 +5,5 @@
 DefineActionType(
     Audio,
 
-    using Any = Combine<Faust>::type;
+    using Any = Combine<Faust>;
 );

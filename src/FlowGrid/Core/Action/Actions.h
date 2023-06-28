@@ -6,9 +6,9 @@
 
 namespace Action {
 // `Any` holds all action types.
-using Any = Combine<Project::Any, App::Any>::type;
-using Savable = Filter<Action::IsSavable, Any>::type;
-using NonSavable = Filter<Action::IsNotSavable, Any>::type;
+using Any = Combine<Project::Any, App::Any>;
+using Savable = Filter<Action::IsSavable, Any>;
+using NonSavable = Filter<Action::IsNotSavable, Any>;
 } // namespace Action
 
 // Action moments are actions paired with the time they were queued.

@@ -49,15 +49,17 @@ void Faust::InitDsp() {
     static int num_inputs, num_outputs;
     string &error_message = Log.ErrorMessage;
     Box = DSPToBoxes("FlowGrid", Code, argc, argv.data(), &num_inputs, &num_outputs, error_message);
+    if (!Box) destroyLibContext();
+
     Graph.OnBoxChanged(Box);
 
-    static llvm_dsp_factory *dsp_factory;
     if (Box && error_message.empty()) {
+        static llvm_dsp_factory *dsp_factory;
         static const int optimize_level = -1;
         dsp_factory = createDSPFactoryFromBoxes("FlowGrid", Box, argc, argv.data(), "", error_message, optimize_level);
         if (dsp_factory && error_message.empty()) {
             Dsp = dsp_factory->createDSPInstance();
-            if (!Dsp) error_message = "Could not create Faust DSP.";
+            if (!Dsp) error_message = "Successfully created Faust DSP factory, but could not create the Faust DSP instance.";
         }
     } else if (!Box && error_message.empty()) {
         error_message = "`DSPToBoxes` returned no error but did not produce a result.";

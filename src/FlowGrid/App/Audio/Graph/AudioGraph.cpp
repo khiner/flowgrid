@@ -19,11 +19,11 @@ static ma_audio_buffer_ref InputBuffer;
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Init();
-    Field::RegisterChangeListener(this, audio_device.InChannels);
-    Field::RegisterChangeListener(this, audio_device.OutChannels);
-    Field::RegisterChangeListener(this, audio_device.InFormat);
-    Field::RegisterChangeListener(this, audio_device.OutFormat);
-    Field::RegisterChangeListener(this, Connections);
+    audio_device.InChannels.RegisterChangeListener(this);
+    audio_device.OutChannels.RegisterChangeListener(this);
+    audio_device.InFormat.RegisterChangeListener(this);
+    audio_device.OutFormat.RegisterChangeListener(this);
+    Connections.RegisterChangeListener(this);
 }
 AudioGraph::~AudioGraph() {
     Field::UnregisterChangeListener(this);

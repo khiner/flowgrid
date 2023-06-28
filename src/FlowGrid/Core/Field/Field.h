@@ -42,6 +42,7 @@ struct Field : Component {
             if (listeners.empty()) ChangeListenersForField.erase(field_id);
         }
     }
+    inline void RegisterChangeListener(ChangeListener *listener) const { RegisterChangeListener(listener, *this); }
 
     static Field *FindByPath(const StorePath &);
 

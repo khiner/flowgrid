@@ -17,7 +17,7 @@ InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id) {
 
     InteractionFlags flags = InteractionFlags_None;
     static bool hovered, held;
-    if (ButtonBehavior(rect, imgui_id, &hovered, &held, ImGuiButtonFlags_AllowItemOverlap)) {
+    if (ButtonBehavior(rect, imgui_id, &hovered, &held, ImGuiButtonFlags_AllowOverlap)) {
         flags |= InteractionFlags_Clicked;
     }
     if (hovered) flags |= InteractionFlags_Hovered;

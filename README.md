@@ -1,59 +1,23 @@
 # FlowGrid
 
-Faust in an ImGui interface backed by a persistent (as in persistent data structures), fully-undoable store.
-
-_Still actively building this. Expect main to be occasionally broken._
+Faust is an immediate-mode interface for the [Faust](https://github.com/grame-cncm/faust) audio language.
+It is backed by a persistent (as in persistent data structures), fully-undoable store, supporting navigation to any point in the project history in constant time.
 
 My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
 
-Things to play with:
-
-- Change configuration of audio read/write processes.
-- Create audio DSP with Faust.
-- Inspect the full FlowGrid application state, and its full history.
-- Navigate to any point in the project's history lightning fast.
-  - See [Application architecture][#application-architecture] for more details.
-- Other things to come! Definitely planned:
-  - MIDI
-  - USB (supporting display of any window in a Push 2 LCD display)
-  - HLSL (or another shader language, not settled on one)
+_Still actively building this. Expect main to be occasionally broken._
 
 ## Application architecture
 
-The fundamental aspects of FlowGrid's state management architecture are inspired by [Lager](https://github.com/arximboldi/lager), particularly its value-oriented design and unidirectional data-flow architecture.
-Lager, in turn, is inspired by frameworks like [Elm](https://guide.elm-lang.org/architecture) and [Redux](https://redux.js.org/introduction/getting-started).
-The spirit of the application architecture is similar to Lager, but much simpler, and with none of its dependencies other than [immer](https://github.com/arximboldi/immer/).
+FlowGrid uses a unidirectional data-flow architecture (like Redux).
+Each user action is encapsulated as a simple struct with all the information needed to carry out its effect on the project state.
+Actions are grouped together into `std::variant` types composed in a nested domain hierarchy, with a variant type called `Action::App::Any` at the root.
+All issued actions are queued into a single concurrent queue, and each applied action overwrites the application store.
+Actions are grouped into "gestures", and each gesture holds a logical snapshot of the full project state after applying its actions.
+If you're unfamiliar with persistent data structures, this is much less memory intensive than it sounds!
+Each snapshot only needs to track a relatively small amount of data representing its change to the underlying store, a concept referred to as "structural sharing".
 
-FlowGrid uses a single [persistent map](https://sinusoid.es/immer/containers.html#map) to store the full application state.
-Every user action that affects the application state results in the following:
-
-- Put a snapshot of the current application state into history.
-  This is only a snapshot conceptually, as only a small amount of data actually needs to be copied to keep a full log of the history, due to the space-efficiency of the [Hash-Array-Mapped Trie (
-  ) data structure](https://youtu.be/imrSQ82dYns).
-- Generate an `Action` instance containing all the information needed to execute the logical action.
-- Pass this action to the `App::Update` function, which computes and returns a new immutable store (an `immer::map` instance) containing the new state after running the action.
-- The single canonical application store instance is overwritten with this new resultant store.
-  This assignment is thread-safe.
-  Due to the immutability of the canonical application store instance, readers will always see a consistent version of either the old state (before the action) or the new state (after the action).
-
-A single instance of a simple nested struct of type `App` wraps around the application store and provides hierarchically organized access, metadata (like its path in the store, or its corresponding ImGui ID), and methods for applying actions to rendering its stateful members.
-Each leaf member of `App` is a `Stateful::Field` or simple collections of `Field`s.
-A `Field` is a thin wrapper around its corresponding `Primitive` value in the application store (of type `immer::map<Path, Primitive>`).
-A `Primitive` is defined as:
-
-```cpp
-using Primitive = std::variant<bool, unsigned int, int, float, string>;
-```
-
-`Field`s also provide state metadata, conversion & rendering methods, and behave syntactically like the `Primitive`s they wrap.
-
-Here are some high-level application architecture design goals:
-
-- Store the source-of-truth application state in a single `struct` with global read access.
-- Perform all actions that affect the application state in one place.
-- Provide global read access to all application runtime state.
-- Make _everything_ undo/redo-able.
-- Where it makes sense, treat the UI as a pure function of the application state.
+This architectural pattern is largely inspired by [Lager](https://github.com/arximboldi/lager) but with fewer bells and whistles and none of its dependencies other than [immer](https://github.com/arximboldi/immer/).
 
 ## Application docs
 

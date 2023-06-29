@@ -1,4 +1,4 @@
-#include "FaustNode.h"
+#include "App/Audio/Graph/AudioGraph.h"
 
 #include "App/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
@@ -10,14 +10,12 @@
 
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
 
-FaustNode::FaustNode(ComponentArgs &&args, bool on) : AudioGraphNode(std::move(args), on) {
+FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     audio_device.SampleRate.RegisterChangeListener(this);
-}
-FaustNode::~FaustNode() {
-    Field::UnregisterChangeListener(this);
 }
 
 void FaustNode::OnFieldChanged() {
+    AudioGraphNode::OnFieldChanged();
     if (CurrentDsp) CurrentDsp->init(audio_device.SampleRate);
 }
 
@@ -35,7 +33,7 @@ void FaustNode::OnDspChanged(dsp *dsp) {
     CurrentDsp = dsp;
 }
 
-void FaustNode::DoInit(ma_node_graph *graph) {
+void FaustNode::DoInit() {
     if (!CurrentDsp) return;
 
     CurrentDsp->init(audio_device.SampleRate);
@@ -55,7 +53,7 @@ void FaustNode::DoInit(ma_node_graph *graph) {
     config.vtable = &vtable;
 
     static ma_node_base node{};
-    const int result = ma_node_init(graph, &config, nullptr, &node);
+    const int result = ma_node_init(Graph->Get(), &config, nullptr, &node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust node: {}", result));
 
     Set(&node);

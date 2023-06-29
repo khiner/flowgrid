@@ -13,22 +13,24 @@ struct AudioGraph : Component, Field::ChangeListener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
 
-    void Update();
-
     void OnFieldChanged() override;
+
+    void Update();
 
     static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
 
-    ma_node_graph *Get();
+    ma_node_graph *Get() const;
 
     struct InputNode : AudioGraphNode {
         using AudioGraphNode::AudioGraphNode;
-        void DoInit(ma_node_graph *) override;
+
+        void DoInit() override;
         void DoUninit() override;
     };
 
     struct Nodes : Component {
-        using Component::Component;
+        Nodes(ComponentArgs &&);
+        ~Nodes();
 
         // Iterate over all children, converting each element from a `Component *` to a `Node *`.
         // Usage: `for (const Node *node : Nodes) ...`
@@ -47,13 +49,15 @@ struct AudioGraph : Component, Field::ChangeListener {
         void Update();
         void Uninit();
 
+        const AudioGraph *Graph;
+
         // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
         // todo configurable data source
         Prop(InputNode, Input);
         Prop(FaustNode, Faust);
         Prop(AudioGraphNode, Output);
 
-    protected:
+    private:
         void Render() const override;
     };
 
@@ -78,12 +82,11 @@ struct AudioGraph : Component, Field::ChangeListener {
     Prop(AdjacencyList, Connections);
     Prop(Style, Style);
 
-protected:
-    void Render() const override;
-    void RenderConnections() const;
-
 private:
     void Init();
     void Uninit();
     void UpdateConnections();
+
+    void Render() const override;
+    void RenderConnections() const;
 };

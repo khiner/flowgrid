@@ -95,7 +95,6 @@ struct ImGuiSettings : Component {
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);
     Prop(TableSettings, Tables);
-
 };
 
 extern const ImGuiSettings &imgui_settings;

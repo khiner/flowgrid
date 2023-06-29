@@ -6,7 +6,7 @@
 
 DefineActionType(
     AdjacencyList,
-    // todo NoMerge 
+    // todo NoMerge
     DefineFieldAction(ToggleConnection, "", ID source; ID destination;);
 
     Json(ToggleConnection, path, source, destination);

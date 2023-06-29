@@ -6,13 +6,12 @@
 
 class dsp;
 
-struct FaustNode : AudioGraphNode, Field::ChangeListener {
-    FaustNode(ComponentArgs &&, bool on = true);
-    ~FaustNode();
+struct FaustNode : AudioGraphNode {
+    FaustNode(ComponentArgs &&);
 
     void OnFieldChanged() override;
     void OnDspChanged(dsp *);
 
 private:
-    void DoInit(ma_node_graph *) override;
+    void DoInit() override;
 };

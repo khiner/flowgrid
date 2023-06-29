@@ -1,49 +1,52 @@
-#include "AudioGraphNode.h"
+#include "AudioGraph.h"
 
 #include "miniaudio.h"
 
-AudioGraphNode::AudioGraphNode(ComponentArgs &&args, bool on) : Component(std::move(args)) {
-    On.Set(on);
+AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
+    Volume.RegisterChangeListener(this);
+}
+AudioGraphNode::~AudioGraphNode() {
+    Field::UnregisterChangeListener(this);
 }
 
-void *AudioGraphNode::Get() const {
-    auto it = DataForId.find(Id);
-    return it != DataForId.end() ? it->second : nullptr;
-}
-
-void AudioGraphNode::Set(ma_node *data) {
-    if (data == nullptr) DataForId.erase(Id);
-    else DataForId[Id] = data;
-}
-
-Count AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Get()); }
-Count AudioGraphNode::OutputBusCount() const { return ma_node_get_output_bus_count(Get()); }
-Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Get(), bus); }
-Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Get(), bus); }
-
-void AudioGraphNode::Init(ma_node_graph *graph) {
-    DoInit(graph);
-}
-
-void AudioGraphNode::Update(ma_node_graph *graph) {
-    const bool is_initialized = Get() != nullptr;
-    if (On && !is_initialized) {
-        Init(graph);
-    } else if (!On && is_initialized) {
-        Uninit();
+void AudioGraphNode::OnFieldChanged() {
+    if (Volume.IsChanged()) {
+        UpdateVolume();
     }
-    if (On) ma_node_set_output_bus_volume(Get(), 0, Volume);
+}
+
+void AudioGraphNode::Set(ma_node *node) {
+    Node = node;
+}
+
+Count AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
+Count AudioGraphNode::OutputBusCount() const { return ma_node_get_output_bus_count(Node); }
+Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Node, bus); }
+Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Node, bus); }
+
+void AudioGraphNode::Init() {
+    DoInit();
+}
+
+void AudioGraphNode::UpdateVolume() {
+    if (On) ma_node_set_output_bus_volume(Node, 0, Volume);
+}
+
+void AudioGraphNode::Update() {
+    const bool is_initialized = Node != nullptr;
+    if (On && !is_initialized) Init();
+    else if (!On && is_initialized) Uninit();
+
+    UpdateVolume();
 }
 
 void AudioGraphNode::Uninit() {
-    if (!Get()) return;
+    if (Node == nullptr) return;
 
     DoUninit();
-    Set(nullptr);
-}
-
-void AudioGraphNode::DoUninit() {
-    ma_node_uninit(Get(), nullptr);
+    ma_node_uninit(Node, nullptr);
+    Node = nullptr;
 }
 
 void AudioGraphNode::Render() const {

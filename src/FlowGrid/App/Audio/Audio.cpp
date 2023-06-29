@@ -35,7 +35,7 @@ void Audio::OnFieldChanged() {
         Graph.Nodes.Faust.Uninit();
         Faust.UpdateDsp();
         Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
-        Graph.Nodes.Faust.Init(Graph.Get());
+        Graph.Nodes.Faust.Init();
         Graph.Update();
     }
 }

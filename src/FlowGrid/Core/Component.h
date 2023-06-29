@@ -1,8 +1,8 @@
 #pragma once
 
-#include <unordered_set>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Core/Primitive/Primitive.h"
@@ -87,6 +87,7 @@ protected:
 
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
+
 private:
     Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
 };

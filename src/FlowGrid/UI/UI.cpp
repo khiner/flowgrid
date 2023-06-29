@@ -23,7 +23,9 @@ static SDL_Window *Window = nullptr;
 static SDL_GLContext GlContext{};
 
 UIContext::UIContext() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) throw std::runtime_error(SDL_GetError());
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) {
+        throw std::runtime_error(std::format("SDL_Init error: {}", SDL_GetError()));
+    }
 
 #if defined(__APPLE__)
     // GL 3.2 Core + GLSL 150
@@ -48,13 +50,17 @@ UIContext::UIContext() {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    auto window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
 
+    const auto window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     Window = SDL_CreateWindowWithPosition("FlowGrid", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
-    GlContext = SDL_GL_CreateContext(Window);
+    if (Window == nullptr) {
+        throw std::runtime_error(std::format("SDL_CreateWindow error: {}", SDL_GetError()));
+    }
 
+    GlContext = SDL_GL_CreateContext(Window);
     SDL_GL_MakeCurrent(Window, GlContext);
     SDL_GL_SetSwapInterval(1); // Enable vsync
+    SDL_ShowWindow(Window);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

@@ -91,7 +91,7 @@ void AudioGraph::Update() {
 
 void AudioGraph::Uninit() {
     Nodes.Uninit();
-    ma_node_graph_uninit(Get(), nullptr); // Graph endpoint is already uninitialized in `Nodes.Uninit`.
+    // Graph node is already uninitialized in `Nodes.Uninit`.
 }
 
 AudioGraph::Nodes::Nodes(ComponentArgs &&args) : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {}

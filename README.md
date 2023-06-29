@@ -97,11 +97,18 @@ If that doesn't work, try the latest release in the previous LLVM major version.
 
 - **Install system requirements:**
 
-```shell
-$ git clone --recursive git@github.com:khiner/flowgrid.git
-$ brew install cmake pkgconfig llvm freetype
-$ brew link llvm --force
-```
+  ```shell
+  $ git clone --recursive git@github.com:khiner/flowgrid.git
+  $ brew install cmake pkgconfig llvm freetype
+  $ brew link llvm --force
+  ```
+
+- Download and install the latest SDK from https://vulkan.lunarg.com/sdk/home
+- Set the `VULKAN_SDK` environment variable.
+  For example, I have the following line in my `.zshrc` file:
+  ```shell
+  export VULKAN_SDK="$HOME/VulkanSDK/1.3.250.0/macOS"
+  ```
 
 All scripts can be run from anywhere, but to the root repo directory (clean/build).
 

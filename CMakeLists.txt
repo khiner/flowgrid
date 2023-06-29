@@ -6,8 +6,8 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
 add_subdirectory(lib)
 
-find_package(OpenGL REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(Vulkan REQUIRED)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 set(IMGUI_DIR lib/imgui)
@@ -19,7 +19,7 @@ add_executable(${PROJECT_NAME}
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
     ${IMGUI_DIR}/misc/freetype/imgui_freetype.cpp
     ${IMPLOT_DIR}/implot.cpp
@@ -33,6 +33,7 @@ include_directories(
     src/FlowGrid
     ${SDL3_DIR}/include
     ${FREETYPE_INCLUDE_DIRS}
+    ${Vulkan_INCLUDE_DIRS}
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${IMPLOT_DIR}
@@ -57,7 +58,7 @@ if(TRACING_ENABLED)
 endif()
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL ${FREETYPE_LIBRARIES} SDL3::SDL3 nlohmann_json::nlohmann_json dynamiclib)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${FREETYPE_LIBRARIES} ${Vulkan_LIBRARIES} SDL3::SDL3 nlohmann_json::nlohmann_json dynamiclib)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

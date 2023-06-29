@@ -54,7 +54,7 @@ void Debug::StackTool::Render() const {
     ShowStackToolWindow();
 }
 
-void Metrics::ImGuiMetrics::Render() const { ShowMetricsWindow(); }
+void Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
 void Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
 
 using namespace FlowGrid;

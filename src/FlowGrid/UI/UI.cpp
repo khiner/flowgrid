@@ -13,6 +13,8 @@
 #include "App/Style/Style.h"
 #include "Core/Store/StoreAction.h"
 
+#include "App/FileDialog/FileDialog.h" // xxx only used for loading fonts
+
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>
 #endif
@@ -88,6 +90,7 @@ UIContext::UIContext() {
     Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
     Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
     io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * FontAtlasScale);
+    IGFD::AddFonts();
 }
 
 UIContext::~UIContext() {

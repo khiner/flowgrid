@@ -58,46 +58,17 @@ bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *h
     return result;
 }
 
-void IGFD::Init() {
-    Dialog = ImGuiFileDialog::Instance();
-#ifdef USE_THUMBNAILS
-    Dialog->SetCreateThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) -> void {
-        if (thumbnail_info && thumbnail_info->isReadyToUpload && thumbnail_info->textureFileDatas) {
-            GLuint textureId = 0;
-            glGenTextures(1, &textureId);
-            thumbnail_info->textureID = (void *)(size_t)textureId;
-
-            glBindTexture(GL_TEXTURE_2D, textureId);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)thumbnail_info->textureWidth, (GLsizei)thumbnail_info->textureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, thumbnail_info->textureFileDatas);
-            glFinish();
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            delete[] thumbnail_info->textureFileDatas;
-            thumbnail_info->textureFileDatas = nullptr;
-
-            thumbnail_info->isReadyToUpload = false;
-            thumbnail_info->isReadyToDisplay = true;
-        }
-    });
-    Dialog->SetDestroyThumbnailCallback([](IGFD_Thumbnail_Info *thumbnail_info) {
-        if (thumbnail_info) {
-            GLuint tex_id = (GLuint)(size_t)thumbnail_info->textureID;
-            glDeleteTextures(1, &tex_id);
-            glFinish();
-        }
-    });
-#endif // USE_THUMBNAILS
-
+void IGFD::AddFonts() {
     static const ImWchar IconRanges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
     ImFontConfig icons_config;
     icons_config.DstFont = GetDefaultFont();
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
     GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * FontAtlasScale, &icons_config, IconRanges);
+}
+
+void IGFD::Init() {
+    Dialog = ImGuiFileDialog::Instance();
 
     // Singleton access
     Dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex

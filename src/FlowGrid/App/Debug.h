@@ -55,13 +55,11 @@ struct Debug : Component {
             Annotated,
             Raw
         };
-        Prop_(Enum, LabelMode, "?The raw dog JSON state doesn't store keys for all items.\n"
-                               "For example, the main `ui.style.colors` state is a list.\n\n"
-                               "'Annotated' mode shows (highlighted) labels for such state items.\n"
-                               "'Raw' mode shows the state exactly as it is in the raw JSON state.",
+        Prop_(Enum, LabelMode, "?'Raw' mode shows plain data structures and 'Annotated' mode shows (highlighted) human-readable labels in some cases.\n"
+                               "For example, colors are stored as lists with a separate label mapping."
+                               "When 'Annotated' mode is enabled, color keys are shown as labels instead of indexes.",
               {"Annotated", "Raw"}, Annotated);
-        Prop_(Bool, AutoSelect, "Auto-Select?When auto-select is enabled, state changes automatically open.\n"
-                                "The state viewer to the changed state node(s), closing all other state nodes.\n"
+        Prop_(Bool, AutoSelect, "Auto-Select?When enabled, changes to state automatically expand the tree to open the changed field value leaf, closing all other state nodes.\n"
                                 "State menu items can only be opened or closed manually if auto-select is disabled.",
               true);
 

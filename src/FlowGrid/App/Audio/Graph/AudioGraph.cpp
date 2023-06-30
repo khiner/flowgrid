@@ -143,12 +143,7 @@ void AudioGraph::Render() const {
 }
 
 void AudioGraph::Nodes::Render() const {
-    for (const auto *node : *this) {
-        if (TreeNodeEx(node->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            node->Draw();
-            TreePop();
-        }
-    }
+    RenderTreeNodes();
 }
 
 void AudioGraph::RenderConnections() const {

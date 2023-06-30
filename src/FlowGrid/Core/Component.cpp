@@ -42,7 +42,6 @@ Component::~Component() {
     WithId.erase(Id);
 }
 
-// Currently, `Draw` is not used for anything except wrapping around `Render`.
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void Component::HelpMarker(const bool after) const {
     if (Help.empty()) return;
@@ -52,12 +51,14 @@ void Component::HelpMarker(const bool after) const {
     if (!after) ImGui::SameLine();
 }
 
-// Fields don't wrap their `Render` with a push/pop-id.
-// ImGui widgets all push the provided label to the ID stack.
+// Currently, `Draw` is not used for anything except wrapping around `Render`,
+// but it's here in case we want to do something like monitoring or ID management in the future.
 void Drawable::Draw() const {
-    //    PushID(ImGuiLabel.c_str());
+    // ImGui widgets all push the provided label to the ID stack,
+    // but info hovering isn't complete yet, and something like this might be needed...
+    // PushID(ImGuiLabel.c_str());
     Render();
-    //    PopID();
+    // PopID();
 }
 
 using namespace ImGui;
@@ -91,10 +92,10 @@ void Component::SelectTab() const {
     FindImGuiWindow().DockNode->SelectedTabId = FindImGuiWindow().TabId;
 }
 
-void Component::RenderTabs(const std::unordered_set<ID> &exclude) const {
+void Component::RenderTabs() const {
     if (BeginTabBar("")) {
         for (const auto *child : Children) {
-            if (!exclude.contains(child->Id) && BeginTabItem(child->ImGuiLabel.c_str())) {
+            if (BeginTabItem(child->ImGuiLabel.c_str())) {
                 child->Draw();
                 EndTabItem();
             }
@@ -103,6 +104,11 @@ void Component::RenderTabs(const std::unordered_set<ID> &exclude) const {
     }
 }
 
-void Component::RenderTabs() const {
-    RenderTabs({});
+void Component::RenderTreeNodes() const {
+    for (const auto *child : Children) {
+        if (TreeNodeEx(child->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            child->Draw();
+            TreePop();
+        }
+    }
 }

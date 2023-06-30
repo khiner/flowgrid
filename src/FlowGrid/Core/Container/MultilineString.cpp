@@ -83,6 +83,6 @@ void MultilineString::Render() const {
     }
 }
 
-void MultilineString::Metrics::Render() const {
+void MultilineString::RenderDebug() const {
     editor.DebugPanel();
 }

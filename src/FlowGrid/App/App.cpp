@@ -23,7 +23,7 @@ App::App(ComponentArgs &&args) : Component(std::move(args)) {
         Audio,
         Settings,
         Audio.Faust.Code,
-        Audio.Faust.Code.Metrics,
+        Audio.Faust.Code.Debug,
         Audio.Faust.Log,
         Audio.Faust.Graph,
         Audio.Faust.Params,
@@ -141,7 +141,7 @@ void App::Render() const {
         Settings.Dock(settings_node_id);
 
         Audio.Faust.Code.Dock(faust_editor_node_id);
-        Audio.Faust.Code.Metrics.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
+        Audio.Faust.Code.Debug.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
         Audio.Faust.Log.Dock(faust_tools_node_id);
         Audio.Faust.Graph.Dock(faust_tools_node_id);
         Audio.Faust.Params.Dock(faust_tools_node_id);

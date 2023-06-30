@@ -9,17 +9,12 @@ struct MultilineString : PrimitiveField<string>, Actionable<Action::MultilineStr
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
+    void RenderDebug() const override;
+
     operator bool() const { return !Value.empty(); }
     operator string_view() const { return Value; }
 
-    struct Metrics : Component {
-        using Component::Component;
-
-    protected:
-        void Render() const override;
-    };
-
-    Prop_(Metrics, Metrics, "Editor metrics");
+    Prop_(DebugComponent, Debug, "Editor debug");
 
 private:
     void Render() const override;

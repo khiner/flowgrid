@@ -254,7 +254,6 @@ struct IMGUI_API TextEditor {
     static bool IsGlyphWordChar(const Glyph &glyph);
 
     void DebugPanel();
-    void UnitTests();
 
     bool ReadOnly;
     bool Overwrite;

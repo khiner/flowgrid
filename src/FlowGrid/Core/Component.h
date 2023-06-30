@@ -62,6 +62,8 @@ struct Component : Drawable {
 
     virtual ~Component();
 
+    virtual void RenderDebug() const {}
+
     const Component *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }
 
@@ -79,8 +81,9 @@ struct Component : Drawable {
     const Menu WindowMenu{{}};
     const ImGuiWindowFlags WindowFlags{WindowFlags_None};
 
+    // Child renderers.
     void RenderTabs() const;
-    void RenderTabs(const std::unordered_set<ID> &exclude) const;
+    void RenderTreeNodes() const;
 
 protected:
     virtual void Render() const override {} // By default, components don't render anything.
@@ -90,6 +93,21 @@ protected:
 
 private:
     Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
+};
+
+// Minimal/base debug component.
+// Actual debug content is rendered in the parent component's `RenderDebug()`,
+// and debug components themselves can't further override `RenderDebug()`.
+// Otherwise, debug components are just like regular components - they store additional config fields, be rendered as windows, etc.
+// Override `Render` to render anything other than just the parent's debug content.
+struct DebugComponent : Component {
+    using Component::Component;
+
+protected:
+    virtual void Render() const override { RenderDebug(); }
+
+private:
+    void RenderDebug() const override { Parent->RenderDebug(); } // Not overridable.
 };
 
 /**

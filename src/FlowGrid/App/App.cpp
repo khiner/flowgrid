@@ -98,18 +98,18 @@ bool CanApply(const Action::Any &action) {
 static const fs::path InternalPath = ".flowgrid";
 
 // Order matters here, as the first extension is the default project extension.
-static const std::map<ProjectJsonFormat, std::string> ExtensionForProjectJsonFormat{
+static const std::map<ProjectJsonFormat, std::string> ExtensionByProjectJsonFormat{
     {ProjectJsonFormat::ActionFormat, ".fla"},
     {ProjectJsonFormat::StateFormat, ".fls"},
 };
-static const auto ProjectJsonFormatForExtension = ExtensionForProjectJsonFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
-static const auto AllProjectExtensions = std::views::keys(ProjectJsonFormatForExtension) | ranges::to<std::set>;
+static const auto ProjectJsonFormatByExtension = ExtensionByProjectJsonFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
+static const auto AllProjectExtensions = std::views::keys(ProjectJsonFormatByExtension);
 static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
 
-static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
 // The default project is a user-created project that loads on app start, instead of the empty project.
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionForProjectJsonFormat.at(ProjectJsonFormat::ActionFormat));
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionByProjectJsonFormat.at(ProjectJsonFormat::ActionFormat));
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
@@ -184,7 +184,7 @@ void App::Render() const {
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         const string &extension = selected_path.extension();
-        if (AllProjectExtensions.find(extension) != AllProjectExtensions.end()) {
+        if (std::ranges::find(AllProjectExtensions, extension) != AllProjectExtensions.end()) {
             if (FileDialog.SaveMode) Action::Project::Save{selected_path}.q();
             else Action::Project::Open{selected_path}.q();
         }
@@ -218,8 +218,8 @@ void SetCurrentProjectPath(const fs::path &path) {
 
 std::optional<ProjectJsonFormat> GetProjectJsonFormat(const fs::path &path) {
     const string &ext = path.extension();
-    if (!ProjectJsonFormatForExtension.contains(ext)) return {};
-    return ProjectJsonFormatForExtension.at(ext);
+    if (!ProjectJsonFormatByExtension.contains(ext)) return {};
+    return ProjectJsonFormatByExtension.at(ext);
 }
 
 void CommitGesture() {
@@ -391,7 +391,7 @@ void Project::Open(const fs::path &file_path) {
 #include "implot.h"
 
 struct Plottable {
-    std::vector<const char *> Labels;
+    std::vector<std::string> Labels;
     std::vector<ImU64> Values;
 };
 
@@ -406,9 +406,7 @@ Plottable StorePathChangeFrequencyPlottable() {
 
     if (committed_times.empty() && gesture_update_times.empty()) return {};
 
-    const std::set<StorePath> paths =
-        ranges::views::concat(ranges::views::keys(committed_times), ranges::views::keys(gesture_update_times)) |
-        ranges::to<std::set>;
+    const auto paths = ranges::views::concat(ranges::views::keys(committed_times), ranges::views::keys(gesture_update_times));
 
     const bool has_gesture = !gesture_update_times.empty();
     std::vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
@@ -421,15 +419,11 @@ Plottable StorePathChangeFrequencyPlottable() {
         }
     }
 
-    const auto labels = paths | std::views::transform([](const string &path) {
-                            // Convert `string` to char array, removing first character of the path, which is a '/'.
-                            char *label = new char[path.size()];
-                            std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
-                            return label;
-                        }) |
-        ranges::to<std::vector<const char *>>;
-
-    return {labels, values};
+    // Remove leading '/' from paths to create labels.
+    return {
+        paths | std::views::transform([](const string &path) { return path.substr(1); }) | ranges::to<std::vector>,
+        values,
+    };
 }
 
 void App::Debug::StorePathUpdateFrequency::Render() const {
@@ -448,7 +442,9 @@ void App::Debug::StorePathUpdateFrequency::Render() const {
 
         // todo add an axis flag to exclude non-integer ticks
         // todo add an axis flag to show last tick
-        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
+        const auto c_labels = labels | std::views::transform([](const std::string &label) { return label.c_str(); }) | ranges::to<std::vector>;
+        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), c_labels.data(), false);
+
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};
         const int item_count = !ActiveGestureActions.empty() ? 2 : 1;
         const int group_count = int(values.size()) / item_count;

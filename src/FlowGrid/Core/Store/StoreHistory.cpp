@@ -52,8 +52,8 @@ StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
 
 StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
     // All recorded gestures except the first, since the first record only holds the initial store with no gestures.
-    const Gestures gestures = Records | std::views::drop(1) | std::views::transform([](const auto &record) { return record.Gesture; }) | ranges::to<std::vector>;
-    return {gestures, Index};
+    Gestures gestures = Records | std::views::drop(1) | std::views::transform([](const auto &record) { return record.Gesture; }) | ranges::to<std::vector>;
+    return {std::move(gestures), Index};
 }
 
 void StoreHistory::CommitGesture(Gesture &&gesture) {

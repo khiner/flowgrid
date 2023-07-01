@@ -5,6 +5,7 @@
 
 #include "Helper/String.h"
 #include "UI/HelpMarker.h"
+#include "UI/Widgets.h"
 
 Menu::Menu(string_view label, const std::vector<const Item> items) : Label(label), Items(std::move(items)) {}
 Menu::Menu(const std::vector<const Item> items) : Menu("", std::move(items)) {}
@@ -27,7 +28,7 @@ Component::Component(Component *parent, string_view path_leaf, Metadata meta, Im
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {
     if (parent) parent->Children.emplace_back(this);
-    WithId[Id] = this;
+    ById[Id] = this;
 }
 
 Component::Component(ComponentArgs &&args)
@@ -39,7 +40,7 @@ Component::Component(ComponentArgs &&args, Menu &&menu)
     : Component(std::move(args.Parent), std::move(args.PathLeaf), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
 
 Component::~Component() {
-    WithId.erase(Id);
+    ById.erase(Id);
 }
 
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
@@ -110,5 +111,22 @@ void Component::RenderTreeNodes() const {
             child->Draw();
             TreePop();
         }
+    }
+}
+
+void Component::RenderValueTree(ValueTreeLabelMode label_mode, bool auto_select) const {
+    if (Children.empty()) {
+        TextUnformatted(Name.c_str());
+        return;
+    }
+
+    if (auto_select) SetNextItemOpen(ChangedComponentIds.contains(Id));
+
+    const std::string label = ImGuiLabel.empty() ? "App" : ImGuiLabel;
+    if (fg::TreeNode(label)) {
+        for (const auto *child : Children) {
+            child->RenderValueTree(label_mode, auto_select);
+        }
+        TreePop();
     }
 }

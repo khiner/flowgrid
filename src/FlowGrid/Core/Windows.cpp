@@ -28,7 +28,7 @@ void Windows::Render() const {
         if (!VisibleComponents[i]) continue;
 
         const auto component_id = WindowComponentIds[i];
-        const auto *component = Component::WithId[component_id];
+        const auto *component = Component::ById[component_id];
         ImGuiWindowFlags flags = component->WindowFlags;
         if (!component->WindowMenu.Items.empty()) flags |= ImGuiWindowFlags_MenuBar;
 
@@ -63,7 +63,7 @@ void Windows::MenuItem() const {
     //         Demo,
     //         Menu(
     //             "Debug",
-    //             {Debug.Metrics, Debug.DebugLog, Debug.StackTool, Debug.StateViewer, Debug.StorePathUpdateFrequency, Debug.ProjectPreview}
+    //             {Debug, Debug.Metrics, Debug.DebugLog, Debug.StackTool, Debug.StorePathUpdateFrequency, Debug.ProjectPreview}
     //             // Debug.StateMemoryEditor,
     //         ),
     //     }

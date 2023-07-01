@@ -31,6 +31,8 @@ struct Gesture {
 
 using Gestures = std::vector<Gesture>;
 
+SavableActionMoments MergeActions(const SavableActionMoments &);
+
 namespace nlohmann {
 inline static void to_json(json &j, const Action::Savable &action) {
     action.to_json(j);

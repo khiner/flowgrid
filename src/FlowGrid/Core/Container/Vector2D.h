@@ -17,6 +17,7 @@ template<IsPrimitive T> struct Vector2D : Field, Actionable<typename Action::Vec
     bool CanApply(const ActionType &) const override { return true; }
 
     void RefreshValue() override;
+    void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
 
     T operator()(Count i, Count j) const { return Value[i][j]; }
 

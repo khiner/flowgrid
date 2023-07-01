@@ -26,6 +26,8 @@ template<IsPrimitive T> struct PrimitiveField : Field {
         Value = value;
     }
 
+    void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
+
 protected:
     T Value;
 };

@@ -127,6 +127,20 @@ void Erase(const StorePath &path) {
     }
 }
 
+Count IdPairCount(const StorePath &path) {
+    return IsTransient ? Transient.IdPairsByPath[path].size() : AppStore.IdPairsByPath[path].size();
+}
+
+std::unordered_set<IdPair, IdPairHash> IdPairs(const StorePath &path) {
+    std::unordered_set<IdPair, IdPairHash> id_pairs;
+    if (IsTransient) {
+        for (const auto &id_pair : Transient.IdPairsByPath[path]) id_pairs.insert(id_pair);
+    } else {
+        for (const auto &id_pair : AppStore.IdPairsByPath[path]) id_pairs.insert(id_pair);
+    }
+    return id_pairs;
+}
+
 void AddIdPair(const StorePath &path, const IdPair &value) {
     if (IsTransient) {
         if (Transient.IdPairsByPath.contains(path)) {

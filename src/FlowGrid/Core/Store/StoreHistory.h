@@ -23,19 +23,13 @@ struct StoreHistory {
         const Gesture &Gesture; // Reference to the (compressed) gesture that caused the store change.
     };
 
-    struct Plottable {
-        std::vector<const char *> Labels;
-        std::vector<ImU64> Values;
-    };
-
     StoreHistory();
     ~StoreHistory();
 
     void SetIndex(Count);
 
     void AddTransientGesture(const Gesture &); // Only used during action-formmated project loading.
-    void CommitGesture();
-    void AddToActiveGesture(const std::vector<SavableActionMoment> &, const TimePoint &store_commit_time); // Assumes `LatestPatch` has already been set.
+    void CommitGesture(Gesture &&); // Add a gesture to the history.
 
     Count Size() const;
     bool Empty() const;
@@ -48,19 +42,12 @@ struct StoreHistory {
     ReferenceRecord RecordAt(Count index) const;
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
 
-    float GestureTimeRemainingSec(float gesture_duration_sec) const;
-    Plottable StorePathChangeFrequencyPlottable() const;
-    std::optional<TimePoint> LatestUpdateTime(const StorePath &) const;
-
     Count Index{0};
-    SavableActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     Patch LatestPatch;
 
-private:
-    using TimesForPath = std::unordered_map<StorePath, std::vector<TimePoint>, PathHash>;
-    TimesForPath CommitTimesForPath{};
-    TimesForPath GestureUpdateTimesForPath{};
+    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> CommitTimesForPath{};
 
+private:
     void Add(const Store &, const Gesture &);
 };
 

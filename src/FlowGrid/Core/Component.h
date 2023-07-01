@@ -7,6 +7,7 @@
 
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
+#include "Helper/Time.h"
 #include "UI/Drawable.h"
 
 namespace FlowGrid {}
@@ -48,13 +49,16 @@ struct Component : Drawable {
         static Metadata Parse(string_view meta_str);
         const string Name, Help;
     };
+
     struct ComponentArgs {
         Component *Parent = nullptr;
         string_view PathLeaf = "";
         string_view MetaStr = "";
     };
 
-    inline static std::unordered_map<ID, Component *> WithId; // Access any state member by its ID. todo change to vector after adding `Component::Index`.
+    inline static std::unordered_map<ID, Component *> ById; // Access any state member by its ID.
+    // Components with at least one descendent field updated during the latest action pass.
+    inline static std::unordered_set<ID> ChangedComponentIds;
 
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
@@ -62,7 +66,19 @@ struct Component : Drawable {
 
     virtual ~Component();
 
+    Component(const Component &) = delete; // Copying not allowed.
+    Component &operator=(const Component &) = delete; // Assignment not allowed.
+
     virtual void RenderDebug() const {}
+
+    enum ValueTreeLabelMode {
+        Annotated,
+        Raw
+    };
+
+    // Render a nested tree of components, with Fields as leaf nodes displaying their values as text.
+    // By default, renders `this` a node with children as child nodes.
+    virtual void RenderValueTree(ValueTreeLabelMode, bool auto_select) const;
 
     const Component *Child(Count i) const { return Children[i]; }
     inline Count ChildCount() const { return Children.size(); }

@@ -30,6 +30,9 @@ struct Style : Component, Actionable<Action::Style::Any> {
     struct FlowGridStyle : Component {
         FlowGridStyle(ComponentArgs &&);
 
+        // xxx not used anymore - was used for gesture flash, but now `AppSettings.GestureDurationSec` is used instead.
+        // todo plan is to use this for a very short flash _after_ the gesture, to indicate completion.
+        // this is especially needed to notice immediate actions.
         Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
         Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 

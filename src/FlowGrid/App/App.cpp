@@ -18,6 +18,13 @@
 using std::vector;
 using namespace FlowGrid;
 
+static SavableActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
+static float GestureTimeRemainingSec(float gesture_duration_sec) {
+    if (ActiveGestureActions.empty()) return 0;
+    const auto ret = std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
+    return ret;
+}
+
 App::App(ComponentArgs &&args) : Component(std::move(args)) {
     Windows.SetWindowComponents({
         Audio,
@@ -27,7 +34,7 @@ App::App(ComponentArgs &&args) : Component(std::move(args)) {
         Audio.Faust.Log,
         Audio.Faust.Graph,
         Audio.Faust.Params,
-        Debug.StateViewer,
+        Debug,
         Debug.ProjectPreview,
         Debug.StorePathUpdateFrequency,
         Debug.DebugLog,
@@ -146,7 +153,7 @@ void App::Render() const {
         Audio.Faust.Graph.Dock(faust_tools_node_id);
         Audio.Faust.Params.Dock(faust_tools_node_id);
 
-        Debug.StateViewer.Dock(debug_node_id);
+        Debug.Dock(debug_node_id);
         Debug.ProjectPreview.Dock(debug_node_id);
         // Debug.StateMemoryEditor.Dock(debug_node_id);
         Debug.StorePathUpdateFrequency.Dock(debug_node_id);
@@ -163,7 +170,7 @@ void App::Render() const {
         Style.SelectTab();
         Audio.SelectTab();
         Audio.Faust.Graph.SelectTab();
-        Debug.StateViewer.SelectTab(); // not visible by default anymore
+        Debug.SelectTab(); // not visible by default anymore
     }
 
     // Draw non-window children.
@@ -215,6 +222,17 @@ std::optional<ProjectJsonFormat> GetProjectJsonFormat(const fs::path &path) {
     return ProjectJsonFormatForExtension.at(ext);
 }
 
+void CommitGesture() {
+    Field::GestureUpdateTimesForFieldId.clear();
+    if (ActiveGestureActions.empty()) return;
+
+    const auto merged_actions = MergeActions(ActiveGestureActions);
+    ActiveGestureActions.clear();
+    if (merged_actions.empty()) return;
+
+    History.CommitGesture({merged_actions, Clock::now()});
+}
+
 bool Project::Save(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
@@ -222,7 +240,7 @@ bool Project::Save(const fs::path &path) {
     const auto format = GetProjectJsonFormat(path);
     if (!format) return false; // TODO log
 
-    History.CommitGesture(); // Make sure any pending actions/diffs are committed.
+    CommitGesture(); // Make sure any pending actions/diffs are committed.
     if (!FileIO::write(path, GetProjectJson(*format).dump())) {
         throw std::runtime_error(std::format("Failed to write project file: {}", path.string()));
     }
@@ -234,6 +252,9 @@ bool Project::Save(const fs::path &path) {
 void SetHistoryIndex(Count index) {
     if (index == History.Index) return;
 
+    Field::GestureUpdateTimesForFieldId.clear();
+    // If we're mid-gesture, revert the current gesture before navigating to the new index.
+    ActiveGestureActions.clear();
     History.SetIndex(index);
     History.LatestPatch = store::CheckedSet(History.CurrentStore());
     Field::RefreshChanged(History.LatestPatch);
@@ -257,6 +278,7 @@ void MarkAllUiContextsChanged() {
 void Project::OnApplicationLaunch() {
     Field::IsGesturing = false;
     History = {};
+    Field::ClearChanged();
     MarkAllUiContextsChanged();
 
     // Keep the canonical "empty" project up-to-date.
@@ -288,10 +310,10 @@ void Project::ActionHandler::Apply(const ActionType &action) const {
             // to commit and cut off everything after the current history index, so an undo just ditches the active changes.
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
             if (History.Index == History.Size() - 1) {
-                if (!History.ActiveGestureActions.empty()) History.CommitGesture();
+                if (!ActiveGestureActions.empty()) CommitGesture();
                 ::SetHistoryIndex(History.Index - 1);
             } else {
-                ::SetHistoryIndex(History.Index - (History.ActiveGestureActions.empty() ? 1 : 0));
+                ::SetHistoryIndex(History.Index - (ActiveGestureActions.empty() ? 1 : 0));
             }
         },
         [](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
@@ -302,7 +324,7 @@ void Project::ActionHandler::Apply(const ActionType &action) const {
 bool Project::ActionHandler::CanApply(const ActionType &action) const {
     return Visit(
         action,
-        [](const Action::Project::Undo &) { return History.CanUndo(); },
+        [](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
         [](const Action::Project::Redo &) { return History.CanRedo(); },
         [](const Action::Project::Save &) { return !History.Empty(); },
         [](const Action::Project::SaveDefault &) { return !History.Empty(); },
@@ -321,6 +343,7 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
     const auto &patch = store::SetJson(project);
     Field::RefreshChanged(patch);
+    Field::ClearChanged();
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     imgui_settings.IsChanged = true;
     History = {};
@@ -351,6 +374,259 @@ void Project::Open(const fs::path &file_path) {
 
     SetCurrentProjectPath(file_path);
 }
+
+//-----------------------------------------------------------------------------
+// [SECTION] Debug
+//-----------------------------------------------------------------------------
+
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/concat.hpp>
+#include <range/v3/view/map.hpp>
+
+#include "Helper/String.h"
+#include "UI/HelpMarker.h"
+#include "UI/Widgets.h"
+
+#include "date.h"
+#include "implot.h"
+
+struct Plottable {
+    std::vector<const char *> Labels;
+    std::vector<ImU64> Values;
+};
+
+Plottable StorePathChangeFrequencyPlottable() {
+    const auto &committed_times = History.CommitTimesForPath;
+    const auto &gesture_update_times =
+        Field::GestureUpdateTimesForFieldId |
+        ranges::views::transform([](const auto &pair) {
+            return std::pair{Component::ById[pair.first]->Path, pair.second};
+        }) |
+        ranges::to<std::unordered_map<StorePath, std::vector<TimePoint>, PathHash>>;
+
+    if (committed_times.empty() && gesture_update_times.empty()) return {};
+
+    const std::set<StorePath> paths =
+        ranges::views::concat(ranges::views::keys(committed_times), ranges::views::keys(gesture_update_times)) |
+        ranges::to<std::set>;
+
+    const bool has_gesture = !gesture_update_times.empty();
+    std::vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
+    Count i = 0;
+    for (const auto &path : paths) values[i++] = committed_times.contains(path) ? committed_times.at(path).size() : 0;
+    // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
+    if (has_gesture) {
+        for (const auto &path : paths) {
+            values[i++] = gesture_update_times.contains(path) ? gesture_update_times.at(path).size() : 0;
+        }
+    }
+
+    const auto labels = paths | std::views::transform([](const string &path) {
+                            // Convert `string` to char array, removing first character of the path, which is a '/'.
+                            char *label = new char[path.size()];
+                            std::strcpy(label, string{path.begin() + 1, path.end()}.c_str());
+                            return label;
+                        }) |
+        ranges::to<std::vector<const char *>>;
+
+    return {labels, values};
+}
+
+void App::Debug::StorePathUpdateFrequency::Render() const {
+    auto [labels, values] = StorePathChangeFrequencyPlottable();
+    if (labels.empty()) {
+        Text("No state updates yet.");
+        return;
+    }
+
+    if (ImPlot::BeginPlot("Path update frequency", {-1, float(labels.size()) * 30 + 60}, ImPlotFlags_NoTitle | ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+        ImPlot::SetupAxes("Number of updates", nullptr, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Invert);
+
+        // Hack to allow `SetupAxisTicks` without breaking on assert `n_ticks > 1`: Just add an empty label and only plot one value.
+        // todo fix in ImPlot
+        if (labels.size() == 1) labels.emplace_back("");
+
+        // todo add an axis flag to exclude non-integer ticks
+        // todo add an axis flag to show last tick
+        ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), labels.data(), false);
+        static const char *ItemLabels[] = {"Committed updates", "Active updates"};
+        const int item_count = !ActiveGestureActions.empty() ? 2 : 1;
+        const int group_count = int(values.size()) / item_count;
+        ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
+
+        ImPlot::EndPlot();
+    }
+}
+
+void App::Debug::DebugLog::Render() const {
+    ShowDebugLogWindow();
+}
+void App::Debug::StackTool::Render() const {
+    ShowStackToolWindow();
+}
+
+void App::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
+void App::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
+
+using namespace FlowGrid;
+
+void App::RenderDebug() const {
+    const bool auto_select = Debug.AutoSelect;
+    if (auto_select) BeginDisabled();
+    RenderValueTree(ValueTreeLabelMode(int(Debug.LabelMode)), auto_select);
+    if (auto_select) EndDisabled();
+}
+
+void App::Debug::ProjectPreview::Render() const {
+    Format.Draw();
+    Raw.Draw();
+
+    Separator();
+
+    const nlohmann::json project_json = GetProjectJson(ProjectJsonFormat(int(Format)));
+    if (Raw) TextUnformatted(project_json.dump(4).c_str());
+    else fg::JsonTree("", project_json, TreeNodeFlags_DefaultOpen);
+}
+
+void ShowActions(const SavableActionMoments &actions) {
+    for (Count action_index = 0; action_index < actions.size(); action_index++) {
+        const auto &[action, queue_time] = actions[action_index];
+        if (TreeNodeEx(to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
+            BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
+            SameLine();
+            fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
+            const json data = json(action)[1];
+            if (!data.is_null()) JsonTree("Data", data, TreeNodeFlags_DefaultOpen);
+            TreePop();
+        }
+    }
+}
+
+ImRect RowItemRatioRect(float ratio) {
+    const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
+    return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
+}
+
+void App::Debug::Metrics::FlowGridMetrics::Render() const {
+    {
+        // Active (uncompressed) gesture
+        const bool is_gesturing = Field::IsGesturing;
+        const bool any_gesture_actions = !ActiveGestureActions.empty();
+        if (any_gesture_actions || is_gesturing) {
+            // Gesture completion progress bar (full-width to empty).
+            const float gesture_duration_sec = app_settings.GestureDurationSec;
+            const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
+            const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
+
+            const auto &ActiveGestureActions_title = "Active gesture"s + (any_gesture_actions ? " (uncompressed)" : "");
+            if (TreeNodeEx(ActiveGestureActions_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (is_gesturing) FillRowItemBg(style.ImGui.Colors[ImGuiCol_FrameBgActive]);
+                else BeginDisabled();
+                Text("Widget gesture: %s", is_gesturing ? "true" : "false");
+                if (!is_gesturing) EndDisabled();
+
+                if (any_gesture_actions) ShowActions(ActiveGestureActions);
+                else Text("No actions yet");
+                TreePop();
+            }
+        } else {
+            BeginDisabled();
+            Text("No active gesture");
+            EndDisabled();
+        }
+    }
+    Separator();
+    {
+        const bool no_history = History.Empty();
+        if (no_history) BeginDisabled();
+        if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", History.Size() - 1, History.Index)) {
+            for (Count i = 1; i < History.Size(); i++) {
+                if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    const auto &[store_record, gesture] = History.RecordAt(i);
+                    BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", gesture.CommitTime).c_str());
+                    if (TreeNode("Actions")) {
+                        ShowActions(gesture.Actions);
+                        TreePop();
+                    }
+                    if (TreeNode("Patch")) {
+                        // We compute patches as we need them rather than memoizing.
+                        const auto &patch = History.CreatePatch(i);
+                        for (const auto &[partial_path, op] : patch.Ops) {
+                            const auto &path = patch.BasePath / partial_path;
+                            if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                                BulletText("Op: %s", to_string(op.Op).c_str());
+                                if (op.Value) BulletText("Value: %s", to_string(*op.Value).c_str());
+                                if (op.Old) BulletText("Old value: %s", to_string(*op.Old).c_str());
+                                TreePop();
+                            }
+                        }
+                        TreePop();
+                    }
+                    if (TreeNode("State snapshot")) {
+                        JsonTree("", store::GetJson(store_record));
+                        TreePop();
+                    }
+                    TreePop();
+                }
+            }
+            TreePop();
+        }
+        if (no_history) EndDisabled();
+    }
+    Separator();
+    {
+        // Preferences
+        const bool has_RecentlyOpenedPaths = !Preferences.RecentlyOpenedPaths.empty();
+        if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (SmallButton("Clear")) Preferences.Clear();
+            SameLine();
+            ShowRelativePaths.Draw();
+
+            if (!has_RecentlyOpenedPaths) BeginDisabled();
+            if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
+                for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
+                    BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                }
+                TreePop();
+            }
+            if (!has_RecentlyOpenedPaths) EndDisabled();
+
+            TreePop();
+        }
+    }
+    Separator();
+    {
+        // Various internals
+        Text("Action variant size: %lu bytes", sizeof(Action::Savable));
+        Text("Primitive variant size: %lu bytes", sizeof(Primitive));
+        SameLine();
+        fg::HelpMarker(
+            "All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
+            "Thus, it's important to keep action data minimal."
+        );
+    }
+}
+
+void App::Debug::Metrics::Render() const {
+    RenderTabs();
+}
+
+// #include "imgui_memory_editor.h"
+
+// todo need to rethink this with the store system
+// void App::Debug::StateMemoryEditor::Render() const {
+//     static MemoryEditor memory_editor;
+//     static bool first_render{true};
+//     if (first_render) {
+//         memory_editor.OptShowDataPreview = true;
+//         //        memory_editor.WriteFn = ...; todo write_state_bytes action
+//         first_render = false;
+//     }
+
+//     const void *mem_data{&s};
+//     memory_editor.DrawContents(mem_data, sizeof(s));
+// }
 
 //-----------------------------------------------------------------------------
 // [SECTION] Action queueing
@@ -406,13 +682,18 @@ void RunQueuedActions(bool force_commit_gesture) {
         );
     }
 
-    const bool commit_gesture = force_commit_gesture || (!Field::IsGesturing && !History.ActiveGestureActions.empty() && History.GestureTimeRemainingSec(application_settings.GestureDurationSec) <= 0);
+    const bool commit_gesture = force_commit_gesture ||
+        (!Field::IsGesturing && !ActiveGestureActions.empty() && GestureTimeRemainingSec(app_settings.GestureDurationSec) <= 0);
+
     if (!stateful_actions.empty()) {
         History.LatestPatch = store::CheckedCommit();
         if (!History.LatestPatch.Empty()) {
             const auto store_commit_time = Clock::now();
             Field::RefreshChanged(History.LatestPatch);
-            History.AddToActiveGesture(stateful_actions, store_commit_time);
+            ActiveGestureActions.insert(ActiveGestureActions.end(), stateful_actions.begin(), stateful_actions.end());
+            for (const ID changed_field_id : Field::ChangedFieldIds) {
+                Field::GestureUpdateTimesForFieldId[changed_field_id].emplace_back(store_commit_time);
+            }
 
             ProjectHasChanges = true;
         }
@@ -420,7 +701,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }
 
-    if (commit_gesture) History.CommitGesture();
+    if (commit_gesture) CommitGesture();
 }
 
 #define DefineQ(ActionType)                                                                                          \

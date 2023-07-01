@@ -4,6 +4,8 @@
 
 #include "Core/Store/Store.h"
 
+#include "UI/Widgets.h"
+
 using namespace ImGui;
 
 Vec2::Vec2(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, const char *fmt)
@@ -42,6 +44,13 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
 }
 
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
+
+void Vec2::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
+    Field::RenderValueTree(mode, auto_select);
+
+    const std::string value_str = std::format("({}, {})", Value.first, Value.second);
+    fg::TreeNode(Name, 0, nullptr, value_str.c_str());
+}
 
 Vec2Linked::Vec2Linked(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
     : Vec2(std::move(args), value, min, max, fmt) {

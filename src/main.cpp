@@ -13,7 +13,7 @@ const Faust &faust = app.Audio.Faust;
 const FaustGraph &faust_graph = faust.Graph;
 const ImGuiSettings &imgui_settings = app.ImGuiSettings;
 const FileDialog &file_dialog = app.FileDialog;
-const ApplicationSettings &application_settings = app.Settings;
+const ApplicationSettings &app_settings = app.Settings;
 UIContext Ui{}; // Initialize UI
 
 int main() {

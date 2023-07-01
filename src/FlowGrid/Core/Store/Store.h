@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include "nlohmann/json.hpp"
 
 #include "Core/Action/Actionable.h"
@@ -38,6 +40,8 @@ Count CountAt(const StorePath &);
 void Set(const StorePath &, const Primitive &);
 void Erase(const StorePath &);
 
+Count IdPairCount(const StorePath &);
+std::unordered_set<IdPair, IdPairHash> IdPairs(const StorePath &);
 void AddIdPair(const StorePath &, const IdPair &);
 void EraseIdPair(const StorePath &, const IdPair &);
 bool HasIdPair(const StorePath &, const IdPair &);

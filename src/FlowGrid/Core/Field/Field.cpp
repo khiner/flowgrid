@@ -4,6 +4,10 @@
 
 #include "imgui.h"
 
+// xxx only for gesture flash.
+#include "App/Settings.h"
+#include "App/Style/Style.h"
+
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     FieldById.emplace(Id, this);
     FieldIdByPath.emplace(Path, Id);
@@ -22,11 +26,18 @@ Field *Field::FindByPath(const StorePath &search_path) {
 }
 
 void Field::FindAndMarkChanged(const Patch &patch) {
+    ClearChanged();
     for (const auto &path : patch.GetPaths()) {
         const auto *changed_field = FindByPath(path);
         if (changed_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
         ChangedFieldIds.insert(changed_field->Id);
+        // Mark all ancestor components as changed as well:
+        const Component *ancestor = changed_field;
+        while (ancestor != nullptr) {
+            ChangedComponentIds.insert(ancestor->Id);
+            ancestor = ancestor->Parent;
+        }
     }
 }
 
@@ -42,10 +53,32 @@ void Field::RefreshChanged(const Patch &patch) {
 
     for (auto *listener : affected_listeners) listener->OnFieldChanged();
     affected_listeners.clear();
-    ChangedFieldIds.clear();
 }
 
 void Field::UpdateGesturing() {
     if (ImGui::IsItemActivated()) IsGesturing = true;
     if (ImGui::IsItemDeactivated()) IsGesturing = false;
+}
+
+std::optional<TimePoint> Field::LatestUpdateTime(const ID component_id) {
+    if (!ById.contains(component_id)) return {};
+
+    if (GestureUpdateTimesForFieldId.contains(component_id)) return GestureUpdateTimesForFieldId.at(component_id).back();
+
+    return {};
+}
+
+void Field::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
+    // Flash background color of nodes with alpha level corresponding to how much time is left in the gesture before it's committed.
+    const auto &latest_update_time = LatestUpdateTime(Id);
+    if (latest_update_time) {
+        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / app_settings.GestureDurationSec;
+        ImColor flash_color = fg::style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
+        flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
+        FillRowItemBg(flash_color);
+    }
+
+    // TreeNodeFlags flags = TreeNodeFlags_None;
+    // if (Debug.LabelMode == Debug::Annotated && (is_imgui_color || is_implot_color || is_flowgrid_color)) flags |= TreeNodeFlags_Highlighted;
+    // if (Debug.AutoSelect) flags |= TreeNodeFlags_Disabled;
 }

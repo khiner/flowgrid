@@ -10,12 +10,13 @@
 
 struct Patch;
 
-// A `Field` is a component backed by a store value.
+// A `Field` is a component that wraps around a value backed by the application `Store`.
+// Fields are always leafs in the `App` component tree, and leafs are always fields, making Fields 1:1 with `App` component leafs.
+// todo Enforce Fields have no children (best done with types).
 struct Field : Component {
     struct ChangeListener {
         // Called when at least one of the listened fields has changed.
-        // Changed field(s) are not passed to the callback
-        // However, this callback is called before the changed values are marked as non-stale,
+        // Changed field(s) are not passed to the callback, but it's called while the fields are still marked as changed,
         // so listeners can use `field.IsChanged()` to check which listened fields were changed if they wish.
         virtual void OnFieldChanged() = 0;
     };
@@ -27,8 +28,14 @@ struct Field : Component {
 
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
-    inline static std::unordered_set<ID> ChangedFieldIds; // Fields updated during the current action pass (cleared at the end of it).
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersForField;
+    // IDs of all fields updated during the latest action pass.
+    // These same IDs are also stored in the `ChangedComponentIds` set,
+    // which also includes IDs for all ancestor component of all changed fields.
+    inline static std::unordered_set<ID> ChangedFieldIds;
+
+    inline static std::unordered_map<ID, std::vector<TimePoint>> GestureUpdateTimesForFieldId{};
+    static std::optional<TimePoint> LatestUpdateTime(const ID component_id);
 
     inline static void RegisterChangeListener(ChangeListener *listener, const Field &field) {
         if (!ChangeListenersForField.contains(field.Id)) {
@@ -48,6 +55,10 @@ struct Field : Component {
 
     // Refresh the cached values of all fields affected by the patch, and notifies all listeners of the affected fields.
     static void RefreshChanged(const Patch &);
+    inline static void ClearChanged() noexcept {
+        ChangedFieldIds.clear();
+        ChangedComponentIds.clear();
+    }
 
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
@@ -69,6 +80,8 @@ struct Field : Component {
     virtual void RefreshValue() = 0;
 
     inline bool IsChanged() const noexcept { return ChangedFieldIds.contains(Id); }
+
+    virtual void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
 
 private:
     // Find and mark fields with values that were made stale during the most recent action pass.

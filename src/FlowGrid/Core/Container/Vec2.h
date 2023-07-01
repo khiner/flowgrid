@@ -15,6 +15,7 @@ struct Vec2 : Field, Actionable<Action::Vec2::Any> {
     bool CanApply(const ActionType &) const override { return true; };
 
     void RefreshValue() override;
+    void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
 
     operator ImVec2() const;
 

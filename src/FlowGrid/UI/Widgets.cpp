@@ -57,7 +57,7 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
         RenderFrame(rect_pos, rect_pos + size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
         draw_list->AddRectFilled(
             rect_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
-            rect_pos + size * ImVec2{is_h ? fraction : 1, 1},
+            rect_pos + size *ImVec2{is_h ? fraction : 1, 1},
             GetColorU32(ImGuiCol_PlotHistogram),
             style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
         );
@@ -121,14 +121,12 @@ bool RadioButtons(const char *label, float *value, const NamesAndValues &names_a
     return changed;
 }
 
-bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const char *id, const char *value) {
+bool TreeNode(std::string_view label_view, TreeNodeFlags flags, const char *id, const char *value) {
     const auto label = string(label_view);
-    const bool highlighted = flags & JsonTreeNodeFlags_Highlighted;
-    const bool disabled = flags & JsonTreeNodeFlags_Disabled;
-    const ImGuiTreeNodeFlags imgui_flags = flags & JsonTreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
+    const bool highlighted = flags & TreeNodeFlags_Highlighted;
+    const ImGuiTreeNodeFlags imgui_flags = flags & TreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
 
     bool is_open = false;
-    if (disabled) BeginDisabled();
     if (highlighted) PushStyleColor(ImGuiCol_Text, style.FlowGrid.Colors[FlowGridCol_HighlightText]);
     if (value == nullptr) {
         is_open = id ? TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : TreeNodeEx(label.c_str(), imgui_flags);
@@ -136,7 +134,6 @@ bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const ch
         Text("%s: ", label.c_str()); // Render leaf label/value as raw text.
     }
     if (highlighted) PopStyleColor();
-    if (disabled) EndDisabled();
 
     if (value != nullptr) {
         SameLine();
@@ -145,19 +142,19 @@ bool JsonTreeNode(std::string_view label_view, JsonTreeNodeFlags flags, const ch
     return is_open;
 }
 
-void JsonTree(std::string_view label_view, const json &value, JsonTreeNodeFlags flags, const char *id) {
+void JsonTree(std::string_view label_view, const json &value, TreeNodeFlags flags, const char *id) {
     const auto label = string(label_view);
     if (value.is_null()) {
         TextUnformatted(label.empty() ? "(null)" : label.c_str());
     } else if (value.is_object()) {
-        if (label.empty() || JsonTreeNode(label, flags, id)) {
+        if (label.empty() || TreeNode(label, flags, id)) {
             for (auto it = value.begin(); it != value.end(); ++it) {
                 JsonTree(it.key(), *it, flags);
             }
             if (!label.empty()) TreePop();
         }
     } else if (value.is_array()) {
-        if (label.empty() || JsonTreeNode(label, flags, id)) {
+        if (label.empty() || TreeNode(label, flags, id)) {
             Count i = 0;
             for (const auto &it : value) {
                 JsonTree(to_string(i), it, flags);
@@ -166,7 +163,7 @@ void JsonTree(std::string_view label_view, const json &value, JsonTreeNodeFlags 
             if (!label.empty()) TreePop();
         }
     } else {
-        JsonTreeNode(label, flags, id, value.dump().c_str());
+        TreeNode(label, flags, id, value.dump().c_str());
     }
 }
 

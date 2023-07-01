@@ -340,7 +340,7 @@ using StringHelper::Capitalize;
 
 // An abstract block graph node.
 struct Node {
-    inline static unordered_map<ID, const Node *> WithId;
+    inline static unordered_map<ID, const Node *> ById;
 
     inline static const U32
         BgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.1f}),
@@ -371,7 +371,7 @@ struct Node {
 
     void AddId(ID parent_id) const {
         const auto imgui_id = ImHashStr(Id.c_str(), 0, parent_id);
-        WithId[imgui_id] = this;
+        ById[imgui_id] = this;
         if (A) A->AddId(imgui_id);
         if (B) B->AddId(imgui_id);
     }
@@ -1191,7 +1191,7 @@ static std::optional<GroupNode> RootNode{}; // This node is drawn every frame if
 static GroupNode CreateRootNode(Tree t) { return {NodeType_Decorate, t, Tree2NodeInner(t)}; }
 
 string GetBoxInfo(unsigned int id) {
-    const auto *node = Node::WithId[id];
+    const auto *node = Node::ById[id];
     if (!node) return "";
     return GetBoxType(node->FaustTree); // Just type for now.
 }
@@ -1202,7 +1202,7 @@ void FaustGraph::OnBoxChanged(Box box) const {
     if (box) {
         RootNode.emplace(CreateRootNode(box));
         FocusedNodeStack.push(&(*RootNode));
-        Node::WithId.clear();
+        Node::ById.clear();
     } else {
         RootNode = std::nullopt;
     }
@@ -1220,7 +1220,7 @@ void SaveBoxSvg(const fs::path &dir_path) {
     node.WriteSvg(dir_path);
 }
 
-bool IsBoxHovered(ID imgui_id) { return Node::WithId[imgui_id] != nullptr; }
+bool IsBoxHovered(ID imgui_id) { return Node::ById[imgui_id] != nullptr; }
 
 void FaustGraph::Apply(const ActionType &action) const {
     Visit(
@@ -1290,7 +1290,7 @@ void FaustGraph::Render() const {
 
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    if (Node::WithId.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
+    if (Node::ById.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
     GetCurrentWindow()->FontWindowScale = Scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 

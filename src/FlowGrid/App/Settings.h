@@ -11,4 +11,4 @@ protected:
     void Render() const override;
 };
 
-extern const ApplicationSettings &application_settings;
+extern const ApplicationSettings &app_settings;

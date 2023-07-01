@@ -37,18 +37,17 @@ enum RadioButtonsFlags_ {
     RadioButtonsFlags_Vertical = 1 << 0,
     RadioButtonsFlags_NoTitle = 1 << 1,
 };
-enum JsonTreeNodeFlags_ {
-    JsonTreeNodeFlags_None = 0,
-    JsonTreeNodeFlags_Highlighted = 1 << 0,
-    JsonTreeNodeFlags_Disabled = 1 << 1,
-    JsonTreeNodeFlags_DefaultOpen = 1 << 2,
+enum TreeNodeFlags_ {
+    TreeNodeFlags_None = 0,
+    TreeNodeFlags_Highlighted = 1 << 0,
+    TreeNodeFlags_DefaultOpen = 1 << 1,
 };
 
 using KnobFlags = int;
 using KnobVariant = int;
 using ValueBarFlags = int;
 using RadioButtonsFlags = int;
-using JsonTreeNodeFlags = int;
+using TreeNodeFlags = int;
 
 namespace FlowGrid {
 struct ColorSet {
@@ -84,8 +83,8 @@ float CalcRadioChoiceWidth(const string &choice_name);
 
 // If `label` is empty, `JsonTree` will simply show the provided json `value` (object/array/raw value), with no nesting.
 // For a non-empty `label`:
-//   * If the provided `value` is an array or object, it will show as a nested `JsonTreeNode` with `label` as its parent.
+//   * If the provided `value` is an array or object, it will show as a nested `TreeNode` with `label` as its parent.
 //   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
-void JsonTree(std::string_view label, const json &value, JsonTreeNodeFlags node_flags = JsonTreeNodeFlags_None, const char *id = nullptr);
-bool JsonTreeNode(std::string_view label, JsonTreeNodeFlags flags = JsonTreeNodeFlags_None, const char *id = nullptr, const char *value = nullptr);
+bool TreeNode(std::string_view label, TreeNodeFlags flags = TreeNodeFlags_None, const char *id = nullptr, const char *value = nullptr);
+void JsonTree(std::string_view label, const json &value, TreeNodeFlags node_flags = TreeNodeFlags_None, const char *id = nullptr);
 } // namespace FlowGrid

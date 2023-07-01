@@ -1,6 +1,6 @@
 #pragma once
 
-enum ProjectJsonFormat {
+enum ProjectFormat {
     StateFormat,
     ActionFormat
 };

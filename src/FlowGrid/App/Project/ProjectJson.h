@@ -2,6 +2,6 @@
 
 #include "nlohmann/json.hpp"
 
-#include "ProjectJsonFormat.h"
+#include "ProjectFormat.h"
 
-nlohmann::json GetProjectJson(const ProjectJsonFormat);
+nlohmann::json GetProjectJson(const ProjectFormat);

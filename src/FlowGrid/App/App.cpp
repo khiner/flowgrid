@@ -98,18 +98,18 @@ bool CanApply(const Action::Any &action) {
 static const fs::path InternalPath = ".flowgrid";
 
 // Order matters here, as the first extension is the default project extension.
-static const std::map<ProjectJsonFormat, std::string> ExtensionByProjectJsonFormat{
-    {ProjectJsonFormat::ActionFormat, ".fla"},
-    {ProjectJsonFormat::StateFormat, ".fls"},
+static const std::map<ProjectFormat, std::string> ExtensionByProjectFormat{
+    {ProjectFormat::ActionFormat, ".fla"},
+    {ProjectFormat::StateFormat, ".fls"},
 };
-static const auto ProjectJsonFormatByExtension = ExtensionByProjectJsonFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
-static const auto AllProjectExtensions = std::views::keys(ProjectJsonFormatByExtension);
+static const auto ProjectFormatByExtension = ExtensionByProjectFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
+static const auto AllProjectExtensions = std::views::keys(ProjectFormatByExtension);
 static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
 
-static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectJsonFormat.at(ProjectJsonFormat::StateFormat));
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectFormat.at(ProjectFormat::StateFormat));
 // The default project is a user-created project that loads on app start, instead of the empty project.
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionByProjectJsonFormat.at(ProjectJsonFormat::ActionFormat));
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionByProjectFormat.at(ProjectFormat::ActionFormat));
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
@@ -216,10 +216,10 @@ void SetCurrentProjectPath(const fs::path &path) {
     }
 }
 
-std::optional<ProjectJsonFormat> GetProjectJsonFormat(const fs::path &path) {
+std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();
-    if (!ProjectJsonFormatByExtension.contains(ext)) return {};
-    return ProjectJsonFormatByExtension.at(ext);
+    if (!ProjectFormatByExtension.contains(ext)) return {};
+    return ProjectFormatByExtension.at(ext);
 }
 
 void CommitGesture() {
@@ -237,7 +237,7 @@ bool Project::Save(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
 
-    const auto format = GetProjectJsonFormat(path);
+    const auto format = GetProjectFormat(path);
     if (!format) return false; // TODO log
 
     CommitGesture(); // Make sure any pending actions/diffs are committed.
@@ -350,7 +350,7 @@ void OpenStateFormatProjectInner(const nlohmann::json &project) {
 }
 
 void Project::Open(const fs::path &file_path) {
-    const auto format = GetProjectJsonFormat(file_path);
+    const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 
     Field::IsGesturing = false;
@@ -479,7 +479,7 @@ void App::Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    const nlohmann::json project_json = GetProjectJson(ProjectJsonFormat(int(Format)));
+    const nlohmann::json project_json = GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) TextUnformatted(project_json.dump(4).c_str());
     else fg::JsonTree("", project_json, TreeNodeFlags_DefaultOpen);
 }

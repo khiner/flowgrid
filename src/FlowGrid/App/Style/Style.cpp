@@ -72,6 +72,7 @@ const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
     switch (idx) {
         case FlowGridCol_GestureIndicator: return "GestureIndicator";
         case FlowGridCol_HighlightText: return "HighlightText";
+        case FlowGridCol_Flash: return "Flash";
         default: return "Unknown";
     }
 }
@@ -205,6 +206,7 @@ void Style::FlowGridStyle::ColorsDark() const {
         {
             {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.67}},
         }
     );
 }
@@ -213,6 +215,7 @@ void Style::FlowGridStyle::ColorsLight() const {
         {
             {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.4}},
         }
     );
 }
@@ -221,6 +224,7 @@ void Style::FlowGridStyle::ColorsClassic() const {
         {
             {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
             {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_Flash, {0.47, 0.47, 0.69, 0.4}},
         }
     );
 }

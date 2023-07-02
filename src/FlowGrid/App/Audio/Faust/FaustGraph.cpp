@@ -533,7 +533,7 @@ static inline float GetScale() {
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
-    BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
+    BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
         : Node(tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
@@ -587,7 +587,7 @@ struct BlockNode : Node {
         }
     }
 
-    const FlowGridCol Color;
+    const FlowGridGraphCol Color;
     Node *Inner;
 };
 

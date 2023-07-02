@@ -1,11 +1,8 @@
 #include "Field.h"
 
-#include "Core/Store/Patch/Patch.h"
-
 #include "imgui.h"
 
-// xxx only for gesture flash.
-#include "App/Settings.h"
+#include "Core/Store/Patch/Patch.h"
 #include "App/Style/Style.h"
 
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
@@ -62,16 +59,21 @@ void Field::UpdateGesturing() {
 }
 
 std::optional<TimePoint> Field::LatestUpdateTime(const ID component_id) {
-    if (!GestureChangedPathsByFieldId.contains(component_id)) return {};
+    if (!GestureChangedPathsByFieldId.contains(component_id)) {
+        // const auto *field = ById[component_id];
+        // if (!History.CommitTimesByPath.contains(field->Path)) return {}; // No commits yet.
+        // return History.CommitTimesByPath[field->Path].back();
+        return {};
+    }
 
     return GestureChangedPathsByFieldId.at(component_id).back().first;
 }
 
 void Field::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
-    // Flash background color of nodes with alpha level corresponding to how much time is left in the gesture before it's committed.
+    // Flash background color of changed fields.
     if (const auto latest_update_time = LatestUpdateTime(Id)) {
-        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / app_settings.GestureDurationSec;
-        ImColor flash_color = fg::style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
+        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / fg::style.FlowGrid.FlashDurationSec;
+        ImColor flash_color = fg::style.FlowGrid.Colors[FlowGridCol_Flash];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }

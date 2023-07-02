@@ -20,6 +20,14 @@ enum SliderFlags_ {
     SliderFlags_Logarithmic = 1 << 5, // Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
 };
 
+enum FlowGridCol_ {
+    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
+    FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
+    FlowGridCol_Flash, // ImGuiCol_FrameBgActive
+    FlowGridCol_COUNT
+};
+using FlowGridCol = int;
+
 namespace FlowGrid {
 struct Style : Component, Actionable<Action::Style::Any> {
     using Component::Component;
@@ -30,10 +38,7 @@ struct Style : Component, Actionable<Action::Style::Any> {
     struct FlowGridStyle : Component {
         FlowGridStyle(ComponentArgs &&);
 
-        // xxx not used anymore - was used for gesture flash, but now `AppSettings.GestureDurationSec` is used instead.
-        // todo plan is to use this for a very short flash _after_ the gesture, to indicate completion.
-        // this is especially needed to notice immediate actions.
-        Prop(Float, FlashDurationSec, 0.6, 0.1, 5);
+        Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
         Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 
         void ColorsDark() const;

@@ -450,7 +450,7 @@ void App::Debug::StorePathUpdateFrequency::Render() const {
 
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};
         const int item_count = !ActiveGestureActions.empty() ? 2 : 1;
-        const int group_count = int(values.size()) / item_count;
+        const int group_count = values.size() / item_count;
         ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
         ImPlot::EndPlot();

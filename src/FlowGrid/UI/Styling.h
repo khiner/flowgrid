@@ -18,13 +18,6 @@ enum Dir_ {
     Dir_COUNT
 };
 
-enum FlowGridCol_ {
-    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
-    FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
-    FlowGridCol_COUNT
-};
-using FlowGridCol = int;
-
 // Uses same argument ordering as CSS.
 struct Padding {
     Padding(const float top, const float right, const float bottom, const float left) : Top(top), Right(right), Bottom(bottom), Left(left) {}

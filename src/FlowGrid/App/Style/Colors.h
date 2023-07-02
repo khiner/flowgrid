@@ -8,8 +8,9 @@ struct ImVec4;
 struct Colors : Vector<U32> {
     Colors(ComponentArgs &&, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
 
-    static U32 ConvertFloat4ToU32(const ImVec4 &value);
-    static ImVec4 ConvertU32ToFloat4(const U32 value);
+    static U32 Float4ToU32(const ImVec4 &value);
+    static ImVec4 U32ToFloat4(U32 value);
+    inline static std::string U32ToHex(U32 value) { return std::format("#{:08X}", value); }
 
     // An arbitrary transparent color is used to mark colors as "auto".
     // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
@@ -18,6 +19,8 @@ struct Colors : Vector<U32> {
 
     void Set(const std::vector<ImVec4> &) const;
     void Set(const std::vector<std::pair<int, ImVec4>> &) const;
+
+    void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
 
 protected:
     void Render() const override;

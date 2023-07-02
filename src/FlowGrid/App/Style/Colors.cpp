@@ -8,6 +8,7 @@
 
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
+#include "UI/Widgets.h"
 
 using namespace ImGui;
 
@@ -16,14 +17,14 @@ Colors::Colors(ComponentArgs &&args, Count size, std::function<const char *(int)
     Vector<U32>::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<U32>>);
 }
 
-U32 Colors::ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
-ImVec4 Colors::ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
+U32 Colors::Float4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
+ImVec4 Colors::U32ToFloat4(U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
 void Colors::Set(const std::vector<ImVec4> &values) const {
-    Vector<U32>::Set(values | std::views::transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | ranges::to<std::vector>);
+    Vector<U32>::Set(values | std::views::transform([](const auto &value) { return Float4ToU32(value); }) | ranges::to<std::vector>);
 }
 void Colors::Set(const std::vector<std::pair<int, ImVec4>> &entries) const {
-    Vector<U32>::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | ranges::to<std::vector>);
+    Vector<U32>::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | ranges::to<std::vector>);
 }
 
 void Colors::Render() const {
@@ -87,4 +88,20 @@ void Colors::Render() const {
 
     PopItemWidth();
     EndChild();
+}
+
+void Colors::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
+    Field::RenderValueTree(mode, auto_select);
+
+    if (Value.empty()) {
+        TextUnformatted(std::format("{} (empty)", Name).c_str());
+        return;
+    }
+
+    if (fg::TreeNode(Name)) {
+        for (Count i = 0; i < Value.size(); i++) {
+            fg::TreeNode(to_string(i), TreeNodeFlags_None, nullptr, U32ToHex(Value[i]).c_str());
+        }
+        TreePop();
+    }
 }

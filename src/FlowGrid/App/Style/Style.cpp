@@ -162,7 +162,7 @@ void Style::ImPlotStyle::UpdateIfChanged(ImPlotContext *ctx) const {
     style.UseLocalTime = UseLocalTime;
     style.UseISO8601 = UseISO8601;
     style.Use24HourClock = Use24HourClock;
-    for (int i = 0; i < ImPlotCol_COUNT; i++) style.Colors[i] = Colors::ConvertU32ToFloat4(Colors[i]);
+    for (int i = 0; i < ImPlotCol_COUNT; i++) style.Colors[i] = Colors::U32ToFloat4(Colors[i]);
     ImPlot::BustItemCache();
 }
 

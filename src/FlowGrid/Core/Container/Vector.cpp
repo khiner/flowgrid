@@ -53,9 +53,8 @@ template<IsPrimitive T> void Vector<T>::RenderValueTree(ValueTreeLabelMode mode,
 
     if (fg::TreeNode(Name)) {
         for (Count i = 0; i < Value.size(); i++) {
-            TreeNodeFlags flags = TreeNodeFlags_None;
             T value = Value[i];
-            fg::TreeNode(to_string(i), flags, nullptr, to_string(value).c_str());
+            fg::TreeNode(to_string(i), TreeNodeFlags_None, nullptr, to_string(value).c_str());
         }
         TreePop();
     }

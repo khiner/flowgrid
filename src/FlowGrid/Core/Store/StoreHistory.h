@@ -45,7 +45,7 @@ struct StoreHistory {
     Count Index{0};
     Patch LatestPatch;
 
-    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> CommitTimesForPath{};
+    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> CommitTimesByPath{};
 
 private:
     void Add(const Store &, const Gesture &);

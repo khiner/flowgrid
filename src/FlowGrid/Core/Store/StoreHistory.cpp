@@ -30,7 +30,7 @@ void StoreHistory::Add(const Store &store, const Gesture &gesture) {
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
     Records.emplace_back(store, gesture);
     Index = Size() - 1;
-    for (const auto &path : patch.GetPaths()) CommitTimesForPath[path].emplace_back(gesture.CommitTime);
+    for (const auto &path : patch.GetPaths()) CommitTimesByPath[path].emplace_back(gesture.CommitTime);
 }
 
 void StoreHistory::AddTransientGesture(const Gesture &gesture) {
@@ -67,9 +67,9 @@ void StoreHistory::SetIndex(Count new_index) {
     Index = new_index;
 
     // TODO
-    // Turn the `CommitTimesForPath` map into an `immer/map`, and keep a separate vector (soon, tree) of them, in parallel to `Records`.
-    //     using TimesForPath = immer::map<StorePath, std::vector<TimePoint>, PathHash>
-    //     struct MetricsRecord{ TimesForPath CommitTimesForPath; };
+    // Turn the `CommitTimesByPath` map into an `immer/map`, and keep a separate vector (soon, tree) of them, in parallel to `Records`.
+    //     using TimesByPath = immer::map<StorePath, std::vector<TimePoint>, PathHash>
+    //     struct MetricsRecord{ TimesByPath CommitTimesByPath; };
     //     using MetricsRecords = vector<MetricsRecord>;
     const auto direction = new_index > old_index ? Forward : Reverse;
     auto i = int(old_index);
@@ -80,11 +80,11 @@ void StoreHistory::SetIndex(Count new_index) {
         const auto &gesture_commit_time = Records[record_index + 1].Gesture.CommitTime;
         for (const auto &path : segment_patch.GetPaths()) {
             if (direction == Forward) {
-                CommitTimesForPath[path].emplace_back(gesture_commit_time);
-            } else if (CommitTimesForPath.contains(path)) {
-                auto &update_times = CommitTimesForPath.at(path);
+                CommitTimesByPath[path].emplace_back(gesture_commit_time);
+            } else if (CommitTimesByPath.contains(path)) {
+                auto &update_times = CommitTimesByPath.at(path);
                 update_times.pop_back();
-                if (update_times.empty()) CommitTimesForPath.erase(path);
+                if (update_times.empty()) CommitTimesByPath.erase(path);
             }
         }
     }

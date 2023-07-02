@@ -28,35 +28,47 @@ struct Field : Component {
 
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
-    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersForField;
-    // IDs of all fields updated during the latest action pass.
-    // These same IDs are also stored in the `ChangedComponentIds` set,
+    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersByFieldId;
+    // IDs of all fields updated during the latest action pass, mapped to all (field-relative) paths affected in the field.
+    // For primitive fields, the path set will only contain the root path.
+    // For container fields, the path set will contain the container-relative paths of all affected elements.
+    // These same key IDs are also stored in the `ChangedComponentIds` set,
     // which also includes IDs for all ancestor component of all changed fields.
-    inline static std::unordered_set<ID> ChangedFieldIds;
+    using UniquePaths = std::unordered_set<StorePath, PathHash>;
+    inline static std::unordered_map<ID, UniquePaths> ChangedPathsByFieldId;
 
-    inline static std::unordered_map<ID, std::vector<TimePoint>> GestureUpdateTimesForFieldId{};
+    // Chronological vector of (Unique field-relative-paths, update-time) pairs for each field that has been updated during the current gesture.
+    using PathsMoment = std::pair<TimePoint, UniquePaths>;
+    inline static std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPathsByFieldId{};
+
     static std::optional<TimePoint> LatestUpdateTime(const ID component_id);
 
     inline static void RegisterChangeListener(ChangeListener *listener, const Field &field) {
-        if (!ChangeListenersForField.contains(field.Id)) {
-            ChangeListenersForField.emplace(field.Id, std::unordered_set<ChangeListener *>{});
+        if (!ChangeListenersByFieldId.contains(field.Id)) {
+            ChangeListenersByFieldId.emplace(field.Id, std::unordered_set<ChangeListener *>{});
         }
-        ChangeListenersForField[field.Id].insert(listener);
+        ChangeListenersByFieldId[field.Id].insert(listener);
     }
     inline static void UnregisterChangeListener(ChangeListener *listener) {
-        for (auto &[field_id, listeners] : ChangeListenersForField) {
+        for (auto &[field_id, listeners] : ChangeListenersByFieldId) {
             listeners.erase(listener);
-            if (listeners.empty()) ChangeListenersForField.erase(field_id);
+            if (listeners.empty()) ChangeListenersByFieldId.erase(field_id);
         }
     }
     inline void RegisterChangeListener(ChangeListener *listener) const { RegisterChangeListener(listener, *this); }
 
-    static Field *FindByPath(const StorePath &);
+    inline static Field *FindByPath(const StorePath &search_path) noexcept {
+        if (FieldIdByPath.contains(search_path)) return FieldById[FieldIdByPath[search_path]];
+        // Search for container fields.
+        if (FieldIdByPath.contains(search_path.parent_path())) return FieldById[FieldIdByPath[search_path.parent_path()]];
+        if (FieldIdByPath.contains(search_path.parent_path().parent_path())) return FieldById[FieldIdByPath[search_path.parent_path().parent_path()]];
+        return nullptr;
+    }
 
     // Refresh the cached values of all fields affected by the patch, and notifies all listeners of the affected fields.
     static void RefreshChanged(const Patch &);
     inline static void ClearChanged() noexcept {
-        ChangedFieldIds.clear();
+        ChangedPathsByFieldId.clear();
         ChangedComponentIds.clear();
     }
 
@@ -65,7 +77,7 @@ struct Field : Component {
     inline static void RefreshAll() {
         for (auto &[id, field] : FieldById) field->RefreshValue();
         std::unordered_set<ChangeListener *> all_listeners;
-        for (auto &[id, listeners] : ChangeListenersForField) {
+        for (auto &[id, listeners] : ChangeListenersByFieldId) {
             all_listeners.insert(listeners.begin(), listeners.end());
         }
     }
@@ -79,7 +91,7 @@ struct Field : Component {
     // Should be called for each affected field after a state change to avoid stale values.
     virtual void RefreshValue() = 0;
 
-    inline bool IsChanged() const noexcept { return ChangedFieldIds.contains(Id); }
+    inline bool IsChanged() const noexcept { return ChangedPathsByFieldId.contains(Id); }
 
     virtual void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
 

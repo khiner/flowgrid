@@ -223,7 +223,7 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 }
 
 void CommitGesture() {
-    Field::GestureUpdateTimesForFieldId.clear();
+    Field::GestureChangedPathsByFieldId.clear();
     if (ActiveGestureActions.empty()) return;
 
     const auto merged_actions = MergeActions(ActiveGestureActions);
@@ -252,7 +252,7 @@ bool Project::Save(const fs::path &path) {
 void SetHistoryIndex(Count index) {
     if (index == History.Index) return;
 
-    Field::GestureUpdateTimesForFieldId.clear();
+    Field::GestureChangedPathsByFieldId.clear();
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
@@ -396,17 +396,20 @@ struct Plottable {
 };
 
 Plottable StorePathChangeFrequencyPlottable() {
-    const auto &committed_times = History.CommitTimesForPath;
-    const auto &gesture_update_times =
-        Field::GestureUpdateTimesForFieldId |
-        ranges::views::transform([](const auto &pair) {
-            return std::pair{Component::ById[pair.first]->Path, pair.second};
-        }) |
-        ranges::to<std::unordered_map<StorePath, std::vector<TimePoint>, PathHash>>;
-
+    const auto &committed_times = History.CommitTimesByPath;
+    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> gesture_update_times;
+    for (const auto &[field_id, changed_paths] : Field::GestureChangedPathsByFieldId) {
+        const auto &field = Field::ById[field_id];
+        for (const Field::PathsMoment &paths_moment : changed_paths) {
+            for (const auto &path : paths_moment.second) {
+                const auto full_path = path == "" ? field->Path : field->Path / path;
+                gesture_update_times[full_path].push_back(paths_moment.first);
+            }
+        }
+    }
     if (committed_times.empty() && gesture_update_times.empty()) return {};
 
-    const auto paths = ranges::views::concat(ranges::views::keys(committed_times), ranges::views::keys(gesture_update_times));
+    const std::set<StorePath> paths = ranges::views::concat(ranges::views::keys(committed_times), ranges::views::keys(gesture_update_times)) | ranges::to<std::set>;
 
     const bool has_gesture = !gesture_update_times.empty();
     std::vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
@@ -687,8 +690,8 @@ void RunQueuedActions(bool force_commit_gesture) {
             const auto store_commit_time = Clock::now();
             Field::RefreshChanged(History.LatestPatch);
             ActiveGestureActions.insert(ActiveGestureActions.end(), stateful_actions.begin(), stateful_actions.end());
-            for (const ID changed_field_id : Field::ChangedFieldIds) {
-                Field::GestureUpdateTimesForFieldId[changed_field_id].emplace_back(store_commit_time);
+            for (const auto &[field_id, affected_paths] : Field::ChangedPathsByFieldId) {
+                Field::GestureChangedPathsByFieldId[field_id].emplace_back(store_commit_time, affected_paths);
             }
 
             ProjectHasChanges = true;

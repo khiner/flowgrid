@@ -17,22 +17,20 @@ Field::~Field() {
     FieldById.erase(Id);
 }
 
-Field *Field::FindByPath(const StorePath &search_path) {
-    if (FieldIdByPath.contains(search_path)) return FieldById[FieldIdByPath[search_path]];
-    // Handle container fields.
-    if (FieldIdByPath.contains(search_path.parent_path())) return FieldById[FieldIdByPath[search_path.parent_path()]];
-    if (FieldIdByPath.contains(search_path.parent_path().parent_path())) return FieldById[FieldIdByPath[search_path.parent_path().parent_path()]];
-    return nullptr;
-}
-
 void Field::FindAndMarkChanged(const Patch &patch) {
     ClearChanged();
     for (const auto &path : patch.GetPaths()) {
         const auto *changed_field = FindByPath(path);
         if (changed_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
-        ChangedFieldIds.insert(changed_field->Id);
-        // Mark all ancestor components as changed as well:
+        const auto relative_path = path == changed_field->Path ? fs::path("") : path.lexically_relative(changed_field->Path);
+        if (ChangedPathsByFieldId.contains(changed_field->Id)) {
+            ChangedPathsByFieldId[changed_field->Id].insert(relative_path);
+        } else {
+            ChangedPathsByFieldId.emplace(changed_field->Id, UniquePaths{relative_path});
+        }
+
+        // Mark all ancestor components as changed.
         const Component *ancestor = changed_field;
         while (ancestor != nullptr) {
             ChangedComponentIds.insert(ancestor->Id);
@@ -44,10 +42,10 @@ void Field::FindAndMarkChanged(const Patch &patch) {
 void Field::RefreshChanged(const Patch &patch) {
     FindAndMarkChanged(patch);
     static std::unordered_set<ChangeListener *> affected_listeners;
-    for (const auto changed_field_id : ChangedFieldIds) {
-        auto *changed_field = FieldById[changed_field_id];
+    for (const auto &[field_id, _] : ChangedPathsByFieldId) {
+        auto *changed_field = FieldById[field_id];
         changed_field->RefreshValue();
-        const auto &listeners = ChangeListenersForField[changed_field_id];
+        const auto &listeners = ChangeListenersByFieldId[field_id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
@@ -61,17 +59,14 @@ void Field::UpdateGesturing() {
 }
 
 std::optional<TimePoint> Field::LatestUpdateTime(const ID component_id) {
-    if (!ById.contains(component_id)) return {};
+    if (!GestureChangedPathsByFieldId.contains(component_id)) return {};
 
-    if (GestureUpdateTimesForFieldId.contains(component_id)) return GestureUpdateTimesForFieldId.at(component_id).back();
-
-    return {};
+    return GestureChangedPathsByFieldId.at(component_id).back().first;
 }
 
 void Field::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
     // Flash background color of nodes with alpha level corresponding to how much time is left in the gesture before it's committed.
-    const auto &latest_update_time = LatestUpdateTime(Id);
-    if (latest_update_time) {
+    if (const auto latest_update_time = LatestUpdateTime(Id)) {
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / app_settings.GestureDurationSec;
         ImColor flash_color = fg::style.FlowGrid.Colors[FlowGridCol_GestureIndicator];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);

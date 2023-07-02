@@ -52,7 +52,7 @@ void Colors::Render() const {
             const bool is_auto = AllowAuto && color == AutoColor;
             const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : color;
 
-            PushID(ImGuiLabel.c_str());
+            PushID(i);
             fg::InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
             SetItemAllowOverlap();
 

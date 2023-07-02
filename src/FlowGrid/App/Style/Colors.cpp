@@ -1,43 +1,29 @@
 #include "Colors.h"
 
-#include "UI/HelpMarker.h"
+#include <range/v3/range/conversion.hpp>
 
 #include "imgui.h"
+#include "implot.h"
+#include "implot_internal.h"
+
+#include "UI/HelpMarker.h"
+#include "UI/InvisibleButton.h"
 
 using namespace ImGui;
 
-// Special color used to indicate that a color should be deduced automatically.
-// Copied from `implot.h`.
-#define IMPLOT_AUTO_COL ImVec4(0, 0, 0, -1)
-
 Colors::Colors(ComponentArgs &&args, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
-    : Component(std::move(args)), AllowAuto(allow_auto) {
-    for (Count i = 0; i < size; i++) {
-        new UInt({this, to_string(i), get_color_name(i)}); // Adds to `Children` as a side effect.
-    }
-}
-Colors::~Colors() {
-    const Count size = Size();
-    for (int i = size - 1; i >= 0; i--) {
-        delete Children[i];
-    }
+    : Vector<U32>(std::move(args)), GetColorName(get_color_name), AllowAuto(allow_auto) {
+    Vector<U32>::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<U32>>);
 }
 
-U32 Colors::ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? UInt::AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
-ImVec4 Colors::ConvertU32ToFloat4(const U32 value) { return value == UInt::AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
-Count Colors::Size() const { return Children.size(); }
+U32 Colors::ConvertFloat4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
+ImVec4 Colors::ConvertU32ToFloat4(const U32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
-const UInt *Colors::At(Count i) const { return static_cast<const UInt *>(Children[i]); }
-U32 Colors::operator[](Count i) const { return *At(i); };
 void Colors::Set(const std::vector<ImVec4> &values) const {
-    for (Count i = 0; i < values.size(); i++) {
-        At(i)->Set(ConvertFloat4ToU32(values[i]));
-    }
+    Vector<U32>::Set(values | std::views::transform([](const auto &value) { return ConvertFloat4ToU32(value); }) | ranges::to<std::vector>);
 }
 void Colors::Set(const std::vector<std::pair<int, ImVec4>> &entries) const {
-    for (const auto &[i, v] : entries) {
-        At(i)->Set(ConvertFloat4ToU32(v));
-    }
+    Vector<U32>::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, ConvertFloat4ToU32(entry.second)); }) | ranges::to<std::vector>);
 }
 
 void Colors::Render() const {
@@ -58,10 +44,37 @@ void Colors::Render() const {
     BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
     PushItemWidth(-160);
 
-    for (const auto *child : Children) {
-        const auto *child_color = static_cast<const UInt *>(child);
-        if (filter.PassFilter(child->Name.c_str())) {
-            child_color->ColorEdit4(flags, AllowAuto);
+    for (Count i = 0; i < Size(); i++) {
+        const std::string &color_name = GetColorName(i);
+        if (filter.PassFilter(color_name.c_str())) {
+            U32 color = Value[i];
+            const bool is_auto = AllowAuto && color == AutoColor;
+            const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : color;
+
+            PushID(ImGuiLabel.c_str());
+            fg::InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
+            SetItemAllowOverlap();
+
+            // todo use auto for FG colors (link to ImGui colors)
+            if (AllowAuto) {
+                if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
+                if (Button("Auto")) Action::Vector<U32>::SetAt{Path, i, is_auto ? mapped_value : AutoColor}.q();
+                if (!is_auto) PopStyleVar();
+                SameLine();
+            }
+
+            auto value = ColorConvertU32ToFloat4(mapped_value);
+            if (is_auto) BeginDisabled();
+            const bool changed = ImGui::ColorEdit4("", (float *)&value, flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
+            UpdateGesturing();
+            if (is_auto) EndDisabled();
+
+            SameLine(0, GetStyle().ItemInnerSpacing.x);
+            TextUnformatted(color_name.c_str());
+
+            PopID();
+
+            if (changed) Action::Vector<U32>::SetAt{Path, i, ColorConvertFloat4ToU32(value)}.q();
         }
     }
     if (AllowAuto) {

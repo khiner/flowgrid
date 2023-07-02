@@ -10,34 +10,34 @@ template<IsPrimitive T> struct Vector {
 
 DefineTemplatedActionType(
     Vector, Bool, bool,
-    DefineFieldAction(Set, "", std::vector<bool> value;);
+    DefineFieldAction(SetAt, "", Count i; bool value;);
 
-    using Any = ActionVariant<Set>;
+    using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     Vector, Int, int,
-    DefineFieldAction(Set, "", std::vector<int> value;);
+    DefineFieldAction(SetAt, "", Count i; int value;);
 
-    using Any = ActionVariant<Set>;
+    using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     Vector, UInt, U32,
-    DefineFieldAction(Set, "", std::vector<U32> value;);
+    DefineFieldAction(SetAt, "", Count i; U32 value;);
 
-    using Any = ActionVariant<Set>;
+    using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     Vector, Float, float,
-    DefineFieldAction(Set, "", std::vector<float> value;);
+    DefineFieldAction(SetAt, "", Count i; float value;);
 
-    using Any = ActionVariant<Set>;
+    using Any = ActionVariant<SetAt>;
 );
 
-Json(Vector<bool>::Set, path, value);
-Json(Vector<int>::Set, path, value);
-Json(Vector<U32>::Set, path, value);
-Json(Vector<float>::Set, path, value);
+Json(Vector<bool>::SetAt, path, i, value);
+Json(Vector<int>::SetAt, path, i, value);
+Json(Vector<U32>::SetAt, path, i, value);
+Json(Vector<float>::SetAt, path, i, value);
 } // namespace Action

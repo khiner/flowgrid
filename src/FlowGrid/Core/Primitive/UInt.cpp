@@ -1,10 +1,6 @@
 #include "UInt.h"
 
 #include "imgui.h"
-#include "implot.h"
-#include "implot_internal.h"
-
-#include "UI/InvisibleButton.h"
 
 UInt::UInt(ComponentArgs &&args, U32 value, U32 min, U32 max)
     : PrimitiveField(std::move(args), value), Min(min), Max(max) {}
@@ -44,35 +40,4 @@ void UInt::Render(const std::vector<U32> &options) const {
         EndCombo();
     }
     HelpMarker();
-}
-
-void UInt::ColorEdit4(ImGuiColorEditFlags flags, bool allow_auto) const {
-    const Count i = std::stoi(PathLeaf); // Assuming color is a member of a vector here.
-    const bool is_auto = allow_auto && Value == AutoColor;
-    const U32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : Value;
-
-    PushID(ImGuiLabel.c_str());
-    fg::InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
-    SetItemAllowOverlap();
-
-    // todo use auto for FG colors (link to ImGui colors)
-    if (allow_auto) {
-        if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-        if (Button("Auto")) Action::Primitive::UInt::Set{Path, is_auto ? mapped_value : AutoColor}.q();
-        if (!is_auto) PopStyleVar();
-        SameLine();
-    }
-
-    auto value = ColorConvertU32ToFloat4(mapped_value);
-    if (is_auto) BeginDisabled();
-    const bool changed = ImGui::ColorEdit4("", (float *)&value, flags | ImGuiColorEditFlags_AlphaBar | (allow_auto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-    UpdateGesturing();
-    if (is_auto) EndDisabled();
-
-    SameLine(0, GetStyle().ItemInnerSpacing.x);
-    TextUnformatted(Name.c_str());
-
-    PopID();
-
-    if (changed) Action::Primitive::UInt::Set{Path, ColorConvertFloat4ToU32(value)}.q();
 }

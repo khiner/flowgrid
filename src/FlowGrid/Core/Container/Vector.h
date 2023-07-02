@@ -14,7 +14,7 @@ template<IsPrimitive T> struct Vector : Field, Actionable<typename Action::Vecto
     void Apply(const ActionType &action) const override {
         Visit(
             action,
-            [this](const Action::Vector<T>::Set &a) { Set(a.value); },
+            [this](const Action::Vector<T>::SetAt &a) { Set(a.i, a.value); },
         );
     }
     bool CanApply(const ActionType &) const override { return true; }
@@ -34,6 +34,6 @@ template<IsPrimitive T> struct Vector : Field, Actionable<typename Action::Vecto
     void Set(const std::vector<std::pair<int, T>> &) const;
     void Resize(Count) const;
 
-private:
+protected:
     std::vector<T> Value;
 };

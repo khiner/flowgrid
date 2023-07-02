@@ -14,20 +14,20 @@ template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &value) const {
     Resize(i);
 }
 
+template<IsPrimitive T> void Vector<T>::Set(size_t i, const T &value) const {
+    store::Set(PathAt(i), value);
+}
+
+template<IsPrimitive T> void Vector<T>::Set(const std::vector<std::pair<int, T>> &values) const {
+    for (const auto &[i, value] : values) Set(i, value);
+}
+
 template<IsPrimitive T> void Vector<T>::Resize(Count size) const {
     Count i = size;
     while (store::CountAt(PathAt(i))) {
         store::Erase(PathAt(i));
         i++;
     }
-}
-
-template<IsPrimitive T> void Vector<T>::Set(size_t i, const T &value) const {
-    store::Set(PathAt(i), value);
-}
-
-template<IsPrimitive T> void Vector<T>::Set(const std::vector<std::pair<int, T>> &values) const {
-    for (const auto &[i, value] : values) store::Set(PathAt(i), value);
 }
 
 template<IsPrimitive T> void Vector<T>::RefreshValue() {

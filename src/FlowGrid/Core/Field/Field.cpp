@@ -52,6 +52,13 @@ void Field::RefreshChanged(const Patch &patch) {
     for (auto *listener : affected_listeners) listener->OnFieldChanged();
     affected_listeners.clear();
 }
+void Field::RefreshAll() {
+    for (auto &[id, field] : FieldById) field->RefreshValue();
+    std::unordered_set<ChangeListener *> all_listeners;
+    for (auto &[id, listeners] : ChangeListenersByFieldId) {
+        all_listeners.insert(listeners.begin(), listeners.end());
+    }
+}
 
 void Field::UpdateGesturing() {
     if (ImGui::IsItemActivated()) IsGesturing = true;

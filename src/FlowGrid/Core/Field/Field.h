@@ -26,36 +26,13 @@ struct Field : Component {
 
     Field &operator=(const Field &) = delete;
 
+    inline static FieldActionHandler ActionHandler;
+
+    inline static bool IsGesturing{};
+    static void UpdateGesturing();
+
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
-    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersByFieldId;
-    // IDs of all fields updated during the latest action pass, mapped to all (field-relative) paths affected in the field.
-    // For primitive fields, the path set will only contain the root path.
-    // For container fields, the path set will contain the container-relative paths of all affected elements.
-    // These same key IDs are also stored in the `ChangedComponentIds` set,
-    // which also includes IDs for all ancestor component of all changed fields.
-    using UniquePaths = std::unordered_set<StorePath, PathHash>;
-    inline static std::unordered_map<ID, UniquePaths> ChangedPathsByFieldId;
-
-    // Chronological vector of (Unique field-relative-paths, update-time) pairs for each field that has been updated during the current gesture.
-    using PathsMoment = std::pair<TimePoint, UniquePaths>;
-    inline static std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPathsByFieldId{};
-
-    static std::optional<TimePoint> LatestUpdateTime(const ID component_id);
-
-    inline static void RegisterChangeListener(ChangeListener *listener, const Field &field) {
-        if (!ChangeListenersByFieldId.contains(field.Id)) {
-            ChangeListenersByFieldId.emplace(field.Id, std::unordered_set<ChangeListener *>{});
-        }
-        ChangeListenersByFieldId[field.Id].insert(listener);
-    }
-    inline static void UnregisterChangeListener(ChangeListener *listener) {
-        for (auto &[field_id, listeners] : ChangeListenersByFieldId) {
-            listeners.erase(listener);
-            if (listeners.empty()) ChangeListenersByFieldId.erase(field_id);
-        }
-    }
-    inline void RegisterChangeListener(ChangeListener *listener) const { RegisterChangeListener(listener, *this); }
 
     inline static Field *FindByPath(const StorePath &search_path) noexcept {
         if (FieldIdByPath.contains(search_path)) return FieldById[FieldIdByPath[search_path]];
@@ -65,33 +42,45 @@ struct Field : Component {
         return nullptr;
     }
 
+    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersByFieldId;
+
+    inline static void RegisterChangeListener(ChangeListener *listener, const Field &field) noexcept {
+        ChangeListenersByFieldId[field.Id].insert(listener);
+    }
+    inline static void UnregisterChangeListener(ChangeListener *listener) noexcept {
+        for (auto &[field_id, listeners] : ChangeListenersByFieldId) listeners.erase(listener);
+        std::erase_if(ChangeListenersByFieldId, [](const auto &entry) { return entry.second.empty(); });
+    }
+    inline void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
+
+    using UniquePaths = std::unordered_set<StorePath, PathHash>;
+    using PathsMoment = std::pair<TimePoint, UniquePaths>;
+    // IDs of all fields updated during the latest action pass, mapped to all (field-relative) paths affected in the field.
+    // For primitive fields, the path set will only contain the root path.
+    // For container fields, the path set will contain the container-relative paths of all affected elements.
+    // These same key IDs are also stored in the `ChangedComponentIds` set,
+    // which also includes IDs for all ancestor component of all changed fields.
+    inline static std::unordered_map<ID, UniquePaths> ChangedPathsByFieldId;
+    // Chronological vector of (Unique field-relative-paths, update-time) pairs for each field that has been updated during the current gesture.
+    inline static std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPathsByFieldId{};
+
+    static std::optional<TimePoint> LatestUpdateTime(const ID component_id);
+
     // Refresh the cached values of all fields affected by the patch, and notifies all listeners of the affected fields.
     static void RefreshChanged(const Patch &);
     inline static void ClearChanged() noexcept {
         ChangedPathsByFieldId.clear();
         ChangedComponentIds.clear();
     }
+    inline bool IsChanged() const noexcept { return ChangedPathsByFieldId.contains(Id); }
 
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
-    inline static void RefreshAll() {
-        for (auto &[id, field] : FieldById) field->RefreshValue();
-        std::unordered_set<ChangeListener *> all_listeners;
-        for (auto &[id, listeners] : ChangeListenersByFieldId) {
-            all_listeners.insert(listeners.begin(), listeners.end());
-        }
-    }
-
-    inline static bool IsGesturing{};
-    static void UpdateGesturing();
-
-    inline static FieldActionHandler ActionHandler;
+    static void RefreshAll();
 
     // Refresh the cached value based on the main store.
     // Should be called for each affected field after a state change to avoid stale values.
     virtual void RefreshValue() = 0;
-
-    inline bool IsChanged() const noexcept { return ChangedPathsByFieldId.contains(Id); }
 
     virtual void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
 

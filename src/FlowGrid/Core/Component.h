@@ -80,8 +80,8 @@ struct Component : Drawable {
     // By default, renders `this` a node with children as child nodes.
     virtual void RenderValueTree(ValueTreeLabelMode, bool auto_select) const;
 
-    const Component *Child(Count i) const { return Children[i]; }
-    inline Count ChildCount() const { return Children.size(); }
+    const Component *Child(Count i) const noexcept { return Children[i]; }
+    inline Count ChildCount() const noexcept { return Children.size(); }
 
     const Component *Parent;
     std::vector<Component *> Children{};

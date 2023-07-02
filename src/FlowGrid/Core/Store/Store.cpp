@@ -143,18 +143,9 @@ std::unordered_set<IdPair, IdPairHash> IdPairs(const StorePath &path) {
 
 void AddIdPair(const StorePath &path, const IdPair &value) {
     if (IsTransient) {
-        if (Transient.IdPairsByPath.contains(path)) {
-            Transient.IdPairsByPath[path].insert(value);
-        } else {
-            Transient.IdPairsByPath[path] = {};
-            Transient.IdPairsByPath[path].insert(value);
-        }
+        Transient.IdPairsByPath[path].insert(value);
     } else {
-        if (AppStore.IdPairsByPath.contains(path)) {
-            auto _ = AppStore.IdPairsByPath[path].insert(value);
-        } else {
-            AppStore.IdPairsByPath[path] = {value};
-        }
+        auto _ = AppStore.IdPairsByPath[path].insert(value);
     }
 }
 void EraseIdPair(const StorePath &path, const IdPair &value) {

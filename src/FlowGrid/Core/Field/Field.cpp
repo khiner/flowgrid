@@ -24,11 +24,7 @@ void Field::FindAndMarkChanged(const Patch &patch) {
         if (changed_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
         const auto relative_path = path == changed_field->Path ? fs::path("") : path.lexically_relative(changed_field->Path);
-        if (ChangedPathsByFieldId.contains(changed_field->Id)) {
-            ChangedPathsByFieldId[changed_field->Id].insert(relative_path);
-        } else {
-            ChangedPathsByFieldId.emplace(changed_field->Id, UniquePaths{relative_path});
-        }
+        ChangedPathsByFieldId[changed_field->Id].insert(relative_path);
 
         // Mark all ancestor components as changed.
         const Component *ancestor = changed_field;

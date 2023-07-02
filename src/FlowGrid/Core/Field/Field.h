@@ -53,26 +53,35 @@ struct Field : Component {
     }
     inline void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
-    using UniquePaths = std::unordered_set<StorePath, PathHash>;
-    using PathsMoment = std::pair<TimePoint, UniquePaths>;
-    // IDs of all fields updated during the latest action pass, mapped to all (field-relative) paths affected in the field.
     // For primitive fields, the path set will only contain the root path.
     // For container fields, the path set will contain the container-relative paths of all affected elements.
-    // These same key IDs are also stored in the `ChangedComponentIds` set,
-    // which also includes IDs for all ancestor component of all changed fields.
-    inline static std::unordered_map<ID, UniquePaths> ChangedPathsByFieldId;
-    // Chronological vector of (Unique field-relative-paths, update-time) pairs for each field that has been updated during the current gesture.
-    inline static std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPathsByFieldId{};
+    using UniquePaths = std::unordered_set<StorePath, PathHash>;
+    using PathsMoment = std::pair<TimePoint, UniquePaths>;
+
+    // IDs of all fields updated during the latest action batch or undo/redo, mapped to all (field-relative) paths affected in the field.
+    // All values are appended to `GestureChangedPaths` if the change occurred during an action batch.
+    // This is cleared at the end of each action batch, and can thus be used to determine which fields were affected by the latest action batch.
+    // (`LatestChangedPaths` is retained for the lifetime of the application.)
+    // These same key IDs are also stored in the `ChangedComponentIds` set, which also includes IDs for all ancestor component of all changed fields.
+    inline static std::unordered_map<ID, PathsMoment> ChangedPaths;
+
+    // Latest (unique-field-relative-paths, store-commit-time) pair for each field over the lifetime of the application.
+    // This is updated by both the forward action pass, and by undo/redo.
+    inline static std::unordered_map<ID, PathsMoment> LatestChangedPaths{};
+
+    // Chronological vector of (unique-field-relative-paths, store-commit-time) pairs for each field that has been updated during the current gesture.
+    inline static std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPaths{};
 
     static std::optional<TimePoint> LatestUpdateTime(const ID component_id);
 
-    // Refresh the cached values of all fields affected by the patch, and notifies all listeners of the affected fields.
-    static void RefreshChanged(const Patch &);
+    // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
+    // This is always called immediately after a store commit.
+    static void RefreshChanged(const Patch &, bool add_to_gesture = false);
     inline static void ClearChanged() noexcept {
-        ChangedPathsByFieldId.clear();
+        ChangedPaths.clear();
         ChangedComponentIds.clear();
     }
-    inline bool IsChanged() const noexcept { return ChangedPathsByFieldId.contains(Id); }
+    inline bool IsChanged() const noexcept { return ChangedPaths.contains(Id); }
 
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.

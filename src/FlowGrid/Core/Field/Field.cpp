@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-#include "Core/Store/Patch/Patch.h"
 #include "App/Style/Style.h"
+#include "Core/Store/Patch/Patch.h"
 
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     FieldById.emplace(Id, this);
@@ -16,12 +16,15 @@ Field::~Field() {
 
 void Field::FindAndMarkChanged(const Patch &patch) {
     ClearChanged();
+    const auto change_time = Clock::now();
     for (const auto &path : patch.GetPaths()) {
         const auto *changed_field = FindByPath(path);
         if (changed_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
         const auto relative_path = path == changed_field->Path ? fs::path("") : path.lexically_relative(changed_field->Path);
-        ChangedPathsByFieldId[changed_field->Id].insert(relative_path);
+        PathsMoment &paths_moment = ChangedPaths[changed_field->Id];
+        paths_moment.first = change_time;
+        paths_moment.second.insert(relative_path);
 
         // Mark all ancestor components as changed.
         const Component *ancestor = changed_field;
@@ -30,12 +33,16 @@ void Field::FindAndMarkChanged(const Patch &patch) {
             ancestor = ancestor->Parent;
         }
     }
+
+    // Copy `ChangedPaths` over to `LatestChangedPaths`.
+    // (`ChangedPaths` is cleared at the end of each action batch, while `LatestChangedPaths` is retained for the lifetime of the application.)
+    for (const auto &[field_id, paths_moment] : ChangedPaths) LatestChangedPaths[field_id] = paths_moment;
 }
 
-void Field::RefreshChanged(const Patch &patch) {
+void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     FindAndMarkChanged(patch);
     static std::unordered_set<ChangeListener *> affected_listeners;
-    for (const auto &[field_id, _] : ChangedPathsByFieldId) {
+    for (const auto &[field_id, _] : ChangedPaths) {
         auto *changed_field = FieldById[field_id];
         changed_field->RefreshValue();
         const auto &listeners = ChangeListenersByFieldId[field_id];
@@ -44,6 +51,11 @@ void Field::RefreshChanged(const Patch &patch) {
 
     for (auto *listener : affected_listeners) listener->OnFieldChanged();
     affected_listeners.clear();
+    if (add_to_gesture) {
+        for (const auto &[field_id, paths_moment] : ChangedPaths) {
+            GestureChangedPaths[field_id].push_back(paths_moment);
+        }
+    }
 }
 void Field::RefreshAll() {
     for (auto &[id, field] : FieldById) field->RefreshValue();
@@ -59,14 +71,9 @@ void Field::UpdateGesturing() {
 }
 
 std::optional<TimePoint> Field::LatestUpdateTime(const ID component_id) {
-    if (!GestureChangedPathsByFieldId.contains(component_id)) {
-        // const auto *field = ById[component_id];
-        // if (!History.CommitTimesByPath.contains(field->Path)) return {}; // No commits yet.
-        // return History.CommitTimesByPath[field->Path].back();
-        return {};
-    }
+    if (!LatestChangedPaths.contains(component_id)) return {};
 
-    return GestureChangedPathsByFieldId.at(component_id).back().first;
+    return LatestChangedPaths.at(component_id).first;
 }
 
 void Field::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {

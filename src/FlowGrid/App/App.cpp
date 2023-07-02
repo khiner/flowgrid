@@ -19,6 +19,8 @@ using std::vector;
 using namespace FlowGrid;
 
 static SavableActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
+static Patch LatestPatch;
+
 static float GestureTimeRemainingSec(float gesture_duration_sec) {
     if (ActiveGestureActions.empty()) return 0;
     const auto ret = std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
@@ -223,7 +225,7 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 }
 
 void CommitGesture() {
-    Field::GestureChangedPathsByFieldId.clear();
+    Field::GestureChangedPaths.clear();
     if (ActiveGestureActions.empty()) return;
 
     const auto merged_actions = MergeActions(ActiveGestureActions);
@@ -252,19 +254,19 @@ bool Project::Save(const fs::path &path) {
 void SetHistoryIndex(Count index) {
     if (index == History.Index) return;
 
-    Field::GestureChangedPathsByFieldId.clear();
+    Field::GestureChangedPaths.clear();
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
-    History.LatestPatch = store::CheckedSet(History.CurrentStore());
-    Field::RefreshChanged(History.LatestPatch);
+    LatestPatch = store::CheckedSet(History.CurrentStore());
+    Field::RefreshChanged(LatestPatch);
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
     // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
     // We don't make `ImGuiSettings` a field change listener for this because it would would end up being slower,
     // since it has many descendent fields, and we would wastefully check for changes during the forward action pass, as explained above.
-    if (History.LatestPatch.IsPrefixOfAnyPath(imgui_settings.Path)) imgui_settings.IsChanged = true;
+    if (LatestPatch.IsPrefixOfAnyPath(imgui_settings.Path)) imgui_settings.IsChanged = true;
     ProjectHasChanges = true;
 }
 
@@ -279,6 +281,7 @@ void Project::OnApplicationLaunch() {
     Field::IsGesturing = false;
     History = {};
     Field::ClearChanged();
+    Field::LatestChangedPaths.clear();
     MarkAllUiContextsChanged();
 
     // Keep the canonical "empty" project up-to-date.
@@ -344,6 +347,7 @@ void OpenStateFormatProjectInner(const nlohmann::json &project) {
     const auto &patch = store::SetJson(project);
     Field::RefreshChanged(patch);
     Field::ClearChanged();
+    Field::LatestChangedPaths.clear();
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     imgui_settings.IsChanged = true;
     History = {};
@@ -367,9 +371,10 @@ void Project::Open(const fs::path &file_path) {
             for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.Action);
             History.AddTransientGesture(gesture);
         }
-        History.LatestPatch = store::CheckedCommit();
-        Field::RefreshChanged(History.LatestPatch);
+        LatestPatch = store::CheckedCommit();
+        Field::RefreshChanged(LatestPatch);
         ::SetHistoryIndex(indexed_gestures.Index);
+        Field::LatestChangedPaths.clear();
     }
 
     SetCurrentProjectPath(file_path);
@@ -398,7 +403,7 @@ struct Plottable {
 Plottable StorePathChangeFrequencyPlottable() {
     const auto &committed_times = History.CommitTimesByPath;
     std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> gesture_update_times;
-    for (const auto &[field_id, changed_paths] : Field::GestureChangedPathsByFieldId) {
+    for (const auto &[field_id, changed_paths] : Field::GestureChangedPaths) {
         const auto &field = Field::ById[field_id];
         for (const Field::PathsMoment &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
@@ -685,14 +690,10 @@ void RunQueuedActions(bool force_commit_gesture) {
         (!Field::IsGesturing && !ActiveGestureActions.empty() && GestureTimeRemainingSec(app_settings.GestureDurationSec) <= 0);
 
     if (!stateful_actions.empty()) {
-        History.LatestPatch = store::CheckedCommit();
-        if (!History.LatestPatch.Empty()) {
-            const auto store_commit_time = Clock::now();
-            Field::RefreshChanged(History.LatestPatch);
+        LatestPatch = store::CheckedCommit();
+        if (!LatestPatch.Empty()) {
+            Field::RefreshChanged(LatestPatch, true);
             ActiveGestureActions.insert(ActiveGestureActions.end(), stateful_actions.begin(), stateful_actions.end());
-            for (const auto &[field_id, affected_paths] : Field::ChangedPathsByFieldId) {
-                Field::GestureChangedPathsByFieldId[field_id].emplace_back(store_commit_time, affected_paths);
-            }
 
             ProjectHasChanges = true;
         }

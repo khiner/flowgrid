@@ -43,7 +43,6 @@ struct StoreHistory {
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
 
     Count Index{0};
-    Patch LatestPatch;
 
     std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> CommitTimesByPath{};
 

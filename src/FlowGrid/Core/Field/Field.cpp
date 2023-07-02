@@ -77,8 +77,4 @@ void Field::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
-
-    // TreeNodeFlags flags = TreeNodeFlags_None;
-    // if (Debug.LabelMode == Debug::Annotated && (is_imgui_color || is_implot_color || is_flowgrid_color)) flags |= TreeNodeFlags_Highlighted;
-    // if (Debug.AutoSelect) flags |= TreeNodeFlags_Disabled;
 }

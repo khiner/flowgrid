@@ -100,7 +100,10 @@ void Colors::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
 
     if (fg::TreeNode(Name)) {
         for (Count i = 0; i < Value.size(); i++) {
-            fg::TreeNode(to_string(i), TreeNodeFlags_None, nullptr, U32ToHex(Value[i]).c_str());
+            const std::string &label = mode == Annotated ? GetColorName(i) : to_string(i);
+            TreeNodeFlags flags = TreeNodeFlags_None;
+            if (mode == Annotated) flags |= TreeNodeFlags_Highlighted;
+            fg::TreeNode(label, flags, nullptr, U32ToHex(Value[i]).c_str());
         }
         TreePop();
     }

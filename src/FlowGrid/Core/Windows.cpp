@@ -14,7 +14,7 @@ bool Windows::IsWindow(ID id) const { return std::ranges::find(WindowComponentId
 void Windows::Apply(const ActionType &action) const {
     Visit(
         action,
-        [&](const Action::Windows::ToggleVisible &a) {
+        [this](const Action::Windows::ToggleVisible &a) {
             const auto index = std::find(WindowComponentIds.begin(), WindowComponentIds.end(), a.component_id) - WindowComponentIds.begin();
             VisibleComponents.Set(index, !VisibleComponents[index]);
         }

@@ -21,16 +21,16 @@ Faust::~Faust() {
 void Faust::Apply(const ActionType &action) const {
     Visit(
         action,
-        [&](const Action::FaustFile::Any &a) {
+        [this](const Action::FaustFile::Any &a) {
             Visit(
                 a,
                 [](const Action::FaustFile::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
                 [](const Action::FaustFile::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
-                [&](const Action::FaustFile::Open &a) { Code.Set(FileIO::read(a.file_path)); },
-                [&](const Action::FaustFile::Save &a) { FileIO::write(a.file_path, Code); },
+                [this](const Action::FaustFile::Open &a) { Code.Set(FileIO::read(a.file_path)); },
+                [this](const Action::FaustFile::Save &a) { FileIO::write(a.file_path, Code); },
             );
         },
-        [&](const Action::FaustGraph::Any &a) { Graph.Apply(a); },
+        [this](const Action::FaustGraph::Any &a) { Graph.Apply(a); },
     );
 }
 

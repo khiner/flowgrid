@@ -207,14 +207,14 @@ Patch CreatePatch(const Store &before, const Store &after, const StorePath &base
         diff(
             before.IdPairsByPath.at(id_pair_path),
             after.IdPairsByPath.at(id_pair_path),
-            [&](const auto &added) {
+            [&ops, &id_pair_path, &base_path](const auto &added) {
                 ops[id_pair_path.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(added), {}};
             },
-            [&](const auto &removed) {
+            [&ops, &id_pair_path, &base_path](const auto &removed) {
                 ops[id_pair_path.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(removed)};
             },
             // Change callback required but never called for `immer::set`.
-            [&](const auto &, const auto &) {}
+            [](const auto &, const auto &) {}
         );
     }
 

@@ -1,14 +1,13 @@
 #pragma once
 
-#include "AppAction.h"
 #include "Audio/Audio.h"
 #include "Core/Action/Actionable.h"
+#include "Core/Action/Actions.h"
 #include "Core/Windows.h"
 #include "Demo.h"
 #include "FileDialog/FileDialog.h"
 #include "ImGuiSettings.h"
 #include "Info.h"
-#include "Project/ProjectAction.h"
 #include "Settings.h"
 #include "Style/Style.h"
 
@@ -16,7 +15,7 @@
  * This class defines the main `App`, which fully describes the application at any point in time.
  * An immutable reference to the single source-of-truth application state `const App &app` is defined at the bottom of this file.
  */
-struct App : Component, Actionable<Action::App::Any> {
+struct App : Component, Actionable<Action::Any> {
     App(ComponentArgs &&);
 
     static void OpenRecentProjectMenuItem();
@@ -149,14 +148,6 @@ protected:
 struct Project {
     static void OnApplicationLaunch();
 
-    struct ActionHandler : Actionable<Action::Project::Any> {
-        void Apply(const ActionType &) const override;
-        bool CanApply(const ActionType &) const override;
-    };
-
-    inline static ActionHandler ActionHandler;
-
-private:
     static void Open(const fs::path &);
     static bool Save(const fs::path &);
 };

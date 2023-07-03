@@ -139,7 +139,7 @@ void FaustParams::DrawUiItem(const FaustParam &param, const char *label, const f
             if (is_h) {
                 bool include_labels = !Style.HeaderTitles;
                 suggested_item_height = std::ranges::max(
-                    param.children | std::views::transform([&](const auto &child) {
+                    param.children | std::views::transform([this, include_labels](const auto &child) {
                         return CalcHeight(child) + (include_labels ? CalcLabelHeight(child) : 0);
                     })
                 );

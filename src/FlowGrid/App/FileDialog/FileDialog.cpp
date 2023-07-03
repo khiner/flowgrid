@@ -15,10 +15,10 @@ void FileDialog::Apply(const ActionType &action) const {
     // `SelectedFilePath` mutations are non-stateful side effects.
     Visit(
         action,
-        [&](const Action::FileDialog::Open &a) {
+        [this](const Action::FileDialog::Open &a) {
             Set(json::parse(a.dialog_json));
         },
-        [&](const Action::FileDialog::Select &a) {
+        [](const Action::FileDialog::Select &a) {
             SelectedFilePath = a.file_path;
         },
     );
@@ -27,7 +27,7 @@ void FileDialog::Apply(const ActionType &action) const {
 bool FileDialog::CanApply(const ActionType &action) const {
     return Visit(
         action,
-        [](const Action::FileDialog::Open &) { return !file_dialog.Visible; },
+        [](const Action::FileDialog::Open &) { return !Visible; },
         [](const Action::FileDialog::Select &) { return true; }, // File dialog `Visible` is set to false _before_ the select action is issued.
     );
 }

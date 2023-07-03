@@ -7,7 +7,6 @@
 #include <set>
 
 #include "AppPreferences.h"
-#include "Core/Action/Actions.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
@@ -20,6 +19,26 @@ using namespace FlowGrid;
 
 static SavableActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
 static Patch LatestPatch;
+
+// Project constants:
+static const fs::path InternalPath = ".flowgrid";
+
+// Order matters here, as the first extension is the default project extension.
+static const std::map<ProjectFormat, std::string> ExtensionByProjectFormat{
+    {ProjectFormat::ActionFormat, ".fla"},
+    {ProjectFormat::StateFormat, ".fls"},
+};
+static const auto ProjectFormatByExtension = ExtensionByProjectFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
+static const auto AllProjectExtensions = std::views::keys(ProjectFormatByExtension);
+static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
+
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectFormat.at(ProjectFormat::StateFormat));
+// The default project is a user-created project that loads on app start, instead of the empty project.
+// As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
+static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionByProjectFormat.at(ProjectFormat::ActionFormat));
+
+static std::optional<fs::path> CurrentProjectPath;
+static bool ProjectHasChanges{false};
 
 static float GestureTimeRemainingSec(float gesture_duration_sec) {
     if (ActiveGestureActions.empty()) return 0;
@@ -48,73 +67,105 @@ App::App(ComponentArgs &&args) : Component(std::move(args)) {
     });
 }
 
+void CommitGesture() {
+    Field::GestureChangedPaths.clear();
+    if (ActiveGestureActions.empty()) return;
+
+    const auto merged_actions = MergeActions(ActiveGestureActions);
+    ActiveGestureActions.clear();
+    if (merged_actions.empty()) return;
+
+    History.CommitGesture({merged_actions, Clock::now()});
+}
+
+void SetHistoryIndex(Count index) {
+    if (index == History.Index) return;
+
+    Field::GestureChangedPaths.clear();
+    // If we're mid-gesture, revert the current gesture before navigating to the new index.
+    ActiveGestureActions.clear();
+    History.SetIndex(index);
+    LatestPatch = store::CheckedSet(History.CurrentStore());
+    Field::RefreshChanged(LatestPatch);
+    // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
+    // when it initially changes, since ImGui has already updated its own context.
+    // We only need to update the ImGui context based on settings changes when the history index changes.
+    // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
+    // We don't make `ImGuiSettings` a field change listener for this because it would would end up being slower,
+    // since it has many descendent fields, and we would wastefully check for changes during the forward action pass, as explained above.
+    if (LatestPatch.IsPrefixOfAnyPath(imgui_settings.Path)) imgui_settings.IsChanged = true;
+    ProjectHasChanges = true;
+}
+
 void App::Apply(const ActionType &action) const {
     Visit(
         action,
+        [](const Action::Project::OpenEmpty &) { Project::Open(EmptyProjectPath); },
+        [](const Action::Project::Open &a) { Project::Open(a.file_path); },
+        [](const Action::Project::OpenDefault &) { Project::Open(DefaultProjectPath); },
+
+        [](const Action::Project::Save &a) { Project::Save(a.file_path); },
+        [](const Action::Project::SaveDefault &) { Project::Save(DefaultProjectPath); },
+        [](const Action::Project::SaveCurrent &) {
+            if (CurrentProjectPath) Project::Save(*CurrentProjectPath);
+        },
+        // History-changing actions:
+        [](const Action::Project::Undo &) {
+            if (History.Empty()) return;
+
+            // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
+            // If we're at the end of the stack, we want to commit the active gesture and add it to the stack.
+            // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
+            // to commit and cut off everything after the current history index, so an undo just ditches the active changes.
+            // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
+            if (History.Index == History.Size() - 1) {
+                if (!ActiveGestureActions.empty()) CommitGesture();
+                ::SetHistoryIndex(History.Index - 1);
+            } else {
+                ::SetHistoryIndex(History.Index - (ActiveGestureActions.empty() ? 1 : 0));
+            }
+        },
+        [](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
+        [](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+
         [](const FieldActionHandler::ActionType &a) { Field::ActionHandler.Apply(a); },
         [](const store::ActionHandler::ActionType &a) { store::ActionHandler.Apply(a); },
-        [&](const Audio::ActionType &a) { Audio.Apply(a); },
-        [&](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
-        [&](const Windows::ActionType &a) { Windows.Apply(a); },
-        [&](const Style::ActionType &a) { Style.Apply(a); },
+        [this](const Action::Project::ShowOpenDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
+        [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+        [this](const Audio::ActionType &a) { Audio.Apply(a); },
+        [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
+        [this](const Windows::ActionType &a) { Windows.Apply(a); },
+        [this](const Style::ActionType &a) { Style.Apply(a); },
     );
 }
 
 bool App::CanApply(const ActionType &action) const {
     return Visit(
         action,
+        [](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
+        [](const Action::Project::Redo &) { return History.CanRedo(); },
+        [](const Action::Project::Save &) { return !History.Empty(); },
+        [](const Action::Project::SaveDefault &) { return !History.Empty(); },
+        [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
+        [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
+        [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
+
         [](const FieldActionHandler::ActionType &a) { return Field::ActionHandler.CanApply(a); },
         [](const store::ActionHandler::ActionType &a) { return store::ActionHandler.CanApply(a); },
-        [&](const Audio::ActionType &a) { return Audio.CanApply(a); },
-        [&](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
-        [&](const Windows::ActionType &a) { return Windows.CanApply(a); },
-        [&](const Style::ActionType &a) { return Style.CanApply(a); },
+        [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
+        [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
+        [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
+        [this](const Style::ActionType &a) { return Style.CanApply(a); },
+        [](const auto &) { return true; },
     );
 }
 
 void Apply(const Action::Savable &action) {
     Visit(
         action,
-        [&](const App::ActionType &a) { app.Apply(a); },
-        [&](const Project::ActionHandler::ActionType &a) { Project::ActionHandler.Apply(a); },
-    );
-}
-
-void Apply(const Action::Any &action) {
-    Visit(
-        action,
         [](const App::ActionType &a) { app.Apply(a); },
-        [](const Project::ActionHandler::ActionType &a) { Project::ActionHandler.Apply(a); },
     );
 }
-
-bool CanApply(const Action::Any &action) {
-    return Visit(
-        action,
-        [](const App::ActionType &a) { return app.CanApply(a); },
-        [](const Project::ActionHandler::ActionType &a) { return Project::ActionHandler.CanApply(a); },
-    );
-}
-
-// Project constants:
-static const fs::path InternalPath = ".flowgrid";
-
-// Order matters here, as the first extension is the default project extension.
-static const std::map<ProjectFormat, std::string> ExtensionByProjectFormat{
-    {ProjectFormat::ActionFormat, ".fla"},
-    {ProjectFormat::StateFormat, ".fls"},
-};
-static const auto ProjectFormatByExtension = ExtensionByProjectFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
-static const auto AllProjectExtensions = std::views::keys(ProjectFormatByExtension);
-static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
-
-static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectFormat.at(ProjectFormat::StateFormat));
-// The default project is a user-created project that loads on app start, instead of the empty project.
-// As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionByProjectFormat.at(ProjectFormat::ActionFormat));
-
-static std::optional<fs::path> CurrentProjectPath;
-static bool ProjectHasChanges{false};
 
 using namespace ImGui;
 
@@ -126,7 +177,7 @@ void App::Render() const {
         const auto &[mod, key] = shortcut.Parsed;
         if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)))) {
             const auto action = Action::Any::Create(action_id);
-            if (::CanApply(action)) action.q();
+            if (CanApply(action)) action.q();
         }
     }
 
@@ -224,17 +275,6 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return ProjectFormatByExtension.at(ext);
 }
 
-void CommitGesture() {
-    Field::GestureChangedPaths.clear();
-    if (ActiveGestureActions.empty()) return;
-
-    const auto merged_actions = MergeActions(ActiveGestureActions);
-    ActiveGestureActions.clear();
-    if (merged_actions.empty()) return;
-
-    History.CommitGesture({merged_actions, Clock::now()});
-}
-
 bool Project::Save(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
@@ -249,25 +289,6 @@ bool Project::Save(const fs::path &path) {
 
     SetCurrentProjectPath(path);
     return true;
-}
-
-void SetHistoryIndex(Count index) {
-    if (index == History.Index) return;
-
-    Field::GestureChangedPaths.clear();
-    // If we're mid-gesture, revert the current gesture before navigating to the new index.
-    ActiveGestureActions.clear();
-    History.SetIndex(index);
-    LatestPatch = store::CheckedSet(History.CurrentStore());
-    Field::RefreshChanged(LatestPatch);
-    // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
-    // when it initially changes, since ImGui has already updated its own context.
-    // We only need to update the ImGui context based on settings changes when the history index changes.
-    // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
-    // We don't make `ImGuiSettings` a field change listener for this because it would would end up being slower,
-    // since it has many descendent fields, and we would wastefully check for changes during the forward action pass, as explained above.
-    if (LatestPatch.IsPrefixOfAnyPath(imgui_settings.Path)) imgui_settings.IsChanged = true;
-    ProjectHasChanges = true;
 }
 
 // When loading a new project, we always refresh all UI contexts.
@@ -287,55 +308,6 @@ void Project::OnApplicationLaunch() {
     // Keep the canonical "empty" project up-to-date.
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
     Save(EmptyProjectPath);
-}
-
-void Project::ActionHandler::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [](const Action::Project::ShowOpenDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
-        [](const Action::Project::ShowSaveDialog &) { file_dialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
-        [](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
-        [](const Action::Project::Open &a) { Open(a.file_path); },
-        [](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
-
-        [](const Action::Project::Save &a) { Save(a.file_path); },
-        [](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
-        [](const Action::Project::SaveCurrent &) {
-            if (CurrentProjectPath) Save(*CurrentProjectPath);
-        },
-        // History-changing actions:
-        [](const Action::Project::Undo &) {
-            if (History.Empty()) return;
-
-            // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
-            // If we're at the end of the stack, we want to commit the active gesture and add it to the stack.
-            // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
-            // to commit and cut off everything after the current history index, so an undo just ditches the active changes.
-            // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
-            if (History.Index == History.Size() - 1) {
-                if (!ActiveGestureActions.empty()) CommitGesture();
-                ::SetHistoryIndex(History.Index - 1);
-            } else {
-                ::SetHistoryIndex(History.Index - (ActiveGestureActions.empty() ? 1 : 0));
-            }
-        },
-        [](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
-        [](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
-    );
-}
-
-bool Project::ActionHandler::CanApply(const ActionType &action) const {
-    return Visit(
-        action,
-        [](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
-        [](const Action::Project::Redo &) { return History.CanRedo(); },
-        [](const Action::Project::Save &) { return !History.Empty(); },
-        [](const Action::Project::SaveDefault &) { return !History.Empty(); },
-        [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
-        [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
-        [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
-        [](const auto &) { return true; },
-    );
 }
 
 nlohmann::json ReadFileJson(const fs::path &file_path) {
@@ -667,7 +639,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
         auto &[action, queue_time] = action_moment;
-        if (!CanApply(action)) continue;
+        if (!app.CanApply(action)) continue;
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
@@ -683,7 +655,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
         else if (!stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
 
-        Apply(action);
+        app.Apply(action);
 
         Visit(
             action,
@@ -711,12 +683,12 @@ void RunQueuedActions(bool force_commit_gesture) {
     if (commit_gesture) CommitGesture();
 }
 
-#define DefineQ(ActionType)                                                                                          \
-    void Action::ActionType::q() const { ::q(*this); }                                                               \
-    void Action::ActionType::MenuItem() {                                                                            \
-        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, CanApply(Action::ActionType{}))) { \
-            Action::ActionType{}.q();                                                                                \
-        }                                                                                                            \
+#define DefineQ(ActionType)                                                                                              \
+    void Action::ActionType::q() const { ::q(*this); }                                                                   \
+    void Action::ActionType::MenuItem() {                                                                                \
+        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, app.CanApply(Action::ActionType{}))) { \
+            Action::ActionType{}.q();                                                                                    \
+        }                                                                                                                \
     }
 
 DefineQ(Windows::ToggleVisible);

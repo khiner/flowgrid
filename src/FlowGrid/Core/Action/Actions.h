@@ -1,12 +1,18 @@
 #pragma once
 
-#include "App/AppAction.h"
+#include "App/Audio/AudioAction.h"
+#include "App/FileDialog/FileDialogAction.h"
 #include "App/Project/ProjectAction.h"
+#include "App/Style/StyleAction.h"
+#include "Core/Field/FieldAction.h"
+#include "Core/Store/StoreAction.h"
+#include "Core/WindowsAction.h"
+
 #include "Helper/Time.h"
 
 namespace Action {
 // `Any` holds all action types.
-using Any = Combine<Project::Any, App::Any>;
+using Any = Combine<Project::Any, Field::Any, Store::Any, Audio::Any, FileDialog::Any, Windows::Any, Style::Any>;
 using Savable = Filter<Action::IsSavable, Any>;
 using NonSavable = Filter<Action::IsNotSavable, Any>;
 } // namespace Action

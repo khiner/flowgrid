@@ -1225,7 +1225,7 @@ bool IsBoxHovered(ID imgui_id) { return Node::ById[imgui_id] != nullptr; }
 void FaustGraph::Apply(const ActionType &action) const {
     Visit(
         action,
-        [&](const Action::FaustGraph::SetColorStyle &a) {
+        [this](const Action::FaustGraph::SetColorStyle &a) {
             switch (a.id) {
                 case 0: return Style.ColorsDark();
                 case 1: return Style.ColorsLight();
@@ -1233,7 +1233,7 @@ void FaustGraph::Apply(const ActionType &action) const {
                 case 3: return Style.ColorsFaust();
             }
         },
-        [&](const Action::FaustGraph::SetLayoutStyle &a) {
+        [this](const Action::FaustGraph::SetLayoutStyle &a) {
             switch (a.id) {
                 case 0: return Style.LayoutFlowGrid();
                 case 1: return Style.LayoutFaust();

@@ -15,14 +15,14 @@ void Style::Apply(const ActionType &action) const {
     Visit(
         action,
         // todo enum types instead of raw integers
-        [&](const Action::Style::SetImGuiColorPreset &a) {
+        [this](const Action::Style::SetImGuiColorPreset &a) {
             switch (a.id) {
                 case 0: return ImGui.ColorsDark();
                 case 1: return ImGui.ColorsLight();
                 case 2: return ImGui.ColorsClassic();
             }
         },
-        [&](const Action::Style::SetImPlotColorPreset &a) {
+        [this](const Action::Style::SetImPlotColorPreset &a) {
             switch (a.id) {
                 case 0: return ImPlot.ColorsAuto();
                 case 1: return ImPlot.ColorsDark();
@@ -30,7 +30,7 @@ void Style::Apply(const ActionType &action) const {
                 case 3: return ImPlot.ColorsClassic();
             }
         },
-        [&](const Action::Style::SetFlowGridColorPreset &a) {
+        [this](const Action::Style::SetFlowGridColorPreset &a) {
             switch (a.id) {
                 case 0: return FlowGrid.ColorsDark();
                 case 1: return FlowGrid.ColorsLight();

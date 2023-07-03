@@ -5,8 +5,8 @@
 
 #include "Core/Action/Actionable.h"
 #include "Core/Component.h"
-
 #include "FieldActionHandler.h"
+#include "Helper/Paths.h"
 
 struct Patch;
 
@@ -53,12 +53,9 @@ struct Field : Component {
     }
     inline void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
-    // For primitive fields, the path set will only contain the root path.
-    // For container fields, the path set will contain the container-relative paths of all affected elements.
-    using UniquePaths = std::unordered_set<StorePath, PathHash>;
-    using PathsMoment = std::pair<TimePoint, UniquePaths>;
-
     // IDs of all fields updated during the latest action batch or undo/redo, mapped to all (field-relative) paths affected in the field.
+    // For primitive fields, the paths will consist of only the root path.
+    // For container fields, the paths will contain the container-relative paths of all affected elements.
     // All values are appended to `GestureChangedPaths` if the change occurred during an action batch.
     // This is cleared at the end of each action batch, and can thus be used to determine which fields were affected by the latest action batch.
     // (`LatestChangedPaths` is retained for the lifetime of the application.)

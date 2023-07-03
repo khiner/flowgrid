@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/Actions.h"
-#include "Helper/Time.h"
+#include "Helper/Paths.h"
 
 struct Store;
 
@@ -45,7 +45,7 @@ struct StoreHistory {
     Patch CreatePatch(Count index) const; // Create a patch between the store at `index` and the store at `index - 1`.
     ReferenceRecord RecordAt(Count index) const;
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
-    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> GetCommitTimesByPath() const;
+    TimesByPath GetCommitTimesByPath() const;
 
     Count Index{0};
 

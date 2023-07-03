@@ -384,6 +384,9 @@ void Project::Open(const fs::path &file_path) {
 // [SECTION] Debug
 //-----------------------------------------------------------------------------
 
+#include "date.h"
+#include "implot.h"
+
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/map.hpp>
@@ -392,9 +395,6 @@ void Project::Open(const fs::path &file_path) {
 #include "UI/HelpMarker.h"
 #include "UI/Widgets.h"
 
-#include "date.h"
-#include "implot.h"
-
 struct Plottable {
     std::vector<std::string> Labels;
     std::vector<ImU64> Values;
@@ -402,10 +402,10 @@ struct Plottable {
 
 Plottable StorePathChangeFrequencyPlottable() {
     const auto &committed_times = History.GetCommitTimesByPath();
-    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> gesture_update_times;
+    TimesByPath gesture_update_times;
     for (const auto &[field_id, changed_paths] : Field::GestureChangedPaths) {
         const auto &field = Field::ById[field_id];
-        for (const Field::PathsMoment &paths_moment : changed_paths) {
+        for (const PathsMoment &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
                 const auto full_path = path == "" ? field->Path : field->Path / path;
                 gesture_update_times[full_path].push_back(paths_moment.first);

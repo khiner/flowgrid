@@ -14,8 +14,8 @@ using std::string;
 struct StoreHistoryMetrics {
     immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath;
 
-    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> ToStdContainer() const {
-        std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> std_container;
+    TimesByPath ToStdContainer() const {
+        TimesByPath std_container;
         for (const auto &[k, v] : CommitTimesByPath) {
             std::vector<TimePoint> commit_times;
             for (const auto &commit_time : v) {
@@ -72,7 +72,7 @@ bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 const Store &StoreHistory::CurrentStore() const { return Records[Index].Store; }
 
-std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> StoreHistory::GetCommitTimesByPath() const {
+TimesByPath StoreHistory::GetCommitTimesByPath() const {
     return Records[Index].Metrics.ToStdContainer();
 }
 

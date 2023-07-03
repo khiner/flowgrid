@@ -174,5 +174,4 @@ Basically, it contains all data for each state member except its _actual value_ 
 `app` has an immutable assignment operator, which return a modified copy of the `Store` value resulting from applying the assignment to the provided `Store`.
 (Note that this is only _conceptually_ a copy - see [Application Architecture](https://github.com/khiner/flowgrid#application-architecture) for more details.)
 */
-extern App Application;
 extern const App &app;

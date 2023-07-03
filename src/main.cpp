@@ -4,9 +4,9 @@
 #include "FlowGrid/Core/Store/Store.h"
 #include "UI/UI.h"
 
-// Initialize global extern variables.
-App Application{{}}; // Initialize the global application state.
-const App &app = Application; // Set the read-only app reference global.
+App Application{{}};
+// Set all global extern variables.
+const App &app = Application;
 const fg::Style &fg::style = app.Style;
 const AudioDevice &audio_device = app.Audio.Device;
 const Faust &faust = app.Audio.Faust;

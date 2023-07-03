@@ -114,7 +114,7 @@ void Component::RenderTreeNodes() const {
     }
 }
 
-bool Component::TreeNode(std::string_view label_view, bool highlight_label, const char *value) {
+bool Component::TreeNode(std::string_view label_view, bool highlight_label, const char *value, bool highlight_value) {
     bool is_open = false;
     if (highlight_label) PushStyleColor(ImGuiCol_Text, fg::style.FlowGrid.Colors[FlowGridCol_HighlightText]);
     if (value == nullptr) {
@@ -127,8 +127,10 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     if (highlight_label) PopStyleColor();
 
     if (value != nullptr) {
+        if (highlight_value) PushStyleColor(ImGuiCol_Text, fg::style.FlowGrid.Colors[FlowGridCol_HighlightText]);
         SameLine();
         TextUnformatted(value);
+        if (highlight_value) PopStyleColor();
     }
     return is_open;
 }

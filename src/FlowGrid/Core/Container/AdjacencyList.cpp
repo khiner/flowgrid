@@ -37,9 +37,13 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
         const auto id_pairs = store::IdPairs(Path);
         Count i = 0;
         for (const auto &id_pair : id_pairs) {
-            // todo if annotated, show node labels
-            const std::string &label = std::format("{} -> {}", id_pair.first, id_pair.second);
-            TreeNode(to_string(i++), false, label.c_str());
+            const ID source_id = id_pair.first;
+            const ID destination_id = id_pair.second;
+            const bool can_annotate = annotate && ById.contains(source_id) && ById.contains(destination_id);
+            const std::string &label = can_annotate ?
+                std::format("{} -> {}", ById.at(source_id)->Name, ById.at(destination_id)->Name) :
+                std::format("#{:08X} -> #{:08X}", source_id, destination_id);
+            TreeNode(to_string(i++), false, label.c_str(), can_annotate);
         }
         TreePop();
     }

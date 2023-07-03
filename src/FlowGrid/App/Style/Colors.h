@@ -6,11 +6,11 @@
 struct ImVec4;
 
 struct Colors : Vector<U32> {
-    Colors(ComponentArgs &&, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto = false);
+    Colors(ComponentArgs &&, Count size, std::function<const char *(int)> get_name, const bool allow_auto = false);
 
     static U32 Float4ToU32(const ImVec4 &value);
     static ImVec4 U32ToFloat4(U32 value);
-    inline static std::string U32ToHex(U32 value) { return std::format("#{:08X}", value); }
+    constexpr static std::string U32ToHex(U32 value) noexcept { return std::format("#{:08X}", value); }
 
     // An arbitrary transparent color is used to mark colors as "auto".
     // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.
@@ -26,6 +26,6 @@ protected:
     void Render() const override;
 
 private:
-    std::function<const char *(int)> GetColorName;
+    std::function<const char *(int)> GetName;
     bool AllowAuto;
 };

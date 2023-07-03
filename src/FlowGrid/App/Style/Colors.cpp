@@ -11,8 +11,8 @@
 
 using namespace ImGui;
 
-Colors::Colors(ComponentArgs &&args, Count size, std::function<const char *(int)> get_color_name, const bool allow_auto)
-    : Vector<U32>(std::move(args)), GetColorName(get_color_name), AllowAuto(allow_auto) {
+Colors::Colors(ComponentArgs &&args, Count size, std::function<const char *(int)> get_name, const bool allow_auto)
+    : Vector<U32>(std::move(args)), GetName(get_name), AllowAuto(allow_auto) {
     Vector<U32>::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<U32>>);
 }
 
@@ -45,7 +45,7 @@ void Colors::Render() const {
     PushItemWidth(-160);
 
     for (Count i = 0; i < Size(); i++) {
-        const std::string &color_name = GetColorName(i);
+        const std::string &color_name = GetName(i);
         if (filter.PassFilter(color_name.c_str())) {
             U32 color = Value[i];
             const bool is_auto = AllowAuto && color == AutoColor;
@@ -94,7 +94,7 @@ void Colors::RenderValueTree(bool annotate, bool auto_select) const {
 
     if (TreeNode(Name)) {
         for (Count i = 0; i < Value.size(); i++) {
-            TreeNode(annotate ? GetColorName(i) : to_string(i), annotate, U32ToHex(Value[i]).c_str());
+            TreeNode(annotate ? GetName(i) : to_string(i), annotate, U32ToHex(Value[i]).c_str());
         }
         TreePop();
     }

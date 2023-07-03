@@ -102,7 +102,7 @@ protected:
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 
-    static bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr);
+    static bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr, bool highlight_value = false);
 
 private:
     Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);

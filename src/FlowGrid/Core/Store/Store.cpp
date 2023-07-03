@@ -116,6 +116,7 @@ void Set(const StorePath &path, const Primitive &value) {
     if (IsTransient) {
         Transient.PrimitiveByPath.set(path, value);
     } else {
+        // todo no effect. throw error instead?
         auto _ = AppStore.PrimitiveByPath.set(path, value);
     }
 }

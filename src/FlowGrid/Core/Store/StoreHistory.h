@@ -10,7 +10,11 @@ enum Direction {
     Reverse
 };
 
+struct StoreHistoryMetrics;
+
 struct StoreHistory {
+    struct Metrics;
+
     // Used for saving/loading the history.
     // This is all the information needed to reconstruct a project.
     struct IndexedGestures {
@@ -41,10 +45,9 @@ struct StoreHistory {
     Patch CreatePatch(Count index) const; // Create a patch between the store at `index` and the store at `index - 1`.
     ReferenceRecord RecordAt(Count index) const;
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
+    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> GetCommitTimesByPath() const;
 
     Count Index{0};
-
-    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> CommitTimesByPath{};
 
 private:
     void Add(const Store &, const Gesture &);

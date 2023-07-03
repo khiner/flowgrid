@@ -2,35 +2,63 @@
 
 #include <range/v3/range/conversion.hpp>
 
+#include "immer/map_transient.hpp"
+#include "immer/vector.hpp"
+#include "immer/vector_transient.hpp"
+
 #include "Store.h"
 #include "StoreImpl.h"
 
 using std::string;
 
+struct StoreHistoryMetrics {
+    immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath;
+
+    std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> ToStdContainer() const {
+        std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> std_container;
+        for (const auto &[k, v] : CommitTimesByPath) {
+            std::vector<TimePoint> commit_times;
+            for (const auto &commit_time : v) {
+                commit_times.push_back(commit_time);
+            }
+            std_container.emplace(k, std::move(commit_times));
+        }
+        return std_container;
+    }
+};
+
 struct Record {
-    const Store Store;
-    const Gesture Gesture;
+    Store Store;
+    Gesture Gesture;
+    StoreHistoryMetrics Metrics;
 };
 
 static std::vector<Record> Records;
+static immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath{};
 
 StoreHistory::StoreHistory() {
+    CommitTimesByPath = {};
     Records.clear();
-    Records.emplace_back(store::Get(), Gesture{{}, Clock::now()});
+    Records.emplace_back(store::Get(), Gesture{{}, Clock::now()}, StoreHistoryMetrics{{}});
 }
 StoreHistory::~StoreHistory() {
-    // Not clearing records here because the destructor for the old singleton instance is called after the new instance is constructed.
-    // This is fine, since `Records` should have the same lifetime as the application.
+    // Not clearing records/metrics here because the destructor for the old singleton instance is called after the new instance is constructed.
+    // This is fine, since records/metrics should have the same lifetime as the application.
 }
 
 void StoreHistory::Add(const Store &store, const Gesture &gesture) {
     const auto patch = store::CreatePatch(CurrentStore(), store);
     if (patch.Empty()) return;
 
+    for (const auto &path : patch.GetPaths()) {
+        immer::vector<TimePoint> commit_times = CommitTimesByPath.count(path) == 0 ? immer::vector<TimePoint>{} : CommitTimesByPath.at(path);
+        commit_times = commit_times.push_back(gesture.CommitTime);
+        CommitTimesByPath = CommitTimesByPath.set(path, commit_times);
+    }
+
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
-    Records.emplace_back(store, gesture);
+    Records.emplace_back(store, gesture, StoreHistoryMetrics{CommitTimesByPath});
     Index = Size() - 1;
-    for (const auto &path : patch.GetPaths()) CommitTimesByPath[path].emplace_back(gesture.CommitTime);
 }
 
 void StoreHistory::AddTransientGesture(const Gesture &gesture) {
@@ -43,11 +71,16 @@ bool StoreHistory::CanUndo() const { return Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 const Store &StoreHistory::CurrentStore() const { return Records[Index].Store; }
+
+std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> StoreHistory::GetCommitTimesByPath() const {
+    return Records[Index].Metrics.ToStdContainer();
+}
+
 Patch StoreHistory::CreatePatch(Count index) const { return store::CreatePatch(Records[index - 1].Store, Records[index].Store); }
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
-    const auto &[store, gesture] = Records[index];
-    return {store, gesture};
+    const auto &record = Records[index];
+    return {record.Store, record.Gesture};
 }
 
 StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
@@ -63,31 +96,8 @@ void StoreHistory::CommitGesture(Gesture &&gesture) {
 void StoreHistory::SetIndex(Count new_index) {
     if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
-    const Count old_index = Index;
     Index = new_index;
-
-    // TODO
-    // Turn the `CommitTimesByPath` map into an `immer/map`, and keep a separate vector (soon, tree) of them, in parallel to `Records`.
-    //     using TimesByPath = immer::map<StorePath, std::vector<TimePoint>, PathHash>
-    //     struct MetricsRecord{ TimesByPath CommitTimesByPath; };
-    //     using MetricsRecords = vector<MetricsRecord>;
-    const auto direction = new_index > old_index ? Forward : Reverse;
-    auto i = int(old_index);
-    while (i != int(new_index)) {
-        const int history_index = direction == Reverse ? --i : i++;
-        const Count record_index = history_index == -1 ? Index : history_index;
-        const auto &segment_patch = CreatePatch(record_index + 1);
-        const auto &gesture_commit_time = Records[record_index + 1].Gesture.CommitTime;
-        for (const auto &path : segment_patch.GetPaths()) {
-            if (direction == Forward) {
-                CommitTimesByPath[path].emplace_back(gesture_commit_time);
-            } else if (CommitTimesByPath.contains(path)) {
-                auto &update_times = CommitTimesByPath.at(path);
-                update_times.pop_back();
-                if (update_times.empty()) CommitTimesByPath.erase(path);
-            }
-        }
-    }
+    CommitTimesByPath = Records[Index].Metrics.CommitTimesByPath;
 }
 
 StoreHistory History{}; // Global.

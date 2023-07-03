@@ -401,7 +401,7 @@ struct Plottable {
 };
 
 Plottable StorePathChangeFrequencyPlottable() {
-    const auto &committed_times = History.CommitTimesByPath;
+    const auto &committed_times = History.GetCommitTimesByPath();
     std::unordered_map<StorePath, std::vector<TimePoint>, PathHash> gesture_update_times;
     for (const auto &[field_id, changed_paths] : Field::GestureChangedPaths) {
         const auto &field = Field::ById[field_id];

@@ -1,11 +1,11 @@
-#include "App/Audio/Graph/AudioGraph.h"
+#include "Project/Audio/Graph/AudioGraph.h"
 
-#include "App/Audio/Sample.h" // Must be included before any Faust includes.
+#include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
 #include "miniaudio.h"
 
-#include "App/Audio/AudioDevice.h"
+#include "Project/Audio/AudioDevice.h"
 #include "Faust.h"
 
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?

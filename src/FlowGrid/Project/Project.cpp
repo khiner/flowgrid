@@ -1,17 +1,17 @@
 
-#include "App.h"
+#include "Project.h"
 
 #include "imgui_internal.h"
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/join.hpp>
 #include <set>
 
-#include "AppPreferences.h"
+#include "Application/ApplicationPreferences.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
 #include "Helper/Time.h"
-#include "Project/ProjectJson.h"
+#include "ProjectJson.h"
 #include "UI/UI.h"
 
 using std::vector;
@@ -46,7 +46,7 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return ret;
 }
 
-App::App(ComponentArgs &&args) : Component(std::move(args)) {
+Project::Project(ComponentArgs &&args) : Component(std::move(args)) {
     Windows.SetWindowComponents({
         Audio,
         Settings,
@@ -97,7 +97,7 @@ void SetHistoryIndex(Count index) {
     ProjectHasChanges = true;
 }
 
-void App::Apply(const ActionType &action) const {
+void Project::Apply(const ActionType &action) const {
     Visit(
         action,
         [](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
@@ -139,7 +139,7 @@ void App::Apply(const ActionType &action) const {
     );
 }
 
-bool App::CanApply(const ActionType &action) const {
+bool Project::CanApply(const ActionType &action) const {
     return Visit(
         action,
         [](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
@@ -163,13 +163,13 @@ bool App::CanApply(const ActionType &action) const {
 void Apply(const Action::Savable &action) {
     Visit(
         action,
-        [](const App::ActionType &a) { app.Apply(a); },
+        [](const Project::ActionType &a) { project.Apply(a); },
     );
 }
 
 using namespace ImGui;
 
-void App::Render() const {
+void Project::Render() const {
     static const auto Shortcuts = Action::Any::CreateShortcuts();
 
     const auto &io = GetIO();
@@ -245,7 +245,7 @@ void App::Render() const {
     }
 }
 
-void App::OpenRecentProjectMenuItem() {
+void Project::OpenRecentProjectMenuItem() {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
             if (ImGui::MenuItem(recently_opened_path.filename().c_str())) Action::Project::Open{recently_opened_path}.q();
@@ -275,7 +275,7 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return ProjectFormatByExtension.at(ext);
 }
 
-bool App::Save(const fs::path &path) {
+bool Project::Save(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
 
@@ -298,7 +298,7 @@ void MarkAllUiContextsChanged() {
     imgui_settings.IsChanged = true;
 }
 
-void App::OnApplicationLaunch() {
+void Project::OnApplicationLaunch() {
     Field::IsGesturing = false;
     History = {};
     Field::ClearChanged();
@@ -314,7 +314,7 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
     return nlohmann::json::parse(FileIO::read(file_path));
 }
 
-// Helper function used in `App::Open`.
+// Helper function used in `Project::Open`.
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
     const auto &patch = store::SetJson(project);
     Field::RefreshChanged(patch);
@@ -325,7 +325,7 @@ void OpenStateFormatProjectInner(const nlohmann::json &project) {
     History = {};
 }
 
-void App::Open(const fs::path &file_path) {
+void Project::Open(const fs::path &file_path) {
     const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 
@@ -406,7 +406,7 @@ Plottable StorePathChangeFrequencyPlottable() {
     };
 }
 
-void App::Debug::StorePathUpdateFrequency::Render() const {
+void Project::Debug::StorePathUpdateFrequency::Render() const {
     auto [labels, values] = StorePathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
@@ -434,26 +434,26 @@ void App::Debug::StorePathUpdateFrequency::Render() const {
     }
 }
 
-void App::Debug::DebugLog::Render() const {
+void Project::Debug::DebugLog::Render() const {
     ShowDebugLogWindow();
 }
-void App::Debug::StackTool::Render() const {
+void Project::Debug::StackTool::Render() const {
     ShowStackToolWindow();
 }
 
-void App::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
-void App::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
+void Project::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
+void Project::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
 
 using namespace FlowGrid;
 
-void App::RenderDebug() const {
+void Project::RenderDebug() const {
     const bool auto_select = Debug.AutoSelect;
     if (auto_select) BeginDisabled();
     RenderValueTree(Debug::LabelModeType(int(Debug.LabelMode)) == Debug::LabelModeType::Annotated, auto_select);
     if (auto_select) EndDisabled();
 }
 
-void App::Debug::ProjectPreview::Render() const {
+void Project::Debug::ProjectPreview::Render() const {
     Format.Draw();
     Raw.Draw();
 
@@ -490,14 +490,14 @@ ImRect RowItemRatioRect(float ratio) {
     return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
 }
 
-void App::Debug::Metrics::FlowGridMetrics::Render() const {
+void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     {
         // Active (uncompressed) gesture
         const bool is_gesturing = Field::IsGesturing;
         const bool any_gesture_actions = !ActiveGestureActions.empty();
         if (any_gesture_actions || is_gesturing) {
             // Gesture completion progress bar (full-width to empty).
-            const float gesture_duration_sec = app_settings.GestureDurationSec;
+            const float gesture_duration_sec = project_settings.GestureDurationSec;
             const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
             const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
@@ -591,14 +591,14 @@ void App::Debug::Metrics::FlowGridMetrics::Render() const {
     }
 }
 
-void App::Debug::Metrics::Render() const {
+void Project::Debug::Metrics::Render() const {
     RenderTabs();
 }
 
 // #include "imgui_memory_editor.h"
 
 // todo need to rethink this with the store system
-// void App::Debug::StateMemoryEditor::Render() const {
+// void Project::Debug::StateMemoryEditor::Render() const {
 //     static MemoryEditor memory_editor;
 //     static bool first_render{true};
 //     if (first_render) {
@@ -639,7 +639,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
         // the current approach would incorrectly throw this later action away.
         auto &[action, queue_time] = action_moment;
-        if (!app.CanApply(action)) continue;
+        if (!project.CanApply(action)) continue;
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
@@ -655,7 +655,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
         else if (!stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
 
-        app.Apply(action);
+        project.Apply(action);
 
         Visit(
             action,
@@ -666,7 +666,7 @@ void RunQueuedActions(bool force_commit_gesture) {
     }
 
     const bool commit_gesture = force_commit_gesture ||
-        (!Field::IsGesturing && !ActiveGestureActions.empty() && GestureTimeRemainingSec(app_settings.GestureDurationSec) <= 0);
+        (!Field::IsGesturing && !ActiveGestureActions.empty() && GestureTimeRemainingSec(project_settings.GestureDurationSec) <= 0);
 
     if (!stateful_actions.empty()) {
         LatestPatch = store::CheckedCommit();
@@ -686,7 +686,7 @@ void RunQueuedActions(bool force_commit_gesture) {
 #define DefineQ(ActionType)                                                                                              \
     void Action::ActionType::q() const { ::q(*this); }                                                                   \
     void Action::ActionType::MenuItem() {                                                                                \
-        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, app.CanApply(Action::ActionType{}))) { \
+        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(Action::ActionType{}))) { \
             Action::ActionType{}.q();                                                                                    \
         }                                                                                                                \
     }

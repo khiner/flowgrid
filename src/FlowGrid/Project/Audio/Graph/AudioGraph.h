@@ -1,6 +1,6 @@
 #pragma once
 
-#include "App/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
+#include "Project/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
 #include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Core/Primitive/Float.h"

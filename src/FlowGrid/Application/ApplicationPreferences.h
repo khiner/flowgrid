@@ -5,11 +5,11 @@
 
 #include "Helper/Path.h"
 
-struct AppPreferences {
+struct ApplicationPreferences {
     inline static const std::string FileExtension = ".flp";
     inline static const fs::path Path = fs::path(".flowgrid") / ("Preferences" + FileExtension);
 
-    AppPreferences();
+    ApplicationPreferences();
 
     bool Write() const;
     bool Clear(); // Clear and re-save default preferences.
@@ -20,4 +20,4 @@ struct AppPreferences {
     std::list<fs::path> RecentlyOpenedPaths{};
 };
 
-extern AppPreferences Preferences;
+extern ApplicationPreferences Preferences;

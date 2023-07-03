@@ -11,8 +11,8 @@ _Still actively building this. Expect main to be occasionally broken._
 
 FlowGrid uses a unidirectional data-flow architecture (like Redux).
 Each user action is encapsulated as a simple struct with all the information needed to carry out its effect on the project state.
-Actions are grouped together into `std::variant` types composed in a nested domain hierarchy, with a variant type called `Action::App::Any` at the root.
-All issued actions are queued into a single concurrent queue, and each applied action overwrites the application store.
+Actions are grouped together into `std::variant` types composed in a nested domain hierarchy, with a variant type called `Action::Any` at the root.
+All issued actions are queued into a single concurrent queue, and each applied action overwrites the project store.
 Actions are grouped into "gestures", and each gesture holds a logical snapshot of the full project state after applying its actions.
 If you're unfamiliar with persistent data structures, this is much less memory intensive than it sounds!
 Each snapshot only needs to track a relatively small amount of data representing its change to the underlying store, a concept referred to as "structural sharing".
@@ -28,22 +28,22 @@ When saving a project, you can select any of these formats using the filter drop
 Each type of FlowGrid project file is saved as plain JSON.
 
 - `.fgs`: _FlowGrid**State**_
-  - The full application state.
+  - The full project state.
     An `.fgs` file contains a JSON blob with all the information needed to get back to the saved project state.
-    Loading a `.fgs` project file will completely replace the application state with its own.
+    Loading a `.fgs` project file will completely replace the project state with its own.
   - As a special case, the project file `./flowgrid/empty.fgs` (relative to the project build folder) is used internally to load projects.
     This `empty.fgs` file is used internally to implement the `open_empty_project` action, which can be triggered via the `File->New project` menu item, or with `Cmd+n`.
     FlowGrid (over-)writes this file every launch, after initializing to empty-project values (and, currently, rendering two frames to let ImGui fully establish its context).
     This approach provides a pretty strong guarantee that loading a new project will always produce the same, valid empty-project state.
 - `.fga`: _FlowGrid**Actions**_
   - FlowGrid can also save and load projects as a list of _action gestures_.
-    This format stores an ordered record of _every action_ that affected the app state up to the time it was saved.
+    This format stores an ordered record of _every action_ that affected the project state up to the time it was saved.
     More accurately, an `.fga` file is a list _of lists_ of (action, timestamp) pairs.
     Each top-level list represents a logical _gesture_, composed of a list of actions, along with the absolute time they occurred.
-    Each action item contains all the information needed to carry out its effect on the application state.
+    Each action item contains all the information needed to carry out its effect on the project state.
     In other words, each list of actions in an `.fga` file tells you, in application-domain semantics, what _happened_.
   - **Gesture compression:** Actions within each gesture are compressed down to a potentially smaller set of actions.
-    This compression is done in a way that retains the same application-state effects, while also keeping the same application-domain semantics.
+    This compression is done in a way that retains the same project state effects, while also keeping the same application-domain semantics.
 
 ## Clean/Build/Run
 
@@ -116,7 +116,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 ### Backend
 
-- [immer](https://github.com/arximboldi/immer): persistent data structures for the main application state store
+- [immer](https://github.com/arximboldi/immer): persistent data structures for the main project state store
   - Used to quickly create, store, and restore persistent state snapshot
     (used for undo/redo, and for debugging/inspection/monitoring)
 - [json](https://github.com/nlohmann/json): state serialization

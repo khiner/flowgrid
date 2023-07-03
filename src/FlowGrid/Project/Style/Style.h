@@ -207,7 +207,7 @@ struct Style : Component, Actionable<Action::Style::Any> {
 
     Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
     Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
-    Prop_(FlowGridStyle, FlowGrid, "?Configure application-specific style");
+    Prop_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style");
 
 protected:
     void Render() const override;

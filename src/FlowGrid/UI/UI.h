@@ -9,7 +9,7 @@ struct UIContext {
 
     // Main UI tick function
     // Returns `true` if the app should continue running.
-    bool Tick(const Drawable &app);
+    bool Tick(const Drawable &);
 
     struct Fonts {
         ImFont *Main{nullptr};

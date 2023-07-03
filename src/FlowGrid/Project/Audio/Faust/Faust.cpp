@@ -2,11 +2,11 @@
 
 #include "imgui.h"
 
-#include "App/Audio/Sample.h" // Must be included before any Faust includes.
+#include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
-#include "App/Audio/AudioIO.h"
-#include "App/FileDialog/FileDialog.h"
+#include "Project/Audio/AudioIO.h"
+#include "Project/FileDialog/FileDialog.h"
 #include "Helper/File.h"
 
 static const std::string FaustDspFileExtension = ".dsp";

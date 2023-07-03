@@ -3,7 +3,7 @@
 #include "imgui_internal.h"
 #include <format>
 
-#include "App/Style/Style.h"
+#include "Project/Style/Style.h"
 #include "Helper/String.h"
 #include "UI/HelpMarker.h"
 
@@ -143,7 +143,7 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
 
     if (auto_select) SetNextItemOpen(ChangedComponentIds.contains(Id));
 
-    if (TreeNode(ImGuiLabel.empty() ? "App" : ImGuiLabel)) {
+    if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel)) {
         for (const auto *child : Children) {
             child->RenderValueTree(annotate, auto_select);
         }

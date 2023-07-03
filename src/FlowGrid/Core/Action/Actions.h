@@ -1,9 +1,9 @@
 #pragma once
 
-#include "App/Audio/AudioAction.h"
-#include "App/FileDialog/FileDialogAction.h"
-#include "App/Project/ProjectAction.h"
-#include "App/Style/StyleAction.h"
+#include "Project/Audio/AudioAction.h"
+#include "Project/FileDialog/FileDialogAction.h"
+#include "Project/ProjectAction.h"
+#include "Project/Style/StyleAction.h"
 #include "Core/Field/FieldAction.h"
 #include "Core/Store/StoreAction.h"
 #include "Core/WindowsAction.h"

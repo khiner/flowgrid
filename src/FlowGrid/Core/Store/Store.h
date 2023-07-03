@@ -22,7 +22,7 @@ inline static ActionHandler ActionHandler;
 
 void BeginTransient(); // End transient mode with `Commit`.
 
-const Store &Get(); // Get a read-only reference to the canonical application store.
+const Store &Get(); // Get a read-only reference to the canonical project store.
 
 nlohmann::json GetJson();
 nlohmann::json GetJson(const Store &);

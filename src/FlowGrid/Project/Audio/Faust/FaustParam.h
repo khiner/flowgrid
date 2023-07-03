@@ -3,7 +3,7 @@
 #include <string_view>
 #include <vector>
 
-#include "App/Audio/Sample.h" // Must be included before any Faust includes
+#include "Project/Audio/Sample.h" // Must be included before any Faust includes
 using Real = Sample;
 
 struct FaustParam {

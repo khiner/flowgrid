@@ -10,11 +10,11 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
-#include "App/ImGuiSettings.h"
-#include "App/Style/Style.h"
+#include "Project/ImGuiSettings/ImGuiSettings.h"
+#include "Project/Style/Style.h"
 #include "Core/Store/StoreAction.h"
 
-#include "App/FileDialog/FileDialog.h" // xxx only used for loading fonts
+#include "Project/FileDialog/FileDialog.h" // xxx only used for loading fonts
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>
@@ -23,9 +23,9 @@
 // Use this to remove the default 120 fps limit.
 // #define IMGUI_UNLIMITED_FRAME_RATE
 
-// Use this to skip all application rendering and only render the metrics window,
+// Use this to skip all project rendering and only render the metrics window,
 // which shows (among other things) the frame time and rate.
-// This is useful to get a sense of the best case rendering performance without application overhead.
+// This is useful to get a sense of the best case rendering performance without project rendering overhead.
 // #define ONLY_RENDER_METRICS_WINDOW
 
 using fg::style;
@@ -494,7 +494,7 @@ bool UIContext::Tick(const Drawable &drawable) {
 #ifdef ONLY_RENDER_METRICS_WINDOW
     ImGui::ShowMetricsWindow();
 #else
-    drawable.Draw(); // All application content drawing, initial dockspace setup, keyboard shortcuts.
+    drawable.Draw(); // All project content drawing, initial dockspace setup, keyboard shortcuts.
 #endif
     RenderFrame();
 

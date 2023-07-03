@@ -4,7 +4,7 @@
 
 #include "imgui_internal.h"
 
-#include "Audio/Faust/FaustBox.h"
+#include "Project/Audio/Faust/FaustBox.h"
 
 using namespace ImGui;
 

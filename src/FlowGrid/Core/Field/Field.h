@@ -10,8 +10,8 @@
 
 struct Patch;
 
-// A `Field` is a component that wraps around a value backed by the application `Store`.
-// Fields are always leafs in the `App` component tree, and leafs are always fields, making Fields 1:1 with `App` component leafs.
+// A `Field` is a component that wraps around a value backed by the owning project's `Store`.
+// Fields are always leafs in the `Project` component tree, and leafs are always fields, making Fields 1:1 with `Project` component leafs.
 // todo Enforce Fields have no children (best done with types).
 struct Field : Component {
     struct ChangeListener {

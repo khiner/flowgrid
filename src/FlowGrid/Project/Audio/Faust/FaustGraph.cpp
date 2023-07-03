@@ -12,8 +12,8 @@
 
 #include "imgui_internal.h"
 
-#include "App/Audio/AudioIO.h"
-#include "App/FileDialog/FileDialog.h"
+#include "Project/Audio/AudioIO.h"
+#include "Project/FileDialog/FileDialog.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"

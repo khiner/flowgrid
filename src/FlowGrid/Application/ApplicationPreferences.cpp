@@ -1,4 +1,4 @@
-#include "AppPreferences.h"
+#include "ApplicationPreferences.h"
 
 #include "nlohmann/json.hpp"
 
@@ -6,7 +6,7 @@
 
 using namespace nlohmann;
 
-AppPreferences::AppPreferences() {
+ApplicationPreferences::ApplicationPreferences() {
     if (fs::exists(Path)) {
         const json js = json::parse(FileIO::read(Path));
         RecentlyOpenedPaths = js["RecentlyOpenedPaths"].get<std::list<fs::path>>();
@@ -15,22 +15,22 @@ AppPreferences::AppPreferences() {
     }
 }
 
-bool AppPreferences::Write() const {
+bool ApplicationPreferences::Write() const {
     json js;
     js["RecentlyOpenedPaths"] = RecentlyOpenedPaths;
 
     return FileIO::write(Path, js.dump());
 }
 
-bool AppPreferences::Clear() {
+bool ApplicationPreferences::Clear() {
     RecentlyOpenedPaths.clear();
     return Write();
 }
 
-void AppPreferences::OnProjectOpened(const fs::path &path) {
+void ApplicationPreferences::OnProjectOpened(const fs::path &path) {
     RecentlyOpenedPaths.remove(path);
     RecentlyOpenedPaths.emplace_front(path);
     Write();
 }
 
-AppPreferences Preferences{};
+ApplicationPreferences Preferences{};

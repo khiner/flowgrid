@@ -2,7 +2,7 @@
 
 #include <range/v3/numeric/accumulate.hpp>
 
-#include "App/Audio/Sample.h" // Must be included before any Faust includes.
+#include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
 #include <imgui_internal.h>

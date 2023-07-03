@@ -20,7 +20,7 @@ template<class...> constexpr bool always_false_v = false;
 
 /**
 * Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
-* Use `action.q()` to queue the action. _Note: `q` methods for all action types are defined in `App.cpp`._
+* Use `action.q()` to queue the action. _Note: `q` methods for all action types are defined in `Project.cpp`._
 * Merge types:
   - `NoMerge`: Cannot be merged with any other action.
   - `Merge`: Can be merged with any other action of the same type.

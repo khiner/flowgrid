@@ -2,7 +2,6 @@
 
 #include "Core/Store/Store.h"
 
-#include "UI/Widgets.h"
 #include "imgui.h"
 
 void AdjacencyList::Connect(ID source, ID destination) const {
@@ -26,21 +25,21 @@ bool AdjacencyList::IsConnected(ID source, ID destination) const {
 
 using namespace ImGui;
 
-void AdjacencyList::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
-    Field::RenderValueTree(mode, auto_select);
+void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
+    Field::RenderValueTree(annotate, auto_select);
 
     if (!store::IdPairCount(Path)) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());
         return;
     }
 
-    if (fg::TreeNode(Name)) {
+    if (TreeNode(Name)) {
         const auto id_pairs = store::IdPairs(Path);
         Count i = 0;
         for (const auto &id_pair : id_pairs) {
             // todo if annotated, show node labels
             const std::string &label = std::format("{} -> {}", id_pair.first, id_pair.second);
-            fg::TreeNode(to_string(i++), 0, nullptr, label.c_str());
+            TreeNode(to_string(i++), false, label.c_str());
         }
         TreePop();
     }

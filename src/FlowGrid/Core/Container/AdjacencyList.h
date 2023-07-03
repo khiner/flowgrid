@@ -19,7 +19,7 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
 
     // This value is not cached like other fields, because it uses a backing store (a single `immer::set`) that's performant to query.
     void RefreshValue() override {}
-    void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
+    void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void Connect(ID source, ID destination) const;
     void Disconnect(ID source, ID destination) const;

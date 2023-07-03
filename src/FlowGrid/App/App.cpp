@@ -393,7 +393,7 @@ void Project::Open(const fs::path &file_path) {
 
 #include "Helper/String.h"
 #include "UI/HelpMarker.h"
-#include "UI/Widgets.h"
+#include "UI/JsonTree.h"
 
 struct Plottable {
     std::vector<std::string> Labels;
@@ -477,7 +477,7 @@ using namespace FlowGrid;
 void App::RenderDebug() const {
     const bool auto_select = Debug.AutoSelect;
     if (auto_select) BeginDisabled();
-    RenderValueTree(ValueTreeLabelMode(int(Debug.LabelMode)), auto_select);
+    RenderValueTree(Debug::LabelModeType(int(Debug.LabelMode)) == Debug::LabelModeType::Annotated, auto_select);
     if (auto_select) EndDisabled();
 }
 
@@ -488,8 +488,12 @@ void App::Debug::ProjectPreview::Render() const {
     Separator();
 
     const nlohmann::json project_json = GetProjectJson(ProjectFormat(int(Format)));
-    if (Raw) TextUnformatted(project_json.dump(4).c_str());
-    else fg::JsonTree("", project_json, TreeNodeFlags_DefaultOpen);
+    if (Raw) {
+        TextUnformatted(project_json.dump(4).c_str());
+    } else {
+        SetNextItemOpen(true);
+        fg::JsonTree("", project_json);
+    }
 }
 
 void ShowActions(const SavableActionMoments &actions) {
@@ -499,8 +503,11 @@ void ShowActions(const SavableActionMoments &actions) {
             BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
             SameLine();
             fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
-            const json data = json(action)[1];
-            if (!data.is_null()) JsonTree("Data", data, TreeNodeFlags_DefaultOpen);
+            const nlohmann::json data = nlohmann::json(action)[1];
+            if (!data.is_null()) {
+                SetNextItemOpen(true);
+                JsonTree("Data", data);
+            }
             TreePop();
         }
     }

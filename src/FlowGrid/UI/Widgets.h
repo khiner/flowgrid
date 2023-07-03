@@ -1,11 +1,7 @@
 #pragma once
 
-#include "nlohmann/json_fwd.hpp"
-
 #include "NamesAndValues.h"
 #include "Styling.h"
-
-using namespace nlohmann;
 
 struct ImVec2;
 
@@ -37,17 +33,10 @@ enum RadioButtonsFlags_ {
     RadioButtonsFlags_Vertical = 1 << 0,
     RadioButtonsFlags_NoTitle = 1 << 1,
 };
-enum TreeNodeFlags_ {
-    TreeNodeFlags_None = 0,
-    TreeNodeFlags_Highlighted = 1 << 0,
-    TreeNodeFlags_DefaultOpen = 1 << 1,
-};
-
 using KnobFlags = int;
 using KnobVariant = int;
 using ValueBarFlags = int;
 using RadioButtonsFlags = int;
-using TreeNodeFlags = int;
 
 namespace FlowGrid {
 struct ColorSet {
@@ -80,11 +69,4 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
 bool RadioButtons(const char *label, float *value, const NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Justify justify = {HJustify_Middle, VJustify_Middle});
 float CalcRadioChoiceWidth(const string &choice_name);
-
-// If `label` is empty, `JsonTree` will simply show the provided json `value` (object/array/raw value), with no nesting.
-// For a non-empty `label`:
-//   * If the provided `value` is an array or object, it will show as a nested `TreeNode` with `label` as its parent.
-//   * If the provided `value` is a raw value (or null), it will show as as '{label}: {value}'.
-bool TreeNode(std::string_view label, TreeNodeFlags flags = TreeNodeFlags_None, const char *id = nullptr, const char *value = nullptr);
-void JsonTree(std::string_view label, const json &value, TreeNodeFlags node_flags = TreeNodeFlags_None, const char *id = nullptr);
 } // namespace FlowGrid

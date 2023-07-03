@@ -3,7 +3,6 @@
 #include "imgui.h"
 
 #include "Core/Store/Store.h"
-#include "UI/Widgets.h"
 
 template<IsPrimitive T> void Vector2D<T>::Set(const std::vector<std::vector<T>> &value) const {
     Count i = 0;
@@ -56,20 +55,20 @@ template<IsPrimitive T> void Vector2D<T>::RefreshValue() {
 
 using namespace ImGui;
 
-template<IsPrimitive T> void Vector2D<T>::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
-    Field::RenderValueTree(mode, auto_select);
+template<IsPrimitive T> void Vector2D<T>::RenderValueTree(bool annotate, bool auto_select) const {
+    Field::RenderValueTree(annotate, auto_select);
 
     if (Value.empty()) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());
         return;
     }
 
-    if (fg::TreeNode(Name)) {
+    if (TreeNode(Name)) {
         for (Count i = 0; i < Value.size(); i++) {
-            if (fg::TreeNode(to_string(i))) {
+            if (TreeNode(to_string(i))) {
                 for (Count j = 0; j < Value.size(); j++) {
                     T value = Value[i][j];
-                    fg::TreeNode(to_string(j), TreeNodeFlags_None, nullptr, to_string(value).c_str());
+                    TreeNode(to_string(j), false, to_string(value).c_str());
                 }
                 TreePop();
             }

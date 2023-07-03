@@ -1,6 +1,5 @@
 #include "Widgets.h"
 
-#include "nlohmann/json.hpp"
 #include <format>
 #include <numbers>
 
@@ -119,52 +118,6 @@ bool RadioButtons(const char *label, float *value, const NamesAndValues &names_a
     PopID();
 
     return changed;
-}
-
-bool TreeNode(std::string_view label_view, TreeNodeFlags flags, const char *id, const char *value) {
-    const auto label = string(label_view);
-    const bool highlighted = flags & TreeNodeFlags_Highlighted;
-    const ImGuiTreeNodeFlags imgui_flags = flags & TreeNodeFlags_DefaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
-
-    bool is_open = false;
-    if (highlighted) PushStyleColor(ImGuiCol_Text, style.FlowGrid.Colors[FlowGridCol_HighlightText]);
-    if (value == nullptr) {
-        is_open = id ? TreeNodeEx(id, imgui_flags, "%s", label.c_str()) : TreeNodeEx(label.c_str(), imgui_flags);
-    } else if (!label.empty()) {
-        Text("%s: ", label.c_str()); // Render leaf label/value as raw text.
-    }
-    if (highlighted) PopStyleColor();
-
-    if (value != nullptr) {
-        SameLine();
-        TextUnformatted(value);
-    }
-    return is_open;
-}
-
-void JsonTree(std::string_view label_view, const json &value, TreeNodeFlags flags, const char *id) {
-    const auto label = string(label_view);
-    if (value.is_null()) {
-        TextUnformatted(label.empty() ? "(null)" : label.c_str());
-    } else if (value.is_object()) {
-        if (label.empty() || TreeNode(label, flags, id)) {
-            for (auto it = value.begin(); it != value.end(); ++it) {
-                JsonTree(it.key(), *it, flags);
-            }
-            if (!label.empty()) TreePop();
-        }
-    } else if (value.is_array()) {
-        if (label.empty() || TreeNode(label, flags, id)) {
-            Count i = 0;
-            for (const auto &it : value) {
-                JsonTree(to_string(i), it, flags);
-                i++;
-            }
-            if (!label.empty()) TreePop();
-        }
-    } else {
-        TreeNode(label, flags, id, value.dump().c_str());
-    }
 }
 
 //-----------------------------------------------------------------------------

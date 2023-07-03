@@ -20,7 +20,7 @@ template<IsPrimitive T> struct Vector : Field, Actionable<typename Action::Vecto
     bool CanApply(const ActionType &) const override { return true; }
 
     void RefreshValue() override;
-    void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
+    void RenderValueTree(bool annotate, bool auto_select) const override;
 
     T operator[](Count i) const { return Value[i]; }
     auto begin() const { return Value.begin(); }

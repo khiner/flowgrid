@@ -8,7 +8,6 @@
 
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
-#include "UI/Widgets.h"
 
 using namespace ImGui;
 
@@ -90,20 +89,12 @@ void Colors::Render() const {
     EndChild();
 }
 
-void Colors::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
-    Field::RenderValueTree(mode, auto_select);
+void Colors::RenderValueTree(bool annotate, bool auto_select) const {
+    Field::RenderValueTree(annotate, auto_select);
 
-    if (Value.empty()) {
-        TextUnformatted(std::format("{} (empty)", Name).c_str());
-        return;
-    }
-
-    if (fg::TreeNode(Name)) {
+    if (TreeNode(Name)) {
         for (Count i = 0; i < Value.size(); i++) {
-            const std::string &label = mode == Annotated ? GetColorName(i) : to_string(i);
-            TreeNodeFlags flags = TreeNodeFlags_None;
-            if (mode == Annotated) flags |= TreeNodeFlags_Highlighted;
-            fg::TreeNode(label, flags, nullptr, U32ToHex(Value[i]).c_str());
+            TreeNode(annotate ? GetColorName(i) : to_string(i), annotate, U32ToHex(Value[i]).c_str());
         }
         TreePop();
     }

@@ -76,7 +76,7 @@ std::optional<TimePoint> Field::LatestUpdateTime(const ID component_id) {
     return LatestChangedPaths.at(component_id).first;
 }
 
-void Field::RenderValueTree(ValueTreeLabelMode mode, bool auto_select) const {
+void Field::RenderValueTree(bool annotate, bool auto_select) const {
     // Flash background color of changed fields.
     if (const auto latest_update_time = LatestUpdateTime(Id)) {
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / fg::style.FlowGrid.FlashDurationSec;

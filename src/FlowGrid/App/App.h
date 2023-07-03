@@ -99,6 +99,11 @@ struct App : Component, Actionable<Action::App::Any> {
             void Render() const override;
         };
 
+        enum LabelModeType {
+            Annotated,
+            Raw
+        };
+
         Prop_(Enum, LabelMode, "?'Raw' mode shows plain data structures and 'Annotated' mode shows (highlighted) human-readable labels in some cases.\n"
                                "For example, colors are stored as lists with a separate label mapping."
                                "When 'Annotated' mode is enabled, color keys are shown as labels instead of indexes.",

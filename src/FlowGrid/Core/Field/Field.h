@@ -88,7 +88,7 @@ struct Field : Component {
     // Should be called for each affected field after a state change to avoid stale values.
     virtual void RefreshValue() = 0;
 
-    virtual void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
+    virtual void RenderValueTree(bool annotate, bool auto_select) const override;
 
 private:
     // Find and mark fields with values that were made stale during the most recent action pass.

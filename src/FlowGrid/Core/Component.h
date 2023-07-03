@@ -71,14 +71,9 @@ struct Component : Drawable {
 
     virtual void RenderDebug() const {}
 
-    enum ValueTreeLabelMode {
-        Annotated,
-        Raw
-    };
-
     // Render a nested tree of components, with Fields as leaf nodes displaying their values as text.
     // By default, renders `this` a node with children as child nodes.
-    virtual void RenderValueTree(ValueTreeLabelMode, bool auto_select) const;
+    virtual void RenderValueTree(bool annotate, bool auto_select) const;
 
     const Component *Child(Count i) const noexcept { return Children[i]; }
     inline Count ChildCount() const noexcept { return Children.size(); }
@@ -106,6 +101,8 @@ protected:
 
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
+
+    static bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr);
 
 private:
     Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);

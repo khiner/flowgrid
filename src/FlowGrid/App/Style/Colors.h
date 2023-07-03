@@ -20,7 +20,7 @@ struct Colors : Vector<U32> {
     void Set(const std::vector<ImVec4> &) const;
     void Set(const std::vector<std::pair<int, ImVec4>> &) const;
 
-    void RenderValueTree(ValueTreeLabelMode, bool auto_select) const override;
+    void RenderValueTree(bool annotate, bool auto_select) const override;
 
 protected:
     void Render() const override;

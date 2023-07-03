@@ -3,9 +3,9 @@
 #include "imgui_internal.h"
 #include <format>
 
+#include "App/Style/Style.h"
 #include "Helper/String.h"
 #include "UI/HelpMarker.h"
-#include "UI/Widgets.h"
 
 Menu::Menu(string_view label, const std::vector<const Item> items) : Label(label), Items(std::move(items)) {}
 Menu::Menu(const std::vector<const Item> items) : Menu("", std::move(items)) {}
@@ -114,7 +114,26 @@ void Component::RenderTreeNodes() const {
     }
 }
 
-void Component::RenderValueTree(ValueTreeLabelMode label_mode, bool auto_select) const {
+bool Component::TreeNode(std::string_view label_view, bool highlight_label, const char *value) {
+    bool is_open = false;
+    if (highlight_label) PushStyleColor(ImGuiCol_Text, fg::style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+    if (value == nullptr) {
+        const auto label = string(label_view);
+        is_open = TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_None);
+    } else if (!label_view.empty()) {
+        const auto label = string(label_view);
+        Text("%s: ", label.c_str()); // Render leaf label/value as raw text.
+    }
+    if (highlight_label) PopStyleColor();
+
+    if (value != nullptr) {
+        SameLine();
+        TextUnformatted(value);
+    }
+    return is_open;
+}
+
+void Component::RenderValueTree(bool annotate, bool auto_select) const {
     if (Children.empty()) {
         TextUnformatted(Name.c_str());
         return;
@@ -122,10 +141,9 @@ void Component::RenderValueTree(ValueTreeLabelMode label_mode, bool auto_select)
 
     if (auto_select) SetNextItemOpen(ChangedComponentIds.contains(Id));
 
-    const std::string label = ImGuiLabel.empty() ? "App" : ImGuiLabel;
-    if (fg::TreeNode(label)) {
+    if (TreeNode(ImGuiLabel.empty() ? "App" : ImGuiLabel)) {
         for (const auto *child : Children) {
-            child->RenderValueTree(label_mode, auto_select);
+            child->RenderValueTree(annotate, auto_select);
         }
         TreePop();
     }

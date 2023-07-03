@@ -18,6 +18,7 @@
 struct App : Component, Actionable<Action::Any> {
     App(ComponentArgs &&);
 
+    static void OnApplicationLaunch();
     static void OpenRecentProjectMenuItem();
 
     void Apply(const ActionType &) const override;
@@ -143,11 +144,8 @@ struct App : Component, Actionable<Action::Any> {
 
 protected:
     void Render() const override;
-};
 
-struct Project {
-    static void OnApplicationLaunch();
-
+private:
     static void Open(const fs::path &);
     static bool Save(const fs::path &);
 };

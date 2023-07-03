@@ -100,14 +100,14 @@ void SetHistoryIndex(Count index) {
 void App::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const Action::Project::OpenEmpty &) { Project::Open(EmptyProjectPath); },
-        [](const Action::Project::Open &a) { Project::Open(a.file_path); },
-        [](const Action::Project::OpenDefault &) { Project::Open(DefaultProjectPath); },
+        [](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
+        [](const Action::Project::Open &a) { Open(a.file_path); },
+        [](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
 
-        [](const Action::Project::Save &a) { Project::Save(a.file_path); },
-        [](const Action::Project::SaveDefault &) { Project::Save(DefaultProjectPath); },
+        [](const Action::Project::Save &a) { Save(a.file_path); },
+        [](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
         [](const Action::Project::SaveCurrent &) {
-            if (CurrentProjectPath) Project::Save(*CurrentProjectPath);
+            if (CurrentProjectPath) Save(*CurrentProjectPath);
         },
         // History-changing actions:
         [](const Action::Project::Undo &) {
@@ -275,7 +275,7 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return ProjectFormatByExtension.at(ext);
 }
 
-bool Project::Save(const fs::path &path) {
+bool App::Save(const fs::path &path) {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
 
@@ -298,7 +298,7 @@ void MarkAllUiContextsChanged() {
     imgui_settings.IsChanged = true;
 }
 
-void Project::OnApplicationLaunch() {
+void App::OnApplicationLaunch() {
     Field::IsGesturing = false;
     History = {};
     Field::ClearChanged();
@@ -314,7 +314,7 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
     return nlohmann::json::parse(FileIO::read(file_path));
 }
 
-// Helper function used in `Project::Open`.
+// Helper function used in `App::Open`.
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
     const auto &patch = store::SetJson(project);
     Field::RefreshChanged(patch);
@@ -325,7 +325,7 @@ void OpenStateFormatProjectInner(const nlohmann::json &project) {
     History = {};
 }
 
-void Project::Open(const fs::path &file_path) {
+void App::Open(const fs::path &file_path) {
     const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 

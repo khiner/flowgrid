@@ -34,7 +34,7 @@ int main() {
         RunQueuedActions(true);
     }
 
-    Project::OnApplicationLaunch(); // Clean-slate project initialization.
+    App::OnApplicationLaunch();
 
     while (Ui.Tick(app)) {
         RunQueuedActions();

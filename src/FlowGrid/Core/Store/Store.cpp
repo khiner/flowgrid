@@ -8,6 +8,10 @@
 #include "StoreImpl.h"
 #include "TransientStoreImpl.h"
 
+// The store starts in transient mode.
+Store::Store() : Impl(std::make_unique<StoreImpl>()), TransientImpl(std::make_unique<TransientStoreImpl>()) {}
+Store::~Store() = default;
+
 void Store::ApplyPatch(const Patch &patch) const {
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto &path = patch.BasePath / partial_path;
@@ -22,8 +26,6 @@ void Store::Apply(const ActionType &action) const {
         [this](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); },
     );
 }
-
-StoreImpl AppStore{};
 
 static const std::string IdPairsPrefix = "id_pairs::";
 
@@ -63,112 +65,114 @@ static StoreImpl JsonToStore(const json &j) {
     return transient.Persistent();
 }
 
-TransientStoreImpl Transient{};
-bool IsTransient = true;
+StoreImpl Store::Get() const { return TransientImpl ? TransientImpl->Persistent() : *Impl; }
+json Store::GetJson() const { return GetJson(*Impl); }
 
-StoreImpl Store::Get() const { return IsTransient ? Transient.Persistent() : AppStore; }
-json Store::GetJson() const { return GetJson(AppStore); }
+void Store::BeginTransient() {
+    if (TransientImpl) return;
 
-void Store::BeginTransient() const {
-    if (IsTransient) return;
-
-    Transient = AppStore.Transient();
-    IsTransient = true;
+    TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
 }
 
 // End transient mode and return the new persistent store.
 // Not exposed publicly (use `Commit` instead).
-StoreImpl Store::EndTransient() const {
-    if (!IsTransient) return AppStore;
+StoreImpl Store::EndTransient() {
+    if (!TransientImpl) return *Impl;
 
-    const StoreImpl new_store = Transient.Persistent();
-    Transient = {};
-    IsTransient = false;
+    const StoreImpl new_store = TransientImpl->Persistent();
+    TransientImpl.reset();
 
     return new_store;
 }
 
-void Store::Commit() const {
-    AppStore = EndTransient();
+void Store::Commit() {
+    Impl = std::make_unique<StoreImpl>(EndTransient());
 }
 
-Patch Store::CheckedSet(const StoreImpl &store) const {
+Patch Store::CheckedSet(const StoreImpl &store) {
     const auto &patch = CreatePatch(store);
     if (patch.Empty()) return {};
 
-    AppStore = store;
+    Impl = std::make_unique<StoreImpl>(store);
     return patch;
 }
 
-Patch Store::SetJson(const json &j) const {
-    Transient = {};
-    IsTransient = false;
+Patch Store::CheckedSet(StoreImpl &&store) {
+    const auto &patch = CreatePatch(store);
+    if (patch.Empty()) return {};
+
+    Impl = std::make_unique<StoreImpl>(std::move(store));
+    return patch;
+}
+
+Patch Store::SetJson(const json &j) {
+    TransientImpl.reset();
     return CheckedSet(JsonToStore(j));
 }
 
-Patch Store::CheckedCommit() const { return CheckedSet(EndTransient()); }
+Patch Store::CheckedCommit() { return CheckedSet(EndTransient()); }
 
-Primitive Store::Get(const StorePath &path) const { return IsTransient ? Transient.PrimitiveByPath.at(path) : AppStore.PrimitiveByPath.at(path); }
+Primitive Store::Get(const StorePath &path) const { return TransientImpl ? TransientImpl->PrimitiveByPath.at(path) : Impl->PrimitiveByPath.at(path); }
 
 void Store::Set(const StorePath &path, const Primitive &value) const {
-    if (IsTransient) {
-        Transient.PrimitiveByPath.set(path, value);
+    if (TransientImpl) {
+        TransientImpl->PrimitiveByPath.set(path, value);
     } else {
         // todo no effect. throw error instead?
-        auto _ = AppStore.PrimitiveByPath.set(path, value);
+        auto _ = Impl->PrimitiveByPath.set(path, value);
     }
 }
 void Store::Erase(const StorePath &path) const {
-    if (IsTransient) {
-        Transient.PrimitiveByPath.erase(path);
+    if (TransientImpl) {
+        TransientImpl->PrimitiveByPath.erase(path);
     } else {
-        auto _ = AppStore.PrimitiveByPath.erase(path);
+        auto _ = Impl->PrimitiveByPath.erase(path);
     }
 }
 
 Count Store::CheckedCommit(const StorePath &path) const {
-    return IsTransient ? Transient.IdPairsByPath[path].size() : AppStore.IdPairsByPath[path].size();
+    return TransientImpl ? TransientImpl->IdPairsByPath[path].size() : Impl->IdPairsByPath[path].size();
 }
 
 Count Store::IdPairCount(const StorePath &path) const {
-    return IsTransient ? Transient.IdPairsByPath[path].size() : AppStore.IdPairsByPath[path].size();
+    return TransientImpl ? TransientImpl->IdPairsByPath[path].size() : Impl->IdPairsByPath[path].size();
 }
 
 std::unordered_set<IdPair, IdPairHash> Store::IdPairs(const StorePath &path) const {
     std::unordered_set<IdPair, IdPairHash> id_pairs;
-    if (IsTransient) {
-        for (const auto &id_pair : Transient.IdPairsByPath[path]) id_pairs.insert(id_pair);
+    if (TransientImpl) {
+        for (const auto &id_pair : TransientImpl->IdPairsByPath[path]) id_pairs.insert(id_pair);
     } else {
-        for (const auto &id_pair : AppStore.IdPairsByPath[path]) id_pairs.insert(id_pair);
+        for (const auto &id_pair : Impl->IdPairsByPath[path]) id_pairs.insert(id_pair);
     }
     return id_pairs;
 }
 
 void Store::AddIdPair(const StorePath &path, const IdPair &value) const {
-    if (IsTransient) {
-        Transient.IdPairsByPath[path].insert(value);
+    if (TransientImpl) {
+        TransientImpl->IdPairsByPath[path].insert(value);
     } else {
-        auto _ = AppStore.IdPairsByPath[path].insert(value);
+        auto _ = Impl->IdPairsByPath[path].insert(value);
     }
 }
 void Store::EraseIdPair(const StorePath &path, const IdPair &value) const {
-    if (IsTransient) {
-        Transient.IdPairsByPath[path].erase(value);
+    if (TransientImpl) {
+        TransientImpl->IdPairsByPath[path].erase(value);
     } else {
-        auto _ = AppStore.IdPairsByPath[path].erase(value);
+        auto _ = Impl->IdPairsByPath[path].erase(value);
     }
 }
 bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
-    if (IsTransient) {
-        if (!Transient.IdPairsByPath.contains(path)) return false;
-        return Transient.IdPairsByPath[path].count(value) > 0;
+    if (TransientImpl) {
+        if (!TransientImpl->IdPairsByPath.contains(path)) return false;
+        return TransientImpl->IdPairsByPath[path].count(value) > 0;
     } else {
-        if (!AppStore.IdPairsByPath.contains(path)) return false;
-        return AppStore.IdPairsByPath[path].count(value) > 0;
+        if (!Impl->IdPairsByPath.contains(path)) return false;
+        return Impl->IdPairsByPath[path].count(value) > 0;
     }
 }
 
-Count Store::CountAt(const StorePath &path) const { return IsTransient ? Transient.PrimitiveByPath.count(path) : AppStore.PrimitiveByPath.count(path); }
+Count Store::CountAt(const StorePath &path) const { return TransientImpl ? TransientImpl->PrimitiveByPath.count(path) : Impl->PrimitiveByPath.count(path); }
 
 Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const StorePath &base_path) const {
     PatchOps ops{};
@@ -223,5 +227,5 @@ Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const 
     return {ops, base_path};
 }
 
-Patch Store::CreatePatch(const StoreImpl &store, const StorePath &base_path) const { return CreatePatch(AppStore, store, base_path); }
-Patch Store::CreatePatch(const StorePath &base_path) const { return CreatePatch(AppStore, EndTransient(), base_path); }
+Patch Store::CreatePatch(const StoreImpl &store, const StorePath &base_path) const { return CreatePatch(*Impl, store, base_path); }
+Patch Store::CreatePatch(const StorePath &base_path) { return CreatePatch(*Impl, EndTransient(), base_path); }

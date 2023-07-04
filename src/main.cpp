@@ -1,11 +1,14 @@
 #include "imgui.h"
 
 #include "FlowGrid/Core/Store/Store.h"
+#include "FlowGrid/Core/Store/StoreHistory.h"
 #include "FlowGrid/Project/Project.h"
 #include "UI/UI.h"
 
 Store store_singleton{}; // xxx temporary state of affairs.
-const Store &store = store_singleton;
+Store &store = store_singleton;
+StoreHistory store_history_singleton{}; // xxx temporary state of affairs.
+StoreHistory &History = store_history_singleton;
 Project MainProject{{}};
 // Set all global extern variables.
 const Project &project = MainProject;

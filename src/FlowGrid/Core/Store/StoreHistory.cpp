@@ -87,4 +87,4 @@ void StoreHistory::SetIndex(Count new_index) {
     CommitTimesByPath = Records[Index].Metrics.CommitTimesByPath;
 }
 
-StoreHistory History{}; // Global.
+extern StoreHistory &History; // Global.

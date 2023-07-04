@@ -17,18 +17,22 @@ Component::Metadata Component::Metadata::Parse(string_view str) {
     return {found ? string(str.substr(0, help_split)) : string(str), found ? string(str.substr(help_split + 1)) : ""};
 }
 
+Component::Component() : Parent(nullptr), PathLeaf(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
+    ById[Id] = this;
+}
+
 Component::Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
     : Parent(parent),
       PathLeaf(path_leaf),
-      Path(Parent && !PathLeaf.empty() ? (Parent->Path / PathLeaf) : (Parent ? Parent->Path : (!PathLeaf.empty() ? StorePath(PathLeaf) : RootPath))),
+      Path(Parent->Path / PathLeaf),
       Name(meta.Name.empty() ? PathLeaf.empty() ? "" : StringHelper::PascalToSentenceCase(PathLeaf) : meta.Name),
       Help(meta.Help),
       ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathLeaf)),
-      Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent ? Parent->Id : 0)),
+      Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent->Id)),
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {
-    if (parent) parent->Children.emplace_back(this);
     ById[Id] = this;
+    parent->Children.emplace_back(this);
 }
 
 Component::Component(ComponentArgs &&args)

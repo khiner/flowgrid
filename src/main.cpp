@@ -9,7 +9,7 @@ Store store_singleton{}; // xxx temporary state of affairs.
 Store &store = store_singleton;
 StoreHistory store_history_singleton{store}; // xxx temporary state of affairs.
 StoreHistory &History = store_history_singleton;
-Project MainProject{{}};
+Project MainProject{};
 // Set all global extern variables.
 const Project &project = MainProject;
 const fg::Style &fg::style = project.Style;

@@ -81,7 +81,7 @@ void SetHistoryIndex(Count index) {
     ProjectHasChanges = true;
 }
 
-Project::Project(ComponentArgs &&args) : Component(std::move(args)) {
+Project::Project() : Component() {
     Windows.SetWindowComponents({
         Audio,
         Settings,

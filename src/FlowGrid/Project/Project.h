@@ -21,7 +21,7 @@ enum ProjectFormat {
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
  */
 struct Project : Component, Actionable<Action::Any> {
-    Project(ComponentArgs &&);
+    Project();
 
     static void OpenRecentProjectMenuItem();
 

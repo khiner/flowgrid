@@ -51,8 +51,8 @@ struct Component : Drawable {
     };
 
     struct ComponentArgs {
-        Component *Parent = nullptr;
-        string_view PathLeaf = "";
+        Component *Parent; // Must be present for non-empty constructor.
+        string_view PathLeaf = ""; // xxx should be named PathSegment (also instance var)
         string_view MetaStr = "";
     };
 
@@ -60,6 +60,7 @@ struct Component : Drawable {
     // Components with at least one descendent field updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedComponentIds;
 
+    Component();
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);

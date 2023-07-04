@@ -39,7 +39,7 @@ int main() {
         RunQueuedActions(true);
     }
 
-    Project::OnApplicationLaunch();
+    project.OnApplicationLaunch();
 
     while (Ui.Tick(project)) {
         RunQueuedActions();

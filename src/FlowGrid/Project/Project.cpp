@@ -11,7 +11,6 @@
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
 #include "Helper/Time.h"
-#include "ProjectJson.h"
 #include "UI/UI.h"
 
 using std::vector;
@@ -40,6 +39,12 @@ static const fs::path DefaultProjectPath = InternalPath / ("default" + Extension
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
+std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
+    const string &ext = path.extension();
+    if (!ProjectFormatByExtension.contains(ext)) return {};
+    return ProjectFormatByExtension.at(ext);
+}
+
 static float GestureTimeRemainingSec(float gesture_duration_sec) {
     if (ActiveGestureActions.empty()) return 0;
     const auto ret = std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
@@ -65,6 +70,13 @@ Project::Project(ComponentArgs &&args) : Component(std::move(args)) {
         Demo,
         Info,
     });
+}
+
+nlohmann::json Project::ToJson(const ProjectFormat format) const {
+    switch (format) {
+        case StateFormat: return store.GetJson();
+        case ActionFormat: return History.GetIndexedGestures();
+    }
 }
 
 void CommitGesture() {
@@ -104,9 +116,9 @@ void Project::Apply(const ActionType &action) const {
         [](const Action::Project::Open &a) { Open(a.file_path); },
         [](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
 
-        [](const Action::Project::Save &a) { Save(a.file_path); },
-        [](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
-        [](const Action::Project::SaveCurrent &) {
+        [this](const Action::Project::Save &a) { Save(a.file_path); },
+        [this](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
+        [this](const Action::Project::SaveCurrent &) {
             if (CurrentProjectPath) Save(*CurrentProjectPath);
         },
         // History-changing actions:
@@ -269,13 +281,7 @@ void SetCurrentProjectPath(const fs::path &path) {
     }
 }
 
-std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
-    const string &ext = path.extension();
-    if (!ProjectFormatByExtension.contains(ext)) return {};
-    return ProjectFormatByExtension.at(ext);
-}
-
-bool Project::Save(const fs::path &path) {
+bool Project::Save(const fs::path &path) const {
     const bool is_current_project = CurrentProjectPath && fs::equivalent(path, *CurrentProjectPath);
     if (is_current_project && !ProjectHasChanges) return false;
 
@@ -283,7 +289,7 @@ bool Project::Save(const fs::path &path) {
     if (!format) return false; // TODO log
 
     CommitGesture(); // Make sure any pending actions/diffs are committed.
-    if (!FileIO::write(path, GetProjectJson(*format).dump())) {
+    if (!FileIO::write(path, ToJson(*format).dump())) {
         throw std::runtime_error(std::format("Failed to write project file: {}", path.string()));
     }
 
@@ -298,7 +304,7 @@ void MarkAllUiContextsChanged() {
     imgui_settings.IsChanged = true;
 }
 
-void Project::OnApplicationLaunch() {
+void Project::OnApplicationLaunch() const {
     Field::IsGesturing = false;
     History = {};
     Field::ClearChanged();
@@ -461,7 +467,7 @@ void Project::Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    const nlohmann::json project_json = GetProjectJson(ProjectFormat(int(Format)));
+    const nlohmann::json project_json = project.ToJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {

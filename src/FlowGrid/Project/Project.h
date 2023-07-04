@@ -11,6 +11,11 @@
 #include "ProjectSettings.h"
 #include "Style/Style.h"
 
+enum ProjectFormat {
+    StateFormat,
+    ActionFormat
+};
+
 /**
  * This class fully describes the project at any point in time.
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
@@ -18,11 +23,14 @@
 struct Project : Component, Actionable<Action::Any> {
     Project(ComponentArgs &&);
 
-    static void OnApplicationLaunch();
     static void OpenRecentProjectMenuItem();
+
+    void OnApplicationLaunch() const;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
+
+    nlohmann::json ToJson(const ProjectFormat) const;
 
     struct Debug : DebugComponent {
         Debug(ComponentArgs &&args)
@@ -147,7 +155,7 @@ protected:
 
 private:
     static void Open(const fs::path &);
-    static bool Save(const fs::path &);
+    bool Save(const fs::path &) const;
 };
 
 void RunQueuedActions(bool force_commit_gesture = false);

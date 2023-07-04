@@ -46,19 +46,14 @@ json Store::GetJson(const StoreImpl &impl) const {
 
 static StoreImpl JsonToStore(json &&j) {
     const auto &flattened = j.flatten();
-    std::vector<std::pair<StorePath, Primitive>> entries(flattened.size());
-    int item_index = 0;
-    for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
-
     TransientStoreImpl transient;
-    for (const auto &[path, value] : entries) {
-        if (std::holds_alternative<std::string>(value) && std::get<std::string>(value).starts_with(IdPairsPrefix)) {
-            std::set<IdPair> id_pairs = json::parse(std::get<std::string>(value).substr(IdPairsPrefix.size()));
-            for (const auto &id_pair : id_pairs) {
-                transient.IdPairsByPath[path].insert(id_pair);
-            }
+    for (const auto &[key, value] : flattened.items()) {
+        const StorePath path = key;
+        if (value.is_string() && std::string(value).starts_with(IdPairsPrefix)) {
+            const auto &id_pairs = json::parse(std::string(value).substr(IdPairsPrefix.size()));
+            for (const auto &id_pair : id_pairs) transient.IdPairsByPath[path].insert(id_pair);
         } else {
-            transient.PrimitiveByPath.set(path, value);
+            transient.PrimitiveByPath.set(path, std::move(value));
         }
     }
 

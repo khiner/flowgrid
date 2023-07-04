@@ -24,19 +24,25 @@ struct Record {
 static std::vector<Record> Records;
 static immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath{};
 
-StoreHistory::StoreHistory() {
-    CommitTimesByPath = {};
-    Records.clear();
-    Records.emplace_back(store.Get(), Gesture{{}, Clock::now()}, StoreHistoryMetrics{{}});
+StoreHistory::StoreHistory(const ::Store &store) : Store(store) {
+    Clear();
 }
+
 StoreHistory::~StoreHistory() {
-    // Not clearing records/metrics here because the destructor for the old singleton instance is called after the new instance is constructed.
+    // Not clearing here because the destructor for the old singleton instance is called after the new instance is constructed.
     // This is fine, since records/metrics should have the same lifetime as the application.
 }
 
+void StoreHistory::Clear() {
+    Index = 0;
+    CommitTimesByPath = {};
+    Records.clear();
+    Records.emplace_back(Store.Get(), Gesture{{}, Clock::now()}, StoreHistoryMetrics{{}});
+}
+
 void StoreHistory::AddGesture(Gesture &&gesture) {
-    const auto store_impl = store.Get();
-    const auto patch = store.CreatePatch(this->CurrentStore(), store_impl);
+    const auto store_impl = Store.Get();
+    const auto patch = Store.CreatePatch(this->CurrentStore(), store_impl);
     if (patch.Empty()) return;
 
     for (const auto &path : patch.GetPaths()) {
@@ -66,7 +72,7 @@ std::map<StorePath, Count> StoreHistory::GetChangeCountByPath() const {
 Count StoreHistory::GetChangedPathsCount() const { return Records[Index].Metrics.CommitTimesByPath.size(); }
 
 Patch StoreHistory::CreatePatch(Count index) const {
-    return store.CreatePatch(Records[index - 1].Store, Records[index].Store);
+    return Store.CreatePatch(Records[index - 1].Store, Records[index].Store);
 }
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {

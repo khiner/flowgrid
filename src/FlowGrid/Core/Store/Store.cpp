@@ -31,14 +31,14 @@ static const std::string IdPairsPrefix = "id_pairs::";
 
 using namespace nlohmann;
 
-json Store::GetJson(const StoreImpl &store) const {
+json Store::GetJson(const StoreImpl &impl) const {
     // TODO serialize using the concrete primitive type and avoid the ambiguous Primitive JSON conversion.
     //   - This will be easier after separating container storage, since each `PrimitiveByPath` entry will correspond to a single `PrimitiveField`.
     json j;
-    for (const auto &[path, primitive] : store.PrimitiveByPath) {
+    for (const auto &[path, primitive] : impl.PrimitiveByPath) {
         j[json::json_pointer(path.string())] = primitive;
     }
-    for (const auto &[path, id_pairs] : store.IdPairsByPath) {
+    for (const auto &[path, id_pairs] : impl.IdPairsByPath) {
         j[json::json_pointer(path.string())] = std::format("{}{}", IdPairsPrefix, json(id_pairs).dump());
     }
     return j;

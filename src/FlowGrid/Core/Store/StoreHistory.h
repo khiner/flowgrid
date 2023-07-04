@@ -3,6 +3,7 @@
 #include "Core/Action/Actions.h"
 #include "Helper/Paths.h"
 
+struct Store;
 struct StoreImpl;
 
 enum Direction {
@@ -27,9 +28,10 @@ struct StoreHistory {
         const Gesture &Gesture; // Reference to the (compressed) gesture that caused the store change.
     };
 
-    StoreHistory();
+    StoreHistory(const Store &);
     ~StoreHistory();
 
+    void Clear();
     void AddGesture(Gesture &&); // Add a gesture to the history.
     void SetIndex(Count);
 
@@ -46,6 +48,9 @@ struct StoreHistory {
     Count GetChangedPathsCount() const;
 
     Count Index{0};
+
+private:
+    const Store &Store;
 };
 
 Json(StoreHistory::IndexedGestures, Gestures, Index);

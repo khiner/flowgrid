@@ -306,7 +306,7 @@ void MarkAllUiContextsChanged() {
 
 void Project::OnApplicationLaunch() const {
     Field::IsGesturing = false;
-    History = {};
+    History.Clear();
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
     MarkAllUiContextsChanged();
@@ -328,7 +328,7 @@ void OpenStateFormatProjectInner(const nlohmann::json &project) {
     Field::LatestChangedPaths.clear();
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     imgui_settings.IsChanged = true;
-    History = {};
+    History.Clear();
 }
 
 void Project::Open(const fs::path &file_path) {

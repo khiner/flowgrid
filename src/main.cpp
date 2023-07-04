@@ -7,7 +7,7 @@
 
 Store store_singleton{}; // xxx temporary state of affairs.
 Store &store = store_singleton;
-StoreHistory store_history_singleton{}; // xxx temporary state of affairs.
+StoreHistory store_history_singleton{store}; // xxx temporary state of affairs.
 StoreHistory &History = store_history_singleton;
 Project MainProject{{}};
 // Set all global extern variables.

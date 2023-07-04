@@ -11,8 +11,6 @@ enum Direction {
     Reverse
 };
 
-struct StoreHistoryMetrics;
-
 struct StoreHistory {
     struct Metrics;
 
@@ -51,6 +49,7 @@ struct StoreHistory {
 
 private:
     const Store &Store;
+    std::unique_ptr<Metrics> HistoryMetrics;
 };
 
 Json(StoreHistory::IndexedGestures, Gestures, Index);

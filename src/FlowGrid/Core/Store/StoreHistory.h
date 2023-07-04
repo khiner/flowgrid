@@ -45,7 +45,8 @@ struct StoreHistory {
     Patch CreatePatch(Count index) const; // Create a patch between the store at `index` and the store at `index - 1`.
     ReferenceRecord RecordAt(Count index) const;
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
-    TimesByPath GetCommitTimesByPath() const;
+    std::map<StorePath, Count> GetChangeCountByPath() const; // Ordered by path.
+    Count GetChangedPathsCount() const;
 
     Count Index{0};
 

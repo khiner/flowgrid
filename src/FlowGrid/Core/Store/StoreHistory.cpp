@@ -13,18 +13,6 @@ using std::string;
 
 struct StoreHistoryMetrics {
     immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath;
-
-    TimesByPath ToStdContainer() const {
-        TimesByPath std_container;
-        for (const auto &[k, v] : CommitTimesByPath) {
-            std::vector<TimePoint> commit_times;
-            for (const auto &commit_time : v) {
-                commit_times.push_back(commit_time);
-            }
-            std_container.emplace(k, std::move(commit_times));
-        }
-        return std_container;
-    }
 };
 
 struct Record {
@@ -72,11 +60,17 @@ bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 const Store &StoreHistory::CurrentStore() const { return Records[Index].Store; }
 
-TimesByPath StoreHistory::GetCommitTimesByPath() const {
-    return Records[Index].Metrics.ToStdContainer();
+std::map<StorePath, Count> StoreHistory::GetChangeCountByPath() const {
+    return Records[Index].Metrics.CommitTimesByPath |
+        std::views::transform([](const auto &entry) { return std::pair(entry.first, entry.second.size()); }) |
+        ranges::to<std::map<StorePath, Count>>;
 }
 
-Patch StoreHistory::CreatePatch(Count index) const { return store::CreatePatch(Records[index - 1].Store, Records[index].Store); }
+Count StoreHistory::GetChangedPathsCount() const { return Records[Index].Metrics.CommitTimesByPath.size(); }
+
+Patch StoreHistory::CreatePatch(Count index) const {
+    return store::CreatePatch(Records[index - 1].Store, Records[index].Store);
+}
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
     const auto &record = Records[index];

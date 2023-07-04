@@ -7,5 +7,3 @@
 
 using UniquePaths = std::unordered_set<StorePath, PathHash>;
 using PathsMoment = std::pair<TimePoint, UniquePaths>;
-
-using TimesByPath = std::unordered_map<StorePath, std::vector<TimePoint>, PathHash>;

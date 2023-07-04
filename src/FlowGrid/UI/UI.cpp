@@ -10,9 +10,9 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
+#include "Core/Store/StoreAction.h"
 #include "Project/ImGuiSettings/ImGuiSettings.h"
 #include "Project/Style/Style.h"
-#include "Core/Store/StoreAction.h"
 
 #include "Project/FileDialog/FileDialog.h" // xxx only used for loading fonts
 

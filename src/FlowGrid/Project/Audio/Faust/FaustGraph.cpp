@@ -12,11 +12,11 @@
 
 #include "imgui_internal.h"
 
-#include "Project/Audio/AudioIO.h"
-#include "Project/FileDialog/FileDialog.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
+#include "Project/Audio/AudioIO.h"
+#include "Project/FileDialog/FileDialog.h"
 #include "UI/InvisibleButton.h"
 
 using namespace ImGui;
@@ -763,7 +763,7 @@ struct BinaryNode : Node {
                 ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
             }
             // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
-            for (const auto dir : std::views::keys(ChannelsForDirection)) {
+            for (auto dir : std::views::keys(ChannelsForDirection)) {
                 const auto &channels = ChannelsForDirection.at(dir);
                 for (Count i = 0; i < channels.size(); i++) {
                     const auto channel = channels[i];

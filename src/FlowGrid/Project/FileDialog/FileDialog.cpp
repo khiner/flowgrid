@@ -216,7 +216,7 @@ void FileDialog::Demo::Render() const {
 
                 static int selected = 0;
                 const auto &selection = Dialog->GetSelection();
-                const auto selection_keys = std::views::keys(selection) | ranges::to<std::vector>();
+                const auto selection_keys = selection | std::views::keys | ranges::to<std::vector>();
                 ImGuiListClipper clipper;
                 clipper.Begin(int(selection.size()), GetTextLineHeightWithSpacing());
                 while (clipper.Step()) {

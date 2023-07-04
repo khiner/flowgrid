@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Project/Style/Colors.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
@@ -9,6 +8,7 @@
 #include "Core/Primitive/String.h"
 #include "FaustBox.h"
 #include "FaustGraphAction.h"
+#include "Project/Style/Colors.h"
 #include "UI/Styling.h"
 
 enum FaustGraphHoverFlags_ {

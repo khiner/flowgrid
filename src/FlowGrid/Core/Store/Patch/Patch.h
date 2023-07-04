@@ -29,7 +29,7 @@ struct Patch {
 
     // Returns a view.
     inline auto GetPaths() const noexcept {
-        return std::views::keys(Ops) | std::views::transform([this](const auto &partial_path) { return BasePath / partial_path; });
+        return Ops | std::views::keys | std::views::transform([this](const auto &partial_path) { return BasePath / partial_path; });
     }
 
     bool Empty() const noexcept { return Ops.empty(); }

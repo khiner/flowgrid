@@ -5,8 +5,8 @@
 
 #include "miniaudio.h"
 
-#include "Project/Audio/AudioDevice.h"
 #include "Faust.h"
+#include "Project/Audio/AudioDevice.h"
 
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
 

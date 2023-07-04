@@ -29,7 +29,7 @@ static const std::map<ProjectFormat, std::string> ExtensionByProjectFormat{
     {ProjectFormat::StateFormat, ".fls"},
 };
 static const auto ProjectFormatByExtension = ExtensionByProjectFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
-static const auto AllProjectExtensions = std::views::keys(ProjectFormatByExtension);
+static const auto AllProjectExtensions = ProjectFormatByExtension | std::views::keys;
 static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
 
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectFormat.at(ProjectFormat::StateFormat));
@@ -373,29 +373,31 @@ struct Plottable {
 };
 
 Plottable StorePathChangeFrequencyPlottable() {
-    const auto &committed_times = History.GetCommitTimesByPath();
-    TimesByPath gesture_update_times;
+    if (History.GetChangedPathsCount() == 0 && Field::GestureChangedPaths.empty()) return {};
+
+    std::map<StorePath, Count> gesture_change_counts;
     for (const auto &[field_id, changed_paths] : Field::GestureChangedPaths) {
         const auto &field = Field::ById[field_id];
         for (const PathsMoment &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
-                const auto full_path = path == "" ? field->Path : field->Path / path;
-                gesture_update_times[full_path].push_back(paths_moment.first);
+                gesture_change_counts[path == "" ? field->Path : field->Path / path]++;
             }
         }
     }
-    if (committed_times.empty() && gesture_update_times.empty()) return {};
 
-    const std::set<StorePath> paths = ranges::views::concat(ranges::views::keys(committed_times), ranges::views::keys(gesture_update_times)) | ranges::to<std::set>;
+    const auto history_change_counts = History.GetChangeCountByPath();
+    const std::set<StorePath> paths = ranges::views::concat(ranges::views::keys(history_change_counts), ranges::views::keys(gesture_change_counts)) | ranges::to<std::set>;
 
-    const bool has_gesture = !gesture_update_times.empty();
-    std::vector<ImU64> values(has_gesture ? paths.size() * 2 : paths.size());
     Count i = 0;
-    for (const auto &path : paths) values[i++] = committed_times.contains(path) ? committed_times.at(path).size() : 0;
-    // Optionally add a second plot item for gesturing update times. See `ImPlot::PlotBarGroups` for value ordering explanation.
-    if (has_gesture) {
+    std::vector<ImU64> values(!gesture_change_counts.empty() ? paths.size() * 2 : paths.size());
+    for (const auto &path : paths) {
+        values[i++] = history_change_counts.contains(path) ? history_change_counts.at(path) : 0;
+    }
+    if (!gesture_change_counts.empty()) {
+        // Optionally add a second plot item for gesturing update times.
+        // See `ImPlot::PlotBarGroups` for value ordering explanation.
         for (const auto &path : paths) {
-            values[i++] = gesture_update_times.contains(path) ? gesture_update_times.at(path).size() : 0;
+            values[i++] = gesture_change_counts.contains(path) ? gesture_change_counts.at(path) : 0;
         }
     }
 
@@ -683,12 +685,12 @@ void RunQueuedActions(bool force_commit_gesture) {
     if (commit_gesture) CommitGesture();
 }
 
-#define DefineQ(ActionType)                                                                                              \
-    void Action::ActionType::q() const { ::q(*this); }                                                                   \
-    void Action::ActionType::MenuItem() {                                                                                \
+#define DefineQ(ActionType)                                                                                                  \
+    void Action::ActionType::q() const { ::q(*this); }                                                                       \
+    void Action::ActionType::MenuItem() {                                                                                    \
         if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(Action::ActionType{}))) { \
-            Action::ActionType{}.q();                                                                                    \
-        }                                                                                                                \
+            Action::ActionType{}.q();                                                                                        \
+        }                                                                                                                    \
     }
 
 DefineQ(Windows::ToggleVisible);

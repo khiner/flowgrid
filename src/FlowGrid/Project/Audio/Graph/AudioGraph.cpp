@@ -5,8 +5,8 @@
 #include "implot_internal.h"
 #include "miniaudio.h"
 
-#include "Project/Audio/AudioDevice.h"
 #include "Core/Container/AdjacencyListAction.h"
+#include "Project/Audio/AudioDevice.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 

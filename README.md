@@ -50,8 +50,8 @@ Each type of FlowGrid project file is saved as plain JSON.
 This project uses LLVM IR to JIT-compile Faust code.
 To simplify, make things more predictable, and reduce bloat, we use the LLVM ecosystem as much as possible.
 
-We use `clang++/clang` to compile, and LLVM's `lld` for linking.
-Even if it's not strictly required, we generally aim to use the newest available LLVM point release (`x.0.1` and beyond).
+FlowGrid uses `clang++/clang` to compile, and LLVM's `lld` for linking.
+Even if it's not strictly required, I will generally aim to use the latest LLVM release at RC2 or later.
 If the project does not build correctly for you, please make sure your `clang`, `lld`, and `clang-config` point to the newest available point-release of LLVM.
 If that doesn't work, try the latest release in the previous LLVM major version.
 

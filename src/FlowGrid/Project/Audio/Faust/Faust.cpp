@@ -5,9 +5,9 @@
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
+#include "Helper/File.h"
 #include "Project/Audio/AudioIO.h"
 #include "Project/FileDialog/FileDialog.h"
-#include "Helper/File.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
 

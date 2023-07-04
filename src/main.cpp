@@ -1,7 +1,7 @@
 #include "imgui.h"
 
-#include "FlowGrid/Project/Project.h"
 #include "FlowGrid/Core/Store/Store.h"
+#include "FlowGrid/Project/Project.h"
 #include "UI/UI.h"
 
 Project MainProject{{}};

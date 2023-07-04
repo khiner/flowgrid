@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Project/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
 #include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Core/Primitive/Float.h"
+#include "Project/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
 
 struct ma_device;
 struct ma_node_graph;

@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-#include "Project/Style/Style.h"
 #include "Core/Store/Patch/Patch.h"
+#include "Project/Style/Style.h"
 
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     FieldById.emplace(Id, this);

@@ -3,8 +3,8 @@
 #include "imgui_internal.h"
 #include <format>
 
-#include "Project/Style/Style.h"
 #include "Helper/String.h"
+#include "Project/Style/Style.h"
 #include "UI/HelpMarker.h"
 
 Menu::Menu(string_view label, const std::vector<const Item> items) : Label(label), Items(std::move(items)) {}

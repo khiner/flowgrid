@@ -16,7 +16,7 @@ struct StoreHistoryMetrics {
 };
 
 struct Record {
-    Store Store;
+    StoreImpl Store;
     Gesture Gesture;
     StoreHistoryMetrics Metrics;
 };
@@ -34,7 +34,7 @@ StoreHistory::~StoreHistory() {
     // This is fine, since records/metrics should have the same lifetime as the application.
 }
 
-void StoreHistory::Add(const Store &store, const Gesture &gesture) {
+void StoreHistory::Add(const StoreImpl &store, const Gesture &gesture) {
     const auto patch = store::CreatePatch(CurrentStore(), store);
     if (patch.Empty()) return;
 
@@ -58,7 +58,7 @@ bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an i
 bool StoreHistory::CanUndo() const { return Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
-const Store &StoreHistory::CurrentStore() const { return Records[Index].Store; }
+const StoreImpl &StoreHistory::CurrentStore() const { return Records[Index].Store; }
 
 std::map<StorePath, Count> StoreHistory::GetChangeCountByPath() const {
     return Records[Index].Metrics.CommitTimesByPath |

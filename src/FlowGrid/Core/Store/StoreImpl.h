@@ -9,9 +9,9 @@
 #include "Helper/Path.h"
 #include "IdPair.h"
 
-struct TransientStore;
+struct TransientStoreImpl;
 
-struct Store {
+struct StoreImpl {
     using PrimitiveMap = immer::map<StorePath, Primitive, PathHash>;
     using IdPairs = immer::set<IdPair, IdPairHash>;
     using IdPairsMap = std::unordered_map<StorePath, IdPairs, PathHash>;
@@ -19,5 +19,5 @@ struct Store {
     PrimitiveMap PrimitiveByPath;
     IdPairsMap IdPairsByPath;
 
-    TransientStore Transient() const;
+    TransientStoreImpl Transient() const;
 };

@@ -24,13 +24,13 @@ void ActionHandler::Apply(const ActionType &action) const {
     );
 }
 
-Store AppStore{};
+StoreImpl AppStore{};
 
 static const std::string IdPairsPrefix = "id_pairs::";
 
 using namespace nlohmann;
 
-json GetJson(const Store &store) {
+json GetJson(const StoreImpl &store) {
     // TODO serialize using the concrete primitive type and avoid the ambiguous Primitive JSON conversion.
     //   - This will be easier after separating container storage, since each `PrimitiveByPath` entry will correspond to a single `PrimitiveField`.
     json j;
@@ -43,13 +43,13 @@ json GetJson(const Store &store) {
     return j;
 }
 
-Store JsonToStore(const json &j) {
+StoreImpl JsonToStore(const json &j) {
     const auto &flattened = j.flatten();
     std::vector<std::pair<StorePath, Primitive>> entries(flattened.size());
     int item_index = 0;
     for (const auto &[key, value] : flattened.items()) entries[item_index++] = {StorePath(key), Primitive(value)};
 
-    TransientStore transient;
+    TransientStoreImpl transient;
     for (const auto &[path, value] : entries) {
         if (std::holds_alternative<std::string>(value) && std::get<std::string>(value).starts_with(IdPairsPrefix)) {
             std::set<IdPair> id_pairs = json::parse(std::get<std::string>(value).substr(IdPairsPrefix.size()));
@@ -64,10 +64,10 @@ Store JsonToStore(const json &j) {
     return transient.Persistent();
 }
 
-const Store &Get() { return AppStore; }
+const StoreImpl &Get() { return AppStore; }
 json GetJson() { return GetJson(AppStore); }
 
-TransientStore Transient{};
+TransientStoreImpl Transient{};
 bool IsTransient = true;
 
 void BeginTransient() {
@@ -79,10 +79,10 @@ void BeginTransient() {
 
 // End transient mode and return the new persistent store.
 // Not exposed publicly (use `Commit` instead).
-const Store EndTransient() {
+const StoreImpl EndTransient() {
     if (!IsTransient) return AppStore;
 
-    const Store new_store = Transient.Persistent();
+    const StoreImpl new_store = Transient.Persistent();
     Transient = {};
     IsTransient = false;
 
@@ -93,7 +93,7 @@ void Commit() {
     AppStore = EndTransient();
 }
 
-Patch CheckedSet(const Store &store) {
+Patch CheckedSet(const StoreImpl &store) {
     const auto &patch = CreatePatch(store);
     if (patch.Empty()) return {};
 
@@ -109,7 +109,7 @@ Patch SetJson(const json &j) {
 
 Patch CheckedCommit() { return CheckedSet(EndTransient()); }
 
-Store GetPersistent() { return Transient.Persistent(); }
+StoreImpl GetPersistent() { return Transient.Persistent(); }
 
 Primitive Get(const StorePath &path) { return IsTransient ? Transient.PrimitiveByPath.at(path) : AppStore.PrimitiveByPath.at(path); }
 void Set(const StorePath &path, const Primitive &value) {
@@ -168,7 +168,7 @@ bool HasIdPair(const StorePath &path, const IdPair &value) {
 
 Count CountAt(const StorePath &path) { return IsTransient ? Transient.PrimitiveByPath.count(path) : AppStore.PrimitiveByPath.count(path); }
 
-Patch CreatePatch(const Store &before, const Store &after, const StorePath &base_path) {
+Patch CreatePatch(const StoreImpl &before, const StoreImpl &after, const StorePath &base_path) {
     PatchOps ops{};
 
     diff(
@@ -221,6 +221,6 @@ Patch CreatePatch(const Store &before, const Store &after, const StorePath &base
     return {ops, base_path};
 }
 
-Patch CreatePatch(const Store &store, const StorePath &base_path) { return CreatePatch(AppStore, store, base_path); }
+Patch CreatePatch(const StoreImpl &store, const StorePath &base_path) { return CreatePatch(AppStore, store, base_path); }
 Patch CreatePatch(const StorePath &base_path) { return CreatePatch(AppStore, EndTransient(), base_path); }
 } // namespace store

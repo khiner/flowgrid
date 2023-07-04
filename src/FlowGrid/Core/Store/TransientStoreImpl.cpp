@@ -6,8 +6,8 @@
 
 #include "StoreImpl.h"
 
-Store TransientStore::Persistent() {
-    Store::IdPairsMap PersistentIdPairsByPath;
+StoreImpl TransientStoreImpl::Persistent() {
+    StoreImpl::IdPairsMap PersistentIdPairsByPath;
     for (auto &[path, id_pairs] : IdPairsByPath) PersistentIdPairsByPath.emplace(path, id_pairs.persistent());
 
     return {PrimitiveByPath.persistent(), PersistentIdPairsByPath};

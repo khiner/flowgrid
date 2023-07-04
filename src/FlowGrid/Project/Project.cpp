@@ -51,34 +51,6 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return ret;
 }
 
-Project::Project(ComponentArgs &&args) : Component(std::move(args)) {
-    Windows.SetWindowComponents({
-        Audio,
-        Settings,
-        Audio.Faust.Code,
-        Audio.Faust.Code.Debug,
-        Audio.Faust.Log,
-        Audio.Faust.Graph,
-        Audio.Faust.Params,
-        Debug,
-        Debug.ProjectPreview,
-        Debug.StorePathUpdateFrequency,
-        Debug.DebugLog,
-        Debug.StackTool,
-        Debug.Metrics,
-        Style,
-        Demo,
-        Info,
-    });
-}
-
-nlohmann::json Project::ToJson(const ProjectFormat format) const {
-    switch (format) {
-        case StateFormat: return store.GetJson();
-        case ActionFormat: return History.GetIndexedGestures();
-    }
-}
-
 void CommitGesture() {
     Field::GestureChangedPaths.clear();
     if (ActiveGestureActions.empty()) return;
@@ -107,6 +79,34 @@ void SetHistoryIndex(Count index) {
     // since it has many descendent fields, and we would wastefully check for changes during the forward action pass, as explained above.
     if (LatestPatch.IsPrefixOfAnyPath(imgui_settings.Path)) imgui_settings.IsChanged = true;
     ProjectHasChanges = true;
+}
+
+Project::Project(ComponentArgs &&args) : Component(std::move(args)) {
+    Windows.SetWindowComponents({
+        Audio,
+        Settings,
+        Audio.Faust.Code,
+        Audio.Faust.Code.Debug,
+        Audio.Faust.Log,
+        Audio.Faust.Graph,
+        Audio.Faust.Params,
+        Debug,
+        Debug.ProjectPreview,
+        Debug.StorePathUpdateFrequency,
+        Debug.DebugLog,
+        Debug.StackTool,
+        Debug.Metrics,
+        Style,
+        Demo,
+        Info,
+    });
+}
+
+nlohmann::json Project::ToJson(const ProjectFormat format) const {
+    switch (format) {
+        case StateFormat: return store.GetJson();
+        case ActionFormat: return History.GetIndexedGestures();
+    }
 }
 
 void Project::Apply(const ActionType &action) const {
@@ -169,13 +169,6 @@ bool Project::CanApply(const ActionType &action) const {
         [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
         [this](const Style::ActionType &a) { return Style.CanApply(a); },
         [](const auto &) { return true; },
-    );
-}
-
-void Apply(const Action::Savable &action) {
-    Visit(
-        action,
-        [](const Project::ActionType &a) { project.Apply(a); },
     );
 }
 
@@ -321,8 +314,8 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 }
 
 // Helper function used in `Project::Open`.
-void OpenStateFormatProjectInner(const nlohmann::json &project) {
-    const auto &patch = store.SetJson(project);
+void OpenStateFormatProjectInner(nlohmann::json &&project_json) {
+    const auto &patch = store.SetJson(std::move(project_json));
     Field::RefreshChanged(patch);
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
@@ -337,16 +330,20 @@ void Project::Open(const fs::path &file_path) {
 
     Field::IsGesturing = false;
 
-    const nlohmann::json project = ReadFileJson(file_path);
     if (format == StateFormat) {
-        OpenStateFormatProjectInner(project);
+        OpenStateFormatProjectInner(ReadFileJson(file_path));
     } else if (format == ActionFormat) {
         OpenStateFormatProjectInner(ReadFileJson(EmptyProjectPath));
 
-        StoreHistory::IndexedGestures indexed_gestures = project;
+        StoreHistory::IndexedGestures indexed_gestures = ReadFileJson(file_path);
         store.BeginTransient();
         for (auto &gesture : indexed_gestures.Gestures) {
-            for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.Action);
+            for (const auto &action_moment : gesture.Actions) {
+                Visit(
+                    action_moment.Action,
+                    [](const Project::ActionType &a) { project.Apply(a); },
+                );
+            }
             History.AddGesture(std::move(gesture));
         }
         LatestPatch = store.CheckedCommit();

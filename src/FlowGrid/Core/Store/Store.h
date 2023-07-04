@@ -29,7 +29,7 @@ struct Store : Actionable<Action::Store::Any> {
     Patch CheckedSet(const StoreImpl &);
     Patch CheckedSet(StoreImpl &&);
 
-    Patch SetJson(const nlohmann::json &); // Same as above, but convert the provided JSON to a store first.
+    Patch SetJson(nlohmann::json &&); // Same as above, but convert the provided JSON to a store first.
     void Commit(); // End transient mode and overwrite the store with the persistent store.
     Patch CheckedCommit();
 

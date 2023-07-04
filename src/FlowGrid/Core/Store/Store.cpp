@@ -44,7 +44,7 @@ json Store::GetJson(const StoreImpl &impl) const {
     return j;
 }
 
-static StoreImpl JsonToStore(const json &j) {
+static StoreImpl JsonToStore(json &&j) {
     const auto &flattened = j.flatten();
     std::vector<std::pair<StorePath, Primitive>> entries(flattened.size());
     int item_index = 0;
@@ -90,6 +90,7 @@ void Store::Commit() {
 }
 
 Patch Store::CheckedSet(const StoreImpl &store) {
+    TransientImpl.reset();
     const auto &patch = CreatePatch(store);
     if (patch.Empty()) return {};
 
@@ -98,6 +99,7 @@ Patch Store::CheckedSet(const StoreImpl &store) {
 }
 
 Patch Store::CheckedSet(StoreImpl &&store) {
+    TransientImpl.reset();
     const auto &patch = CreatePatch(store);
     if (patch.Empty()) return {};
 
@@ -105,12 +107,8 @@ Patch Store::CheckedSet(StoreImpl &&store) {
     return patch;
 }
 
-Patch Store::SetJson(const json &j) {
-    TransientImpl.reset();
-    return CheckedSet(JsonToStore(j));
-}
-
 Patch Store::CheckedCommit() { return CheckedSet(EndTransient()); }
+Patch Store::SetJson(json &&j) { return CheckedSet(JsonToStore(std::move(j))); }
 
 Primitive Store::Get(const StorePath &path) const { return TransientImpl ? TransientImpl->PrimitiveByPath.at(path) : Impl->PrimitiveByPath.at(path); }
 

@@ -11,13 +11,9 @@
 
 struct StoreImpl;
 
-struct Store {
-    struct ActionHandler : Actionable<Action::Store::Any> {
-        void Apply(const ActionType &) const override;
-        bool CanApply(const ActionType &) const override { return true; }
-    };
-
-    inline static ActionHandler ActionHandler;
+struct Store : Actionable<Action::Store::Any> {
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; }
 
     void BeginTransient() const; // End transient mode with `Commit`.
 

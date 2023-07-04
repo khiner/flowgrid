@@ -16,10 +16,10 @@ void Store::ApplyPatch(const Patch &patch) const {
     }
 }
 
-void Store::ActionHandler::Apply(const ActionType &action) const {
+void Store::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const Action::Store::ApplyPatch &a) { store.ApplyPatch(a.patch); },
+        [this](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); },
     );
 }
 

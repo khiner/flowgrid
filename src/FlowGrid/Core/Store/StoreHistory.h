@@ -12,6 +12,7 @@ enum Direction {
 };
 
 struct StoreHistory {
+    struct Records;
     struct Metrics;
 
     // Used for saving/loading the history.
@@ -49,7 +50,8 @@ struct StoreHistory {
 
 private:
     const Store &Store;
-    std::unique_ptr<Metrics> HistoryMetrics;
+    std::unique_ptr<Records> _Records;
+    std::unique_ptr<Metrics> _Metrics;
 };
 
 Json(StoreHistory::IndexedGestures, Gestures, Index);

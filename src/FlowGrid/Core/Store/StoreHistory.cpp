@@ -9,14 +9,12 @@
 #include "Store.h"
 #include "StoreImpl.h"
 
-using std::string;
-
 struct StoreHistory::Metrics {
     immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath;
 
     void AddPatch(const Patch &patch, const TimePoint &commit_time) {
         for (const auto &path : patch.GetPaths()) {
-            immer::vector<TimePoint> commit_times = CommitTimesByPath.count(path) == 0 ? immer::vector<TimePoint>{} : CommitTimesByPath.at(path);
+            auto commit_times = CommitTimesByPath.count(path) == 0 ? immer::vector<TimePoint>{} : CommitTimesByPath.at(path);
             commit_times = commit_times.push_back(commit_time);
             CommitTimesByPath = CommitTimesByPath.set(path, commit_times);
         }
@@ -29,24 +27,21 @@ struct Record {
     StoreHistory::Metrics Metrics;
 };
 
-static std::vector<Record> Records;
+struct StoreHistory::Records {
+    Records(const ::Store &store) : Value{{store.Get(), Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
+
+    std::vector<Record> Value;
+};
 
 StoreHistory::StoreHistory(const ::Store &store)
-    : Store(store), HistoryMetrics(std::make_unique<Metrics>()) {
-    Records.clear();
-    Records.emplace_back(Store.Get(), Gesture{{}, Clock::now()}, Metrics{{}});
-}
+    : Store(store), _Records(std::make_unique<Records>(Store)), _Metrics(std::make_unique<Metrics>()) {}
 
-StoreHistory::~StoreHistory() {
-    // Not clearing here because the destructor for the old singleton instance is called after the new instance is constructed.
-    // This is fine, since records should have the same lifetime as the application.
-}
+StoreHistory::~StoreHistory() = default;
 
 void StoreHistory::Clear() {
     Index = 0;
-    HistoryMetrics = std::make_unique<Metrics>();
-    Records.clear();
-    Records.emplace_back(Store.Get(), Gesture{{}, Clock::now()}, Metrics{{}});
+    _Records = std::make_unique<Records>(Store);
+    _Metrics = std::make_unique<Metrics>();
 }
 
 void StoreHistory::AddGesture(Gesture &&gesture) {
@@ -54,40 +49,40 @@ void StoreHistory::AddGesture(Gesture &&gesture) {
     const auto patch = Store.CreatePatch(this->CurrentStore(), store_impl);
     if (patch.Empty()) return;
 
-    HistoryMetrics->AddPatch(patch, gesture.CommitTime);
+    _Metrics->AddPatch(patch, gesture.CommitTime);
 
-    while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
-    Records.emplace_back(store_impl, std::move(gesture), *HistoryMetrics);
+    while (Size() > Index + 1) _Records->Value.pop_back(); // TODO use an undo _tree_ and keep this history
+    _Records->Value.emplace_back(std::move(store_impl), std::move(gesture), *_Metrics);
     Index = Size() - 1;
 }
 
-Count StoreHistory::Size() const { return Records.size(); }
+Count StoreHistory::Size() const { return _Records->Value.size(); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
 bool StoreHistory::CanUndo() const { return Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
-const StoreImpl &StoreHistory::CurrentStore() const { return Records[Index].Store; }
+const StoreImpl &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
 
 std::map<StorePath, Count> StoreHistory::GetChangeCountByPath() const {
-    return Records[Index].Metrics.CommitTimesByPath |
+    return _Records->Value[Index].Metrics.CommitTimesByPath |
         std::views::transform([](const auto &entry) { return std::pair(entry.first, entry.second.size()); }) |
         ranges::to<std::map<StorePath, Count>>;
 }
 
-Count StoreHistory::GetChangedPathsCount() const { return Records[Index].Metrics.CommitTimesByPath.size(); }
+Count StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesByPath.size(); }
 
 Patch StoreHistory::CreatePatch(Count index) const {
-    return Store.CreatePatch(Records[index - 1].Store, Records[index].Store);
+    return Store.CreatePatch(_Records->Value[index - 1].Store, _Records->Value[index].Store);
 }
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
-    const auto &record = Records[index];
+    const auto &record = _Records->Value[index];
     return {record.Store, record.Gesture};
 }
 
 StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
     // All recorded gestures except the first, since the first record only holds the initial store with no gestures.
-    Gestures gestures = Records | std::views::drop(1) | std::views::transform([](const auto &record) { return record.Gesture; }) | ranges::to<std::vector>;
+    Gestures gestures = _Records->Value | std::views::drop(1) | std::views::transform([](const auto &record) { return record.Gesture; }) | ranges::to<std::vector>;
     return {std::move(gestures), Index};
 }
 
@@ -95,7 +90,7 @@ void StoreHistory::SetIndex(Count new_index) {
     if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
     Index = new_index;
-    HistoryMetrics = std::make_unique<Metrics>(Records[Index].Metrics);
+    _Metrics = std::make_unique<Metrics>(_Records->Value[Index].Metrics);
 }
 
 extern StoreHistory &History; // Global.

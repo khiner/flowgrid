@@ -63,11 +63,11 @@ static StoreImpl JsonToStore(const json &j) {
     return transient.Persistent();
 }
 
-const StoreImpl &Store::Get() const { return AppStore; }
-json Store::GetJson() const { return GetJson(AppStore); }
-
 TransientStoreImpl Transient{};
 bool IsTransient = true;
+
+StoreImpl Store::Get() const { return IsTransient ? Transient.Persistent() : AppStore; }
+json Store::GetJson() const { return GetJson(AppStore); }
 
 void Store::BeginTransient() const {
     if (IsTransient) return;
@@ -107,8 +107,6 @@ Patch Store::SetJson(const json &j) const {
 }
 
 Patch Store::CheckedCommit() const { return CheckedSet(EndTransient()); }
-
-StoreImpl Store::GetPersistent() const { return Transient.Persistent(); }
 
 Primitive Store::Get(const StorePath &path) const { return IsTransient ? Transient.PrimitiveByPath.at(path) : AppStore.PrimitiveByPath.at(path); }
 

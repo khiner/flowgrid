@@ -17,12 +17,13 @@ struct Store : Actionable<Action::Store::Any> {
 
     void BeginTransient() const; // End transient mode with `Commit`.
 
-    const StoreImpl &Get() const; // Get a read-only reference to the canonical project store.
+    // Get a read-only reference to the canonical project store.
+    // If currently in transient mode, returns a persistent version of it _without_ ending transient mode.
+    StoreImpl Get() const;
 
     nlohmann::json GetJson() const;
     nlohmann::json GetJson(const StoreImpl &) const;
 
-    StoreImpl GetPersistent() const; // Get the persistent store from the transient store _without_ ending transient mode.
     Patch CheckedSet(const StoreImpl &) const; // Overwrite the store with the provided store _if it is different_, and return the resulting (potentially empty) patch.
     Patch SetJson(const nlohmann::json &) const; // Same as above, but convert the provided JSON to a store first.
 

@@ -34,8 +34,9 @@ StoreHistory::~StoreHistory() {
     // This is fine, since records/metrics should have the same lifetime as the application.
 }
 
-void StoreHistory::Add(const StoreImpl &store_impl, const Gesture &gesture) {
-    const auto patch = store.CreatePatch(CurrentStore(), store_impl);
+void StoreHistory::AddGesture(Gesture &&gesture) {
+    const auto store_impl = store.Get();
+    const auto patch = store.CreatePatch(this->CurrentStore(), store_impl);
     if (patch.Empty()) return;
 
     for (const auto &path : patch.GetPaths()) {
@@ -45,12 +46,8 @@ void StoreHistory::Add(const StoreImpl &store_impl, const Gesture &gesture) {
     }
 
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
-    Records.emplace_back(store_impl, gesture, StoreHistoryMetrics{CommitTimesByPath});
+    Records.emplace_back(store_impl, std::move(gesture), StoreHistoryMetrics{CommitTimesByPath});
     Index = Size() - 1;
-}
-
-void StoreHistory::AddTransientGesture(const Gesture &gesture) {
-    Add(store.GetPersistent(), gesture);
 }
 
 Count StoreHistory::Size() const { return Records.size(); }
@@ -81,10 +78,6 @@ StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
     // All recorded gestures except the first, since the first record only holds the initial store with no gestures.
     Gestures gestures = Records | std::views::drop(1) | std::views::transform([](const auto &record) { return record.Gesture; }) | ranges::to<std::vector>;
     return {std::move(gestures), Index};
-}
-
-void StoreHistory::CommitGesture(Gesture &&gesture) {
-    Add(store.Get(), std::move(gesture));
 }
 
 void StoreHistory::SetIndex(Count new_index) {

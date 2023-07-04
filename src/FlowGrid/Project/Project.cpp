@@ -75,7 +75,7 @@ void CommitGesture() {
     ActiveGestureActions.clear();
     if (merged_actions.empty()) return;
 
-    History.CommitGesture({merged_actions, Clock::now()});
+    History.AddGesture({merged_actions, Clock::now()});
 }
 
 void SetHistoryIndex(Count index) {
@@ -337,11 +337,11 @@ void Project::Open(const fs::path &file_path) {
     } else if (format == ActionFormat) {
         OpenStateFormatProjectInner(ReadFileJson(EmptyProjectPath));
 
-        const StoreHistory::IndexedGestures indexed_gestures = project;
+        StoreHistory::IndexedGestures indexed_gestures = project;
         store.BeginTransient();
-        for (const auto &gesture : indexed_gestures.Gestures) {
+        for (auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.Action);
-            History.AddTransientGesture(gesture);
+            History.AddGesture(std::move(gesture));
         }
         LatestPatch = store.CheckedCommit();
         Field::RefreshChanged(LatestPatch);

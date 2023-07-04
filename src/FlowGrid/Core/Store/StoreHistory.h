@@ -30,14 +30,11 @@ struct StoreHistory {
     StoreHistory();
     ~StoreHistory();
 
+    void AddGesture(Gesture &&); // Add a gesture to the history.
     void SetIndex(Count);
-
-    void AddTransientGesture(const Gesture &); // Only used during action-formmated project loading.
-    void CommitGesture(Gesture &&); // Add a gesture to the history.
 
     Count Size() const;
     bool Empty() const;
-
     bool CanUndo() const;
     bool CanRedo() const;
 
@@ -49,9 +46,6 @@ struct StoreHistory {
     Count GetChangedPathsCount() const;
 
     Count Index{0};
-
-private:
-    void Add(const StoreImpl &, const Gesture &);
 };
 
 Json(StoreHistory::IndexedGestures, Gestures, Index);

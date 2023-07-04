@@ -15,22 +15,22 @@ Vec2::operator ImVec2() const { return {X(), Y()}; }
 
 void Vec2::Set(const std::pair<float, float> &value) const {
     const auto &[x, y] = value;
-    store::Set(Path / "X", x);
-    store::Set(Path / "Y", y);
+    store.Set(Path / "X", x);
+    store.Set(Path / "Y", y);
 }
 
 void Vec2::Apply(const ActionType &action) const {
     Visit(
         action,
         [this](const Action::Vec2::Set &a) { Set(a.value); },
-        [this](const Action::Vec2::SetX &a) { store::Set(Path / "X", a.value); },
-        [this](const Action::Vec2::SetY &a) { store::Set(Path / "Y", a.value); },
+        [this](const Action::Vec2::SetX &a) { store.Set(Path / "X", a.value); },
+        [this](const Action::Vec2::SetY &a) { store.Set(Path / "Y", a.value); },
         [this](const Action::Vec2::SetAll &a) { Set({a.value, a.value}); },
     );
 }
 
 void Vec2::RefreshValue() {
-    Value = {std::get<float>(store::Get(Path / "X")), std::get<float>(store::Get(Path / "Y"))};
+    Value = {std::get<float>(store.Get(Path / "X")), std::get<float>(store.Get(Path / "Y"))};
 }
 
 void Vec2::Render(ImGuiSliderFlags flags) const {

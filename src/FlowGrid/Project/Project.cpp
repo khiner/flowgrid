@@ -85,7 +85,7 @@ void SetHistoryIndex(Count index) {
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
-    LatestPatch = store::CheckedSet(History.CurrentStore());
+    LatestPatch = store.CheckedSet(History.CurrentStore());
     Field::RefreshChanged(LatestPatch);
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
@@ -129,7 +129,7 @@ void Project::Apply(const ActionType &action) const {
         [](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
 
         [](const FieldActionHandler::ActionType &a) { Field::ActionHandler.Apply(a); },
-        [](const store::ActionHandler::ActionType &a) { store::ActionHandler.Apply(a); },
+        [](const Store::ActionHandler::ActionType &a) { Store::ActionHandler.Apply(a); },
         [this](const Action::Project::ShowOpenDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [this](const Audio::ActionType &a) { Audio.Apply(a); },
@@ -151,7 +151,7 @@ bool Project::CanApply(const ActionType &action) const {
         [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
 
         [](const FieldActionHandler::ActionType &a) { return Field::ActionHandler.CanApply(a); },
-        [](const store::ActionHandler::ActionType &a) { return store::ActionHandler.CanApply(a); },
+        [](const Store::ActionHandler::ActionType &a) { return Store::ActionHandler.CanApply(a); },
         [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
         [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
@@ -316,7 +316,7 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 
 // Helper function used in `Project::Open`.
 void OpenStateFormatProjectInner(const nlohmann::json &project) {
-    const auto &patch = store::SetJson(project);
+    const auto &patch = store.SetJson(project);
     Field::RefreshChanged(patch);
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
@@ -338,12 +338,12 @@ void Project::Open(const fs::path &file_path) {
         OpenStateFormatProjectInner(ReadFileJson(EmptyProjectPath));
 
         const StoreHistory::IndexedGestures indexed_gestures = project;
-        store::BeginTransient();
+        store.BeginTransient();
         for (const auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) ::Apply(action_moment.Action);
             History.AddTransientGesture(gesture);
         }
-        LatestPatch = store::CheckedCommit();
+        LatestPatch = store.CheckedCommit();
         Field::RefreshChanged(LatestPatch);
         ::SetHistoryIndex(indexed_gestures.Index);
         Field::LatestChangedPaths.clear();
@@ -549,7 +549,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                         TreePop();
                     }
                     if (TreeNode("State snapshot")) {
-                        JsonTree("", store::GetJson(store_record));
+                        JsonTree("", store.GetJson(store_record));
                         TreePop();
                     }
                     TreePop();
@@ -653,7 +653,7 @@ void RunQueuedActions(bool force_commit_gesture) {
             std::holds_alternative<Action::FileDialog::Select>(action);
 
         const bool is_savable = action.IsSavable();
-        if (is_savable) store::BeginTransient(); // Idempotent.
+        if (is_savable) store.BeginTransient(); // Idempotent.
         // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
         else if (!stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
 
@@ -671,7 +671,7 @@ void RunQueuedActions(bool force_commit_gesture) {
         (!Field::IsGesturing && !ActiveGestureActions.empty() && GestureTimeRemainingSec(project_settings.GestureDurationSec) <= 0);
 
     if (!stateful_actions.empty()) {
-        LatestPatch = store::CheckedCommit();
+        LatestPatch = store.CheckedCommit();
         if (!LatestPatch.Empty()) {
             Field::RefreshChanged(LatestPatch, true);
             ActiveGestureActions.insert(ActiveGestureActions.end(), stateful_actions.begin(), stateful_actions.end());
@@ -679,7 +679,7 @@ void RunQueuedActions(bool force_commit_gesture) {
             ProjectHasChanges = true;
         }
     } else {
-        store::Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
+        store.Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
     }
 
     if (commit_gesture) CommitGesture();

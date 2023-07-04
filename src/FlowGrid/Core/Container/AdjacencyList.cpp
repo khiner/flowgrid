@@ -7,11 +7,11 @@
 void AdjacencyList::Connect(ID source, ID destination) const {
     if (IsConnected(source, destination)) return;
 
-    store::AddIdPair(Path, {source, destination});
+    store.AddIdPair(Path, {source, destination});
 }
 
 void AdjacencyList::Disconnect(ID source, ID destination) const {
-    store::EraseIdPair(Path, {source, destination});
+    store.EraseIdPair(Path, {source, destination});
 }
 
 void AdjacencyList::ToggleConnection(ID source, ID destination) const {
@@ -20,7 +20,7 @@ void AdjacencyList::ToggleConnection(ID source, ID destination) const {
 }
 
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
-    return store::HasIdPair(Path, {source, destination});
+    return store.HasIdPair(Path, {source, destination});
 }
 
 using namespace ImGui;
@@ -28,13 +28,13 @@ using namespace ImGui;
 void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     Field::RenderValueTree(annotate, auto_select);
 
-    if (!store::IdPairCount(Path)) {
+    if (!store.IdPairCount(Path)) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());
         return;
     }
 
     if (TreeNode(Name)) {
-        const auto id_pairs = store::IdPairs(Path);
+        const auto id_pairs = store.IdPairs(Path);
         Count i = 0;
         for (const auto &id_pair : id_pairs) {
             const ID source_id = id_pair.first;

@@ -2,8 +2,8 @@
 
 #include "Core/Store/Store.h"
 
-template<IsPrimitive T> T PrimitiveField<T>::Get() const { return std::get<T>(store::Get(Path)); }
-template<IsPrimitive T> void PrimitiveField<T>::Set(const T &value) const { store::Set(Path, value); }
+template<IsPrimitive T> T PrimitiveField<T>::Get() const { return std::get<T>(store.Get(Path)); }
+template<IsPrimitive T> void PrimitiveField<T>::Set(const T &value) const { store.Set(Path, value); }
 
 template<IsPrimitive T> void PrimitiveField<T>::RenderValueTree(bool annotate, bool auto_select) const {
     Field::RenderValueTree(annotate, auto_select);

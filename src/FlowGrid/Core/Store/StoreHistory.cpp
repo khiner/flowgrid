@@ -27,15 +27,15 @@ static immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPa
 StoreHistory::StoreHistory() {
     CommitTimesByPath = {};
     Records.clear();
-    Records.emplace_back(store::Get(), Gesture{{}, Clock::now()}, StoreHistoryMetrics{{}});
+    Records.emplace_back(store.Get(), Gesture{{}, Clock::now()}, StoreHistoryMetrics{{}});
 }
 StoreHistory::~StoreHistory() {
     // Not clearing records/metrics here because the destructor for the old singleton instance is called after the new instance is constructed.
     // This is fine, since records/metrics should have the same lifetime as the application.
 }
 
-void StoreHistory::Add(const StoreImpl &store, const Gesture &gesture) {
-    const auto patch = store::CreatePatch(CurrentStore(), store);
+void StoreHistory::Add(const StoreImpl &store_impl, const Gesture &gesture) {
+    const auto patch = store.CreatePatch(CurrentStore(), store_impl);
     if (patch.Empty()) return;
 
     for (const auto &path : patch.GetPaths()) {
@@ -45,12 +45,12 @@ void StoreHistory::Add(const StoreImpl &store, const Gesture &gesture) {
     }
 
     while (Size() > Index + 1) Records.pop_back(); // TODO use an undo _tree_ and keep this history
-    Records.emplace_back(store, gesture, StoreHistoryMetrics{CommitTimesByPath});
+    Records.emplace_back(store_impl, gesture, StoreHistoryMetrics{CommitTimesByPath});
     Index = Size() - 1;
 }
 
 void StoreHistory::AddTransientGesture(const Gesture &gesture) {
-    Add(store::GetPersistent(), gesture);
+    Add(store.GetPersistent(), gesture);
 }
 
 Count StoreHistory::Size() const { return Records.size(); }
@@ -69,7 +69,7 @@ std::map<StorePath, Count> StoreHistory::GetChangeCountByPath() const {
 Count StoreHistory::GetChangedPathsCount() const { return Records[Index].Metrics.CommitTimesByPath.size(); }
 
 Patch StoreHistory::CreatePatch(Count index) const {
-    return store::CreatePatch(Records[index - 1].Store, Records[index].Store);
+    return store.CreatePatch(Records[index - 1].Store, Records[index].Store);
 }
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
@@ -84,7 +84,7 @@ StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
 }
 
 void StoreHistory::CommitGesture(Gesture &&gesture) {
-    Add(store::Get(), std::move(gesture));
+    Add(store.Get(), std::move(gesture));
 }
 
 void StoreHistory::SetIndex(Count new_index) {

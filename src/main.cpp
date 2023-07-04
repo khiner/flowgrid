@@ -4,6 +4,8 @@
 #include "FlowGrid/Project/Project.h"
 #include "UI/UI.h"
 
+Store store_singleton{}; // xxx temporary state of affairs.
+const Store &store = store_singleton;
 Project MainProject{{}};
 // Set all global extern variables.
 const Project &project = MainProject;
@@ -18,7 +20,7 @@ UIContext Ui{}; // Initialize UI
 
 int main() {
     // Initialize the global canonical store with all project state values set during project initialization.
-    store::Commit();
+    store.Commit();
 
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
     Field::RefreshAll();

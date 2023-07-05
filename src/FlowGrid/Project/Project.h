@@ -21,7 +21,7 @@ enum ProjectFormat {
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
  */
 struct Project : Component, Actionable<Action::Any> {
-    Project();
+    Project(Store &);
 
     static void OpenRecentProjectMenuItem();
 
@@ -154,11 +154,12 @@ protected:
     void Render() const override;
 
 private:
-    static void Open(const fs::path &);
+    void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
+    void SetHistoryIndex(Count) const;
 };
 
-void RunQueuedActions(bool force_commit_gesture = false);
+void RunQueuedActions(Store &, bool force_commit_gesture = false);
 
 /**
 Declare global read-only accessor for the canonical state instance `project`.

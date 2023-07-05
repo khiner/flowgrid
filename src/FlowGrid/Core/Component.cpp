@@ -17,17 +17,19 @@ Component::Metadata Component::Metadata::Parse(string_view str) {
     return {found ? string(str.substr(0, help_split)) : string(str), found ? string(str.substr(help_split + 1)) : ""};
 }
 
-Component::Component() : Parent(nullptr), PathLeaf(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
+Component::Component(Store &store)
+    : RootStore(store), Parent(nullptr), PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById[Id] = this;
 }
 
-Component::Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
-    : Parent(parent),
-      PathLeaf(path_leaf),
-      Path(Parent->Path / PathLeaf),
-      Name(meta.Name.empty() ? PathLeaf.empty() ? "" : StringHelper::PascalToSentenceCase(PathLeaf) : meta.Name),
+Component::Component(Component *parent, string_view path_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
+    : RootStore(parent->RootStore),
+      Parent(parent),
+      PathSegment(path_segment),
+      Path(Parent->Path / PathSegment),
+      Name(meta.Name.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : meta.Name),
       Help(meta.Help),
-      ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathLeaf)),
+      ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathSegment)),
       Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent->Id)),
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {
@@ -36,12 +38,12 @@ Component::Component(Component *parent, string_view path_leaf, Metadata meta, Im
 }
 
 Component::Component(ComponentArgs &&args)
-    : Component(std::move(args.Parent), std::move(args.PathLeaf), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, Menu{{}}) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, Menu{{}}) {}
 
 Component::Component(ComponentArgs &&args, const ImGuiWindowFlags flags)
-    : Component(std::move(args.Parent), std::move(args.PathLeaf), Metadata::Parse(std::move(args.MetaStr)), flags, Menu{{}}) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), flags, Menu{{}}) {}
 Component::Component(ComponentArgs &&args, Menu &&menu)
-    : Component(std::move(args.Parent), std::move(args.PathLeaf), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
 
 Component::~Component() {
     ById.erase(Id);

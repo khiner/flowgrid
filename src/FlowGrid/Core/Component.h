@@ -15,6 +15,8 @@ namespace fg = FlowGrid;
 
 using std::string, std::string_view;
 
+struct Store;
+
 struct Menu : Drawable {
     using Item = std::variant<Menu, std::reference_wrapper<MenuItemDrawable>, std::function<void()>>;
 
@@ -52,7 +54,7 @@ struct Component : Drawable {
 
     struct ComponentArgs {
         Component *Parent; // Must be present for non-empty constructor.
-        string_view PathLeaf = ""; // xxx should be named PathSegment (also instance var)
+        string_view PathSegment = "";
         string_view MetaStr = "";
     };
 
@@ -60,7 +62,7 @@ struct Component : Drawable {
     // Components with at least one descendent field updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedComponentIds;
 
-    Component();
+    Component(Store &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -79,9 +81,10 @@ struct Component : Drawable {
     const Component *Child(Count i) const noexcept { return Children[i]; }
     inline Count ChildCount() const noexcept { return Children.size(); }
 
-    const Component *Parent;
+    Store &RootStore; // Reference to the store at the root of this component's tree.
+    const Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
-    const string PathLeaf;
+    const string PathSegment;
     const StorePath Path;
     const string Name, Help, ImGuiLabel;
     const ID Id;
@@ -106,7 +109,7 @@ protected:
     static bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr, bool highlight_value = false);
 
 private:
-    Component(Component *parent, string_view path_leaf, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
+    Component(Component *parent, string_view path_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
 };
 
 // Minimal/base debug component.

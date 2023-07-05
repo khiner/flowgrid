@@ -12,7 +12,7 @@ template<IsPrimitive T> void Vector2D<T>::Set(const std::vector<std::vector<T>> 
             Set(i, j, value[i][j]);
             j++;
         }
-        while (store.CountAt(PathAt(i, j))) store.Erase(PathAt(i, j++));
+        while (RootStore.CountAt(PathAt(i, j))) RootStore.Erase(PathAt(i, j++));
         i++;
     }
 
@@ -21,7 +21,7 @@ template<IsPrimitive T> void Vector2D<T>::Set(const std::vector<std::vector<T>> 
 
 template<IsPrimitive T> void Vector2D<T>::Resize(Count size) const {
     Count i = size;
-    while (store.CountAt(PathAt(i, 0))) {
+    while (RootStore.CountAt(PathAt(i, 0))) {
         Resize(i, 0);
         i++;
     }
@@ -29,20 +29,20 @@ template<IsPrimitive T> void Vector2D<T>::Resize(Count size) const {
 
 template<IsPrimitive T> void Vector2D<T>::Resize(Count i, Count size) const {
     Count j = size;
-    while (store.CountAt(PathAt(i, j))) store.Erase(PathAt(i, j++));
+    while (RootStore.CountAt(PathAt(i, j))) RootStore.Erase(PathAt(i, j++));
 }
 
 template<IsPrimitive T> void Vector2D<T>::Set(Count i, Count j, const T &value) const {
-    store.Set(PathAt(i, j), value);
+    RootStore.Set(PathAt(i, j), value);
 }
 
 template<IsPrimitive T> void Vector2D<T>::RefreshValue() {
     Count i = 0;
-    while (store.CountAt(PathAt(i, 0))) {
+    while (RootStore.CountAt(PathAt(i, 0))) {
         if (Value.size() == i) Value.push_back({});
         Count j = 0;
-        while (store.CountAt(PathAt(i, j))) {
-            const T value = std::get<T>(store.Get(PathAt(i, j)));
+        while (RootStore.CountAt(PathAt(i, j))) {
+            const T value = std::get<T>(RootStore.Get(PathAt(i, j)));
             if (Value[i].size() == j) Value[i].push_back(value);
             else Value[i][j] = value;
             j++;

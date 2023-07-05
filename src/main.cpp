@@ -5,11 +5,10 @@
 #include "FlowGrid/Project/Project.h"
 #include "UI/UI.h"
 
-Store store_singleton{}; // xxx temporary state of affairs.
-Store &store = store_singleton;
+Store store{};
 StoreHistory store_history_singleton{store}; // xxx temporary state of affairs.
 StoreHistory &History = store_history_singleton;
-Project MainProject{};
+Project MainProject{store};
 // Set all global extern variables.
 const Project &project = MainProject;
 const fg::Style &fg::style = project.Style;
@@ -36,13 +35,13 @@ int main() {
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
         Ui.Tick(project); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
         Ui.Tick(project); // Another one seems to be needed to update selected tabs? (I think this happens when changes during initilization change scroll position or somesuch.)
-        RunQueuedActions(true);
+        RunQueuedActions(store, true);
     }
 
     project.OnApplicationLaunch();
 
     while (Ui.Tick(project)) {
-        RunQueuedActions();
+        RunQueuedActions(store);
     }
 
     IGFD::Uninit();

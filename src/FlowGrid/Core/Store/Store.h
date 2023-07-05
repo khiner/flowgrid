@@ -63,5 +63,3 @@ private:
     std::unique_ptr<StoreImpl> Impl;
     std::unique_ptr<TransientStoreImpl> TransientImpl; // If this is non-null, the store is in transient mode.
 };
-
-extern Store &store;

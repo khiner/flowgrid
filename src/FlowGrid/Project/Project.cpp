@@ -62,14 +62,14 @@ void CommitGesture() {
     History.AddGesture({merged_actions, Clock::now()});
 }
 
-void SetHistoryIndex(Count index) {
+void Project::SetHistoryIndex(Count index) const {
     if (index == History.Index) return;
 
     Field::GestureChangedPaths.clear();
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
-    LatestPatch = store.CheckedSet(History.CurrentStore());
+    LatestPatch = RootStore.CheckedSet(History.CurrentStore());
     Field::RefreshChanged(LatestPatch);
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
@@ -81,7 +81,7 @@ void SetHistoryIndex(Count index) {
     ProjectHasChanges = true;
 }
 
-Project::Project() : Component() {
+Project::Project(Store &store) : Component(store) {
     Windows.SetWindowComponents({
         Audio,
         Settings,
@@ -104,7 +104,7 @@ Project::Project() : Component() {
 
 nlohmann::json Project::ToJson(const ProjectFormat format) const {
     switch (format) {
-        case StateFormat: return store.GetJson();
+        case StateFormat: return RootStore.GetJson();
         case ActionFormat: return History.GetIndexedGestures();
     }
 }
@@ -112,9 +112,9 @@ nlohmann::json Project::ToJson(const ProjectFormat format) const {
 void Project::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
-        [](const Action::Project::Open &a) { Open(a.file_path); },
-        [](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
+        [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
+        [this](const Action::Project::Open &a) { Open(a.file_path); },
+        [this](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
 
         [this](const Action::Project::Save &a) { Save(a.file_path); },
         [this](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
@@ -122,7 +122,7 @@ void Project::Apply(const ActionType &action) const {
             if (CurrentProjectPath) Save(*CurrentProjectPath);
         },
         // History-changing actions:
-        [](const Action::Project::Undo &) {
+        [this](const Action::Project::Undo &) {
             if (History.Empty()) return;
 
             // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
@@ -132,16 +132,16 @@ void Project::Apply(const ActionType &action) const {
             // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
             if (History.Index == History.Size() - 1) {
                 if (!ActiveGestureActions.empty()) CommitGesture();
-                ::SetHistoryIndex(History.Index - 1);
+                SetHistoryIndex(History.Index - 1);
             } else {
-                ::SetHistoryIndex(History.Index - (ActiveGestureActions.empty() ? 1 : 0));
+                SetHistoryIndex(History.Index - (ActiveGestureActions.empty() ? 1 : 0));
             }
         },
-        [](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
-        [](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+        [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
+        [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
 
         [](const FieldActionHandler::ActionType &a) { Field::ActionHandler.Apply(a); },
-        [](const Store::ActionType &a) { store.Apply(a); },
+        [this](const Store::ActionType &a) { RootStore.Apply(a); },
         [this](const Action::Project::ShowOpenDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [this](const Audio::ActionType &a) { Audio.Apply(a); },
@@ -163,7 +163,7 @@ bool Project::CanApply(const ActionType &action) const {
         [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
 
         [](const FieldActionHandler::ActionType &a) { return Field::ActionHandler.CanApply(a); },
-        [](const Store::ActionType &a) { return store.CanApply(a); },
+        [this](const Store::ActionType &a) { return RootStore.CanApply(a); },
         [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
         [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
@@ -314,8 +314,8 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 }
 
 // Helper function used in `Project::Open`.
-void OpenStateFormatProjectInner(nlohmann::json &&project_json) {
-    const auto &patch = store.SetJson(std::move(project_json));
+void OpenStateFormatProject(const fs::path &file_path, Store &store) {
+    const auto &patch = store.SetJson(ReadFileJson(file_path));
     Field::RefreshChanged(patch);
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
@@ -324,19 +324,19 @@ void OpenStateFormatProjectInner(nlohmann::json &&project_json) {
     History.Clear();
 }
 
-void Project::Open(const fs::path &file_path) {
+void Project::Open(const fs::path &file_path) const {
     const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 
     Field::IsGesturing = false;
 
     if (format == StateFormat) {
-        OpenStateFormatProjectInner(ReadFileJson(file_path));
+        OpenStateFormatProject(file_path, RootStore);
     } else if (format == ActionFormat) {
-        OpenStateFormatProjectInner(ReadFileJson(EmptyProjectPath));
+        OpenStateFormatProject(EmptyProjectPath, RootStore);
 
         StoreHistory::IndexedGestures indexed_gestures = ReadFileJson(file_path);
-        store.BeginTransient();
+        RootStore.BeginTransient();
         for (auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 Visit(
@@ -346,9 +346,9 @@ void Project::Open(const fs::path &file_path) {
             }
             History.AddGesture(std::move(gesture));
         }
-        LatestPatch = store.CheckedCommit();
+        LatestPatch = RootStore.CheckedCommit();
         Field::RefreshChanged(LatestPatch);
-        ::SetHistoryIndex(indexed_gestures.Index);
+        SetHistoryIndex(indexed_gestures.Index);
         Field::LatestChangedPaths.clear();
     }
 
@@ -552,7 +552,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                         TreePop();
                     }
                     if (TreeNode("State snapshot")) {
-                        JsonTree("", store.GetJson(store_record));
+                        JsonTree("", RootStore.GetJson(store_record));
                         TreePop();
                     }
                     TreePop();
@@ -628,7 +628,7 @@ void q(const Action::Any &&action) {
     ActionQueue.enqueue({action, Clock::now()});
 }
 
-void RunQueuedActions(bool force_commit_gesture) {
+void RunQueuedActions(Store &store, bool force_commit_gesture) {
     static ActionMoment action_moment;
     static vector<SavableActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
     stateful_actions.clear();

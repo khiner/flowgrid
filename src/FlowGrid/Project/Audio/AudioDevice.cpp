@@ -163,6 +163,7 @@ void AudioDevice::Start() const {
     if (IsStarted()) return;
     const int result = ma_device_start(&MaDevice);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio device: {}", result));
+    UpdateVolume();
 }
 void AudioDevice::Stop() const {
     if (!IsStarted()) return;

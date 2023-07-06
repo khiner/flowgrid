@@ -208,6 +208,9 @@ void AudioGraph::RenderConnections() const {
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
 
+            const bool disabled = source_node->Id == dest_node->Id;
+            if (disabled) BeginDisabled();
+
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (flags & InteractionFlags_Clicked) {
                 Action::AdjacencyList::ToggleConnection{Connections.Path, source_node->Id, dest_node->Id}.q();
@@ -222,6 +225,9 @@ void AudioGraph::RenderConnections() const {
                      (is_connected ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg)
                 );
             RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));
+
+            if (disabled) EndDisabled();
+
             PopID();
             source_i++;
         }

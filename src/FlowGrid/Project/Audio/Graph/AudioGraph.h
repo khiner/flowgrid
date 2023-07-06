@@ -62,9 +62,7 @@ struct AudioGraph : Component, Field::ChangeListener {
 
         const AudioGraph *Graph;
 
-        // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
-        // todo configurable data source
-        Prop(InputNode, Input);
+        Prop(InputNode, Input); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
         Prop(FaustNode, Faust);
         Prop(TestToneNode, TestTone);
         Prop(OutputNode, Output);

@@ -190,8 +190,6 @@ void AudioGraph::RenderConnections() const {
     for (const auto *dest_node : Nodes) {
         if (!dest_node->IsDestination()) continue;
 
-        const auto dest_id = dest_node->Id;
-
         const char *label = dest_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
 

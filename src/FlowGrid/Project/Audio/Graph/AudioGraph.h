@@ -3,7 +3,9 @@
 #include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Core/Primitive/Float.h"
-#include "Project/Audio/Faust/FaustNode.h" // xxx should not depend on any specific node types
+// xxx should not depend on any specific node types
+#include "Project/Audio/Faust/FaustNode.h"
+#include "Project/Audio/TestToneNode.h"
 
 struct ma_device;
 struct ma_node_graph;
@@ -64,6 +66,7 @@ struct AudioGraph : Component, Field::ChangeListener {
         // todo configurable data source
         Prop(InputNode, Input);
         Prop(FaustNode, Faust);
+        Prop(TestToneNode, TestTone);
         Prop(OutputNode, Output);
 
     private:

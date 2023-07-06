@@ -108,19 +108,12 @@ Patch Store::SetJson(json &&j) { return CheckedSet(JsonToStore(std::move(j))); }
 Primitive Store::Get(const StorePath &path) const { return TransientImpl ? TransientImpl->PrimitiveByPath.at(path) : Impl->PrimitiveByPath.at(path); }
 
 void Store::Set(const StorePath &path, const Primitive &value) const {
-    if (TransientImpl) {
-        TransientImpl->PrimitiveByPath.set(path, value);
-    } else {
-        // todo no effect. throw error instead?
-        auto _ = Impl->PrimitiveByPath.set(path, value);
-    }
+    assert(TransientImpl);
+    TransientImpl->PrimitiveByPath.set(path, value);
 }
 void Store::Erase(const StorePath &path) const {
-    if (TransientImpl) {
-        TransientImpl->PrimitiveByPath.erase(path);
-    } else {
-        auto _ = Impl->PrimitiveByPath.erase(path);
-    }
+    assert(TransientImpl);
+    TransientImpl->PrimitiveByPath.erase(path);
 }
 
 Count Store::CheckedCommit(const StorePath &path) const {
@@ -142,18 +135,12 @@ std::unordered_set<IdPair, IdPairHash> Store::IdPairs(const StorePath &path) con
 }
 
 void Store::AddIdPair(const StorePath &path, const IdPair &value) const {
-    if (TransientImpl) {
-        TransientImpl->IdPairsByPath[path].insert(value);
-    } else {
-        auto _ = Impl->IdPairsByPath[path].insert(value);
-    }
+    assert(TransientImpl);
+    TransientImpl->IdPairsByPath[path].insert(value);
 }
 void Store::EraseIdPair(const StorePath &path, const IdPair &value) const {
-    if (TransientImpl) {
-        TransientImpl->IdPairsByPath[path].erase(value);
-    } else {
-        auto _ = Impl->IdPairsByPath[path].erase(value);
-    }
+    assert(TransientImpl);
+    TransientImpl->IdPairsByPath[path].erase(value);
 }
 bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
     if (TransientImpl) {

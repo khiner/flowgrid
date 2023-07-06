@@ -32,15 +32,20 @@ struct Project : Component, Actionable<Action::Any> {
 
     nlohmann::json ToJson(const ProjectFormat) const;
 
-    struct Debug : DebugComponent {
-        Debug(ComponentArgs &&args)
+    struct Debug : DebugComponent, Field::ChangeListener {
+        Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
             : DebugComponent(
-                  std::move(args),
+                  std::move(args), flags,
                   Menu({
                       Menu("Settings", {AutoSelect, LabelMode}),
                       Menu({}), // Need multiple elements to disambiguate vector-of-variants construction from variant construction.
                   })
-              ) {}
+              ) {
+            AutoSelect.RegisterChangeListener(this);
+        }
+        ~Debug() {
+            Field::UnregisterChangeListener(this);
+        }
 
         struct Metrics : Component {
             using Component::Component;
@@ -112,6 +117,8 @@ struct Project : Component, Actionable<Action::Any> {
             Raw
         };
 
+        void OnFieldChanged() override;
+
         Prop_(Enum, LabelMode, "?'Raw' mode shows plain data structures and 'Annotated' mode shows (highlighted) human-readable labels in some cases.\n"
                                "For example, colors are stored as lists with a separate label mapping."
                                "When 'Annotated' mode is enabled, color keys are shown as labels instead of indexes.",
@@ -136,7 +143,7 @@ struct Project : Component, Actionable<Action::Any> {
     Prop(Info, Info);
 
     Prop(Demo, Demo);
-    Prop(Debug, Debug);
+    Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
     Prop(Windows, Windows);
 

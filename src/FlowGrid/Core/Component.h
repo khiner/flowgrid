@@ -40,6 +40,7 @@ using ImGuiWindowFlags = int;
 enum WindowFlags_ {
     WindowFlags_None = 0,
     WindowFlags_NoScrollbar = 1 << 3,
+    WindowFlags_NoScrollWithMouse = 1 << 4,
     WindowFlags_MenuBar = 1 << 10,
 };
 
@@ -66,6 +67,7 @@ struct Component : Drawable {
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
+    Component(ComponentArgs &&, ImGuiWindowFlags flags, Menu &&menu);
 
     virtual ~Component();
 
@@ -94,7 +96,8 @@ struct Component : Drawable {
     void Dock(ID node_id) const;
     void SelectTab() const; // If this window is tabbed, select it.
     const Menu WindowMenu{{}};
-    const ImGuiWindowFlags WindowFlags{WindowFlags_None};
+
+    ImGuiWindowFlags WindowFlags{WindowFlags_None};
 
     // Child renderers.
     void RenderTabs() const;

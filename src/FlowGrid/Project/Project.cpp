@@ -450,6 +450,12 @@ void Project::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetric
 
 using namespace FlowGrid;
 
+void Project::Debug::OnFieldChanged() {
+    if (AutoSelect.IsChanged()) {
+        WindowFlags = AutoSelect ? ImGuiWindowFlags_NoScrollWithMouse : ImGuiWindowFlags_None;
+    }
+}
+
 void Project::RenderDebug() const {
     const bool auto_select = Debug.AutoSelect;
     if (auto_select) BeginDisabled();

@@ -40,10 +40,12 @@ Component::Component(Component *parent, string_view path_segment, Metadata meta,
 Component::Component(ComponentArgs &&args)
     : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, Menu{{}}) {}
 
-Component::Component(ComponentArgs &&args, const ImGuiWindowFlags flags)
+Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags)
     : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), flags, Menu{{}}) {}
 Component::Component(ComponentArgs &&args, Menu &&menu)
     : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
+Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu)
+    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), flags, std::move(menu)) {}
 
 Component::~Component() {
     ById.erase(Id);
@@ -147,7 +149,12 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
         return;
     }
 
-    if (auto_select) SetNextItemOpen(ChangedComponentIds.contains(Id));
+    if (auto_select) {
+        const bool is_changed = ChangedComponentIds.contains(Id);
+        SetNextItemOpen(is_changed);
+        // Scroll to the current tree node row:
+        if (is_changed && IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
+    }
 
     if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel)) {
         for (const auto *child : Children) {

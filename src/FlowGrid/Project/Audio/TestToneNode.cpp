@@ -4,16 +4,19 @@
 
 #include "miniaudio.h"
 
-#include <iostream>
+static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?
 
-TestToneNode::TestToneNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {}
-
-// todo reinit on sample rate change.
-void TestToneNode::OnFieldChanged() {
-    AudioGraphNode::OnFieldChanged();
+TestToneNode::TestToneNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+    audio_device.SampleRate.RegisterChangeListener(this);
 }
 
-static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?
+void TestToneNode::OnFieldChanged() {
+    AudioGraphNode::OnFieldChanged();
+    if (CurrentWaveform) ma_waveform_set_sample_rate(CurrentWaveform, ma_uint32(audio_device.SampleRate));
+    // MA_API ma_result ma_waveform_set_amplitude(ma_waveform* pWaveform, double amplitude);
+    // MA_API ma_result ma_waveform_set_frequency(ma_waveform* pWaveform, double frequency);
+    // MA_API ma_result ma_waveform_set_type(ma_waveform* pWaveform, ma_waveform_type type);
+}
 
 void Process(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
     if (CurrentWaveform) ma_waveform_read_pcm_frames(CurrentWaveform, bus_frames_out[0], frame_count_out[0], nullptr);
@@ -46,4 +49,11 @@ ma_node *TestToneNode::DoInit() {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the TestTone node: {}", result));
 
     return &node;
+}
+
+void TestToneNode::DoUninit() {
+    if (!CurrentWaveform) return;
+
+    ma_waveform_uninit(CurrentWaveform);
+    CurrentWaveform = nullptr;
 }

@@ -9,4 +9,5 @@ struct TestToneNode : AudioGraphNode {
 
 private:
     ma_node *DoInit() override;
+    void DoUninit() override;
 };

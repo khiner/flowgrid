@@ -21,11 +21,8 @@ AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callba
     Init();
     UpdateVolume();
 
-    const std::vector<std::reference_wrapper<const Field>>
-        listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate, Muted, Volume};
-    for (const Field &field : listened_fields) {
-        field.RegisterChangeListener(this);
-    }
+    const Field::References listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate, Muted, Volume};
+    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 AudioDevice::~AudioDevice() {
     Field::UnregisterChangeListener(this);

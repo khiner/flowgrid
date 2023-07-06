@@ -14,6 +14,8 @@ struct Patch;
 // Fields are always leafs in the `Project` component tree, and leafs are always fields, making Fields 1:1 with `Project` component leafs.
 // todo Enforce Fields have no children (best done with types).
 struct Field : Component {
+    using References = std::vector<std::reference_wrapper<const Field>>;
+
     struct ChangeListener {
         // Called when at least one of the listened fields has changed.
         // Changed field(s) are not passed to the callback, but it's called while the fields are still marked as changed,

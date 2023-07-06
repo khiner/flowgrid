@@ -8,12 +8,10 @@
 
 #include "Helper/String.h"
 
-using std::string;
-
 // Handles any number of mods, followed by a single non-mod character.
 // Example: 'shift+cmd+s'
 // **Case-sensitive. `shortcut` must be lowercase.**
-static Shortcut::ImGuiFlagsAndKey Parse(const string &shortcut) {
+static Shortcut::ImGuiFlagsAndKey Parse(string_view shortcut) {
     const static std::unordered_map<string, ImGuiModFlags> ModKeys{
         {"shift", ImGuiModFlags_Shift},
         {"ctrl", ImGuiModFlags_Ctrl},
@@ -21,10 +19,10 @@ static Shortcut::ImGuiFlagsAndKey Parse(const string &shortcut) {
         {"cmd", ImGuiModFlags_Super},
     };
 
-    const std::vector<string> tokens = StringHelper::Split(shortcut, "+");
+    const std::vector<std::string> tokens = StringHelper::Split(std::string(shortcut), "+");
     if (tokens.empty()) throw std::runtime_error("Shortcut cannot be empty.");
 
-    const string command = tokens.back();
+    const std::string command = tokens.back();
     if (command.length() != 1) throw std::runtime_error("Shortcut command must be a single character.");
 
     const auto key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);

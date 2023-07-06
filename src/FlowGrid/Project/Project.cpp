@@ -463,12 +463,12 @@ void Project::Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    const nlohmann::json project_json = project.ToJson(ProjectFormat(int(Format)));
+    nlohmann::json project_json = project.ToJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {
         SetNextItemOpen(true);
-        fg::JsonTree("", project_json);
+        fg::JsonTree("", std::move(project_json));
     }
 }
 
@@ -479,10 +479,10 @@ void ShowActions(const SavableActionMoments &actions) {
             BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
             SameLine();
             fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
-            const nlohmann::json data = nlohmann::json(action)[1];
+            nlohmann::json data = nlohmann::json(action)[1];
             if (!data.is_null()) {
                 SetNextItemOpen(true);
-                JsonTree("Data", data);
+                JsonTree("Data", std::move(data));
             }
             TreePop();
         }

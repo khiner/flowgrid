@@ -24,27 +24,27 @@ bool TreeNode(std::string_view label_view, const char *id, const char *value) {
     return is_open;
 }
 
-void JsonTree(std::string_view label, const json &value, const char *id) {
+void JsonTree(std::string_view label, json &&value, const char *id) {
     if (value.is_null()) {
         TextUnformatted(label.empty() ? "(null)" : string(label).c_str());
     } else if (value.is_object()) {
         if (label.empty() || TreeNode(label, id)) {
-            for (auto it = value.begin(); it != value.end(); ++it) {
-                JsonTree(it.key(), *it);
+            for (auto it : value.items()) {
+                JsonTree(it.key(), std::move(it.value()));
             }
             if (!label.empty()) TreePop();
         }
     } else if (value.is_array()) {
         if (label.empty() || TreeNode(label, id)) {
             unsigned int i = 0;
-            for (const auto &it : value) {
-                JsonTree(std::to_string(i), it);
+            for (auto it : value) {
+                JsonTree(std::to_string(i), std::move(it));
                 i++;
             }
             if (!label.empty()) TreePop();
         }
     } else {
-        TreeNode(label, id, value.dump().c_str());
+        TreeNode(label, id, std::move(value).dump().c_str());
     }
 }
 } // namespace FlowGrid

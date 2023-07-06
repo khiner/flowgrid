@@ -118,13 +118,13 @@ Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const 
     diff(
         before.PrimitiveByPath,
         after.PrimitiveByPath,
-        [&](auto const &added) {
+        [&](const auto &added) {
             ops[added.first.lexically_relative(base_path)] = {PatchOp::Type::Add, added.second, {}};
         },
-        [&](auto const &removed) {
+        [&](const auto &removed) {
             ops[removed.first.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, removed.second};
         },
-        [&](auto const &old_element, auto const &new_element) {
+        [&](const auto &old_element, const auto &new_element) {
             ops[old_element.first.lexically_relative(base_path)] = {PatchOp::Type::Replace, new_element.second, old_element.second};
         }
     );

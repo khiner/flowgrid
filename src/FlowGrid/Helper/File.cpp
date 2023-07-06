@@ -13,7 +13,7 @@ string FileIO::read(const fs::path &path) {
     return result;
 }
 
-bool FileIO::write(const fs::path &path, const string &contents) {
+bool FileIO::write(const fs::path &path, std::string_view contents) {
     std::fstream out_file;
     out_file.open(path, std::ios::out);
     if (out_file) {

@@ -33,8 +33,8 @@ struct StoreHistory::Records {
     std::vector<Record> Value;
 };
 
-StoreHistory::StoreHistory(const ::Store &initial_store)
-    : Store(initial_store), _Records(std::make_unique<Records>(Store)), _Metrics(std::make_unique<Metrics>()) {}
+StoreHistory::StoreHistory(const ::Store &store)
+    : Store(store), _Records(std::make_unique<Records>(Store)), _Metrics(std::make_unique<Metrics>()) {}
 
 StoreHistory::~StoreHistory() = default;
 

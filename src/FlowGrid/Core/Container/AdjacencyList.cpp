@@ -40,7 +40,7 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
             const ID source_id = id_pair.first;
             const ID destination_id = id_pair.second;
             const bool can_annotate = annotate && ById.contains(source_id) && ById.contains(destination_id);
-            const std::string &label = can_annotate ?
+            const std::string label = can_annotate ?
                 std::format("{} -> {}", ById.at(source_id)->Name, ById.at(destination_id)->Name) :
                 std::format("#{:08X} -> #{:08X}", source_id, destination_id);
             TreeNode(to_string(i++), false, label.c_str(), can_annotate);

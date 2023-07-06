@@ -156,9 +156,7 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     inline static void from_json(const nlohmann::json &j, ActionVariant &value) {
         static auto PathToIndex = CreatePathToIndex();
         const auto path = j[0].get<fs::path>();
-        const auto index = PathToIndex[path];
-
-        value = Create(index, j[1]);
+        value = Create(PathToIndex[path], j[1]);
     }
 
 private:

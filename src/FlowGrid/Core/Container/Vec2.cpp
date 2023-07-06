@@ -6,17 +6,16 @@
 
 using namespace ImGui;
 
-Vec2::Vec2(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, const char *fmt)
-    : Field(std::move(args)), Min(min), Max(max), Format(fmt), Value(value) {
-    Set(value);
+Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
+    : Field(std::move(args)), Min(min), Max(max), Format(fmt), Value(std::move(value)) {
+    Set(Value);
 }
 
 Vec2::operator ImVec2() const { return {X(), Y()}; }
 
 void Vec2::Set(const std::pair<float, float> &value) const {
-    const auto &[x, y] = value;
-    RootStore.Set(Path / "X", x);
-    RootStore.Set(Path / "Y", y);
+    RootStore.Set(Path / "X", value.first);
+    RootStore.Set(Path / "Y", value.second);
 }
 
 void Vec2::Apply(const ActionType &action) const {
@@ -50,8 +49,8 @@ void Vec2::RenderValueTree(bool annotate, bool auto_select) const {
     TreeNode(Name, false, value_str.c_str());
 }
 
-Vec2Linked::Vec2Linked(ComponentArgs &&args, const std::pair<float, float> &value, float min, float max, bool linked, const char *fmt)
-    : Vec2(std::move(args), value, min, max, fmt) {
+Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt)
+    : Vec2(std::move(args), std::move(value), min, max, fmt) {
     Linked.Set(linked);
 }
 

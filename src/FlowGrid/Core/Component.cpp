@@ -7,9 +7,9 @@
 #include "Project/Style/Style.h"
 #include "UI/HelpMarker.h"
 
-Menu::Menu(string_view label, const std::vector<const Item> items) : Label(label), Items(std::move(items)) {}
-Menu::Menu(const std::vector<const Item> items) : Menu("", std::move(items)) {}
-Menu::Menu(const std::vector<const Item> items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
+Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), Items(std::move(items)) {}
+Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
+Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
 Component::Metadata Component::Metadata::Parse(string_view str) {
     const auto help_split = str.find_first_of('?');

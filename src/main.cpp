@@ -20,6 +20,25 @@ const FileDialog &file_dialog = project.FileDialog;
 const ProjectSettings &project_settings = project.Settings;
 UIContext Ui{}; // Initialize UI
 
+bool Tick() {
+    static auto &io = ImGui::GetIO();
+
+    bool running = Ui.Tick(project);
+    if (running && io.WantSaveIniSettings) {
+        // ImGui sometimes sets this flags when settings have not actually changed.
+        // E.g. if you press and hold a window-resize bar, it will set this flag every frame,
+        // even if the cursor remains stationary (no window size change).
+        // Rather than modifying the ImGui fork to not set this flag in all such cases
+        // (which would likely be a rabbit hole), we just check for diffs here.
+        ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
+        const auto &patch = imgui_settings.CreatePatch(ImGui::GetCurrentContext());
+        if (!patch.Empty()) Action::Store::ApplyPatch{patch}.q();
+        io.WantSaveIniSettings = false;
+    }
+
+    return running;
+}
+
 int main() {
     // Initialize the global canonical store with all project state values set during project initialization.
     store.Commit();
@@ -31,16 +50,16 @@ int main() {
 
     {
         // Relying on these rendering side effects up front is not great.
-        Ui.Tick(project); // Rendering the first frame has side effects like creating dockspaces & windows.
+        Tick(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        Ui.Tick(project); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        Ui.Tick(project); // Another one seems to be needed to update selected tabs? (I think this happens when changes during initilization change scroll position or somesuch.)
+        Tick(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        Tick(); // Another one seems to be needed to update selected tabs? (I think this happens when changes during initilization change scroll position or somesuch.)
         RunQueuedActions(store, true);
     }
 
     project.OnApplicationLaunch();
 
-    while (Ui.Tick(project)) {
+    while (Tick()) {
         RunQueuedActions(store);
     }
 

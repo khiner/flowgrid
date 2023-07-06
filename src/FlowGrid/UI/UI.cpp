@@ -10,7 +10,6 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
-#include "Core/Store/StoreAction.h"
 #include "Project/ImGuiSettings/ImGuiSettings.h"
 #include "Project/Style/Style.h"
 
@@ -497,18 +496,6 @@ bool UIContext::Tick(const Drawable &drawable) {
     drawable.Draw(); // All project content drawing, initial dockspace setup, keyboard shortcuts.
 #endif
     RenderFrame();
-
-    if (io.WantSaveIniSettings) {
-        // ImGui sometimes sets this flags when settings have not actually changed.
-        // E.g. if you press and hold a window-resize bar, it will set this flag every frame,
-        // even if the cursor remains stationary (no window size change).
-        // Rather than modifying the ImGui fork to not set this flag in all such cases
-        // (which would likely be a rabbit hole), we just check for diffs here.
-        ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        const auto &patch = imgui_settings.CreatePatch(ImGui::GetCurrentContext());
-        if (!patch.Empty()) Action::Store::ApplyPatch{patch}.q();
-        io.WantSaveIniSettings = false;
-    }
 
 #ifdef TRACING_ENABLED
     FrameMark;

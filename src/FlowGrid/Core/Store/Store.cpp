@@ -29,6 +29,28 @@ void Store::Apply(const ActionType &action) const {
 
 static const std::string IdPairsPrefix = "id_pairs::";
 
+Primitive Store::Get(const StorePath &path) const { return TransientImpl->PrimitiveByPath.at(path); }
+
+void Store::Set(const StorePath &path, const Primitive &value) const { TransientImpl->PrimitiveByPath.set(path, value); }
+void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.erase(path); }
+
+Count Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPairsByPath[path].size(); }
+
+std::unordered_set<IdPair, IdPairHash> Store::IdPairs(const StorePath &path) const {
+    assert(TransientImpl);
+    std::unordered_set<IdPair, IdPairHash> id_pairs;
+    for (const auto &id_pair : TransientImpl->IdPairsByPath[path]) id_pairs.insert(id_pair);
+    return id_pairs;
+}
+
+void Store::AddIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].insert(value); }
+void Store::EraseIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].erase(value); }
+Count Store::CountAt(const StorePath &path) const { return TransientImpl->PrimitiveByPath.count(path); }
+bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
+    if (!TransientImpl->IdPairsByPath.contains(path)) return false;
+    return TransientImpl->IdPairsByPath[path].count(value) > 0;
+}
+
 using namespace nlohmann;
 
 json Store::GetJson(const StoreImpl &impl) const {
@@ -63,96 +85,32 @@ static StoreImpl JsonToStore(json &&j) {
 StoreImpl Store::Get() const { return TransientImpl ? TransientImpl->Persistent() : *Impl; }
 json Store::GetJson() const { return GetJson(*Impl); }
 
-void Store::BeginTransient() {
-    if (TransientImpl) return;
-
+void Store::Set(const StoreImpl &impl) {
+    Impl = std::make_unique<StoreImpl>(impl);
+    TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
+}
+void Store::Set(StoreImpl &&impl) {
+    Impl = std::make_unique<StoreImpl>(impl);
     TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
 }
 
-// End transient mode and return the new persistent store.
-// Not exposed publicly (use `Commit` instead).
-StoreImpl Store::EndTransient() {
-    if (!TransientImpl) return *Impl;
-
-    const StoreImpl new_store = TransientImpl->Persistent();
-    TransientImpl.reset();
-
-    return new_store;
-}
-
-void Store::Commit() {
-    Impl = std::make_unique<StoreImpl>(EndTransient());
-}
+void Store::Commit() { Set(TransientImpl->Persistent()); }
 
 Patch Store::CheckedSet(const StoreImpl &store) {
-    TransientImpl.reset();
-    const auto &patch = CreatePatch(store);
-    if (patch.Empty()) return {};
-
-    Impl = std::make_unique<StoreImpl>(store);
+    const auto patch = CreatePatch(store);
+    Set(store);
     return patch;
 }
-
 Patch Store::CheckedSet(StoreImpl &&store) {
-    TransientImpl.reset();
-    const auto &patch = CreatePatch(store);
-    if (patch.Empty()) return {};
-
-    Impl = std::make_unique<StoreImpl>(std::move(store));
+    const auto patch = CreatePatch(store);
+    Set(store);
     return patch;
 }
-
-Patch Store::CheckedCommit() { return CheckedSet(EndTransient()); }
-Patch Store::SetJson(json &&j) { return CheckedSet(JsonToStore(std::move(j))); }
-
-Primitive Store::Get(const StorePath &path) const { return TransientImpl ? TransientImpl->PrimitiveByPath.at(path) : Impl->PrimitiveByPath.at(path); }
-
-void Store::Set(const StorePath &path, const Primitive &value) const {
-    assert(TransientImpl);
-    TransientImpl->PrimitiveByPath.set(path, value);
-}
-void Store::Erase(const StorePath &path) const {
-    assert(TransientImpl);
-    TransientImpl->PrimitiveByPath.erase(path);
+Patch Store::CheckedSetJson(json &&j) {
+    return CheckedSet(JsonToStore(std::move(j)));
 }
 
-Count Store::CheckedCommit(const StorePath &path) const {
-    return TransientImpl ? TransientImpl->IdPairsByPath[path].size() : Impl->IdPairsByPath[path].size();
-}
-
-Count Store::IdPairCount(const StorePath &path) const {
-    return TransientImpl ? TransientImpl->IdPairsByPath[path].size() : Impl->IdPairsByPath[path].size();
-}
-
-std::unordered_set<IdPair, IdPairHash> Store::IdPairs(const StorePath &path) const {
-    std::unordered_set<IdPair, IdPairHash> id_pairs;
-    if (TransientImpl) {
-        for (const auto &id_pair : TransientImpl->IdPairsByPath[path]) id_pairs.insert(id_pair);
-    } else {
-        for (const auto &id_pair : Impl->IdPairsByPath[path]) id_pairs.insert(id_pair);
-    }
-    return id_pairs;
-}
-
-void Store::AddIdPair(const StorePath &path, const IdPair &value) const {
-    assert(TransientImpl);
-    TransientImpl->IdPairsByPath[path].insert(value);
-}
-void Store::EraseIdPair(const StorePath &path, const IdPair &value) const {
-    assert(TransientImpl);
-    TransientImpl->IdPairsByPath[path].erase(value);
-}
-bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
-    if (TransientImpl) {
-        if (!TransientImpl->IdPairsByPath.contains(path)) return false;
-        return TransientImpl->IdPairsByPath[path].count(value) > 0;
-    } else {
-        if (!Impl->IdPairsByPath.contains(path)) return false;
-        return Impl->IdPairsByPath[path].count(value) > 0;
-    }
-}
-
-Count Store::CountAt(const StorePath &path) const { return TransientImpl ? TransientImpl->PrimitiveByPath.count(path) : Impl->PrimitiveByPath.count(path); }
+Patch Store::CheckedCommit() { return CheckedSet(TransientImpl->Persistent()); }
 
 Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const StorePath &base_path) const {
     PatchOps ops{};
@@ -208,4 +166,9 @@ Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const 
 }
 
 Patch Store::CreatePatch(const StoreImpl &store, const StorePath &base_path) const { return CreatePatch(*Impl, store, base_path); }
-Patch Store::CreatePatch(const StorePath &base_path) { return CreatePatch(*Impl, EndTransient(), base_path); }
+
+Patch Store::CreatePatchAndResetTransient(const StorePath &base_path) {
+    const auto patch = CreatePatch(*Impl, TransientImpl->Persistent(), base_path);
+    TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
+    return patch;
+}

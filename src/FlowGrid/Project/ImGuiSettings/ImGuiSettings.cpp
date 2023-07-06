@@ -229,13 +229,11 @@ void TableSettings::Update(ImGuiContext *) const {
 }
 
 Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) const {
-    RootStore.BeginTransient();
-
     Nodes.Set(ctx->DockContext.NodesSettings);
     Windows.Set(ctx->SettingsWindows);
     Tables.Set(ctx->SettingsTables);
 
-    return RootStore.CreatePatch(Path);
+    return RootStore.CreatePatchAndResetTransient(Path);
 }
 
 void ImGuiSettings::UpdateIfChanged(ImGuiContext *ctx) const {

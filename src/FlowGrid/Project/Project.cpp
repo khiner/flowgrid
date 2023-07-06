@@ -315,7 +315,7 @@ nlohmann::json ReadFileJson(const fs::path &file_path) {
 
 // Helper function used in `Project::Open`.
 void OpenStateFormatProject(const fs::path &file_path, Store &store) {
-    const auto &patch = store.SetJson(ReadFileJson(file_path));
+    const auto &patch = store.CheckedSetJson(ReadFileJson(file_path));
     Field::RefreshChanged(patch);
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
@@ -336,7 +336,6 @@ void Project::Open(const fs::path &file_path) const {
         OpenStateFormatProject(EmptyProjectPath, RootStore);
 
         StoreHistory::IndexedGestures indexed_gestures = ReadFileJson(file_path);
-        RootStore.BeginTransient();
         for (auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 Visit(
@@ -655,10 +654,8 @@ void RunQueuedActions(Store &store, bool force_commit_gesture) {
             std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
             std::holds_alternative<Action::FileDialog::Select>(action);
 
-        const bool is_savable = action.IsSavable();
-        if (is_savable) store.BeginTransient(); // Idempotent.
         // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
-        else if (!stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
+        if (!action.IsSavable() && !stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
 
         project.Apply(action);
 

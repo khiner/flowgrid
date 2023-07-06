@@ -28,13 +28,13 @@ struct Record {
 };
 
 struct StoreHistory::Records {
-    Records(const ::Store &store) : Value{{store.Get(), Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
+    Records(const ::Store &initial_store) : Value{{initial_store.Get(), Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
 
     std::vector<Record> Value;
 };
 
-StoreHistory::StoreHistory(const ::Store &store)
-    : Store(store), _Records(std::make_unique<Records>(Store)), _Metrics(std::make_unique<Metrics>()) {}
+StoreHistory::StoreHistory(const ::Store &initial_store)
+    : Store(initial_store), _Records(std::make_unique<Records>(Store)), _Metrics(std::make_unique<Metrics>()) {}
 
 StoreHistory::~StoreHistory() = default;
 

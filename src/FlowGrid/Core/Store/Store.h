@@ -17,22 +17,6 @@ struct Store : Actionable<Action::Store::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
 
-    // Get the current (concrete) store.
-    // If currently in transient mode, returns a persistent version of it _without_ ending transient mode.
-    StoreImpl Get() const;
-    nlohmann::json GetJson() const;
-    nlohmann::json GetJson(const StoreImpl &) const;
-
-    void BeginTransient(); // End transient mode with `Commit`.
-
-    // Overwrite the store with the provided store _if it is different_, and return the resulting (potentially empty) patch.
-    Patch CheckedSet(const StoreImpl &);
-    Patch CheckedSet(StoreImpl &&);
-
-    Patch SetJson(nlohmann::json &&); // Same as above, but convert the provided JSON to a store first.
-    void Commit(); // End transient mode and overwrite the store with the persistent store.
-    Patch CheckedCommit();
-
     Primitive Get(const StorePath &) const;
     Count CountAt(const StorePath &) const;
 
@@ -45,20 +29,31 @@ struct Store : Actionable<Action::Store::Any> {
     void EraseIdPair(const StorePath &, const IdPair &) const;
     bool HasIdPair(const StorePath &, const IdPair &) const;
 
+    StoreImpl Get() const; // Get the current (concrete) store.
+    nlohmann::json GetJson() const; // Get the current store as JSON.
+    nlohmann::json GetJson(const StoreImpl &) const; // Get the provided store as JSON.
+
+    // Overwrite the store with the provided store and return the resulting patch.
+    Patch CheckedSet(const StoreImpl &);
+    Patch CheckedSet(StoreImpl &&);
+    Patch CheckedSetJson(nlohmann::json &&);
+
+    void Commit(); // Overwrite the persistent store with all changes since the last commit.
+    Patch CheckedCommit(); // Same as `Commit`, but returns the resulting patch.
+
     // Create a patch comparing the provided stores.
     Patch CreatePatch(const StoreImpl &before, const StoreImpl &after, const StorePath &base_path = RootPath) const;
-
     // Create a patch comparing the provided store with the current persistent store.
     Patch CreatePatch(const StoreImpl &, const StorePath &base_path = RootPath) const;
-
     // Create a patch comparing the current transient store with the current persistent store.
-    // **Ends transient mode.**
-    Patch CreatePatch(const StorePath &base_path = RootPath);
+    // **Resets the transient store to the current persisent store.**
+    Patch CreatePatchAndResetTransient(const StorePath &base_path = RootPath);
 
 private:
     void ApplyPatch(const Patch &) const;
-    StoreImpl EndTransient();
-    Count CheckedCommit(const StorePath &) const;
+
+    void Set(const StoreImpl &);
+    void Set(StoreImpl &&);
 
     std::unique_ptr<StoreImpl> Impl;
     std::unique_ptr<TransientStoreImpl> TransientImpl; // If this is non-null, the store is in transient mode.

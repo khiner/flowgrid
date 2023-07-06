@@ -11,9 +11,7 @@ AudioGraphNode::~AudioGraphNode() {
 }
 
 void AudioGraphNode::OnFieldChanged() {
-    if (Volume.IsChanged()) {
-        UpdateVolume();
-    }
+    if (Volume.IsChanged()) UpdateVolume();
 }
 
 void AudioGraphNode::Set(ma_node *node) {

@@ -8,11 +8,18 @@ static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?
 
 TestToneNode::TestToneNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     audio_device.SampleRate.RegisterChangeListener(this);
+    Amplitude.RegisterChangeListener(this);
+    Frequency.RegisterChangeListener(this);
+    Type.RegisterChangeListener(this);
 }
 
 void TestToneNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
-    if (CurrentWaveform) ma_waveform_set_sample_rate(CurrentWaveform, ma_uint32(audio_device.SampleRate));
+    if (!CurrentWaveform) return;
+    if (audio_device.SampleRate.IsChanged()) ma_waveform_set_sample_rate(CurrentWaveform, ma_uint32(audio_device.SampleRate));
+    if (Amplitude.IsChanged()) ma_waveform_set_amplitude(CurrentWaveform, Amplitude);
+    if (Frequency.IsChanged()) ma_waveform_set_frequency(CurrentWaveform, Frequency);
+    if (Type.IsChanged()) ma_waveform_set_type(CurrentWaveform, ma_waveform_type(int(Type)));
     // MA_API ma_result ma_waveform_set_amplitude(ma_waveform* pWaveform, double amplitude);
     // MA_API ma_result ma_waveform_set_frequency(ma_waveform* pWaveform, double frequency);
     // MA_API ma_result ma_waveform_set_type(ma_waveform* pWaveform, ma_waveform_type type);
@@ -28,7 +35,7 @@ void Process(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_
 
 ma_node *TestToneNode::DoInit() {
     static ma_waveform waveform;
-    static ma_waveform_config waveform_config = ma_waveform_config_init(ma_format(int(audio_device.OutFormat)), audio_device.OutChannels, audio_device.SampleRate, ma_waveform_type_sine, 0.5, 440);
+    ma_waveform_config waveform_config = ma_waveform_config_init(ma_format(int(audio_device.OutFormat)), audio_device.OutChannels, audio_device.SampleRate, ma_waveform_type(int(Type)), Amplitude, Frequency);
     int result = ma_waveform_init(&waveform_config, &waveform);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the TestTone waveform: {}", result));
 
@@ -56,4 +63,12 @@ void TestToneNode::DoUninit() {
 
     ma_waveform_uninit(CurrentWaveform);
     CurrentWaveform = nullptr;
+}
+
+void TestToneNode::Render() const {
+    AudioGraphNode::Render();
+
+    Amplitude.Draw();
+    Frequency.Draw();
+    Type.Draw();
 }

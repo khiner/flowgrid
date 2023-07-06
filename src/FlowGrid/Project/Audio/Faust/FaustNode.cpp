@@ -33,14 +33,14 @@ void FaustNode::OnDspChanged(dsp *dsp) {
     CurrentDsp = dsp;
 }
 
-void FaustNode::DoInit() {
-    if (!CurrentDsp) return;
+ma_node *FaustNode::DoInit() {
+    if (!CurrentDsp) return nullptr;
 
     CurrentDsp->init(audio_device.SampleRate);
 
     const Count in_channels = CurrentDsp->getNumInputs();
     const Count out_channels = CurrentDsp->getNumOutputs();
-    if (in_channels == 0 && out_channels == 0) return;
+    if (in_channels == 0 && out_channels == 0) return nullptr;
 
     static ma_node_vtable vtable{};
     vtable = {FaustProcess, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
@@ -56,5 +56,5 @@ void FaustNode::DoInit() {
     const int result = ma_node_init(Graph->Get(), &config, nullptr, &node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust node: {}", result));
 
-    Set(&node);
+    return &node;
 }

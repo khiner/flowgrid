@@ -7,6 +7,7 @@
 
 #include "Core/Container/AdjacencyListAction.h"
 #include "Project/Audio/AudioDevice.h"
+#include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
@@ -98,7 +99,6 @@ AudioGraph::Nodes::Nodes(ComponentArgs &&args) : Component(std::move(args)), Gra
 AudioGraph::Nodes::~Nodes() {}
 
 void AudioGraph::Nodes::Init() {
-    Output.Set(ma_node_graph_get_endpoint(Graph->Get())); // Output is present whenever the graph is running. todo Graph is a Node
     for (auto *node : *this) node->Init();
 }
 void AudioGraph::Nodes::Update() {
@@ -108,8 +108,7 @@ void AudioGraph::Nodes::Uninit() {
     for (auto *node : *this) node->Uninit();
 }
 
-// Output node is already allocated by the MA graph, so we don't need to track internal data for it.
-void AudioGraph::InputNode::DoInit() {
+ma_node *AudioGraph::InputNode::DoInit() {
     int result = ma_audio_buffer_ref_init((ma_format) int(audio_device.InFormat), audio_device.InChannels, nullptr, 0, &InputBuffer);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
 
@@ -119,11 +118,21 @@ void AudioGraph::InputNode::DoInit() {
     result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &source_node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));
 
-    Set(&source_node);
+    return &source_node;
 }
 void AudioGraph::InputNode::DoUninit() {
     ma_data_source_node_uninit((ma_data_source_node *)Node, nullptr);
     ma_audio_buffer_ref_uninit(&InputBuffer);
+}
+
+// The output node is the graph endpoint. It's allocated and managed by the MA graph.
+ma_node *AudioGraph::OutputNode::DoInit() {
+    return ma_node_graph_get_endpoint(Graph->Get());
+}
+
+void AudioGraph::OutputNode::Render() const {
+    fg::HelpMarker("The output node is the graph endpoint node. It must always be present, and so it has no On/Off toggle.");
+    Volume.Draw();
 }
 
 using namespace ImGui;

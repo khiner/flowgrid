@@ -26,7 +26,7 @@ Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_in
 Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Node, bus); }
 
 void AudioGraphNode::Init() {
-    DoInit();
+    Set(DoInit());
 }
 
 void AudioGraphNode::UpdateVolume() {
@@ -46,7 +46,7 @@ void AudioGraphNode::Uninit() {
 
     DoUninit();
     ma_node_uninit(Node, nullptr);
-    Node = nullptr;
+    Set(nullptr);
 }
 
 void AudioGraphNode::Render() const {

@@ -24,8 +24,17 @@ struct AudioGraph : Component, Field::ChangeListener {
     struct InputNode : AudioGraphNode {
         using AudioGraphNode::AudioGraphNode;
 
-        void DoInit() override;
+        ma_node *DoInit() override;
         void DoUninit() override;
+    };
+
+    struct OutputNode : AudioGraphNode {
+        using AudioGraphNode::AudioGraphNode;
+
+        ma_node *DoInit() override;
+
+    private:
+        void Render() const override;
     };
 
     struct Nodes : Component {
@@ -55,7 +64,7 @@ struct AudioGraph : Component, Field::ChangeListener {
         // todo configurable data source
         Prop(InputNode, Input);
         Prop(FaustNode, Faust);
-        Prop(AudioGraphNode, Output);
+        Prop(OutputNode, Output);
 
     private:
         void Render() const override;

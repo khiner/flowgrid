@@ -5,9 +5,9 @@
 
 struct AudioGraph;
 
-// Corresponds to `ma_node_base`.
-// MA tracks nodes with an `ma_node *` type, where `ma_node` is an alias to `void`.
-// We don't forward-declare `ma_node` here because it prevent's miniaudio's methods from correctly deducing the MA type.
+using ma_node = void;
+
+// Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
 struct AudioGraphNode : Component, Field::ChangeListener {
     AudioGraphNode(ComponentArgs &&);
@@ -36,7 +36,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 protected:
     void Render() const override;
 
-    virtual void DoInit(){};
+    virtual ma_node *DoInit() { return nullptr; };
     virtual void DoUninit() {}
 
     void UpdateVolume();

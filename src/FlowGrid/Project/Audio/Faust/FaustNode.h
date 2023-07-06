@@ -13,5 +13,5 @@ struct FaustNode : AudioGraphNode {
     void OnDspChanged(dsp *);
 
 private:
-    void DoInit() override;
+    ma_node *DoInit() override;
 };

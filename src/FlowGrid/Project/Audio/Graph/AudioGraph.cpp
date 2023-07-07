@@ -102,6 +102,11 @@ void AudioGraph::Nodes::Uninit() {
     for (auto *node : *this) node->Uninit();
 }
 
+
+AudioGraph::InputNode::InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+    Muted.Set_(true); // External input is muted by default.
+}
+
 ma_node *AudioGraph::InputNode::DoInit() {
     int result = ma_audio_buffer_ref_init((ma_format) int(audio_device.InFormat), audio_device.InChannels, nullptr, 0, &InputBuffer);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
@@ -125,25 +130,12 @@ ma_node *AudioGraph::OutputNode::DoInit() {
 }
 
 void AudioGraph::OutputNode::Render() const {
-    fg::HelpMarker("The output node is the graph endpoint node. It must always be present, and so it has no On/Off toggle.");
+    Muted.Draw();
+    ImGui::SameLine();
     Volume.Draw();
 }
 
 using namespace ImGui;
-
-void AudioGraph::Render() const {
-    if (BeginTabBar("")) {
-        if (BeginTabItem(Nodes.ImGuiLabel.c_str())) {
-            Nodes.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem("Connections")) {
-            RenderConnections();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
-}
 
 void AudioGraph::Nodes::Render() const {
     RenderTreeNodes();

@@ -26,8 +26,6 @@ struct AudioDevice : Component, Field::ChangeListener {
     bool IsStarted() const;
 
     Prop_(Bool, On, "?When the audio device is turned off, the audio graph is destroyed and no audio processing takes place.", true);
-    Prop_(Bool, Muted, "?Completely mute audio output device. All audio computation will still be performed, so this setting does not affect CPU load.", true);
-    Prop(Float, Volume, 1.0); // Master volume. Corresponds to `ma_device_set_master_volume`.
     Prop(String, InDeviceName);
     Prop(String, OutDeviceName);
     Prop_(Enum, InFormat, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", GetFormatName);
@@ -42,7 +40,6 @@ protected:
 private:
     void Init();
     void Uninit();
-    void UpdateVolume() const;
 
     AudioCallback Callback;
 };

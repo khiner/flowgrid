@@ -1,17 +1,19 @@
 #include "AudioGraph.h"
 
+#include "imgui.h"
 #include "miniaudio.h"
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
     Volume.RegisterChangeListener(this);
+    Muted.RegisterChangeListener(this);
 }
 AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
 }
 
 void AudioGraphNode::OnFieldChanged() {
-    if (Volume.IsChanged()) UpdateVolume();
+    if (Muted.IsChanged() || Volume.IsChanged()) UpdateVolume();
 }
 
 void AudioGraphNode::Set(ma_node *node) {
@@ -25,10 +27,11 @@ Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_o
 
 void AudioGraphNode::Init() {
     Set(DoInit());
+    UpdateVolume();
 }
 
 void AudioGraphNode::UpdateVolume() {
-    if (On) ma_node_set_output_bus_volume(Node, 0, Volume);
+    if (On) ma_node_set_output_bus_volume(Node, 0, Muted ? 0.f : float(Volume));
 }
 
 void AudioGraphNode::Update() {
@@ -47,7 +50,10 @@ void AudioGraphNode::Uninit() {
     Set(nullptr);
 }
 
+
 void AudioGraphNode::Render() const {
     On.Draw();
+    Muted.Draw();
+    ImGui::SameLine();
     Volume.Draw();
 }

@@ -2,6 +2,7 @@
 
 #include "Project/Audio/AudioDevice.h"
 
+#include "imgui.h"
 #include "miniaudio.h"
 
 static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?
@@ -68,6 +69,7 @@ void TestToneNode::DoUninit() {
 void TestToneNode::Render() const {
     AudioGraphNode::Render();
 
+    ImGui::Spacing();
     Amplitude.Draw();
     Frequency.Draw();
     Type.Draw();

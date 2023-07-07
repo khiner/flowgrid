@@ -19,18 +19,13 @@ static ma_device_info DeviceInfo;
 
 AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback) : Component(std::move(args)), Callback(callback) {
     Init();
-    UpdateVolume();
 
-    const Field::References listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate, Muted, Volume};
+    const Field::References listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 AudioDevice::~AudioDevice() {
     Field::UnregisterChangeListener(this);
     Uninit();
-}
-
-void AudioDevice::UpdateVolume() const {
-    ma_device_set_master_volume(&MaDevice, Muted ? 0.f : float(Volume));
 }
 
 void AudioDevice::OnFieldChanged() {
@@ -54,7 +49,6 @@ void AudioDevice::OnFieldChanged() {
             Init();
         }
     }
-    if (Muted.IsChanged() || Volume.IsChanged()) UpdateVolume();
 }
 
 const string AudioDevice::GetFormatName(const int format) {
@@ -160,7 +154,6 @@ void AudioDevice::Start() const {
     if (IsStarted()) return;
     const int result = ma_device_start(&MaDevice);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio device: {}", result));
-    UpdateVolume();
 }
 void AudioDevice::Stop() const {
     if (!IsStarted()) return;
@@ -174,12 +167,9 @@ using namespace ImGui;
 void AudioDevice::Render() const {
     On.Draw();
     if (!IsStarted()) {
-        TextUnformatted("No audio device started yet");
+        TextUnformatted("Audio device is not started.");
         return;
     }
-    Muted.Draw();
-    SameLine();
-    Volume.Draw();
     SampleRate.Render(PrioritizedSampleRates);
     for (const IO io : IO_All) {
         TextUnformatted(StringHelper::Capitalize(to_string(io)).c_str());

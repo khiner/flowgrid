@@ -98,8 +98,12 @@ void Audio::Render() const {
             Device.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(Graph.ImGuiLabel.c_str())) {
-            Graph.Draw();
+        if (BeginTabItem(Graph.Nodes.ImGuiLabel.c_str())) {
+            Graph.Nodes.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem(Graph.Connections.ImGuiLabel.c_str())) {
+            Graph.RenderConnections();
             EndTabItem();
         }
         if (BeginTabItem("Style")) {

@@ -17,14 +17,15 @@ struct AudioGraph : Component, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
-    void Update();
-
     static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
+
+    void RenderConnections() const;
+    void Update();
 
     ma_node_graph *Get() const;
 
     struct InputNode : AudioGraphNode {
-        using AudioGraphNode::AudioGraphNode;
+        InputNode(ComponentArgs &&);
 
         ma_node *DoInit() override;
         void DoUninit() override;
@@ -62,10 +63,10 @@ struct AudioGraph : Component, Field::ChangeListener {
 
         const AudioGraph *Graph;
 
+        Prop(OutputNode, Output);
         Prop(InputNode, Input); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
         Prop(FaustNode, Faust);
         Prop(TestToneNode, TestTone);
-        Prop(OutputNode, Output);
 
     private:
         void Render() const override;
@@ -97,6 +98,5 @@ private:
     void Uninit();
     void UpdateConnections();
 
-    void Render() const override;
-    void RenderConnections() const;
+    void Render() const override {}
 };

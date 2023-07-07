@@ -43,17 +43,14 @@ void AudioGraphNode::Update() {
     UpdateVolume();
 }
 
-void AudioGraphNode::UninitSplitters() {
-    for (auto &splitter_node : SplitterNodes) {
-        ma_splitter_node_uninit(splitter_node.get(), nullptr);
-    }
-    SplitterNodes.clear();
+void AudioGraphNode::SplitterDeleter::operator()(ma_splitter_node *splitter) {
+    ma_splitter_node_uninit(splitter, nullptr);
 }
 
 void AudioGraphNode::Uninit() {
     if (Node == nullptr) return;
 
-    UninitSplitters();
+    SplitterNodes.clear();
     DoUninit();
     ma_node_uninit(Node, nullptr);
     Set(nullptr);

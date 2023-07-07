@@ -70,7 +70,7 @@ void AudioGraph::UpdateConnections() {
         if (!source_node->IsSource()) continue;
 
         ma_node_detach_output_bus(source_node->Node, 0);
-        source_node->UninitSplitters();
+        source_node->SplitterNodes.clear();
 
         ma_node *prev_dest_node = nullptr;
         for (auto *dest_node : Nodes) {
@@ -80,7 +80,8 @@ void AudioGraph::UpdateConnections() {
                 if (prev_dest_node) {
                     // Connecting a single source to multiple destinations requires a splitter node.
                     // We chain splitters together to support any number of destinations.
-                    source_node->SplitterNodes.emplace_back(std::make_unique<ma_splitter_node>());
+                    // Note: `new` is necessary here because we use a custom deleter.
+                    source_node->SplitterNodes.emplace_back(new ma_splitter_node());
                     ma_splitter_node *splitter_node = (ma_splitter_node *)source_node->SplitterNodes.back().get();
                     ma_splitter_node_config splitter_node_config = ma_splitter_node_config_init(source_node->OutputChannelCount(0));
                     int result = ma_splitter_node_init(Get(), &splitter_node_config, nullptr, splitter_node);

@@ -8,6 +8,7 @@
 #include "miniaudio.h"
 
 struct AudioGraph;
+using ma_node = void;
 
 // using ma_node = void;
 // struct ma_splitter_node;
@@ -19,9 +20,9 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     virtual ~AudioGraphNode();
 
     void OnFieldChanged() override;
-    void Set(void *);
+    void Set(ma_node *);
 
-    void *Node;
+    ma_node *Node;
 
     Count InputBusCount() const;
     Count OutputBusCount() const;
@@ -33,14 +34,16 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     void Init();
     void Update();
-    void UninitSplitters();
     void Uninit();
 
     Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.", true);
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, Volume, 1.0);
 
-    std::vector<std::unique_ptr<ma_splitter_node>> SplitterNodes;
+    struct SplitterDeleter {
+        void operator()(ma_splitter_node *);
+    };
+    std::vector<std::unique_ptr<ma_splitter_node, SplitterDeleter>> SplitterNodes;
 
 protected:
     void Render() const override;

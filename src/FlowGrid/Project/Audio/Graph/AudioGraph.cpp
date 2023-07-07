@@ -3,7 +3,6 @@
 #include "imgui.h"
 #include "implot.h"
 #include "implot_internal.h"
-#include "miniaudio.h"
 
 #include "Core/Container/AdjacencyListAction.h"
 #include "Project/Audio/AudioDevice.h"
@@ -67,13 +66,34 @@ void AudioGraph::Init() {
 
 void AudioGraph::UpdateConnections() {
     // Setting up busses is idempotent.
-    for (const auto *source_node : Nodes) {
+    for (auto *source_node : Nodes) {
         if (!source_node->IsSource()) continue;
-        ma_node_detach_output_bus(source_node->Node, 0); // No way to just detach one connection.
-        for (const auto *dest_node : Nodes) {
+
+        ma_node_detach_output_bus(source_node->Node, 0);
+        source_node->UninitSplitters();
+
+        ma_node *prev_dest_node = nullptr;
+        for (auto *dest_node : Nodes) {
             if (!dest_node->IsDestination()) continue;
+
             if (Connections.IsConnected(source_node->Id, dest_node->Id)) {
-                ma_node_attach_output_bus(source_node->Node, 0, dest_node->Node, 0);
+                if (prev_dest_node) {
+                    // Connecting a single source to multiple destinations requires a splitter node.
+                    // We chain splitters together to support any number of destinations.
+                    source_node->SplitterNodes.emplace_back(std::make_unique<ma_splitter_node>());
+                    ma_splitter_node *splitter_node = (ma_splitter_node *)source_node->SplitterNodes.back().get();
+                    ma_splitter_node_config splitter_node_config = ma_splitter_node_config_init(source_node->OutputChannelCount(0));
+                    int result = ma_splitter_node_init(Get(), &splitter_node_config, nullptr, splitter_node);
+                    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", result));
+
+                    ma_node_attach_output_bus(splitter_node, 0, prev_dest_node, 0);
+                    ma_node_attach_output_bus(splitter_node, 1, dest_node->Node, 0);
+                    ma_node_attach_output_bus(source_node->Node, 0, splitter_node, 0);
+                    prev_dest_node = splitter_node;
+                } else {
+                    ma_node_attach_output_bus(source_node->Node, 0, dest_node->Node, 0);
+                    prev_dest_node = dest_node->Node;
+                }
             }
         }
     }
@@ -102,7 +122,6 @@ void AudioGraph::Nodes::Uninit() {
     for (auto *node : *this) node->Uninit();
 }
 
-
 AudioGraph::InputNode::InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Muted.Set_(true); // External input is muted by default.
 }
@@ -112,8 +131,7 @@ ma_node *AudioGraph::InputNode::DoInit() {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
 
     static ma_data_source_node source_node{};
-    static ma_data_source_node_config config{};
-    config = ma_data_source_node_config_init(&InputBuffer);
+    ma_data_source_node_config config = ma_data_source_node_config_init(&InputBuffer);
     result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &source_node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));
 

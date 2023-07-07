@@ -1,6 +1,7 @@
 #include "AudioGraph.h"
 
 #include "imgui.h"
+
 #include "miniaudio.h"
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
@@ -42,14 +43,21 @@ void AudioGraphNode::Update() {
     UpdateVolume();
 }
 
+void AudioGraphNode::UninitSplitters() {
+    for (auto &splitter_node : SplitterNodes) {
+        ma_splitter_node_uninit(splitter_node.get(), nullptr);
+    }
+    SplitterNodes.clear();
+}
+
 void AudioGraphNode::Uninit() {
     if (Node == nullptr) return;
 
+    UninitSplitters();
     DoUninit();
     ma_node_uninit(Node, nullptr);
     Set(nullptr);
 }
-
 
 void AudioGraphNode::Render() const {
     On.Draw();

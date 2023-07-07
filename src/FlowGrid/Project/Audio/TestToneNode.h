@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Project/Audio/Graph/AudioGraphNode.h"
 #include "Core/Primitive/Enum.h"
+#include "Project/Audio/Graph/AudioGraphNode.h"
 
 struct TestToneNode : AudioGraphNode {
     TestToneNode(ComponentArgs &&);

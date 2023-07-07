@@ -3,9 +3,14 @@
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Float.h"
 
+// xxx miniaudio should not be in a header.
+// Only needed here singe forward-declaring `ma_splitter_node` is not working for unique_ptr and I don't know why.
+#include "miniaudio.h"
+
 struct AudioGraph;
 
-using ma_node = void;
+// using ma_node = void;
+// struct ma_splitter_node;
 
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
@@ -28,11 +33,14 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     void Init();
     void Update();
+    void UninitSplitters();
     void Uninit();
 
     Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.", true);
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, Volume, 1.0);
+
+    std::vector<std::unique_ptr<ma_splitter_node>> SplitterNodes;
 
 protected:
     void Render() const override;

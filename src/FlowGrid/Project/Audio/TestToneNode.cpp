@@ -35,8 +35,8 @@ void Process(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_
 }
 
 ma_node *TestToneNode::DoInit() {
-    static ma_waveform waveform;
     ma_waveform_config waveform_config = ma_waveform_config_init(ma_format(int(audio_device.OutFormat)), audio_device.OutChannels, audio_device.SampleRate, ma_waveform_type(int(Type)), Amplitude, Frequency);
+    static ma_waveform waveform;
     int result = ma_waveform_init(&waveform_config, &waveform);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the TestTone waveform: {}", result));
 

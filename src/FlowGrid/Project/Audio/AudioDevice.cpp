@@ -1,13 +1,34 @@
 #include "AudioDevice.h"
 
-#define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
 #include "imgui.h"
 
 #include "Helper/String.h"
 
-const std::vector<U32> AudioDevice::PrioritizedSampleRates = {std::begin(g_maStandardSampleRatePriorities), std::end(g_maStandardSampleRatePriorities)};
+// Copied from `miniaudio.c::g_maStandardSampleRatePriorities`.
+static ma_uint32 StandardSampleRatePriorities[] = {
+    (ma_uint32)ma_standard_sample_rate_48000,
+    (ma_uint32)ma_standard_sample_rate_44100,
+
+    (ma_uint32)ma_standard_sample_rate_32000,
+    (ma_uint32)ma_standard_sample_rate_24000,
+    (ma_uint32)ma_standard_sample_rate_22050,
+
+    (ma_uint32)ma_standard_sample_rate_88200,
+    (ma_uint32)ma_standard_sample_rate_96000,
+    (ma_uint32)ma_standard_sample_rate_176400,
+    (ma_uint32)ma_standard_sample_rate_192000,
+
+    (ma_uint32)ma_standard_sample_rate_16000,
+    (ma_uint32)ma_standard_sample_rate_11025,
+    (ma_uint32)ma_standard_sample_rate_8000,
+
+    (ma_uint32)ma_standard_sample_rate_352800,
+    (ma_uint32)ma_standard_sample_rate_384000
+};
+
+const std::vector<U32> AudioDevice::PrioritizedSampleRates = {std::begin(StandardSampleRatePriorities), std::end(StandardSampleRatePriorities)};
 
 static std::vector<ma_format> NativeFormats;
 static std::vector<U32> NativeSampleRates;
@@ -68,6 +89,8 @@ static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
     }
     return nullptr;
 }
+
+ma_device *AudioDevice::Get() const { return &MaDevice; }
 
 void AudioDevice::Init() {
     int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
@@ -236,19 +259,6 @@ void AudioDevice::Render() const {
         }
         TreePop();
     }
-
-    // const auto backend_count = soundio_backend_count(soundio);
-    // if (TreeNodeEx("Backends", ImGuiTreeNodeFlags_None, "Available backends (%d)", backend_count)) {
-    //     for (int i = 0; i < backend_count; i++) {
-    //         const auto backend = soundio_get_backend(soundio, i);
-    //         BulletText("%s%s", soundio_backend_name(backend), backend == soundio->current_backend ? " (current)" : "");
-    //     }
-    //     TreePop();
-    // }
-    // if (TreeNode("Plots")) {
-    //     ShowBufferPlots();
-    //     TreePop();
-    // }
 }
 
 // todo implement for r8brain resampler

@@ -8,6 +8,7 @@
 #include "Core/Primitive/UInt.h"
 
 struct ma_device;
+
 // Corresponds to `ma_device`.
 struct AudioDevice : Component, Field::ChangeListener {
     using AudioCallback = void (*)(ma_device *, void *, const void *, Count);
@@ -24,6 +25,8 @@ struct AudioDevice : Component, Field::ChangeListener {
     void Start() const;
     void Stop() const;
     bool IsStarted() const;
+
+    ma_device *Get() const;
 
     Prop_(Bool, On, "?When the audio device is turned off, the audio graph is destroyed and no audio processing takes place.", true);
     Prop(String, InDeviceName);

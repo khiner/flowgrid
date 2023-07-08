@@ -9,7 +9,7 @@ add_subdirectory(lib)
 find_package(Freetype REQUIRED)
 find_package(Vulkan REQUIRED)
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.c)
 set(IMGUI_DIR lib/imgui)
 set(IMPLOT_DIR lib/implot)
 
@@ -26,6 +26,7 @@ add_executable(${PROJECT_NAME}
     ${IMPLOT_DIR}/implot_items.cpp
     ${IMPLOT_DIR}/implot_demo.cpp
     lib/ImGuiFileDialog/ImGuiFileDialog.cpp
+    lib/miniaudio/extras/miniaudio_split/miniaudio.c
     ${SOURCES}
 )
 
@@ -37,7 +38,7 @@ include_directories(
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${IMPLOT_DIR}
-    lib/miniaudio
+    lib/miniaudio/extras/miniaudio_split
     lib/faust/architecture
     lib/ImGuiFileDialog
     lib/imgui_club/imgui_memory_editor

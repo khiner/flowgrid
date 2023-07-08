@@ -65,12 +65,10 @@ void AudioGraph::Init() {
 }
 
 void AudioGraph::UpdateConnections() {
-    // Setting up busses is idempotent.
     for (auto *source_node : Nodes) {
         if (!source_node->IsSource()) continue;
 
-        ma_node_detach_output_bus(source_node->Node, 0);
-        source_node->SplitterNodes.clear();
+        source_node->DisconnectOutputs();
 
         ma_node *prev_dest_node = nullptr;
         for (auto *dest_node : Nodes) {
@@ -92,7 +90,7 @@ void AudioGraph::UpdateConnections() {
                     ma_node_attach_output_bus(source_node->Node, 0, splitter_node, 0);
                     prev_dest_node = splitter_node;
                 } else {
-                    ma_node_attach_output_bus(source_node->Node, 0, dest_node->Node, 0);
+                    source_node->ConnectTo(*dest_node);
                     prev_dest_node = dest_node->Node;
                 }
             }

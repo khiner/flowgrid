@@ -49,7 +49,19 @@ void AudioGraphNode::UpdateMonitors() {
         ma_monitor_node_config config = ma_monitor_node_config_init(device->playback.channels, device->playback.internalSampleRate, buffer_size);
         int result = ma_monitor_node_init(Graph->Get(), &config, NULL, OutputMonitorNode.get());
         if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize output monitor node: {}", result)); }
+
+        // If this node is connected to another node, insert the monitor node between them.
+        auto *connected_to_node = ((ma_node_base *)Node)->pOutputBuses[0].pInputNode;
+        if (connected_to_node != nullptr) {
+            ma_node_attach_output_bus(OutputMonitorNode.get(), 0, connected_to_node, 0);
+            ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+        }
     } else if (!MonitorOutput && OutputMonitorNode) {
+        // If the monitor node is connected to another node, connect this node to that node.
+        auto *connected_to_node = ((ma_node_base *)OutputMonitorNode.get())->pOutputBuses[0].pInputNode;
+        if (connected_to_node != nullptr) {
+            ma_node_attach_output_bus(Node, 0, connected_to_node, 0);
+        }
         OutputMonitorNode.reset();
     }
 }

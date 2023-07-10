@@ -69,12 +69,12 @@ void AudioGraph::Init() {
 
 void AudioGraph::UpdateConnections() {
     for (auto *source_node : Nodes) {
-        if (!source_node->IsSource()) continue;
+        if (source_node->OutputBusCount() == 0) continue;
 
         source_node->DisconnectOutputs();
 
         for (auto *dest_node : Nodes) {
-            if (!dest_node->IsDestination()) continue;
+            if (dest_node->InputBusCount() == 0) continue;
 
             if (Connections.IsConnected(source_node->Id, dest_node->Id)) {
                 source_node->ConnectTo(*dest_node);
@@ -150,7 +150,7 @@ void AudioGraph::RenderConnections() const {
     // Draw the source channel labels.
     Count source_count = 0;
     for (const auto *source_node : Nodes) {
-        if (!source_node->IsSource()) continue;
+        if (source_node->OutputBusCount() == 0) continue;
 
         const char *label = source_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
@@ -170,7 +170,7 @@ void AudioGraph::RenderConnections() const {
     // Draw the destination channel labels and mixer cells.
     Count dest_i = 0;
     for (const auto *dest_node : Nodes) {
-        if (!dest_node->IsDestination()) continue;
+        if (dest_node->InputBusCount() == 0) continue;
 
         const char *label = dest_node->Name.c_str();
         const string ellipsified_label = Ellipsify(string(label), label_size);
@@ -185,7 +185,7 @@ void AudioGraph::RenderConnections() const {
 
         Count source_i = 0;
         for (const auto *source_node : Nodes) {
-            if (!source_node->IsSource()) continue;
+            if (source_node->OutputBusCount() == 0) continue;
 
             PushID(dest_i * source_count + source_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});

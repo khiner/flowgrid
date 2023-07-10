@@ -37,8 +37,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     ma_monitor_node *GetMonitorNode(IO io) const { return io == IO_In ? InputMonitorNode.get() : OutputMonitorNode.get(); }
 
-    bool IsSource() const noexcept { return OutputBusCount() > 0 && !IsOutput(); }
-    bool IsDestination() const noexcept { return InputBusCount() > 0; }
     bool IsOutput() const noexcept { return Name == "Output"; }
 
     ma_node *InputNode() const;

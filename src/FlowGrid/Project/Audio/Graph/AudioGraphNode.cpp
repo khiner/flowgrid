@@ -20,12 +20,12 @@ void AudioGraphNode::OnFieldChanged() {
     if (Muted.IsChanged() || Volume.IsChanged()) UpdateVolume();
 }
 
-void AudioGraphNode::Set(ma_node *node) {
-    Node = node;
-}
+void AudioGraphNode::Set(ma_node *node) { Node = node; }
 
 Count AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
-Count AudioGraphNode::OutputBusCount() const { return ma_node_get_output_bus_count(Node); }
+
+// Output node (graph endpoint) technically has an output bus, but it doesn't work like other nodes and we treat it strictly as a sink.
+Count AudioGraphNode::OutputBusCount() const { return IsOutput() ? 0 : ma_node_get_output_bus_count(Node); }
 Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Node, bus); }
 Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Node, bus); }
 
@@ -53,7 +53,7 @@ void AudioGraphNode::UpdateMonitors() {
         }
     }
 
-    if (IsSource()) {
+    if (OutputBusCount() > 0) {
         if (Monitor && !OutputMonitorNode) {
             OutputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
             const auto *device = audio_device.Get();
@@ -129,10 +129,7 @@ using namespace ImGui;
 
 void AudioGraphNode::RenderMonitor(IO io) const {
     const auto *monitor_node = GetMonitorNode(io);
-    if (monitor_node == nullptr) {
-        Text("No %s monitor node", to_string(io).c_str());
-        return;
-    }
+    if (monitor_node == nullptr) return;
 
     if (ImPlot::BeginPlot(StringHelper::Capitalize(to_string(io)).c_str(), {-1, 160})) {
         const Count frame_count = monitor_node->bufferSizeInFrames;
@@ -158,11 +155,7 @@ void AudioGraphNode::Render() const {
     Volume.Draw();
     if (TreeNode("Plots")) {
         if (!Monitor) Monitor.Toggle();
-        for (IO io : IO_All) {
-            if (!GetMonitorNode(io)) continue;
-
-            RenderMonitor(io);
-        }
+        for (IO io : IO_All) RenderMonitor(io);
         TreePop();
     } else {
         if (Monitor) Monitor.Toggle();

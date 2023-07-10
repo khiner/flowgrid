@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 // Starting at `-1` allows for using `IO` types as array indices.

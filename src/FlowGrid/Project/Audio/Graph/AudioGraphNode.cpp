@@ -11,7 +11,6 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
     Volume.RegisterChangeListener(this);
     Muted.RegisterChangeListener(this);
-    MonitorOutput.RegisterChangeListener(this);
 }
 AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
@@ -19,7 +18,6 @@ AudioGraphNode::~AudioGraphNode() {
 
 void AudioGraphNode::OnFieldChanged() {
     if (Muted.IsChanged() || Volume.IsChanged()) UpdateVolume();
-    if (MonitorOutput.IsChanged()) UpdateMonitors();
 }
 
 void AudioGraphNode::Set(ma_node *node) {
@@ -42,27 +40,30 @@ void AudioGraphNode::UpdateVolume() {
 }
 
 void AudioGraphNode::UpdateMonitors() {
-    if (MonitorOutput && !OutputMonitorNode) {
-        OutputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
-        const auto *device = audio_device.Get();
-        const ma_uint32 buffer_size = device->playback.internalPeriodSizeInFrames;
-        ma_monitor_node_config config = ma_monitor_node_config_init(device->playback.channels, device->playback.internalSampleRate, buffer_size);
-        int result = ma_monitor_node_init(Graph->Get(), &config, NULL, OutputMonitorNode.get());
-        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize output monitor node: {}", result)); }
+    if (InputBusCount() > 0) {
+        if (Monitor && !InputMonitorNode) {
+            InputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
+            const auto *device = audio_device.Get();
+            const ma_uint32 buffer_size = device->playback.internalPeriodSizeInFrames;
+            ma_monitor_node_config config = ma_monitor_node_config_init(InputChannelCount(0), device->playback.internalSampleRate, buffer_size);
+            int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, InputMonitorNode.get());
+            if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize input monitor node: {}", result)); }
+        } else if (!Monitor && InputMonitorNode) {
+            InputMonitorNode.reset();
+        }
+    }
 
-        // If this node is connected to another node, insert the monitor node between them.
-        auto *connected_to_node = ((ma_node_base *)Node)->pOutputBuses[0].pInputNode;
-        if (connected_to_node != nullptr) {
-            ma_node_attach_output_bus(OutputMonitorNode.get(), 0, connected_to_node, 0);
-            ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+    if (IsSource()) {
+        if (Monitor && !OutputMonitorNode) {
+            OutputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
+            const auto *device = audio_device.Get();
+            const ma_uint32 buffer_size = device->playback.internalPeriodSizeInFrames;
+            ma_monitor_node_config config = ma_monitor_node_config_init(OutputChannelCount(0), device->playback.internalSampleRate, buffer_size);
+            int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, OutputMonitorNode.get());
+            if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize output monitor node: {}", result)); }
+        } else if (!Monitor && OutputMonitorNode) {
+            OutputMonitorNode.reset();
         }
-    } else if (!MonitorOutput && OutputMonitorNode) {
-        // If the monitor node is connected to another node, connect this node to that node.
-        auto *connected_to_node = ((ma_node_base *)OutputMonitorNode.get())->pOutputBuses[0].pInputNode;
-        if (connected_to_node != nullptr) {
-            ma_node_attach_output_bus(Node, 0, connected_to_node, 0);
-        }
-        OutputMonitorNode.reset();
     }
 }
 
@@ -72,6 +73,7 @@ void AudioGraphNode::Update() {
     else if (!On && is_initialized) Uninit();
 
     UpdateVolume();
+    UpdateMonitors();
 }
 
 void AudioGraphNode::SplitterDeleter::operator()(ma_splitter_node *splitter) {
@@ -85,26 +87,51 @@ void AudioGraphNode::Uninit() {
     if (Node == nullptr) return;
 
     SplitterNodes.clear();
+    OutputMonitorNode.reset();
+    InputMonitorNode.reset();
     DoUninit();
     ma_node_uninit(Node, nullptr);
     Set(nullptr);
 }
 
+ma_node *AudioGraphNode::InputNode() const { return InputMonitorNode ? InputMonitorNode.get() : Node; }
+ma_node *AudioGraphNode::OutputNode() const { return OutputMonitorNode ? OutputMonitorNode.get() : Node; }
+
 void AudioGraphNode::ConnectTo(const AudioGraphNode &to) {
-    if (OutputMonitorNode) {
-        ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
-        ma_node_attach_output_bus(OutputMonitorNode.get(), 0, to.Node, 0);
-    } else {
-        ma_node_attach_output_bus(Node, 0, to.Node, 0);
-    }
+    if (OutputMonitorNode) ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+    if (to.InputMonitorNode) ma_node_attach_output_bus(to.InputMonitorNode.get(), 0, to.Node, 0);
+    ma_node_attach_output_bus(OutputNode(), 0, to.InputNode(), 0);
 }
 
 void AudioGraphNode::DisconnectOutputs() {
-    ma_node_detach_output_bus(Node, 0);
+    ma_node_detach_output_bus(OutputNode(), 0);
     SplitterNodes.clear();
 }
 
 using namespace ImGui;
+
+void AudioGraphNode::RenderMonitor(IO io) const {
+    const auto *monitor_node = GetMonitorNode(io);
+    if (monitor_node == nullptr) {
+        Text("No %s monitor node", to_string(io).c_str());
+        return;
+    }
+
+    if (ImPlot::BeginPlot(StringHelper::Capitalize(to_string(io)).c_str(), {-1, 160})) {
+        const Count frame_count = monitor_node->bufferSizeInFrames;
+
+        ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
+        ImPlot::SetupAxes("Buffer frame", "Value");
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, frame_count, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
+        for (Count channel_index = 0; channel_index < ChannelCount(io, 0); channel_index++) {
+            const std::string channel_name = std::format("Channel {}", channel_index);
+            ImPlot::PlotLine(channel_name.c_str(), monitor_node->pBuffer, frame_count);
+        }
+        ImPlot::PopStyleVar();
+        ImPlot::EndPlot();
+    }
+}
 
 void AudioGraphNode::Render() const {
     if (!IsOutput()) On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
@@ -113,32 +140,14 @@ void AudioGraphNode::Render() const {
     SameLine();
     Volume.Draw();
     if (TreeNode("Plots")) {
-        if (!MonitorOutput) MonitorOutput.Toggle();
+        if (!Monitor) Monitor.Toggle();
         for (IO io : IO_All) {
-            const bool is_in = io == IO_In;
-            if (is_in) continue; // xxx temporary
-            if (!OutputMonitorNode) continue;
+            if (!GetMonitorNode(io)) continue;
 
-            if (TreeNodeEx(StringHelper::Capitalize(to_string(io)).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (ImPlot::BeginPlot("Waveform", {-1, 160})) {
-                    ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
-                    ImPlot::SetupAxes("Buffer frame", "Value");
-                    const Count frame_count = OutputMonitorNode->bufferSizeInFrames;
-                    ImPlot::SetupAxisLimits(ImAxis_X1, 0, frame_count, ImGuiCond_Always);
-                    ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
-                    for (Count channel_index = 0; channel_index < 1; channel_index++) {
-                        const float *buffer = OutputMonitorNode->pBuffer;
-                        const std::string channel_name = std::format("Channel {}", channel_index);
-                        ImPlot::PlotLine(channel_name.c_str(), buffer, frame_count);
-                    }
-                    ImPlot::PopStyleVar();
-                    ImPlot::EndPlot();
-                }
-                TreePop();
-            }
+            RenderMonitor(io);
         }
         TreePop();
-    } else if (MonitorOutput) {
-        MonitorOutput.Toggle();
+    } else {
+        if (Monitor) Monitor.Toggle();
     }
 }

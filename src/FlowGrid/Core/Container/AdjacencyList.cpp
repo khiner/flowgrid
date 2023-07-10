@@ -1,8 +1,8 @@
 #include "AdjacencyList.h"
 
-#include "Core/Store/Store.h"
-
 #include "imgui.h"
+
+#include "Core/Store/Store.h"
 
 void AdjacencyList::Connect(ID source, ID destination) const {
     if (IsConnected(source, destination)) return;

@@ -20,7 +20,10 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Init();
     const Field::References listened_fields = {audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-    for (const auto *node : Nodes) node->On.RegisterChangeListener(this);
+    for (const auto *node : Nodes) {
+        node->On.RegisterChangeListener(this);
+        node->Monitor.RegisterChangeListener(this);
+    }
 }
 AudioGraph::~AudioGraph() {
     Uninit();
@@ -32,7 +35,7 @@ void AudioGraph::OnFieldChanged() {
         return;
     }
     for (auto *node : Nodes) {
-        if (node->On.IsChanged()) {
+        if (node->On.IsChanged() || node->Monitor.IsChanged()) {
             node->Update();
             UpdateConnections();
             return;
@@ -86,12 +89,12 @@ void AudioGraph::UpdateConnections() {
                     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", result));
 
                     ma_node_attach_output_bus(splitter_node, 0, prev_dest_node, 0);
-                    ma_node_attach_output_bus(splitter_node, 1, dest_node->Node, 0);
-                    ma_node_attach_output_bus(source_node->Node, 0, splitter_node, 0);
+                    ma_node_attach_output_bus(splitter_node, 1, dest_node->InputNode(), 0);
+                    ma_node_attach_output_bus(source_node->OutputNode(), 0, splitter_node, 0);
                     prev_dest_node = splitter_node;
                 } else {
                     source_node->ConnectTo(*dest_node);
-                    prev_dest_node = dest_node->Node;
+                    prev_dest_node = dest_node->InputNode();
                 }
             }
         }

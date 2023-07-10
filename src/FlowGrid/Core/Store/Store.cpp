@@ -37,7 +37,6 @@ void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.
 Count Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPairsByPath[path].size(); }
 
 std::unordered_set<IdPair, IdPairHash> Store::IdPairs(const StorePath &path) const {
-    assert(TransientImpl);
     std::unordered_set<IdPair, IdPairHash> id_pairs;
     for (const auto &id_pair : TransientImpl->IdPairsByPath[path]) id_pairs.insert(id_pair);
     return id_pairs;

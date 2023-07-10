@@ -31,8 +31,9 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     Count InputChannelCount(Count bus) const;
     Count OutputChannelCount(Count bus) const;
 
-    bool IsSource() const { return OutputBusCount() > 0 && Name != "Output"; }
-    bool IsDestination() const { return InputBusCount() > 0; }
+    bool IsSource() const noexcept { return OutputBusCount() > 0 && !IsOutput(); }
+    bool IsDestination() const noexcept { return InputBusCount() > 0; }
+    bool IsOutput() const noexcept { return Name == "Output"; }
 
     void ConnectTo(const AudioGraphNode &);
     void DisconnectOutputs();

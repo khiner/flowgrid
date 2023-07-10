@@ -146,17 +146,11 @@ ma_node *AudioGraph::OutputNode::DoInit() {
     return ma_node_graph_get_endpoint(Graph->Get());
 }
 
-void AudioGraph::OutputNode::Render() const {
-    Muted.Draw();
-    ImGui::SameLine();
-    Volume.Draw();
-}
-
-using namespace ImGui;
-
 void AudioGraph::Nodes::Render() const {
     RenderTreeNodes();
 }
+
+using namespace ImGui;
 
 void AudioGraph::RenderConnections() const {
     const auto &style = Style.Matrix;

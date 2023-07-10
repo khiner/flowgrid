@@ -107,7 +107,8 @@ void AudioGraphNode::DisconnectOutputs() {
 using namespace ImGui;
 
 void AudioGraphNode::Render() const {
-    On.Draw();
+    if (!IsOutput()) On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
+
     Muted.Draw();
     SameLine();
     Volume.Draw();

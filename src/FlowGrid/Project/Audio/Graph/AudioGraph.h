@@ -35,9 +35,6 @@ struct AudioGraph : Component, Field::ChangeListener {
         using AudioGraphNode::AudioGraphNode;
 
         ma_node *DoInit() override;
-
-    private:
-        void Render() const override;
     };
 
     struct Nodes : Component {

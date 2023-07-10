@@ -16,7 +16,7 @@ FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
 
 void FaustNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
-    if (CurrentDsp) CurrentDsp->init(audio_device.SampleRate);
+    if (audio_device.SampleRate.IsChanged() && CurrentDsp) CurrentDsp->init(audio_device.SampleRate);
 }
 
 void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {

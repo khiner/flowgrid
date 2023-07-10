@@ -73,29 +73,11 @@ void AudioGraph::UpdateConnections() {
 
         source_node->DisconnectOutputs();
 
-        ma_node *prev_dest_node = nullptr;
         for (auto *dest_node : Nodes) {
             if (!dest_node->IsDestination()) continue;
 
             if (Connections.IsConnected(source_node->Id, dest_node->Id)) {
-                if (prev_dest_node) {
-                    // Connecting a single source to multiple destinations requires a splitter node.
-                    // We chain splitters together to support any number of destinations.
-                    // Note: `new` is necessary here because we use a custom deleter.
-                    source_node->SplitterNodes.emplace_back(new ma_splitter_node());
-                    ma_splitter_node *splitter_node = (ma_splitter_node *)source_node->SplitterNodes.back().get();
-                    ma_splitter_node_config splitter_node_config = ma_splitter_node_config_init(source_node->OutputChannelCount(0));
-                    int result = ma_splitter_node_init(Get(), &splitter_node_config, nullptr, splitter_node);
-                    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", result));
-
-                    ma_node_attach_output_bus(splitter_node, 0, prev_dest_node, 0);
-                    ma_node_attach_output_bus(splitter_node, 1, dest_node->InputNode(), 0);
-                    ma_node_attach_output_bus(source_node->OutputNode(), 0, splitter_node, 0);
-                    prev_dest_node = splitter_node;
-                } else {
-                    source_node->ConnectTo(*dest_node);
-                    prev_dest_node = dest_node->InputNode();
-                }
+                source_node->ConnectTo(*dest_node);
             }
         }
     }

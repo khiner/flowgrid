@@ -31,8 +31,8 @@ Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_o
 
 void AudioGraphNode::Init() {
     Set(DoInit());
-    UpdateVolume();
     UpdateMonitors();
+    UpdateVolume();
 }
 
 void AudioGraphNode::UpdateVolume() {
@@ -72,8 +72,8 @@ void AudioGraphNode::Update() {
     if (On && !is_initialized) Init();
     else if (!On && is_initialized) Uninit();
 
-    UpdateVolume();
     UpdateMonitors();
+    UpdateVolume();
 }
 
 void AudioGraphNode::SplitterDeleter::operator()(ma_splitter_node *splitter) {
@@ -98,9 +98,26 @@ ma_node *AudioGraphNode::InputNode() const { return InputMonitorNode ? InputMoni
 ma_node *AudioGraphNode::OutputNode() const { return OutputMonitorNode ? OutputMonitorNode.get() : Node; }
 
 void AudioGraphNode::ConnectTo(const AudioGraphNode &to) {
-    if (OutputMonitorNode) ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
     if (to.InputMonitorNode) ma_node_attach_output_bus(to.InputMonitorNode.get(), 0, to.Node, 0);
-    ma_node_attach_output_bus(OutputNode(), 0, to.InputNode(), 0);
+    if (OutputMonitorNode) ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+
+    auto *currently_connected_to = ((ma_node_base *)OutputNode())->pOutputBuses[0].pInputNode;
+    if (currently_connected_to != nullptr) {
+        // Connecting a single source to multiple destinations requires a splitter node.
+        // We chain splitters together to support any number of destinations.
+        // Note: `new` is necessary here because we use a custom deleter.
+        SplitterNodes.emplace_back(new ma_splitter_node());
+        ma_splitter_node *splitter = SplitterNodes.back().get();
+        ma_splitter_node_config splitter_config = ma_splitter_node_config_init(OutputChannelCount(0));
+        int result = ma_splitter_node_init(Graph->Get(), &splitter_config, nullptr, splitter);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", result));
+
+        ma_node_attach_output_bus(splitter, 0, currently_connected_to, 0);
+        ma_node_attach_output_bus(splitter, 1, to.InputNode(), 0);
+        ma_node_attach_output_bus(OutputNode(), 0, splitter, 0);
+    } else {
+        ma_node_attach_output_bus(OutputNode(), 0, to.InputNode(), 0);
+    }
 }
 
 void AudioGraphNode::DisconnectOutputs() {

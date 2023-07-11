@@ -87,8 +87,6 @@ void AudioGraphNode::Uninit() {
     if (Node == nullptr) return;
 
     SplitterNodes.clear();
-    OutputMonitorNode.reset();
-    InputMonitorNode.reset();
     DoUninit();
     ma_node_uninit(Node, nullptr);
     Set(nullptr);
@@ -135,9 +133,11 @@ void AudioGraphNode::RenderMonitor(IO io) const {
         ImPlot::SetupAxes("Buffer frame", "Value");
         ImPlot::SetupAxisLimits(ImAxis_X1, 0, frame_count, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
-        for (Count channel_index = 0; channel_index < ChannelCount(io, 0); channel_index++) {
-            const std::string channel_name = std::format("Channel {}", channel_index);
-            ImPlot::PlotLine(channel_name.c_str(), monitor_node->pBuffer, frame_count);
+        if (IsActive) {
+            for (Count channel_index = 0; channel_index < ChannelCount(io, 0); channel_index++) {
+                const std::string channel_name = std::format("Channel {}", channel_index);
+                ImPlot::PlotLine(channel_name.c_str(), monitor_node->pBuffer, frame_count);
+            }
         }
         ImPlot::PopStyleVar();
         ImPlot::EndPlot();
@@ -147,6 +147,7 @@ void AudioGraphNode::RenderMonitor(IO io) const {
 void AudioGraphNode::Render() const {
     if (!IsOutput()) On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
 
+    SameLine();
     if (IsActive) {
         PushStyleColor(ImGuiCol_Text, {0.0f, 1.0f, 0.0f, 1.0f});
         TextUnformatted("Active");

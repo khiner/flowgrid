@@ -26,6 +26,7 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     void Connect(ID source, ID destination) const;
     void Disconnect(ID source, ID destination) const;
     void ToggleConnection(ID source, ID destination) const;
+
     bool IsConnected(ID source, ID destination) const;
     bool HasPath(ID source, ID destination, const std::unordered_set<ID> &disabled = {}) const;
 };

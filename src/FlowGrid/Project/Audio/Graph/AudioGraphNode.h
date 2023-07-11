@@ -55,7 +55,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.\nIt is active when it has a connection path to the graph output node.", true);
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, Volume, 1.0);
-    Prop(Bool, Monitor, false);
+    Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
 
     struct SplitterDeleter {
         void operator()(ma_splitter_node *);

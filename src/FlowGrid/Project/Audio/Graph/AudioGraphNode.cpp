@@ -159,11 +159,8 @@ void AudioGraphNode::Render() const {
     Muted.Draw();
     SameLine();
     Volume.Draw();
-    if (TreeNode("Plots")) {
-        if (!Monitor) Monitor.Toggle();
+    Monitor.Draw();
+    if (Monitor) {
         for (IO io : IO_All) RenderMonitor(io);
-        TreePop();
-    } else {
-        if (Monitor) Monitor.Toggle();
     }
 }

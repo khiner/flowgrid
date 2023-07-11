@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <unordered_set>
 
 using IdPair = std::pair<unsigned int, unsigned int>;
 
@@ -13,3 +14,5 @@ struct IdPairHash {
 
 IdPair DeserializeIdPair(const std::string &);
 std::string SerializeIdPair(const IdPair &);
+
+using IdPairs = std::unordered_set<IdPair, IdPairHash>;

@@ -85,6 +85,8 @@ void AudioGraph::UpdateConnections() {
     }
 
     // Update node active states.
+    // Nodes that are turned off (here - disabled) are not removed from the `Connections` object in order to preserve their connections.
+    // So we need to check if there is a path to the output node that doesn't go through any disabled nodes.
     std::unordered_set<ID> disabled_node_ids;
     for (const auto *node : Nodes) {
         if (!node->On) disabled_node_ids.insert(node->Id);

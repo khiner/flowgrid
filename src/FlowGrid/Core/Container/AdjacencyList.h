@@ -17,6 +17,8 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     }
     bool CanApply(const ActionType &) const override { return true; }
 
+    IdPairs Get() const;
+
     // This value is not cached like other fields, because it uses a backing store (a single `immer::set`) that's performant to query.
     void RefreshValue() override {}
     void RenderValueTree(bool annotate, bool auto_select) const override;
@@ -25,6 +27,5 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     void Disconnect(ID source, ID destination) const;
     void ToggleConnection(ID source, ID destination) const;
     bool IsConnected(ID source, ID destination) const;
-
     bool HasPath(ID source, ID destination, const std::unordered_set<ID> &disabled = {}) const;
 };

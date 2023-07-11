@@ -23,8 +23,8 @@ struct Store : Actionable<Action::Store::Any> {
     void Set(const StorePath &, const Primitive &) const;
     void Erase(const StorePath &) const;
 
+    IdPairs IdPairs(const StorePath &) const;
     Count IdPairCount(const StorePath &) const;
-    std::unordered_set<IdPair, IdPairHash> IdPairs(const StorePath &) const;
     void AddIdPair(const StorePath &, const IdPair &) const;
     void EraseIdPair(const StorePath &, const IdPair &) const;
     bool HasIdPair(const StorePath &, const IdPair &) const;

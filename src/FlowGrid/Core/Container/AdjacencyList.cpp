@@ -6,6 +6,8 @@
 
 #include "Core/Store/Store.h"
 
+IdPairs AdjacencyList::Get() const { return RootStore.IdPairs(Path); }
+
 void AdjacencyList::Connect(ID source, ID destination) const {
     if (IsConnected(source, destination)) return;
 
@@ -27,7 +29,7 @@ bool AdjacencyList::IsConnected(ID source, ID destination) const {
 
 bool AdjacencyList::HasPath(ID from_id, ID to_id, const std::unordered_set<ID> &disabled) const {
     // Non-recursive depth-first search.
-    const auto id_pairs = RootStore.IdPairs(Path);
+    const auto id_pairs = Get();
     std::unordered_set<ID> visited;
     std::stack<ID> to_visit;
     to_visit.push(from_id);
@@ -42,10 +44,8 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id, const std::unordered_set<ID> &
         if (!visited.contains(current)) {
             visited.insert(current);
 
-            for (const auto &pair : id_pairs) {
-                if (pair.first == current) {
-                    to_visit.push(pair.second);
-                }
+            for (const auto &[source_id, destination_id] : id_pairs) {
+                if (source_id == current) to_visit.push(destination_id);
             }
         }
     }
@@ -64,11 +64,9 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     }
 
     if (TreeNode(Name)) {
-        const auto id_pairs = RootStore.IdPairs(Path);
         Count i = 0;
-        for (const auto &id_pair : id_pairs) {
-            const ID source_id = id_pair.first;
-            const ID destination_id = id_pair.second;
+        const auto id_pairs = Get();
+        for (const auto &[source_id, destination_id] : id_pairs) {
             const bool can_annotate = annotate && ById.contains(source_id) && ById.contains(destination_id);
             const std::string label = can_annotate ?
                 std::format("{} -> {}", ById.at(source_id)->Name, ById.at(destination_id)->Name) :

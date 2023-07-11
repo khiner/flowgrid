@@ -34,13 +34,13 @@ Primitive Store::Get(const StorePath &path) const { return TransientImpl->Primit
 void Store::Set(const StorePath &path, const Primitive &value) const { TransientImpl->PrimitiveByPath.set(path, value); }
 void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.erase(path); }
 
-Count Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPairsByPath[path].size(); }
-
-std::unordered_set<IdPair, IdPairHash> Store::IdPairs(const StorePath &path) const {
-    std::unordered_set<IdPair, IdPairHash> id_pairs;
+IdPairs Store::IdPairs(const StorePath &path) const {
+    ::IdPairs id_pairs;
     for (const auto &id_pair : TransientImpl->IdPairsByPath[path]) id_pairs.insert(id_pair);
     return id_pairs;
 }
+
+Count Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPairsByPath[path].size(); }
 
 void Store::AddIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].insert(value); }
 void Store::EraseIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].erase(value); }

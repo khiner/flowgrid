@@ -71,9 +71,11 @@ void AudioGraph::Init() {
 
 void AudioGraph::UpdateConnections() {
     for (auto *source_node : Nodes) {
-        if (source_node->OutputBusCount() == 0) continue;
+        source_node->DisconnectAll();
+    }
 
-        source_node->DisconnectOutputs();
+    for (auto *source_node : Nodes) {
+        if (source_node->OutputBusCount() == 0) continue;
 
         for (auto *dest_node : Nodes) {
             if (dest_node->InputBusCount() == 0) continue;

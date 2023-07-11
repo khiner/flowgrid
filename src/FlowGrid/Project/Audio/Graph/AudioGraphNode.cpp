@@ -92,9 +92,12 @@ void AudioGraphNode::Uninit() {
     Set(nullptr);
 }
 
-void AudioGraphNode::ConnectTo(const AudioGraphNode &to) {
+void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
     if (to.InputMonitorNode) ma_node_attach_output_bus(to.InputMonitorNode.get(), 0, to.Node, 0);
     if (OutputMonitorNode) ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+
+    to.InputNodes.insert(this);
+    OutputNodes.insert(&to);
 
     auto *currently_connected_to = ((ma_node_base *)OutputNode())->pOutputBuses[0].pInputNode;
     if (currently_connected_to != nullptr) {
@@ -115,9 +118,11 @@ void AudioGraphNode::ConnectTo(const AudioGraphNode &to) {
     }
 }
 
-void AudioGraphNode::DisconnectOutputs() {
+void AudioGraphNode::DisconnectAll() {
     ma_node_detach_output_bus(OutputNode(), 0);
     SplitterNodes.clear();
+    InputNodes.clear();
+    OutputNodes.clear();
 }
 
 using namespace ImGui;
@@ -156,6 +161,34 @@ void AudioGraphNode::Render() const {
         TextUnformatted("Inactive");
     }
     PopStyleColor();
+
+    TextUnformatted("Inputs:");
+    SameLine();
+    if (InputNodes.empty()) {
+        TextUnformatted("None");
+    } else {
+        std::string inputs;
+        for (const auto *node : InputNodes) {
+            inputs += node->Name;
+            inputs += ", ";
+        }
+        inputs.resize(inputs.size() - 2);
+        TextUnformatted(inputs.c_str());
+    }
+
+    TextUnformatted("Outputs:");
+    SameLine();
+    if (OutputNodes.empty()) {
+        TextUnformatted("None");
+    } else {
+        std::string outputs;
+        for (const auto *node : OutputNodes) {
+            outputs += node->Name;
+            outputs += ", ";
+        }
+        outputs.resize(outputs.size() - 2);
+        TextUnformatted(outputs.c_str());
+    }
 
     Muted.Draw();
     SameLine();

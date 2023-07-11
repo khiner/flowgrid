@@ -43,8 +43,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     inline ma_node *InputNode() const noexcept { return InputMonitorNode ? InputMonitorNode.get() : Node; }
     inline ma_node *OutputNode() const noexcept { return OutputMonitorNode ? OutputMonitorNode.get() : Node; }
 
-    void ConnectTo(const AudioGraphNode &);
-    void DisconnectOutputs();
+    void ConnectTo(AudioGraphNode &);
+    void DisconnectAll();
 
     inline void SetActive(bool is_active) noexcept { IsActive = is_active; }
 
@@ -82,4 +82,8 @@ protected:
 
     // `IsActive == true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
     bool IsActive{false};
+
+    // Cache the current sets of input and output nodes.
+    std::unordered_set<const AudioGraphNode *> InputNodes;
+    std::unordered_set<const AudioGraphNode *> OutputNodes;
 };

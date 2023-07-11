@@ -147,6 +147,15 @@ void AudioGraphNode::RenderMonitor(IO io) const {
 void AudioGraphNode::Render() const {
     if (!IsOutput()) On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
 
+    if (IsActive) {
+        PushStyleColor(ImGuiCol_Text, {0.0f, 1.0f, 0.0f, 1.0f});
+        TextUnformatted("Active");
+    } else {
+        PushStyleColor(ImGuiCol_Text, {1.0f, 0.0f, 0.0f, 1.0f});
+        TextUnformatted("Inactive");
+    }
+    PopStyleColor();
+
     Muted.Draw();
     SameLine();
     Volume.Draw();

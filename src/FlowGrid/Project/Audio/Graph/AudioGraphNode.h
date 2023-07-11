@@ -46,6 +46,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     void ConnectTo(const AudioGraphNode &);
     void DisconnectOutputs();
 
+    inline void SetActive(bool is_active) noexcept { IsActive = is_active; }
+
     void Init();
     void Update();
     void Uninit();
@@ -77,4 +79,7 @@ protected:
     void UpdateMonitors();
 
     const AudioGraph *Graph;
+
+    // `IsActive == true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
+    bool IsActive{false};
 };

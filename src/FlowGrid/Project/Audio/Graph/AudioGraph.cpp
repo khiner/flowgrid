@@ -83,6 +83,15 @@ void AudioGraph::UpdateConnections() {
             }
         }
     }
+
+    // Update node active states.
+    std::unordered_set<ID> disabled_node_ids;
+    for (const auto *node : Nodes) {
+        if (!node->On) disabled_node_ids.insert(node->Id);
+    }
+    for (auto *node : Nodes) {
+        node->SetActive(audio_device.On && Connections.HasPath(node->Id, Nodes.Output.Id, disabled_node_ids));
+    }
 }
 
 void AudioGraph::Update() {

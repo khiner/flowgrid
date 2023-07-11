@@ -1,5 +1,7 @@
 #include "AdjacencyList.h"
 
+#include <stack>
+
 #include "imgui.h"
 
 #include "Core/Store/Store.h"
@@ -21,6 +23,34 @@ void AdjacencyList::ToggleConnection(ID source, ID destination) const {
 
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
     return RootStore.HasIdPair(Path, {source, destination});
+}
+
+bool AdjacencyList::HasPath(ID from_id, ID to_id, const std::unordered_set<ID> &disabled) const {
+    // Non-recursive depth-first search.
+    const auto id_pairs = RootStore.IdPairs(Path);
+    std::unordered_set<ID> visited;
+    std::stack<ID> to_visit;
+    to_visit.push(from_id);
+
+    while (!to_visit.empty()) {
+        ID current = to_visit.top();
+        to_visit.pop();
+
+        if (disabled.contains(current)) continue;
+        if (current == to_id) return true;
+
+        if (!visited.contains(current)) {
+            visited.insert(current);
+
+            for (const auto &pair : id_pairs) {
+                if (pair.first == current) {
+                    to_visit.push(pair.second);
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 using namespace ImGui;

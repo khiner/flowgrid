@@ -25,7 +25,7 @@ static ma_uint32 StandardSampleRatePriorities[] = {
     (ma_uint32)ma_standard_sample_rate_8000,
 
     (ma_uint32)ma_standard_sample_rate_352800,
-    (ma_uint32)ma_standard_sample_rate_384000
+    (ma_uint32)ma_standard_sample_rate_384000,
 };
 
 const std::vector<U32> AudioDevice::PrioritizedSampleRates = {std::begin(StandardSampleRatePriorities), std::end(StandardSampleRatePriorities)};

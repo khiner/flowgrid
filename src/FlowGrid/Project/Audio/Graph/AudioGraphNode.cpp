@@ -94,9 +94,6 @@ void AudioGraphNode::Uninit() {
     Set(nullptr);
 }
 
-ma_node *AudioGraphNode::InputNode() const { return InputMonitorNode ? InputMonitorNode.get() : Node; }
-ma_node *AudioGraphNode::OutputNode() const { return OutputMonitorNode ? OutputMonitorNode.get() : Node; }
-
 void AudioGraphNode::ConnectTo(const AudioGraphNode &to) {
     if (to.InputMonitorNode) ma_node_attach_output_bus(to.InputMonitorNode.get(), 0, to.Node, 0);
     if (OutputMonitorNode) ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);

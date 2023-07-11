@@ -83,6 +83,8 @@ struct Component : Drawable {
     const Component *Child(Count i) const noexcept { return Children[i]; }
     inline Count ChildCount() const noexcept { return Children.size(); }
 
+    inline bool IsChanged() const noexcept { return ChangedComponentIds.contains(Id); }
+
     Store &RootStore; // Reference to the store at the root of this component's tree.
     const Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};

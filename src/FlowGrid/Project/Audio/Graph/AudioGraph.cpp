@@ -18,7 +18,7 @@ static ma_audio_buffer_ref InputBuffer;
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Init();
-    const Field::References listened_fields = {audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
+    const Field::References listened_fields = {audio_device.On, audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
     for (const auto *node : Nodes) {
         node->On.RegisterChangeListener(this);
@@ -30,22 +30,24 @@ AudioGraph::~AudioGraph() {
 }
 
 void AudioGraph::OnFieldChanged() {
-    if (Connections.IsChanged()) {
-        UpdateConnections();
-        return;
+    if (audio_device.IsChanged()) {
+        Uninit();
+        Init();
+        Update();
+        return; // Nodes and connections are already updated.
     }
+
+    bool any_node_changed = false;
     for (auto *node : Nodes) {
         if (node->On.IsChanged() || node->Monitor.IsChanged()) {
             node->Update();
-            UpdateConnections();
-            return;
+            any_node_changed = true;
         }
     }
 
-    // Device field changed.
-    Uninit();
-    Init();
-    Update();
+    if (Connections.IsChanged() || any_node_changed) {
+        UpdateConnections();
+    }
 }
 
 void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {

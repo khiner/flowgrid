@@ -30,17 +30,18 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     Count InputBusCount() const;
     Count OutputBusCount() const;
+    inline Count BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
+
     Count InputChannelCount(Count bus) const;
     Count OutputChannelCount(Count bus) const;
-    inline Count BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
     inline Count ChannelCount(IO io, Count bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
 
     ma_monitor_node *GetMonitorNode(IO io) const { return io == IO_In ? InputMonitorNode.get() : OutputMonitorNode.get(); }
 
     bool IsOutput() const noexcept { return Name == "Output"; }
 
-    ma_node *InputNode() const;
-    ma_node *OutputNode() const;
+    inline ma_node *InputNode() const noexcept { return InputMonitorNode ? InputMonitorNode.get() : Node; }
+    inline ma_node *OutputNode() const noexcept { return OutputMonitorNode ? OutputMonitorNode.get() : Node; }
 
     void ConnectTo(const AudioGraphNode &);
     void DisconnectOutputs();

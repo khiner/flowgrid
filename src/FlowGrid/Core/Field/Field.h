@@ -80,7 +80,6 @@ struct Field : Component {
         ChangedPaths.clear();
         ChangedComponentIds.clear();
     }
-    inline bool IsChanged() const noexcept { return ChangedPaths.contains(Id); }
 
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.

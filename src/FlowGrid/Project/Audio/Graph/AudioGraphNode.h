@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 
 #include "Project/Audio/AudioIO.h"
@@ -16,6 +17,31 @@ using ma_node = void;
 
 // using ma_node = void;
 // struct ma_splitter_node;
+
+enum WindowType_ {
+    WindowType_Rectangular,
+    // Cosine windows.
+    WindowType_Hann,
+    WindowType_Hamming,
+    WindowType_Blackman,
+    WindowType_BlackmanHarris,
+    WindowType_Nuttall,
+    WindowType_FlatTop,
+    // Other windows, not parameterized.
+    WindowType_Triangular,
+    WindowType_Bartlett,
+    WindowType_BartlettHann,
+    WindowType_Bohman,
+    WindowType_Parzen,
+    // Other windows, parameterized.
+    // We have implementations for these, but we're sticking with non-parameterized windows for now.
+    // WindowType_Gaussian,
+    // WindowType_Tukey,
+    // WindowType_Taylor,
+    // WindowType_Kaiser,
+};
+
+using WindowType = int;
 
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
@@ -56,6 +82,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, Volume, 1.0);
     Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
+    Prop_(
+        Enum, WindowType, "?The window type used for the FFT.",
+        {"Rectangular", "Hann", "Hamming", "Blackman", "Blackman-Harris", "Nuttall", "Flat-Top", "Triangular", "Bartlett", "Bartlett-Hann", "Bohman", "Parzen"},
+        WindowType_BlackmanHarris
+    );
 
     struct SplitterDeleter {
         void operator()(ma_splitter_node *);
@@ -77,6 +108,8 @@ protected:
 
     void UpdateVolume();
     void UpdateMonitors();
+    void UpdateMonitorSampleRate(IO);
+    void UpdateMonitorWindowFunction(IO);
 
     const AudioGraph *Graph;
 

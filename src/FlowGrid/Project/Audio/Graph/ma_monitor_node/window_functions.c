@@ -10,8 +10,7 @@
 void cosine_window(real *w, unsigned n, const real *coeff, unsigned ncoeff, bool sflag) {
     // Generalized cosine window.
     //
-    // Many window functions described in signal processing literature
-    // can be written as linear combinations of cosines over the window length.
+    // Many window functions described in signal processing literature can be written as linear combinations of cosines over the window length.
     //
     // Let 'x' be values going from 0 for the first element, and 2*pi for the last element.
     // The window can then be written as:
@@ -109,28 +108,12 @@ void nuttallwin(real *w, unsigned n, bool sflag) {
     cosine_window(w, n, coeff, sizeof(coeff) / sizeof(real), sflag);
 }
 
-void nuttallwin_octave(real *w, unsigned n, bool sflag) {
-    // Nuttall window (Octave version)
-
-    const real coeff[4] = {0.355768, -0.487396, 0.144232, -0.012604};
-    cosine_window(w, n, coeff, sizeof(coeff) / sizeof(real), sflag);
-}
-
 void flattopwin(real *w, unsigned n, bool sflag) {
     // Flattop window
     //
     // This window contains negative values.
 
     const real coeff[5] = {0.21557895, -0.41663158, 0.277263158, -0.083578947, 0.006947368};
-    cosine_window(w, n, coeff, sizeof(coeff) / sizeof(real), sflag);
-}
-
-void flattopwin_octave(real *w, unsigned n, bool sflag) {
-    // Flattop window (Octave version)
-    //
-    // This window contains negative values.
-
-    const real coeff[5] = {1.0 / 4.6402, -1.93 / 4.6402, 1.29 / 4.6402, -0.388 / 4.6402, 0.0322 / 4.6402};
     cosine_window(w, n, coeff, sizeof(coeff) / sizeof(real), sflag);
 }
 
@@ -145,11 +128,9 @@ void triang(real *w, unsigned n) {
     //   triang(6) == { 0.16 0.50 0.83 0.83 0.50 0.16 }
     //
     // Even length:
-    //
     //     Center values are (1 - 1 / L); extrema are (1 / L).
     //
     // Odd length:
-    //
     //     Center value is 1; extrema are 2 / (L + 1).
 
     const unsigned denominator = (n % 2 != 0) ? (n + 1) : n;
@@ -228,8 +209,7 @@ void parzenwin(real *w, unsigned n) {
 void gausswin(real *w, unsigned n, real alpha) {
     // Gaussian window.
 
-    // The parameter for the gausswin() function is different for the Matlab, Octave, and SciPy versions of
-    // this function:
+    // The parameter for the gausswin() function is different for the Matlab, Octave, and SciPy versions of this function:
 
     // - Matlab uses "Alpha", with a default value of 2.5.
     // - Octave uses "A";
@@ -281,8 +261,7 @@ void taylorwin(real *w, unsigned n, unsigned nbar, real sll) {
     //
     // Default Matlab parameters: nbar ==4, sll == -30.0.
     //
-    // The Taylor window is cosine-window like, in that it is the sum of weighted
-    // cosines of different periods.
+    // The Taylor window is cosine-window like, in that it is the sum of weighted cosines of different periods.
 
     // sll is in dB(power).
     // Calculate the amplification factor, e.g. sll = -60 --> amplification = 1000.0
@@ -391,3 +370,11 @@ void kaiser(real *w, unsigned n, real beta) {
         w[i] = bessel_i0(beta * sqrt(1.0 - x * x)) / bessel_i0(beta);
     }
 }
+
+// Periodic defaults for cosine windows
+void hann_periodic(real *w, unsigned n) { hann(w, n, false); }
+void hamming_periodic(real *w, unsigned n) { hamming(w, n, false); }
+void blackman_periodic(real *w, unsigned n) { blackman(w, n, false); }
+void blackmanharris_periodic(real *w, unsigned n) { blackmanharris(w, n, false); }
+void nuttallwin_periodic(real *w, unsigned n) { nuttallwin(w, n, false); }
+void flattopwin_periodic(real *w, unsigned n) { flattopwin(w, n, false); }

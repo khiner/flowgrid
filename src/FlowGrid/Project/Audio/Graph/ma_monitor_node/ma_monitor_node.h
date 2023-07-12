@@ -33,6 +33,7 @@ ma_result ma_monitor_node_init(ma_node_graph *, const ma_monitor_node_config *, 
 void ma_monitor_node_uninit(ma_monitor_node *, const ma_allocation_callbacks *);
 
 ma_result ma_monitor_set_sample_rate(ma_monitor_node *, ma_uint32 sample_rate);
+ma_result ma_monitor_apply_window_function(ma_monitor_node *, void (*window_func)(float *, unsigned));
 
 #ifdef __cplusplus
 }

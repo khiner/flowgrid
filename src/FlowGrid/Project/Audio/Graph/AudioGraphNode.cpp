@@ -7,23 +7,61 @@
 #include "Helper/String.h"
 #include "Project/Audio/AudioDevice.h"
 #include "ma_monitor_node/fft_data.h"
+#include "ma_monitor_node/window_functions.h"
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
     audio_device.SampleRate.RegisterChangeListener(this);
     Volume.RegisterChangeListener(this);
     Muted.RegisterChangeListener(this);
+    WindowType.RegisterChangeListener(this);
 }
 AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
 }
 
-void AudioGraphNode::OnFieldChanged() {
-    if (Muted.IsChanged() || Volume.IsChanged()) UpdateVolume();
+using WindowFunctionType = void (*)(float *, unsigned);
 
+WindowFunctionType GetWindowFunction(WindowType type) {
+    switch (type) {
+        case WindowType_Rectangular:
+            return rectwin;
+        case WindowType_Hann:
+            return hann_periodic;
+        case WindowType_Hamming:
+            return hamming_periodic;
+        case WindowType_Blackman:
+            return blackman_periodic;
+        case WindowType_BlackmanHarris:
+            return blackmanharris_periodic;
+        case WindowType_Nuttall:
+            return nuttallwin_periodic;
+        case WindowType_FlatTop:
+            return flattopwin_periodic;
+        case WindowType_Triangular:
+            return triang;
+        case WindowType_Bartlett:
+            return bartlett;
+        case WindowType_BartlettHann:
+            return barthannwin;
+        case WindowType_Bohman:
+            return bohmanwin;
+        case WindowType_Parzen:
+            return parzenwin;
+        default:
+            return nullptr;
+    }
+}
+
+void AudioGraphNode::OnFieldChanged() {
+    if (Muted.IsChanged() || Volume.IsChanged()) {
+        UpdateVolume();
+    }
     if (audio_device.SampleRate.IsChanged()) {
-        if (InputMonitorNode) ma_monitor_set_sample_rate(InputMonitorNode.get(), ma_uint32(audio_device.SampleRate));
-        if (OutputMonitorNode) ma_monitor_set_sample_rate(OutputMonitorNode.get(), ma_uint32(audio_device.SampleRate));
+        for (const IO io : IO_All) UpdateMonitorSampleRate(io);
+    }
+    if (WindowType.IsChanged()) {
+        for (const IO io : IO_All) UpdateMonitorWindowFunction(io);
     }
 }
 
@@ -46,6 +84,23 @@ void AudioGraphNode::UpdateVolume() {
     if (On) ma_node_set_output_bus_volume(Node, 0, Muted ? 0.f : float(Volume));
 }
 
+void AudioGraphNode::UpdateMonitorSampleRate(IO io) {
+    auto *monitor = GetMonitorNode(io);
+    if (monitor == nullptr) return;
+
+    ma_monitor_set_sample_rate(monitor, ma_uint32(audio_device.SampleRate));
+}
+
+void AudioGraphNode::UpdateMonitorWindowFunction(IO io) {
+    auto *monitor = GetMonitorNode(io);
+    if (monitor == nullptr) return;
+
+    auto window_func = GetWindowFunction(WindowType);
+    if (window_func == nullptr) throw std::runtime_error(std::format("Failed to get window function for window type {}.", int(WindowType)));
+
+    ma_monitor_apply_window_function(monitor, window_func);
+}
+
 void AudioGraphNode::UpdateMonitors() {
     if (InputBusCount() > 0) {
         if (Monitor && !InputMonitorNode) {
@@ -55,6 +110,8 @@ void AudioGraphNode::UpdateMonitors() {
             ma_monitor_node_config config = ma_monitor_node_config_init(InputChannelCount(0), device->playback.internalSampleRate, buffer_size);
             int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, InputMonitorNode.get());
             if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize input monitor node: {}", result)); }
+
+            UpdateMonitorWindowFunction(IO_In);
         } else if (!Monitor && InputMonitorNode) {
             InputMonitorNode.reset();
         }
@@ -68,6 +125,8 @@ void AudioGraphNode::UpdateMonitors() {
             ma_monitor_node_config config = ma_monitor_node_config_init(OutputChannelCount(0), device->playback.internalSampleRate, buffer_size);
             int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, OutputMonitorNode.get());
             if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize output monitor node: {}", result)); }
+
+            UpdateMonitorWindowFunction(IO_Out);
         } else if (!Monitor && OutputMonitorNode) {
             OutputMonitorNode.reset();
         }
@@ -236,6 +295,7 @@ void AudioGraphNode::Render() const {
     Volume.Draw();
     Monitor.Draw();
     if (Monitor) {
-        for (IO io : IO_All) RenderMonitor(io);
+        WindowType.Draw();
+        for (const IO io : IO_All) RenderMonitor(io);
     }
 }

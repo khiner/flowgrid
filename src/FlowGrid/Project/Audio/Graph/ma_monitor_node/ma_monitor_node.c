@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "fft_data.h"
-#include "window_functions.h"
 
 static MA_INLINE void ma_zero_memory_default(void *p, size_t sz) {
     if (p == NULL) {
@@ -37,6 +36,14 @@ ma_result ma_monitor_set_sample_rate(ma_monitor_node *monitor, ma_uint32 sample_
     monitor->config.sample_rate = sample_rate;
 
     // Nothing else to do. This only affects frequency calculation for the UI.
+    return MA_SUCCESS;
+}
+
+ma_result ma_monitor_apply_window_function(ma_monitor_node *monitor, void (*window_func)(float *, unsigned)) {
+    if (monitor == NULL) return MA_INVALID_ARGS;
+
+    window_func(monitor->window, monitor->config.buffer_frames);
+
     return MA_SUCCESS;
 }
 
@@ -96,7 +103,7 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
 
     monitor->window = (float *)ma_malloc((size_t)(N * ma_get_bytes_per_frame(ma_format_f32, 1)), allocation_callbacks);
     if (monitor->window == NULL) return MA_OUT_OF_MEMORY;
-    blackmanharris(monitor->window, N, false); // todo configurable window type
+    for (ma_uint32 i = 0; i < N; ++i) monitor->window[i] = 1.0; // Rectangular window by default.
 
     monitor->windowed_buffer = (float *)ma_malloc((size_t)(N * ma_get_bytes_per_frame(ma_format_f32, config->channels)), allocation_callbacks);
     if (monitor->windowed_buffer == NULL) return MA_OUT_OF_MEMORY;

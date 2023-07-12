@@ -20,6 +20,7 @@ typedef struct fft_data fft_data; // Forward-declare to avoid including fftw hea
 typedef struct
 {
     ma_node_base base_node;
+    ma_uint32 sample_rate;
     ma_uint32 buffer_frames;
     fft_data *fft;
     float *buffer;

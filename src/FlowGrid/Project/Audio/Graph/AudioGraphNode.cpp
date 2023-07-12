@@ -128,16 +128,20 @@ void AudioGraphNode::DisconnectAll() {
 
 using namespace ImGui;
 
-void RenderSpectrogram(fft_data *fft) {
-    const auto *data = fft->data;
+void RenderMagnitudeSpectrum(const ma_monitor_node *monitor_node) {
+    static const float MIN_DB = -80;
+    const fft_data *fft = monitor_node->fft;
     const Count N = fft->N;
     const Count N_2 = N / 2;
+    const float fs = monitor_node->sample_rate;
+    const float fs_n = fs / float(N);
+
     static std::vector<float> frequency(N_2);
     static std::vector<float> magnitude(N_2);
     frequency.resize(N_2);
     magnitude.resize(N_2);
-    const float fs = float(Count(audio_device.SampleRate));
-    const float fs_n = fs / float(N);
+
+    const auto *data = fft->data; // Complex values.
     for (Count i = 0; i < N_2; i++) {
         frequency[i] = fs_n * float(i);
         const float mag_linear = sqrtf(data[i][0] * data[i][0] + data[i][1] * data[i][1]) / float(N_2);
@@ -145,12 +149,11 @@ void RenderSpectrogram(fft_data *fft) {
     }
 
     if (ImPlot::BeginPlot("Spectrogram", {-1, 160})) {
-        static const float MIN_DB = -80;
         ImPlot::SetupAxes("Frequency bin", "Magnitude (dB)");
         ImPlot::SetupAxisLimits(ImAxis_X1, 0, fs / 2, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1, MIN_DB, 0, ImGuiCond_Always);
         ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
-        // ImPlot::PushStyleColor(ImPlotCol_Line, {1.f, 0.f, 0.f, 1.f});
+        // ImPlot::PushStyleColor(ImPlotCol_Fill, {1.f, 0.f, 0.f, 1.f});
         ImPlot::PlotShaded("Spectrogram", frequency.data(), magnitude.data(), N_2, MIN_DB);
         // ImPlot::PopStyleColor();
         ImPlot::PopStyleVar();
@@ -177,7 +180,7 @@ void AudioGraphNode::RenderMonitor(IO io) const {
         ImPlot::EndPlot();
     }
 
-    RenderSpectrogram(monitor_node->fft);
+    RenderMagnitudeSpectrum(monitor_node);
 }
 
 void AudioGraphNode::Render() const {

@@ -76,6 +76,7 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
 
     if (config == NULL) return MA_INVALID_ARGS;
 
+    monitor_node->sample_rate = config->sample_rate;
     monitor_node->buffer_frames = config->buffer_frames;
     monitor_node->buffer = (float *)ma_malloc((size_t)(monitor_node->buffer_frames * ma_get_bytes_per_frame(ma_format_f32, config->channels)), allocation_callbacks);
     if (monitor_node->buffer == NULL) return MA_OUT_OF_MEMORY;

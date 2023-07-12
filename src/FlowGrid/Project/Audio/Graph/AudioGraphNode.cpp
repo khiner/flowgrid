@@ -135,9 +135,9 @@ void AudioGraphNode::DisconnectAll() {
 using namespace ImGui;
 
 void RenderMagnitudeSpectrum(const ma_monitor_node *monitor) {
-    static const float MIN_DB = -80;
+    static const float MIN_DB = -100;
     const fft_data *fft = monitor->fft;
-    const Count N = fft->N;
+    const Count N = monitor->config.buffer_frames;
     const Count N_2 = N / 2;
     const float fs = monitor->config.sample_rate;
     const float fs_n = fs / float(N);

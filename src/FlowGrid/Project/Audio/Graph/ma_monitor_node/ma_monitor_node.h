@@ -20,14 +20,18 @@ typedef struct fft_data fft_data; // Forward-declare to avoid including fftw hea
 typedef struct
 {
     ma_node_base base_node;
-    ma_uint32 sample_rate;
-    ma_uint32 buffer_frames;
+    ma_monitor_node_config config;
     fft_data *fft;
+    // Buffers are guaranteed to be of size `buffer_frames * channels` if initialized successfully.
     float *buffer;
+    // float *window_buffer;
 } ma_monitor_node;
 
 ma_result ma_monitor_node_init(ma_node_graph *, const ma_monitor_node_config *, const ma_allocation_callbacks *, ma_monitor_node *);
 void ma_monitor_node_uninit(ma_monitor_node *, const ma_allocation_callbacks *);
+
+ma_result ma_monitor_set_sample_rate(ma_monitor_node*, ma_uint32 sample_rate);
+
 #ifdef __cplusplus
 }
 #endif

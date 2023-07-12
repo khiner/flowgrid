@@ -8,7 +8,6 @@
 static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?
 
 TestToneNode::TestToneNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-    audio_device.SampleRate.RegisterChangeListener(this);
     Amplitude.RegisterChangeListener(this);
     Frequency.RegisterChangeListener(this);
     Type.RegisterChangeListener(this);
@@ -17,6 +16,7 @@ TestToneNode::TestToneNode(ComponentArgs &&args) : AudioGraphNode(std::move(args
 void TestToneNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
     if (!CurrentWaveform) return;
+
     if (audio_device.SampleRate.IsChanged()) ma_waveform_set_sample_rate(CurrentWaveform, ma_uint32(audio_device.SampleRate));
     if (Amplitude.IsChanged()) ma_waveform_set_amplitude(CurrentWaveform, Amplitude);
     if (Frequency.IsChanged()) ma_waveform_set_frequency(CurrentWaveform, Frequency);

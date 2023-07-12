@@ -10,6 +10,7 @@
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
+    audio_device.SampleRate.RegisterChangeListener(this);
     Volume.RegisterChangeListener(this);
     Muted.RegisterChangeListener(this);
 }
@@ -19,6 +20,11 @@ AudioGraphNode::~AudioGraphNode() {
 
 void AudioGraphNode::OnFieldChanged() {
     if (Muted.IsChanged() || Volume.IsChanged()) UpdateVolume();
+
+    if (audio_device.SampleRate.IsChanged()) {
+        if (InputMonitorNode) ma_monitor_set_sample_rate(InputMonitorNode.get(), ma_uint32(audio_device.SampleRate));
+        if (OutputMonitorNode) ma_monitor_set_sample_rate(OutputMonitorNode.get(), ma_uint32(audio_device.SampleRate));
+    }
 }
 
 void AudioGraphNode::Set(ma_node *node) { Node = node; }
@@ -128,12 +134,12 @@ void AudioGraphNode::DisconnectAll() {
 
 using namespace ImGui;
 
-void RenderMagnitudeSpectrum(const ma_monitor_node *monitor_node) {
+void RenderMagnitudeSpectrum(const ma_monitor_node *monitor) {
     static const float MIN_DB = -80;
-    const fft_data *fft = monitor_node->fft;
+    const fft_data *fft = monitor->fft;
     const Count N = fft->N;
     const Count N_2 = N / 2;
-    const float fs = monitor_node->sample_rate;
+    const float fs = monitor->config.sample_rate;
     const float fs_n = fs / float(N);
 
     static std::vector<float> frequency(N_2);
@@ -162,25 +168,26 @@ void RenderMagnitudeSpectrum(const ma_monitor_node *monitor_node) {
 }
 
 void AudioGraphNode::RenderMonitor(IO io) const {
-    const auto *monitor_node = GetMonitorNode(io);
-    if (monitor_node == nullptr) return;
+    const auto *monitor = GetMonitorNode(io);
+    if (monitor == nullptr) return;
 
     if (ImPlot::BeginPlot(StringHelper::Capitalize(to_string(io)).c_str(), {-1, 160})) {
+        const auto N = monitor->config.buffer_frames;
         ImPlot::SetupAxes("Buffer frame", "Value");
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0, monitor_node->buffer_frames, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, N, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
         if (IsActive) {
             for (Count channel_index = 0; channel_index < ChannelCount(io, 0); channel_index++) {
                 const std::string channel_name = std::format("Channel {}", channel_index);
                 ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
-                ImPlot::PlotLine(channel_name.c_str(), monitor_node->buffer, monitor_node->buffer_frames);
+                ImPlot::PlotLine(channel_name.c_str(), monitor->buffer, N);
                 ImPlot::PopStyleVar();
             }
         }
         ImPlot::EndPlot();
     }
 
-    RenderMagnitudeSpectrum(monitor_node);
+    RenderMagnitudeSpectrum(monitor);
 }
 
 void AudioGraphNode::Render() const {

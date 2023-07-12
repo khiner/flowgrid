@@ -163,16 +163,14 @@ void AudioGraphNode::RenderMonitor(IO io) const {
     if (monitor_node == nullptr) return;
 
     if (ImPlot::BeginPlot(StringHelper::Capitalize(to_string(io)).c_str(), {-1, 160})) {
-        const Count frame_count = monitor_node->bufferSizeInFrames;
-
         ImPlot::SetupAxes("Buffer frame", "Value");
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0, frame_count, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, monitor_node->buffer_frames, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
         if (IsActive) {
             for (Count channel_index = 0; channel_index < ChannelCount(io, 0); channel_index++) {
                 const std::string channel_name = std::format("Channel {}", channel_index);
                 ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
-                ImPlot::PlotLine(channel_name.c_str(), monitor_node->pBuffer, frame_count);
+                ImPlot::PlotLine(channel_name.c_str(), monitor_node->buffer, monitor_node->buffer_frames);
                 ImPlot::PopStyleVar();
             }
         }
